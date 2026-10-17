@@ -235,6 +235,11 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
         if (!empty($data['id'])) {
             $schedule_id = absint($data['id']);
             $existing = $this->repository->get_by_id($schedule_id);
+            if ($schedule_data['is_active'] === 1) {
+                $schedule_data['status'] = 'active';
+            } elseif (!$existing || !isset($existing->status) || $existing->status !== 'completed') {
+                $schedule_data['status'] = 'inactive';
+            }
             $this->repository->update($schedule_id, $schedule_data);
 
             // Record update event in the schedule's persistent history container
@@ -276,6 +281,8 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
                         'old_frequency' => $old_frequency,
                     )
                 );
+
+                $history_container->complete_success();
             }
 
             return $schedule_id;
@@ -283,12 +290,29 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
             $new_id = $this->repository->create($schedule_data);
 
             if ($new_id) {
-                // Create a new persistent history container for this schedule
+                // Create a per-event lifecycle history container for this schedule creation
                 $history_container = $this->history_service->create('schedule_lifecycle', array(
-                    'schedule_id' => $new_id,
+                    'schedule_id'     => $new_id,
+                    'creation_method' => 'schedule_lifecycle',
+                    'record_kind'     => AIPS_History_Record_Kind::EVENT,
+                    'template_id'     => !empty($schedule_data['template_id']) ? absint($schedule_data['template_id']) : null,
+                    'campaign_id'     => !empty($schedule_data['campaign_id']) ? absint($schedule_data['campaign_id']) : null,
                 ));
 
                 if ($history_container && $history_container->get_id()) {
+                    AIPS_Generation_Trigger::record(
+                        $history_container,
+                        array_filter(array(
+                            'event'         => __('Schedule change', 'ai-post-scheduler'),
+                            'schedule_id'   => (int) $new_id,
+                            'schedule_name' => (string) $schedule_data['title'],
+                            'frequency'     => (string) $frequency,
+                            'template_id'   => !empty($schedule_data['template_id']) ? absint($schedule_data['template_id']) : 0,
+                            'campaign_id'   => !empty($schedule_data['campaign_id']) ? absint($schedule_data['campaign_id']) : 0,
+                        )),
+                        AIPS_Generation_Trigger::METHOD_MANUAL
+                    );
+
                     // Persist the history container ID on the schedule record
                     $this->repository->update($new_id, array(
                         'schedule_history_id' => $history_container->get_id(),
@@ -316,6 +340,8 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
                             'frequency' => $frequency,
                         )
                     );
+
+                    $history_container->complete_success();
                 }
             }
 
@@ -358,10 +384,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     }
 
     /**
-     * Load or create a persistent schedule lifecycle history container.
-     *
-     * If the schedule already has a schedule_history_id, load that container.
-     * Otherwise create a new one and attach it.
+     * Create a per-event schedule lifecycle history container and attach its ID.
      *
      * @param int         $schedule_id  Schedule ID.
      * @param object|null $schedule     Optional existing schedule record (avoids extra DB query).
@@ -376,21 +399,36 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
             return null;
         }
 
-        $history_repository = $this->history_repository;
+        $metadata = array(
+            'schedule_id'     => $schedule_id,
+            'creation_method' => 'schedule_lifecycle',
+            'record_kind'     => AIPS_History_Record_Kind::EVENT,
+        );
 
-        if (!empty($schedule->schedule_history_id)) {
-            $container = AIPS_History_Container::load_existing($history_repository, $schedule->schedule_history_id);
-            if ($container) {
-                return $container;
-            }
+        if (!empty($schedule->template_id)) {
+            $metadata['template_id'] = absint($schedule->template_id);
         }
 
-        // No existing container — create one and attach it
-        $container = $this->history_service->create('schedule_lifecycle', array(
-            'schedule_id' => $schedule_id,
-        ));
+        if (!empty($schedule->campaign_id)) {
+            $metadata['campaign_id'] = absint($schedule->campaign_id);
+        }
+
+        $container = $this->history_service->create('schedule_lifecycle', $metadata);
 
         if ($container && $container->get_id()) {
+            AIPS_Generation_Trigger::record(
+                $container,
+                array_filter(array(
+                    'event'         => __('Schedule change', 'ai-post-scheduler'),
+                    'schedule_id'   => (int) $schedule_id,
+                    'schedule_name' => !empty($schedule->title) ? (string) $schedule->title : (!empty($schedule->name) ? (string) $schedule->name : ''),
+                    'frequency'     => !empty($schedule->frequency) ? (string) $schedule->frequency : '',
+                    'template_id'   => !empty($schedule->template_id) ? absint($schedule->template_id) : 0,
+                    'campaign_id'   => !empty($schedule->campaign_id) ? absint($schedule->campaign_id) : 0,
+                )),
+                AIPS_Generation_Trigger::METHOD_MANUAL
+            );
+
             $this->repository->update($schedule_id, array(
                 'schedule_history_id' => $container->get_id(),
             ));
@@ -404,7 +442,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
         $result = $this->repository->set_active($id, $is_active);
 
         if ($result !== false) {
-            // Record enable/disable event in the schedule's persistent history container
+            // Record enable/disable event in a per-event schedule lifecycle history container
             $history_container = $this->get_or_create_schedule_history($id, $existing);
             if ($history_container) {
                 $user = wp_get_current_user();
@@ -430,6 +468,8 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
                         'is_active' => (int) $is_active,
                     )
                 );
+
+                $history_container->complete_success();
             }
         }
 

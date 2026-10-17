@@ -456,10 +456,11 @@ class Test_AIPS_Generation_Run_Stats extends WP_UnitTestCase {
 		$schedule_id = (int) $wpdb->insert_id;
 
 		try {
-			$this->seed('scheduled', 'completed', array('template_id' => $template_id));
+			$this->seed('scheduled', 'completed', array('template_id' => $template_id, 'schedule_id' => $schedule_id));
 			$this->seed('manual', 'partial', array('template_id' => $template_id));
-			// Non-generation rows carrying the same template_id must be ignored.
+			// Non-generation rows carrying the same template_id and schedule_id must be ignored.
 			$this->seed('template_lifecycle', 'completed', array('template_id' => $template_id));
+			$this->seed('schedule_lifecycle', 'completed', array('template_id' => $template_id, 'schedule_id' => $schedule_id));
 			$this->seed('post_review_action', 'completed', array('template_id' => $template_id));
 			$this->seed('content_indexing', 'completed', array('template_id' => $template_id));
 

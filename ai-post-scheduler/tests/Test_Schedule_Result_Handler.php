@@ -36,13 +36,24 @@ class Test_Schedule_Result_Handler extends WP_UnitTestCase {
         ];
         $result = [10]; // array of post IDs = success
 
+        $this->repository_mock->expects($this->never())
+             ->method('delete');
+
         $this->repository_mock->expects($this->once())
-             ->method('delete')
-             ->with(1);
+             ->method('update')
+             ->with(
+                 1,
+                 $this->callback(function($data) {
+                     return isset($data['is_active'], $data['status'], $data['last_run'])
+                         && $data['is_active'] === 0
+                         && $data['status'] === 'completed'
+                         && is_int($data['last_run']);
+                 })
+             );
 
         $this->logger_mock->expects($this->once())
              ->method('log')
-             ->with('One-time schedule completed and deleted', 'info', ['schedule_id' => 1]);
+             ->with('One-time schedule completed and deactivated', 'info', ['schedule_id' => 1]);
 
         $this->handler->handle_post_execution_cleanup($schedule, $result);
     }
@@ -92,6 +103,15 @@ class Test_Schedule_Result_Handler extends WP_UnitTestCase {
 
         $this->history_service_mock->expects($this->once())
              ->method('create')
+             ->with(
+                 'schedule_lifecycle',
+                 $this->callback(function($meta) use ($schedule_id) {
+                     return isset($meta['schedule_id'], $meta['creation_method'], $meta['record_kind'])
+                         && $meta['schedule_id'] === $schedule_id
+                         && $meta['creation_method'] === 'schedule_lifecycle'
+                         && $meta['record_kind'] === AIPS_History_Record_Kind::EVENT;
+                 })
+             )
              ->willReturn($container_mock);
 
         $this->repository_mock->expects($this->once())
@@ -100,6 +120,80 @@ class Test_Schedule_Result_Handler extends WP_UnitTestCase {
 
         $result = $this->handler->get_or_create_schedule_history($schedule_id);
         $this->assertSame($container_mock, $result);
+    }
+
+    public function test_get_or_create_schedule_history_creates_new_per_run_container_when_schedule_history_id_exists() {
+        $schedule_id = 4;
+        $schedule = (object) [
+            'schedule_id'         => $schedule_id,
+            'schedule_history_id' => 50,
+            'template_id'         => 11,
+            'campaign_id'         => 22,
+        ];
+
+        $this->repository_mock->method('get_by_id')->willReturn($schedule);
+
+        $container_mock = $this->createMock(AIPS_History_Container::class);
+        $container_mock->method('get_id')->willReturn(105);
+
+        $this->history_service_mock->expects($this->once())
+             ->method('create')
+             ->with(
+                 'schedule_lifecycle',
+                 $this->callback(function($meta) use ($schedule_id) {
+                     return $meta['schedule_id'] === $schedule_id
+                         && $meta['template_id'] === 11
+                         && $meta['campaign_id'] === 22
+                         && $meta['record_kind'] === AIPS_History_Record_Kind::EVENT;
+                 })
+             )
+             ->willReturn($container_mock);
+
+        $this->repository_mock->expects($this->once())
+             ->method('update')
+             ->with($schedule_id, ['schedule_history_id' => 105]);
+
+        $result = $this->handler->get_or_create_schedule_history($schedule_id);
+        $this->assertSame($container_mock, $result);
+    }
+
+    public function test_handle_execution_success_closes_history_container() {
+        $post_id = self::factory()->post->create(['post_status' => 'publish', 'post_title' => 'Generated Post']);
+        $schedule = (object) [
+            'schedule_id' => 7,
+            'template_id' => 9,
+            'name'        => 'Daily Tech',
+            'frequency'   => 'daily',
+        ];
+        $history = $this->createMock(AIPS_History_Container::class);
+        $history->expects($this->once())->method('record');
+        $history->expects($this->once())->method('complete_success');
+
+        $this->handler->handle_execution_success($schedule, [$post_id], $history, false);
+    }
+
+    public function test_handle_execution_failure_closes_history_container() {
+        $schedule = (object) [
+            'schedule_id' => 8,
+            'template_id' => 9,
+            'name'        => 'Daily Tech',
+            'frequency'   => 'daily',
+        ];
+        $error = new WP_Error('ai_error', 'Provider timeout');
+        $history = $this->createMock(AIPS_History_Container::class);
+        $history->expects($this->once())->method('record');
+        $history->expects($this->once())
+            ->method('complete_failure')
+            ->with(
+                'Provider timeout',
+                $this->callback(function($ctx) {
+                    return isset($ctx['schedule_id'], $ctx['error_code'])
+                        && $ctx['schedule_id'] === 8
+                        && $ctx['error_code'] === 'ai_error';
+                })
+            );
+
+        $this->handler->handle_execution_failure($schedule, $error, $history, false);
     }
 
 	public function test_handle_execution_terminated_by_setting_restores_next_run() {

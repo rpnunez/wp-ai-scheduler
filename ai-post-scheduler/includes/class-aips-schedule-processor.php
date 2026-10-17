@@ -371,6 +371,10 @@ class AIPS_Schedule_Processor {
         $total_completed    = $start_index + $completed_in_slice;
         $all_done           = empty($errors) && ($total_completed >= $total_quantity);
 
+        if ($completed_in_slice > 0) {
+            $this->template_type_selector->invalidate_count_cache($schedule_id);
+        }
+
         // Update run_state to reflect this slice's outcome.
         if (!empty($errors)) {
             $this->repository->update_run_state($schedule_id, array(
@@ -408,10 +412,12 @@ class AIPS_Schedule_Processor {
                     ),
                     'warning'
                 );
+                if ($history) {
+                    $history->complete_success();
+                }
                 return;
             }
 
-            $this->repository->clear_batch_progress($schedule_id);
             $this->repository->update_run_state($schedule_id, array(
                 'status'         => 'success',
                 'completed'      => $total_completed,
@@ -421,11 +427,17 @@ class AIPS_Schedule_Processor {
                 'timestamp'      => AIPS_DateTime::now()->toIso8601(),
             ));
 
-            // Clean up one-time schedules now that all posts have been generated.
+            // Soft-complete one-time schedules now that all posts have been generated.
             if (isset($schedule->frequency) && $schedule->frequency === 'once') {
-                $this->repository->delete($schedule_id);
-                $this->logger->log('Batch-queued one-time schedule completed and deleted: ' . $schedule_id, 'info');
+                $this->repository->update($schedule_id, array(
+                    'is_active'      => 0,
+                    'status'         => 'completed',
+                    'last_run'       => AIPS_DateTime::now()->timestamp(),
+                    'batch_progress' => null,
+                ));
+                $this->logger->log('Batch-queued one-time schedule completed and deactivated: ' . $schedule_id, 'info');
             } else {
+                $this->repository->clear_batch_progress($schedule_id);
                 $this->repository->update_last_run($schedule_id, AIPS_DateTime::now()->timestamp());
             }
 
@@ -467,6 +479,11 @@ class AIPS_Schedule_Processor {
                         'total'        => $total_quantity,
                     )
                 );
+
+                $history->complete_failure($errors[0]->get_error_message(), array(
+                    'schedule_id' => $schedule_id,
+                    'error_code'  => $errors[0]->get_error_code(),
+                ));
             } else {
                 $history->record(
                     'activity',
@@ -491,6 +508,8 @@ class AIPS_Schedule_Processor {
                         'post_ids'     => $successful_post_ids,
                     )
                 );
+
+                $history->complete_success();
             }
         }
     }
@@ -914,114 +933,124 @@ class AIPS_Schedule_Processor {
         // Load the schedule's persistent lifecycle history container (or create one if missing)
         $history = $this->result_handler->get_or_create_schedule_history($schedule->schedule_id);
 
-        if ($history) {
-            $history->record(
-                'activity',
-                $log_activity_msg,
-                array(
-                    'event_type' => $event_type,
-                    'event_status' => 'success',
-                ),
-                null,
-                array(
-                    'schedule_id'    => $schedule->schedule_id,
-                    'template_id'    => $schedule->template_id,
-                    'frequency'      => $schedule->frequency,
-                    'topic'          => isset($schedule->topic) ? $schedule->topic : '',
-                    'article_structure_id' => $article_structure_id,
-                )
-            );
-        } else {
-            // If the history container could not be created/loaded, avoid fatal errors and log a warning.
-            if (isset($this->logger)) {
-                $this->logger->log(
-                    'Failed to initialize schedule history container.',
-                    'warning',
+        try {
+            if ($history) {
+                $history->record(
+                    'activity',
+                    $log_activity_msg,
+                    array(
+                        'event_type' => $event_type,
+                        'event_status' => 'success',
+                    ),
+                    null,
                     array(
                         'schedule_id'    => $schedule->schedule_id,
                         'template_id'    => $schedule->template_id,
                         'frequency'      => $schedule->frequency,
                         'topic'          => isset($schedule->topic) ? $schedule->topic : '',
                         'article_structure_id' => $article_structure_id,
-                        'event_type'     => $event_type,
-                        'is_manual'      => $is_manual,
                     )
                 );
-            }
-        }
-
-        // ── Large-batch queue dispatch ──────────────────────────────────────────
-        // When the requested quantity meets the large-batch threshold, dispatch
-        // the work as a set of time-spread single cron events rather than
-        // generating all posts synchronously here.  This applies to both
-        // automated (cron) and manual runs.
-        $batch_service = $this->get_batch_queue_service();
-        if ($batch_service->needs_batch_queue($post_quantity)) {
-            return $this->dispatch_large_batch($schedule, $batch_service, $post_quantity, $is_manual, $history);
-        }
-        // ── End large-batch check ─────────────────────────────────────────────
-
-        // Build the typed generator-facing template entry for this execution.
-        $template = AIPS_Template_Entry::from_template_and_overrides(
-            (int) $schedule->template_id,
-            $schedule,
-            $post_quantity,
-            $article_structure_id
-        );
-
-        $topic = isset($schedule->topic) ? $schedule->topic : null;
-        $creation_method = $is_manual ? 'manual' : 'scheduled';
-
-        // Create context with creation_method
-        $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
-        $context->set_trigger_context($this->build_schedule_trigger_context($schedule));
-
-        // ── Resumable batch progress ────────────────────────────────────────
-        // Determine where to start the loop.  When a previous automated run
-        // was interrupted mid-batch, batch_progress holds the last completed
-        // state.  We resume from last_index+1 so we never re-generate posts
-        // that already exist, and we count previously completed posts toward
-        // the total so the batch finishes at the right size.
-        list($overall_result, $batch_finished) = $this->execute_batch_progress($schedule, $context, $post_quantity, $is_manual);
-
-        // An automated batch that yielded before a script timeout is neither a
-        // success nor a failure: its cursor is saved in batch_progress and it
-        // resumes after the cooldown. Skip cleanup (which would delete or fail
-        // a one-time schedule) and the failure handler (which would notify).
-        if (!$is_manual && is_wp_error($overall_result) && 'batch_interrupted_timeout' === $overall_result->get_error_code()) {
-            $this->defer_yielded_batch($schedule, $overall_result, $history);
-            return $overall_result;
-        }
-
-        // Handle Post-Execution Logic (Cleanup/Updates)
-        if (!$is_manual) {
-            $this->result_handler->handle_post_execution_cleanup($schedule, $overall_result);
-        } else {
-            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
-
-            // For successful manual runs, record last_run so the Schedules page
-            // reflects the execution instead of staying frozen on "Past due".
-            // For once-schedules, also deactivate: next_run is still in the past
-            // so the cron would otherwise fire it again on the next trigger.
-            if ($advance_schedule && !is_wp_error($overall_result)) {
-                $this->repository->update_last_run($schedule->schedule_id, AIPS_DateTime::now()->timestamp());
-                if ($schedule->frequency === 'once') {
-                    $this->repository->update($schedule->schedule_id, array(
-                        'is_active' => 0,
-                        'status'    => 'completed',
-                    ));
+            } else {
+                // If the history container could not be created/loaded, avoid fatal errors and log a warning.
+                if (isset($this->logger)) {
+                    $this->logger->log(
+                        'Failed to initialize schedule history container.',
+                        'warning',
+                        array(
+                            'schedule_id'    => $schedule->schedule_id,
+                            'template_id'    => $schedule->template_id,
+                            'frequency'      => $schedule->frequency,
+                            'topic'          => isset($schedule->topic) ? $schedule->topic : '',
+                            'article_structure_id' => $article_structure_id,
+                            'event_type'     => $event_type,
+                            'is_manual'      => $is_manual,
+                        )
+                    );
                 }
             }
-        }
 
-        // Handle Logging and Events based on Result
-        if (is_wp_error($overall_result)) {
-            $this->result_handler->handle_execution_failure($schedule, $overall_result, $history, $is_manual);
-        } else {
-            $this->result_handler->handle_execution_success($schedule, $overall_result, $history, $is_manual);
-        }
+            // ── Large-batch queue dispatch ──────────────────────────────────────────
+            // When the requested quantity meets the large-batch threshold, dispatch
+            // the work as a set of time-spread single cron events rather than
+            // generating all posts synchronously here.  This applies to both
+            // automated (cron) and manual runs.
+            $batch_service = $this->get_batch_queue_service();
+            if ($batch_service->needs_batch_queue($post_quantity)) {
+                return $this->dispatch_large_batch($schedule, $batch_service, $post_quantity, $is_manual, $history);
+            }
+            // ── End large-batch check ─────────────────────────────────────────────
 
-        return $overall_result;
+            // Build the typed generator-facing template entry for this execution.
+            $template = AIPS_Template_Entry::from_template_and_overrides(
+                (int) $schedule->template_id,
+                $schedule,
+                $post_quantity,
+                $article_structure_id
+            );
+
+            $topic = isset($schedule->topic) ? $schedule->topic : null;
+            $creation_method = $is_manual ? 'manual' : 'scheduled';
+
+            // Create context with creation_method
+            $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
+            $context->set_trigger_context($this->build_schedule_trigger_context($schedule));
+
+            // ── Resumable batch progress ────────────────────────────────────────
+            // Determine where to start the loop.  When a previous automated run
+            // was interrupted mid-batch, batch_progress holds the last completed
+            // state.  We resume from last_index+1 so we never re-generate posts
+            // that already exist, and we count previously completed posts toward
+            // the total so the batch finishes at the right size.
+            list($overall_result, $batch_finished) = $this->execute_batch_progress($schedule, $context, $post_quantity, $is_manual);
+
+            // An automated batch that yielded before a script timeout is neither a
+            // success nor a failure: its cursor is saved in batch_progress and it
+            // resumes after the cooldown. Skip cleanup (which would delete or fail
+            // a one-time schedule) and the failure handler (which would notify).
+            if (!$is_manual && is_wp_error($overall_result) && 'batch_interrupted_timeout' === $overall_result->get_error_code()) {
+                $this->defer_yielded_batch($schedule, $overall_result, $history);
+                return $overall_result;
+            }
+
+            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+
+            // Handle Post-Execution Logic (Cleanup/Updates)
+            if (!$is_manual) {
+                $this->result_handler->handle_post_execution_cleanup($schedule, $overall_result, $history);
+            } else {
+                // For successful manual runs, record last_run so the Schedules page
+                // reflects the execution instead of staying frozen on "Past due".
+                // For once-schedules, also deactivate: next_run is still in the past
+                // so the cron would otherwise fire it again on the next trigger.
+                if ($advance_schedule && !is_wp_error($overall_result)) {
+                    $this->repository->update_last_run($schedule->schedule_id, AIPS_DateTime::now()->timestamp());
+                    if ($schedule->frequency === 'once') {
+                        $this->repository->update($schedule->schedule_id, array(
+                            'is_active' => 0,
+                            'status'    => 'completed',
+                        ));
+                    }
+                }
+            }
+
+            // Handle Logging and Events based on Result
+            if (is_wp_error($overall_result)) {
+                $this->result_handler->handle_execution_failure($schedule, $overall_result, $history, $is_manual);
+            } else {
+                $this->result_handler->handle_execution_success($schedule, $overall_result, $history, $is_manual);
+            }
+
+            return $overall_result;
+        } catch (\Throwable $e) {
+            if ($history) {
+                $history->complete_failure($e->getMessage(), array(
+                    'schedule_id'     => $schedule->schedule_id,
+                    'exception_class' => get_class($e),
+                ));
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -1107,6 +1136,8 @@ class AIPS_Schedule_Processor {
                     'resume_at'   => $resume_at,
                 )
             );
+
+            $history->complete_partial();
         }
     }
 
@@ -1181,6 +1212,9 @@ class AIPS_Schedule_Processor {
      */
     private function dispatch_large_batch($schedule, $batch_service, $post_quantity, $is_manual, $history) {
         if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {
+            if ($history) {
+                $history->complete_success();
+            }
             return;
         }
 
@@ -1228,10 +1262,16 @@ class AIPS_Schedule_Processor {
             }
 
             if ($is_manual) {
+                if ($history) {
+                    $history->complete_failure($dispatch_summary->get_error_message(), array(
+                        'schedule_id' => $schedule->schedule_id,
+                        'error_code'  => $dispatch_summary->get_error_code(),
+                    ));
+                }
                 return $dispatch_summary;
             }
 
-            $this->result_handler->handle_post_execution_cleanup($schedule, $dispatch_summary);
+            $this->result_handler->handle_post_execution_cleanup($schedule, $dispatch_summary, $history);
             $this->result_handler->handle_execution_failure($schedule, $dispatch_summary, $history, false);
             return;
         }
@@ -1288,6 +1328,8 @@ class AIPS_Schedule_Processor {
                     'correlation_id'  => $correlation_id,
                 )
             );
+
+            $history->complete_success();
         }
 
         // Return early — the result_handler is NOT called for the dispatch path.

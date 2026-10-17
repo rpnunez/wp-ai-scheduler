@@ -126,4 +126,47 @@ class Test_AIPS_Scheduler_Save extends WP_UnitTestCase {
 
 		update_option( 'timezone_string', $original_timezone_string );
 	}
+
+	public function test_save_schedule_resets_completed_status_when_reactivated() {
+		$existing = (object) array(
+			'id'          => 88,
+			'template_id' => 15,
+			'frequency'   => 'once',
+			'status'      => 'completed',
+			'is_active'   => 0,
+			'next_run'    => 1700000000,
+		);
+
+		$this->repository->expects( $this->atLeastOnce() )
+			->method( 'get_by_id' )
+			->with( 88 )
+			->willReturn( $existing );
+
+		$this->repository->expects( $this->atLeastOnce() )
+			->method( 'update' )
+			->willReturnCallback(
+				function ( $id, $data ) use ( &$captured_schedule_update ) {
+					if ( isset( $data['is_active'] ) ) {
+						$captured_schedule_update = $data;
+					}
+					return true;
+				}
+			);
+
+		$updated_id = $this->scheduler->save_schedule(
+			array(
+				'id'          => 88,
+				'template_id' => 15,
+				'frequency'   => 'once',
+				'start_time'  => '2026-03-25 10:00:00',
+				'is_active'   => 1,
+				'topic'       => 'Re-enabled schedule',
+			)
+		);
+
+		$this->assertSame( 88, $updated_id );
+		$this->assertIsArray( $captured_schedule_update );
+		$this->assertSame( 1, $captured_schedule_update['is_active'] );
+		$this->assertSame( 'active', $captured_schedule_update['status'] );
+	}
 }

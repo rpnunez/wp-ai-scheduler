@@ -646,7 +646,10 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @return bool True on success, false on failure.
      */
     public function set_active($id, $is_active) {
-        return $this->update($id, array('is_active' => $is_active));
+        return $this->update($id, array(
+            'is_active' => $is_active,
+            'status'    => $is_active ? 'active' : 'inactive',
+        ));
     }
 
     /**
@@ -846,11 +849,12 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         }
 
         $is_active = $is_active ? 1 : 0;
+        $status    = $is_active ? 'active' : 'inactive';
         $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
-        $query_args = array_merge(array($is_active), $ids);
+        $query_args = array_merge(array($is_active, $status), $ids);
         $result = $this->wpdb->query(
             $this->wpdb->prepare(
-                "UPDATE {$this->schedule_table} SET is_active = %d WHERE id IN ($placeholders)",
+                "UPDATE {$this->schedule_table} SET is_active = %d, status = %s WHERE id IN ($placeholders)",
                 $query_args
             )
         );

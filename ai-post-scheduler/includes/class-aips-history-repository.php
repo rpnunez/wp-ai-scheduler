@@ -325,49 +325,30 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     public function count_completed_for_schedule($schedule) {
         if (is_numeric($schedule)) {
             $schedule_id = absint($schedule);
-            if (!$schedule_id) {
-                return 0;
-            }
-
-            $schedule = $this->wpdb->get_row($this->wpdb->prepare(
-                "SELECT id, template_id FROM {$this->schedule_table} WHERE id = %d",
-                $schedule_id
-            ));
+        } elseif (is_object($schedule)) {
+            $schedule_id = !empty($schedule->schedule_id)
+                ? absint($schedule->schedule_id)
+                : (!empty($schedule->id) ? absint($schedule->id) : 0);
         } else {
-            if (!is_object($schedule) || empty($schedule->id)) {
-                return 0;
-            }
-
-            $schedule_id = absint($schedule->id);
-
-            if (empty($schedule->template_id)) {
-                $schedule = $this->wpdb->get_row($this->wpdb->prepare(
-                    "SELECT id, template_id FROM {$this->schedule_table} WHERE id = %d",
-                    $schedule_id
-                ));
-            }
+            $schedule_id = 0;
         }
 
-        if (!$schedule || empty($schedule->template_id)) {
+        if (!$schedule_id) {
             return 0;
         }
 
         return $this->cache_read(
             'history.get_schedule_completed_count',
             array( 'schedule_id' => $schedule_id ),
-            function() use ( $schedule, $schedule_id ) {
+            function() use ( $schedule_id ) {
                 $generation_cond = self::generation_run_condition();
                 $count = $this->wpdb->get_var($this->wpdb->prepare(
                     "SELECT COALESCE(COUNT(*), 0) FROM {$this->table_name}
-                    WHERE template_id = %d
+                    WHERE schedule_id = %d
                     AND status = %s
-                    AND {$generation_cond}
-                    AND created_at >= (
-                        SELECT created_at FROM {$this->schedule_table} WHERE id = %d
-                    )",
-                    (int) $schedule->template_id,
-                    'completed',
-                    $schedule_id
+                    AND {$generation_cond}",
+                    $schedule_id,
+                    'completed'
                 ));
 
                 return max(0, (int) $count);
@@ -710,7 +691,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $where_clauses[] = self::kind_condition(array(AIPS_History_Record_Kind::GENERATION, AIPS_History_Record_Kind::JOB), 'h');
         }
         // Keep excluding legacy orphaned containers that have no contextual linkage.
-        $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
+        $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.schedule_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
 
         if (!empty($args['status'])) {
             if ($args['status'] === 'completed') {
@@ -746,6 +727,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($args['template_id'])) {
             $where_clauses[] = "h.template_id = %d";
             $where_args[] = $args['template_id'];
+        }
+
+        if (!empty($args['schedule_id'])) {
+            $where_clauses[] = "h.schedule_id = %d";
+            $where_args[] = absint($args['schedule_id']);
         }
 
         if (!empty($args['campaign_id'])) {
@@ -867,6 +853,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'status' => '',
             'search' => '',
             'template_id' => 0,
+            'schedule_id' => 0,
             'campaign_id' => 0,
             'author_id' => 0,
             'creation_method' => '',
@@ -918,7 +905,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.author_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.schedule_id, h.campaign_id, h.author_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
@@ -926,14 +913,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.schedule_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
                 t.name as template_name";
         } else {
             // For specifically 'performance' or any other restricted fields
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.schedule_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
         }
 
         list($where_sql, $where_args) = $this->build_history_where($args, $domain_patterns);
@@ -1381,7 +1368,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         return $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id,
+            "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id, schedule_id,
                     creation_method, status, generated_title, error_message,
                     created_at, completed_at, record_kind
              FROM {$this->table_name}
@@ -1779,23 +1766,24 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
-     * Get generated-post counts for schedule history containers.
+     * Get generated-post counts for schedules by schedule_id (or legacy history_ids).
      *
-     * Counts activity/error logs that represent a generated post event.
-     * The key is history_id (schedule_history_id on schedules table).
+     * Counts completed/partial generation runs linked by aips_history.schedule_id,
+     * and merges with legacy schedule_lifecycle log counts when present.
      *
-     * @param array $history_ids History container IDs.
-     * @return array Associative array of history_id => generated count.
+     * @param array $schedule_or_history_ids Schedule IDs (or legacy history container IDs).
+     * @param bool  $by_schedule_id          When true (default), keys and filters by schedule_id.
+     * @return array Associative array of id => generated count.
      */
-    public function get_schedule_generated_post_counts($history_ids) {
-        $history_ids = array_map('absint', (array) $history_ids);
-        $history_ids = array_filter($history_ids);
+    public function get_schedule_generated_post_counts($schedule_or_history_ids, $by_schedule_id = true) {
+        $ids = array_map('absint', (array) $schedule_or_history_ids);
+        $ids = array_values(array_filter($ids));
 
-        if (empty($history_ids)) {
+        if (empty($ids)) {
             return array();
         }
 
-        $id_placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
+        $id_placeholders = implode(',', array_fill(0, count($ids), '%d'));
 
         // Events that represent a generated post for a schedule container.
         $event_types = AIPS_History_Event_Type::expand(array(
@@ -1805,28 +1793,136 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         ));
         $event_placeholders = implode(', ', array_fill(0, count($event_types), '%s'));
 
-        $sql = "
-            SELECT history_id, COUNT(*) AS count
-            FROM {$this->table_name_log}
-            WHERE history_id IN ({$id_placeholders})
-                AND history_type_id IN (%d, %d)
-                AND event_type IN ({$event_placeholders})
-            GROUP BY history_id
-        ";
+        if (!$by_schedule_id) {
+            $sql = "
+                SELECT history_id, COUNT(*) AS count
+                FROM {$this->table_name_log}
+                WHERE history_id IN ({$id_placeholders})
+                    AND history_type_id IN (%d, %d)
+                    AND event_type IN ({$event_placeholders})
+                GROUP BY history_id
+            ";
 
-        $args = $history_ids;
-        $args[] = AIPS_History_Type::ACTIVITY;
-        $args[] = AIPS_History_Type::ERROR;
-        $args = array_merge($args, $event_types);
+            $args = $ids;
+            $args[] = AIPS_History_Type::ACTIVITY;
+            $args[] = AIPS_History_Type::ERROR;
+            $args = array_merge($args, $event_types);
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
+            $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
+
+            $counts = array();
+            foreach ((array) $results as $row) {
+                $counts[(int) $row->history_id] = (int) $row->count;
+            }
+
+            return $counts;
+        }
 
         $counts = array();
-        foreach ($results as $row) {
-            $counts[(int) $row->history_id] = (int) $row->count;
+        $generation_cond = self::generation_run_condition();
+
+        // 1. Count completed/partial generation runs directly by schedule_id.
+        $gen_rows = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT schedule_id, COUNT(*) AS count
+             FROM {$this->table_name}
+             WHERE schedule_id IN ({$id_placeholders})
+               AND status IN ('completed', 'partial')
+               AND {$generation_cond}
+             GROUP BY schedule_id",
+            $ids
+        ));
+
+        foreach ((array) $gen_rows as $row) {
+            $counts[(int) $row->schedule_id] = (int) $row->count;
+        }
+
+        // 2. Also count schedule lifecycle post events by h.schedule_id (covers legacy rows without generation rows).
+        $event_kind = self::kind_condition(AIPS_History_Record_Kind::EVENT, 'h');
+        $log_args   = $ids;
+        $log_args[] = AIPS_History_Type::ACTIVITY;
+        $log_args[] = AIPS_History_Type::ERROR;
+        $log_args   = array_merge($log_args, $event_types);
+
+        $log_rows = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT h.schedule_id, COUNT(*) AS count
+             FROM {$this->table_name_log} hl
+             INNER JOIN {$this->table_name} h ON hl.history_id = h.id
+             WHERE h.schedule_id IN ({$id_placeholders})
+               AND {$event_kind}
+               AND hl.history_type_id IN (%d, %d)
+               AND hl.event_type IN ({$event_placeholders})
+             GROUP BY h.schedule_id",
+            $log_args
+        ));
+
+        foreach ((array) $log_rows as $row) {
+            $sid = (int) $row->schedule_id;
+            $cnt = (int) $row->count;
+            $counts[$sid] = isset($counts[$sid]) ? max($counts[$sid], $cnt) : $cnt;
         }
 
         return $counts;
+    }
+
+    /**
+     * Get all lifecycle/event log entries for a specific schedule across all of its
+     * history containers, ordered by timestamp descending.
+     *
+     * @param int   $schedule_id         The schedule ID.
+     * @param array $type_filter         Optional array of AIPS_History_Type constants to filter by.
+     * @param int   $limit               Optional maximum rows to return (0 = no limit).
+     * @param int   $fallback_history_id Optional schedule_history_id from aips_schedule for un-backfilled rows.
+     * @return array Array of log entry objects.
+     */
+    public function get_schedule_history_logs($schedule_id, $type_filter = array(), $limit = 0, $fallback_history_id = 0) {
+        $schedule_id         = absint($schedule_id);
+        $fallback_history_id = absint($fallback_history_id);
+        $limit               = absint($limit);
+
+        if (!$schedule_id && !$fallback_history_id) {
+            return array();
+        }
+
+        $limit_sql   = $limit > 0 ? ' LIMIT ' . $limit : '';
+        $event_kind  = self::kind_condition(AIPS_History_Record_Kind::EVENT, 'h');
+        $where_parts = array();
+        $args        = array();
+
+        if ($schedule_id > 0 && $fallback_history_id > 0) {
+            $where_parts[] = "( (h.schedule_id = %d AND {$event_kind}) OR h.id = %d )";
+            $args[]        = $schedule_id;
+            $args[]        = $fallback_history_id;
+        } elseif ($schedule_id > 0) {
+            $where_parts[] = "(h.schedule_id = %d AND {$event_kind})";
+            $args[]        = $schedule_id;
+        } else {
+            $where_parts[] = "h.id = %d";
+            $args[]        = $fallback_history_id;
+        }
+
+        $where_parts[] = "(hl.details IS NULL OR (hl.details NOT LIKE %s AND hl.details NOT LIKE %s))";
+        $args[]        = '%"log_subtype":"trigger_source"%';
+        $args[]        = '%"log_subtype":"trigger_method"%';
+
+        if (!empty($type_filter)) {
+            $type_filter  = array_values(array_map('intval', $type_filter));
+            $placeholders = implode(', ', array_fill(0, count($type_filter), '%d'));
+            $where_parts[] = "hl.history_type_id IN ({$placeholders})";
+            $args          = array_merge($args, $type_filter);
+        }
+
+        $where_sql = implode(' AND ', $where_parts);
+
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT hl.*
+                 FROM {$this->table_name_log} hl
+                 INNER JOIN {$this->table_name} h ON hl.history_id = h.id
+                 WHERE {$where_sql}
+                 ORDER BY hl.timestamp DESC, hl.id DESC" . $limit_sql,
+                $args
+            )
+        );
     }
 
     /**
@@ -1973,6 +2069,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      *     History data.
      *
      *     @type int    $template_id        Template ID.
+     *     @type int    $schedule_id        Schedule ID.
      *     @type int    $author_id          Author ID (for topic-based generation).
      *     @type int    $topic_id           Topic ID (for topic-based generation).
      *     @type string $creation_method    Creation method (manual or scheduled).
@@ -1991,10 +2088,18 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $data['created_at'] = AIPS_DateTime::now()->timestamp();
         }
 
+        $generation_log = null;
+        if (isset($data['generation_log'])) {
+            $generation_log = is_string($data['generation_log'])
+                ? $data['generation_log']
+                : wp_json_encode($data['generation_log']);
+        }
+
         $insert_data = array(
             'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
             'correlation_id' => !empty($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
+            'schedule_id' => !empty($data['schedule_id']) ? absint($data['schedule_id']) : null,
             'campaign_id' => isset($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
             'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
@@ -2003,6 +2108,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'prompt' => isset($data['prompt']) ? wp_kses_post($data['prompt']) : '',
             'generated_title' => isset($data['generated_title']) ? sanitize_text_field($data['generated_title']) : '',
             'generated_content' => isset($data['generated_content']) ? wp_kses_post($data['generated_content']) : '',
+            'generation_log' => $generation_log,
             'error_message' => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
             'post_type' => isset($data['post_type']) ? sanitize_key($data['post_type']) : null,
@@ -2010,13 +2116,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'record_kind' => AIPS_History_Record_Kind::resolve($data),
         );
 
-        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s');
+        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         $insert_id = $result ? (int) $this->wpdb->insert_id : false;
         
         if ($result) {
-            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
+            $cache_ctx = !empty($insert_data['schedule_id']) ? array('schedule_id' => (int) $insert_data['schedule_id']) : array();
+            $this->invalidate_cache_domain( 'history', $cache_ctx, 'history_mutated' );
         }
 
         return $insert_id;
@@ -2062,6 +2169,13 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $update_data['generated_content'] = wp_kses_post($data['generated_content']);
             $format[] = '%s';
         }
+
+        if (array_key_exists('generation_log', $data)) {
+            $update_data['generation_log'] = is_string($data['generation_log']) || is_null($data['generation_log'])
+                ? $data['generation_log']
+                : wp_json_encode($data['generation_log']);
+            $format[] = '%s';
+        }
         
         if (isset($data['error_message'])) {
             $update_data['error_message'] = sanitize_text_field($data['error_message']);
@@ -2075,6 +2189,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         
         if (isset($data['topic_id'])) {
             $update_data['topic_id'] = absint($data['topic_id']);
+            $format[] = '%d';
+        }
+
+        if (array_key_exists('schedule_id', $data)) {
+            $update_data['schedule_id'] = !empty($data['schedule_id']) ? absint($data['schedule_id']) : null;
             $format[] = '%d';
         }
 
@@ -2106,7 +2225,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
 
         if ($result !== false) {
-            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
+            $cache_ctx = !empty($update_data['schedule_id']) ? array('schedule_id' => (int) $update_data['schedule_id']) : array();
+            $this->invalidate_cache_domain( 'history', $cache_ctx, 'history_mutated' );
         }
 
         return $result !== false;
@@ -2470,6 +2590,120 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             }
             $total += (int) $updated;
         } while (count($ids) === $batch_size);
+
+        return $this->finish_bulk_status_update($total);
+    }
+
+    /**
+     * Backfill aips_history.schedule_id on existing History rows.
+     *
+     * 1. Links rows referenced by aips_schedule.schedule_history_id.
+     * 2. Extracts schedule_id from aips_history_log entries (trigger_source / lifecycle context).
+     * 3. Propagates schedule_id across sibling rows sharing the same correlation_id.
+     *
+     * Idempotent: only rows where schedule_id IS NULL are modified.
+     *
+     * @param int $batch_size Rows inspected per batch when scanning log details.
+     * @return int Total number of rows updated.
+     */
+    public function backfill_schedule_id($batch_size = 500) {
+        $batch_size = max(1, absint($batch_size));
+        $total      = 0;
+
+        // 1. Backfill from aips_schedule.schedule_history_id.
+        $from_schedule = $this->wpdb->query(
+            "UPDATE {$this->table_name} h
+             INNER JOIN {$this->schedule_table} s ON s.schedule_history_id = h.id
+             SET h.schedule_id = s.id
+             WHERE h.schedule_id IS NULL"
+        );
+        if ($from_schedule !== false && $from_schedule > 0) {
+            $total += (int) $from_schedule;
+        }
+
+        // 2. Backfill from aips_history_log JSON details containing "schedule_id".
+        $last_log_id = 0;
+        do {
+            $rows = $this->wpdb->get_results($this->wpdb->prepare(
+                "SELECT hl.id AS log_id, h.id AS history_id, hl.details
+                 FROM {$this->table_name} h
+                 INNER JOIN {$this->table_name_log} hl ON hl.history_id = h.id
+                 WHERE h.schedule_id IS NULL
+                   AND hl.details LIKE %s
+                   AND hl.id > %d
+                 ORDER BY hl.id ASC
+                 LIMIT %d",
+                '%"schedule_id":%',
+                $last_log_id,
+                $batch_size
+            ));
+
+            if (empty($rows)) {
+                break;
+            }
+
+            $updates_by_schedule = array();
+            foreach ($rows as $row) {
+                $log_id     = (int) $row->log_id;
+                $history_id = (int) $row->history_id;
+                if ($log_id > $last_log_id) {
+                    $last_log_id = $log_id;
+                }
+
+                $schedule_id = 0;
+                $decoded     = json_decode((string) $row->details, true);
+                if (is_array($decoded)) {
+                    if (!empty($decoded['input']['schedule_id'])) {
+                        $schedule_id = absint($decoded['input']['schedule_id']);
+                    } elseif (!empty($decoded['context']['schedule_id'])) {
+                        $schedule_id = absint($decoded['context']['schedule_id']);
+                    } elseif (!empty($decoded['schedule_id'])) {
+                        $schedule_id = absint($decoded['schedule_id']);
+                    }
+                } elseif (preg_match('/"schedule_id"\s*:\s*(\d+)/', (string) $row->details, $matches)) {
+                    $schedule_id = absint($matches[1]);
+                }
+
+                if ($schedule_id > 0) {
+                    $updates_by_schedule[$schedule_id][$history_id] = $history_id;
+                }
+            }
+
+            foreach ($updates_by_schedule as $schedule_id => $history_ids) {
+                $history_ids  = array_values($history_ids);
+                $placeholders = implode(', ', array_fill(0, count($history_ids), '%d'));
+                $args         = array_merge(array((int) $schedule_id), $history_ids);
+                $updated      = $this->wpdb->query($this->wpdb->prepare(
+                    "UPDATE {$this->table_name}
+                     SET schedule_id = %d
+                     WHERE id IN ({$placeholders})
+                       AND schedule_id IS NULL",
+                    $args
+                ));
+                if ($updated !== false && $updated > 0) {
+                    $total += (int) $updated;
+                }
+            }
+        } while (count($rows) === $batch_size);
+
+        // 3. Propagate schedule_id across sibling containers sharing a correlation_id.
+        $from_correlation = $this->wpdb->query(
+            "UPDATE {$this->table_name} h
+             INNER JOIN (
+                 SELECT correlation_id, MAX(schedule_id) AS resolved_schedule_id
+                 FROM {$this->table_name}
+                 WHERE correlation_id IS NOT NULL
+                   AND correlation_id <> ''
+                   AND schedule_id IS NOT NULL
+                   AND schedule_id > 0
+                 GROUP BY correlation_id
+             ) src ON src.correlation_id = h.correlation_id
+             SET h.schedule_id = src.resolved_schedule_id
+             WHERE h.schedule_id IS NULL"
+        );
+        if ($from_correlation !== false && $from_correlation > 0) {
+            $total += (int) $from_correlation;
+        }
 
         return $this->finish_bulk_status_update($total);
     }

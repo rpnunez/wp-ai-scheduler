@@ -11,7 +11,13 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
 
     public function setUp(): void {
         parent::setUp();
+        add_filter('aips_large_batch_threshold', function() { return 10; });
         $this->scheduler = new AIPS_Scheduler();
+    }
+
+    public function tearDown(): void {
+        remove_all_filters('aips_large_batch_threshold');
+        parent::tearDown();
     }
 
     /**

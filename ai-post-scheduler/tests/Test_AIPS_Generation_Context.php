@@ -257,4 +257,200 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Voice title prompt', $context->get_title_prompt());
 		$this->assertEquals(456, $context->get_voice_id());
 	}
+
+	/**
+	 * Test that AIPS_Generation_Session serializes to array and JSON.
+	 *
+	 * @return void
+	 */
+	public function test_generation_session_to_json_serialization() {
+		$template = (object) array(
+			'id'                      => 123,
+			'name'                    => 'Test Template',
+			'prompt_template'         => 'Write about {{topic}}',
+			'title_prompt'            => 'Generate a title',
+			'post_status'             => 'draft',
+			'post_type'               => 'post',
+			'post_category'           => 1,
+			'post_tags'               => 'test',
+			'post_author'             => 1,
+			'generate_featured_image' => 0,
+		);
+
+		$context = new AIPS_Template_Context($template, null, 'Serialization Topic');
+		$session = new AIPS_Generation_Session();
+		$session->start($context);
+		$session->log_ai_call();
+		$session->log_ai_call();
+		$session->add_error();
+		$session->complete(777);
+
+		$decoded = json_decode($session->to_json(), true);
+
+		$this->assertIsArray($decoded);
+		$this->assertSame(2, $decoded['ai_call_count']);
+		$this->assertSame(1, $decoded['error_count']);
+		$this->assertSame(777, $decoded['result']);
+		$this->assertSame('template', $decoded['context']['type']);
+		$this->assertSame(123, $decoded['context']['id']);
+		$this->assertArrayHasKey('duration', $decoded);
+	}
+
+	/**
+	 * Test that AIPS_History_Container::record_post_created persists post_id immediately
+	 * while keeping status in 'processing', and completion persists generation_log JSON.
+	 *
+	 * @return void
+	 */
+	public function test_history_container_records_post_created_and_persists_session_json() {
+		$repo    = new AIPS_History_Repository();
+		$service = new AIPS_History_Service($repo);
+
+		$template = (object) array(
+			'id'              => 55,
+			'name'            => 'Crash Safe Template',
+			'prompt_template' => 'Prompt',
+			'title_prompt'    => 'Title',
+			'post_status'     => 'publish',
+			'post_type'       => 'post',
+			'post_category'   => 1,
+			'post_tags'       => '',
+			'post_author'     => 1,
+		);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+
+		$container = $service->create('post_generation', array(
+			'template_id'     => 55,
+			'schedule_id'     => 88,
+			'creation_method' => 'scheduled',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+		))->with_session($context);
+
+		$container->record('ai_request', 'Requesting content');
+
+		// Immediately record post creation before completion.
+		$this->assertTrue($container->record_post_created(321, array(
+			'post_type'         => 'post',
+			'generated_title'   => 'Early Title',
+			'generated_content' => 'Early Content',
+		)));
+
+		$mid_row = $repo->get_by_id($container->get_id());
+		$this->assertSame('processing', $mid_row->status);
+		$this->assertSame(321, (int) $mid_row->post_id);
+		$this->assertSame(88, (int) $mid_row->schedule_id);
+		$this->assertSame('Early Title', $mid_row->generated_title);
+
+		// Complete container and verify generation_log is persisted.
+		$this->assertTrue($container->complete_success(array(
+			'post_id'           => 321,
+			'generated_title'   => 'Final Title',
+			'generated_content' => 'Final Content',
+		)));
+
+		$final_row = $repo->get_by_id($container->get_id());
+		$this->assertSame('completed', $final_row->status);
+		$this->assertNotEmpty($final_row->generation_log);
+
+		$session_log = json_decode($final_row->generation_log, true);
+		$this->assertIsArray($session_log);
+		$this->assertSame(1, $session_log['ai_call_count']);
+		$this->assertSame(321, $session_log['result']['post_id']);
+
+		$repo->delete($container->get_id());
+	}
+
+	/**
+	 * Test that AIPS_Generator stages 'publish' posts as 'draft' when featured image
+	 * generation is enabled, records post_id on the history container before image
+	 * generation, and transitions the post to 'publish' once image generation succeeds.
+	 *
+	 * @return void
+	 */
+	public function test_generator_stages_publish_as_draft_during_featured_image_and_records_schedule_id() {
+		$repo    = new AIPS_History_Repository();
+		$service = new AIPS_History_Service($repo);
+
+		$ai_service = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_service->method('is_available')->willReturn(true);
+		$ai_service->method('generate_text')->willReturn('Generated Text Output');
+
+		$image_service = $this->getMockBuilder(AIPS_Image_Service::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('generate_and_upload_featured_image'))
+			->getMock();
+		$image_service->expects($this->once())
+			->method('generate_and_upload_featured_image')
+			->willReturn(555);
+
+		$created_post_id = self::factory()->post->create(array('post_status' => 'draft'));
+		$observed_status_during_create = null;
+		$forced_statuses = array();
+
+		$post_manager = $this->getMockBuilder(AIPS_Post_Manager::class)
+			->onlyMethods(array('create_post', 'force_post_status', 'update_generation_status_meta'))
+			->getMock();
+
+		$post_manager->expects($this->once())
+			->method('create_post')
+			->willReturnCallback(function ($data) use ($created_post_id, &$observed_status_during_create) {
+				$observed_status_during_create = $data['post_status'];
+				return $created_post_id;
+			});
+
+		$post_manager->expects($this->once())
+			->method('force_post_status')
+			->with($created_post_id, 'publish')
+			->willReturnCallback(function ($post_id, $status) use (&$forced_statuses) {
+				$forced_statuses[] = array($post_id, $status);
+				return $post_id;
+			});
+
+		$generator = new AIPS_Generator(
+			null,
+			$ai_service,
+			null,
+			$image_service,
+			null,
+			$post_manager,
+			$service
+		);
+
+		$template = (object) array(
+			'id'                      => 10,
+			'name'                    => 'Staged Publish Template',
+			'prompt_template'         => 'Write about {{topic}}',
+			'title_prompt'            => 'Write title',
+			'image_prompt'            => 'Draw {{topic}}',
+			'generate_featured_image' => 1,
+			'featured_image_source'   => 'ai_prompt',
+			'post_status'             => 'publish',
+			'post_type'               => 'post',
+			'post_category'           => 1,
+			'post_tags'               => '',
+			'post_author'             => 1,
+		);
+
+		$context = new AIPS_Template_Context($template, null, 'Staged Publish Topic', 'scheduled');
+		$context->set_trigger_context(array(
+			'schedule_id'   => 444,
+			'schedule_name' => 'Hourly Schedule',
+			'frequency'     => 'hourly',
+		));
+
+		$result_post_id = $generator->generate_post($context);
+
+		$this->assertSame($created_post_id, $result_post_id);
+		$this->assertSame('draft', $observed_status_during_create, 'Post must be created as draft while featured image generation is pending.');
+		$this->assertSame(array(array($created_post_id, 'publish')), $forced_statuses, 'Post must transition to publish after featured image succeeds.');
+
+		$history_row = $repo->get_by_post_id($created_post_id);
+		$this->assertNotNull($history_row);
+		$history_row = $repo->get_by_id($history_row->id);
+		$this->assertSame(444, (int) $history_row->schedule_id);
+		$this->assertSame('completed', $history_row->status);
+		$this->assertNotEmpty($history_row->generation_log);
+
+		$repo->delete($history_row->id);
+	}
 }

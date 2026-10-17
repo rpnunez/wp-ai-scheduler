@@ -55,19 +55,24 @@ class AIPS_Schedule_Result_Handler {
     }
 
     /**
-     * Handle cleanup after automated execution (delete one-time, update recurring).
+     * Handle cleanup after automated execution (complete one-time, update recurring).
      *
-     * @param object $schedule
-     * @param mixed  $result Array of post IDs on success, WP_Error on failure.
+     * @param object      $schedule
+     * @param mixed       $result  Array of post IDs on success, WP_Error on failure.
+     * @param object|null $history Optional existing run history container.
      */
-    public function handle_post_execution_cleanup($schedule, $result) {
+    public function handle_post_execution_cleanup($schedule, $result, $history = null) {
         $is_success = !is_wp_error($result);
 
         if ($schedule->frequency === 'once') {
             if ($is_success) {
-                // If it's a one-time schedule and successful, delete it
-                $this->repository->delete($schedule->schedule_id);
-                $this->logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
+                // Soft-complete one-time schedules so schedule metadata and history linkage remain intact.
+                $this->repository->update($schedule->schedule_id, array(
+                    'is_active' => 0,
+                    'status'    => 'completed',
+                    'last_run'  => AIPS_DateTime::now()->timestamp(),
+                ));
+                $this->logger->log('One-time schedule completed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
                 // If failed, deactivate it and set status to 'failed' to prevent infinite daily retries
 				$this->repository->update($schedule->schedule_id, array(
@@ -77,8 +82,13 @@ class AIPS_Schedule_Result_Handler {
 				));
                 $this->logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
 
-                // Log to the schedule's persistent lifecycle history container
-                $fail_history = $this->get_or_create_schedule_history($schedule->schedule_id);
+                // Log to the schedule's run lifecycle history container
+                $created_fail_history = false;
+                $fail_history = $history;
+                if (!$fail_history) {
+                    $fail_history = $this->get_or_create_schedule_history($schedule->schedule_id);
+                    $created_fail_history = true;
+                }
                 if ($fail_history) {
                     $fail_history->record(
                         'activity',
@@ -98,6 +108,13 @@ class AIPS_Schedule_Result_Handler {
                             'frequency' => $schedule->frequency,
                         )
                     );
+
+                    if ($created_fail_history) {
+                        $fail_history->complete_failure($result->get_error_message(), array(
+                            'schedule_id' => $schedule->schedule_id,
+                            'error_code'  => $result->get_error_code(),
+                        ));
+                    }
                 }
             }
 		} else {
@@ -143,6 +160,13 @@ class AIPS_Schedule_Result_Handler {
                 'frequency' => $schedule->frequency,
             )
         );
+
+        if ($history) {
+            $history->complete_failure($error_msg, array(
+                'schedule_id' => $schedule->schedule_id,
+                'error_code'  => $result->get_error_code(),
+            ));
+        }
 
         if (!$is_manual) {
             do_action('aips_scheduler_error', array(
@@ -222,6 +246,10 @@ class AIPS_Schedule_Result_Handler {
                     'frequency' => $schedule->frequency,
                 )
             );
+        }
+
+        if ($history) {
+            $history->complete_success();
         }
 
         if (!$is_manual) {
@@ -330,32 +358,60 @@ class AIPS_Schedule_Result_Handler {
     }
 
     /**
-     * Load the schedule's persistent lifecycle history container, or create one if missing.
+     * Create a per-run lifecycle history container for the schedule and attach its ID.
      *
-     * @param int $schedule_id Schedule ID.
+     * @param int         $schedule_id    Schedule ID.
+     * @param string|null $trigger_method Optional trigger method ('scheduled' or 'manual').
      * @return AIPS_History_Container|null Container instance or null on failure.
      */
-    public function get_or_create_schedule_history($schedule_id) {
+    public function get_or_create_schedule_history($schedule_id, $trigger_method = null) {
         $schedule = $this->repository->get_by_id($schedule_id);
 
         if (!$schedule) {
             return null;
         }
 
-        if (!empty($schedule->schedule_history_id)) {
-            $container = class_exists('AIPS_History_Container') ? AIPS_History_Container::load_existing($this->history_repository, $schedule->schedule_history_id) : null;
-            if ($container) {
-                return $container;
-            }
-        }
-
-        // No existing container — create one and attach it to the schedule
-        $container = $this->history_service->create('schedule_lifecycle', array(
+        $metadata = array(
             'schedule_id'     => $schedule_id,
             'creation_method' => 'schedule_lifecycle',
-        ));
+            'record_kind'     => AIPS_History_Record_Kind::EVENT,
+        );
+
+        if (!empty($schedule->template_id)) {
+            $metadata['template_id'] = absint($schedule->template_id);
+        }
+
+        if (!empty($schedule->campaign_id)) {
+            $metadata['campaign_id'] = absint($schedule->campaign_id);
+        }
+
+        $container = $this->history_service->create('schedule_lifecycle', $metadata);
 
         if ($container && $container->get_id()) {
+            $resolved_method = $trigger_method !== null
+                ? (string) $trigger_method
+                : AIPS_Generation_Trigger::METHOD_AUTOMATIC;
+
+            $source = array(
+                'schedule_id' => (int) $schedule_id,
+            );
+            if (!empty($schedule->title)) {
+                $source['schedule_name'] = (string) $schedule->title;
+            } elseif (!empty($schedule->name)) {
+                $source['schedule_name'] = (string) $schedule->name;
+            }
+            if (!empty($schedule->frequency)) {
+                $source['frequency'] = (string) $schedule->frequency;
+            }
+            if (!empty($schedule->template_id)) {
+                $source['template_id'] = absint($schedule->template_id);
+            }
+            if (!empty($schedule->campaign_id)) {
+                $source['campaign_id'] = absint($schedule->campaign_id);
+            }
+
+            AIPS_Generation_Trigger::record($container, $source, $resolved_method);
+
             $this->repository->update($schedule_id, array(
                 'schedule_history_id' => $container->get_id(),
             ));
