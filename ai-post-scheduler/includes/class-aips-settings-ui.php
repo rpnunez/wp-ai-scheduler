@@ -815,6 +815,47 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the minimum SEO score field of the quality-gate enrichment step.
+     *
+     * @return void
+     */
+    public function ability_enrichment_min_seo_score_field_callback() {
+        $this->quality_score_field('aips_ability_enrichment_min_seo_score', __('SEO score', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the minimum readability score field of the quality-gate enrichment step.
+     *
+     * @return void
+     */
+    public function ability_enrichment_min_readability_score_field_callback() {
+        $this->quality_score_field('aips_ability_enrichment_min_readability_score', __('readability score', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Shared markup of the two quality-gate threshold fields.
+     *
+     * @param string $option Option name.
+     * @param string $label  Lower-case name of the score.
+     * @return void
+     */
+    private function quality_score_field($option, $label) {
+        $value = (int) AIPS_Config::get_instance()->get_option($option);
+        ?>
+        <input type="number" min="0" max="100" step="1" class="small-text" name="<?php echo esc_attr($option); ?>" value="<?php echo esc_attr($value); ?>">
+        <p class="description">
+            <?php
+            echo esc_html(sprintf(
+                /* translators: %s: name of the score, for example "SEO score" */
+                __('When Yoast SEO provides its %s ability, generated posts scoring below this value (0 to 100) are flagged for review. The score is always recorded. Use 0 to record without flagging. Nothing is regenerated automatically.', 'ai-post-scheduler'),
+                $label
+            ));
+            ?>
+        </p>
+        <?php
+    }
+
+    /**
      * Render the Ability Workflow run retention setting field.
      *
      * @return void

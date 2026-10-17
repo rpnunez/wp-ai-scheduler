@@ -134,6 +134,14 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_ability_enrichment_user_id'],
 			),
+			'aips_ability_enrichment_min_seo_score' => array(
+				'sanitize_callback' => array($this, 'sanitize_quality_score'),
+				'default'           => $defaults['aips_ability_enrichment_min_seo_score'],
+			),
+			'aips_ability_enrichment_min_readability_score' => array(
+				'sanitize_callback' => array($this, 'sanitize_quality_score'),
+				'default'           => $defaults['aips_ability_enrichment_min_readability_score'],
+			),
 			'aips_ability_workflow_retention_days' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_ability_workflow_retention_days'],
@@ -660,6 +668,16 @@ class AIPS_Settings {
      *
      * @return void
      */
+	/**
+	 * Clamp a quality-gate threshold to 0-100.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_quality_score($value) {
+		return max(0, min(100, absint($value)));
+	}
+
 	public function register_settings() {
 		self::register_setting_schema($this->ui);
         
@@ -1435,6 +1453,22 @@ class AIPS_Settings {
             'aips_ability_enrichment_user_id',
             __('Ability Enrichment User ID', 'ai-post-scheduler'),
             array($this->ui, 'ability_enrichment_user_id_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_ability_enrichment_min_seo_score',
+            __('Flag Posts Below SEO Score', 'ai-post-scheduler'),
+            array($this->ui, 'ability_enrichment_min_seo_score_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_ability_enrichment_min_readability_score',
+            __('Flag Posts Below Readability Score', 'ai-post-scheduler'),
+            array($this->ui, 'ability_enrichment_min_readability_score_field_callback'),
             'aips-settings',
             'aips_developers_section'
         );

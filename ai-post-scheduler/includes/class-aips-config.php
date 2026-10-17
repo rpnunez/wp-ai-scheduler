@@ -228,6 +228,8 @@ class AIPS_Config {
             'aips_enable_ability_workflows' => false,
             'aips_enable_ability_enrichment' => false,
             'aips_ability_enrichment_user_id' => 0,
+            'aips_ability_enrichment_min_seo_score' => 0,
+            'aips_ability_enrichment_min_readability_score' => 0,
             'aips_ability_workflow_retention_days' => 30,
             // Cache Monitor
             'aips_cache_monitor_enabled'               => false,

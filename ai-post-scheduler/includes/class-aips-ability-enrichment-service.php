@@ -42,6 +42,19 @@ class AIPS_Ability_Enrichment_Service {
 	const CLASSIFICATION_TAXONOMIES = array('category', 'post_tag');
 
 	/**
+	 * Slugs of the Yoast SEO abilities used by the quality-gate steps.
+	 */
+	const SEO_SCORE_ABILITY         = 'yoast-seo/get-seo-scores';
+	const READABILITY_SCORE_ABILITY = 'yoast-seo/get-readability-scores';
+
+	/**
+	 * Post meta keys the scores are recorded under, and the one that flags a post.
+	 */
+	const SEO_SCORE_META         = '_aips_seo_score';
+	const READABILITY_SCORE_META = '_aips_readability_score';
+	const QUALITY_FLAG_META      = '_aips_quality_flag';
+
+	/**
 	 * @var AIPS_Ability_Service
 	 */
 	private $abilities;
@@ -176,6 +189,8 @@ class AIPS_Ability_Enrichment_Service {
 		$steps = apply_filters('aips_ability_enrichment_steps', array(
 			'alt_text'       => array($this, 'step_featured_image_alt_text'),
 			'classification' => array($this, 'step_classification'),
+			'seo_score'      => array($this, 'step_seo_score'),
+			'readability'    => array($this, 'step_readability_score'),
 		), $post_id);
 
 		$principal = $this->resolve_principal($post_id, (int) $user_id);
@@ -531,6 +546,175 @@ class AIPS_Ability_Enrichment_Service {
 		$payload = array_intersect_key($candidate, array_flip($properties));
 
 		return empty($payload) ? array_intersect_key($candidate, array_flip(array_slice($preferred, 0, 1))) : $payload;
+	}
+
+	/**
+	 * Record the Yoast SEO score of the post and flag it when it is below the threshold.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string|WP_Error Outcome string, or WP_Error when the ability fails.
+	 */
+	public function step_seo_score($post_id) {
+		return $this->run_score_step(
+			$post_id,
+			self::SEO_SCORE_ABILITY,
+			self::SEO_SCORE_META,
+			array('seo_score', 'score', 'content'),
+			'aips_ability_enrichment_min_seo_score',
+			'seo'
+		);
+	}
+
+	/**
+	 * Record the Yoast readability score of the post and flag it when it is below the threshold.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string|WP_Error Outcome string, or WP_Error when the ability fails.
+	 */
+	public function step_readability_score($post_id) {
+		return $this->run_score_step(
+			$post_id,
+			self::READABILITY_SCORE_ABILITY,
+			self::READABILITY_SCORE_META,
+			array('readability_score', 'score', 'content'),
+			'aips_ability_enrichment_min_readability_score',
+			'readability'
+		);
+	}
+
+	/**
+	 * Call a score ability, record the score, and flag the post below a threshold.
+	 *
+	 * The ability's input and output shapes are not assumed: the payload is
+	 * trimmed to the declared input schema (falling back to `post_id`), and the
+	 * score is looked for under a few common keys, in a list entry for this
+	 * post, or as a bare number. A response without a score from 0 to 100 is an
+	 * error, not a silent skip.
+	 *
+	 * @param int      $post_id       Post ID.
+	 * @param string   $ability       Ability slug.
+	 * @param string   $meta_key      Post meta the score is recorded under.
+	 * @param string[] $score_keys    Keys that may hold the score.
+	 * @param string   $threshold_opt Option holding the flag threshold.
+	 * @param string   $kind          `seo` or `readability`.
+	 * @return string|WP_Error
+	 */
+	private function run_score_step($post_id, $ability, $meta_key, array $score_keys, $threshold_opt, $kind) {
+		if (true !== $this->abilities->is_available($ability)) {
+			return 'skipped:ability_unavailable';
+		}
+
+		$payload = $this->build_payload($ability, array(
+			'post_id'  => $post_id,
+			'id'       => $post_id,
+			'post_ids' => array($post_id),
+		), array('post_id'));
+
+		$response = $this->abilities->invoke($ability, $payload);
+
+		if (is_wp_error($response)) {
+			return $response;
+		}
+
+		$score = $this->extract_score($response, (int) $post_id, $score_keys);
+
+		if (null === $score) {
+			return new WP_Error('ability_enrichment_no_score', __('The score ability returned no score between 0 and 100.', 'ai-post-scheduler'));
+		}
+
+		update_post_meta($post_id, $meta_key, $score);
+
+		$threshold = max(0, min(100, (int) AIPS_Config::get_instance()->get_option($threshold_opt)));
+
+		if ($threshold <= 0 || $score >= $threshold) {
+			return 'applied';
+		}
+
+		update_post_meta($post_id, self::QUALITY_FLAG_META, array(
+			'kind'      => $kind,
+			'score'     => $score,
+			'threshold' => $threshold,
+		));
+
+		/**
+		 * Filters whether a published or scheduled post flagged by a quality gate is moved back to draft
+		 * so it appears in Pending Review. Drafts and pending posts are already in review. Default false.
+		 *
+		 * @param bool   $demote  Whether to move the post back to draft.
+		 * @param int    $post_id Post ID.
+		 * @param string $kind    `seo` or `readability`.
+		 * @param int    $score   Recorded score.
+		 */
+		if (apply_filters('aips_ability_enrichment_demote_flagged', false, $post_id, $kind, $score) && in_array(get_post_status($post_id), array('publish', 'future'), true)) {
+			wp_update_post(array('ID' => $post_id, 'post_status' => 'draft'));
+		}
+
+		/**
+		 * Fires when a quality-gate step flags a post that scored below its threshold.
+		 *
+		 * @param int    $post_id   Post ID.
+		 * @param string $kind      `seo` or `readability`.
+		 * @param int    $score     Recorded score.
+		 * @param int    $threshold Configured minimum.
+		 */
+		do_action('aips_ability_enrichment_post_flagged', $post_id, $kind, $score, $threshold);
+
+		return 'applied:flagged';
+	}
+
+	/**
+	 * Find the score for a post in an ability response.
+	 *
+	 * @param mixed    $response Normalized response.
+	 * @param int      $post_id  Post ID.
+	 * @param string[] $keys     Keys that may hold the score.
+	 * @param int      $depth    Recursion depth.
+	 * @return int|null Score from 0 to 100, or null when there is none.
+	 */
+	private function extract_score($response, $post_id, array $keys, $depth = 0) {
+		if (is_numeric($response)) {
+			return ($response >= 0 && $response <= 100) ? (int) round((float) $response) : null;
+		}
+
+		if (!is_array($response) || $depth > 4) {
+			return null;
+		}
+
+		foreach ($keys as $key) {
+			if (isset($response[$key]) && is_numeric($response[$key])) {
+				return $this->extract_score($response[$key], $post_id, $keys, $depth + 1);
+			}
+		}
+
+		foreach (array($post_id, (string) $post_id) as $id_key) {
+			if (isset($response[$id_key])) {
+				$found = $this->extract_score($response[$id_key], $post_id, $keys, $depth + 1);
+
+				if (null !== $found) {
+					return $found;
+				}
+			}
+		}
+
+		foreach ($response as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+
+			$item_id = $item['post_id'] ?? ($item['id'] ?? ($item['ID'] ?? null));
+
+			if (null !== $item_id && (int) $item_id !== $post_id) {
+				continue;
+			}
+
+			$found = $this->extract_score($item, $post_id, $keys, $depth + 1);
+
+			if (null !== $found) {
+				return $found;
+			}
+		}
+
+		return null;
 	}
 
 	/**
