@@ -117,7 +117,7 @@ if (!defined('ABSPATH')) {
 					<table class="aips-table">
 						<thead>
 							<tr>
-								<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-generated-cb-all"></th>
+								<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-generated-cb-all" aria-label="<?php esc_attr_e('Select all generated posts', 'ai-post-scheduler'); ?>"></th>
 								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Scheduled', 'ai-post-scheduler'); ?></th>
@@ -129,7 +129,7 @@ if (!defined('ABSPATH')) {
 						<tbody>
 							<?php foreach ($posts_data as $post_data): ?>
 							<tr>
-								<th scope="row" class="check-column"><input type="checkbox" class="aips-generated-cb" value="<?php echo esc_attr($post_data['id']); ?>"></th>
+								<th scope="row" class="check-column"><input type="checkbox" class="aips-generated-cb" value="<?php echo esc_attr($post_data['id']); ?>" aria-label="<?php esc_attr_e('Select generated post', 'ai-post-scheduler'); ?>"></th>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
