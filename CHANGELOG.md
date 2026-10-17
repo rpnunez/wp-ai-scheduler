@@ -12,7 +12,14 @@
 - **Ability Enrichment of Generated Posts (opt-in):**
   - After a post is generated, optional steps call installed WordPress Abilities. Steps: fill in missing featured-image alt text via `ai/alt-text-generation` (skipped when the ability reports the image as decorative), and suggest categories and tags via `ai/content-classification` (existing terms only by default, never overwriting terms the post already has). Runs as the current user or a configured service user, trims the payload to the ability's input schema, and never fails generation. Settings: `aips_enable_ability_enrichment`, `aips_ability_enrichment_user_id`.
 - **Diagnostics > Stress Test: Abilities cases:**
-  - Four read-only cases (discovery, core invocation latency, real AI abilities, the destructive-ability gate) that need no AIPS AI provider and create no data. The result now reports `ability_calls`.
+  - Four read-only cases (discovery, core invocation latency, real AI abilities, the approval gate) that need no AIPS AI provider and create no data. The result now reports `ability_calls`.
+  - Three workflow cases (two-step run with typed values, retry with backoff, cancel during a step) build a temporary `[aips-stress]` workflow from fixture abilities, check the run and its single History record, and delete the workflow, runs and History rows afterwards. They are skipped, not failed, when Ability Workflows are disabled; the cleanup button also removes any left behind.
+- **Ability Workflows: approved abilities per workflow:**
+  - The WordPress AI plugin registers its abilities without `readonly`/`destructive` annotations, so each one used to need the all-or-nothing *Allow destructive abilities* setting. A workflow now keeps a list of approved abilities (a checkbox on the step row in the builder): an ability that does not say whether it is destructive runs when the workflow lists it. An ability declared destructive still needs *Allow destructive abilities*.
+- **Ability Workflows: step input is checked against the ability schema:**
+  - Saving steps reports missing required fields, fields the schema forbids, and fixed values of the wrong type or outside an enum. Values containing a `{{reference}}` are not checked. The builder adds *Add Required Fields* and offers enum values as suggestions.
+- **Ability Workflows: stored payload limits and retention:**
+  - Snapshots stored with a run are capped at 256 KB (largest values replaced by markers), the `aips_ability_workflow_redact_payload` filter runs before storing, and finished runs older than the new *Ability Workflow Run Retention* setting (default 30 days, 0 keeps everything) are deleted by the daily cleanup.
 - **Ability Workflows (feature-flagged, off by default):**
   - Multi-step automation built on the WordPress Abilities API: workflow builder, catalog of registered abilities, cron-driven executor with retries, conditions, variable references and a destructive-ability gate, and run history.
   - Workflow and enrichment execution run as managed background processes (`ability_workflows`, `ability_enrichment`) under Diagnostics > Background Processes; generation only queues a post for enrichment.
@@ -24,6 +31,7 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **Ability Workflows: validation messages are translatable.** The workflow validator built its messages with plain `sprintf()`; they now use `__()`, and a test fails on any untranslated sentence in the ability classes.
 - **History: Move Remaining Name-Based Row Checks to `record_kind` (#2213):**
   - Migrated `AIPS_History_Repository::get_by_post_id()` to query `record_kind = 'generation'`, preventing background jobs (such as `content_indexing`) from masquerading as a post's generation history in AI Edit, History Container, and Post History UI quick links.
   - Migrated `AIPS_History_Repository::post_has_history_and_completed()` review-gate validation to require completed or partial generation runs, preventing review queue operations (publish, delete, regenerate) on posts that were merely indexed.

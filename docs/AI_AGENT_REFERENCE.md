@@ -33,6 +33,7 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Settings are split across `AIPS_Settings`, `AIPS_Settings_UI`, and `AIPS_Settings_Ajax`.
 - Dashboard is rendered by `AIPS_Dashboard_Controller`.
 - System status uses `AIPS_System_Status_Controller`, `AIPS_System_Diagnostics_Service`, and providers in `includes/diagnostics/`.
+- Ability Workflow `settings`: `max_steps`, `max_runtime_seconds`, `allow_destructive_abilities` and `approved_abilities` (ability names that may run although they do not declare themselves non-destructive; never covers one declared destructive). Stored run payloads are capped and pruned by `aips_ability_workflow_retention_days`; see `docs/HOOKS.md`.
 - Hidden pages include `aips-author-topics`, `aips-campaign-wizard`, `aips-campaign-detail`, and `aips-ability-workflow-builder` (feature-flagged behind `aips_enable_ability_workflows`).
 
 ## Data and schema

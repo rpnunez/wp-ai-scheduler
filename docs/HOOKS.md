@@ -438,6 +438,40 @@ WordPress ability still performs its own input-specific permission check.
 
 ---
 
+### `aips_ability_workflow_stale_after`
+
+Filters how long (seconds) an open Ability Workflow run may show no activity (creation, start or step activity) before the daily cleanup fails it and closes its History row. Runs a worker currently holds are left alone, and the sweep is skipped while the `ability_workflows` process is paused.
+
+*   **Type:** `filter`
+*   **Default:** `21600` (6 hours); return `0` to disable the sweep.
+*   **Arguments:**
+    *   `int $seconds` Inactivity threshold.
+
+---
+
+### `aips_ability_workflow_retention_days`
+
+Filters how many days finished Ability Workflow runs (and the inputs and outputs stored for their steps) are kept before the daily cleanup deletes them. History rows have their own retention.
+
+*   **Type:** `filter`
+*   **Default:** The `aips_ability_workflow_retention_days` setting (`30`); return `0` to keep everything.
+*   **Arguments:**
+    *   `int $days` Retention in days.
+
+---
+
+### `aips_ability_workflow_redact_payload`
+
+Filters a payload just before it is stored with a workflow run, so sensitive fields can be removed or masked. Applies to what is stored only; steps keep the full values while a run executes. A payload still larger than 256 KB afterwards has its largest values replaced by short markers (with a `_truncated` key listing them).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array $data` The trigger context, step input or step output.
+    *   `string $kind` `trigger`, `step_input` or `step_output`.
+    *   `int $id` Related run or step-run ID, `0` when unknown.
+
+---
+
 ## Semantic Embeddings & Related Posts Filters (added in 3.6.5)
 
 ### `aips_related_posts_query_args`
