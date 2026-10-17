@@ -87,16 +87,19 @@ class AIPS_Ability_Workflow_Document_Validator {
 
 		foreach ( $steps as $index => $step ) {
 			if ( ! is_array( $step ) ) {
-				$errors[] = sprintf( 'Step at index %d must be an array.', $index );
+				/* translators: %d: position of the step in the list */
+				$errors[] = sprintf( __( 'Step at index %d must be an array.', 'ai-post-scheduler' ), $index );
 				continue;
 			}
 
 			$step_key = isset( $step['step_key'] ) ? (string) $step['step_key'] : '';
 
 			if ( '' === $step_key ) {
-				$errors[] = sprintf( 'Step at index %d is missing a step_key.', $index );
+				/* translators: %d: position of the step in the list */
+				$errors[] = sprintf( __( 'Step at index %d is missing a step_key.', 'ai-post-scheduler' ), $index );
 			} elseif ( isset( $seen_keys[ $step_key ] ) ) {
-				$errors[] = sprintf( 'Duplicate step_key "%s".', $step_key );
+				/* translators: %s: step key */
+				$errors[] = sprintf( __( 'Duplicate step_key "%s".', 'ai-post-scheduler' ), $step_key );
 			} else {
 				$seen_keys[ $step_key ] = true;
 			}
@@ -115,7 +118,7 @@ class AIPS_Ability_Workflow_Document_Validator {
 			if ( '' !== $alias ) {
 				$alias_error = $this->validate_identifier( $alias, 'output_alias', AIPS_Ability_Workflow_Repository::OUTPUT_ALIAS_MAX_LENGTH );
 				if ( '' !== $alias_error ) {
-					$errors[] = sprintf( 'Step "%s": %s', $step_key, $alias_error );
+					$errors[] = $this->step_error( $step_key, $alias_error );
 				}
 			}
 
@@ -123,18 +126,20 @@ class AIPS_Ability_Workflow_Document_Validator {
 
 			if ( '' !== $effective_alias ) {
 				if ( isset( $alias_owner[ $effective_alias ] ) && $alias_owner[ $effective_alias ] !== $step_key ) {
-					$errors[] = sprintf( 'Step "%s" output name "%s" is already used by step "%s".', $step_key, $effective_alias, $alias_owner[ $effective_alias ] );
+					/* translators: 1: step key, 2: output name, 3: step key that already uses it */
+					$errors[] = sprintf( __( 'Step "%1$s" output name "%2$s" is already used by step "%3$s".', 'ai-post-scheduler' ), $step_key, $effective_alias, $alias_owner[ $effective_alias ] );
 				} else {
 					$alias_owner[ $effective_alias ] = $step_key;
 				}
 			}
 
 			if ( empty( $step['ability_name'] ) ) {
-				$errors[] = sprintf( 'Step "%s" is missing an ability_name.', $step_key );
+				/* translators: %s: step key */
+				$errors[] = sprintf( __( 'Step "%s" is missing an ability_name.', 'ai-post-scheduler' ), $step_key );
 			} elseif ( ! $skip_ability_check && $this->catalog instanceof AIPS_Ability_Catalog_Service ) {
 				$available = $this->catalog->validate_ability_available( (string) $step['ability_name'] );
 				if ( is_wp_error( $available ) ) {
-					$errors[] = sprintf( 'Step "%s": %s', $step_key, $available->get_error_message() );
+					$errors[] = $this->step_error( $step_key, $available->get_error_message() );
 				}
 			}
 
@@ -142,7 +147,8 @@ class AIPS_Ability_Workflow_Document_Validator {
 				if ( ! empty( $step[ $ref_field ] ) && is_array( $step[ $ref_field ] ) ) {
 					foreach ( $step[ $ref_field ] as $dep_key ) {
 						if ( ! in_array( (string) $dep_key, $earlier_keys, true ) ) {
-							$errors[] = sprintf( 'Step "%s" depends_on unknown or later step "%s".', $step_key, $dep_key );
+							/* translators: 1: step key, 2: step key it depends on */
+							$errors[] = sprintf( __( 'Step "%1$s" depends_on unknown or later step "%2$s".', 'ai-post-scheduler' ), $step_key, $dep_key );
 						}
 					}
 				}
@@ -151,32 +157,34 @@ class AIPS_Ability_Workflow_Document_Validator {
 			if ( ! empty( $step['condition_tree'] ) && is_array( $step['condition_tree'] ) ) {
 				$condition_result = $this->condition_evaluator->validate_condition_tree( $step['condition_tree'] );
 				if ( is_wp_error( $condition_result ) ) {
-					$errors[] = sprintf( 'Step "%s": %s', $step_key, $condition_result->get_error_message() );
+					$errors[] = $this->step_error( $step_key, $condition_result->get_error_message() );
 				}
 
 				// Left and right operands may both reference earlier outputs.
 				foreach ( $this->validate_input_map( $step['condition_tree'], $earlier_alias ) as $message ) {
-					$errors[] = sprintf( 'Step "%s": %s', $step_key, $message );
+					$errors[] = $this->step_error( $step_key, $message );
 				}
 			}
 
 			if ( ! empty( $step['input_map'] ) && is_array( $step['input_map'] ) ) {
 				$input_map_errors = $this->validate_input_map( $step['input_map'], $earlier_alias );
 				foreach ( $input_map_errors as $message ) {
-					$errors[] = sprintf( 'Step "%s": %s', $step_key, $message );
+					$errors[] = $this->step_error( $step_key, $message );
 				}
 			}
 
 			foreach ( array( 'on_success', 'on_failure' ) as $strategy_field ) {
 				if ( ! empty( $step[ $strategy_field ]['strategy'] ) && ! in_array( $step[ $strategy_field ]['strategy'], self::STRATEGIES, true ) ) {
-					$errors[] = sprintf( 'Step "%s" has an invalid %s.strategy "%s".', $step_key, $strategy_field, $step[ $strategy_field ]['strategy'] );
+					/* translators: 1: step key, 2: field name (on_success or on_failure), 3: the strategy given */
+					$errors[] = sprintf( __( 'Step "%1$s" has an invalid %2$s.strategy "%3$s".', 'ai-post-scheduler' ), $step_key, $strategy_field, $step[ $strategy_field ]['strategy'] );
 				}
 			}
 
 			if ( ! empty( $step['retry_policy'] ) && is_array( $step['retry_policy'] ) ) {
 				foreach ( array( 'attempts', 'backoff_seconds' ) as $retry_field ) {
 					if ( isset( $step['retry_policy'][ $retry_field ] ) && ( ! is_numeric( $step['retry_policy'][ $retry_field ] ) || (int) $step['retry_policy'][ $retry_field ] < 0 ) ) {
-						$errors[] = sprintf( 'Step "%s" retry_policy.%s must be a non-negative integer.', $step_key, $retry_field );
+						/* translators: 1: step key, 2: retry_policy field name */
+						$errors[] = sprintf( __( 'Step "%1$s" retry_policy.%2$s must be a non-negative integer.', 'ai-post-scheduler' ), $step_key, $retry_field );
 					}
 				}
 			}
@@ -197,6 +205,18 @@ class AIPS_Ability_Workflow_Document_Validator {
 	}
 
 	/**
+	 * Prefix a message with the step it belongs to.
+	 *
+	 * @param string $step_key Step key.
+	 * @param string $message  Message about the step.
+	 * @return string
+	 */
+	private function step_error( string $step_key, string $message ): string {
+		/* translators: 1: step key, 2: what is wrong with the step */
+		return sprintf( __( 'Step "%1$s": %2$s', 'ai-post-scheduler' ), $step_key, $message );
+	}
+
+	/**
 	 * Check a step key or output alias for allowed characters and length.
 	 *
 	 * @param string $value      Value to check.
@@ -206,11 +226,13 @@ class AIPS_Ability_Workflow_Document_Validator {
 	 */
 	private function validate_identifier( string $value, string $field, int $max_length ): string {
 		if ( ! preg_match( self::KEY_PATTERN, $value ) ) {
-			return sprintf( '%s "%s" may only contain letters, numbers and underscores.', $field, $value );
+			/* translators: 1: field name, 2: the value given */
+			return sprintf( __( '%1$s "%2$s" may only contain letters, numbers and underscores.', 'ai-post-scheduler' ), $field, $value );
 		}
 
 		if ( strlen( $value ) > $max_length ) {
-			return sprintf( '%s "%s" must be at most %d characters.', $field, $value, $max_length );
+			/* translators: 1: field name, 2: the value given, 3: longest allowed length */
+			return sprintf( __( '%1$s "%2$s" must be at most %3$d characters.', 'ai-post-scheduler' ), $field, $value, $max_length );
 		}
 
 		return '';
@@ -245,7 +267,8 @@ class AIPS_Ability_Workflow_Document_Validator {
 					if ( 0 === strpos( $token, 'steps.' ) ) {
 						$alias = explode( '.', $token )[1] ?? '';
 						if ( ! in_array( $alias, $earlier_alias, true ) ) {
-							$errors[] = sprintf( 'Input map references unknown or later step output alias "%s".', $alias );
+							/* translators: %s: output alias */
+							$errors[] = sprintf( __( 'Input map references unknown or later step output alias "%s".', 'ai-post-scheduler' ), $alias );
 						}
 					}
 				}
