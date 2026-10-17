@@ -814,6 +814,20 @@ class AIPS_Settings_UI {
         <?php
     }
 
+    /**
+     * Render the Ability Workflow run retention setting field.
+     *
+     * @return void
+     */
+    public function ability_workflow_retention_days_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_ability_workflow_retention_days');
+        ?>
+        <input type="number" min="0" step="1" class="small-text" name="aips_ability_workflow_retention_days" value="<?php echo esc_attr($value); ?>">
+        <?php esc_html_e('days', 'ai-post-scheduler'); ?>
+        <p class="description"><?php esc_html_e('Finished Ability Workflow runs, with the inputs and outputs stored for each step, are deleted after this many days. Use 0 to keep them. Large values are shortened when stored, and the aips_ability_workflow_redact_payload filter can remove sensitive fields before anything is stored.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
     /*
      * Render the cache monitor setting field.
      *

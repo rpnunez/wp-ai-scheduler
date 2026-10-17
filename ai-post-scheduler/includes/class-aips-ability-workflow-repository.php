@@ -44,6 +44,17 @@ class AIPS_Ability_Workflow_Repository {
 	 * Column widths of the steps table. Values longer than these would be
 	 * truncated or rejected by MySQL, so save_steps() refuses them up front.
 	 */
+	/**
+	 * Largest stored snapshot (run trigger, step input or step output), in bytes.
+	 * Larger ones are shortened with a marker.
+	 */
+	const SNAPSHOT_MAX_BYTES = 262144;
+
+	/**
+	 * Characters kept of a long text value when a snapshot is shortened.
+	 */
+	const SNAPSHOT_TEXT_PREVIEW = 1000;
+
 	const STEP_KEY_MAX_LENGTH     = 100;
 	const OUTPUT_ALIAS_MAX_LENGTH = 100;
 	const ABILITY_NAME_MAX_LENGTH = 191;
@@ -720,7 +731,7 @@ class AIPS_Ability_Workflow_Repository {
 				'workflow_id'      => $workflow_id,
 				'workflow_version' => $workflow_version,
 				'status'           => self::RUN_STATUS_QUEUED,
-				'trigger_context'  => wp_json_encode( $trigger_context ),
+				'trigger_context'  => $this->prepare_payload( $trigger_context, 'trigger' ),
 				'started_at'       => 0,
 				'finished_at'      => 0,
 				'created_by'       => get_current_user_id() ?: null,
@@ -923,6 +934,127 @@ class AIPS_Ability_Workflow_Repository {
 	// -----------------------------------------------------------------------
 
 	/**
+	 * Redact and size-limit a payload before it is stored.
+	 *
+	 * Runs store what steps received and returned so the run history can show
+	 * it. The `aips_ability_workflow_redact_payload` filter can remove or mask
+	 * sensitive fields first. A payload that is still larger than
+	 * SNAPSHOT_MAX_BYTES has its largest values replaced by short markers (text
+	 * is cut to a preview) until it fits, and a `_truncated` key lists them, so
+	 * the small fields a later step reads are kept. Redaction and shortening
+	 * apply to what is stored only; steps in the same run slice keep the full
+	 * values.
+	 *
+	 * @param array  $data Payload.
+	 * @param string $kind 'trigger', 'step_input' or 'step_output'.
+	 * @param int    $id   Run ID (trigger, step_input on create) or step-run ID, 0 when unknown.
+	 * @return string JSON to store.
+	 */
+	public function prepare_payload( array $data, string $kind, int $id = 0 ): string {
+		/**
+		 * Filters a payload before it is stored with a workflow run.
+		 *
+		 * @param array  $data Payload (trigger context, step input or step output).
+		 * @param string $kind 'trigger', 'step_input' or 'step_output'.
+		 * @param int    $id   Related run or step-run ID, 0 when unknown.
+		 */
+		$filtered = apply_filters( 'aips_ability_workflow_redact_payload', $data, $kind, $id );
+
+		if ( ! is_array( $filtered ) ) {
+			$filtered = $data;
+		}
+
+		$json = wp_json_encode( $filtered );
+
+		if ( false === $json ) {
+			return (string) wp_json_encode( array( '_unencodable' => true ) );
+		}
+
+		if ( strlen( $json ) <= self::SNAPSHOT_MAX_BYTES ) {
+			return $json;
+		}
+
+		return (string) wp_json_encode( $this->shrink_payload( $filtered, strlen( $json ) ) );
+	}
+
+	/**
+	 * Replace the largest values of a payload with markers until it fits.
+	 *
+	 * @param array $data           Payload that is too large.
+	 * @param int   $original_bytes Its encoded size.
+	 * @return array
+	 */
+	private function shrink_payload( array $data, int $original_bytes ): array {
+		$limit = self::SNAPSHOT_MAX_BYTES - 1024;
+		$sizes = array();
+
+		foreach ( $data as $key => $value ) {
+			$sizes[ $key ] = strlen( (string) wp_json_encode( $value ) );
+		}
+
+		arsort( $sizes );
+
+		$truncated = array();
+
+		foreach ( $sizes as $key => $size ) {
+			if ( strlen( (string) wp_json_encode( $data ) ) <= $limit || $size <= self::SNAPSHOT_TEXT_PREVIEW ) {
+				break;
+			}
+
+			$data[ $key ] = is_string( $data[ $key ] )
+				? mb_substr( $data[ $key ], 0, self::SNAPSHOT_TEXT_PREVIEW ) . ' ...[truncated]'
+				: array( '_truncated' => true, '_original_bytes' => $size );
+			$truncated[]  = (string) $key;
+		}
+
+		$data['_truncated'] = $truncated;
+
+		if ( strlen( (string) wp_json_encode( $data ) ) > self::SNAPSHOT_MAX_BYTES ) {
+			return array( '_truncated' => true, '_original_bytes' => $original_bytes );
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Delete finished runs, with their step runs, that ended before a cutoff.
+	 *
+	 * History rows are not touched: History has its own retention.
+	 *
+	 * @param int $cutoff Unix time; runs whose last activity is older are deleted.
+	 * @param int $limit  Most runs to delete in one call.
+	 * @return int Runs deleted.
+	 */
+	public function delete_terminal_runs_before( int $cutoff, int $limit = 500 ): int {
+		$statuses     = self::RUN_TERMINAL_STATUSES;
+		$placeholders = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+
+		$ids = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT id FROM {$this->runs_table}
+				WHERE status IN ($placeholders)
+				AND GREATEST(created_at, started_at, finished_at) < %d
+				ORDER BY id ASC
+				LIMIT %d",
+				array_merge( $statuses, array( $cutoff, max( 1, $limit ) ) )
+			)
+		);
+
+		$ids = array_map( 'intval', $ids ?: array() );
+
+		if ( empty( $ids ) ) {
+			return 0;
+		}
+
+		$id_placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+
+		$this->wpdb->query( $this->wpdb->prepare( "DELETE FROM {$this->step_runs_table} WHERE run_id IN ($id_placeholders)", $ids ) );
+		$this->wpdb->query( $this->wpdb->prepare( "DELETE FROM {$this->runs_table} WHERE id IN ($id_placeholders)", $ids ) );
+
+		return count( $ids );
+	}
+
+	/**
 	 * Create a step-run row.
 	 *
 	 * @param int                        $run_id         Parent run ID.
@@ -941,7 +1073,7 @@ class AIPS_Ability_Workflow_Repository {
 				'step_key'        => $step->step_key,
 				'ability_name'    => $step->ability_name,
 				'status'          => 'pending',
-				'input_snapshot'  => wp_json_encode( $input_snapshot ),
+				'input_snapshot'  => $this->prepare_payload( $input_snapshot, 'step_input', $run_id ),
 				'output_snapshot' => wp_json_encode( array() ),
 				'error'           => wp_json_encode( array() ),
 				'started_at'      => 0,
@@ -970,12 +1102,12 @@ class AIPS_Ability_Workflow_Repository {
 		$format      = array( '%s' );
 
 		if ( array_key_exists( 'input_snapshot', $extra ) ) {
-			$update_data['input_snapshot'] = wp_json_encode( is_array( $extra['input_snapshot'] ) ? $extra['input_snapshot'] : array() );
+			$update_data['input_snapshot'] = $this->prepare_payload( is_array( $extra['input_snapshot'] ) ? $extra['input_snapshot'] : array(), 'step_input', $step_run_id );
 			$format[]                      = '%s';
 		}
 
 		if ( array_key_exists( 'output_snapshot', $extra ) ) {
-			$update_data['output_snapshot'] = wp_json_encode( is_array( $extra['output_snapshot'] ) ? $extra['output_snapshot'] : array() );
+			$update_data['output_snapshot'] = $this->prepare_payload( is_array( $extra['output_snapshot'] ) ? $extra['output_snapshot'] : array(), 'step_output', $step_run_id );
 			$format[]                       = '%s';
 		}
 

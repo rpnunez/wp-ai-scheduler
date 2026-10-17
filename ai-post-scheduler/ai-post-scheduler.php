@@ -1087,6 +1087,15 @@ final class AI_Post_Scheduler {
                     'info'
                 );
             }
+
+            // Drop finished workflow runs (and their stored payloads) past the retention period.
+            $pruned = (new AIPS_Ability_Workflows_Process())->prune_old_runs();
+            if ( $pruned > 0 ) {
+                ( new AIPS_Logger() )->log(
+                    sprintf( 'Ability workflow retention: deleted %d old runs.', $pruned ),
+                    'info'
+                );
+            }
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),

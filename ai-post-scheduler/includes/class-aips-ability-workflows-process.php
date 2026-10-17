@@ -223,6 +223,43 @@ class AIPS_Ability_Workflows_Process extends AIPS_Ability_Background_Process {
 	}
 
 	/**
+	 * Delete finished runs older than the retention setting.
+	 *
+	 * Runs whatever the feature switch says: old stored payloads are removed even
+	 * after workflows are turned off. A retention of 0 keeps everything.
+	 *
+	 * @return int Runs deleted.
+	 */
+	public function prune_old_runs(): int {
+		$days = (int) AIPS_Config::get_instance()->get_option('aips_ability_workflow_retention_days');
+
+		/**
+		 * Filters how many days finished Ability Workflow runs are kept. Return 0 to keep them.
+		 *
+		 * @param int $days Days from the aips_ability_workflow_retention_days setting.
+		 */
+		$days = (int) apply_filters('aips_ability_workflow_retention_days', $days);
+
+		if ($days <= 0) {
+			return 0;
+		}
+
+		$cutoff  = time() - ($days * DAY_IN_SECONDS);
+		$deleted = 0;
+
+		for ($batch = 0; $batch < 20; $batch++) {
+			$count    = $this->workflows->delete_terminal_runs_before($cutoff, 500);
+			$deleted += $count;
+
+			if ($count < 500) {
+				break;
+			}
+		}
+
+		return $deleted;
+	}
+
+	/**
 	 * @inheritDoc
 	 */
 	public function get_estimate(array $options = array()): array {

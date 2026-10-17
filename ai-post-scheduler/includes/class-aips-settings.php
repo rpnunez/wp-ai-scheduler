@@ -134,6 +134,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_ability_enrichment_user_id'],
 			),
+			'aips_ability_workflow_retention_days' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_ability_workflow_retention_days'],
+			),
 			'aips_cache_monitor_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_monitor_enabled'],
@@ -1431,6 +1435,14 @@ class AIPS_Settings {
             'aips_ability_enrichment_user_id',
             __('Ability Enrichment User ID', 'ai-post-scheduler'),
             array($this->ui, 'ability_enrichment_user_id_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_ability_workflow_retention_days',
+            __('Ability Workflow Run Retention', 'ai-post-scheduler'),
+            array($this->ui, 'ability_workflow_retention_days_field_callback'),
             'aips-settings',
             'aips_developers_section'
         );
