@@ -603,11 +603,15 @@ class AIPS_Settings {
 				'default'           => $defaults['aips_author_topic_auto_approval_mode'],
 			),
 			'aips_author_topic_auto_approval_min_score' => array(
-				'sanitize_callback' => 'floatval',
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_percent'),
 				'default'           => $defaults['aips_author_topic_auto_approval_min_score'],
 			),
+			'aips_author_topic_auto_approval_min_relevance' => array(
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_percent'),
+				'default'           => $defaults['aips_author_topic_auto_approval_min_relevance'],
+			),
 			'aips_author_topic_auto_approval_max_similarity' => array(
-				'sanitize_callback' => 'floatval',
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_max_similarity'),
 				'default'           => $defaults['aips_author_topic_auto_approval_max_similarity'],
 			),
 			'aips_author_topic_auto_approval_fallback' => array(
@@ -1255,8 +1259,16 @@ class AIPS_Settings {
 
         add_settings_field(
             'aips_author_topic_auto_approval_min_score',
-            __('Minimum Niche Relevance %', 'ai-post-scheduler'),
+            __('Minimum Quality Score', 'ai-post-scheduler'),
             array($this->ui, 'author_topic_auto_approval_min_score_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_min_relevance',
+            __('Minimum Niche Relevance %', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_min_relevance_field_callback'),
             'aips-settings',
             'aips_authors_section'
         );

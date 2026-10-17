@@ -91,6 +91,16 @@ class AIPS_Automations_Controller {
 					array('label' => __('Active Feeds', 'ai-post-scheduler'), 'value' => $active_cnt, 'type' => 'success', 'icon' => 'dashicons-rss'),
 					array('label' => __('Total Sources', 'ai-post-scheduler'), 'value' => count($sources), 'type' => 'neutral'),
 				);
+			} elseif (('monetization' === $active_tab || 'affiliate-links' === $active_tab) && class_exists('AIPS_Affiliate_Links_Repository')) {
+				$repo       = new AIPS_Affiliate_Links_Repository();
+				$all_items  = $repo->get_all(false);
+				$active_cnt = count(array_filter($all_items, function($m) {
+					return !empty($m->enabled);
+				}));
+				$summary_items = array(
+					array('label' => __('Active Mappings', 'ai-post-scheduler'), 'value' => $active_cnt, 'type' => 'success', 'icon' => 'dashicons-yes-alt'),
+					array('label' => __('Total Mappings', 'ai-post-scheduler'), 'value' => count($all_items), 'type' => 'neutral', 'icon' => 'dashicons-money-alt'),
+				);
 			}
 		} catch (\Throwable $e) {
 			// Fail-safe: empty summary items

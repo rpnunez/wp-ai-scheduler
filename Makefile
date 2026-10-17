@@ -4,10 +4,10 @@
 .PHONY: help up build down stop start start-dev restart reload-php rebuild \
 	logs logs-web logs-db shell wp-shell db-shell status info install clean prune \
 	plugin-activate plugin-deactivate plugin-list \
-	test test-verbose test-coverage test-ci composer-install composer-update \
+	test test-verbose test-coverage test-session test-stop test-ci composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
-	urls sync-wp-core
+	urls sync-wp-core sql-batch sql-batch-unpack
 
 # Default target
 .DEFAULT_GOAL := help
@@ -186,9 +186,25 @@ test-coverage: ## Run all tests with coverage: text summary + HTML in ai-post-sc
 	@echo "$(BLUE)Running coverage (HTML report: ai-post-scheduler/coverage/index.html)...$(NC)"
 	bash ./scripts/run-docker-test.sh --coverage-filter includes --coverage-html coverage --coverage-text $(ARGS)
 
+test-session: ## Run tests, then stop the services this run started (PREFERRED for agents; ARGS="tests/A.php tests/B.php")
+	@echo "$(BLUE)Running tests (session: stops what it started)...$(NC)"
+	bash ./scripts/test-session.sh $(ARGS)
+
+test-stop: ## Stop the db, web and phpMyAdmin containers (keeps containers' data volumes)
+	@echo "$(YELLOW)Stopping test stack...$(NC)"
+	docker compose stop web db phpmyadmin
+
 test-ci: ## Run the host-side CI runner (needs host PHP + composer)
 	@echo "$(BLUE)Running CI-style tests on the host...$(NC)"
 	bash ./scripts/run-wp-tests-docker.sh
+
+sql-batch: ## Run read-only SQL diagnostics on the DEV db (QUERIES=path/to/queries.sql)
+	@[ -n "$(QUERIES)" ] || { echo "Usage: make sql-batch QUERIES=.artifacts/sql-queries/my-queries.sql"; exit 1; }
+	bash ./scripts/sql-batch.sh run "$(QUERIES)"
+
+sql-batch-unpack: ## Unpack a results zip made elsewhere, e.g. prod (ZIP=path/to/results.zip)
+	@[ -n "$(ZIP)" ] || { echo "Usage: make sql-batch-unpack ZIP=path/to/sql-batch-results.zip"; exit 1; }
+	bash ./scripts/sql-batch.sh unpack "$(ZIP)"
 
 composer-install: ## Install Composer dependencies in plugin
 	@echo "$(BLUE)Installing Composer dependencies...$(NC)"

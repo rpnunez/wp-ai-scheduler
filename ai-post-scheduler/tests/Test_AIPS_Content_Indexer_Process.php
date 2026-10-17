@@ -276,7 +276,7 @@ class Test_AIPS_Content_Indexer_Process extends WP_UnitTestCase {
 		wp_schedule_single_event( time() + 60, AIPS_Managed_Background_Process::TICK_HOOK, array( 'internal_links_indexing' ) );
 
 		$migrations = new AIPS_DB_Migrations();
-		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_12' );
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_19' );
 		$method->setAccessible( true );
 		$method->invoke( $migrations );
 

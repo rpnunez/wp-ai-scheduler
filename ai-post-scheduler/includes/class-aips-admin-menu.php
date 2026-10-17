@@ -401,7 +401,7 @@ class AIPS_Admin_Menu {
             ));
         } elseif ('author-topics' === $tab) {
             $table = new AIPS_Author_Topics_List_Table();
-            AIPS_List_Table::register_screen_options($screen->id, $table->get_columns(), array(
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_all_columns(), array(
                 'label'   => __('Topics per page', 'ai-post-scheduler'),
                 'option'  => 'aips_author_topics_per_page',
                 'default' => 20,

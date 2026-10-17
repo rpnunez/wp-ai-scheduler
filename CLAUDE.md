@@ -22,7 +22,7 @@ Project-scoped subagents live in `.claude/agents/` and are auto-delegated by Cla
 | `pr-triage` | Overlap detection, risk classification, and review readiness for pull requests |
 
 Skills (step-by-step implementation guides) live in `.claude/skills/`:
-`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`, `batch-job-changes`.
+`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`).
 
 Saved multi-agent workflows live in `.claude/workflows/`:
 - `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit security compliance.
@@ -32,11 +32,12 @@ Saved multi-agent workflows live in `.claude/workflows/`:
 
 ## Commands
 
-Recommended: run PHPUnit inside the running dev stack (see `TESTING.md`). Start it first with `./start-dev.sh`, and run `make composer-install` once for the dev dependencies.
+Run PHPUnit ONLY as specified in the "Agent test protocol" in `TESTING.md`: `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` (all files in one invocation; stops the containers it started). Do not use PowerShell/`bash.exe -lc` wrappers, `scripts/run-docker-test.sh` directly, `&&`/`;` chains or `grep`/`head`/`tail` pipes, and do not run `./start-dev.sh` just to test. Run `make composer-install` once for the dev dependencies. Clean up: stop any containers you started (never `make down`/`-v`), delete scratch files, and report what you started/stopped.
 
 ```bash
 # Tests in the web container, against a separate wp_tests DB
-make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # single file
+make test-session ARGS="tests/Test_AIPS_DB_Migrations.php"   # single file, stops what it started (preferred)
+make test ARGS="tests/Test_AIPS_DB_Migrations.php"           # same, leaves the stack up
 make test                                            # full suite
 make test ARGS="--fresh"                             # recreate wp_tests first
 make test-coverage                                   # HTML in ai-post-scheduler/coverage/ (let it finish)
@@ -175,4 +176,4 @@ Admin pages follow: `div.wrap.aips-wrap` → `div.aips-page-container` → `div.
 
 ## Testing policy
 
-Do not run PHPUnit unless the user explicitly asks or the task requires it. For code changes, prefer static/syntax checks on touched files and note unrun test suites in the response. When tests are needed, run them in the dev stack with `make test ARGS="tests/Test_X.php"` (see `TESTING.md`); for host-side `composer test`, use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
+Run PHPUnit for code changes: run the tests that cover (or were added for) the touched code, plus static/syntax checks on touched files, and note any suite you could not run in the response. Run tests with `make test-session ARGS="tests/Test_X.php"` (see the Agent test protocol in `TESTING.md`); for host-side `composer test`, use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
