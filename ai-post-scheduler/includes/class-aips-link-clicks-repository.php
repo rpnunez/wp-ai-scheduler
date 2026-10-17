@@ -40,12 +40,19 @@ class AIPS_Link_Clicks_Repository {
 	 * @return bool
 	 */
 	public function table_exists(): bool {
-		static $exists = null;
-		if ($exists === null) {
-			$found  = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
-			$exists = ($found === $this->table);
+		// Keyed by table name (the static is shared by every instance) and only a
+		// positive result is memoized, so a table created later in this request
+		// by a migration is still picked up.
+		static $known = array();
+		if (!empty($known[$this->table])) {
+			return true;
 		}
-		return (bool) $exists;
+		$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
+		if ($found === $this->table) {
+			$known[$this->table] = true;
+			return true;
+		}
+		return false;
 	}
 
 	/**
