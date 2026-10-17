@@ -58,3 +58,10 @@
 **PR:** ⚡ Bolt: Bulk-prime post caches in Link Report AJAX detail view
 **Learning:** In AJAX endpoints fetching inbound/outbound post links, calling get_the_title() and get_edit_post_link() in loops results in N+1 database queries. Collecting target and source post IDs and calling _prime_post_caches() pre-fetches all posts in a single query.
 **Action:** Always collect post IDs before looping over get_the_title() or get_edit_post_link() calls in admin/AJAX views and call _prime_post_caches().
+
+## 2026-10-10 - Bulk-prime post caches in Link Click Tracking service
+**Area:** ai-post-scheduler/includes/class-aips-link-click-tracking-service.php
+**Status:** opened PR
+**PR:** To be created
+**Learning:** Calling get_the_title() and get_edit_post_link() in loops over click-tracking report rows causes N+1 queries. Pre-extracting source and target post IDs and calling _prime_post_caches() bulk-fetches post data in 1 query.
+**Action:** Pre-extract post IDs before looping over title/link resolvers and prime post caches with _prime_post_caches().
