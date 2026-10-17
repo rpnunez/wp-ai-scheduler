@@ -15,6 +15,8 @@ make test-session ARGS="tests/Test_A.php tests/Test_B.php"   # preferred: runs, 
 make test ARGS="tests/Test_A.php"                            # same run, but leaves the stack up
 ```
 
+Several `*.php` files run as a single PHPUnit process (PHPUnit 9 only takes one path, so the runner lists them in a temporary config), giving one summary and one set of coverage/log outputs. Options such as `--filter` apply to every file. A run where zero tests executed exits non-zero. Quote regex filters: `ARGS="--filter 'Test_A|Test_B'"`. The argument parsing is covered by `bash scripts/tests/test-run-docker-test.sh`.
+
 Rules:
 
 1. **Entrypoint is `make`.** Do not call `scripts/run-docker-test.sh` directly, do not wrap it in `bash.exe -lc "..."`, and do not hand-roll `docker compose exec ... phpunit`. On Windows run `make` from Git Bash or PowerShell; it is on `PATH`.
