@@ -53,6 +53,12 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		delete_option( 'aips_pending_index_queue' );
 		delete_option( 'aips_pending_topic_index_queue' );
 		parent::tearDown();
+
+		// clear_index() ends with TRUNCATE, which commits the open test transaction, so the
+		// clear lock it took would outlive the rollback and block later tests for its TTL.
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'aips\_lock\_%'" );
+		$wpdb->query( 'COMMIT' );
 	}
 
 	/**

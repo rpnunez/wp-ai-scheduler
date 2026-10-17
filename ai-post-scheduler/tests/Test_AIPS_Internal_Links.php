@@ -25,6 +25,12 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_internal_links' );
 		parent::tearDown();
+
+		// clear_index() ends with TRUNCATE, which commits the open test transaction, so the
+		// clear lock it took would outlive the rollback and block later tests for its TTL.
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'aips\_lock\_%'" );
+		$wpdb->query( 'COMMIT' );
 	}
 
 	// -------------------------------------------------------------------------
