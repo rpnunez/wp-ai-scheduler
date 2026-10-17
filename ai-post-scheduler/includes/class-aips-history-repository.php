@@ -325,30 +325,15 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     public function count_completed_for_schedule($schedule) {
         if (is_numeric($schedule)) {
             $schedule_id = absint($schedule);
-            if (!$schedule_id) {
-                return 0;
-            }
-
-            $schedule = $this->wpdb->get_row($this->wpdb->prepare(
-                "SELECT id, template_id FROM {$this->schedule_table} WHERE id = %d",
-                $schedule_id
-            ));
+        } elseif (is_object($schedule)) {
+            $schedule_id = !empty($schedule->schedule_id)
+                ? absint($schedule->schedule_id)
+                : (!empty($schedule->id) ? absint($schedule->id) : 0);
         } else {
-            if (!is_object($schedule) || empty($schedule->id)) {
-                return 0;
-            }
-
-            $schedule_id = absint($schedule->id);
-
-            if (empty($schedule->template_id)) {
-                $schedule = $this->wpdb->get_row($this->wpdb->prepare(
-                    "SELECT id, template_id FROM {$this->schedule_table} WHERE id = %d",
-                    $schedule_id
-                ));
-            }
+            $schedule_id = 0;
         }
 
-        if (!$schedule || empty($schedule_id)) {
+        if (!$schedule_id) {
             return 0;
         }
 
@@ -1852,6 +1837,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         // 2. Also count schedule lifecycle post events by h.schedule_id (covers legacy rows without generation rows).
+        $event_kind = self::kind_condition(AIPS_History_Record_Kind::EVENT, 'h');
         $log_args   = $ids;
         $log_args[] = AIPS_History_Type::ACTIVITY;
         $log_args[] = AIPS_History_Type::ERROR;
@@ -1862,6 +1848,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
              FROM {$this->table_name_log} hl
              INNER JOIN {$this->table_name} h ON hl.history_id = h.id
              WHERE h.schedule_id IN ({$id_placeholders})
+               AND {$event_kind}
                AND hl.history_type_id IN (%d, %d)
                AND hl.event_type IN ({$event_placeholders})
              GROUP BY h.schedule_id",
@@ -1912,6 +1899,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $where_parts[] = "h.id = %d";
             $args[]        = $fallback_history_id;
         }
+
+        $where_parts[] = "(hl.details IS NULL OR (hl.details NOT LIKE %s AND hl.details NOT LIKE %s))";
+        $args[]        = '%"log_subtype":"trigger_source"%';
+        $args[]        = '%"log_subtype":"trigger_method"%';
 
         if (!empty($type_filter)) {
             $type_filter  = array_values(array_map('intval', $type_filter));
@@ -2234,7 +2225,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
 
         if ($result !== false) {
-            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
+            $cache_ctx = !empty($update_data['schedule_id']) ? array('schedule_id' => (int) $update_data['schedule_id']) : array();
+            $this->invalidate_cache_domain( 'history', $cache_ctx, 'history_mutated' );
         }
 
         return $result !== false;
@@ -2630,19 +2622,19 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         // 2. Backfill from aips_history_log JSON details containing "schedule_id".
-        $last_id = 0;
+        $last_log_id = 0;
         do {
             $rows = $this->wpdb->get_results($this->wpdb->prepare(
-                "SELECT h.id AS history_id, hl.details
+                "SELECT hl.id AS log_id, h.id AS history_id, hl.details
                  FROM {$this->table_name} h
                  INNER JOIN {$this->table_name_log} hl ON hl.history_id = h.id
                  WHERE h.schedule_id IS NULL
                    AND hl.details LIKE %s
-                   AND h.id > %d
-                 ORDER BY h.id ASC
+                   AND hl.id > %d
+                 ORDER BY hl.id ASC
                  LIMIT %d",
                 '%"schedule_id":%',
-                $last_id,
+                $last_log_id,
                 $batch_size
             ));
 
@@ -2652,9 +2644,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
             $updates_by_schedule = array();
             foreach ($rows as $row) {
+                $log_id     = (int) $row->log_id;
                 $history_id = (int) $row->history_id;
-                if ($history_id > $last_id) {
-                    $last_id = $history_id;
+                if ($log_id > $last_log_id) {
+                    $last_log_id = $log_id;
                 }
 
                 $schedule_id = 0;

@@ -125,6 +125,7 @@ final class AIPS_History_Subject {
 			self::TYPE_TOPIC    => 'topic_id',
 			self::TYPE_AUTHOR   => 'author_id',
 			self::TYPE_TEMPLATE => 'template_id',
+			self::TYPE_SCHEDULE => 'schedule_id',
 			self::TYPE_CAMPAIGN => 'campaign_id',
 		);
 

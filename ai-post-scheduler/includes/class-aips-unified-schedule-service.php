@@ -523,11 +523,14 @@ class AIPS_Unified_Schedule_Service {
 		}
 
 		foreach ($raw as $schedule) {
-			$schedule_id = !empty($schedule->id) ? (int) $schedule->id : 0;
-			$stats  = isset($schedule_stats[$schedule_id]) ? (int) $schedule_stats[$schedule_id] : 0;
-			$status = !empty($schedule->is_active) ? 'active' : 'inactive';
-			if (isset($schedule->status) && in_array($schedule->status, array('failed', 'completed'), true)) {
-				$status = $schedule->status;
+			$schedule_id         = !empty($schedule->id) ? (int) $schedule->id : 0;
+			$schedule_history_id = !empty($schedule->schedule_history_id) ? absint($schedule->schedule_history_id) : 0;
+			$stats               = isset($schedule_stats[$schedule_id]) ? (int) $schedule_stats[$schedule_id] : 0;
+			$status              = !empty($schedule->is_active) ? 'active' : 'inactive';
+			if (isset($schedule->status) && $schedule->status === 'failed') {
+				$status = 'failed';
+			} elseif (empty($schedule->is_active) && isset($schedule->status) && $schedule->status === 'completed') {
+				$status = 'completed';
 			}
 
 			$title = !empty($schedule->title) ? $schedule->title

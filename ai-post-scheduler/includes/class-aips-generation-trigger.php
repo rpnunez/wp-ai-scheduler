@@ -49,7 +49,7 @@ class AIPS_Generation_Trigger {
 	 */
 	private static function automatic_methods() {
 		return array(
-			'scheduled', 'cron', 'bulk_batch_slice', 'template_schedule', 'schedule_execution', 'batch_job',
+			'scheduled', 'cron', 'bulk_batch_slice', 'template_schedule', 'schedule_execution', 'schedule_lifecycle', 'batch_job',
 			'author_topic_gen', 'author_post_gen',
 			'author_topic_generation', 'author_post_generation', 'author_embeddings',
 		);

@@ -707,6 +707,11 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			'record_kind'     => AIPS_History_Record_Kind::EVENT,
 		));
 		$this->test_history_ids[] = $c1->get_id();
+		AIPS_Generation_Trigger::record(
+			$c1,
+			array('schedule_id' => $this->test_schedule_id, 'schedule_name' => 'Test Schedule'),
+			AIPS_Generation_Trigger::METHOD_AUTOMATIC
+		);
 		$c1->record('activity', 'Run 1 started', array('event_type' => 'schedule_executed', 'event_status' => 'success'));
 		$c1->complete_success();
 
@@ -724,7 +729,8 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
 		);
 
-		// Run 1 activity + Run 2 activity + Run 2 error entry recorded by complete_failure().
+		// Run 1 activity + Run 2 activity + Run 2 error entry recorded by complete_failure()
+		// (trigger_source and trigger_method rows are excluded from schedule drawer logs).
 		$this->assertCount(3, $logs);
 		$messages = array_map(function ($row) {
 			$d = json_decode($row->details, true);
@@ -732,5 +738,21 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		}, $logs);
 		$this->assertContains('Run 1 started', $messages);
 		$this->assertContains('Run 2 failed', $messages);
+
+		// Meanwhile get_logs_by_history_id for c1 still includes the trigger metadata for the History modal.
+		$c1_logs = $this->repository->get_logs_by_history_id($c1->get_id());
+		$this->assertCount(3, $c1_logs);
+	}
+
+	public function test_count_completed_for_schedule_accepts_merged_schedule_object_and_history_subject_maps_schedule_id() {
+		$merged_schedule = (object) array(
+			'id'          => $this->test_template_id,
+			'schedule_id' => $this->test_schedule_id,
+			'template_id' => $this->test_template_id,
+		);
+		$this->assertSame(3, $this->repository->count_completed_for_schedule($merged_schedule));
+
+		$subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_SCHEDULE, $this->test_schedule_id, 'Test Schedule');
+		$this->assertSame('schedule_id', $subject->container_meta_key());
 	}
 }

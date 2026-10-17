@@ -360,10 +360,11 @@ class AIPS_Schedule_Result_Handler {
     /**
      * Create a per-run lifecycle history container for the schedule and attach its ID.
      *
-     * @param int $schedule_id Schedule ID.
+     * @param int         $schedule_id    Schedule ID.
+     * @param string|null $trigger_method Optional trigger method ('scheduled' or 'manual').
      * @return AIPS_History_Container|null Container instance or null on failure.
      */
-    public function get_or_create_schedule_history($schedule_id) {
+    public function get_or_create_schedule_history($schedule_id, $trigger_method = null) {
         $schedule = $this->repository->get_by_id($schedule_id);
 
         if (!$schedule) {
@@ -387,6 +388,30 @@ class AIPS_Schedule_Result_Handler {
         $container = $this->history_service->create('schedule_lifecycle', $metadata);
 
         if ($container && $container->get_id()) {
+            $resolved_method = $trigger_method !== null
+                ? (string) $trigger_method
+                : AIPS_Generation_Trigger::METHOD_AUTOMATIC;
+
+            $source = array(
+                'schedule_id' => (int) $schedule_id,
+            );
+            if (!empty($schedule->title)) {
+                $source['schedule_name'] = (string) $schedule->title;
+            } elseif (!empty($schedule->name)) {
+                $source['schedule_name'] = (string) $schedule->name;
+            }
+            if (!empty($schedule->frequency)) {
+                $source['frequency'] = (string) $schedule->frequency;
+            }
+            if (!empty($schedule->template_id)) {
+                $source['template_id'] = absint($schedule->template_id);
+            }
+            if (!empty($schedule->campaign_id)) {
+                $source['campaign_id'] = absint($schedule->campaign_id);
+            }
+
+            AIPS_Generation_Trigger::record($container, $source, $resolved_method);
+
             $this->repository->update($schedule_id, array(
                 'schedule_history_id' => $container->get_id(),
             ));
