@@ -161,6 +161,46 @@ class AIPS_Stress_Test_Ability_Cases {
 				'creates'     => true,
 				'needs_ai'    => false,
 			),
+			array(
+				'id'          => 'lock_and_takeover',
+				'label'       => __('Abilities: Run Locks', 'ai-post-scheduler'),
+				'description' => __('Checks the atomic lock used to keep two workers off the same workflow run: a second worker is refused, a stranger cannot refresh or release it, and an expired lock is taken over by exactly one new owner while the old owner loses. Uses its own lock key and takes about two seconds.', 'ai-post-scheduler'),
+				'group'       => self::GROUP,
+				'creates'     => false,
+				'needs_ai'    => false,
+			),
+			array(
+				'id'          => 'workflow_concurrency',
+				'label'       => __('Abilities: Workflow Concurrency', 'ai-post-scheduler'),
+				'description' => __('Queues ten runs of a temporary workflow and processes them while another worker holds one run lock. Checks the locked run is reported busy and its step does not run, then finishes once released, every run completes, and no run has a duplicate step run. Needs Ability Workflows to be enabled.', 'ai-post-scheduler'),
+				'group'       => self::GROUP,
+				'creates'     => true,
+				'needs_ai'    => false,
+			),
+			array(
+				'id'          => 'enrichment_queue',
+				'label'       => __('Abilities: Enrichment Queue', 'ai-post-scheduler'),
+				'description' => __('Creates five private posts with featured images, queues them, enriches each once with a fixture alt-text ability, and checks every post got alt text, left the queue, and the current user was restored. Only its own posts are touched, never posts waiting on the real queue. Delete Data removes the posts.', 'ai-post-scheduler'),
+				'group'       => self::GROUP,
+				'creates'     => true,
+				'needs_ai'    => false,
+			),
+			array(
+				'id'          => 'process_soak',
+				'label'       => __('Abilities: Workflow and Enrichment Soak', 'ai-post-scheduler'),
+				'description' => __('Runs 100 workflow runs and 50 post enrichments with fixture abilities, one after another through the executor and the enrichment service, and checks every run completed, every ability call is accounted for, nothing is left queued, and the user is restored. Reports throughput. Can take a minute. Needs Ability Workflows to be enabled. Delete Data removes the posts.', 'ai-post-scheduler'),
+				'group'       => self::GROUP,
+				'creates'     => true,
+				'needs_ai'    => false,
+			),
+			array(
+				'id'          => 'large_payload',
+				'label'       => __('Abilities: Large Payload', 'ai-post-scheduler'),
+				'description' => __('A step returns about 1 MB. Checks the stored output is shortened below the cap with the large value replaced by a marker and the small fields kept, and that the next step can still read a small field. Needs Ability Workflows to be enabled.', 'ai-post-scheduler'),
+				'group'       => self::GROUP,
+				'creates'     => true,
+				'needs_ai'    => false,
+			),
 		);
 	}
 
@@ -210,6 +250,21 @@ class AIPS_Stress_Test_Ability_Cases {
 				break;
 			case 'workflow_cancel':
 				$result = $this->case_workflow_cancel();
+				break;
+			case 'lock_and_takeover':
+				$result = $this->case_lock_and_takeover();
+				break;
+			case 'workflow_concurrency':
+				$result = $this->case_workflow_concurrency();
+				break;
+			case 'enrichment_queue':
+				$result = $this->case_enrichment_queue();
+				break;
+			case 'process_soak':
+				$result = $this->case_process_soak();
+				break;
+			case 'large_payload':
+				$result = $this->case_large_payload();
 				break;
 			default:
 				$result = $this->failed(__('Case is not implemented.', 'ai-post-scheduler'));
@@ -853,6 +908,631 @@ class AIPS_Stress_Test_Ability_Cases {
 	}
 
 	// -----------------------------------------------------------------------
+	// Slice C and D cases: locks, concurrency, enrichment, soak, large payload
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Lock contention, wrong-owner release, and takeover of an expired lock.
+	 *
+	 * Uses its own option-backed lock key, never a real run's.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function case_lock_and_takeover(): array {
+		$repository = $this->repository();
+		$key        = 'aips_stress_lock_' . wp_generate_uuid4();
+		$tokens     = array('a' => wp_generate_uuid4(), 'b' => wp_generate_uuid4(), 'c' => wp_generate_uuid4());
+		$problems   = array();
+		$checks     = array();
+
+		try {
+			$checks['first_acquire']          = $repository->acquire_lock($key, $tokens['a'], 60);
+			$checks['second_acquire_blocked'] = !$repository->acquire_lock($key, $tokens['b'], 60);
+			$checks['owner_refresh']          = $repository->refresh_lock($key, $tokens['a'], 60);
+			$checks['stranger_refresh_fails'] = !$repository->refresh_lock($key, $tokens['b'], 60);
+
+			$repository->release_lock($key, $tokens['b']);
+			$checks['stranger_release_ignored'] = !$repository->acquire_lock($key, $tokens['c'], 60);
+
+			$repository->release_lock($key, $tokens['a']);
+			$checks['acquire_after_release'] = $repository->acquire_lock($key, $tokens['c'], 1);
+
+			// Let the one-second lock expire, then another worker takes it over.
+			usleep(2200000);
+			$checks['expired_takeover']        = $repository->acquire_lock($key, $tokens['b'], 60);
+			$checks['previous_owner_loses_cas'] = !$repository->refresh_lock($key, $tokens['c'], 60);
+			$checks['new_owner_refresh']        = $repository->refresh_lock($key, $tokens['b'], 60);
+		} catch (Throwable $e) {
+			$problems[] = $e->getMessage();
+		} finally {
+			foreach ($tokens as $token) {
+				$repository->release_lock($key, $token);
+			}
+			delete_option($key);
+		}
+
+		foreach ($checks as $name => $ok) {
+			if (!$ok) {
+				/* translators: %s: name of the lock check that failed */
+				$problems[] = sprintf(__('Lock check "%s" failed.', 'ai-post-scheduler'), $name);
+			}
+		}
+
+		if (!empty($problems)) {
+			return $this->failed_with($problems, $checks);
+		}
+
+		return array(
+			'status'       => 'passed',
+			'summary'      => sprintf(
+				/* translators: %d: number of lock checks */
+				__('All %d lock checks gave exactly one winner as designed.', 'ai-post-scheduler'),
+				count($checks)
+			),
+			'ai_value'     => null,
+			'plugin_value' => $checks,
+		);
+	}
+
+	/**
+	 * Ten queued runs with a second worker holding one run's lock.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function case_workflow_concurrency(): array {
+		$skip = $this->workflow_skip();
+		if (null !== $skip) {
+			return $skip;
+		}
+
+		$calls     = 0;
+		$abilities = array(
+			'aips-stress/noop' => function () use (&$calls) {
+				$calls++;
+
+				return array('ok' => true);
+			},
+		);
+
+		return $this->with_workflow('workflow_concurrency', $abilities, array(
+			array('step_key' => 'only', 'ability_name' => 'aips-stress/noop'),
+		), function (AIPS_Ability_Workflow_Executor $executor, int $workflow_id) use (&$calls): array {
+			$repository = $this->repository();
+			$total      = 10;
+			$run_ids    = array();
+
+			for ($i = 0; $i < $total; $i++) {
+				$run_id = $executor->dispatch_run($workflow_id, array('type' => 'stress_test', 'n' => $i));
+
+				if (is_wp_error($run_id)) {
+					return $this->failed($run_id->get_error_message());
+				}
+
+				$run_ids[] = (int) $run_id;
+			}
+
+			$held_run = $run_ids[2];
+			$key      = $executor->get_run_lock_key($held_run);
+			$token    = wp_generate_uuid4();
+			$problems = array();
+			$started  = microtime(true);
+			$states   = array();
+
+			if (!$repository->acquire_lock($key, $token, 120)) {
+				return $this->failed(__('Could not place the second worker lock.', 'ai-post-scheduler'));
+			}
+
+			try {
+				foreach ($run_ids as $run_id) {
+					$outcome          = $executor->process_run($run_id);
+					$states[$run_id] = $outcome['state'];
+				}
+			} finally {
+				$repository->release_lock($key, $token);
+			}
+
+			if ('busy' !== ($states[$held_run] ?? '')) {
+				$problems[] = __('The run held by another worker was not reported busy.', 'ai-post-scheduler');
+			}
+
+			if ($total - 1 !== $calls) {
+				$problems[] = sprintf(
+					/* translators: 1: expected calls, 2: actual calls */
+					__('Expected %1$d step calls while one run was locked, saw %2$d.', 'ai-post-scheduler'),
+					$total - 1,
+					$calls
+				);
+			}
+
+			$after = $executor->process_run($held_run);
+
+			if ('finished' !== $after['state']) {
+				$problems[] = __('The previously busy run did not finish after the lock was released.', 'ai-post-scheduler');
+			}
+
+			$completed = 0;
+			$duplicate = 0;
+
+			foreach ($run_ids as $run_id) {
+				$run = $repository->get_run($run_id);
+
+				if ($run && 'completed' === $run->status) {
+					$completed++;
+				}
+
+				if (count($repository->get_step_runs($run_id)) !== 1) {
+					$duplicate++;
+				}
+			}
+
+			if ($total !== $completed) {
+				$problems[] = sprintf(
+					/* translators: 1: completed runs, 2: total runs */
+					__('%1$d of %2$d runs completed.', 'ai-post-scheduler'),
+					$completed,
+					$total
+				);
+			}
+
+			if ($duplicate > 0) {
+				$problems[] = __('A run has a duplicate or missing step run.', 'ai-post-scheduler');
+			}
+
+			$seconds = max(0.001, microtime(true) - $started);
+			$metrics = array(
+				'runs'            => $total,
+				'completed'       => $completed,
+				'step_calls'      => $calls,
+				'busy_run'        => $held_run,
+				'runs_per_second' => round($total / $seconds, 1),
+			);
+
+			if (!empty($problems)) {
+				return $this->failed_with($problems, $metrics);
+			}
+
+			return array(
+				'status'       => 'passed',
+				'summary'      => sprintf(
+					/* translators: 1: runs, 2: runs per second */
+					__('%1$d runs completed (%2$s runs/s); the run held by another worker was reported busy, then finished once released; no duplicate step runs.', 'ai-post-scheduler'),
+					$total,
+					number_format_i18n($metrics['runs_per_second'], 1)
+				),
+				'ai_value'     => null,
+				'plugin_value' => $metrics,
+			);
+		});
+	}
+
+	/**
+	 * Five private posts through the enrichment queue and service with a fixture alt-text ability.
+	 *
+	 * The case never drives the real queue: it enriches only the posts it made, so
+	 * generated posts waiting on the site are not touched.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function case_enrichment_queue(): array {
+		return $this->with_fixture_provider(
+			array(AIPS_Ability_Enrichment_Service::ALT_TEXT_ABILITY => function () {
+				return array('alt_text' => 'Stress test alt text');
+			}),
+			function (AIPS_Ability_Service $abilities): array {
+				$user_id = get_current_user_id();
+				$count   = 5;
+				$posts   = $this->make_enrichment_posts($count);
+				$queue   = new AIPS_Ability_Enrichment_Queue_Repository();
+				$service = new AIPS_Ability_Enrichment_Service($abilities, new AIPS_Ability_Catalog_Service($abilities));
+				$started = microtime(true);
+				$problems = array();
+				$applied  = 0;
+
+				foreach ($posts as $post_id => $attachment_id) {
+					$queue->enqueue($post_id, $user_id);
+				}
+
+				foreach ($posts as $post_id => $attachment_id) {
+					$outcomes = $service->enrich_post($post_id, $user_id);
+					$queue->dequeue($post_id);
+
+					if (isset($outcomes['alt_text']) && 'applied' === $outcomes['alt_text']) {
+						$applied++;
+					}
+
+					if ('Stress test alt text' !== get_post_meta($attachment_id, '_wp_attachment_image_alt', true)) {
+						/* translators: %d: post ID */
+						$problems[] = sprintf(__('Post %d did not get its alt text.', 'ai-post-scheduler'), $post_id);
+					}
+
+					if ('' !== (string) get_post_meta($post_id, AIPS_Ability_Enrichment_Queue_Repository::META_KEY, true)) {
+						/* translators: %d: post ID */
+						$problems[] = sprintf(__('Post %d is still queued.', 'ai-post-scheduler'), $post_id);
+					}
+				}
+
+				if (get_current_user_id() !== $user_id) {
+					$problems[] = __('The current user was not restored after enrichment.', 'ai-post-scheduler');
+				}
+
+				$metrics = array(
+					'posts'       => $count,
+					'applied'     => $applied,
+					'duration_ms' => round((microtime(true) - $started) * 1000, 1),
+				);
+
+				if ($applied !== $count) {
+					$problems[] = sprintf(
+						/* translators: 1: posts that got alt text, 2: posts */
+						__('Only %1$d of %2$d posts were enriched.', 'ai-post-scheduler'),
+						$applied,
+						$count
+					);
+				}
+
+				if (!empty($problems)) {
+					return $this->failed_with($problems, $metrics);
+				}
+
+				return array(
+					'status'       => 'passed',
+					'summary'      => sprintf(
+						/* translators: %d: number of posts */
+						__('%d private posts were queued, enriched once each and left the queue; the current user was restored. Delete Data removes the posts.', 'ai-post-scheduler'),
+						$count
+					),
+					'ai_value'     => null,
+					'plugin_value' => $metrics,
+				);
+			}
+		);
+	}
+
+	/**
+	 * 100 workflow runs and 50 post enrichments with fixture abilities, end to end.
+	 *
+	 * Drives the executor and enrichment service directly (not the managed
+	 * background processes, which also advance real queued work on the site).
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function case_process_soak(): array {
+		$skip = $this->workflow_skip();
+		if (null !== $skip) {
+			return $skip;
+		}
+
+		$workflow_calls = 0;
+		$alt_calls      = 0;
+		$abilities      = array(
+			'aips-stress/noop'                                  => function () use (&$workflow_calls) {
+				$workflow_calls++;
+
+				return array('ok' => true);
+			},
+			AIPS_Ability_Enrichment_Service::ALT_TEXT_ABILITY => function () use (&$alt_calls) {
+				$alt_calls++;
+
+				return array('alt_text' => 'Stress soak alt text');
+			},
+		);
+
+		return $this->with_workflow('process_soak', $abilities, array(
+			array('step_key' => 'only', 'ability_name' => 'aips-stress/noop'),
+		), function (AIPS_Ability_Workflow_Executor $executor, int $workflow_id, AIPS_Ability_Service $fixture_abilities) use (&$workflow_calls, &$alt_calls): array {
+			$run_total  = 100;
+			$post_total = 50;
+			$budget     = 100; // seconds
+			$started    = microtime(true);
+			$repository = $this->repository();
+			$user_id    = get_current_user_id();
+			$problems   = array();
+			$run_ids    = array();
+
+			for ($i = 0; $i < $run_total; $i++) {
+				$run_id = $executor->dispatch_run($workflow_id, array('type' => 'stress_test', 'n' => $i));
+
+				if (is_wp_error($run_id)) {
+					return $this->failed($run_id->get_error_message());
+				}
+
+				$run_ids[] = (int) $run_id;
+			}
+
+			$slices = 0;
+			foreach ($run_ids as $run_id) {
+				if (microtime(true) - $started > $budget) {
+					$problems[] = __('The soak ran out of time before every run finished.', 'ai-post-scheduler');
+					break;
+				}
+
+				$slices += $this->drive($executor, $run_id)['slices'];
+			}
+
+			$run_seconds = microtime(true) - $started;
+			$completed   = 0;
+
+			foreach ($run_ids as $run_id) {
+				$run = $repository->get_run($run_id);
+
+				if ($run && 'completed' === $run->status) {
+					$completed++;
+				}
+			}
+
+			$posts   = $this->make_enrichment_posts($post_total);
+			$queue   = new AIPS_Ability_Enrichment_Queue_Repository();
+			$service = new AIPS_Ability_Enrichment_Service($fixture_abilities, new AIPS_Ability_Catalog_Service($fixture_abilities));
+			$applied = 0;
+
+			foreach ($posts as $post_id => $attachment_id) {
+				$queue->enqueue($post_id, $user_id);
+			}
+
+			foreach ($posts as $post_id => $attachment_id) {
+				if (microtime(true) - $started > $budget) {
+					$problems[] = __('The soak ran out of time before every post was enriched.', 'ai-post-scheduler');
+					break;
+				}
+
+				$outcomes = $service->enrich_post($post_id, $user_id);
+				$queue->dequeue($post_id);
+
+				if (isset($outcomes['alt_text']) && 'applied' === $outcomes['alt_text']) {
+					$applied++;
+				}
+			}
+
+			$queued_left = 0;
+			foreach (array_keys($posts) as $post_id) {
+				if ('' !== (string) get_post_meta($post_id, AIPS_Ability_Enrichment_Queue_Repository::META_KEY, true)) {
+					$queued_left++;
+				}
+			}
+
+			if ($completed !== $run_total) {
+				$problems[] = sprintf(
+					/* translators: 1: completed runs, 2: total runs */
+					__('%1$d of %2$d runs completed.', 'ai-post-scheduler'),
+					$completed,
+					$run_total
+				);
+			}
+
+			if ($run_total !== $workflow_calls) {
+				$problems[] = sprintf(
+					/* translators: 1: expected calls, 2: actual calls */
+					__('Expected %1$d workflow step calls, saw %2$d.', 'ai-post-scheduler'),
+					$run_total,
+					$workflow_calls
+				);
+			}
+
+			if ($applied !== $post_total || $alt_calls !== $post_total) {
+				$problems[] = sprintf(
+					/* translators: 1: enriched posts, 2: ability calls, 3: posts */
+					__('%1$d posts were enriched with %2$d ability calls; expected %3$d of each.', 'ai-post-scheduler'),
+					$applied,
+					$alt_calls,
+					$post_total
+				);
+			}
+
+			if ($queued_left > 0) {
+				$problems[] = sprintf(
+					/* translators: %d: number of posts */
+					__('%d posts are still queued.', 'ai-post-scheduler'),
+					$queued_left
+				);
+			}
+
+			if (get_current_user_id() !== $user_id) {
+				$problems[] = __('The current user was not restored.', 'ai-post-scheduler');
+			}
+
+			$total_seconds = max(0.001, microtime(true) - $started);
+			$metrics       = array(
+				'runs'                 => $run_total,
+				'runs_completed'       => $completed,
+				'run_slices'           => $slices,
+				'runs_per_second'      => round($run_total / max(0.001, $run_seconds), 1),
+				'posts'                => $post_total,
+				'posts_enriched'       => $applied,
+				'workflow_step_calls'  => $workflow_calls,
+				'alt_text_calls'       => $alt_calls,
+				'duration_seconds'     => round($total_seconds, 2),
+			);
+
+			if (!empty($problems)) {
+				return $this->failed_with($problems, $metrics);
+			}
+
+			return array(
+				'status'       => 'passed',
+				'summary'      => sprintf(
+					/* translators: 1: runs, 2: posts, 3: seconds */
+					__('%1$d workflow runs and %2$d post enrichments finished in %3$s s with every call accounted for and nothing left queued. Delete Data removes the posts.', 'ai-post-scheduler'),
+					$run_total,
+					$post_total,
+					number_format_i18n($total_seconds, 1)
+				),
+				'ai_value'     => null,
+				'plugin_value' => $metrics,
+			);
+		});
+	}
+
+	/**
+	 * A step returning about 1 MB: stored shortened, while later steps still read what they need.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function case_large_payload(): array {
+		$skip = $this->workflow_skip();
+		if (null !== $skip) {
+			return $skip;
+		}
+
+		$abilities = array(
+			'aips-stress/big'  => function () {
+				return array('title' => 'Small field', 'items' => range(1, 150000));
+			},
+			'aips-stress/echo' => function ($payload) {
+				return array('received' => $payload);
+			},
+		);
+
+		return $this->with_workflow('large_payload', $abilities, array(
+			array('step_key' => 'big', 'ability_name' => 'aips-stress/big'),
+			array(
+				'step_key'     => 'after',
+				'ability_name' => 'aips-stress/echo',
+				'depends_on'   => array('big'),
+				'input_map'    => array('title' => '{{steps.big.output.title}}'),
+			),
+		), function (AIPS_Ability_Workflow_Executor $executor, int $workflow_id): array {
+			$run_id = $executor->dispatch_run($workflow_id, array('type' => 'stress_test'));
+
+			if (is_wp_error($run_id)) {
+				return $this->failed($run_id->get_error_message());
+			}
+
+			$run_id   = (int) $run_id;
+			$drive    = $this->drive($executor, $run_id);
+			$run      = $this->repository()->get_run($run_id);
+			$steps    = $this->step_runs_by_key($run_id);
+			$stored   = isset($steps['big']) && is_array($steps['big']->output_snapshot) ? $steps['big']->output_snapshot : array();
+			$received = isset($steps['after']) && is_array($steps['after']->output_snapshot) ? ($steps['after']->output_snapshot['received'] ?? array()) : array();
+			$bytes    = strlen((string) wp_json_encode($stored));
+			$problems = array();
+
+			if ('finished' !== $drive['state'] || !$run || 'completed' !== $run->status) {
+				$problems[] = __('The run did not complete.', 'ai-post-scheduler');
+			}
+
+			if ($bytes > AIPS_Ability_Workflow_Repository::SNAPSHOT_MAX_BYTES) {
+				$problems[] = sprintf(
+					/* translators: %d: stored size in bytes */
+					__('The stored output is %d bytes, above the cap.', 'ai-post-scheduler'),
+					$bytes
+				);
+			}
+
+			if (empty($stored['items']['_truncated']) || !in_array('items', (array) ($stored['_truncated'] ?? array()), true)) {
+				$problems[] = __('The large value was not replaced by a truncation marker.', 'ai-post-scheduler');
+			}
+
+			if (($stored['title'] ?? '') !== 'Small field') {
+				$problems[] = __('A small field was lost when the output was shortened.', 'ai-post-scheduler');
+			}
+
+			if (($received['title'] ?? '') !== 'Small field') {
+				$problems[] = __('The next step could not read the small field.', 'ai-post-scheduler');
+			}
+
+			$metrics = array(
+				'run_status'     => $run ? $run->status : null,
+				'stored_bytes'   => $bytes,
+				'cap_bytes'      => AIPS_Ability_Workflow_Repository::SNAPSHOT_MAX_BYTES,
+				'truncated_keys' => $stored['_truncated'] ?? array(),
+			);
+
+			if (!empty($problems)) {
+				return $this->failed_with($problems, $metrics);
+			}
+
+			return array(
+				'status'       => 'passed',
+				'summary'      => sprintf(
+					/* translators: 1: stored bytes, 2: cap in bytes */
+					__('A step output of about 1 MB was stored as %1$d bytes (cap %2$d) with the large value replaced by a marker, and the next step still read the small field.', 'ai-post-scheduler'),
+					$bytes,
+					AIPS_Ability_Workflow_Repository::SNAPSHOT_MAX_BYTES
+				),
+				'ai_value'     => null,
+				'plugin_value' => $metrics,
+			);
+		});
+	}
+
+	/**
+	 * Run a callback with fixture abilities (no workflow involved).
+	 *
+	 * @param array    $abilities Fixture slug => callable(payload).
+	 * @param callable $body      function (AIPS_Ability_Service $abilities): array
+	 * @return array<string,mixed>
+	 */
+	private function with_fixture_provider(array $abilities, callable $body): array {
+		$provider = function () use ($abilities) {
+			return array(
+				'name'   => 'aips-stress-fixture',
+				'list'   => function () use ($abilities) {
+					$list = array();
+
+					foreach (array_keys($abilities) as $slug) {
+						$list[$slug] = array('slug' => $slug, 'annotations' => array('readonly' => true));
+					}
+
+					return $list;
+				},
+				'invoke' => function ($slug, $payload) use ($abilities) {
+					return call_user_func($abilities[$slug], $payload);
+				},
+			);
+		};
+
+		add_filter('aips_ability_provider', $provider, 999);
+
+		try {
+			return $body(new AIPS_Ability_Service());
+		} catch (Throwable $e) {
+			return $this->failed($e->getMessage());
+		} finally {
+			remove_filter('aips_ability_provider', $provider, 999);
+		}
+	}
+
+	/**
+	 * Create private, marked posts that each have a featured image without alt text.
+	 *
+	 * Posts and image attachments carry the Stress Test markers, so Delete Data removes them.
+	 *
+	 * @param int $count How many posts.
+	 * @return array<int,int> Post ID => attachment ID.
+	 */
+	private function make_enrichment_posts(int $count): array {
+		$posts = array();
+
+		for ($i = 1; $i <= $count; $i++) {
+			$post_id = wp_insert_post(array(
+				'post_title'  => 'Stress enrichment post ' . $i,
+				'post_status' => 'private',
+				'post_type'   => 'post',
+			));
+
+			if (!$post_id || is_wp_error($post_id)) {
+				continue;
+			}
+
+			update_post_meta($post_id, AIPS_Stress_Test_Service::TEST_POST_META, 1);
+
+			$attachment_id = wp_insert_attachment(array(
+				'post_mime_type' => 'image/png',
+				'post_title'     => 'Stress image ' . $i,
+				'post_status'    => 'inherit',
+			), '', $post_id);
+
+			if ($attachment_id && !is_wp_error($attachment_id)) {
+				update_post_meta($attachment_id, AIPS_Stress_Test_Service::TEST_ATTACHMENT_META, 1);
+				update_post_meta($post_id, '_thumbnail_id', $attachment_id);
+				$posts[(int) $post_id] = (int) $attachment_id;
+			}
+		}
+
+		return $posts;
+	}
+
+	// -----------------------------------------------------------------------
 	// Workflow case support
 	// -----------------------------------------------------------------------
 
@@ -934,7 +1614,7 @@ class AIPS_Stress_Test_Ability_Cases {
 				return $this->failed($saved->get_error_message());
 			}
 
-			return $body($executor, (int) $workflow_id);
+			return $body($executor, (int) $workflow_id, $fixture_abilities);
 		} catch (Throwable $e) {
 			return $this->failed($e->getMessage());
 		} finally {

@@ -438,6 +438,33 @@ WordPress ability still performs its own input-specific permission check.
 
 ---
 
+### `aips_ability_enrichment_demote_flagged`
+
+Filters whether a published or scheduled post flagged by a quality-gate enrichment step (Yoast SEO or readability score below its setting) is moved back to draft so it appears in Pending Review. Drafts and pending posts are already in review. Nothing is regenerated.
+
+*   **Type:** `filter`
+*   **Default:** `false`
+*   **Arguments:**
+    *   `bool $demote` Whether to move the post back to draft.
+    *   `int $post_id` Post ID.
+    *   `string $kind` `seo` or `readability`.
+    *   `int $score` Recorded score.
+
+---
+
+### `aips_ability_enrichment_post_flagged`
+
+Fires after a quality-gate step flags a post that scored below its threshold. The post meta `_aips_quality_flag` (`kind`, `score`, `threshold`) is already set.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `int $post_id` Post ID.
+    *   `string $kind` `seo` or `readability`.
+    *   `int $score` Recorded score.
+    *   `int $threshold` Configured minimum.
+
+---
+
 ### `aips_ability_workflow_stale_after`
 
 Filters how long (seconds) an open Ability Workflow run may show no activity (creation, start or step activity) before the daily cleanup fails it and closes its History row. Runs a worker currently holds are left alone, and the sweep is skipped while the `ability_workflows` process is paused.

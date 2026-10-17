@@ -535,7 +535,7 @@ class AIPS_Ability_Workflow_Executor {
 	 * @param int $run_id Workflow run ID.
 	 * @return string
 	 */
-	private function run_lock_key( int $run_id ): string {
+	public function get_run_lock_key( int $run_id ): string {
 		return 'aips_ability_workflow_lock_' . $run_id;
 	}
 
@@ -552,7 +552,7 @@ class AIPS_Ability_Workflow_Executor {
 	private function acquire_run_lock( int $run_id ): bool {
 		$token = wp_generate_uuid4();
 
-		if ( ! $this->repository->acquire_lock( $this->run_lock_key( $run_id ), $token, self::RUN_LOCK_TTL_SECONDS ) ) {
+		if ( ! $this->repository->acquire_lock( $this->get_run_lock_key( $run_id ), $token, self::RUN_LOCK_TTL_SECONDS ) ) {
 			return false;
 		}
 
@@ -570,7 +570,7 @@ class AIPS_Ability_Workflow_Executor {
 	 */
 	private function refresh_run_lock( int $run_id ): bool {
 		return isset( $this->run_locks[ $run_id ] )
-			&& $this->repository->refresh_lock( $this->run_lock_key( $run_id ), $this->run_locks[ $run_id ], self::RUN_LOCK_TTL_SECONDS );
+			&& $this->repository->refresh_lock( $this->get_run_lock_key( $run_id ), $this->run_locks[ $run_id ], self::RUN_LOCK_TTL_SECONDS );
 	}
 
 	/**
@@ -581,7 +581,7 @@ class AIPS_Ability_Workflow_Executor {
 	 */
 	private function release_run_lock( int $run_id ): void {
 		if ( isset( $this->run_locks[ $run_id ] ) ) {
-			$this->repository->release_lock( $this->run_lock_key( $run_id ), $this->run_locks[ $run_id ] );
+			$this->repository->release_lock( $this->get_run_lock_key( $run_id ), $this->run_locks[ $run_id ] );
 		}
 
 		unset( $this->run_locks[ $run_id ] );

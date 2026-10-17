@@ -27,6 +27,9 @@ class Test_AIPS_Ability_Strings_Localized extends WP_UnitTestCase {
 	const ALLOWED_FRAGMENTS = array(
 		'Repairing a flat bicycle tyre',
 		'Simulated transient failure.',
+		'Stress test alt text',
+		'Stress soak alt text',
+		'Stress enrichment post',
 	);
 
 	/**

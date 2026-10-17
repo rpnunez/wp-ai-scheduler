@@ -114,13 +114,13 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 		$definitions = $this->cases()->get_definitions();
 
 		$this->assertSame(
-			array( 'ability_discovery', 'ability_invoke_core', 'ability_invoke_ai', 'ability_destructive_gate', 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel' ),
+			array( 'ability_discovery', 'ability_invoke_core', 'ability_invoke_ai', 'ability_destructive_gate', 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel', 'lock_and_takeover', 'workflow_concurrency', 'enrichment_queue', 'process_soak', 'large_payload' ),
 			wp_list_pluck( $definitions, 'id' )
 		);
 
 		foreach ( $definitions as $definition ) {
 			$this->assertSame( 'abilities', $definition['group'] );
-			$this->assertSame( 0 === strpos( $definition['id'], 'workflow_' ), $definition['creates'], $definition['id'] );
+			$this->assertSame( in_array( $definition['id'], array( 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel', 'workflow_concurrency', 'enrichment_queue', 'process_soak', 'large_payload' ), true ), $definition['creates'], $definition['id'] );
 			$this->assertFalse( $definition['needs_ai'], $definition['id'] );
 			$this->assertNotSame( '', $definition['label'] );
 			$this->assertNotSame( '', $definition['description'] );
@@ -419,7 +419,7 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 0 );
 		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
 
-		foreach ( array( 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel' ) as $case_id ) {
+		foreach ( array( 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel', 'workflow_concurrency', 'process_soak', 'large_payload' ) as $case_id ) {
 			$result = $this->cases()->run( $case_id );
 
 			$this->assertSame( 'passed', $result['status'], $case_id );
@@ -471,6 +471,88 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 	}
 
 	// ---------------------------------------------------------------------
+	// Slice C and D cases (written without being run in the authoring session)
+	// ---------------------------------------------------------------------
+
+	public function test_the_lock_case_has_exactly_one_winner_in_each_scenario() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		$result = $this->cases()->run( 'lock_and_takeover' );
+
+		$this->assertSame( 'passed', $result['status'], (string) ( $result['error'] ?? '' ) );
+		$this->assertContains( true, $result['plugin_value'] );
+		$this->assertNotContains( false, $result['plugin_value'] );
+		$this->assertSame( 0, $result['ability_calls'] );
+	}
+
+	public function test_the_concurrency_case_reports_the_locked_run_busy_then_finishes_everything() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		$result = $this->cases()->run( 'workflow_concurrency' );
+
+		$this->assertSame( 'passed', $result['status'], (string) ( $result['error'] ?? '' ) );
+		$this->assertSame( 10, $result['plugin_value']['completed'] );
+		$this->assertSame( 10, $result['plugin_value']['step_calls'] );
+		$this->assertSame( 10, $result['ability_calls'] );
+		$this->assert_nothing_left_behind( $result );
+	}
+
+	public function test_the_enrichment_case_enriches_only_its_own_posts_and_marks_them_for_cleanup() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+		$real_post = self::factory()->post->create();
+		( new AIPS_Ability_Enrichment_Queue_Repository() )->enqueue( $real_post, 0 );
+
+		$result = $this->cases()->run( 'enrichment_queue' );
+
+		$this->assertSame( 'passed', $result['status'], (string) ( $result['error'] ?? '' ) );
+		$this->assertSame( 5, $result['plugin_value']['applied'] );
+		$this->assertSame( 5, $result['ability_calls'] );
+		$this->assertNotSame( '', (string) get_post_meta( $real_post, AIPS_Ability_Enrichment_Queue_Repository::META_KEY, true ), 'A post waiting on the real queue is untouched.' );
+		$this->assertFalse( $this->provider_filter_left_behind() );
+
+		$service = $this->service();
+		$this->assertGreaterThanOrEqual( 5, $service->count_test_data()['posts'] );
+		$service->cleanup_test_data();
+		$this->assertSame( 0, $service->count_test_data()['posts'] );
+		$this->assertSame( 0, $service->count_test_data()['attachments'] );
+	}
+
+	public function test_the_soak_case_accounts_for_every_call() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		$result = $this->cases()->run( 'process_soak' );
+
+		$this->assertSame( 'passed', $result['status'], (string) ( $result['error'] ?? '' ) );
+		$this->assertSame( 100, $result['plugin_value']['runs_completed'] );
+		$this->assertSame( 50, $result['plugin_value']['posts_enriched'] );
+		$this->assertSame( 150, $result['ability_calls'] );
+		$this->assert_nothing_left_behind( $result );
+		$this->service()->cleanup_test_data();
+	}
+
+	public function test_the_large_payload_case_stores_a_marker_and_the_next_step_still_reads_the_small_field() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		$result = $this->cases()->run( 'large_payload' );
+
+		$this->assertSame( 'passed', $result['status'], (string) ( $result['error'] ?? '' ) );
+		$this->assertLessThanOrEqual( AIPS_Ability_Workflow_Repository::SNAPSHOT_MAX_BYTES, $result['plugin_value']['stored_bytes'] );
+		$this->assertContains( 'items', $result['plugin_value']['truncated_keys'] );
+		$this->assert_nothing_left_behind( $result );
+	}
+
+	public function test_the_new_workflow_cases_are_skipped_when_workflows_are_disabled() {
+		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 0 );
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		foreach ( array( 'workflow_concurrency', 'process_soak', 'large_payload' ) as $case_id ) {
+			$result = $this->cases()->run( $case_id );
+
+			$this->assertStringContainsString( 'Skipped', $result['summary'], $case_id );
+		}
+	}
+
+	// ---------------------------------------------------------------------
 	// Integration with the stress test service
 	// ---------------------------------------------------------------------
 
@@ -484,7 +566,7 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 
 		$ids = wp_list_pluck( $service->get_cases(), 'id' );
 
-		foreach ( array( 'ability_discovery', 'ability_invoke_core', 'ability_invoke_ai', 'ability_destructive_gate', 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel' ) as $id ) {
+		foreach ( array( 'ability_discovery', 'ability_invoke_core', 'ability_invoke_ai', 'ability_destructive_gate', 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel', 'lock_and_takeover', 'workflow_concurrency', 'enrichment_queue', 'process_soak', 'large_payload' ) as $id ) {
 			$this->assertContains( $id, $ids );
 			$this->assertTrue( $service->has_case( $id ) );
 		}
