@@ -338,19 +338,19 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 		$result = $this->cases()->run( 'ability_destructive_gate' );
 
 		$this->assertSame( 'passed', $result['status'] );
-		$this->assertCount( 8, $result['plugin_value'] );
+		$this->assertCount( 12, $result['plugin_value'] );
 		$this->assertSame( 0, $result['ability_calls'], 'The gate case invokes nothing.' );
 		$this->assertCount( 0, $this->calls );
 
 		$blocked = array();
 		foreach ( $result['plugin_value'] as $row ) {
 			if ( $row['blocked'] ) {
-				$blocked[] = $row['ability'] . ( $row['allow_destructive_abilities'] ? '+allowed' : '' );
+				$blocked[] = $row['ability'] . ( 'none' === $row['setting'] ? '' : '+' . $row['setting'] );
 				$this->assertSame( 'ability_workflow_destructive_forbidden', $row['error_code'] );
 			}
 		}
 		sort( $blocked );
-		$this->assertSame( array( 'destructive', 'unannotated' ), $blocked, 'Only unannotated and destructive stand-ins are blocked, and only without approval.' );
+		$this->assertSame( array( 'destructive', 'destructive+approved', 'unannotated' ), $blocked, 'Unannotated stand-ins are blocked until allowed or approved; a destructive one is blocked unless destructive abilities are allowed, whatever the approved list says.' );
 	}
 
 	// ---------------------------------------------------------------------

@@ -126,6 +126,7 @@ class Test_AIPS_Ability_Workflows_Controller extends WP_UnitTestCase {
 				'max_steps'                   => 100,
 				'max_runtime_seconds'         => 1,
 				'allow_destructive_abilities' => true,
+				'approved_abilities'          => array(),
 			),
 			$workflow->settings
 		);
@@ -239,5 +240,73 @@ class Test_AIPS_Ability_Workflows_Controller extends WP_UnitTestCase {
 		$steps_after = $this->repository->get_steps( $this->workflow_id );
 		$this->assertCount( 1, $steps_after, 'The previously-saved step must survive a malformed-JSON save attempt.' );
 		$this->assertSame( 'seed_step', $steps_after[0]->step_key );
+	}
+
+	private function register_two_abilities() {
+		add_filter( 'aips_ability_provider', function () {
+			return array(
+				'name'   => 'test-provider',
+				'list'   => function () {
+					return array(
+						'vendor/one' => array( 'slug' => 'vendor/one' ),
+						'vendor/two' => array( 'slug' => 'vendor/two' ),
+					);
+				},
+				'invoke' => function () {
+					return array( 'ok' => true );
+				},
+			);
+		} );
+	}
+
+	private function save_steps_with_approval( array $step_abilities, $approved ) {
+		$steps = array();
+		foreach ( $step_abilities as $key => $ability ) {
+			$steps[] = array( 'step_key' => $key, 'ability_name' => $ability );
+		}
+
+		$_POST = array(
+			'nonce'              => wp_create_nonce( 'aips_ajax_nonce' ),
+			'workflow_id'        => $this->workflow_id,
+			'steps'              => wp_json_encode( $steps ),
+			'approved_abilities' => is_string( $approved ) ? $approved : wp_json_encode( $approved ),
+		);
+
+		return $this->capture_ajax( array( new AIPS_Ability_Workflows_Controller(), 'ajax_save_workflow_steps' ) );
+	}
+
+	public function test_saving_steps_stores_approved_abilities_that_the_steps_use() {
+		$this->register_two_abilities();
+
+		$response = $this->save_steps_with_approval( array( 'a' => 'vendor/one' ), array( 'vendor/one', 'vendor/two', 'vendor/one', 'Bad Name!', 5 ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertSame( array( 'vendor/one' ), $response['data']['approved_abilities'], 'Duplicates, unused and malformed names are dropped.' );
+		$this->assertSame( array( 'vendor/one' ), $this->repository->get_workflow( $this->workflow_id )->settings['approved_abilities'] );
+	}
+
+	public function test_saving_steps_without_an_approval_list_leaves_the_stored_list_alone() {
+		$this->register_two_abilities();
+		$this->save_steps_with_approval( array( 'a' => 'vendor/one' ), array( 'vendor/one' ) );
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce( 'aips_ajax_nonce' ),
+			'workflow_id' => $this->workflow_id,
+			'steps'       => wp_json_encode( array( array( 'step_key' => 'a', 'ability_name' => 'vendor/one' ) ) ),
+		);
+		$this->capture_ajax( array( new AIPS_Ability_Workflows_Controller(), 'ajax_save_workflow_steps' ) );
+
+		$this->assertSame( array( 'vendor/one' ), $this->repository->get_workflow( $this->workflow_id )->settings['approved_abilities'] );
+	}
+
+	public function test_saving_settings_keeps_the_approved_list_and_a_new_list_replaces_it() {
+		$this->register_two_abilities();
+		$this->save_steps_with_approval( array( 'a' => 'vendor/one' ), array( 'vendor/one' ) );
+
+		$this->save_workflow( array( 'workflow_id' => $this->workflow_id, 'name' => 'Renamed', 'status' => 'draft', 'settings' => wp_json_encode( array( 'max_steps' => 10 ) ) ) );
+		$this->assertSame( array( 'vendor/one' ), $this->repository->get_workflow( $this->workflow_id )->settings['approved_abilities'], 'The settings form does not send the list.' );
+
+		$this->save_workflow( array( 'workflow_id' => $this->workflow_id, 'name' => 'Renamed', 'status' => 'draft', 'settings' => wp_json_encode( array( 'approved_abilities' => array( 'vendor/two', 'x y' ) ) ) ) );
+		$this->assertSame( array( 'vendor/two' ), $this->repository->get_workflow( $this->workflow_id )->settings['approved_abilities'] );
 	}
 }

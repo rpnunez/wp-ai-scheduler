@@ -261,14 +261,17 @@ class AIPS_Ability_Workflow_Executor {
 	 * or null when it may.
 	 *
 	 * Abilities that declare themselves non-destructive (or read-only) always
-	 * run; abilities declared destructive, or that do not say, run only when the
-	 * workflow allows destructive abilities.
+	 * run. An ability that does not say whether it is destructive also runs when
+	 * the workflow lists it as approved. An ability declared destructive runs
+	 * only when the workflow allows destructive abilities; the approved list
+	 * never covers it. "Allow destructive abilities" covers everything.
 	 *
-	 * @param array $ability           Normalized catalog entry (AIPS_Ability_Catalog_Service).
-	 * @param bool  $allow_destructive Whether the workflow allows destructive abilities.
+	 * @param array    $ability            Normalized catalog entry (AIPS_Ability_Catalog_Service).
+	 * @param bool     $allow_destructive  Whether the workflow allows destructive abilities.
+	 * @param string[] $approved_abilities Ability names the workflow approves.
 	 * @return WP_Error|null
 	 */
-	public function get_approval_error( array $ability, bool $allow_destructive ): ?WP_Error {
+	public function get_approval_error( array $ability, bool $allow_destructive, array $approved_abilities = array() ): ?WP_Error {
 		$requires_approval = array_key_exists( 'requires_approval', $ability )
 			? ! empty( $ability['requires_approval'] )
 			: ! empty( $ability['is_destructive'] );
@@ -277,9 +280,13 @@ class AIPS_Ability_Workflow_Executor {
 			return null;
 		}
 
+		if ( empty( $ability['is_destructive'] ) && isset( $ability['name'] ) && in_array( (string) $ability['name'], $approved_abilities, true ) ) {
+			return null;
+		}
+
 		$message = ! empty( $ability['is_destructive'] )
 			? __( 'Destructive abilities are not allowed for this workflow.', 'ai-post-scheduler' )
-			: __( 'This ability does not declare whether it is destructive, so it is not allowed for this workflow. Enable "Allow destructive abilities" to run it.', 'ai-post-scheduler' );
+			: __( 'This ability does not declare whether it is destructive, so it is not allowed for this workflow. Approve it in the workflow steps, or enable "Allow destructive abilities".', 'ai-post-scheduler' );
 
 		return new WP_Error( 'ability_workflow_destructive_forbidden', $message );
 	}
@@ -687,6 +694,9 @@ class AIPS_Ability_Workflow_Executor {
 		$max_steps           = isset( $settings['max_steps'] ) ? (int) $settings['max_steps'] : 20;
 		$max_runtime_seconds = isset( $settings['max_runtime_seconds'] ) ? (int) $settings['max_runtime_seconds'] : 120;
 		$allow_destructive   = ! empty( $settings['allow_destructive_abilities'] );
+		$approved_abilities  = isset( $settings['approved_abilities'] ) && is_array( $settings['approved_abilities'] )
+			? array_map( 'strval', $settings['approved_abilities'] )
+			: array();
 
 		if ( count( $steps ) > $max_steps ) {
 			$this->finish_run( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $history, __( 'Workflow exceeds the configured max_steps limit.', 'ai-post-scheduler' ) );
@@ -769,6 +779,7 @@ class AIPS_Ability_Workflow_Executor {
 				$step,
 				$variables,
 				$allow_destructive,
+				$approved_abilities,
 				$history,
 				$step_run_by_key[ $step->step_key ] ?? null
 			);
@@ -851,11 +862,12 @@ class AIPS_Ability_Workflow_Executor {
 	 * @param AIPS_Ability_Workflow_Step       $step              Step to execute.
 	 * @param array                            $variables         Current variable bag.
 	 * @param bool                             $allow_destructive Whether destructive abilities are allowed.
+	 * @param string[]                         $approved_abilities Ability names the workflow approves.
 	 * @param AIPS_History_Container|false     $history           History container for the run.
 	 * @param AIPS_Ability_Workflow_Step_Run|null $existing_step_run Existing step-run row, when resuming a retry.
 	 * @return array { status: string, output: array, retry_scheduled: bool, retry_at?: int }
 	 */
-	private function execute_step( int $run_id, int $workflow_id, AIPS_Ability_Workflow_Step $step, array $variables, bool $allow_destructive, $history, ?AIPS_Ability_Workflow_Step_Run $existing_step_run = null ): array {
+	private function execute_step( int $run_id, int $workflow_id, AIPS_Ability_Workflow_Step $step, array $variables, bool $allow_destructive, array $approved_abilities, $history, ?AIPS_Ability_Workflow_Step_Run $existing_step_run = null ): array {
 		$resolved_input = $this->resolver->resolve_map( $step->input_map, $variables );
 
 		if ( $existing_step_run ) {
@@ -879,7 +891,7 @@ class AIPS_Ability_Workflow_Executor {
 			return $this->fail_step( $run_id, $step, $step_run_id, $ability, $attempt, $history );
 		}
 
-		$approval_error = $this->get_approval_error( $ability, $allow_destructive );
+		$approval_error = $this->get_approval_error( $ability, $allow_destructive, $approved_abilities );
 
 		if ( $approval_error ) {
 			return $this->fail_step( $run_id, $step, $step_run_id, $approval_error, $attempt, $history );

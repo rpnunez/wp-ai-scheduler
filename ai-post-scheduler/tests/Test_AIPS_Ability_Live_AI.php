@@ -336,7 +336,7 @@ class Test_AIPS_Ability_Live_AI extends WP_UnitTestCase {
 				)
 			)
 		);
-		$this->repository->update_workflow( $workflow_id, array( 'settings' => array( 'allow_destructive_abilities' => true ) ) );
+		$this->repository->update_workflow( $workflow_id, array( 'settings' => array( 'approved_abilities' => array( 'ai/title-generation', $second ) ) ) );
 
 		$run_id = $this->repository->create_run(
 			$workflow_id,

@@ -86,6 +86,7 @@
 		steps: [],
 		abilities: [],
 		abilitiesByName: {},
+		approved: [],
 		editingStepIndex: -1,
 		runsLoaded: false,
 		dirty: false,
@@ -122,6 +123,7 @@
 			$(document).on('click', '.aips-remove-condition-rule', this.removeConditionRuleRow.bind(this));
 
 			$(document).on('click', '#aips-save-steps-btn', this.saveSteps.bind(this));
+			$(document).on('change', '.aips-approve-ability', this.onApproveChange.bind(this));
 			$(document).on('click', '#aips-builder-run-now-btn', this.onRunNowClick.bind(this));
 
 			$(document).on('click', '#aips-run-detail-modal .aips-modal-close', function() {
@@ -186,6 +188,7 @@
 
 				$('#aips-builder-workflow-name').text(response.data.workflow.name);
 				self.steps = response.data.steps || [];
+				self.approved = (response.data.workflow.settings && response.data.workflow.settings.approved_abilities) || [];
 				self.setDirty(false);
 				self.renderSteps();
 			});
@@ -235,7 +238,56 @@
 				return L10n.unavailableNote;
 			}
 
-			return ability.requires_approval ? L10n.requiresApprovalNote : '';
+			return ability.requires_approval ? (this.approved.indexOf(abilityName) !== -1 && !ability.is_destructive ? L10n.approvedNote : L10n.requiresApprovalNote) : '';
+		},
+
+		/**
+		 * Whether an ability needs a per-workflow approval: it does not declare
+		 * itself non-destructive, but is not declared destructive either.
+		 *
+		 * @param {string} abilityName Ability slug.
+		 * @return {boolean}
+		 */
+		needsApproval(abilityName) {
+			var ability = this.abilitiesByName[abilityName];
+
+			return !!(ability && ability.requires_approval && !ability.is_destructive);
+		},
+
+		/**
+		 * Add the "approve for this workflow" checkbox to a step row.
+		 *
+		 * @param {jQuery} $row Step row.
+		 * @param {string} abilityName Ability slug.
+		 */
+		renderApproval($row, abilityName) {
+			if (!this.needsApproval(abilityName)) {
+				return;
+			}
+
+			var $label = $('<label class="aips-checkbox-label"></label>');
+			$('<input type="checkbox" class="aips-approve-ability">')
+				.attr('data-ability', abilityName)
+				.prop('checked', this.approved.indexOf(abilityName) !== -1)
+				.appendTo($label);
+			$label.append(document.createTextNode(' ' + L10n.approveAbility));
+			$row.find('.aips-step-approval').append($label);
+		},
+
+		onApproveChange(e) {
+			var abilityName = $(e.currentTarget).attr('data-ability');
+			var checked = $(e.currentTarget).is(':checked');
+			var position = this.approved.indexOf(abilityName);
+
+			if (checked && position === -1) {
+				this.approved.push(abilityName);
+			} else if (!checked && position !== -1) {
+				this.approved.splice(position, 1);
+			}
+
+			// The same ability may appear in several steps; re-render keeps every row and note in step.
+			this.setDirty(true);
+			this.renderSteps();
 		},
 
 		renderSteps() {
@@ -253,6 +305,7 @@
 					output_alias: step.output_alias || ''
 				});
 				$body.append(html);
+				self.renderApproval($body.find('tr').last(), step.ability_name);
 			});
 
 			$('#aips-steps-empty').toggle(this.steps.length === 0);
@@ -636,7 +689,8 @@
 				action: 'aips_save_ability_workflow_steps',
 				nonce: aipsAjax.nonce,
 				workflow_id: this.workflowId,
-				steps: JSON.stringify(payload)
+				steps: JSON.stringify(payload),
+				approved_abilities: JSON.stringify(this.approved)
 			}, function(response) {
 				if (!response.success) {
 					var message = (response.data && response.data.message) || L10n.saveFailed;
@@ -649,6 +703,7 @@
 
 				AIPS.Utilities.showToast(response.data.message || L10n.saveSteps, 'success');
 				self.steps = response.data.steps || self.steps;
+				self.approved = response.data.approved_abilities || self.approved;
 				self.setDirty(false);
 				self.renderSteps();
 			}).fail(function() {

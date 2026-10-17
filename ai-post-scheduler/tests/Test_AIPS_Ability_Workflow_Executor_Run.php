@@ -477,6 +477,83 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 		$this->assertSame( array( 'vendor/unannotated' ), $this->called_slugs() );
 	}
 
+	public function test_unannotated_ability_runs_when_the_workflow_approves_it() {
+		$this->register_abilities(
+			array(
+				'vendor/unannotated' => array(
+					'run' => function () {
+						return array( 'ok' => true );
+					},
+				),
+			)
+		);
+		$workflow_id = $this->make_workflow( array( $this->step( 'a', 'vendor/unannotated' ) ), array( 'approved_abilities' => array( 'vendor/unannotated' ) ) );
+		$run_id      = $this->make_run( $workflow_id );
+
+		$this->executor()->process_run( $run_id );
+
+		$this->assertSame( array( 'vendor/unannotated' ), $this->called_slugs() );
+		$this->assertSame( 'completed', $this->step_runs_by_key( $run_id )['a']->status );
+	}
+
+	public function test_approving_one_ability_does_not_approve_another() {
+		$this->register_abilities(
+			array(
+				'vendor/approved' => array( 'run' => function () {
+					return array( 'ok' => true );
+				} ),
+				'vendor/other'    => array( 'run' => function () {
+					return array( 'ok' => true );
+				} ),
+			)
+		);
+		$workflow_id = $this->make_workflow(
+			array( $this->step( 'a', 'vendor/approved' ), $this->step( 'b', 'vendor/other', array( 'on_failure' => array( 'strategy' => 'continue' ) ) ) ),
+			array( 'approved_abilities' => array( 'vendor/approved' ) )
+		);
+		$run_id = $this->make_run( $workflow_id );
+
+		$this->executor()->process_run( $run_id );
+
+		$this->assertSame( array( 'vendor/approved' ), $this->called_slugs() );
+		$this->assertSame( 'ability_workflow_destructive_forbidden', $this->step_runs_by_key( $run_id )['b']->error['code'] );
+	}
+
+	public function test_approval_never_covers_an_ability_declared_destructive() {
+		$this->register_abilities(
+			array(
+				'vendor/delete' => array(
+					'run'         => function () {
+						return array( 'deleted' => 1 );
+					},
+					'annotations' => array( 'destructive' => true ),
+				),
+			)
+		);
+		$workflow_id = $this->make_workflow( array( $this->step( 'a', 'vendor/delete' ) ), array( 'approved_abilities' => array( 'vendor/delete' ) ) );
+		$run_id      = $this->make_run( $workflow_id );
+
+		$this->executor()->process_run( $run_id );
+
+		$this->assertCount( 0, $this->calls );
+		$this->assertSame( 'ability_workflow_destructive_forbidden', $this->step_runs_by_key( $run_id )['a']->error['code'] );
+	}
+
+	public function test_approval_gate_matrix() {
+		$executor    = $this->executor();
+		$unannotated = array( 'name' => 'v/u', 'requires_approval' => true, 'is_destructive' => false );
+		$destructive = array( 'name' => 'v/d', 'requires_approval' => true, 'is_destructive' => true );
+		$safe        = array( 'name' => 'v/s', 'requires_approval' => false, 'is_destructive' => false );
+
+		$this->assertNull( $executor->get_approval_error( $safe, false ) );
+		$this->assertNotNull( $executor->get_approval_error( $unannotated, false ) );
+		$this->assertNull( $executor->get_approval_error( $unannotated, false, array( 'v/u' ) ) );
+		$this->assertNotNull( $executor->get_approval_error( $unannotated, false, array( 'v/other' ) ) );
+		$this->assertNotNull( $executor->get_approval_error( $destructive, false, array( 'v/d' ) ) );
+		$this->assertNull( $executor->get_approval_error( $destructive, true ) );
+		$this->assertNull( $executor->get_approval_error( $unannotated, true ) );
+	}
+
 	public function test_explicitly_destructive_ability_is_blocked() {
 		$this->register_abilities(
 			array(

@@ -431,34 +431,46 @@ class AIPS_Stress_Test_Ability_Cases {
 	 */
 	private function case_destructive_gate(): array {
 		$stand_ins = array(
-			'readonly'     => array('annotations' => array('readonly' => true), 'expect_blocked' => false),
-			'non_destructive' => array('annotations' => array('destructive' => false), 'expect_blocked' => false),
-			'unannotated'  => array('annotations' => array(), 'expect_blocked' => true),
-			'destructive'  => array('annotations' => array('destructive' => true), 'expect_blocked' => true),
+			'readonly'        => array('annotations' => array('readonly' => true), 'expect_blocked' => false, 'declared_destructive' => false),
+			'non_destructive' => array('annotations' => array('destructive' => false), 'expect_blocked' => false, 'declared_destructive' => false),
+			'unannotated'     => array('annotations' => array(), 'expect_blocked' => true, 'declared_destructive' => false),
+			'destructive'     => array('annotations' => array('destructive' => true), 'expect_blocked' => true, 'declared_destructive' => true),
 		);
 
 		$executor = new AIPS_Ability_Workflow_Executor(null, $this->catalog, $this->abilities, null, null, null, null, '__return_true');
 		$rows     = array();
 		$wrong    = array();
 
+		// The setting combinations: nothing granted, "Allow destructive abilities", and
+		// the ability listed in the workflow's approved abilities.
+		$settings = array(
+			'none'     => array('allow' => false, 'approved' => false),
+			'allow'    => array('allow' => true, 'approved' => false),
+			'approved' => array('allow' => false, 'approved' => true),
+		);
+
 		foreach ($stand_ins as $name => $stand_in) {
 			$ability = $this->catalog->normalize_ability(array('slug' => 'stress/' . $name, 'annotations' => $stand_in['annotations']));
 
-			foreach (array(false, true) as $allowed) {
-				$error   = $executor->get_approval_error($ability, $allowed);
+			foreach ($settings as $setting => $grant) {
+				$error   = $executor->get_approval_error($ability, $grant['allow'], $grant['approved'] ? array('stress/' . $name) : array());
 				$blocked = null !== $error;
-				$expect  = $stand_in['expect_blocked'] && !$allowed;
+				// Approving covers an unannotated ability, never one declared destructive.
+				$covered = $grant['allow'] || ($grant['approved'] && !$stand_in['declared_destructive']);
+				$expect  = $stand_in['expect_blocked'] && !$covered;
 
 				$rows[] = array(
 					'ability'                     => $name,
-					'allow_destructive_abilities' => $allowed,
+					'setting'                     => $setting,
+					'allow_destructive_abilities' => $grant['allow'],
+					'approved'                    => $grant['approved'],
 					'blocked'                     => $blocked,
 					'expected_blocked'            => $expect,
 					'error_code'                  => $error ? $error->get_error_code() : null,
 				);
 
 				if ($blocked !== $expect) {
-					$wrong[] = sprintf('%s (allow=%s)', $name, $allowed ? 'yes' : 'no');
+					$wrong[] = sprintf('%s (%s)', $name, $setting);
 				}
 			}
 		}

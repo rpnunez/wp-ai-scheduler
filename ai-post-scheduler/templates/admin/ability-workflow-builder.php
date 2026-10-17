@@ -277,7 +277,7 @@ if ($aips_workflow_id <= 0) {
 			</button>
 		</td>
 		<td class="cell-primary">{{step_key}}<div class="cell-meta">{{name}}</div></td>
-		<td>{{ability_name}}<div class="cell-meta">{{ability_note}}</div></td>
+		<td>{{ability_name}}<div class="cell-meta">{{ability_note}}</div><div class="aips-step-approval"></div></td>
 		<td>{{output_alias}}</td>
 		<td class="column-actions">
 			<div class="aips-action-buttons">

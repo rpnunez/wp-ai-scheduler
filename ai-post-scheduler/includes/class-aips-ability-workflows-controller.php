@@ -95,6 +95,9 @@ class AIPS_Ability_Workflows_Controller {
 			AIPS_Ajax_Response::invalid_request( __( 'Unknown workflow status.', 'ai-post-scheduler' ) );
 		}
 
+		$existing          = $is_update ? $this->repository->get_workflow( $workflow_id ) : null;
+		$existing_settings = $existing && is_array( $existing->settings ) ? $existing->settings : array();
+
 		$data = array(
 			'name'           => $name,
 			'description'    => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '',
@@ -102,7 +105,7 @@ class AIPS_Ability_Workflows_Controller {
 			// Manual is the only trigger that exists; the column keeps room for others.
 			'trigger_type'   => 'manual',
 			'trigger_config' => array(),
-			'settings'       => $this->sanitize_settings( $this->decode_json_field( $_POST['settings'] ?? '' ) ),
+			'settings'       => $this->sanitize_settings( $this->decode_json_field( $_POST['settings'] ?? '' ), $existing_settings ),
 		);
 
 		if ( $workflow_id > 0 ) {
@@ -362,17 +365,23 @@ class AIPS_Ability_Workflows_Controller {
 			AIPS_Ajax_Response::error( $result->get_error_message() );
 		}
 
+		if ( isset( $_POST['approved_abilities'] ) ) {
+			$this->save_approved_abilities( $workflow_id, $steps, $this->decode_json_field( $_POST['approved_abilities'] ) );
+		}
+
 		do_action( 'aips_ability_workflow_changed', array(
 			'action'      => 'steps_saved',
 			'workflow_id' => $workflow_id,
 			'user_id'     => get_current_user_id(),
 		) );
 
-		$saved_steps = $this->repository->get_steps( $workflow_id );
+		$saved_steps    = $this->repository->get_steps( $workflow_id );
+		$saved_workflow = $this->repository->get_workflow( $workflow_id );
 
 		AIPS_Ajax_Response::success(
 			array(
-				'steps' => array_map( function ( AIPS_Ability_Workflow_Step $step ) {
+				'approved_abilities' => $saved_workflow && isset( $saved_workflow->settings['approved_abilities'] ) ? $saved_workflow->settings['approved_abilities'] : array(),
+				'steps'              => array_map( function ( AIPS_Ability_Workflow_Step $step ) {
 					return $step->to_array();
 				}, $saved_steps ),
 			),
@@ -381,17 +390,79 @@ class AIPS_Ability_Workflows_Controller {
 	}
 
 	/**
+	 * Store the abilities the builder approved, limited to those the saved steps use.
+	 *
+	 * @param int   $workflow_id Workflow ID.
+	 * @param array $steps       Saved step definitions.
+	 * @param array $approved    Ability names sent by the builder.
+	 */
+	private function save_approved_abilities( int $workflow_id, array $steps, array $approved ): void {
+		$workflow = $this->repository->get_workflow( $workflow_id );
+
+		if ( ! $workflow ) {
+			return;
+		}
+
+		$used     = array();
+		foreach ( $steps as $step ) {
+			if ( is_array( $step ) && ! empty( $step['ability_name'] ) ) {
+				$used[] = (string) $step['ability_name'];
+			}
+		}
+
+		$settings = is_array( $workflow->settings ) ? $workflow->settings : array();
+		$before   = $settings['approved_abilities'] ?? array();
+
+		$settings['approved_abilities'] = array_values( array_intersect( $this->sanitize_ability_names( $approved ), $used ) );
+
+		if ( $before === $settings['approved_abilities'] ) {
+			return;
+		}
+
+		$this->repository->update_workflow( $workflow_id, array( 'settings' => $settings, 'updated_by' => get_current_user_id() ) );
+	}
+
+	/**
 	 * Keep only the settings the executor understands, with sane bounds.
 	 *
-	 * @param array $raw Decoded settings from the request.
+	 * The approved-abilities list is edited from the builder, not the settings
+	 * form, so a save that does not send it keeps the list already stored.
+	 *
+	 * @param array $raw      Decoded settings from the request.
+	 * @param array $existing Settings already stored for the workflow.
 	 * @return array
 	 */
-	private function sanitize_settings( array $raw ): array {
+	private function sanitize_settings( array $raw, array $existing = array() ): array {
+		$approved = array_key_exists( 'approved_abilities', $raw ) ? $raw['approved_abilities'] : ( $existing['approved_abilities'] ?? array() );
+
 		return array(
 			'max_steps'                   => max( 1, min( 100, isset( $raw['max_steps'] ) ? (int) $raw['max_steps'] : 20 ) ),
 			'max_runtime_seconds'         => max( 1, min( 3600, isset( $raw['max_runtime_seconds'] ) ? (int) $raw['max_runtime_seconds'] : 120 ) ),
 			'allow_destructive_abilities' => ! empty( $raw['allow_destructive_abilities'] ),
+			'approved_abilities'          => $this->sanitize_ability_names( $approved ),
 		);
+	}
+
+	/**
+	 * Keep valid, unique ability names (for example "ai/title-generation").
+	 *
+	 * @param mixed $names Raw list.
+	 * @return string[]
+	 */
+	private function sanitize_ability_names( $names ): array {
+		if ( ! is_array( $names ) ) {
+			return array();
+		}
+
+		$clean = array();
+
+		foreach ( $names as $name ) {
+			if ( is_string( $name ) && preg_match( '#^[a-z0-9][a-z0-9_-]*(/[a-z0-9][a-z0-9_-]*)*$#', $name ) ) {
+				$clean[ $name ] = $name;
+			}
+		}
+
+		return array_values( $clean );
 	}
 
 	/**

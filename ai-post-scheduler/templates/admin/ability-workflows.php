@@ -134,7 +134,7 @@ $aips_builder_base_url = admin_url('admin.php?page=aips-ability-workflow-builder
 						<input type="checkbox" id="aips-workflow-allow-destructive" name="allow_destructive_abilities" value="1">
 						<?php esc_html_e('Allow destructive abilities', 'ai-post-scheduler'); ?>
 					</label>
-					<p class="description"><?php esc_html_e('When unchecked, steps whose ability is flagged destructive, or does not say whether it is, will fail instead of running.', 'ai-post-scheduler'); ?></p>
+					<p class="description"><?php esc_html_e('When unchecked, steps whose ability is flagged destructive will fail instead of running, and so will steps whose ability does not say whether it is destructive unless you approve that ability for this workflow in the builder.', 'ai-post-scheduler'); ?></p>
 				</div>
 
 				<p class="description"><?php esc_html_e('Each run stores the inputs and outputs of its steps so the run history can show them.', 'ai-post-scheduler'); ?></p>
