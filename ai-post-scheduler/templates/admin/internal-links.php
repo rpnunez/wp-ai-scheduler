@@ -20,23 +20,19 @@ $link_counts  = isset($summary['link_counts']) ? $summary['link_counts'] : array
 $total_posts  = isset($indexing['total_posts']) ? (int) $indexing['total_posts'] : 0;
 $indexed      = isset($indexing['indexed']) ? (int) $indexing['indexed'] : 0;
 $unindexed    = isset($indexing['unindexed']) ? (int) $indexing['unindexed'] : 0;
+$stale        = isset($indexing['stale']) ? (int) $indexing['stale'] : 0;
 $percent      = isset($indexing['percent']) ? (int) $indexing['percent'] : 0;
 
 $count_pending  = isset($link_counts['pending'])  ? (int) $link_counts['pending']  : 0;
 $count_accepted = isset($link_counts['accepted']) ? (int) $link_counts['accepted'] : 0;
 $count_rejected = isset($link_counts['rejected']) ? (int) $link_counts['rejected'] : 0;
 $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted'] : 0;
-
-// $bg_snapshot is injected by AIPS_Internal_Links_Controller::render_page().
-$bg_snapshot = isset($bg_snapshot) && is_array($bg_snapshot) ? $bg_snapshot : array();
-$bg_status   = isset($bg_snapshot['status']) ? (string) $bg_snapshot['status'] : 'idle';
-$bg_is_active = !empty($bg_snapshot['is_active']);
 ?>
 
 		<!-- Status Cards -->
 		<div class="aips-stats-grid">
 
-			<div class="aips-stat-card<?php echo $bg_is_active ? ' aips-bg-active' : ''; ?><?php echo 'paused' === $bg_status ? ' aips-bg-paused' : ''; ?>" data-aips-bg-key="internal_links_indexing" data-aips-bg-status="<?php echo esc_attr($bg_status); ?>">
+			<div class="aips-stat-card">
 				<div class="aips-stat-header">
 					<span class="aips-stat-label"><?php esc_html_e('Posts Indexed', 'ai-post-scheduler'); ?></span>
 					<span class="dashicons dashicons-admin-links aips-stat-icon" aria-hidden="true"></span>
@@ -50,36 +46,21 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 				</div>
 				<p class="aips-stat-subtext"><?php esc_html_e('Posts analyzed and embedded', 'ai-post-scheduler'); ?></p>
 
-				<!-- Background indexing status and controls (kept live by background-processes.js) -->
-				<div class="aips-bg-controls" aria-live="polite">
-					<p class="aips-bg-status-line">
-						<span class="aips-bg-chip" data-aips-bg-field="status_label"><?php echo esc_html(isset($bg_snapshot['status_label']) ? $bg_snapshot['status_label'] : ''); ?></span>
-						<span>
-							<span data-aips-bg-field="processed"><?php echo esc_html(number_format_i18n(isset($bg_snapshot['processed']) ? (int) $bg_snapshot['processed'] : 0)); ?></span>
-							/
-							<span data-aips-bg-field="total"><?php echo esc_html(number_format_i18n(isset($bg_snapshot['total']) ? (int) $bg_snapshot['total'] : 0)); ?></span>
-							<?php esc_html_e('this run', 'ai-post-scheduler'); ?>
-						</span>
-					</p>
-					<p class="aips-bg-status-line">
-						<span data-aips-bg-field="next_run"></span>
-						<span data-aips-bg-field="message"><?php echo esc_html(isset($bg_snapshot['message']) ? $bg_snapshot['message'] : ''); ?></span>
-					</p>
-					<div class="aips-bg-buttons">
-						<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-action="pause" <?php echo empty($bg_snapshot['can_pause']) ? 'hidden' : ''; ?>>
-							<span class="dashicons dashicons-controls-pause" aria-hidden="true"></span>
-							<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
-						</button>
-						<button type="button" class="aips-btn aips-btn-primary aips-btn-sm" data-aips-bg-action="resume" <?php echo empty($bg_snapshot['can_resume']) ? 'hidden' : ''; ?>>
-							<span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
-							<?php esc_html_e('Resume', 'ai-post-scheduler'); ?>
-						</button>
-						<button type="button" class="aips-btn aips-btn-ghost aips-btn-danger aips-btn-sm" data-aips-bg-action="cancel" <?php echo empty($bg_snapshot['can_cancel']) ? 'hidden' : ''; ?>>
-							<span class="dashicons dashicons-no" aria-hidden="true"></span>
-							<?php esc_html_e('Stop', 'ai-post-scheduler'); ?>
-						</button>
-					</div>
-				</div>
+				<!-- Read-only status: the index is managed in the Content Indexer. -->
+				<p class="aips-stat-subtext" id="aips-index-stale-line"<?php echo $stale > 0 ? '' : ' hidden'; ?>>
+					<?php
+					echo esc_html(sprintf(
+						/* translators: %s: number of stale embeddings. */
+						_n('%s embedding is stale (made with another model).', '%s embeddings are stale (made with another model).', $stale, 'ai-post-scheduler'),
+						number_format_i18n($stale)
+					));
+					?>
+				</p>
+				<p class="aips-stat-subtext">
+					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('content_indexer')); ?>">
+						<?php esc_html_e('Manage index in Content → Content Indexer', 'ai-post-scheduler'); ?>
+					</a>
+				</p>
 			</div>
 
 			<div class="aips-stat-card">
@@ -441,11 +422,6 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 <!-- Suggestions list wrapper -->
 <script type="text/html" id="aips-tmpl-il-suggestions-list">
 <ul class="aips-suggestions-list">{{items}}</ul>
-</script>
-
-<!-- Button: Start Indexing (restored after AJAX) -->
-<script type="text/html" id="aips-tmpl-il-btn-start-indexing">
-<span class="dashicons dashicons-database-import" aria-hidden="true"></span> {{label}}
 </script>
 
 <!-- Button: Generate Suggestions (restored after AJAX) -->

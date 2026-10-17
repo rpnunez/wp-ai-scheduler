@@ -412,6 +412,63 @@
         },
 
         /**
+         * Confirm a destructive action by typing a word.
+         *
+         * Shows a modal with a warning message and a text field; the confirm button
+         * only proceeds once the typed text matches `word` exactly.
+         *
+         * @param {Object}   options
+         * @param {string}   options.heading         Modal heading.
+         * @param {string}   options.message         Warning shown above the field (what will be lost).
+         * @param {string}   [options.description]   Extra helper text under the field.
+         * @param {string}   [options.word]          Word to type (default 'DELETE').
+         * @param {string}   [options.confirmLabel]  Confirm button label.
+         * @param {string}   [options.cancelLabel]   Cancel button label.
+         * @param {string}   [options.fieldLabel]    Label above the field; '%s' is replaced with the word.
+         * @param {string}   [options.mismatchMessage] Toast shown when the typed text does not match.
+         * @param {Function} options.onConfirm       Called once the word was typed correctly.
+         */
+        confirmWithWord: function(options) {
+            options = options || {};
+            var word = options.word || 'DELETE';
+            var L10n = window.aipsUtilitiesL10n || {};
+
+            var fieldLabel = (options.fieldLabel || L10n.typeWordToConfirm || 'Type %s to confirm').replace('%s', word);
+            var mismatch   = options.mismatchMessage || (L10n.typedWordMismatch || 'The text you typed does not match %s.').replace('%s', word);
+
+            AIPS.Utilities.showModal({
+                heading: options.heading || 'Confirm',
+                message: options.message || '',
+                fields: [
+                    {
+                        type: 'text',
+                        name: 'confirm_word',
+                        label: fieldLabel,
+                        placeholder: word,
+                        description: options.description || '',
+                        required: true,
+                        validate: function(value) {
+                            return $.trim(value) === word ? null : mismatch;
+                        }
+                    }
+                ],
+                buttons: [
+                    { label: options.cancelLabel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    {
+                        label: options.confirmLabel || 'Confirm',
+                        className: 'aips-btn aips-btn-danger-solid',
+                        submit: true,
+                        action: function() {
+                            if (typeof options.onConfirm === 'function') {
+                                options.onConfirm();
+                            }
+                        }
+                    }
+                ]
+            });
+        },
+
+        /**
          * Display a modal dialog with optional form inputs.
          *
          * This is a more flexible version of `confirm()` that supports form inputs.

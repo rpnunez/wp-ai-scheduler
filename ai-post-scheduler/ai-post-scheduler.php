@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.18
+ * Version: 3.7.19
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.18');
+    define('AIPS_VERSION', '3.7.19');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -757,6 +757,30 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
         });
 
+        // A changed embeddings model or dimension count makes stored vectors stale. When the
+        // administrator opted in, wake the queue worker: once its queue is empty it starts a
+        // stale-only background re-index, which honors the embeddings quota and cooldown.
+        // Both hooks are needed: the first save of an option goes through add_option, not
+        // update_option. The delay lets an administrator finish editing the settings, and
+        // schedule_queue_worker() is a no-op while a worker is already queued.
+        $aips_on_embeddings_config_change = function () {
+            delete_transient(AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE);
+
+            if (AIPS_Config::get_instance()->get_option('aips_indexer_auto_reindex_stale', false)) {
+                AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->schedule_queue_worker(time() + 5 * MINUTE_IN_SECONDS);
+            }
+        };
+        // The observed dimensions are kept per model, so a model change needs no reset; a
+        // dimensions change does (the provider may now return a different size).
+        $aips_on_dimensions_change = function () use ($aips_on_embeddings_config_change) {
+            delete_option(AIPS_Content_Indexer_Service::OBSERVED_DIMENSIONS_OPTION);
+            $aips_on_embeddings_config_change();
+        };
+        add_action('update_option_aips_embeddings_model', $aips_on_embeddings_config_change);
+        add_action('add_option_aips_embeddings_model', $aips_on_embeddings_config_change);
+        add_action('update_option_aips_embeddings_dimensions', $aips_on_dimensions_change);
+        add_action('add_option_aips_embeddings_dimensions', $aips_on_dimensions_change);
+
         // Background processes: one slice per tick (pause/resume/stop and quota
         // waits are handled by AIPS_Managed_Background_Process). Registered in every
         // context, not only wp-cron, so an event fired by WP-CLI or a "run now" tool
@@ -1034,6 +1058,8 @@ final class AI_Post_Scheduler {
             $store   = new AIPS_Bulk_Batch_Job_Store();
             $deleted = $store->cleanup_old_jobs();
             $deleted += (new AIPS_Background_Process_Repository())->cleanup_old();
+            // Locks left behind by crashed requests (not job rows, so not in the count above).
+            AIPS_Lock::purge_expired();
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),
@@ -1072,12 +1098,6 @@ final class AI_Post_Scheduler {
 
         // Reconciler's save_post hook fires when cron creates or updates posts.
         new AIPS_Partial_Generation_State_Reconciler();
-
-        // Internal Links indexing cron — construct the controller lazily only
-        // when the cron hook fires to avoid eager instantiation on every cron boot.
-        add_action('aips_index_posts_batch', function($args) {
-            (new AIPS_Internal_Links_Controller())->process_indexing_batch_cron($args);
-        }, 10, 1);
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));

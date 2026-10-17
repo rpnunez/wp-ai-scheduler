@@ -256,6 +256,12 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.18', '<' ) ) {
 			$this->migrate_to_3_7_18();
 		}
+
+		// migrate_to_3_7_19() retires the Internal Links indexing job, which the
+		// Content Indexer's managed run replaced.
+		if ( version_compare( $from_version, '3.7.19', '<' ) ) {
+			$this->migrate_to_3_7_19();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1315,6 +1321,85 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.18: Consolidated author topic auto-approval options and backfilled min_relevance.', 'info' );
+	}
+
+	/**
+	 * Keep existing embeddings from all turning "stale" when 3.7.19 starts comparing them
+	 * with the active model and dimensions. The old Content Indexer labelled rows with the
+	 * chat model when no embeddings model was set; those are relabelled to the active
+	 * embeddings model, and the dimension count in use is recorded from the stored rows.
+	 *
+	 * @return void
+	 */
+	private function adopt_legacy_embedding_labels() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_embeddings';
+		if ( $table !== $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			return;
+		}
+
+		$config    = AIPS_Config::get_instance();
+		$ai_config = $config->get_ai_config();
+		$active    = ! empty( $ai_config['embeddings_model'] ) ? (string) $ai_config['embeddings_model'] : (string) $config->get_option( 'aips_embeddings_model', 'text-embedding-3-small' );
+		$active    = '' !== $active ? $active : 'text-embedding-3-small';
+		$chat      = ! empty( $ai_config['model'] ) ? (string) $ai_config['model'] : '';
+
+		if ( '' !== $chat && $chat !== $active ) {
+			$wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET model = %s WHERE model = %s", $active, $chat ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		$dimensions = (int) $wpdb->get_var( $wpdb->prepare( "SELECT dimensions FROM `{$table}` WHERE model = %s AND dimensions > 0 GROUP BY dimensions ORDER BY COUNT(*) DESC LIMIT 1", $active ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $dimensions > 0 ) {
+			update_option(
+				'aips_embeddings_observed_dimensions',
+				array(
+					$active       => $dimensions,
+					'@configured' => array( $active => max( 0, (int) $config->get_option( 'aips_embeddings_dimensions', 1536 ) ) ),
+				),
+				false
+			);
+		}
+	}
+
+	/**
+	 * Migration for version 3.7.19.
+	 *
+	 * Cancels any open `internal_links_indexing` background run and drops the
+	 * cron events of the retired Internal Links indexer. Post indexing is now the
+	 * `content_indexing` process, so a run left open under the old key would
+	 * never be ticked again.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_19() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_background_processes';
+
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		if ( $table === $exists ) {
+			$repository = new AIPS_Background_Process_Repository();
+			$open       = $repository->get_open( 'internal_links_indexing' );
+			if ( $open ) {
+				$repository->transition(
+					(int) $open->id,
+					AIPS_Background_Process_Repository::STATUS_CANCELLED,
+					AIPS_Background_Process_Repository::open_statuses(),
+					__( 'Stopped: indexing moved to the Content Indexer.', 'ai-post-scheduler' )
+				);
+			}
+		}
+
+		wp_clear_scheduled_hook( 'aips_bg_process_tick', array( 'internal_links_indexing' ) );
+		wp_clear_scheduled_hook( 'aips_index_posts_batch' );
+		if ( function_exists( 'as_unschedule_all_actions' ) ) {
+			as_unschedule_all_actions( 'aips_index_posts_batch' );
+		}
+
+		$this->adopt_legacy_embedding_labels();
+
+		$this->logger->log( 'Migration 3.7.19: Cancelled the retired internal_links_indexing background run.', 'info' );
 	}
 
 	/**

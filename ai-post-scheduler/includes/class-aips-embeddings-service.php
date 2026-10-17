@@ -186,8 +186,12 @@ class AIPS_Embeddings_Service {
 		}
 
 		// Check in-memory cache (cached embeddings do not count towards quota)
-		$mem_key = md5($text);
-		if (isset($this->embedding_cache[$mem_key])) {
+		// 'fresh' skips both caches (an explicit re-index must reach the provider).
+		$fresh = !empty($options['fresh']);
+		unset($options['fresh']);
+
+		$mem_key = md5($text . '_' . (isset($options['model']) ? (string) $options['model'] : $this->get_active_model()) . '_' . (int) $this->config->get_option('aips_embeddings_dimensions', 0));
+		if (!$fresh && isset($this->embedding_cache[$mem_key])) {
 			return $this->embedding_cache[$mem_key];
 		}
 
@@ -206,9 +210,9 @@ class AIPS_Embeddings_Service {
 
 		// Check persistent vector cache (transients / object cache)
 		$persistent_cache_enabled = (bool) $this->config->get_option('aips_embeddings_persistent_cache_enabled', true);
-		$transient_key            = 'aips_raw_emb_' . md5($text . '_' . $model);
+		$transient_key            = 'aips_raw_emb_' . md5($text . '_' . $model . '_' . (int) $this->config->get_option('aips_embeddings_dimensions', 0));
 
-		if ($persistent_cache_enabled) {
+		if ($persistent_cache_enabled && !$fresh) {
 			$cached_transient = get_transient($transient_key);
 			if (is_array($cached_transient) && !empty($cached_transient)) {
 				$this->embedding_cache[$mem_key] = $cached_transient;

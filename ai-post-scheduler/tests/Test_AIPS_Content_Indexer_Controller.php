@@ -21,6 +21,13 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		$_REQUEST = array();
 		wp_set_current_user( 0 );
 		parent::tearDown();
+
+		// clear_index() ends with TRUNCATE, which commits the open test transaction, so the
+		// clear lock it took would outlive the rollback and block later tests for its TTL.
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'aips\_lock\_%'" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_internal_links" );
+		$wpdb->query( 'COMMIT' );
 	}
 
 	private function capture_ajax_response( callable $callable ) {
@@ -42,7 +49,7 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 	public function test_ajax_hooks_registered() {
 		$actions = array(
 			'wp_ajax_aips_indexer_get_status',
-			'wp_ajax_aips_indexer_process_batch',
+			'wp_ajax_aips_indexer_get_clear_preview',
 			'wp_ajax_aips_indexer_clear_index',
 			'wp_ajax_aips_indexer_get_graph',
 			'wp_ajax_aips_indexer_run_cannibalization_audit',
@@ -188,5 +195,91 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		$response = $this->capture_ajax_response( array( $controller, 'ajax_rename_post_cluster' ) );
 
 		$this->assertTrue( $response['success'] );
+	}
+
+	public function test_clear_index_requires_the_confirmation_word() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_POST    = array( 'nonce' => wp_create_nonce( 'aips_ajax_nonce' ) );
+		$_REQUEST = $_POST;
+
+		$repo = new AIPS_Embeddings_Repository();
+		$repo->upsert( 'topic', 901, array( 0.1, 0.2 ), 'm', 2, 'h' );
+
+		$response = $this->capture_ajax_response( array( $this->controller, 'ajax_clear_index' ) );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertNotNull( $repo->get_by_topic_id( 901 ), 'Nothing is deleted without the confirmation word.' );
+	}
+
+	public function test_clear_index_with_confirmation_word_clears_everything_and_stops_the_run() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_POST    = array(
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'confirm_word' => AIPS_Content_Indexer_Controller::CLEAR_CONFIRM_WORD,
+		);
+		$_REQUEST = $_POST;
+
+		$repo = new AIPS_Embeddings_Repository();
+		$repo->upsert( 'topic', 902, array( 0.1, 0.2 ), 'm', 2, 'h' );
+
+		$response = $this->capture_ajax_response( array( $this->controller, 'ajax_clear_index' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertNull( $repo->get_by_topic_id( 902 ) );
+	}
+
+	public function test_clear_preview_reports_row_counts() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_POST    = array( 'nonce' => wp_create_nonce( 'aips_ajax_nonce' ) );
+		$_REQUEST = $_POST;
+
+		$repo = new AIPS_Embeddings_Repository();
+		$repo->upsert( 'topic', 903, array( 0.1, 0.2 ), 'm', 2, 'h' );
+
+		$response = $this->capture_ajax_response( array( $this->controller, 'ajax_get_clear_preview' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertGreaterThanOrEqual( 1, $response['data']['topics'] );
+		$this->assertArrayHasKey( 'relationships', $response['data'] );
+		$this->assertArrayHasKey( 'total', $response['data'] );
+	}
+
+	public function test_clear_index_is_refused_while_a_slice_is_running() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_POST    = array(
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'confirm_word' => AIPS_Content_Indexer_Controller::CLEAR_CONFIRM_WORD,
+		);
+		$_REQUEST = $_POST;
+
+		$repo = new AIPS_Embeddings_Repository();
+		$repo->upsert( 'topic', 904, array( 0.1, 0.2 ), 'm', 2, 'h' );
+		set_transient( 'aips_bg_lock_content_indexing', 1, 60 );
+
+		$response = $this->capture_ajax_response( array( $this->controller, 'ajax_clear_index' ) );
+		delete_transient( 'aips_bg_lock_content_indexing' );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertNotNull( $repo->get_by_topic_id( 904 ), 'Nothing is deleted while a slice could write it back.' );
+	}
+
+	public function test_clear_index_drops_pending_suggestions_but_keeps_reviewed_ones() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_POST    = array(
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'confirm_word' => AIPS_Content_Indexer_Controller::CLEAR_CONFIRM_WORD,
+		);
+		$_REQUEST = $_POST;
+
+		$links    = new AIPS_Internal_Links_Repository();
+		$pending  = $links->insert( 10, 11, 0.9 );
+		$accepted = $links->insert( 10, 12, 0.8 );
+		$links->update_status( $accepted, 'accepted' );
+
+		$response = $this->capture_ajax_response( array( $this->controller, 'ajax_clear_index' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertNull( $links->get_by_id( $pending ) );
+		$this->assertNotNull( $links->get_by_id( $accepted ) );
 	}
 }

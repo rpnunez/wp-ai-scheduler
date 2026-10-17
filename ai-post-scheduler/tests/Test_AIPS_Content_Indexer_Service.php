@@ -53,6 +53,12 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		delete_option( 'aips_pending_index_queue' );
 		delete_option( 'aips_pending_topic_index_queue' );
 		parent::tearDown();
+
+		// clear_index() ends with TRUNCATE, which commits the open test transaction, so the
+		// clear lock it took would outlive the rollback and block later tests for its TTL.
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'aips\_lock\_%'" );
+		$wpdb->query( 'COMMIT' );
 	}
 
 	/**
@@ -425,5 +431,269 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		// Both Post 2 and Post 3 MUST remain in the queue.
 		$remaining_queue = get_option( 'aips_pending_index_queue' );
 		$this->assertEquals( array( $post2, $post3 ), $remaining_queue );
+	}
+
+	// -------------------------------------------------------------------------
+	// ensure_indexed(): idempotence, staleness, locking
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Build an indexer whose embeddings provider counts its calls.
+	 *
+	 * @param int $dimensions Dimensions of the returned vectors.
+	 * @return array{0:AIPS_Content_Indexer_Service,1:object} Indexer and call counter (->calls).
+	 */
+	private function make_counting_indexer( int $dimensions = 2 ): array {
+		$counter        = new stdClass();
+		$counter->calls = 0;
+
+		$mock_ai_service = $this->createMock( AIPS_AI_Service_Interface::class );
+		$mock_ai_service->method( 'generate_embedding' )->willReturnCallback( function () use ( $counter, $dimensions ) {
+			$counter->calls++;
+			return array_fill( 0, $dimensions, 0.5 );
+		} );
+
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_dimensions', $dimensions );
+
+		$embeddings_service = new AIPS_Embeddings_Service( $mock_ai_service, new AIPS_Logger() );
+		$indexer            = new AIPS_Content_Indexer_Service( $this->embeddings_repo, $this->relationships_repo, $embeddings_service );
+
+		return array( $indexer, $counter );
+	}
+
+	private function make_post( string $title = 'Gamma Article', string $content = 'Gamma body text.' ): int {
+		return wp_insert_post( array(
+			'post_title'   => $title,
+			'post_content' => $content,
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+	}
+
+	public function test_ensure_indexed_makes_no_embedding_call_when_row_is_current() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		$post_id                   = $this->make_post();
+
+		$this->assertTrue( $indexer->ensure_indexed( $post_id ) );
+		$this->assertSame( 1, $counter->calls );
+
+		$this->assertTrue( $indexer->ensure_indexed( $post_id ) );
+		$this->assertSame( 1, $counter->calls, 'Unchanged text, model and dimensions must not be embedded again.' );
+	}
+
+	public function test_ensure_indexed_re_embeds_when_text_changes() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		$post_id                   = $this->make_post();
+
+		$indexer->ensure_indexed( $post_id );
+		wp_update_post( array( 'ID' => $post_id, 'post_content' => 'Completely different body.' ) );
+		$indexer->ensure_indexed( $post_id );
+
+		$this->assertSame( 2, $counter->calls );
+	}
+
+	public function test_ensure_indexed_re_embeds_when_model_or_dimensions_differ() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		$post_id                   = $this->make_post();
+		$indexer->ensure_indexed( $post_id );
+		$this->assertSame( 1, $counter->calls );
+
+		$row = $this->embeddings_repo->get_by_post_id( $post_id );
+		$this->embeddings_repo->upsert( 'post', $post_id, array( 0.5, 0.5 ), 'an-older-model', 2, $row->content_hash, 'post' );
+		$this->assertTrue( $indexer->is_stale( $this->embeddings_repo->get_by_post_id( $post_id ) ) );
+		$indexer->ensure_indexed( $post_id );
+		$this->assertSame( 2, $counter->calls, 'A different model makes the row stale.' );
+
+		$row = $this->embeddings_repo->get_by_post_id( $post_id );
+		$this->embeddings_repo->upsert( 'post', $post_id, array( 0.5, 0.5, 0.5 ), $row->model, 3, $row->content_hash, 'post' );
+		$this->assertTrue( $indexer->is_stale( $this->embeddings_repo->get_by_post_id( $post_id ) ) );
+		$indexer->ensure_indexed( $post_id );
+		$this->assertSame( 3, $counter->calls, 'A different dimension count makes the row stale.' );
+		$this->assertFalse( $indexer->is_stale( $this->embeddings_repo->get_by_post_id( $post_id ) ) );
+	}
+
+	public function test_ensure_indexed_force_re_embeds_a_current_row() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		$post_id                   = $this->make_post();
+
+		$indexer->ensure_indexed( $post_id );
+		$indexer->ensure_indexed( $post_id, false, true );
+
+		$this->assertSame( 2, $counter->calls );
+	}
+
+	public function test_ensure_indexed_returns_errors_for_missing_and_empty_posts() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+
+		$missing = $indexer->ensure_indexed( 999999 );
+		$this->assertWPError( $missing );
+		$this->assertSame( 'post_not_found', $missing->get_error_code() );
+
+		$empty_id = wp_insert_post( array( 'post_title' => '', 'post_content' => '', 'post_status' => 'publish', 'post_type' => 'post' ), true );
+		if ( ! is_wp_error( $empty_id ) && $empty_id ) {
+			$empty = $indexer->ensure_indexed( $empty_id );
+			$this->assertWPError( $empty );
+			$this->assertSame( 'empty_content', $empty->get_error_code() );
+		}
+
+		$this->assertSame( 0, $counter->calls );
+	}
+
+	public function test_ensure_indexed_skips_the_embedding_call_while_another_worker_holds_the_lock() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		$post_id                   = $this->make_post();
+
+		$this->assertTrue( AIPS_Lock::acquire( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id, 60 ) );
+
+		$result = $indexer->ensure_indexed( $post_id );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'resource_locked', $result->get_error_code() );
+		$this->assertSame( 0, $counter->calls, 'A second caller must not pay for the same embedding.' );
+
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id );
+		$this->assertTrue( $indexer->ensure_indexed( $post_id ) );
+		$this->assertSame( 1, $counter->calls );
+	}
+
+	public function test_status_reports_stale_posts_and_stale_only_batches_re_embed_only_those() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$stale_id   = $this->make_post( 'Stale one', 'Body one' );
+		$current_id = $this->make_post( 'Current one', 'Body two' );
+		$indexer->ensure_indexed( $stale_id );
+		$indexer->ensure_indexed( $current_id );
+
+		$row = $this->embeddings_repo->get_by_post_id( $stale_id );
+		$this->embeddings_repo->upsert( 'post', $stale_id, array( 0.5, 0.5 ), 'an-older-model', 2, $row->content_hash, 'post' );
+		$counter->calls = 0;
+
+		$status = $indexer->get_indexing_status( array( 'post' ) );
+		$this->assertSame( 1, $status['stale'] );
+
+		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts', true );
+		$this->assertSame( 1, $result['success'] );
+		$this->assertSame( 1, $counter->calls, 'Only the stale post is re-embedded.' );
+		$this->assertSame( 0, $indexer->get_indexing_status( array( 'post' ) )['stale'] );
+	}
+
+	public function test_clearing_post_embeddings_leaves_topic_embeddings() {
+		$this->embeddings_repo->upsert( 'topic', 77, array( 0.1, 0.2 ), 'm', 2, 'h' );
+		$post_id = $this->make_post();
+		$this->embeddings_repo->upsert( 'post', $post_id, array( 0.1, 0.2 ), 'm', 2, 'h', 'post' );
+
+		$this->indexer_service->clear_index( 'post' );
+
+		$this->assertNull( $this->embeddings_repo->get_by_post_id( $post_id ) );
+		$this->assertNotNull( $this->embeddings_repo->get_by_topic_id( 77 ) );
+	}
+
+	public function test_clear_preview_counts_what_clear_index_deletes() {
+		$post_id = $this->make_post();
+		$this->embeddings_repo->upsert( 'post', $post_id, array( 0.1, 0.2 ), 'm', 2, 'h', 'post' );
+		$this->embeddings_repo->upsert( 'topic', 5, array( 0.1, 0.2 ), 'm', 2, 'h' );
+
+		$preview = $this->indexer_service->get_clear_preview();
+
+		$this->assertSame( 1, $preview['posts'] );
+		$this->assertSame( 1, $preview['topics'] );
+		$this->assertSame( 2, $preview['embeddings'] );
+	}
+
+	public function test_provider_returning_other_dimensions_than_configured_does_not_loop() {
+		list( $indexer, $counter ) = $this->make_counting_indexer( 2 );
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_dimensions', 1536 );
+		$post_id = $this->make_post();
+
+		$indexer->ensure_indexed( $post_id );
+		$indexer->ensure_indexed( $post_id );
+
+		$this->assertSame( 1, $counter->calls, 'The provider\'s real dimension count is what rows are compared with.' );
+		$this->assertSame( 0, $indexer->get_indexing_status( array( 'post' ) )['stale'] );
+	}
+
+	public function test_stale_only_batch_honors_the_embeddings_scope() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'aips_only' );
+		$in_scope  = $this->make_post( 'In scope', 'Body a' );
+		$out_scope = $this->make_post( 'Out of scope', 'Body b' );
+		update_post_meta( $in_scope, '_aips_generated_post', 1 );
+
+		foreach ( array( $in_scope, $out_scope ) as $id ) {
+			$this->embeddings_repo->upsert( 'post', $id, array( 0.5, 0.5 ), 'an-older-model', 2, 'x', 'post' );
+		}
+
+		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts', true );
+
+		$this->assertSame( 1, $result['success'], 'Out-of-scope posts are not re-embedded.' );
+		$this->assertSame( 1, $counter->calls );
+	}
+
+	public function test_automatic_stale_reindex_is_throttled() {
+		list( $indexer ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_indexer_auto_reindex_stale', true );
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$post_id = $this->make_post();
+		$this->embeddings_repo->upsert( 'post', $post_id, array( 0.5, 0.5 ), 'an-older-model', 2, 'x', 'post' );
+
+		delete_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE );
+		$indexer->maybe_start_stale_reindex();
+
+		$this->assertNotFalse( get_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE ) );
+		$this->assertFalse( $indexer->maybe_start_stale_reindex(), 'A second attempt within the interval does nothing.' );
+	}
+
+	public function test_failed_automatic_stale_start_does_not_set_the_throttle() {
+		list( $indexer ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_indexer_auto_reindex_stale', true );
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		delete_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE );
+
+		// Nothing is stale, so no run can start.
+		$this->assertFalse( $indexer->maybe_start_stale_reindex() );
+		$this->assertFalse( get_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE ) );
+	}
+
+	public function test_lock_conflict_and_clearing_are_skipped_not_counted_as_failures() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$post_id = $this->make_post();
+
+		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id, 60 );
+		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts' );
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id );
+
+		$this->assertSame( 0, $result['failed'], 'Another worker holding the post is not a failure.' );
+		$this->assertSame( 0, $counter->calls );
+
+		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::CLEAR_LOCK, 60 );
+		$cleared = $indexer->ensure_indexed( $post_id );
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::CLEAR_LOCK );
+
+		$this->assertWPError( $cleared );
+		$this->assertTrue( AIPS_Content_Indexer_Service::is_skippable_error( $cleared ) );
+		$this->assertSame( 0, $counter->calls );
+	}
+
+	public function test_clear_index_refuses_to_run_twice_at_once() {
+		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::CLEAR_LOCK, 60 );
+
+		$this->assertFalse( $this->indexer_service->clear_index() );
+
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::CLEAR_LOCK );
+		$this->assertTrue( $this->indexer_service->clear_index() );
+	}
+
+	public function test_batch_reports_how_many_busy_posts_were_skipped() {
+		list( $indexer ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$post_id = $this->make_post();
+
+		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id, 60 );
+		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts' );
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id );
+
+		$this->assertSame( 1, $result['skipped'] );
+		$this->assertSame( 0, $result['failed'] );
 	}
 }

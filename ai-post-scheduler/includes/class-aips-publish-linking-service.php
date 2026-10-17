@@ -51,6 +51,16 @@ class AIPS_Publish_Linking_Service {
 	const DELAY = 120;
 
 	/**
+	 * Post meta counting how often the pass was deferred to wait for indexing.
+	 */
+	const DEFER_META = '_aips_publish_linking_deferred';
+
+	/**
+	 * How many times the pass may be deferred before it runs without the outbound step.
+	 */
+	const MAX_DEFERRALS = 3;
+
+	/**
 	 * @var AIPS_Config
 	 */
 	private $config;
@@ -173,12 +183,24 @@ class AIPS_Publish_Linking_Service {
 			return new WP_Error('aips_publish_linking_skip', __('This post is not a published AIPS post in the link index, or it was already linked.', 'ai-post-scheduler'));
 		}
 
+		$wants_outbound = (bool) $this->config->get_option('aips_publish_linking_outbound', true);
+		$embed_inline   = (bool) $this->config->get_option('aips_publish_linking_embed_inline', false);
+
+		// By default this pass never waits on an embedding call. If the new post is not
+		// indexed yet, queue it for indexing and try again later, a few times at most.
+		// Waiting only helps when something can index the post: with embeddings off it never will.
+		$can_index = AIPS_Container::get_instance()->make(AIPS_Embeddings_Service::class)->is_enabled();
+
+		if ($wants_outbound && !$embed_inline && $can_index && !$this->is_indexed($post_id) && $this->defer($post_id)) {
+			return new WP_Error('aips_publish_linking_deferred', __('Waiting for the post to be indexed; linking will be retried shortly.', 'ai-post-scheduler'));
+		}
+
 		// Mark first so an overlapping cron request cannot run the pass twice.
 		update_post_meta($post_id, self::DONE_META, time());
 
 		$outbound = 0;
-		if ((bool) $this->config->get_option('aips_publish_linking_outbound', true)) {
-			$result = (new AIPS_Internal_Links_Service())->generate_suggestions_for_post($post_id);
+		if ($wants_outbound) {
+			$result = (new AIPS_Internal_Links_Service())->generate_suggestions_for_post($post_id, null, null, $embed_inline || ($can_index && !$this->is_indexed($post_id)));
 			if (!is_wp_error($result)) {
 				$outbound = count((array) $result);
 			}
@@ -210,6 +232,45 @@ class AIPS_Publish_Linking_Service {
 			'run'      => $run,
 			'outbound' => $outbound,
 		);
+	}
+
+	/**
+	 * Whether the post already has a stored embedding.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 */
+	private function is_indexed(int $post_id): bool {
+		$container = AIPS_Container::get_instance();
+		$repo      = $container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository();
+
+		return $repo->has_post_embedding($post_id);
+	}
+
+	/**
+	 * Queue the post for indexing and reschedule this pass.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool False when the deferral limit is reached (the pass should run now).
+	 */
+	private function defer(int $post_id): bool {
+		$deferrals = (int) get_post_meta($post_id, self::DEFER_META, true);
+		if ($deferrals >= self::MAX_DEFERRALS) {
+			return false;
+		}
+
+		update_post_meta($post_id, self::DEFER_META, $deferrals + 1);
+
+		// Queue it once; later retries only wait.
+		if ($deferrals === 0) {
+			AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->enqueue_post_for_indexing($post_id);
+		}
+
+		if (!wp_next_scheduled(self::CRON_HOOK, array($post_id))) {
+			wp_schedule_single_event(time() + self::DELAY, self::CRON_HOOK, array($post_id));
+		}
+
+		return true;
 	}
 
 	/**

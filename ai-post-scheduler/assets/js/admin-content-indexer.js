@@ -18,34 +18,6 @@
 	AIPS.ContentIndexer = {
 
 		/**
-		 * Flag indicating whether a batch backfill indexing scan is actively running.
-		 *
-		 * @type {boolean}
-		 */
-		isIndexing: false,
-
-		/**
-		 * Flag indicating whether the indexing process is temporarily paused.
-		 *
-		 * @type {boolean}
-		 */
-		isPaused: false,
-
-		/**
-		 * ID of the last processed post in progressive cursor pagination.
-		 *
-		 * @type {number}
-		 */
-		lastPostId: 0,
-
-		/**
-		 * Number of posts to process in each sequential AJAX batch slice.
-		 *
-		 * @type {number}
-		 */
-		batchSize: 8,
-
-		/**
 		 * ID of the post currently centered and inspected in the semantic graph.
 		 *
 		 * @type {number|null}
@@ -227,8 +199,10 @@
 			$('#aips-drawer-focus-btn').on('click', this.onDrawerFocusClick.bind(this));
 
 			// Batch indexing scan controls
-			$('#aips-start-indexing-btn').on('click', this.handleStartIndexing.bind(this));
-			$('#aips-pause-indexing-btn').on('click', this.handlePauseIndexing.bind(this));
+			// Start / pause / resume / stop are handled by background-processes.js
+			// (data-aips-bg-action buttons); this page reacts to the run's snapshots.
+			$(document).on('aips:bg-update', this.onBackgroundUpdate.bind(this));
+			$('#aips-scan-entity-scope').on('change', this.onScanScopeChange.bind(this));
 			$('#aips-clear-index-btn').on('click', this.handleClearIndex.bind(this));
 
 			// Dimension mismatch re-index trigger
@@ -686,25 +660,11 @@
 		 * @return {void}
 		 */
 		onReindexDimensionClick: function () {
-			var self = this;
-			AIPS.Utilities.confirm(
-				'This will clear stored vector embeddings and re-index all content using the active environment and model. Proceed?',
-				'Re-index Embeddings',
-				[
-					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
-					{
-						label: 'Proceed',
-						className: 'aips-btn aips-btn-primary',
-						action: function () {
-							self.handleClearIndex(true);
-							$('.aips-tab-link[data-tab="scanner"]').trigger('click');
-							setTimeout(function () {
-								self.handleStartIndexing();
-							}, 600);
-						}
-					}
-				]
-			);
+			// Re-embed only the posts made with another model or dimensions, as a managed
+			// background run (cost estimate first, quota-aware, pausable).
+			if (AIPS.BackgroundProcesses) {
+				AIPS.BackgroundProcesses.startWithEstimate('content_indexing', $('#aips-reindex-dimension-btn'), { mode: 'stale' });
+			}
 		},
 
 		/**
@@ -1044,217 +1004,214 @@
 
 
 		/**
-		 * Start / Resume backfill indexing.
+		 * Persist the scan scope; the background run reads it from settings.
 		 */
-		handleStartIndexing: function () {
-			if (this.isIndexing && !this.isPaused) {
-				return;
-			}
+		onScanScopeChange: function () {
+			// Keep the run buttons off until the scope is saved, so a start cannot read the old one.
+			var $runButtons = $('#aips-start-indexing-btn, #aips-reindex-stale-btn').prop('disabled', true);
 
-			this.isIndexing = true;
-			this.isPaused = false;
-
-			$('#aips-start-indexing-btn').hide();
-			$('#aips-pause-indexing-btn').show();
-			$('#aips-indexer-live-banner').slideDown(200);
-
-			this.processNextBatch();
-		},
-
-		/**
-		 * Pause indexing.
-		 */
-		handlePauseIndexing: function () {
-			this.isPaused = true;
-			this.isIndexing = false;
-
-			$('#aips-pause-indexing-btn').hide();
-			$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.resumeScan || 'Resume Scan');
-			$('#aips-indexer-banner-title').text(aipsContentIndexerL10n.indexingPaused || 'Indexing Paused');
-		},
-
-		/**
-		 * Process batch slice via AJAX.
-		 */
-		processNextBatch: function () {
-			var self = this;
-
-			if (!this.isIndexing || this.isPaused) {
-				return;
-			}
-
-			var entityScope = $('#aips-scan-entity-scope').val() || 'all';
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'aips_indexer_process_batch',
-					nonce: aipsContentIndexerL10n.nonce,
-					batch_size: self.batchSize,
-					last_post_id: self.lastPostId,
-					entity_scope: entityScope
-				},
-				success: function (res) {
-					if (!res.success) {
-						AIPS.Utilities && AIPS.Utilities.showNotice(res.data.message || 'Indexing error.', 'error');
-						self.handlePauseIndexing();
-						return;
-					}
-
-					var data = res.data;
-					self.lastPostId = data.last_post_id;
-
-					// Update DOM metrics
-					if (data.status) {
-						var st = data.status;
-						$('#aips-stat-indexed').text(st.indexed);
-						$('#aips-stat-total').text(st.total_posts);
-						$('#aips-stat-percent').text(st.percent + '%');
-						$('#aips-index-progress-bar').css('width', st.percent + '%');
-
-						$('#aips-stat-topics-indexed').text(st.indexed_topics || 0);
-						$('#aips-stat-topics-total').text(st.total_topics || 0);
-						$('#aips-stat-topics-percent').text((st.topics_percent || 0) + '%');
-						$('#aips-topics-progress-bar').css('width', (st.topics_percent || 0) + '%');
-
-						var totalUnindexed = (st.unindexed || 0) + (st.unindexed_topics || 0);
-						$('#aips-stat-unindexed').text(totalUnindexed);
-						$('#aips-stat-unindexed-breakdown').text(st.unindexed + ' posts, ' + st.unindexed_topics + ' topics pending');
-
-						if (entityScope === 'topics') {
-							$('#aips-indexer-slice-count').text((st.indexed_topics || 0) + ' / ' + (st.total_topics || 0));
-						} else {
-							$('#aips-indexer-slice-count').text(st.indexed + ' / ' + st.total_posts);
-						}
-					} else {
-						$('#aips-stat-indexed').text(data.total_indexed);
-						$('#aips-stat-total').text(data.total_posts);
-						$('#aips-stat-percent').text(data.percent + '%');
-						$('#aips-index-progress-bar').css('width', data.percent + '%');
-						$('#aips-stat-unindexed').text(Math.max(0, data.total_posts - data.total_indexed));
-						$('#aips-indexer-slice-count').text(data.total_indexed + ' / ' + data.total_posts);
-					}
-
-					// Update live rate limit meters if returned
-					if (data.rate_limits) {
-						var rl = data.rate_limits;
-						var dCnt = rl.daily_count || 0, dLim = rl.daily_limit || 0;
-						var wCnt = rl.weekly_count || 0, wLim = rl.weekly_limit || 0;
-						var mCnt = rl.monthly_count || 0, mLim = rl.monthly_limit || 0;
-						var dLimitText = dLim > 0 ? String(dLim) : '∞';
-						var wLimitText = wLim > 0 ? String(wLim) : '∞';
-						var mLimitText = mLim > 0 ? String(mLim) : '∞';
-
-						if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-meter-count')) {
-							$('#aips-meter-daily-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: dCnt, limit: dLimitText }));
-							$('#aips-meter-weekly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: wCnt, limit: wLimitText }));
-							$('#aips-meter-monthly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: mCnt, limit: mLimitText }));
-						} else {
-							$('#aips-meter-daily-count').html('<strong>' + dCnt + '</strong> / ' + dLimitText);
-							$('#aips-meter-weekly-count').html('<strong>' + wCnt + '</strong> / ' + wLimitText);
-							$('#aips-meter-monthly-count').html('<strong>' + mCnt + '</strong> / ' + mLimitText);
-						}
-						if (dLim > 0) $('#aips-meter-daily-bar').css('width', Math.min(100, Math.round((dCnt / dLim) * 100)) + '%');
-						if (wLim > 0) $('#aips-meter-weekly-bar').css('width', Math.min(100, Math.round((wCnt / wLim) * 100)) + '%');
-						if (mLim > 0) $('#aips-meter-monthly-bar').css('width', Math.min(100, Math.round((mCnt / mLim) * 100)) + '%');
-					}
-
-					if (data.cooldown && data.cooldown.active) {
-						self.isIndexing = false;
-						self.isPaused = false;
-						$('#aips-pause-indexing-btn').hide();
-						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Scan');
-						$('#aips-indexer-live-banner').slideUp(200);
-
-						self.showCooldownBanner(data.cooldown);
-						AIPS.Utilities && AIPS.Utilities.showNotice(data.cooldown.reason || 'Embedding auto-cooldown activated. Indexing paused.', 'warning');
-						return;
-					}
-
-					if (data.rate_limit_exceeded) {
-						self.isIndexing = false;
-						self.isPaused = false;
-						$('#aips-pause-indexing-btn').hide();
-						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Scan');
-						$('#aips-indexer-live-banner').slideUp(200);
-
-						var errorMsg = (data.rate_limit_error && data.rate_limit_error.message) ? data.rate_limit_error.message : 'Embedding rate limit reached. Indexing paused.';
-						$('#aips-rate-limit-warning-msg').text(errorMsg);
-						$('#aips-rate-limit-warning-banner').removeClass('aips-hidden').slideDown(200);
-						AIPS.Utilities && AIPS.Utilities.showNotice(errorMsg, 'warning');
-						return;
-					}
-
-					if (data.done) {
-						self.isIndexing = false;
-						$('#aips-pause-indexing-btn').hide();
-						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Scan');
-						$('#aips-indexer-live-banner').slideUp(200);
-						AIPS.Utilities && AIPS.Utilities.showNotice(aipsContentIndexerL10n.indexingComplete || 'Content indexing complete!', 'success');
-					} else if (self.isIndexing && !self.isPaused) {
-						// Continue next slice immediately
-						setTimeout(function () {
-							self.processNextBatch();
-						}, 300);
-					}
-				},
-				error: function () {
-					self.handlePauseIndexing();
-					AIPS.Utilities && AIPS.Utilities.showNotice('Network error during indexing batch. Paused.', 'error');
-				}
+			$.post(ajaxurl, {
+				action: 'aips_indexer_save_settings',
+				nonce: aipsContentIndexerL10n.nonce,
+				scan_entity_scope: $('#aips-scan-entity-scope').val() || 'all'
+			}).always(function () {
+				$runButtons.prop('disabled', false);
 			});
 		},
 
 		/**
-		 * Clear entire index.
+		 * React to the managed indexing run: show its progress banner and keep the
+		 * stat cards in step while it runs (and once more when it stops).
 		 *
-		 * @param {boolean} [skipConfirm=false] Whether to skip the confirmation prompt.
+		 * @param {Event}  e     The aips:bg-update event.
+		 * @param {Array}  list  Snapshots from the server.
+		 * @param {Object} state Snapshots keyed by process key.
 		 */
-		handleClearIndex: function (skipConfirm) {
-			var self = this;
-
-			function doClear() {
-				$.ajax({
-					url: ajaxurl,
-					type: 'POST',
-					dataType: 'json',
-					data: {
-						action: 'aips_indexer_clear_index',
-						nonce: aipsContentIndexerL10n.nonce
-					},
-					success: function (res) {
-						if (res.success) {
-							self.lastPostId = 0;
-							$('#aips-stat-indexed').text('0');
-							$('#aips-stat-percent').text('0%');
-							$('#aips-index-progress-bar').css('width', '0%');
-							$('#aips-stat-topics').text('0');
-							AIPS.Utilities && AIPS.Utilities.showNotice(res.data.message || 'Index cleared.', 'success');
-							self.reloadGraph();
-						}
-					}
-				});
-			}
-
-			if (skipConfirm) {
-				doClear();
+		onBackgroundUpdate: function (e, list, state) {
+			var snap = state && state.content_indexing;
+			if (!snap) {
 				return;
 			}
 
-			AIPS.Utilities.confirm(
-				aipsContentIndexerL10n.confirmClear || 'Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.',
-				'Clear Semantic Index',
-				[
-					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
-					{
-						label: 'Clear Index',
-						className: 'aips-btn aips-btn-danger-solid',
-						action: doClear
+			var $banner = $('#aips-indexer-live-banner');
+			if (snap.is_active) {
+				$banner.removeClass('aips-hidden').show();
+			} else {
+				$banner.addClass('aips-hidden').hide();
+			}
+
+			this.syncRunBanners(snap);
+
+			// The scope select cannot change mid-run.
+			$('#aips-scan-entity-scope').prop('disabled', !!snap.is_active);
+
+			if (snap.is_active || this._indexingWasActive) {
+				this.refreshStatus();
+			}
+			if (this._indexingWasActive && !snap.is_active && snap.last_status === 'completed') {
+				AIPS.Utilities && AIPS.Utilities.showNotice(aipsContentIndexerL10n.indexingComplete || 'Content indexing complete!', 'success');
+			}
+			this._indexingWasActive = !!snap.is_active;
+		},
+
+		/**
+		 * Show the cooldown / quota banners while the managed run is waiting on them (the
+		 * browser-driven batch used to raise these from each response), and hide them when
+		 * the run has moved on.
+		 *
+		 * @param {Object} snap Snapshot of the content_indexing run.
+		 */
+		syncRunBanners: function (snap) {
+			var $quota = $('#aips-rate-limit-warning-banner');
+
+			if (snap.status === 'cooldown') {
+				if ($('#aips-cooldown-banner').hasClass('aips-hidden')) {
+					this.showCooldownBanner({ until: snap.next_run_at, reason: snap.message });
+				}
+			} else if (this._runWasCooldown) {
+				this.hideCooldownBanner();
+			}
+			this._runWasCooldown = snap.status === 'cooldown';
+
+			if (snap.status === 'waiting_quota') {
+				$('#aips-rate-limit-warning-msg').text(snap.message || '');
+				$quota.removeClass('aips-hidden').show();
+			} else if (this._runWasWaitingQuota) {
+				$quota.addClass('aips-hidden').hide();
+			}
+			this._runWasWaitingQuota = snap.status === 'waiting_quota';
+		},
+
+		/**
+		 * Reload the indexing numbers shown on the stat cards.
+		 */
+		refreshStatus: function () {
+			if (this._refreshingStatus) {
+				return;
+			}
+			this._refreshingStatus = true;
+
+			var self = this;
+			$.post(ajaxurl, {
+				action: 'aips_indexer_get_status',
+				nonce: aipsContentIndexerL10n.nonce
+			}).done(function (res) {
+				if (res && res.success && res.data && res.data.status) {
+					self.renderStatus(res.data.status);
+				}
+			}).always(function () {
+				self._refreshingStatus = false;
+			});
+		},
+
+		/**
+		 * @param {Object} st Indexing status from the server.
+		 */
+		renderStatus: function (st) {
+			$('#aips-stat-indexed').text(st.indexed);
+			$('#aips-stat-total').text(st.total_posts);
+			$('#aips-stat-percent').text(st.percent + '%');
+			$('#aips-index-progress-bar').css('width', st.percent + '%');
+
+			$('#aips-stat-topics-indexed').text(st.indexed_topics || 0);
+			$('#aips-stat-topics-total').text(st.total_topics || 0);
+			$('#aips-stat-topics-percent').text((st.topics_percent || 0) + '%');
+			$('#aips-topics-progress-bar').css('width', (st.topics_percent || 0) + '%');
+
+			$('#aips-stat-unindexed').text((st.unindexed || 0) + (st.unindexed_topics || 0));
+			$('#aips-stat-unindexed-breakdown').text((aipsContentIndexerL10n.pendingBreakdown || '%1$s posts, %2$s topics pending').replace('%1$s', st.unindexed).replace('%2$s', st.unindexed_topics));
+
+			var stale = st.stale || 0;
+			$('#aips-reindex-stale-btn').toggle(stale > 0).find('.btn-text').text((aipsContentIndexerL10n.reindexStale || 'Re-index Stale (%s)').replace('%s', stale));
+			$('#aips-stat-stale-line').toggle(stale > 0);
+
+			if (st.rate_limits) {
+				this.renderRateLimits(st.rate_limits);
+			}
+		},
+
+		/**
+		 * @param {Object} rl Rate limit usage stats.
+		 */
+		renderRateLimits: function (rl) {
+			var dCnt = rl.daily_count || 0, dLim = rl.daily_limit || 0;
+			var wCnt = rl.weekly_count || 0, wLim = rl.weekly_limit || 0;
+			var mCnt = rl.monthly_count || 0, mLim = rl.monthly_limit || 0;
+			var dLimitText = dLim > 0 ? String(dLim) : '∞';
+			var wLimitText = wLim > 0 ? String(wLim) : '∞';
+			var mLimitText = mLim > 0 ? String(mLim) : '∞';
+
+			$('#aips-meter-daily-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: dCnt, limit: dLimitText }));
+			$('#aips-meter-weekly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: wCnt, limit: wLimitText }));
+			$('#aips-meter-monthly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: mCnt, limit: mLimitText }));
+			if (dLim > 0) { $('#aips-meter-daily-bar').css('width', Math.min(100, Math.round((dCnt / dLim) * 100)) + '%'); }
+			if (wLim > 0) { $('#aips-meter-weekly-bar').css('width', Math.min(100, Math.round((wCnt / wLim) * 100)) + '%'); }
+			if (mLim > 0) { $('#aips-meter-monthly-bar').css('width', Math.min(100, Math.round((mCnt / mLim) * 100)) + '%'); }
+		},
+
+		/**
+		 * Clear the entire index, after the user types the confirmation word.
+		 *
+		 * The prompt states how many rows will be deleted, fetched fresh from the server.
+		 */
+		handleClearIndex: function () {
+			var self = this;
+			var L10n = aipsContentIndexerL10n;
+			var word = L10n.clearWord || 'DELETE';
+			var fmt  = function (n) { return Number(n || 0).toLocaleString(); };
+
+			$.post(ajaxurl, {
+				action: 'aips_indexer_get_clear_preview',
+				nonce: L10n.nonce
+			}).done(function (res) {
+				if (!res || !res.success) {
+					AIPS.Utilities.showToast((res && res.data && res.data.message) || L10n.requestFailed, 'error');
+					return;
+				}
+
+				var d = res.data;
+				AIPS.Utilities.confirmWithWord({
+					heading: L10n.clearHeading,
+					message: (L10n.clearMessage || '')
+						.replace('%1$s', fmt(d.embeddings))
+						.replace('%2$s', fmt(d.posts))
+						.replace('%3$s', fmt(d.topics))
+						.replace('%4$s', fmt(d.relationships))
+						.replace('%5$s', fmt(d.pending_suggestions)),
+					description: (L10n.clearDescription || '').replace('%s', word),
+					word: word,
+					confirmLabel: L10n.clearConfirmLabel,
+					cancelLabel: L10n.cancel,
+					onConfirm: function () {
+						self.clearIndex(word);
 					}
-				]
-			);
+				});
+			}).fail(function () {
+				AIPS.Utilities.showToast(L10n.requestFailed, 'error');
+			});
+		},
+
+		/**
+		 * @param {string} word The confirmation word the user typed.
+		 */
+		clearIndex: function (word) {
+			var self = this;
+
+			$.post(ajaxurl, {
+				action: 'aips_indexer_clear_index',
+				nonce: aipsContentIndexerL10n.nonce,
+				confirm_word: word
+			}).done(function (res) {
+				if (res && res.success) {
+					AIPS.Utilities.showToast(res.data.message || 'Index cleared.', 'success');
+					self.refreshStatus();
+					self.reloadGraph();
+				} else {
+					AIPS.Utilities.showToast((res && res.data && res.data.message) || aipsContentIndexerL10n.requestFailed, 'error');
+				}
+			}).fail(function () {
+				AIPS.Utilities.showToast(aipsContentIndexerL10n.requestFailed, 'error');
+			});
 		},
 
 		/**
