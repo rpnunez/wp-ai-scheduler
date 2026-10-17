@@ -135,11 +135,11 @@ class AIPS_Settings {
 				'default'           => $defaults['aips_ability_enrichment_user_id'],
 			),
 			'aips_ability_enrichment_min_seo_score' => array(
-				'sanitize_callback' => array($this, 'sanitize_quality_score'),
+				'sanitize_callback' => array(__CLASS__, 'sanitize_quality_score'),
 				'default'           => $defaults['aips_ability_enrichment_min_seo_score'],
 			),
 			'aips_ability_enrichment_min_readability_score' => array(
-				'sanitize_callback' => array($this, 'sanitize_quality_score'),
+				'sanitize_callback' => array(__CLASS__, 'sanitize_quality_score'),
 				'default'           => $defaults['aips_ability_enrichment_min_readability_score'],
 			),
 			'aips_ability_workflow_retention_days' => array(
@@ -674,7 +674,7 @@ class AIPS_Settings {
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
-	public function sanitize_quality_score($value) {
+	public static function sanitize_quality_score($value) {
 		return max(0, min(100, absint($value)));
 	}
 
