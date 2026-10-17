@@ -1383,7 +1383,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         return $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id,
+            "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id, schedule_id,
                     creation_method, status, generated_title, error_message,
                     created_at, completed_at, record_kind
              FROM {$this->table_name}

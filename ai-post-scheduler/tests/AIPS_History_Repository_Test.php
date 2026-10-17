@@ -462,10 +462,11 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'template_id'     => $this->test_template_id,
 				'status'          => 'partial',
 				'creation_method' => $flow,
+				'record_kind'     => AIPS_History_Record_Kind::GENERATION,
 				'created_at'      => $now,
 				'completed_at'    => 0,
 			),
-			array('%d', '%s', '%s', '%d', '%d')
+			array('%d', '%s', '%s', '%s', '%d', '%d')
 		);
 		$this->test_history_ids[] = $wpdb->insert_id;
 
@@ -476,10 +477,11 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'template_id'     => $this->test_template_id,
 				'status'          => 'completed',
 				'creation_method' => $flow,
+				'record_kind'     => AIPS_History_Record_Kind::GENERATION,
 				'created_at'      => $now,
 				'completed_at'    => $now + 42,
 			),
-			array('%d', '%s', '%s', '%d', '%d')
+			array('%d', '%s', '%s', '%s', '%d', '%d')
 		);
 		$this->test_history_ids[] = $wpdb->insert_id;
 
@@ -566,7 +568,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 
 	public function test_count_completed_for_schedule_isolates_by_schedule_id() {
 		global $wpdb;
-		if (property_exists($wpdb, 'get_col_return_val')) {
+		if (property_exists($wpdb, 'get_results_return_val')) {
 			$this->markTestSkipped('Schedule count test requires the full WordPress test library.');
 		}
 
@@ -640,7 +642,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 
 	public function test_backfill_schedule_id_populates_from_schedule_logs_and_correlation_id() {
 		global $wpdb;
-		if (property_exists($wpdb, 'get_col_return_val')) {
+		if (property_exists($wpdb, 'get_results_return_val')) {
 			$this->markTestSkipped('Backfill test requires the full WordPress test library.');
 		}
 

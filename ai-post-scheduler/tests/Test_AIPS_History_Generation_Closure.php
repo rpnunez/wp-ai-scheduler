@@ -22,7 +22,9 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 				return '';
 			}
 		};
-		AIPS_Container::get_instance()->instance(AIPS_Similarity_Evaluator::class, $evaluator);
+		AIPS_Container::get_instance()->bind(AIPS_Similarity_Evaluator::class, function () use ($evaluator) {
+			return $evaluator;
+		});
 
 		$generator = new class($generate) {
 			private $generate;
@@ -48,6 +50,14 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 			public function log_post_generation($topic_id, $post_id, $metadata) {}
 		};
 
+		$topics = new class {
+			public function claim_topic_for_generation($topic_id, $timeout = 900, $allow_regenerate = false) {
+				return true;
+			}
+			public function release_topic_claim($topic_id) {}
+			public function invalidate_topic_cache($topic_id, $author_id) {}
+		};
+
 		$post_generator = new AIPS_Author_Post_Generator();
 		$reflection     = new ReflectionClass($post_generator);
 		foreach (array(
@@ -55,6 +65,7 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 			'logger'             => $logger,
 			'authors_repository' => $authors,
 			'logs_repository'    => $logs,
+			'topics_repository'  => $topics,
 			'history_service'    => new AIPS_History_Service(new AIPS_History_Repository()),
 		) as $name => $value) {
 			$property = $reflection->getProperty($name);
