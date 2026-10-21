@@ -9,12 +9,29 @@
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
 	urls sync-wp-core sql-batch sql-batch-unpack
 
+# Git Bash (MSYS) must not rewrite POSIX-looking arguments such as a --filter regex starting with "/"
+test test-verbose test-coverage test-session: export MSYS_NO_PATHCONV := 1
+test test-verbose test-coverage test-session: export MSYS2_ARG_CONV_EXCL := *
+
 # Default target
 .DEFAULT_GOAL := help
+
+# Windows: GNU Make falls back to cmd.exe when Git's sh.exe is not on PATH (e.g.
+# PowerShell/cmd), which breaks every $(shell ...) below, and a bare `bash` can
+# resolve to the WSL launcher in System32. Pin Git for Windows' POSIX tools
+# (8.3 paths avoid the space in "Program Files"; SHELL cannot contain spaces).
+ifeq ($(OS),Windows_NT)
+GIT_USR_BIN := $(firstword $(wildcard C:/PROGRA~1/Git/usr/bin C:/PROGRA~2/Git/usr/bin))
+ifneq (,$(GIT_USR_BIN))
+SHELL := $(GIT_USR_BIN)/sh.exe
+export PATH := $(GIT_USR_BIN);$(PATH)
+endif
+endif
 
 # Colors for output. Built with real ESC bytes (not the literal text "\033") so
 # they render under any shell/echo. Set NO_COLOR=1 to disable. Keep these lines
 # free of trailing spaces/comments, which would become part of the value.
+# Use double quotes: GNU Make on Windows strips single quotes before exec.
 ifdef NO_COLOR
 BLUE :=
 GREEN :=
@@ -22,11 +39,11 @@ YELLOW :=
 RED :=
 NC :=
 else
-BLUE := $(shell printf '\033[0;34m')
-GREEN := $(shell printf '\033[0;32m')
-YELLOW := $(shell printf '\033[0;33m')
-RED := $(shell printf '\033[0;31m')
-NC := $(shell printf '\033[0m')
+BLUE := $(shell printf "\033[0;34m")
+GREEN := $(shell printf "\033[0;32m")
+YELLOW := $(shell printf "\033[0;33m")
+RED := $(shell printf "\033[0;31m")
+NC := $(shell printf "\033[0m")
 endif
 
 # env_get(KEY,DEFAULT): read KEY from .env (last occurrence wins), falling back
