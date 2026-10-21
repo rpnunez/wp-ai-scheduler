@@ -1763,15 +1763,8 @@
 
 /* ==========================================================================
    Author Topics Embeddings & Entity Badges Styling
+   (--aips-topic-* tokens now defined in admin.css's shared :root)
    ========================================================================== */
-
-:root {
-	--aips-topic: #8b5cf6;
-	--aips-topic-hover: #7c3aed;
-	--aips-topic-light: #f5f3ff;
-	--aips-topic-dark: #6d28d9;
-	--aips-topic-border: #ddd6fe;
-}
 
 .aips-scan-scope-wrap {
 	display: inline-flex;

@@ -42,17 +42,20 @@
     --aips-success-700: #008a20;
     --aips-success-light: rgba(0, 163, 42, 0.1);
     --aips-success-bg: #edfaef;
+    --aips-success-border: #b8e6c1;
 
     --aips-warning: #dba617;
     --aips-warning-dark: #bd8d0e;
     --aips-warning-light: rgba(219, 166, 23, 0.1);
     --aips-warning-bg: #fcf9e8;
+    --aips-warning-border: #f5dfa3;
 
     --aips-error: #d63638;
     --aips-error-dark: #b32d2e;
     --aips-error-700: #b32d2e;
     --aips-error-light: rgba(214, 54, 56, 0.1);
     --aips-error-bg: #fcf0f1;
+    --aips-error-border: #f0b8b9;
 
     --aips-danger: #d63638;
     --aips-danger-dark: #b32d2e;
@@ -63,6 +66,7 @@
     --aips-info-700: #135e96;
     --aips-info-light: rgba(34, 113, 177, 0.1);
     --aips-info-bg: #f0f6fc;
+    --aips-info-border: #9ec5e8;
 
     /* Colors - Topic (promoted from admin-content-indexer.css; shared across features) */
     --aips-topic: #8b5cf6;
