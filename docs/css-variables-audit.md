@@ -92,6 +92,12 @@ No duplicate component class names (`.badge`/`.pill`/`.tag`/`.chip`) were found 
 
 ---
 
+## 3.5 Addenda from implementation (Phases 1–3)
+
+- **No `var(--x, #fallback)` params anywhere.** The fallback pattern exists for browsers without custom-property support or stylesheets that might load standalone without their `:root` defined — neither applies here: custom-property support is universal, and every CSS file in this plugin is either `admin.css` itself (which always loads first, confirmed via `enqueue_global_assets()` running unconditionally on every plugin admin page and on native post-edit pages) or declares `aips-admin-style` as an explicit `wp_enqueue_style` dependency. All fallbacks were stripped from the files touched in Phases 1–2, and none should be added in later phases.
+- **`admin-bar.css` is the one exception to "rebase onto the shared tokens."** Unlike every other feature stylesheet, it's enqueued on `wp_enqueue_scripts` (front-end) as well as `admin_enqueue_scripts`, explicitly to show the toolbar node on front-end pages too — and with no dependency on `admin.css`. So its local `--aips-ab-*` palette isn't redundant duplication to be merged into the shared system; it's a legitimate, necessary second palette for a context where the shared tokens are not guaranteed to exist. Phase 3 corrected this file's internal drift (raw literals that should have used its own local vars) and moved the palette from being scoped to `#wpadminbar #wp-admin-bar-aips-toolbar` onto `:root` (removing a DOM-scoping fragility that fallback removal would otherwise have exposed), but did not rebase it onto `admin.css`'s tokens.
+- **Found and fixed a real bug while migrating `admin-ai-edit.css`**: its mobile-only `.aips-modal-footer` overrides were missing their `@media (max-width: 782px) {` wrapper (a stray unmatched `}` was the tell), so they applied at all screen widths. Restored the wrapper. Verified via a static before/after screenshot harness (real markup + real CSS, old commit vs. new, rendered with the sandboxed Chromium) that desktop now shows the compact inline footer buttons as intended, and mobile is pixel-identical before/after.
+
 ## 4. Decisions needed before implementation (can't be automated)
 
 1. **`--aips-gray-50` (`#f0f0f1`) vs. the repeated `#f6f7f7`** — same token, or a new `--aips-gray-tint`? (19 uses in admin.css alone.)
