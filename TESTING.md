@@ -19,7 +19,7 @@ Several `*.php` files run as a single PHPUnit process (PHPUnit 9 only takes one 
 
 Rules:
 
-1. **Entrypoint is `make`.** Do not call `scripts/run-docker-test.sh` directly, do not wrap it in `bash.exe -lc "..."`, and do not hand-roll `docker compose exec ... phpunit`. On Windows run `make` from Git Bash or PowerShell; it is on `PATH`.
+1. **Entrypoint is `make`.** Do not call `scripts/run-docker-test.sh` directly, do not wrap it in `bash.exe -lc "..."`, and do not hand-roll `docker compose exec ... phpunit`. On Windows run `make` from Git Bash (PowerShell/cmd also work: the Makefile pins Git for Windows' POSIX tools, so Git for Windows must be installed in `C:\Program Files\Git`).
 2. **One invocation per batch.** Pass every file (and any flags) in a single `ARGS`. Do not loop over files, and do not chain runs with `&&` / `;`: each run re-checks the stack and recreates the DB, and a failure in one hides the rest.
 3. **Do not filter output.** No piping to `grep`, `head` or `tail`; it hides failure detail and forces a rerun. If output is long, redirect it to a file in your scratch directory and read that.
 4. **Never run `./start-dev.sh` just to test.** It is first-time provisioning (image build, `.env`, API-key prompt). The test runner starts `db` and `web` itself. Use `start-dev.sh` only when the checkout has never been provisioned, with `AIPS_SKIP_API_KEY_CHECK=1` when no key is available.
