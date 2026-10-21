@@ -404,7 +404,13 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
+								var msg;
+								if (response.data && response.data.queued) {
+									// Large selection: the server queued a background publish job.
+									msg = response.data.message || (aipsPostReviewL10n.bulkPublishQueued || '').replace('%d', count);
+								} else {
+									msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
+								}
 								AIPS.Utilities.showToast(msg, 'success');
 								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {
