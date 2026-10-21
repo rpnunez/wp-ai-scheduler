@@ -37,8 +37,10 @@ class AIPS_AI_Assistance_Service {
 	 * @var array<string, string>
 	 */
 	private $preambles = array(
-		'authors'   => 'an AI author persona',
-		'templates' => 'an AI content-generation template',
+		'authors'          => 'an AI author persona',
+		'templates'        => 'an AI content-generation template',
+		'sources'          => 'a tracked external content source',
+		'content_strategy' => 'a site-wide AI content strategy',
 	);
 
 	/**
@@ -129,7 +131,7 @@ class AIPS_AI_Assistance_Service {
 			if ( '' === $context_value ) {
 				continue;
 			}
-			$lines[] = ucwords( str_replace( '_', ' ', $context_key ) ) . ': ' . $context_value;
+			$lines[] = ucwords( str_replace( array( '_', '-' ), ' ', $context_key ) ) . ': ' . $context_value;
 		}
 
 		$lines[] = '';

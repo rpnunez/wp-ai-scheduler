@@ -102,6 +102,27 @@
 				expectedResponse: 'A comma-separated list of excluded topics or themes',
 				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
+			'aips-suggest-site-niche': {
+				fieldName:        'Site Niche / Primary Topic',
+				description:      'The main topic or industry the site covers',
+				influence:        'Steers which author personas the AI suggests in this bulk-suggestion request',
+				expectedResponse: 'A concise niche description (1-5 words)',
+				contextFields:    [],
+			},
+			'aips-suggest-target-audience': {
+				fieldName:        'Target Audience',
+				description:      'Who the suggested authors\' content should be written for',
+				influence:        'Steers which author personas the AI suggests in this bulk-suggestion request',
+				expectedResponse: 'A concise audience description',
+				contextFields:    [ 'aips-suggest-site-niche' ],
+			},
+			'aips-suggest-content-goals': {
+				fieldName:        'Content Goals',
+				description:      'What the suggested authors\' content should achieve',
+				influence:        'Steers which author personas the AI suggests in this bulk-suggestion request',
+				expectedResponse: 'One to three goal statements',
+				contextFields:    [ 'aips-suggest-site-niche', 'aips-suggest-target-audience' ],
+			},
 		},
 		templates: {
 			template_name: {
@@ -138,6 +159,70 @@
 				influence:        'Directly shapes the AI-generated featured image for every post created from this template',
 				expectedResponse: 'A vivid, descriptive image prompt',
 				contextFields:    [ 'template_name', 'prompt_template' ],
+			},
+		},
+		sources: {
+			'aips-source-label': {
+				fieldName:        'Label',
+				description:      'A short name identifying this content source',
+				influence:        'Used only to identify the source in lists; does not affect fetched content',
+				expectedResponse: 'A short, descriptive label (2-5 words)',
+				contextFields:    [],
+			},
+			'aips-source-description': {
+				fieldName:        'Notes',
+				description:      'Notes about why this source is trusted or how it\'s used',
+				influence:        'Used only for the site administrator\'s reference; does not affect fetched content',
+				expectedResponse: 'One to two sentences of notes about this source',
+				contextFields:    [ 'aips-source-label' ],
+			},
+		},
+		// Shared by the Onboarding wizard's Strategy step and the Settings ›
+		// Site Content Strategy tab — both edit the same aips_site_* options,
+		// so suggestions and history are shared across whichever page the
+		// user is currently editing them from.
+		content_strategy: {
+			aips_site_niche: {
+				fieldName:        'Site Niche',
+				description:      'The overall subject-matter niche for this site\'s content strategy',
+				influence:        'Seeds the default author\'s niche and every topic/content prompt generated site-wide',
+				expectedResponse: 'A concise niche description (1-5 words)',
+				contextFields:    [],
+			},
+			aips_site_target_audience: {
+				fieldName:        'Target Audience',
+				description:      'The intended readership for this site\'s content',
+				influence:        'Tailors complexity, vocabulary, and examples in generated content to this audience',
+				expectedResponse: 'A concise audience description',
+				contextFields:    [ 'aips_site_niche' ],
+			},
+			aips_site_content_goals: {
+				fieldName:        'Content Goals',
+				description:      'The primary objectives this site\'s content should achieve',
+				influence:        'Aligns generated post structure and calls-to-action with these goals',
+				expectedResponse: 'One to three goal statements',
+				contextFields:    [ 'aips_site_niche', 'aips_site_target_audience' ],
+			},
+			aips_site_brand_voice: {
+				fieldName:        'Brand Voice',
+				description:      'The tone and style this site\'s content should be written in',
+				influence:        'Instructs the AI to match this tone throughout every generated post',
+				expectedResponse: 'One to three descriptive words (e.g. "friendly, authoritative, approachable")',
+				contextFields:    [ 'aips_site_niche' ],
+			},
+			aips_site_content_guidelines: {
+				fieldName:        'Content Guidelines',
+				description:      'Specific rules or guidelines generated content must follow',
+				influence:        'Directly constrains how the AI writes every generated post',
+				expectedResponse: 'A short list of concrete content guidelines',
+				contextFields:    [ 'aips_site_niche', 'aips_site_brand_voice' ],
+			},
+			aips_site_excluded_topics: {
+				fieldName:        'Excluded Topics',
+				description:      'Topics or subject areas this site should never write about',
+				influence:        'Prevents the AI from generating posts or topics in these areas, site-wide',
+				expectedResponse: 'A comma-separated list of excluded topics or themes',
+				contextFields:    [ 'aips_site_niche' ],
 			},
 		},
 	};

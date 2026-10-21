@@ -1519,6 +1519,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the onboarding page.
      */
     private function enqueue_onboarding_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-onboarding' ) );
+
             wp_enqueue_script(
                 'aips-admin-onboarding',
                 AIPS_PLUGIN_URL . 'assets/js/onboarding.js',
@@ -1708,6 +1710,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the sources page.
      */
     private function enqueue_sources_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-sources' ) );
+
             wp_enqueue_script(
                 'aips-admin-sources',
                 AIPS_PLUGIN_URL . 'assets/js/admin-sources.js',
@@ -1745,6 +1749,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the settings page.
      */
     private function enqueue_settings_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-settings' ) );
+
             wp_enqueue_script(
                 'aips-admin-settings',
                 AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
