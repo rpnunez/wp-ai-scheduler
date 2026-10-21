@@ -150,7 +150,7 @@
             // Initialize Cooldown timer if active
             this.initCooldownTimer();
 
-            // Load the default graph for the first indexed post
+            // Load the default graph for the first indexed post (only on pages that have the graph canvas)
             if ($('#aips-graph-svg').length) {
                 this.loadInitialGraph();
             }
@@ -177,6 +177,7 @@
 
             // Listen for tab switch events from main admin rail
             $(document).on('aips:tabSwitch', function (e, targetTab) {
+                // Graph tab: redraw (the SVG needs its final width) or load it the first time.
                 if (targetTab === 'aips-content-indexer' || targetTab === 'visualizer') {
                     if (self.graphData) {
                         self.renderSvgGraph(self.graphData);
@@ -184,6 +185,7 @@
                         self.loadInitialGraph();
                     }
                 } else if (targetTab === 'aips-content-clusters' || targetTab === 'clusters') {
+                    // Clusters tab: fetch only once; later visits reuse the cached result.
                     if (!self.clustersData) {
                         self.onRefreshClustersClick();
                     }
@@ -247,11 +249,13 @@
             $('#aips-refresh-clusters-btn').on('click', this.onRefreshClustersClick.bind(this));
             $('#aips-cluster-sim-threshold').on('input', this.onClusterSimThresholdInput.bind(this));
             $(document).on('click', '.aips-cluster-card-header', this.onClusterCardHeaderClick.bind(this));
+            // "Show N more posts" inside one cluster card: reveal its hidden rows, then drop the link.
             $(document).on('click', '.aips-cluster-show-more', function (e) {
                 var $card = $(e.currentTarget).closest('.aips-cluster-card');
                 $card.find('.aips-cluster-row-extra').removeClass('aips-hidden aips-cluster-row-extra');
                 $(e.currentTarget).closest('.aips-cluster-more').remove();
             });
+            // "Show N more clusters" under the accordion: reveal every hidden cluster card, then drop the link.
             $(document).on('click', '.aips-clusters-show-more', function (e) {
                 $('#aips-clusters-accordion .aips-cluster-extra').removeClass('aips-hidden aips-cluster-extra');
                 $(e.currentTarget).closest('.aips-cluster-more').remove();
@@ -352,6 +356,7 @@
          * @return {void}
          */
         onDrawerFocusClick: function (e) {
+            // The drawer button holds the id of the node being inspected; close the drawer and re-center on it.
             var targetId = $(e.currentTarget).data('raw-id');
             if (targetId) {
                 $('#aips-node-drawer').addClass('aips-hidden').hide();
@@ -414,6 +419,7 @@
          * @return {void}
          */
         onZoomInClick: function () {
+            // Zoom around the middle of the canvas (900px wide fallback, 560px tall like the drawing area).
             var svg = document.getElementById('aips-graph-svg');
             var width = svg ? (svg.clientWidth || 900) : 900;
             var height = 560;
@@ -426,6 +432,7 @@
          * @return {void}
          */
         onZoomOutClick: function () {
+            // Same centre pivot as zoom in; 0.8 undoes one 1.25 step.
             var svg = document.getElementById('aips-graph-svg');
             var width = svg ? (svg.clientWidth || 900) : 900;
             var height = 560;
@@ -448,11 +455,16 @@
          * @return {void}
          */
         onSvgWheel: function (e) {
+            // Stop the page from scrolling while the cursor is over the graph.
             e.preventDefault();
+
+            // Cursor position relative to the canvas, used as the zoom pivot.
             var svgEl = e.currentTarget;
             var rect = svgEl.getBoundingClientRect();
             var mouseX = e.clientX - rect.left;
             var mouseY = e.clientY - rect.top;
+
+            // Wheel up zooms in by 15%, wheel down zooms out by 13%.
             var delta = (e.originalEvent.deltaY || e.originalEvent.wheelDelta) < 0 ? 1.15 : 0.87;
             this.setZoom(this.zoomScale * delta, mouseX, mouseY);
         },
@@ -468,6 +480,7 @@
             if ($(e.target).closest('.graph-node, .edge-pill, .aips-zoom-btn').length) {
                 return;
             }
+            // Remember where the drag started, relative to the current pan offset.
             this.isPanning = true;
             this.startPanX = e.clientX - this.panX;
             this.startPanY = e.clientY - this.panY;
@@ -481,6 +494,7 @@
          * @return {void}
          */
         onDocumentMouseMove: function (e) {
+            // Follow the cursor while the mouse button is held on the canvas.
             if (this.isPanning) {
                 this.panX = e.clientX - this.startPanX;
                 this.panY = e.clientY - this.startPanY;
@@ -508,6 +522,8 @@
          */
         onSearchInput: function (e) {
             var query = $(e.currentTarget).val();
+
+            // Show the clear (x) button while there is text; an empty box also closes the dropdown.
             if (query.length > 0) {
                 $('#aips-graph-search-clear').removeClass('aips-hidden').show();
             } else {
@@ -515,6 +531,7 @@
                 $('#aips-graph-post-dropdown').addClass('aips-hidden').hide().empty();
             }
 
+            // Debounce: wait 250 ms after the last keystroke, and only search from 2 characters.
             clearTimeout(this._searchTimer);
             if (query.length < 2) {
                 return;
@@ -544,6 +561,7 @@
          * @return {void}
          */
         onActivePostClearClick: function () {
+            // Forget the selection, the breadcrumb trail and the search box, then fall back to the default graph.
             this.clearExplorationHistory();
             $('#aips-graph-selected-post-id').val('');
             $('#aips-graph-post-search').val('');
@@ -641,7 +659,7 @@
                 return;
             }
 
-            // Truncate history stack up to the clicked breadcrumb
+            // Truncate history stack up to the clicked breadcrumb (the clicked post becomes the new center, not a crumb)
             this.explorationHistory = this.explorationHistory.slice(0, index);
             this.renderBreadcrumbs();
 
@@ -674,6 +692,7 @@
          * @return {void}
          */
         onAuditHeaderClick: function (e) {
+            // The header's data-toggle-target selector points at the rows it controls.
             var $header = $(e.currentTarget);
             var targetSelector = $header.attr('data-toggle-target');
             var $icon = $header.find('.aips-group-toggle-icon');
@@ -684,6 +703,7 @@
                 return;
             }
 
+            // Visible and not flagged collapsed = currently open, so this click closes it.
             var isVisible = $targets.is(':visible') && !$targets.first().hasClass('is-collapsed');
 
             if (isVisible) {
@@ -724,6 +744,7 @@
          * @return {void}
          */
         onNodeMouseEnter: function (e) {
+            // Look up the hovered node in the loaded graph payload.
             var nodeId = $(e.currentTarget).attr('data-id');
             if (!this.graphData || !this.graphData.nodes) {
                 return;
@@ -767,6 +788,8 @@
 
             // Populate and position the rich hover tooltip
             var $tooltip = $('#aips-graph-tooltip');
+
+            // Badge defaults to "Semantic Match"; refined below from the node's role and similarity.
             var badgeClass = 'badge-med';
             var badgeText = 'Semantic Match';
 
@@ -774,6 +797,7 @@
                 badgeClass = 'badge-center';
                 badgeText = 'Inspected Post (Center)';
             } else if (node.similarity !== undefined) {
+                // 80%+ strong, under 65% loosely related, anything between a normal semantic match.
                 var simPercent = Math.round(node.similarity * 100);
                 if (simPercent >= 80) {
                     badgeClass = 'badge-high';
@@ -821,6 +845,7 @@
          * @return {void}
          */
         onNodeClick: function (e) {
+            // Keep the click from reaching the canvas pan handler.
             e.stopPropagation();
             var nodeId = $(e.currentTarget).attr('data-id');
             if (!this.graphData || !this.graphData.nodes) {
@@ -847,6 +872,7 @@
                     });
                 }
 
+                // Brief fade, then load the clicked neighbour as the new center.
                 $('#aips-graph-canvas-wrap').addClass('is-traversing');
                 var self = this;
                 setTimeout(function () {
@@ -858,20 +884,29 @@
 
         /**
          * Apply SVG Viewport Transform (Pan & Zoom).
+         *
+         * Moves/scales the whole graph viewport group, updates the zoom label, and
+         * counter-scales nodes and edge pills so they keep a constant on-screen size.
+         *
+         * @return {void}
          */
         applyTransform: function () {
+            // Pan and zoom the entire graph by transforming the single viewport group.
             var viewport = document.getElementById('aips-graph-viewport');
             if (viewport) {
                 viewport.setAttribute('transform', 'translate(' + this.panX + ',' + this.panY + ') scale(' + this.zoomScale + ')');
             }
             $('#aips-zoom-level').text(Math.round(this.zoomScale * 100) + '%');
 
+            // Past 135% zoom, switch the SVG into its "deep zoom" styling (more detail).
             if (this.zoomScale >= 1.35) {
                 $('#aips-graph-svg').addClass('aips-graph-deep-zoom');
             } else {
                 $('#aips-graph-svg').removeClass('aips-graph-deep-zoom');
             }
 
+            // Counter-scale nodes and edge pills by the inverse zoom, so labels do not
+            // grow or shrink with the canvas. Their original coordinates are kept in data attributes.
             var invScale = 1 / this.zoomScale;
             $('.graph-node').each(function () {
                 var ox = this.getAttribute('data-orig-x');
@@ -892,11 +927,18 @@
 
         /**
          * Push a node to the exploration history trail.
+         *
+         * Ignores empty nodes and does not add the same node twice in a row.
+         *
+         * @param {Object} nodeInfo Node summary (`id`, plus `label`/`title` for the breadcrumb).
+         * @return {void}
          */
         pushExplorationHistory: function (nodeInfo) {
             if (!nodeInfo || !nodeInfo.id) {
                 return;
             }
+
+            // Skip consecutive duplicates (re-centering on the node already at the end).
             var last = this.explorationHistory[this.explorationHistory.length - 1];
             if (last && String(last.id) === String(nodeInfo.id)) {
                 return;
@@ -907,6 +949,8 @@
 
         /**
          * Pop previous node from exploration history and return to it.
+         *
+         * @return {void}
          */
         popExplorationHistory: function () {
             if (this.explorationHistory.length === 0) {
@@ -915,6 +959,7 @@
             var prev = this.explorationHistory.pop();
             this.renderBreadcrumbs();
             if (prev && prev.id) {
+                // Fade the canvas, then reload the previous node once the short transition has played.
                 $('#aips-graph-canvas-wrap').addClass('is-traversing');
                 var self = this;
                 setTimeout(function () {
@@ -926,6 +971,8 @@
 
         /**
          * Clear entire exploration history trail.
+         *
+         * @return {void}
          */
         clearExplorationHistory: function () {
             this.explorationHistory = [];
@@ -969,6 +1016,8 @@
 
         /**
          * Get the currently active center node object.
+         *
+         * @return {Object|null} The node flagged `is_center`, else the first node, else null when no graph is loaded.
          */
         getCurrentCenterNode: function () {
             if (!this.graphData || !this.graphData.nodes) {
@@ -979,10 +1028,16 @@
 
         /**
          * Set zoom scale centered on a pivot coordinate.
+         *
+         * @param {number} newScale Requested scale (clamped between minZoom and maxZoom).
+         * @param {number} [pivotX] X coordinate (canvas space) that should stay fixed on screen.
+         * @param {number} [pivotY] Y coordinate (canvas space) that should stay fixed on screen.
+         * @return {void}
          */
         setZoom: function (newScale, pivotX, pivotY) {
             newScale = Math.max(this.minZoom, Math.min(this.maxZoom, newScale));
             if (pivotX !== undefined && pivotY !== undefined) {
+                // Shift the pan offset so the pivot point stays under the cursor while scaling.
                 var ratio = newScale / this.zoomScale;
                 this.panX = pivotX - (pivotX - this.panX) * ratio;
                 this.panY = pivotY - (pivotY - this.panY) * ratio;
@@ -993,6 +1048,8 @@
 
         /**
          * Reset pan & zoom to default centered view.
+         *
+         * @return {void}
          */
         resetZoom: function () {
             this.zoomScale = 1.0;
@@ -1001,20 +1058,22 @@
             this.applyTransform();
         },
 
-
-
         /**
          * Persist the scan scope; the background run reads it from settings.
+         *
+         * @return {void}
          */
         onScanScopeChange: function () {
             // Keep the run buttons off until the scope is saved, so a start cannot read the old one.
             var $runButtons = $('#aips-start-indexing-btn, #aips-reindex-stale-btn').prop('disabled', true);
 
+            // Save the selected scope (posts / topics / all) as an indexer setting.
             $.post(ajaxurl, {
                 action: 'aips_indexer_save_settings',
                 nonce: aipsContentIndexerL10n.nonce,
                 scan_entity_scope: $('#aips-scan-entity-scope').val() || 'all'
             }).always(function () {
+                // Re-enable the buttons whether or not the save succeeded.
                 $runButtons.prop('disabled', false);
             });
         },
@@ -1026,13 +1085,16 @@
          * @param {Event}  e     The aips:bg-update event.
          * @param {Array}  list  Snapshots from the server.
          * @param {Object} state Snapshots keyed by process key.
+         * @return {void}
          */
         onBackgroundUpdate: function (e, list, state) {
+            // Only the content_indexing run matters on this page.
             var snap = state && state.content_indexing;
             if (!snap) {
                 return;
             }
 
+            // Show the live progress banner only while a run is active.
             var $banner = $('#aips-indexer-live-banner');
             if (snap.is_active) {
                 $banner.removeClass('aips-hidden').show();
@@ -1040,6 +1102,7 @@
                 $banner.addClass('aips-hidden').hide();
             }
 
+            // Cooldown / quota banners follow the run's status.
             this.syncRunBanners(snap);
 
             // The scope select cannot change mid-run.
@@ -1060,10 +1123,12 @@
          * the run has moved on.
          *
          * @param {Object} snap Snapshot of the content_indexing run.
+         * @return {void}
          */
         syncRunBanners: function (snap) {
             var $quota = $('#aips-rate-limit-warning-banner');
 
+            // Cooldown banner: raise it once when the run enters cooldown, hide it when the run leaves it.
             if (snap.status === 'cooldown') {
                 if ($('#aips-cooldown-banner').hasClass('aips-hidden')) {
                     this.showCooldownBanner({ until: snap.next_run_at, reason: snap.message });
@@ -1073,6 +1138,7 @@
             }
             this._runWasCooldown = snap.status === 'cooldown';
 
+            // Quota banner: same idea for a run waiting on the embeddings rate limit.
             if (snap.status === 'waiting_quota') {
                 $('#aips-rate-limit-warning-msg').text(snap.message || '');
                 $quota.removeClass('aips-hidden').show();
@@ -1084,8 +1150,11 @@
 
         /**
          * Reload the indexing numbers shown on the stat cards.
+         *
+         * @return {void}
          */
         refreshStatus: function () {
+            // Skip when a refresh is already in flight (Heartbeat can fire faster than the request returns).
             if (this._refreshingStatus) {
                 return;
             }
@@ -1100,40 +1169,57 @@
                     self.renderStatus(res.data.status);
                 }
             }).always(function () {
+                // Allow the next refresh whether this one succeeded or failed.
                 self._refreshingStatus = false;
             });
         },
 
         /**
+         * Write the indexing status numbers into the stat cards.
+         *
+         * Covers posts, topics, the unindexed total, the stale count/button and the rate-limit meters.
+         *
          * @param {Object} st Indexing status from the server.
+         * @return {void}
          */
         renderStatus: function (st) {
+            // Posts card: indexed / total, percent and progress bar.
             $('#aips-stat-indexed').text(st.indexed);
             $('#aips-stat-total').text(st.total_posts);
             $('#aips-stat-percent').text(st.percent + '%');
             $('#aips-index-progress-bar').css('width', st.percent + '%');
 
+            // Author topics card.
             $('#aips-stat-topics-indexed').text(st.indexed_topics || 0);
             $('#aips-stat-topics-total').text(st.total_topics || 0);
             $('#aips-stat-topics-percent').text((st.topics_percent || 0) + '%');
             $('#aips-topics-progress-bar').css('width', (st.topics_percent || 0) + '%');
 
+            // Unindexed card: posts + topics, with a translated breakdown line.
             $('#aips-stat-unindexed').text((st.unindexed || 0) + (st.unindexed_topics || 0));
             $('#aips-stat-unindexed-breakdown').text((aipsContentIndexerL10n.pendingBreakdown || '%1$s posts, %2$s topics pending').replace('%1$s', st.unindexed).replace('%2$s', st.unindexed_topics));
 
+            // Stale embeddings (made with another model/dimensions): show the button and note only when there are some.
             var stale = st.stale || 0;
             $('#aips-reindex-stale-btn').toggle(stale > 0).find('.btn-text').text((aipsContentIndexerL10n.reindexStale || 'Re-index Stale (%s)').replace('%s', stale));
             $('#aips-stat-stale-line').toggle(stale > 0);
 
+            // Rate-limit meters are only sent when limits are configured.
             if (st.rate_limits) {
                 this.renderRateLimits(st.rate_limits);
             }
         },
 
         /**
-         * @param {Object} rl Rate limit usage stats.
+         * Update the daily / weekly / monthly embeddings usage meters.
+         *
+         * A limit of 0 means "unlimited": the count is shown against an infinity sign and the bar is left alone.
+         *
+         * @param {Object} rl Rate limit usage stats (`daily_count`, `daily_limit`, `weekly_*`, `monthly_*`).
+         * @return {void}
          */
         renderRateLimits: function (rl) {
+            // Current usage and configured limit for each window.
             var dCnt = rl.daily_count || 0, dLim = rl.daily_limit || 0;
             var wCnt = rl.weekly_count || 0, wLim = rl.weekly_limit || 0;
             var mCnt = rl.monthly_count || 0, mLim = rl.monthly_limit || 0;
@@ -1141,9 +1227,11 @@
             var wLimitText = wLim > 0 ? String(wLim) : '∞';
             var mLimitText = mLim > 0 ? String(mLim) : '∞';
 
+            // "used / limit" text for each window.
             $('#aips-meter-daily-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: dCnt, limit: dLimitText }));
             $('#aips-meter-weekly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: wCnt, limit: wLimitText }));
             $('#aips-meter-monthly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: mCnt, limit: mLimitText }));
+            // Bar widths: usage as a percentage of the limit, capped at 100%.
             if (dLim > 0) { $('#aips-meter-daily-bar').css('width', Math.min(100, Math.round((dCnt / dLim) * 100)) + '%'); }
             if (wLim > 0) { $('#aips-meter-weekly-bar').css('width', Math.min(100, Math.round((wCnt / wLim) * 100)) + '%'); }
             if (mLim > 0) { $('#aips-meter-monthly-bar').css('width', Math.min(100, Math.round((mCnt / mLim) * 100)) + '%'); }
@@ -1153,13 +1241,17 @@
          * Clear the entire index, after the user types the confirmation word.
          *
          * The prompt states how many rows will be deleted, fetched fresh from the server.
+         *
+         * @return {void}
          */
         handleClearIndex: function () {
             var self = this;
             var L10n = aipsContentIndexerL10n;
             var word = L10n.clearWord || 'DELETE';
+            // Locale-aware thousands separators for the row counts shown in the prompt.
             var fmt  = function (n) { return Number(n || 0).toLocaleString(); };
 
+            // Step 1: ask the server how many rows a full clear would delete.
             $.post(ajaxurl, {
                 action: 'aips_indexer_get_clear_preview',
                 nonce: L10n.nonce
@@ -1169,6 +1261,7 @@
                     return;
                 }
 
+                // Step 2: make the user type the confirmation word, with the counts in the warning.
                 var d = res.data;
                 AIPS.Utilities.confirmWithWord({
                     heading: L10n.clearHeading,
@@ -1182,6 +1275,7 @@
                     word: word,
                     confirmLabel: L10n.clearConfirmLabel,
                     cancelLabel: L10n.cancel,
+                    // Step 3: only after the word matches, send the real clear request.
                     onConfirm: function () {
                         self.clearIndex(word);
                     }
@@ -1192,7 +1286,11 @@
         },
 
         /**
+         * Send the clear request. The server re-checks the confirmation word, stops any
+         * running index job, then deletes all embeddings and relationships.
+         *
          * @param {string} word The confirmation word the user typed.
+         * @return {void}
          */
         clearIndex: function (word) {
             var self = this;
@@ -1203,6 +1301,7 @@
                 confirm_word: word
             }).done(function (res) {
                 if (res && res.success) {
+                    // Show how many rows were deleted, then refresh the cards and the (now empty) graph.
                     AIPS.Utilities.showToast(res.data.message || 'Index cleared.', 'success');
                     self.refreshStatus();
                     self.reloadGraph();
@@ -1216,6 +1315,11 @@
 
         /**
          * Search posts for autocomplete with indexed status badges.
+         *
+         * Fills the dropdown under the graph search box; hides it when nothing matches.
+         *
+         * @param {string} q Search text typed by the user.
+         * @return {void}
          */
         searchPosts: function (q) {
             $.ajax({
@@ -1232,11 +1336,13 @@
                         var items = res.data.results;
                         var $dropdown = $('#aips-graph-post-dropdown').empty();
 
+                        // No matches: close the dropdown instead of showing an empty box.
                         if (!items.length) {
                             $dropdown.addClass('aips-hidden').hide();
                             return;
                         }
 
+                        // One row per result, badged "Indexed" or "Pending Index".
                         items.forEach(function (it) {
                             var isIndexed = !!it.is_indexed;
                             var badgeText = isIndexed
@@ -1246,6 +1352,7 @@
                             var rawTitle = it.title || '';
                             var pType = it.post_type || 'post';
 
+                            // Render through the template (auto-escaped) rather than building HTML by hand.
                             var itemHtml = AIPS.Templates.render('aips-tmpl-indexer-autocomplete-item', {
                                 id: it.id,
                                 title: AIPS.Templates.escape(rawTitle),
@@ -1265,6 +1372,8 @@
 
         /**
          * Load initial graph for first indexed post.
+         *
+         * @return {void}
          */
         loadInitialGraph: function () {
             this.loadGraphForPost(0);
@@ -1272,6 +1381,8 @@
 
         /**
          * Reload currently active graph with updated thresholds.
+         *
+         * @return {void}
          */
         reloadGraph: function () {
             this.loadGraphForPost(this.activePostId || 0, true);
@@ -1279,9 +1390,15 @@
 
         /**
          * Load graph data for a specific post.
+         *
+         * @param {number}  postId        Post to center the graph on (0 = first indexed post).
+         * @param {boolean} [preserveView] Keep the current pan/zoom instead of resetting it.
+         * @return {void}
          */
         loadGraphForPost: function (postId, preserveView) {
             var self = this;
+
+            // Graph controls: minimum similarity for an edge, and how many neighbours to draw.
             var simThreshold = parseFloat($('#aips-graph-sim-threshold').val()) || 0.60;
             var maxNodes = parseInt($('#aips-graph-max-nodes').val(), 10) || 15;
 
@@ -1298,6 +1415,7 @@
                 },
                 success: function (res) {
                     if (res.success && res.data.graph) {
+                        // Remember which post is centered so reloads and drill-downs start from it.
                         self.activePostId = res.data.post_id;
                         self.graphData = res.data.graph;
                         if (!preserveView) {
@@ -1305,12 +1423,14 @@
                         }
                         self.renderSvgGraph(res.data.graph);
                     } else {
+                        // Nothing to draw (no indexed posts yet): show the empty state.
                         $('#aips-graph-svg').empty();
                         $('#aips-graph-empty').removeClass('aips-hidden').show();
                         $('#aips-active-post-bar').addClass('aips-hidden').hide();
                     }
                 },
                 error: function () {
+                    // Request failed: fall back to the same empty state.
                     $('#aips-graph-svg').empty();
                     $('#aips-graph-empty').removeClass('aips-hidden').show();
                     $('#aips-active-post-bar').addClass('aips-hidden').hide();
@@ -1320,6 +1440,12 @@
 
         /**
          * Render the Interactive SVG Node-Link Graph with Viewport Zoom/Pan, Edge Pills, Tooltips, and Highlighting.
+         *
+         * Steps: size the canvas, place the center node and arrange neighbours around it,
+         * draw edges (with similarity pills), draw nodes, then re-apply the current pan/zoom.
+         *
+         * @param {{nodes: Array<Object>, edges: Array<Object>}} graph Graph payload from `aips_indexer_get_graph`.
+         * @return {void}
          */
         renderSvgGraph: function (graph) {
             var self = this;
@@ -1328,11 +1454,13 @@
                 return;
             }
 
+            // Size the drawing area to the container width and clear the previous graph.
             var width = svg.clientWidth || 900;
             var height = 560;
             svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
             $(svg).empty();
 
+            // An empty graph shows the empty-state message instead of the canvas.
             if (!graph.nodes || graph.nodes.length === 0) {
                 $('#aips-graph-empty').removeClass('aips-hidden').show();
                 return;
@@ -1344,7 +1472,7 @@
             var nodes = graph.nodes;
             var edges = graph.edges;
 
-            // Position nodes in a radial constellation
+            // --- Layout: center node in the middle, neighbours on a ring around it ---
             var centerNode = nodes.find(function (n) { return n.is_center; }) || nodes[0];
             centerNode.x = centerX;
             centerNode.y = centerY;
@@ -1361,6 +1489,7 @@
                 $('#aips-graph-search-clear').removeClass('aips-hidden').show();
             }
 
+            // Spread neighbours evenly around the center (equal angle step, similarity sets the distance).
             var neighbors = nodes.filter(function (n) { return !n.is_center; });
             var angleStep = (2 * Math.PI) / Math.max(1, neighbors.length);
             var radius = Math.min(centerX, centerY) * 0.68;
@@ -1373,6 +1502,7 @@
                 node.y = centerY + dist * Math.sin(angle);
             });
 
+            // Look-up by node id so each edge can find its end points quickly.
             var nodeMap = {};
             nodes.forEach(function (n) { nodeMap[n.id] = n; });
 
@@ -1385,7 +1515,7 @@
                 self.renderClusterHulls(gViewport, nodes, edges);
             }
 
-            // 1. Draw Edges & Edge Pills
+            // --- 1. Draw edges & edge pills ---
             var gEdges = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             gEdges.setAttribute('class', 'edges-group');
             var showTopics = $('#aips-toggle-topics').is(':checked');
@@ -1393,21 +1523,27 @@
             edges.forEach(function (edge) {
                 var src = nodeMap[edge.source];
                 var tgt = nodeMap[edge.target];
+                // Skip edges whose end point is not in the node list.
                 if (!src || !tgt) return;
 
+                // Hide edges that touch author-topic nodes unless the "topics" toggle is on.
                 if (!showTopics) {
                     if ((src.entity_type === 'topic' && !src.is_center) || (tgt.entity_type === 'topic' && !tgt.is_center)) {
                         return;
                     }
                 }
 
+                // "Spoke" = edge touching the center node; "cross" = edge between two neighbours.
                 var isSpoke = (edge.source === centerNode.id || edge.target === centerNode.id);
                 var weight = edge.weight || 0.6;
+
+                // Strength class from similarity: >= 0.80 high, >= 0.65 medium, otherwise low.
                 var edgeClass = 'graph-edge ' + (isSpoke ? 'edge-spoke' : 'edge-cross');
                 if (weight >= 0.80) edgeClass += ' edge-high';
                 else if (weight >= 0.65) edgeClass += ' edge-med';
                 else edgeClass += ' edge-low';
 
+                // The line itself (stroke width grows with similarity).
                 var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 line.setAttribute('x1', src.x);
                 line.setAttribute('y1', src.y);
@@ -1420,7 +1556,7 @@
                 line.setAttribute('stroke-width', Math.max(1.5, weight * 3.5));
                 gEdges.appendChild(line);
 
-                // Edge Label Pill (Contrast Background + Text)
+                // Edge Label Pill (Contrast Background + Text), centered on the line's midpoint.
                 var midX = (src.x + tgt.x) / 2;
                 var midY = (src.y + tgt.y) / 2;
                 var pillClass = 'edge-pill ' + (isSpoke ? 'edge-pill-spoke' : 'edge-pill-cross');
@@ -1456,15 +1592,17 @@
             });
             gViewport.appendChild(gEdges);
 
-            // 2. Draw Nodes
+            // --- 2. Draw nodes ---
             var gNodes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             gNodes.setAttribute('class', 'nodes-group');
 
             nodes.forEach(function (node) {
+                // Same topic toggle as for edges: hide topic nodes unless they are the center.
                 if (!showTopics && node.entity_type === 'topic' && !node.is_center) {
                     return;
                 }
 
+                // Node group with classes for role (center/neighbour), similarity band and entity type.
                 var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 var nodeClass = 'graph-node';
                 if (node.is_center) nodeClass += ' node-center';
@@ -1482,11 +1620,13 @@
                 g.setAttribute('data-orig-y', node.y);
                 g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ') scale(' + (1 / self.zoomScale) + ')');
 
+                // Circle (larger for the center node).
                 var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('r', node.is_center ? 24 : 16);
                 circle.setAttribute('vector-effect', 'non-scaling-stroke');
                 g.appendChild(circle);
 
+                // Title label under the circle, truncated to 22 characters.
                 var label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 label.setAttribute('y', node.is_center ? 38 : 28);
                 label.setAttribute('text-anchor', 'middle');
@@ -1511,14 +1651,19 @@
 
         /**
          * Open node detail drawer flyout.
+         *
+         * @param {Object} node Graph node (`label`, `type`, `entity_type`, `raw_id`, `similarity`, `url`, `view_url`).
+         * @return {void}
          */
         openNodeDrawer: function (node) {
+            // Title, type and id.
             $('#aips-drawer-title').text(node.label);
             var isTopic = (node.entity_type === 'topic' || node.type === 'topic');
             var typeLabel = isTopic ? (aipsContentIndexerL10n.authorTopic || 'Author Topic') : (node.type || 'post');
             $('#aips-drawer-type').text(typeLabel);
             $('#aips-drawer-id').text(node.raw_id);
 
+            // Similarity badge only exists for neighbours (the center node has none).
             if (node.similarity !== undefined) {
                 $('#aips-drawer-sim-text').text(Math.round(node.similarity * 100) + '% Similarity');
                 $('#aips-drawer-sim-badge').show();
@@ -1526,6 +1671,7 @@
                 $('#aips-drawer-sim-badge').hide();
             }
 
+            // Edit / View links are shown only when the node has those URLs (topics have none).
             if (node.url) {
                 $('#aips-drawer-edit-link').attr('href', node.url).show();
             } else {
@@ -1538,19 +1684,29 @@
                 $('#aips-drawer-view-link').hide();
             }
 
+            // "Focus" re-centers the graph on this node, so it needs the node id.
             $('#aips-drawer-focus-btn').data('raw-id', node.raw_id);
             $('#aips-node-drawer').removeClass('aips-hidden').show();
         },
 
         /**
          * Run Cannibalization & Duplicate Audit scan.
+         *
+         * Sends the audit request, groups the returned similar pairs by their source post,
+         * ranks each pair into a risk tier (high >= 0.88, moderate >= 0.80, otherwise low)
+         * and renders a collapsible table: source header -> risk tier header -> candidate rows.
+         * Each piece of markup uses an AIPS template when present, with a plain fallback.
+         *
+         * @return {void}
          */
         runCannibalizationAudit: function () {
+            // Controls used throughout: run button, results body, spinner and the entity filter.
             var $btn = $('#aips-run-audit-btn');
             var $tbody = $('#aips-cannibalization-tbody');
             var $loading = $('#aips-audit-loading');
             var entityType = $('#aips-audit-entity-type').val() || 'all';
 
+            // Lock the button and show the spinner while the scan runs.
             $btn.prop('disabled', true);
             $tbody.empty();
             $loading.show();
@@ -1568,6 +1724,7 @@
                     $btn.prop('disabled', false);
                     $loading.hide();
 
+                    // No duplicates found: show the "all clear" row (template if available, else a plain cell).
                     if (!res.success || !res.data.clusters || res.data.clusters.length === 0) {
                         var emptyMsg = (aipsContentIndexerL10n && aipsContentIndexerL10n.noAuditDuplicates) ? aipsContentIndexerL10n.noAuditDuplicates : 'No high-similarity duplicate or cannibalizing clusters found. Great job!';
                         if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-audit-clean')) {
@@ -1580,10 +1737,12 @@
                         return;
                     }
 
+                    // 1. Group the flat list of similar pairs by their source post (or topic).
                     var clusters = res.data.clusters;
                     var sourceGroups = {};
 
                     clusters.forEach(function (c) {
+                        // First time we see this source: create its group with empty low/medium/high buckets.
                         if (!sourceGroups[c.source_id]) {
                             sourceGroups[c.source_id] = {
                                 source_id: c.source_id,
@@ -1604,6 +1763,7 @@
                             };
                         }
 
+                        // 2. Classify this pair into a risk tier by its similarity score.
                         var sg = sourceGroups[c.source_id];
                         var riskClass = 'aips-risk-low';
                         var riskLabel = 'Low Risk';
@@ -1619,6 +1779,7 @@
                             riskKey = 'medium';
                         }
 
+                        // The group header shows its worst (highest-similarity) pair.
                         if (c.similarity > sg.max_similarity) {
                             sg.max_similarity = c.similarity;
                             sg.max_risk_class = riskClass;
@@ -1628,6 +1789,7 @@
                         sg.risk_groups[riskKey].push(c);
                     });
 
+                    // 3. Order the groups so the riskiest sources appear first.
                     var html = '';
                     var groupIndex = 0;
                     var hasTemplates = window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-audit-group-header');
@@ -1636,11 +1798,13 @@
                         return b.max_similarity - a.max_similarity;
                     });
 
-                    // 4. Render HTML templates for each group, risk tier, and candidate row
+                    // Render HTML templates for each group, risk tier, and candidate row
                     sortedGroups.forEach(function (sg) {
+                        // Unique id used by the collapse/expand toggles for this group's rows.
                         groupIndex++;
                         var groupId = 'aips-sg-' + groupIndex;
 
+                        // Badge telling the reader whether the source is a post or an author topic.
                         var sgSourceType = sg.source_type || 'post';
                         var entityBadgeType = sgSourceType === 'topic' ? 'topic' : 'post';
                         var entityBadgeLabel = sgSourceType === 'topic' ? (aipsContentIndexerL10n.authorTopic || 'Author Topic') : (aipsContentIndexerL10n.post || 'Post');
@@ -1678,12 +1842,14 @@
                             html += '</td></tr>';
                         }
 
+                        // Show the tiers from most to least severe.
                         var riskOrder = [
                             { key: 'high', label: 'High Cannibalization', class: 'aips-risk-high' },
                             { key: 'medium', label: 'Moderate Risk', class: 'aips-risk-medium' },
                             { key: 'low', label: 'Low Risk', class: 'aips-risk-low' }
                         ];
 
+                        // Only the first (most severe) tier starts expanded; the rest start collapsed.
                         var firstRiskGroup = true;
 
                         // Render each populated risk tier within the group
@@ -1719,6 +1885,7 @@
 
                             // Render each duplicate candidate (Entity B)
                             sg.risk_groups[riskDef.key].forEach(function (c) {
+                                // Row actions: edit links for either side, plus Consolidate for post-vs-post pairs.
                                 var actions = '';
                                 var editSourceLabel = (aipsContentIndexerL10n && aipsContentIndexerL10n.editSource) ? aipsContentIndexerL10n.editSource : 'Edit Source';
                                 var editTargetLabel = (aipsContentIndexerL10n && aipsContentIndexerL10n.editTarget) ? aipsContentIndexerL10n.editTarget : 'Edit Target';
@@ -1752,6 +1919,7 @@
                                     });
                                 }
 
+                                // Badge for the candidate: post, author topic, or a cannibalization-risk marker.
                                 var targetBadgeType = 'post';
                                 var targetBadgeLabel = aipsContentIndexerL10n.post || 'Post';
                                 if (c.audit_type === 'cannibalization') {
@@ -1772,6 +1940,7 @@
                                     targetBadge = '<span class="aips-entity-badge aips-entity-badge-' + targetBadgeType + '">' + targetBadgeLabel + '</span>';
                                 }
 
+                                // Candidate row itself (values are escaped before they reach the raw template).
                                 if (hasTemplates) {
                                     html += AIPS.Templates.renderRaw('aips-tmpl-indexer-audit-row', {
                                         groupId: groupId,
@@ -1801,9 +1970,11 @@
                         });
                     });
 
+                    // 4. Replace the table body with everything rendered above.
                     $tbody.html(html);
                 },
                 error: function () {
+                    // Request failed: restore the button and tell the user.
                     $btn.prop('disabled', false);
                     $loading.hide();
                     if (AIPS.Utilities && AIPS.Utilities.showToast) {
@@ -1820,17 +1991,22 @@
         /**
          * Render convex hull bubbles around community clusters on the SVG graph.
          *
+         * A "community" is a group of nodes joined by edges with weight >= 0.55 (found with
+         * a breadth-first search). Each community of two or more nodes is drawn as a translucent
+         * bubble: a line for two nodes, a convex hull outline for three or more.
+         *
          * @param {Element} gViewport The SVG viewport group.
          * @param {Array<Object>} nodes Array of node objects.
          * @param {Array<Object>} edges Array of edge objects.
          * @return {void}
          */
         renderClusterHulls: function (gViewport, nodes, edges) {
+            // A cluster needs at least two nodes.
             if (!nodes || nodes.length < 2) {
                 return;
             }
 
-            // Group connected nodes based on high-similarity edges
+            // Build an adjacency list that only contains strong (>= 0.55) edges.
             var adj = {};
             nodes.forEach(function (n) { adj[n.id] = []; });
             edges.forEach(function (e) {
@@ -1840,6 +2016,7 @@
                 }
             });
 
+            // Breadth-first search state: visited nodes, finished communities, and an id -> node look-up.
             var visited = {};
             var communities = [];
             var nodeMap = {};
@@ -1849,6 +2026,7 @@
                 if (visited[node.id]) {
                     return;
                 }
+                // Start a new community at this unvisited node and flood outwards through strong edges.
                 var comp = [];
                 var queue = [node.id];
                 visited[node.id] = true;
@@ -1864,14 +2042,17 @@
                     });
                 }
 
+                // Lone nodes are not clusters.
                 if (comp.length >= 2) {
                     communities.push(comp);
                 }
             });
 
+            // One SVG group holds every hull so they can be drawn beneath the edges and nodes.
             var gHulls = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             gHulls.setAttribute('class', 'cluster-hulls-group');
 
+            // Colours cycle through this palette, one per community.
             var palette = [
                 'hsl(215, 80%, 60%)',
                 'hsl(150, 70%, 45%)',
@@ -1885,6 +2066,7 @@
                 var points = community.map(function (n) { return { x: n.x, y: n.y }; });
                 var color = palette[cIdx % palette.length];
 
+                // Two points cannot form a polygon, so connect them with a thick rounded line.
                 var pathData = '';
                 if (points.length === 2) {
                     pathData = 'M ' + points[0].x + ' ' + points[0].y + ' L ' + points[1].x + ' ' + points[1].y;
@@ -1895,6 +2077,7 @@
                     }
                 }
 
+                // The wide round stroke (50) turns the outline into a soft bubble around the nodes.
                 if (pathData) {
                     var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                     path.setAttribute('d', pathData);
@@ -1918,18 +2101,22 @@
          * @return {Array<{x: number, y: number}>} Convex hull boundary vertices.
          */
         computeConvexHull: function (points) {
+            // One or two points are already their own hull.
             if (points.length <= 2) {
                 return points;
             }
 
+            // Monotone chain needs the points sorted left to right (ties broken top to bottom).
             var pts = points.slice().sort(function (a, b) {
                 return a.x === b.x ? a.y - b.y : a.x - b.x;
             });
 
+            // Cross product of OA x OB: > 0 turns left, < 0 turns right, 0 is collinear.
             function cross(o, a, b) {
                 return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
             }
 
+            // Lower hull: walk left to right, dropping points that make a right turn.
             var lower = [];
             for (var i = 0; i < pts.length; i++) {
                 while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) {
@@ -1938,6 +2125,7 @@
                 lower.push(pts[i]);
             }
 
+            // Upper hull: same walk, right to left.
             var upper = [];
             for (var j = pts.length - 1; j >= 0; j--) {
                 while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[j]) <= 0) {
@@ -1946,6 +2134,7 @@
                 upper.push(pts[j]);
             }
 
+            // The last point of each half is the first point of the other; drop it before joining.
             lower.pop();
             upper.pop();
             return lower.concat(upper);
@@ -1963,24 +2152,30 @@
         initCooldownTimer: function () {
             var self = this;
             var $banner = $('#aips-cooldown-banner');
+
+            // Nothing to count down when the banner is missing or hidden.
             if (!$banner.length || $banner.hasClass('aips-hidden')) {
                 return;
             }
 
+            // The banner carries the cooldown end time (unix seconds) in data-until.
             var until = parseInt($banner.attr('data-until'), 10) || 0;
             var now = Math.floor(Date.now() / 1000);
 
+            // Already over: just hide the banner.
             if (until <= now) {
                 self.hideCooldownBanner();
                 return;
             }
 
+            // Restart cleanly if a previous timer is still running.
             if (self.cooldownTimer) {
                 clearInterval(self.cooldownTimer);
             }
 
             self.updateCooldownDisplay(until - now);
 
+            // Tick every second; compute from the clock (not a counter) so a throttled background tab stays accurate.
             self.cooldownTimer = setInterval(function () {
                 var remaining = until - Math.floor(Date.now() / 1000);
                 if (remaining <= 0) {
@@ -2003,6 +2198,7 @@
          * @return {void}
          */
         updateCooldownDisplay: function (remaining) {
+            // Format as MM:SS with leading zeros.
             var m = Math.floor(remaining / 60);
             var s = remaining % 60;
             var str = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
@@ -2019,6 +2215,7 @@
             var $banner = $('#aips-cooldown-banner');
             if (!$banner.length) return;
 
+            // Prefer the server's end time; otherwise derive it from remaining seconds (default 30 minutes).
             $banner.attr('data-until', cooldown.until || (Math.floor(Date.now() / 1000) + (cooldown.remaining_seconds || 1800)));
             if (cooldown.reason) {
                 $('#aips-cooldown-reason-msg').text(cooldown.reason);
@@ -2052,8 +2249,12 @@
          */
         onResumeCooldownClick: function () {
             var self = this;
+
+            // Disable the button and show WordPress's "updating" state while the request runs.
             var $btn = $('#aips-resume-cooldown-btn');
             $btn.prop('disabled', true).addClass('updating-message');
+
+            // Ask the server to clear the embeddings rate-limit cooldown early.
 
             $.ajax({
                 url: ajaxurl,
@@ -2066,6 +2267,7 @@
                 success: function (res) {
                     $btn.prop('disabled', false).removeClass('updating-message');
                     if (res.success) {
+                        // Cleared: the banner and its countdown are no longer needed.
                         self.hideCooldownBanner();
                         if (AIPS.Utilities && AIPS.Utilities.showToast) {
                             AIPS.Utilities.showToast(res.data.message || 'Cooldown cleared. Operations resumed.', 'success');
@@ -2096,6 +2298,7 @@
          * @return {void}
          */
         onClusterSimThresholdInput: function (e) {
+            // Show the slider's 0-1 value as a whole percentage next to it.
             var val = Math.round(parseFloat($(e.target).val()) * 100);
             $('#aips-cluster-sim-val').text(val + '%');
         },
@@ -2103,16 +2306,23 @@
         /**
          * Handle scanning and building post clusters.
          *
+         * Requests clusters for the chosen similarity threshold and minimum size, then
+         * fills the summary metrics, the cluster accordion cards (first 15 clusters, 10 posts
+         * each, the rest hidden behind "show more") and the orphan posts table.
+         *
          * @return {void}
          */
         onRefreshClustersClick: function () {
             var self = this;
+
+            // Controls: refresh button, spinner, results container, and the two user-set clustering parameters.
             var $btn = $('#aips-refresh-clusters-btn');
             var $loading = $('#aips-clusters-loading');
             var $container = $('#aips-clusters-accordion');
             var threshold = parseFloat($('#aips-cluster-sim-threshold').val()) || 0.65;
             var minSize = parseInt($('#aips-cluster-min-size').val(), 10) || 2;
 
+            // Lock the button and show the spinner while the server clusters the posts.
             $btn.prop('disabled', true);
             $loading.removeClass('aips-hidden').show();
 
@@ -2130,6 +2340,7 @@
                     $btn.prop('disabled', false);
                     $loading.hide();
 
+                    // Server-side failure: surface its message and stop.
                     if (!res.success) {
                         var errMsg = (res.data && res.data.message) ? res.data.message : 'Failed to generate post clusters.';
                         if (AIPS.Utilities && AIPS.Utilities.showToast) {
@@ -2138,6 +2349,7 @@
                         return;
                     }
 
+                    // Cache the payload (other handlers, e.g. gap ideas, read it) and unpack the summary stats.
                     var data = res.data || {};
                     self.clustersData = data;
                     var stats = data.stats || {};
@@ -2163,23 +2375,29 @@
                             description: 'Try lowering the Cluster Threshold or Min Size to group more posts together.'
                         }));
                     } else {
+                        // Keep the page light: show 15 clusters and 10 posts per cluster; the rest start hidden.
                         var cardsHtml = '';
                         var CLUSTERS_PER_PAGE = 15;
                         var POSTS_PER_CLUSTER = 10;
                         data.clusters.forEach(function (cluster, clusterIndex) {
                             var postsHtml = '';
                             var shownPosts = 0;
+
+                            // The pillar post is the cluster's flagship; the API may name it by id or by flag on a post.
                             var pillarId = cluster.pillar_post_id !== undefined ? cluster.pillar_post_id : cluster.pillar_id;
                             var pillarTitle = cluster.pillar_title || '';
 
+                            // One table row per post in the cluster.
                             (cluster.posts || []).forEach(function (p) {
                                 var isPillar = (p.id === pillarId) || !!p.is_pillar;
                                 if (isPillar && !pillarTitle) {
                                     pillarTitle = p.title;
                                 }
+                                // Similarity to the cluster centre (field name differs between API versions).
                                 var rawScore = p.similarity_to_centroid !== undefined ? p.similarity_to_centroid : (p.topic_score !== undefined ? p.topic_score : 0);
                                 var simPct = Math.round(rawScore * 100);
 
+                                // The pillar is always visible; other posts only until the per-cluster limit.
                                 var showRow = isPillar || shownPosts < POSTS_PER_CLUSTER;
                                 if (showRow) {
                                     shownPosts++;
@@ -2200,12 +2418,14 @@
                                 });
                             });
 
+                            // Cohesion badge colour: >= 75% tight (low risk), >= 60% medium, below that loose (high risk).
                             var cohesionPct = cluster.cohesion_pct !== undefined ? Math.round(cluster.cohesion_pct) : Math.round((cluster.cohesion_score || 0) * 100);
                             var cohesionTier = cohesionPct >= 75 ? 'low' : (cohesionPct >= 60 ? 'medium' : 'high');
                             var pillarBadgeHtml = pillarTitle ? AIPS.Templates.render('aips-tmpl-indexer-pillar-tag', {
                                 title: AIPS.Templates.escape(pillarTitle)
                             }) : '';
 
+                            // Build the card; clusters start collapsed, with a "N more posts" link when rows were hidden.
                             var hiddenPosts = (cluster.posts || []).length - shownPosts;
                             var cardHtml = AIPS.Templates.renderRaw('aips-tmpl-indexer-cluster-card', {
                                 collapsedClass: 'is-collapsed',
@@ -2218,6 +2438,7 @@
                                 pillarBadgeHtml: pillarBadgeHtml,
                                 postsHtml: postsHtml
                             });
+                            // Clusters beyond the first page are hidden until the "show more" control is used.
                             if (clusterIndex >= CLUSTERS_PER_PAGE) {
                                 cardHtml = cardHtml.replace('class="aips-cluster-card"', 'class="aips-cluster-card aips-hidden aips-cluster-extra"');
                             }
@@ -2229,12 +2450,13 @@
                         $container.html(cardsHtml);
                     }
 
-                    // Render Orphan Posts
+                    // Render Orphan Posts (posts that did not fit any cluster at this threshold)
                     var $orphansCard = $('#aips-orphans-card');
                     var $orphansTbody = $('#aips-orphans-tbody');
                     if (data.orphans && data.orphans.length > 0) {
                         var orphanRowsHtml = '';
                         data.orphans.forEach(function (orp) {
+                            // How close the orphan is to its nearest cluster, as a percentage.
                             var proxPct = Math.round((orp.closest_cluster_similarity || 0) * 100);
                             orphanRowsHtml += AIPS.Templates.render('aips-tmpl-indexer-orphan-row', {
                                 postId: orp.id,
@@ -2254,6 +2476,7 @@
                     }
                 },
                 error: function (xhr) {
+                    // Network/PHP error: restore the UI and show the server's message if it sent one.
                     $btn.prop('disabled', false);
                     $loading.hide();
                     var errMsg = 'Error communicating with cluster generation service.';
@@ -2274,6 +2497,7 @@
          * @return {void}
          */
         onClusterCardHeaderClick: function (e) {
+            // Clicks on the Rename / Gap-ideas buttons inside the header must not toggle the card.
             if ($(e.target).closest('.aips-cluster-rename-btn, .aips-cluster-gaps-btn').length) {
                 return;
             }
@@ -2281,6 +2505,7 @@
             var targetSelector = $header.data('toggle-target');
             var $body = $(targetSelector);
 
+            // Header and body share the collapsed state so the arrow icon and content stay in sync.
             $header.toggleClass('is-collapsed');
             $body.toggleClass('is-collapsed');
         },
@@ -2292,10 +2517,12 @@
          * @return {void}
          */
         onClusterRenameClick: function (e) {
+            // Do not let the click bubble up and collapse/expand the card.
             e.stopPropagation();
             var clusterId = $(e.currentTarget).data('cluster-id');
             var currentName = $(e.currentTarget).data('cluster-name') || '';
 
+            // Ask for the new name; cancelling, clearing it, or keeping the same name is a no-op.
             var newName = prompt('Enter a new name for this Post Cluster:', currentName);
             if (!newName || newName.trim() === '' || newName.trim() === currentName) {
                 return;
@@ -2317,6 +2544,7 @@
                 },
                 success: function (res) {
                     if (res.success) {
+                        // Update the visible title and the name stored on both buttons so the next rename starts from it.
                         $card.find('.aips-cluster-title').first().text(newName);
                         $btn.data('cluster-name', newName);
                         $card.find('.aips-cluster-gaps-btn').data('cluster-name', newName);
@@ -2339,6 +2567,7 @@
          * @return {void}
          */
         onPillarToggleClick: function (e) {
+            // The clicked star button identifies both the cluster and the post to make the pillar.
             var $btn = $(e.currentTarget);
             var clusterId = $btn.data('cluster-id');
             var postId = $btn.data('post-id');
@@ -2366,7 +2595,7 @@
                             .find('.dashicons').removeClass('dashicons-star-empty').addClass('dashicons-star-filled')
                             .css('color', '#f59e0b');
 
-                        // Update pillar tag in card header
+                        // Update pillar tag in card header (replace the old tag, or add one if the cluster had none)
                         var postTitle = $btn.closest('tr').find('strong').first().text();
                         var $existingTag = $card.find('.aips-pillar-tag');
                         var tagHtml = AIPS.Templates.render('aips-tmpl-indexer-pillar-tag', {
@@ -2393,10 +2622,12 @@
          * @return {void}
          */
         onClusterGapsClick: function (e) {
+            // Keep the click from toggling the cluster card.
             e.stopPropagation();
             var clusterId = $(e.currentTarget).data('cluster-id');
             var clusterName = $(e.currentTarget).data('cluster-name') || '';
 
+            // Reset the modal to a clean "loading" state for this cluster.
             this.selectedClusterForGaps = clusterId;
             $('#aips-gap-modal-cluster-name').text('"' + clusterName + '"');
             $('#aips-gap-suggestions-list').empty();
@@ -2405,6 +2636,7 @@
             $('#aips-gap-modal').removeClass('aips-hidden').show();
             $('#aips-gap-modal-loading').removeClass('aips-hidden').show();
 
+            // Ask the AI for 5 topic ideas that would fill gaps in this cluster.
             $.ajax({
                 url: ajaxurl,
                 type: 'POST',
@@ -2425,6 +2657,7 @@
                         return;
                     }
 
+                    // Nothing suggested: say so rather than leaving the list blank.
                     var suggestions = res.data.suggestions || [];
                     if (suggestions.length === 0) {
                         $('#aips-gap-suggestions-list').html(AIPS.Templates.render('aips-tmpl-indexer-gap-msg', {
@@ -2434,6 +2667,7 @@
                         return;
                     }
 
+                    // One selectable row per idea (title + rationale).
                     var listHtml = '';
                     suggestions.forEach(function (item, idx) {
                         listHtml += AIPS.Templates.render('aips-tmpl-indexer-gap-item', {
@@ -2470,6 +2704,7 @@
          * @return {void}
          */
         onGapSelectionChange: function () {
+            // The commit button needs both a target author and at least one ticked idea.
             var authorId = parseInt($('#aips-gap-author-select').val(), 10) || 0;
             var selectedCount = $('.aips-gap-checkbox:checked').length;
             $('#aips-commit-gap-topics-btn').prop('disabled', authorId <= 0 || selectedCount === 0);
@@ -2483,14 +2718,18 @@
         onCommitGapTopicsClick: function () {
             var self = this;
             var authorId = parseInt($('#aips-gap-author-select').val(), 10) || 0;
+
+            // Collect the values of the ticked ideas into a plain array.
             var selectedTopics = $('.aips-gap-checkbox:checked').map(function () {
                 return $(this).val();
             }).get();
 
+            // Guard: the button is normally disabled in these cases, but never post an empty commit.
             if (authorId <= 0 || selectedTopics.length === 0) {
                 return;
             }
 
+            // Disable the button and show WordPress's "updating" state while saving.
             var $btn = $('#aips-commit-gap-topics-btn');
             $btn.prop('disabled', true).addClass('updating-message');
 
@@ -2507,6 +2746,7 @@
                 success: function (res) {
                     $btn.prop('disabled', false).removeClass('updating-message');
                     if (res.success) {
+                        // Saved: close the modal; the topics now wait for approval under the chosen author.
                         self.onCloseGapModalClick();
                         if (AIPS.Utilities && AIPS.Utilities.showToast) {
                             AIPS.Utilities.showToast(res.data.message || 'Topics committed successfully!', 'success');
