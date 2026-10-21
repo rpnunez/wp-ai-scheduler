@@ -30,6 +30,18 @@ class AIPS_AI_Assistance_Service {
 	private $repository;
 
 	/**
+	 * Prompt preamble describing the kind of form being filled in, keyed by
+	 * form_context. Falls back to a generic description for an unrecognised
+	 * context so a new form never gets Author-specific wording by default.
+	 *
+	 * @var array<string, string>
+	 */
+	private $preambles = array(
+		'authors'   => 'an AI author persona',
+		'templates' => 'an AI content-generation template',
+	);
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_AI_Service               $ai_service AI service.
@@ -52,8 +64,9 @@ class AIPS_AI_Assistance_Service {
 	 *     @type string $influence         How this field influences AI content.
 	 *     @type string $expected_response Format hint for the AI response.
 	 *     @type string $current_value     Current value in the field.
-	 *     @type string $author_name       Optional: author name for context.
-	 *     @type string $field_niche       Optional: niche for context.
+	 *     @type array  $context           Optional: map of sibling field id => value,
+	 *                                     as declared by that field's contextFields
+	 *                                     entry in the form's field map.
 	 * }
 	 * @param string $session_id  Browser session identifier.
 	 * @param int    $user_id     WordPress user ID.
@@ -99,9 +112,12 @@ class AIPS_AI_Assistance_Service {
 	 * @return string The prompt string.
 	 */
 	private function build_prompt( array $field_config ): string {
+		$form_context = $field_config['form_context'] ?? '';
+		$preamble     = $this->preambles[ $form_context ] ?? 'a WordPress admin form';
+
 		$lines = array(
 			'You are a helpful assistant for an AI content creation WordPress plugin.',
-			'Help fill in a form field for an AI author persona.',
+			'Help fill in a form field for ' . $preamble . '.',
 			'',
 			'Field: ' . ( $field_config['field_name'] ?? '' ),
 			'Purpose: ' . ( $field_config['description'] ?? '' ),
@@ -109,12 +125,11 @@ class AIPS_AI_Assistance_Service {
 			'Current value: ' . ( $field_config['current_value'] ?? '' ),
 		);
 
-		if ( ! empty( $field_config['author_name'] ) ) {
-			$lines[] = 'Author Name: ' . $field_config['author_name'];
-		}
-
-		if ( ! empty( $field_config['field_niche'] ) ) {
-			$lines[] = 'Author Niche: ' . $field_config['field_niche'];
+		foreach ( (array) ( $field_config['context'] ?? array() ) as $context_key => $context_value ) {
+			if ( '' === $context_value ) {
+				continue;
+			}
+			$lines[] = ucwords( str_replace( '_', ' ', $context_key ) ) . ': ' . $context_value;
 		}
 
 		$lines[] = '';

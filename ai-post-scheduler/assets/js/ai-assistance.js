@@ -37,63 +37,81 @@
 				description:      'The display name for this AI author persona',
 				influence:        'Sets the author byline on generated posts; used in topic-generation prompts as the attributed author',
 				expectedResponse: 'A short, memorable author pen name (1–3 words)',
+				contextFields:    [],
 			},
 			author_field_niche: {
 				fieldName:        'Field/Niche',
 				description:      'The subject-matter niche this author specialises in',
 				influence:        'Focuses AI topic generation and content toward this niche',
 				expectedResponse: 'A concise niche description (1–5 words, e.g. "Personal Finance for Millennials")',
+				contextFields:    [],
 			},
 			author_keywords: {
 				fieldName:        'Keywords',
 				description:      'Comma-separated keywords associated with this author\'s content',
 				influence:        'Guides keyword selection during post and topic generation',
 				expectedResponse: 'A comma-separated list of 5–10 relevant keywords',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_details: {
 				fieldName:        'Details',
 				description:      'Short background details about this author persona',
 				influence:        'Provides context to the AI when generating posts in the author\'s voice',
 				expectedResponse: 'Two to four sentences describing the author\'s background and expertise',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_description: {
 				fieldName:        'Description',
 				description:      'A longer public-facing bio or description for this author',
 				influence:        'May be appended to generated posts as an author bio section',
 				expectedResponse: 'A 3–5 sentence author biography in first or third person',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			voice_tone: {
 				fieldName:        'Tone',
 				description:      'The emotional tone this author uses when writing',
 				influence:        'Instructs the AI to match this tone throughout every generated post',
 				expectedResponse: 'One to three descriptive words (e.g. "friendly, authoritative, approachable")',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			writing_style: {
 				fieldName:        'Writing Style',
 				description:      'The structural and stylistic approach this author takes',
 				influence:        'Shapes sentence length, vocabulary, and narrative style in AI-generated content',
 				expectedResponse: 'A brief style description (e.g. "conversational with data-driven examples")',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_target_audience: {
 				fieldName:        'Target Audience',
 				description:      'The intended readership for this author\'s content',
 				influence:        'Tailors complexity, vocabulary, and examples to this audience in generated posts',
 				expectedResponse: 'A concise audience description (e.g. "beginner home cooks aged 25–45")',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_content_goals: {
 				fieldName:        'Content Goals',
 				description:      'The primary objectives this author\'s content should achieve',
 				influence:        'Aligns AI-generated post structure and calls-to-action with these goals',
 				expectedResponse: 'One to three goal statements (e.g. "educate readers, drive newsletter signups")',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_excluded_topics: {
 				fieldName:        'Excluded Topics',
 				description:      'Topics or subject areas this author should never write about',
 				influence:        'Prevents the AI from generating posts or topics in these areas',
 				expectedResponse: 'A comma-separated list of excluded topics or themes',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 		},
 	};
+
+	/**
+	 * sessionStorage key used to persist the field-assist session id across
+	 * page loads within the same browser session.
+	 *
+	 * @type {string}
+	 */
+	var SESSION_STORAGE_KEY = 'aipsAIAssistanceSessionId';
 
 	/**
 	 * AIPS.AIAssistance module.
@@ -105,7 +123,8 @@
 	AIPS.AIAssistance = {
 
 		/**
-		 * Unique session identifier generated once per page load.
+		 * Unique session identifier, persisted in sessionStorage so the
+		 * "This Session" history tab survives a page reload.
 		 *
 		 * @type {string}
 		 */
@@ -113,29 +132,84 @@
 
 		/**
 		 * The form context identifier used for all requests on this page.
+		 * Set via init({ formContext: '...' }); defaults to 'authors' for
+		 * backward compatibility with callers that don't pass one.
 		 *
 		 * @type {string}
 		 */
 		formContext: 'authors',
 
 		/**
-		 * Initialise the module: generate session ID, inject buttons, bind events.
+		 * Guards against double-initialisation (and therefore duplicate
+		 * document-delegated event bindings) if init() is ever called more
+		 * than once on the same page.
 		 *
-		 * @return {void}
+		 * @type {boolean}
 		 */
-		init: function () {
+		_initialized: false,
+
+		/**
+		 * Generate a new random identifier for session grouping.
+		 *
+		 * @return {string}
+		 */
+		_generateSessionId: function () {
 			if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-				this.sessionId = crypto.randomUUID();
-			} else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+				return crypto.randomUUID();
+			}
+			if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
 				var buf = new Uint8Array(16);
 				crypto.getRandomValues(buf);
-				this.sessionId = Array.prototype.map.call(buf, function (b) {
+				return Array.prototype.map.call(buf, function (b) {
 					return ('0' + b.toString(16)).slice(-2);
 				}).join('');
-			} else {
-				// Last-resort fallback (non-security context: session grouping only).
-				this.sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
 			}
+			// Last-resort fallback (non-security context: session grouping only).
+			return Date.now().toString(36) + Math.random().toString(36).slice(2);
+		},
+
+		/**
+		 * Load the persisted session id from sessionStorage, or generate and
+		 * persist a new one. Falls back to an in-memory id if storage is
+		 * unavailable (private browsing, blocked site data, etc).
+		 *
+		 * @return {string}
+		 */
+		_loadOrCreateSessionId: function () {
+			try {
+				var stored = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+				if (stored) {
+					return stored;
+				}
+				var fresh = this._generateSessionId();
+				window.sessionStorage.setItem(SESSION_STORAGE_KEY, fresh);
+				return fresh;
+			} catch (e) {
+				return this._generateSessionId();
+			}
+		},
+
+		/**
+		 * Initialise the module: resolve form context, load/generate the
+		 * session ID, inject buttons, bind events. Safe to call only once per
+		 * page — subsequent calls are no-ops so document-delegated handlers
+		 * are never bound twice.
+		 *
+		 * @param {Object} [options] Optional configuration.
+		 * @param {string} [options.formContext] The form context key to use (see AIPS_FIELD_MAPS).
+		 * @return {void}
+		 */
+		init: function (options) {
+			if (this._initialized) {
+				return;
+			}
+			this._initialized = true;
+
+			if (options && options.formContext) {
+				this.formContext = options.formContext;
+			}
+
+			this.sessionId = this._loadOrCreateSessionId();
 			this.injectButtons();
 			this.bindEvents();
 		},
@@ -211,8 +285,14 @@
 
 			var $field = $('#' + fieldId);
 			var currentValue = $field.val() || '';
-			var authorName = $('#author_name').val() || '';
-			var fieldNiche = $('#author_field_niche').val() || '';
+
+			// Generic sibling-field context: each field map entry declares
+			// which other fields on the same form should be read and sent
+			// along as extra context, instead of hardcoding specific IDs here.
+			var context = {};
+			$.each(fieldConfig.contextFields || [], function (i, contextFieldId) {
+				context[contextFieldId] = $('#' + contextFieldId).val() || '';
+			});
 
 			// Loading state
 			$btn.prop('disabled', true).addClass('loading');
@@ -237,8 +317,7 @@
 					expected_response: fieldConfig.expectedResponse,
 					current_value:     currentValue,
 					session_id:        self.sessionId,
-					author_name:       authorName,
-					field_niche:       fieldNiche,
+					context:           context,
 				},
 				function (response) {
 					$btn.prop('disabled', false).removeClass('loading');
@@ -410,8 +489,10 @@
 		},
 	};
 
-	$(document).ready(function () {
-		AIPS.AIAssistance.init();
-	});
+	// Intentionally no auto-init here: each admin page that wants AI
+	// Assistance must call AIPS.AIAssistance.init({ formContext: '...' })
+	// itself (see assets/js/authors.js for the Authors page). init() is
+	// idempotent, but each page should only call it once, with its own
+	// formContext, so the right field map and sibling-field context apply.
 
 })(jQuery);

@@ -196,6 +196,42 @@ class Test_AIPS_AI_Assistance_Controller extends WP_UnitTestCase {
 		$this->assertEquals( 'John Doe', $records[0]->response );
 	}
 
+	public function test_field_assist_sends_generic_context_and_form_specific_preamble() {
+		$controller = $this->make_controller_with_mock_service( 'Generated Suggestion' );
+
+		$session_id = 'test-session-context';
+		$_POST      = array(
+			'action'            => 'aips_ai_field_assist',
+			'nonce'             => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context'      => 'templates',
+			'field_key'         => 'prompt_template',
+			'field_name'        => 'Content Prompt Template',
+			'session_id'        => $session_id,
+			'description'       => 'The master content prompt',
+			'influence'         => 'Drives post generation',
+			'expected_response' => 'A detailed prompt',
+			'current_value'     => '',
+			'context'           => array(
+				'template_name' => 'Weekly Roundup',
+			),
+		);
+		$this->sync_request_from_post();
+
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+
+		$this->assertNotNull( $response );
+		$this->assertTrue( $response['success'], 'Expected success response' );
+
+		$records = $this->repository->get_by_session_and_field( $session_id, 'templates', 'prompt_template' );
+		$this->assertCount( 1, $records );
+
+		// The context value was read generically (no hardcoded author_name/field_niche)
+		// and the preamble reflects the 'templates' form context, not the Authors one.
+		$this->assertStringContainsString( 'Template Name: Weekly Roundup', $records[0]->prompt );
+		$this->assertStringContainsString( 'an AI content-generation template', $records[0]->prompt );
+		$this->assertStringNotContainsString( 'AI author persona', $records[0]->prompt );
+	}
+
 	public function test_field_assist_propagates_ai_error() {
 		$wp_error   = new WP_Error( 'ai_failed', 'AI service unavailable.' );
 		$controller = $this->make_controller_with_mock_service( $wp_error );

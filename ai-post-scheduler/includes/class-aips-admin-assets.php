@@ -883,33 +883,38 @@ class AIPS_Admin_Assets {
               true
           );
 
-          wp_enqueue_style(
-              'aips-ai-assistance-style',
-              AIPS_PLUGIN_URL . 'assets/css/ai-assistance.css',
-              array('aips-admin-style'),
-              AIPS_VERSION
-          );
+          // AI Assistance's AJAX endpoints require manage_options; don't enqueue
+          // (and therefore don't inject) its buttons for users who would only
+          // get a silent permission-denied response on every click.
+          if ( current_user_can( 'manage_options' ) ) {
+              wp_enqueue_style(
+                  'aips-ai-assistance-style',
+                  AIPS_PLUGIN_URL . 'assets/css/ai-assistance.css',
+                  array('aips-admin-style'),
+                  AIPS_VERSION
+              );
 
-          wp_enqueue_script(
-              'aips-ai-assistance-script',
-              AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
-              array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script'),
-              AIPS_VERSION,
-              true
-          );
+              wp_enqueue_script(
+                  'aips-ai-assistance-script',
+                  AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
+                  array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script'),
+                  AIPS_VERSION,
+                  true
+              );
 
-          wp_localize_script('aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
-              'nonce'           => wp_create_nonce('aips_ajax_nonce'),
-              'loading'         => __('Loading...', 'ai-post-scheduler'),
-              'suggesting'      => __('Suggesting...', 'ai-post-scheduler'),
-              'suggested'       => __('AI suggestion applied.', 'ai-post-scheduler'),
-              'errorSuggesting' => __('Could not get AI suggestion. Please try again.', 'ai-post-scheduler'),
-              'valueApplied'    => __('Value applied from history.', 'ai-post-scheduler'),
-              'noHistory'       => __('No AI suggestions found for this field yet.', 'ai-post-scheduler'),
-              'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
-              'thisSession'     => __('This Session', 'ai-post-scheduler'),
-              'allTime'         => __('All Time', 'ai-post-scheduler'),
-          ));
+              wp_localize_script('aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
+                  'nonce'           => wp_create_nonce('aips_ajax_nonce'),
+                  'loading'         => __('Loading...', 'ai-post-scheduler'),
+                  'suggesting'      => __('Suggesting...', 'ai-post-scheduler'),
+                  'suggested'       => __('AI suggestion applied.', 'ai-post-scheduler'),
+                  'errorSuggesting' => __('Could not get AI suggestion. Please try again.', 'ai-post-scheduler'),
+                  'valueApplied'    => __('Value applied from history.', 'ai-post-scheduler'),
+                  'noHistory'       => __('No AI suggestions found for this field yet.', 'ai-post-scheduler'),
+                  'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
+                  'thisSession'     => __('This Session', 'ai-post-scheduler'),
+                  'allTime'         => __('All Time', 'ai-post-scheduler'),
+              ));
+          }
     }
 
     /**
