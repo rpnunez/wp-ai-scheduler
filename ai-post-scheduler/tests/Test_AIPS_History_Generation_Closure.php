@@ -179,7 +179,7 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 		$active             = $this->insert_row('author_embeddings', array('author_id' => 2), 'processing', 'success', HOUR_IN_SECONDS);
 		$template_lifecycle = $this->insert_row('template_lifecycle', array('template_id' => 1), 'processing', 'success', 30 * DAY_IN_SECONDS);
 		$schedule_lifecycle = $this->insert_row('schedule_lifecycle', array('schedule_id' => 1), 'processing', 'success', 30 * DAY_IN_SECONDS);
-		$schedule_exec_fail = $this->insert_row('schedule_execution', array('schedule_id' => 1), 'processing', 'failed');
+		$schedule_exec_fail = $this->insert_row('schedule_execution', array('schedule_id' => 1), 'processing', 'failed', 30 * DAY_IN_SECONDS);
 		$generation         = $this->insert_row('post_generation', array('post_id' => $incomplete), 'completed');
 		$clean              = $this->insert_row('post_generation', array('post_id' => self::factory()->post->create()), 'completed');
 

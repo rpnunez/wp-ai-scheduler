@@ -142,7 +142,16 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		public function count_completed_for_schedule($schedule) {
 			return 0;
 		}
+		public function get_schedule_generated_post_counts($schedule_or_history_ids, $by_schedule_id = true) {
+			return array();
+		}
 		public function invalidate_schedule_completed_count_cache($schedule_id) {
+		}
+		public function get_schedule_history_logs($schedule_id, $type_filter = array(), $limit = 0, $fallback_history_id = 0) {
+			return array();
+		}
+		public function backfill_schedule_id($batch_size = 500) {
+			return 0;
 		}
 		public function add_log_entry($history_id, $details, $history_type_id = null) {
 			return false;

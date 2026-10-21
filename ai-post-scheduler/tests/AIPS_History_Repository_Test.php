@@ -722,22 +722,28 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		));
 		$this->test_history_ids[] = $c2->get_id();
 		$c2->record('activity', 'Run 2 failed', array('event_type' => 'schedule_failed', 'event_status' => 'failed'));
-		$c2->complete_failure('Boom');
+		$c2->complete_failure('Boom', array(), false);
 
 		$logs = $this->repository->get_schedule_history_logs(
 			$this->test_schedule_id,
 			array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
 		);
 
-		// Run 1 activity + Run 2 activity + Run 2 error entry recorded by complete_failure()
-		// (trigger_source and trigger_method rows are excluded from schedule drawer logs).
-		$this->assertCount(3, $logs);
+		// Run 1 activity + Run 2 structured failure activity (no duplicate untyped error entry;
+		// trigger_source and trigger_method rows are excluded from schedule drawer logs).
+		$this->assertCount(2, $logs);
 		$messages = array_map(function ($row) {
 			$d = json_decode($row->details, true);
 			return $d['message'] ?? '';
 		}, $logs);
 		$this->assertContains('Run 1 started', $messages);
 		$this->assertContains('Run 2 failed', $messages);
+
+		// AIPS_History_Event_View exposes history_id on each normalized timeline entry.
+		$views = AIPS_History_Event_View::from_logs($logs);
+		$this->assertCount(2, $views);
+		$this->assertSame((int) $c2->get_id(), $views[0]['history_id']);
+		$this->assertSame((int) $c1->get_id(), $views[1]['history_id']);
 
 		// Meanwhile get_logs_by_history_id for c1 still includes the trigger metadata for the History modal.
 		$c1_logs = $this->repository->get_logs_by_history_id($c1->get_id());
@@ -751,6 +757,21 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			'template_id' => $this->test_template_id,
 		);
 		$this->assertSame(3, $this->repository->count_completed_for_schedule($merged_schedule));
+
+		// Creating an in-progress generation row and updating only its status to 'completed'
+		// (without passing schedule_id in the update array) must still invalidate the schedule cache.
+		$in_progress_id = $this->repository->create(array(
+			'template_id'     => $this->test_template_id,
+			'schedule_id'     => $this->test_schedule_id,
+			'status'          => 'processing',
+			'creation_method' => 'scheduled',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+		));
+		$this->test_history_ids[] = $in_progress_id;
+		$this->assertSame(3, $this->repository->count_completed_for_schedule($merged_schedule));
+
+		$this->repository->update($in_progress_id, array('status' => 'completed'));
+		$this->assertSame(4, $this->repository->count_completed_for_schedule($merged_schedule));
 
 		$subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_SCHEDULE, $this->test_schedule_id, 'Test Schedule');
 		$this->assertSame('schedule_id', $subject->container_meta_key());

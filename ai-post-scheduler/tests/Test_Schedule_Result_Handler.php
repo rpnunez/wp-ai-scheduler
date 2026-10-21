@@ -190,7 +190,8 @@ class Test_Schedule_Result_Handler extends WP_UnitTestCase {
                     return isset($ctx['schedule_id'], $ctx['error_code'])
                         && $ctx['schedule_id'] === 8
                         && $ctx['error_code'] === 'ai_error';
-                })
+                }),
+                false
             );
 
         $this->handler->handle_execution_failure($schedule, $error, $history, false);

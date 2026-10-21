@@ -406,4 +406,8 @@ class AIPS_Test_Conversational_History_Container {
 	public function complete_failure($message, $data = array()) {
 		return $this;
 	}
+
+	public function record_post_created($post_id, $data = array()) {
+		return $this;
+	}
 }

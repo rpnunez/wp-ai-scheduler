@@ -68,9 +68,23 @@ class Test_AIPS_History_Record_Kind extends WP_UnitTestCase {
 		foreach (array('content_indexing', 'author_embeddings', 'author_topic_generation', 'source_fetch', 'bulk_batch_slice', 'content_index_scan', 'internal_link_rebuild') as $method) {
 			$this->assertSame('job', AIPS_History_Record_Kind::for_creation_method($method), $method);
 		}
-		foreach (array('topic_post_generation', 'post_review_action', 'notification_sent', 'schedule_lifecycle', 'bulk_delete', 'bulk_schedule', 'manual_generation', 'manual_regeneration') as $method) {
+		foreach (array('topic_post_generation', 'post_review_action', 'notification_sent', 'schedule_lifecycle', 'schedule_execution', 'bulk_delete', 'bulk_schedule', 'manual_generation', 'manual_regeneration') as $method) {
 			$this->assertSame('event', AIPS_History_Record_Kind::for_creation_method($method), $method);
 		}
+	}
+
+	public function test_creation_method_registry_helpers_stay_consistent() {
+		$registry  = AIPS_History_Record_Kind::creation_method_registry();
+		$labels    = AIPS_History_Record_Kind::creation_method_labels();
+		$manual    = AIPS_History_Record_Kind::manual_creation_methods();
+		$automatic = AIPS_History_Record_Kind::automatic_creation_methods();
+
+		$this->assertEmpty(array_diff(array_keys($labels), array_keys($registry)));
+		$this->assertEmpty(array_diff($manual, array_keys($registry)));
+		$this->assertEmpty(array_diff($automatic, array_keys($registry)));
+		$this->assertEmpty(array_intersect($manual, $automatic));
+		$this->assertContains('schedule_execution', AIPS_History_Record_Kind::lifecycle_creation_methods());
+		$this->assertContains('schedule_execution', AIPS_History_Record_Kind::event_only_creation_methods());
 	}
 
 	public function test_classifier_defaults_unknown_methods_to_event() {

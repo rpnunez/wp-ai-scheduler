@@ -113,7 +113,7 @@ class AIPS_Schedule_Result_Handler {
                         $fail_history->complete_failure($result->get_error_message(), array(
                             'schedule_id' => $schedule->schedule_id,
                             'error_code'  => $result->get_error_code(),
-                        ));
+                        ), false);
                     }
                 }
             }
@@ -165,7 +165,7 @@ class AIPS_Schedule_Result_Handler {
             $history->complete_failure($error_msg, array(
                 'schedule_id' => $schedule->schedule_id,
                 'error_code'  => $result->get_error_code(),
-            ));
+            ), false);
         }
 
         if (!$is_manual) {

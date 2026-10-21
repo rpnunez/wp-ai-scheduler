@@ -539,6 +539,10 @@ class AIPS_History_Container {
 			$result_data['generation_log'] = $this->session->to_json();
 		}
 
+		if (!empty($this->metadata['schedule_id']) && !array_key_exists('schedule_id', $result_data)) {
+			$result_data['schedule_id'] = (int) $this->metadata['schedule_id'];
+		}
+
 		$update_data = array_merge(
 			array('completed_at' => AIPS_DateTime::now()->timestamp()),
 			$result_data,
@@ -559,11 +563,12 @@ class AIPS_History_Container {
 	/**
 	 * Complete this history container with failure
 	 *
-	 * @param string $error_message Error message
-	 * @param array $error_data Optional additional error data
+	 * @param string $error_message    Error message
+	 * @param array  $error_data       Optional additional error data
+	 * @param bool   $record_error_log Whether to record an error log entry (set false when caller already recorded a structured failure event).
 	 * @return bool True on success, false on failure
 	 */
-	public function complete_failure($error_message, $error_data = array()) {
+	public function complete_failure($error_message, $error_data = array(), $record_error_log = true) {
 		if (!$this->is_persisted) {
 			return false;
 		}
@@ -576,8 +581,10 @@ class AIPS_History_Container {
 			));
 		}
 		
-		// Log the error
-		$this->record('error', $error_message, null, null, $error_data);
+		// Log the error unless the caller has already recorded a structured failure event.
+		if ($record_error_log) {
+			$this->record('error', $error_message, null, null, $error_data);
+		}
 
 		return $this->close_with_status('failed', array(
 			'error_message' => $error_message,

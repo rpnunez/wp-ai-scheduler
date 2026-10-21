@@ -141,14 +141,7 @@ class AIPS_History_Event_Recorder {
 	 * @return string[]
 	 */
 	public static function lifecycle_creation_methods() {
-		return array(
-			'schedule_lifecycle',
-			'template_lifecycle',
-			'campaign_lifecycle',
-			'author_lifecycle',
-			'source_lifecycle',
-			'post_review_action',
-		);
+		return AIPS_History_Record_Kind::lifecycle_creation_methods();
 	}
 
 	/**
@@ -272,7 +265,7 @@ class AIPS_History_Event_Recorder {
 
 		if ($complete) {
 			if ($event->status() === AIPS_History_Event_Status::FAILED) {
-				$container->complete_failure($event->message());
+				$container->complete_failure($event->message(), array(), false);
 			} else {
 				$container->complete_success();
 			}

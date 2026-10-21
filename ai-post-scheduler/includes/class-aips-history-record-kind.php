@@ -54,6 +54,176 @@ class AIPS_History_Record_Kind {
 	}
 
 	/**
+	 * Canonical registry of creation_method metadata across the plugin.
+	 *
+	 * Centralizes display labels, default record_kind classification, trigger
+	 * origin ('manual' vs 'scheduled'), and lifecycle/event-only flags so new
+	 * creation methods only need to be registered in one place.
+	 *
+	 * Keys per entry:
+	 * - label:      string|null  Translated human-readable label (null if internal/fallback).
+	 * - kind:       string|null  Explicit default kind ('generation', 'job', 'event', or null for chain/contextual).
+	 * - trigger:    string       'manual', 'scheduled', or 'unknown'.
+	 * - lifecycle:  bool         True for lifecycle/execution containers excluded from 3.7.12 stale-run cleanup.
+	 * - event_only: bool         True for event-only containers that never own a post's generated components.
+	 *
+	 * @return array<string,array{label:?string,kind:?string,trigger:string,lifecycle:bool,event_only:bool}>
+	 */
+	public static function creation_method_registry() {
+		return array(
+			// Generation runs.
+			'manual'                  => array('label' => __('Manual', 'ai-post-scheduler'),                         'kind' => self::GENERATION, 'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'scheduled'               => array('label' => __('Scheduled', 'ai-post-scheduler'),                      'kind' => self::GENERATION, 'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+			'regenerate'              => array('label' => __('Regeneration', 'ai-post-scheduler'),                   'kind' => self::GENERATION, 'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'retry'                   => array('label' => __('Retry', 'ai-post-scheduler'),                          'kind' => self::GENERATION, 'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'bulk_generate'           => array('label' => __('Bulk Generation', 'ai-post-scheduler'),                'kind' => self::GENERATION, 'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'post_generation'         => array('label' => __('Post Generation', 'ai-post-scheduler'),                'kind' => self::GENERATION, 'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => false),
+			'author_post_gen'         => array('label' => __('Author Posts', 'ai-post-scheduler'),                   'kind' => self::GENERATION, 'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+
+			// Background jobs.
+			'content_indexing'        => array('label' => __('Content Indexing', 'ai-post-scheduler'),               'kind' => self::JOB,        'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => false),
+			'content_index_operation' => array('label' => null,                                                      'kind' => self::JOB,        'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => false),
+			'author_embeddings'       => array('label' => __('Author Embeddings', 'ai-post-scheduler'),              'kind' => self::JOB,        'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+			'author_suggestion'       => array('label' => null,                                                      'kind' => self::JOB,        'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => false),
+			'author_topic_generation' => array('label' => __('Author Topics', 'ai-post-scheduler'),                  'kind' => self::JOB,        'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+			'bulk_batch_slice'        => array('label' => null,                                                      'kind' => self::JOB,        'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+			'source_fetch'            => array('label' => __('Source Fetch', 'ai-post-scheduler'),                   'kind' => self::JOB,        'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => false),
+			'research_run'            => array('label' => __('Research Run', 'ai-post-scheduler'),                   'kind' => self::JOB,        'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => false),
+			'gsc_sync'                => array('label' => __('Search Console Sync', 'ai-post-scheduler'),            'kind' => self::JOB,        'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => false),
+			'link_index_run'          => array('label' => null,                                                      'kind' => self::JOB,        'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => false),
+
+			// Lifecycle & execution event containers.
+			'schedule_lifecycle'      => array('label' => __('Schedule Change', 'ai-post-scheduler'),                'kind' => self::EVENT,      'trigger' => 'unknown',   'lifecycle' => true,  'event_only' => true),
+			'schedule_execution'      => array('label' => __('Scheduled Execution', 'ai-post-scheduler'),            'kind' => self::EVENT,      'trigger' => 'unknown',   'lifecycle' => true,  'event_only' => true),
+			'template_lifecycle'      => array('label' => __('Template Change', 'ai-post-scheduler'),                'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => true,  'event_only' => true),
+			'campaign_lifecycle'      => array('label' => __('Campaign Change', 'ai-post-scheduler'),                'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => true,  'event_only' => true),
+			'author_lifecycle'        => array('label' => __('Author Change', 'ai-post-scheduler'),                  'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => true,  'event_only' => true),
+			'source_lifecycle'        => array('label' => __('Source Change', 'ai-post-scheduler'),                  'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => true,  'event_only' => true),
+			'post_review_action'      => array('label' => __('Post Review', 'ai-post-scheduler'),                    'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => true,  'event_only' => true),
+
+			// Non-lifecycle event-only containers.
+			'notification_sent'       => array('label' => __('Notification', 'ai-post-scheduler'),                   'kind' => self::EVENT,      'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => true),
+			'topic_post_generation'   => array('label' => __('Topic Post Generation', 'ai-post-scheduler'),          'kind' => self::EVENT,      'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => true),
+			'bulk_delete'             => array('label' => __('Bulk Delete', 'ai-post-scheduler'),                    'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => false, 'event_only' => true),
+			'bulk_delete_feedback'    => array('label' => __('Bulk Delete Feedback', 'ai-post-scheduler'),           'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => false, 'event_only' => true),
+			'bulk_schedule'           => array('label' => __('Bulk Schedule', 'ai-post-scheduler'),                  'kind' => self::EVENT,      'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => true),
+			'settings_connection_test'=> array('label' => __('AI Connection Test', 'ai-post-scheduler'),             'kind' => self::EVENT,      'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => true),
+			'stress_test'             => array('label' => __('Stress Test', 'ai-post-scheduler'),                    'kind' => self::EVENT,      'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => true),
+			'taxonomy_generation'     => array('label' => __('Taxonomy Generation', 'ai-post-scheduler'),            'kind' => self::EVENT,      'trigger' => 'unknown',   'lifecycle' => false, 'event_only' => true),
+
+			// Wrapper event containers.
+			'manual_generation'       => array('label' => __('Manual Generation', 'ai-post-scheduler'),              'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'manual_regeneration'     => array('label' => __('Manual Regeneration', 'ai-post-scheduler'),            'kind' => self::EVENT,      'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+
+			// Additional labeled or trigger-classified methods (tagged explicitly at write time or matched by chain rules).
+			'template_schedule'       => array('label' => __('Template Schedule', 'ai-post-scheduler'),              'kind' => null,             'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+			'author_topic_gen'        => array('label' => __('Author Topics', 'ai-post-scheduler'),                  'kind' => null,             'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+			'author_post_generation'  => array('label' => __('Author Posts', 'ai-post-scheduler'),                   'kind' => null,             'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+			'bulk_generate_now'       => array('label' => __('Bulk Generation', 'ai-post-scheduler'),                'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'bulk_generation'         => array('label' => __('Bulk Generation', 'ai-post-scheduler'),                'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'bulk_regenerate'         => array('label' => __('Bulk Regeneration', 'ai-post-scheduler'),              'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'planner_post'            => array('label' => __('Planner Bulk Generation', 'ai-post-scheduler'),        'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'trending_topic_post'     => array('label' => __('Trending Topics Bulk Generation', 'ai-post-scheduler'),'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'author_topic_post'       => array('label' => __('Author Topics Bulk Generation', 'ai-post-scheduler'),  'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'manual_ui'               => array('label' => null,                                                      'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'admin'                   => array('label' => null,                                                      'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'preview'                 => array('label' => null,                                                      'kind' => null,             'trigger' => 'manual',    'lifecycle' => false, 'event_only' => false),
+			'cron'                    => array('label' => null,                                                      'kind' => null,             'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+			'batch_job'               => array('label' => null,                                                      'kind' => null,             'trigger' => 'scheduled', 'lifecycle' => false, 'event_only' => false),
+		);
+	}
+
+	/**
+	 * Map of creation_method => translated human-readable label.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function creation_method_labels() {
+		$labels = array();
+		foreach (self::creation_method_registry() as $method => $meta) {
+			if (!empty($meta['label'])) {
+				$labels[$method] = $meta['label'];
+			}
+		}
+		return $labels;
+	}
+
+	/**
+	 * creation_method values classified as post-generation runs by default.
+	 *
+	 * @return string[]
+	 */
+	public static function generation_creation_methods() {
+		$methods = array();
+		foreach (self::creation_method_registry() as $method => $meta) {
+			if ($meta['kind'] === self::GENERATION) {
+				$methods[] = $method;
+			}
+		}
+		return $methods;
+	}
+
+	/**
+	 * creation_method values used for lifecycle/execution containers.
+	 *
+	 * @return string[]
+	 */
+	public static function lifecycle_creation_methods() {
+		$methods = array();
+		foreach (self::creation_method_registry() as $method => $meta) {
+			if (!empty($meta['lifecycle'])) {
+				$methods[] = $method;
+			}
+		}
+		return $methods;
+	}
+
+	/**
+	 * creation_method values that are event-only (never own a generated post's components).
+	 *
+	 * @return string[]
+	 */
+	public static function event_only_creation_methods() {
+		$methods = array();
+		foreach (self::creation_method_registry() as $method => $meta) {
+			if (!empty($meta['event_only'])) {
+				$methods[] = $method;
+			}
+		}
+		return $methods;
+	}
+
+	/**
+	 * creation_method values started by a user action.
+	 *
+	 * @return string[]
+	 */
+	public static function manual_creation_methods() {
+		$methods = array();
+		foreach (self::creation_method_registry() as $method => $meta) {
+			if ($meta['trigger'] === 'manual') {
+				$methods[] = $method;
+			}
+		}
+		return $methods;
+	}
+
+	/**
+	 * creation_method values started automatically by cron / background workflows.
+	 *
+	 * @return string[]
+	 */
+	public static function automatic_creation_methods() {
+		$methods = array();
+		foreach (self::creation_method_registry() as $method => $meta) {
+			if ($meta['trigger'] === 'scheduled') {
+				$methods[] = $method;
+			}
+		}
+		return $methods;
+	}
+
+	/**
 	 * creation_method values that are background jobs.
 	 *
 	 * Methods that match AIPS_History_Repository::is_chain_method() (content_index,
@@ -63,11 +233,12 @@ class AIPS_History_Record_Kind {
 	 * @return string[]
 	 */
 	public static function job_creation_methods() {
-		$methods = array(
-			'content_indexing', 'content_index_operation', 'author_embeddings', 'author_suggestion',
-			'author_topic_generation', 'bulk_batch_slice', 'source_fetch', 'research_run', 'gsc_sync',
-			'link_index_run',
-		);
+		$methods = array();
+		foreach (self::creation_method_registry() as $method => $meta) {
+			if ($meta['kind'] === self::JOB) {
+				$methods[] = $method;
+			}
+		}
 
 		/**
 		 * Filters the creation_method values classified as background jobs.
@@ -82,16 +253,19 @@ class AIPS_History_Record_Kind {
 	/**
 	 * creation_method values that are events.
 	 *
-	 * The event-only list plus the author-topic wrappers that surround a generation
-	 * run without being one.
+	 * The event-only list plus the manual generation wrappers that surround a
+	 * generation run without being one.
 	 *
 	 * @return string[]
 	 */
 	public static function event_creation_methods() {
-		return array_merge(
-			AIPS_History_Repository::event_only_creation_methods(),
-			array('manual_generation', 'manual_regeneration')
-		);
+		$methods = array();
+		foreach (self::creation_method_registry() as $method => $meta) {
+			if ($meta['kind'] === self::EVENT) {
+				$methods[] = $method;
+			}
+		}
+		return $methods;
 	}
 
 	/**

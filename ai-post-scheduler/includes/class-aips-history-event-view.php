@@ -69,6 +69,7 @@ final class AIPS_History_Event_View {
 
 		return array(
 			'id'                => isset($log->id) ? absint($log->id) : 0,
+			'history_id'        => isset($log->history_id) ? absint($log->history_id) : 0,
 			// Raw Unix timestamp, kept for consumers that need to sort/compare.
 			'timestamp'         => $timestamp,
 			// Human-readable ("2 hours ago" / absolute) and ISO-8601 (for <time datetime>) variants.

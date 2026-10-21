@@ -238,8 +238,8 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 
 		usort($filtered, function($a, $b) use ($orderby, $order) {
 			if ('status' === $orderby) {
-				$a_status = (!empty($a['is_active'])) ? 'active' : 'inactive';
-				$b_status = (!empty($b['is_active'])) ? 'active' : 'inactive';
+				$a_status = !empty($a['status']) ? (string) $a['status'] : ((!empty($a['is_active'])) ? 'active' : 'inactive');
+				$b_status = !empty($b['status']) ? (string) $b['status'] : ((!empty($b['is_active'])) ? 'active' : 'inactive');
 				$res      = strcmp($a_status, $b_status);
 			} elseif ('type' === $orderby) {
 				$res = strcmp($a['type'] ?? '', $b['type'] ?? '');

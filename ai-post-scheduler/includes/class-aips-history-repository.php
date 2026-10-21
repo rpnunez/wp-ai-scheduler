@@ -51,22 +51,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string[]
      */
     public static function event_only_creation_methods() {
-        return array_merge(
-            AIPS_History_Event_Recorder::lifecycle_creation_methods(),
-            array(
-                'notification_sent', 'topic_post_generation', 'bulk_delete', 'bulk_delete_feedback',
-                'bulk_schedule', 'settings_connection_test', 'stress_test', 'taxonomy_generation',
-            )
-        );
-    }
-
-    /**
-     * Placeholders string for the event-only creation methods.
-     *
-     * @return string e.g. "'a', 'b'" (values are code constants, escaped anyway).
-     */
-    private static function event_only_in_sql() {
-        return self::quoted_sql_list(self::event_only_creation_methods());
+        return AIPS_History_Record_Kind::event_only_creation_methods();
     }
 
     /**
@@ -98,7 +83,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string[]
      */
     public static function generation_run_creation_methods() {
-        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate', 'post_generation', 'author_post_gen');
+        $methods = AIPS_History_Record_Kind::generation_creation_methods();
 
         /**
          * Filters the creation_method values classified as post-generation runs when a
@@ -558,18 +543,6 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
     }
     
-        /**
-     * Return creation_method values used for internal lifecycle containers.
-     *
-     * @return string[]
-     */
-    private function get_auxiliary_creation_methods() {
-        return array_merge(
-            AIPS_History_Event_Recorder::lifecycle_creation_methods(),
-            array('notification_sent')
-        );
-    }
-
     /**
      * Creation-method LIKE patterns that define each non-default history domain.
      *
@@ -586,6 +559,19 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'batch_jobs' => '%batch%',
             'post_review' => 'post_review_action',
         );
+    }
+
+    /**
+     * Get creation_method values that represent auxiliary operational events
+     * rather than primary generation runs.
+     *
+     * @return string[]
+     */
+    private function get_auxiliary_creation_methods() {
+        return array_values(array_unique(array_merge(
+            array('notification_sent'),
+            AIPS_History_Record_Kind::lifecycle_creation_methods()
+        )));
     }
 
     /**
@@ -2225,7 +2211,16 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
 
         if ($result !== false) {
-            $cache_ctx = !empty($update_data['schedule_id']) ? array('schedule_id' => (int) $update_data['schedule_id']) : array();
+            $resolved_schedule_id = !empty($update_data['schedule_id']) ? (int) $update_data['schedule_id'] : 0;
+            if (!$resolved_schedule_id && isset($update_data['status']) && $id > 0) {
+                $resolved_schedule_id = (int) $this->wpdb->get_var(
+                    $this->wpdb->prepare(
+                        "SELECT schedule_id FROM {$this->table_name} WHERE id = %d",
+                        (int) $id
+                    )
+                );
+            }
+            $cache_ctx = $resolved_schedule_id > 0 ? array('schedule_id' => $resolved_schedule_id) : array();
             $this->invalidate_cache_domain( 'history', $cache_ctx, 'history_mutated' );
         }
 

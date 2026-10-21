@@ -483,7 +483,7 @@ class AIPS_Schedule_Processor {
                 $history->complete_failure($errors[0]->get_error_message(), array(
                     'schedule_id' => $schedule_id,
                     'error_code'  => $errors[0]->get_error_code(),
-                ));
+                ), false);
             } else {
                 $history->record(
                     'activity',
@@ -1266,7 +1266,7 @@ class AIPS_Schedule_Processor {
                     $history->complete_failure($dispatch_summary->get_error_message(), array(
                         'schedule_id' => $schedule->schedule_id,
                         'error_code'  => $dispatch_summary->get_error_code(),
-                    ));
+                    ), false);
                 }
                 return $dispatch_summary;
             }
