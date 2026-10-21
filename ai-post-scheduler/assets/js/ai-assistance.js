@@ -103,6 +103,43 @@
 				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 		},
+		templates: {
+			template_name: {
+				fieldName:        'Template Name',
+				description:      'A descriptive name for this content-generation template',
+				influence:        'Used only to identify the template in lists; does not affect generated content',
+				expectedResponse: 'A short, descriptive template name (e.g. "Weekly Tech News Roundup")',
+				contextFields:    [],
+			},
+			template_description: {
+				fieldName:        'Template Description',
+				description:      'Optional notes about what this template is used for',
+				influence:        'Used only to help identify the template later; does not affect generated content',
+				expectedResponse: 'One to two sentences describing the template\'s purpose',
+				contextFields:    [ 'template_name' ],
+			},
+			title_prompt: {
+				fieldName:        'Title Prompt',
+				description:      'Instructions telling the AI how to generate post titles',
+				influence:        'Directly shapes how titles are generated for every post created from this template',
+				expectedResponse: 'A short instruction for generating titles, optionally using {{AI variable}} placeholders',
+				contextFields:    [ 'template_name', 'prompt_template' ],
+			},
+			prompt_template: {
+				fieldName:        'Content Prompt',
+				description:      'The master prompt instructing the AI what content to generate',
+				influence:        'Directly determines the structure, topic, and style of every post generated from this template',
+				expectedResponse: 'A detailed, specific content prompt (topic, style, length, audience)',
+				contextFields:    [ 'template_name', 'template_description' ],
+			},
+			image_prompt: {
+				fieldName:        'Image Prompt',
+				description:      'Instructions describing the featured image to generate with AI',
+				influence:        'Directly shapes the AI-generated featured image for every post created from this template',
+				expectedResponse: 'A vivid, descriptive image prompt',
+				contextFields:    [ 'template_name', 'prompt_template' ],
+			},
+		},
 	};
 
 	/**
@@ -235,7 +272,11 @@
 					return; // skip if field not in DOM
 				}
 
-				var $formGroup = $field.closest('.form-group');
+				// Different admin forms use different row-wrapper class names
+				// (Authors: .form-group, Templates and others: .aips-form-row);
+				// this is purely a CSS positioning hook, so it's harmless to
+				// no-op when neither is found.
+				var $formGroup = $field.closest('.form-group, .aips-form-row');
 				if ($formGroup.length) {
 					$formGroup.addClass('aips-ai-assist-wrap');
 				}
