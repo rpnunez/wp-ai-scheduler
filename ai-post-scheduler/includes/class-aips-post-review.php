@@ -301,9 +301,11 @@ class AIPS_Post_Review {
 		}
 		
 		// Large selections publish in the background so the request returns
-		// immediately; small ones publish synchronously. Publishing issues no AI
-		// calls, so its async threshold is higher than the generation one.
-		$async_threshold = max(2, (int) apply_filters('aips_bulk_publish_async_threshold', 15));
+		// immediately; small ones publish synchronously. The cutoff is admin-
+		// configurable (Settings → Bulk Publish Background Threshold, default 30);
+		// the filter still allows a programmatic override.
+		$configured      = (int) AIPS_Config::get_instance()->get_option('aips_bulk_publish_async_threshold');
+		$async_threshold = max(2, (int) apply_filters('aips_bulk_publish_async_threshold', $configured > 0 ? $configured : 30));
 
 		if (count($post_ids) >= $async_threshold) {
 			$this->dispatch_bulk_publish_async($post_ids);

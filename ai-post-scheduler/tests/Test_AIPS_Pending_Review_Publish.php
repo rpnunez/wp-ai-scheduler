@@ -119,4 +119,21 @@ class Test_AIPS_Pending_Review_Publish extends WP_UnitTestCase {
 		$this->assertInstanceOf(WP_Error::class, $result);
 		$this->assertSame('aips_invalid_post_id', $result->get_error_code());
 	}
+
+	public function test_async_threshold_setting_defaults_to_30() {
+		$this->assertSame(
+			30,
+			(int) AIPS_Config::get_instance()->get_option('aips_bulk_publish_async_threshold'),
+			'The bulk-publish background threshold defaults to 30.'
+		);
+	}
+
+	public function test_async_threshold_sanitizer_clamps_to_range() {
+		$ui = new AIPS_Settings_UI();
+
+		$this->assertSame(30, $ui->sanitize_bulk_publish_async_threshold('30'));
+		$this->assertSame(2, $ui->sanitize_bulk_publish_async_threshold(1), 'Values below 2 clamp up to 2.');
+		$this->assertSame(2, $ui->sanitize_bulk_publish_async_threshold(-1), 'absint() makes -1 positive (1), which then clamps up to 2.');
+		$this->assertSame(500, $ui->sanitize_bulk_publish_async_threshold(99999), 'Values above 500 clamp down to 500.');
+	}
 }
