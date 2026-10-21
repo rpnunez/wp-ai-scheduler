@@ -202,12 +202,14 @@ class AIPS_Content_Indexer_Service {
 					return $this->clearing_error();
 				}
 
+				$row = $this->embeddings_repo->get_by_post_id($post->ID);
+
 				// Another worker may have finished while this one waited for the lock.
-				if (!$force && $this->is_current($this->embeddings_repo->get_by_post_id($post->ID), $content_hash)) {
+				if (!$force && $this->is_current($row, $content_hash)) {
 					return true;
 				}
 
-				return $this->embed_and_store($post, $text, $content_hash, $compute_relationships, $force || $this->is_stale($this->embeddings_repo->get_by_post_id($post->ID)));
+				return $this->embed_and_store($post, $text, $content_hash, $compute_relationships, $force || $this->is_stale($row));
 			},
 			self::LOCK_TTL
 		);
@@ -285,11 +287,9 @@ class AIPS_Content_Indexer_Service {
 
 		// The observed count is only trusted while the configured count is the one it was
 		// observed under; changing the setting makes rows made under the old one stale.
-		if (is_array($observed) && isset($observed[$model]) && (int) $observed[$model] > 0) {
-			$seen_under = isset($observed['@configured'][$model]) ? (int) $observed['@configured'][$model] : $configured;
-			if ($seen_under === $configured) {
-				return (int) $observed[$model];
-			}
+		if (is_array($observed) && isset($observed[$model]['dimensions']) && (int) $observed[$model]['dimensions'] > 0
+			&& (int) $observed[$model]['configured'] === $configured) {
+			return (int) $observed[$model]['dimensions'];
 		}
 
 		return $configured;
@@ -308,13 +308,13 @@ class AIPS_Content_Indexer_Service {
 
 		$configured = max(0, (int) $this->config->get_option('aips_embeddings_dimensions', 1536));
 
-		if (isset($observed[$model]) && (int) $observed[$model] === (int) $dimensions
-			&& isset($observed['@configured'][$model]) && (int) $observed['@configured'][$model] === $configured) {
+		if (isset($observed[$model]['dimensions']) && (int) $observed[$model]['dimensions'] === (int) $dimensions
+			&& (int) $observed[$model]['configured'] === $configured) {
 			return;
 		}
 
-		$observed[$model]                 = (int) $dimensions;
-		$observed['@configured'][$model]  = $configured;
+		// Per model: the count the provider returned and the configured count it was seen under.
+		$observed[$model] = array('dimensions' => (int) $dimensions, 'configured' => $configured);
 		update_option(self::OBSERVED_DIMENSIONS_OPTION, $observed, false);
 	}
 
@@ -1410,6 +1410,7 @@ class AIPS_Content_Indexer_Service {
 
 		$success     = 0;
 		$failed      = 0;
+		$skipped     = 0;
 		$broke_early = false;
 		$indexed_ids = array();
 
@@ -1425,6 +1426,7 @@ class AIPS_Content_Indexer_Service {
 			if (self::is_skippable_error($result)) {
 				// Busy or index being cleared: keep it queued for the next slice.
 				$post_rem[] = $post_id;
+				$skipped++;
 				continue;
 			}
 
@@ -1483,7 +1485,9 @@ class AIPS_Content_Indexer_Service {
 		// If more items remain and not in cooldown, schedule next batch
 		$cooldown = $rate_limiter->get_cooldown_status();
 		if ($total_remaining > 0) {
-			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (AIPS_DateTime::now()->timestamp() + 5);
+			// A slice that only skipped busy posts waits longer, so a held lock is not polled every few seconds.
+			$retry_in  = (0 === $success + $failed && $skipped > 0) ? 60 : 5;
+			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (AIPS_DateTime::now()->timestamp() + $retry_in);
 			$this->schedule_queue_worker($next_time);
 		}
 

@@ -191,7 +191,9 @@ class AIPS_Publish_Linking_Service {
 		// Waiting only helps when something can index the post: with embeddings off it never will.
 		$can_index = AIPS_Container::get_instance()->make(AIPS_Embeddings_Service::class)->is_enabled();
 
-		if ($wants_outbound && !$embed_inline && $can_index && !$this->is_indexed($post_id) && $this->defer($post_id)) {
+		$needs_index = $wants_outbound && $can_index && !$this->is_indexed($post_id);
+
+		if ($needs_index && !$embed_inline && $this->defer($post_id)) {
 			return new WP_Error('aips_publish_linking_deferred', __('Waiting for the post to be indexed; linking will be retried shortly.', 'ai-post-scheduler'));
 		}
 
@@ -200,7 +202,7 @@ class AIPS_Publish_Linking_Service {
 
 		$outbound = 0;
 		if ($wants_outbound) {
-			$result = (new AIPS_Internal_Links_Service())->generate_suggestions_for_post($post_id, null, null, $embed_inline || ($can_index && !$this->is_indexed($post_id)));
+			$result = (new AIPS_Internal_Links_Service())->generate_suggestions_for_post($post_id, null, null, $embed_inline || $needs_index);
 			if (!is_wp_error($result)) {
 				$outbound = count((array) $result);
 			}

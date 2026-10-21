@@ -5,7 +5,11 @@
  * @package AI_Post_Scheduler
  */
 
+require_once __DIR__ . '/Trait_AIPS_Clear_Lock_Cleanup.php';
+
 class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
+
+	use Trait_AIPS_Clear_Lock_Cleanup;
 
 	/** @var AIPS_Embeddings_Repository */
 	private $embeddings_repo;
@@ -54,11 +58,7 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		delete_option( 'aips_pending_topic_index_queue' );
 		parent::tearDown();
 
-		// clear_index() ends with TRUNCATE, which commits the open test transaction, so the
-		// clear lock it took would outlive the rollback and block later tests for its TTL.
-		global $wpdb;
-		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'aips\_lock\_%'" );
-		$wpdb->query( 'COMMIT' );
+		$this->purge_committed_lock_rows();
 	}
 
 	/**
@@ -453,6 +453,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 			return array_fill( 0, $dimensions, 0.5 );
 		} );
 
+		// The config option cache is not rolled back with the test transaction, so set it explicitly.
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_enabled', true );
 		AIPS_Config::get_instance()->set_option( 'aips_embeddings_dimensions', $dimensions );
 
 		$embeddings_service = new AIPS_Embeddings_Service( $mock_ai_service, new AIPS_Logger() );
@@ -660,7 +662,7 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$post_id = $this->make_post();
 
 		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id, 60 );
-		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts' );
+		$result = $indexer->process_indexing_batch( 10, $post_id - 1, array( 'post' ), 'publish', 'posts' );
 		AIPS_Lock::release( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id );
 
 		$this->assertSame( 0, $result['failed'], 'Another worker holding the post is not a failure.' );
@@ -690,7 +692,7 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$post_id = $this->make_post();
 
 		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id, 60 );
-		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts' );
+		$result = $indexer->process_indexing_batch( 10, $post_id - 1, array( 'post' ), 'publish', 'posts' );
 		AIPS_Lock::release( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id );
 
 		$this->assertSame( 1, $result['skipped'] );

@@ -1346,7 +1346,8 @@ class AIPS_DB_Migrations {
 		$chat      = ! empty( $ai_config['model'] ) ? (string) $ai_config['model'] : '';
 
 		if ( '' !== $chat && $chat !== $active ) {
-			$wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET model = %s WHERE model = %s", $active, $chat ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$relabelled = $wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET model = %s WHERE model = %s", $active, $chat ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$this->logger->log( sprintf( 'Migration 3.7.19: Relabelled %d embedding rows from chat model "%s" to "%s" (assumed made with the active embeddings model).', (int) $relabelled, $chat, $active ), 'info' );
 		}
 
 		$dimensions = (int) $wpdb->get_var( $wpdb->prepare( "SELECT dimensions FROM `{$table}` WHERE model = %s AND dimensions > 0 GROUP BY dimensions ORDER BY COUNT(*) DESC LIMIT 1", $active ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -1354,8 +1355,10 @@ class AIPS_DB_Migrations {
 			update_option(
 				'aips_embeddings_observed_dimensions',
 				array(
-					$active       => $dimensions,
-					'@configured' => array( $active => max( 0, (int) $config->get_option( 'aips_embeddings_dimensions', 1536 ) ) ),
+					$active => array(
+						'dimensions' => $dimensions,
+						'configured' => max( 0, (int) $config->get_option( 'aips_embeddings_dimensions', 1536 ) ),
+					),
 				),
 				false
 			);

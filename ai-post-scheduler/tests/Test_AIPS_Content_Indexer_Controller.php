@@ -5,7 +5,11 @@
  * @package AI_Post_Scheduler
  */
 
+require_once __DIR__ . '/Trait_AIPS_Clear_Lock_Cleanup.php';
+
 class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
+
+	use Trait_AIPS_Clear_Lock_Cleanup;
 
 	/** @var AIPS_Content_Indexer_Controller */
 	private $controller;
@@ -22,12 +26,7 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		parent::tearDown();
 
-		// clear_index() ends with TRUNCATE, which commits the open test transaction, so the
-		// clear lock it took would outlive the rollback and block later tests for its TTL.
-		global $wpdb;
-		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'aips\_lock\_%'" );
-		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_internal_links" );
-		$wpdb->query( 'COMMIT' );
+		$this->purge_committed_lock_rows();
 	}
 
 	private function capture_ajax_response( callable $callable ) {

@@ -138,9 +138,9 @@ class AIPS_Internal_Links_Service {
 		$max_suggestions      = ($max_suggestions !== null && (int) $max_suggestions > 0) ? (int) $max_suggestions : $this->similarity_evaluator->get_default_max_suggestions();
 		$similarity_threshold = ($similarity_threshold !== null && is_numeric($similarity_threshold)) ? (float) $similarity_threshold : $this->similarity_evaluator->get_default_threshold('internal_links');
 
-		// Make sure the source post is indexed with the current text and model. A
-		// current row costs no embedding call. If re-embedding is not possible right
-		// now (cooldown, lock), a previously stored vector is still good enough.
+		// Reuse a stored vector as-is (re-indexing is the Content Indexer's job, or the
+		// explicit Re-index action). Only a post with no vector at all is embedded here,
+		// and if that is not possible right now (cooldown, lock) the call fails.
 		$source_row = $this->embeddings_repo->get_by_post_id($source_post_id);
 		$ensured    = ($allow_embedding && !$source_row) ? $this->get_indexer()->ensure_indexed($source_post_id) : true;
 
