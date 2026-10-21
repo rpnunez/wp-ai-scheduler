@@ -9,6 +9,10 @@
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
 	urls sync-wp-core sql-batch sql-batch-unpack
 
+# Git Bash (MSYS) must not rewrite POSIX-looking arguments such as a --filter regex starting with "/"
+test test-verbose test-coverage test-session: export MSYS_NO_PATHCONV := 1
+test test-verbose test-coverage test-session: export MSYS2_ARG_CONV_EXCL := *
+
 # Default target
 .DEFAULT_GOAL := help
 
