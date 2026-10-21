@@ -1769,85 +1769,96 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             return array();
         }
 
-        $id_placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        return $this->cache_read(
+            'history.get_schedule_generated_post_counts',
+            array(
+                'ids'            => $ids,
+                'by_schedule_id' => (int) (bool) $by_schedule_id,
+            ),
+            function () use ($ids, $by_schedule_id) {
+                $id_placeholders = implode(',', array_fill(0, count($ids), '%d'));
 
-        // Events that represent a generated post for a schedule container.
-        $event_types = AIPS_History_Event_Type::expand(array(
-            AIPS_History_Event_Type::POST_PUBLISHED,
-            AIPS_History_Event_Type::POST_DRAFT,
-            AIPS_History_Event_Type::MANUAL_SCHEDULE_COMPLETED,
-        ));
-        $event_placeholders = implode(', ', array_fill(0, count($event_types), '%s'));
+                // Events that represent a generated post for a schedule container.
+                $event_types = AIPS_History_Event_Type::expand(array(
+                    AIPS_History_Event_Type::POST_PUBLISHED,
+                    AIPS_History_Event_Type::POST_DRAFT,
+                    AIPS_History_Event_Type::MANUAL_SCHEDULE_COMPLETED,
+                ));
+                $event_placeholders = implode(', ', array_fill(0, count($event_types), '%s'));
 
-        if (!$by_schedule_id) {
-            $sql = "
-                SELECT history_id, COUNT(*) AS count
-                FROM {$this->table_name_log}
-                WHERE history_id IN ({$id_placeholders})
-                    AND history_type_id IN (%d, %d)
-                    AND event_type IN ({$event_placeholders})
-                GROUP BY history_id
-            ";
+                if (!$by_schedule_id) {
+                    $sql = "
+                        SELECT history_id, COUNT(*) AS count
+                        FROM {$this->table_name_log}
+                        WHERE history_id IN ({$id_placeholders})
+                            AND history_type_id IN (%d, %d)
+                            AND event_type IN ({$event_placeholders})
+                        GROUP BY history_id
+                    ";
 
-            $args = $ids;
-            $args[] = AIPS_History_Type::ACTIVITY;
-            $args[] = AIPS_History_Type::ERROR;
-            $args = array_merge($args, $event_types);
+                    $args = $ids;
+                    $args[] = AIPS_History_Type::ACTIVITY;
+                    $args[] = AIPS_History_Type::ERROR;
+                    $args = array_merge($args, $event_types);
 
-            $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
+                    $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
 
-            $counts = array();
-            foreach ((array) $results as $row) {
-                $counts[(int) $row->history_id] = (int) $row->count;
+                    $counts = array();
+                    foreach ((array) $results as $row) {
+                        $counts[(int) $row->history_id] = (int) $row->count;
+                    }
+
+                    return $counts;
+                }
+
+                $counts = array();
+                $generation_cond = self::generation_run_condition();
+
+                // 1. Count completed/partial generation runs directly by schedule_id.
+                $gen_rows = $this->wpdb->get_results($this->wpdb->prepare(
+                    "SELECT schedule_id, COUNT(*) AS count
+                     FROM {$this->table_name}
+                     WHERE schedule_id IN ({$id_placeholders})
+                       AND status IN ('completed', 'partial')
+                       AND {$generation_cond}
+                     GROUP BY schedule_id",
+                    $ids
+                ));
+
+                foreach ((array) $gen_rows as $row) {
+                    $counts[(int) $row->schedule_id] = (int) $row->count;
+                }
+
+                // 2. Also count schedule lifecycle post events by h.schedule_id or legacy s.schedule_history_id fallback.
+                $schedule_table = $this->wpdb->prefix . 'aips_schedule';
+                $event_kind     = self::kind_condition(AIPS_History_Record_Kind::EVENT, 'h');
+                $log_args       = array_merge($ids, $ids);
+                $log_args[]     = AIPS_History_Type::ACTIVITY;
+                $log_args[]     = AIPS_History_Type::ERROR;
+                $log_args       = array_merge($log_args, $event_types);
+
+                $log_rows = $this->wpdb->get_results($this->wpdb->prepare(
+                    "SELECT COALESCE(h.schedule_id, s.id) AS schedule_id, COUNT(*) AS count
+                     FROM {$this->table_name_log} hl
+                     INNER JOIN {$this->table_name} h ON hl.history_id = h.id
+                     LEFT JOIN {$schedule_table} s ON h.schedule_id IS NULL AND s.schedule_history_id = h.id
+                     WHERE (h.schedule_id IN ({$id_placeholders}) OR (h.schedule_id IS NULL AND s.id IN ({$id_placeholders})))
+                       AND {$event_kind}
+                       AND hl.history_type_id IN (%d, %d)
+                       AND hl.event_type IN ({$event_placeholders})
+                     GROUP BY COALESCE(h.schedule_id, s.id)",
+                    $log_args
+                ));
+
+                foreach ((array) $log_rows as $row) {
+                    $sid = (int) $row->schedule_id;
+                    $cnt = (int) $row->count;
+                    $counts[$sid] = isset($counts[$sid]) ? max($counts[$sid], $cnt) : $cnt;
+                }
+
+                return $counts;
             }
-
-            return $counts;
-        }
-
-        $counts = array();
-        $generation_cond = self::generation_run_condition();
-
-        // 1. Count completed/partial generation runs directly by schedule_id.
-        $gen_rows = $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT schedule_id, COUNT(*) AS count
-             FROM {$this->table_name}
-             WHERE schedule_id IN ({$id_placeholders})
-               AND status IN ('completed', 'partial')
-               AND {$generation_cond}
-             GROUP BY schedule_id",
-            $ids
-        ));
-
-        foreach ((array) $gen_rows as $row) {
-            $counts[(int) $row->schedule_id] = (int) $row->count;
-        }
-
-        // 2. Also count schedule lifecycle post events by h.schedule_id (covers legacy rows without generation rows).
-        $event_kind = self::kind_condition(AIPS_History_Record_Kind::EVENT, 'h');
-        $log_args   = $ids;
-        $log_args[] = AIPS_History_Type::ACTIVITY;
-        $log_args[] = AIPS_History_Type::ERROR;
-        $log_args   = array_merge($log_args, $event_types);
-
-        $log_rows = $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT h.schedule_id, COUNT(*) AS count
-             FROM {$this->table_name_log} hl
-             INNER JOIN {$this->table_name} h ON hl.history_id = h.id
-             WHERE h.schedule_id IN ({$id_placeholders})
-               AND {$event_kind}
-               AND hl.history_type_id IN (%d, %d)
-               AND hl.event_type IN ({$event_placeholders})
-             GROUP BY h.schedule_id",
-            $log_args
-        ));
-
-        foreach ((array) $log_rows as $row) {
-            $sid = (int) $row->schedule_id;
-            $cnt = (int) $row->count;
-            $counts[$sid] = isset($counts[$sid]) ? max($counts[$sid], $cnt) : $cnt;
-        }
-
-        return $counts;
+        );
     }
 
     /**

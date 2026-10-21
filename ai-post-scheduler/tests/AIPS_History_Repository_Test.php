@@ -776,4 +776,61 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		$subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_SCHEDULE, $this->test_schedule_id, 'Test Schedule');
 		$this->assertSame('schedule_id', $subject->container_meta_key());
 	}
+
+	public function test_get_schedule_generated_post_counts_supports_direct_and_legacy_fallback_containers() {
+		global $wpdb;
+
+		// Schedule 1 already has 3 completed generation rows from create_test_data().
+		$counts = $this->repository->get_schedule_generated_post_counts(array($this->test_schedule_id), true);
+		$this->assertSame(3, $counts[$this->test_schedule_id] ?? 0);
+
+		// Create a legacy un-backfilled schedule container (schedule_id IS NULL on aips_history,
+		// linked only via aips_schedule.schedule_history_id).
+		$legacy_history_id = $this->repository->create(array(
+			'template_id'     => $this->test_template_id,
+			'status'          => 'completed',
+			'creation_method' => 'schedule_lifecycle',
+			'record_kind'     => AIPS_History_Record_Kind::EVENT,
+		));
+		$this->test_history_ids[] = $legacy_history_id;
+
+		$this->repository->add_log_entry($legacy_history_id, array(
+			'message' => 'Legacy post 1',
+			'input'   => array(
+				'event_type'   => AIPS_History_Event_Type::POST_PUBLISHED,
+				'event_status' => 'success',
+			),
+		), AIPS_History_Type::ACTIVITY);
+		$this->repository->add_log_entry($legacy_history_id, array(
+			'message' => 'Legacy post 2',
+			'input'   => array(
+				'event_type'   => AIPS_History_Event_Type::POST_PUBLISHED,
+				'event_status' => 'success',
+			),
+		), AIPS_History_Type::ACTIVITY);
+
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_schedule',
+			array(
+				'template_id'         => $this->test_template_id,
+				'title'               => 'Legacy Unbackfilled Schedule',
+				'frequency'           => 'daily',
+				'next_run'            => current_time('mysql'),
+				'is_active'           => 1,
+				'status'              => 'active',
+				'schedule_history_id' => $legacy_history_id,
+			),
+			array('%d', '%s', '%s', '%s', '%d', '%s', '%d')
+		);
+		$legacy_schedule_id = (int) $wpdb->insert_id;
+
+		$both_counts = $this->repository->get_schedule_generated_post_counts(
+			array($this->test_schedule_id, $legacy_schedule_id),
+			true
+		);
+		$this->assertSame(3, $both_counts[$this->test_schedule_id] ?? 0);
+		$this->assertSame(2, $both_counts[$legacy_schedule_id] ?? 0);
+
+		$wpdb->delete($wpdb->prefix . 'aips_schedule', array('id' => $legacy_schedule_id), array('%d'));
+	}
 }

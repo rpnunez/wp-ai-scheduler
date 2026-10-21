@@ -272,8 +272,9 @@ class AIPS_Schedule_Processor {
         $context->set_trigger_context($this->build_schedule_trigger_context($schedule_obj));
 
         // Load (or create) the schedule's persistent lifecycle history container.
-        $history = $this->result_handler->get_or_create_schedule_history($schedule_id);
+        $history = $this->result_handler->get_or_create_schedule_history($schedule_id, AIPS_Generation_Trigger::METHOD_AUTOMATIC);
 
+        try {
         $config = AIPS_Config::get_instance();
 
         if ($config->is_scheduled_ai_generation_prevented()) {
@@ -511,6 +512,15 @@ class AIPS_Schedule_Processor {
 
                 $history->complete_success();
             }
+        }
+        } catch (\Throwable $e) {
+            if ($history) {
+                $history->complete_failure($e->getMessage(), array(
+                    'schedule_id'     => $schedule_id,
+                    'exception_class' => get_class($e),
+                ));
+            }
+            throw $e;
         }
     }
 
@@ -931,7 +941,10 @@ class AIPS_Schedule_Processor {
             : sprintf(__('Schedule "%s" started execution', 'ai-post-scheduler'), $schedule->name);
 
         // Load the schedule's persistent lifecycle history container (or create one if missing)
-        $history = $this->result_handler->get_or_create_schedule_history($schedule->schedule_id);
+        $history = $this->result_handler->get_or_create_schedule_history(
+            $schedule->schedule_id,
+            $is_manual ? AIPS_Generation_Trigger::METHOD_MANUAL : AIPS_Generation_Trigger::METHOD_AUTOMATIC
+        );
 
         try {
             if ($history) {
@@ -1193,7 +1206,10 @@ class AIPS_Schedule_Processor {
 
         return $this->result_handler->handle_execution_terminated_by_setting(
             $schedule,
-            $this->result_handler->get_or_create_schedule_history($schedule->schedule_id),
+            $this->result_handler->get_or_create_schedule_history(
+                $schedule->schedule_id,
+                $is_manual ? AIPS_Generation_Trigger::METHOD_MANUAL : AIPS_Generation_Trigger::METHOD_AUTOMATIC
+            ),
             $is_manual,
             $config->get_scheduled_ai_generation_prevention_label(),
             $termination_options

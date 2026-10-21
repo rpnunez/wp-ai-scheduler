@@ -3490,11 +3490,32 @@
 
             var $timingNext = $row.find('.aips-timing-next');
             if ($timingNext.length) {
-                var $nextMeta = $timingNext.find('.cell-meta').not(':first');
-                if (!isActive && $nextMeta.length === 1 && $timingNext.find('.cell-primary').length === 0) {
-                    $nextMeta.text((window.aipsScheduleL10n && aipsScheduleL10n.pausedNa) ? aipsScheduleL10n.pausedNa : 'Paused (N/A)');
-                } else if (isActive && $nextMeta.length === 1 && $timingNext.find('.cell-primary').length === 0) {
-                    $nextMeta.text((window.aipsScheduleL10n && aipsScheduleL10n.activeScheduled) ? aipsScheduleL10n.activeScheduled : 'Active');
+                var pausedLabel = (window.aipsScheduleL10n && aipsScheduleL10n.pausedNa) ? aipsScheduleL10n.pausedNa : 'Paused (N/A)';
+                var activeLabel = (window.aipsScheduleL10n && aipsScheduleL10n.activeScheduled) ? aipsScheduleL10n.activeScheduled : 'Active';
+
+                if ($timingNext.find('.cell-primary').length > 0) {
+                    var $override = $timingNext.find('.aips-timing-status-override');
+                    if (!isActive) {
+                        $timingNext.children().not(':first').not('.aips-timing-status-override').hide();
+                        if ($override.length === 0) {
+                            $('<div>', {
+                                'class': 'cell-meta aips-muted aips-timing-status-override',
+                                text: pausedLabel
+                            }).appendTo($timingNext);
+                        } else {
+                            $override.text(pausedLabel).show();
+                        }
+                    } else {
+                        $override.remove();
+                        $timingNext.children().not(':first').show();
+                    }
+                } else {
+                    var $nextMeta = $timingNext.find('.cell-meta').not(':first');
+                    if (!isActive && $nextMeta.length === 1) {
+                        $nextMeta.text(pausedLabel);
+                    } else if (isActive && $nextMeta.length === 1) {
+                        $nextMeta.text(activeLabel);
+                    }
                 }
             }
 

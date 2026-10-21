@@ -162,4 +162,46 @@ $response = $this->capture_ajax_response( array( $this->controller, 'ajax_get_sc
 $this->assertFalse( $response['success'] );
 $this->assertStringContainsString( 'Permission denied', $response['data']['message'] );
 }
+
+/**
+ * @test
+ * Bulk toggling schedules records schedule_enabled / schedule_disabled lifecycle events.
+ */
+public function test_ajax_bulk_toggle_schedules_records_lifecycle_events() {
+$schedule_obj        = new stdClass();
+$schedule_obj->id    = 77;
+$schedule_obj->title = 'Bulk Toggled Schedule';
+
+$schedule_repository = $this->getMockBuilder( 'AIPS_Schedule_Repository' )
+->disableOriginalConstructor()
+->onlyMethods( array( 'set_active_bulk', 'get_by_id' ) )
+->getMock();
+
+$schedule_repository->expects( $this->once() )
+->method( 'set_active_bulk' )
+->with( array( 77 ), 0 )
+->willReturn( 1 );
+
+$schedule_repository->method( 'get_by_id' )
+->with( 77 )
+->willReturn( $schedule_obj );
+
+$this->set_private_property( $this->controller, 'schedule_repository', $schedule_repository );
+
+$_POST['ids']       = array( 77 );
+$_POST['is_active'] = 0;
+$_POST['nonce']     = wp_create_nonce( 'aips_ajax_nonce' );
+$_REQUEST['nonce']  = $_POST['nonce'];
+
+$response = $this->capture_ajax_response( array( $this->controller, 'ajax_bulk_toggle_schedules' ) );
+
+$this->assertTrue( $response['success'] );
+
+$logs = $this->history_repo->get_schedule_history_logs(
+77,
+array( AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR )
+);
+$this->assertNotEmpty( $logs );
+$this->assertSame( AIPS_History_Event_Type::SCHEDULE_DISABLED, $logs[0]->event_type );
+}
 }

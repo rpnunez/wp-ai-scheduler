@@ -535,6 +535,8 @@ class AIPS_Schedule_Controller {
         $verbs = array(
             AIPS_History_Event_Type::SCHEDULE_DELETED       => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
             AIPS_History_Event_Type::SCHEDULE_CIRCUIT_RESET => array(__('circuit breaker reset', 'ai-post-scheduler'), __('reset the circuit breaker for', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::SCHEDULE_ENABLED       => array(__('enabled', 'ai-post-scheduler'), __('enable', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::SCHEDULE_DISABLED      => array(__('disabled', 'ai-post-scheduler'), __('disable', 'ai-post-scheduler')),
         );
         $verb = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
 
@@ -633,7 +635,12 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No schedule IDs provided.', 'ai-post-scheduler'));
         }
 
-        $updated = $this->schedule_repository->set_active_bulk($ids, $is_active);
+        $updated    = $this->schedule_repository->set_active_bulk($ids, $is_active);
+        $event_type = $is_active ? AIPS_History_Event_Type::SCHEDULE_ENABLED : AIPS_History_Event_Type::SCHEDULE_DISABLED;
+
+        foreach ($ids as $schedule_id) {
+            $this->record_schedule_event($event_type, $schedule_id, null, $updated !== false);
+        }
 
         if ($updated !== false) {
             $count = (int) $updated ?: count($ids);

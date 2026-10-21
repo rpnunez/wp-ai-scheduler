@@ -137,16 +137,7 @@ class AIPS_Generation_Execution_Runner {
 					$error_context
 				);
 
-				$history->complete_failure(wp_strip_all_tags($e->getMessage()), $error_context);
-
-				$this->history_service->update_history_record(
-					$history->get_id(),
-					array(
-						'status' => 'failed',
-						'error_message' => wp_strip_all_tags($e->getMessage()),
-						'completed_at' => AIPS_DateTime::now()->timestamp(),
-					)
-				);
+				$history->complete_failure(wp_strip_all_tags($e->getMessage()), $error_context, false);
 			}
 
 			if ($on_exception !== null) {

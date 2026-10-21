@@ -734,7 +734,7 @@ class AIPS_History {
 
             if (!empty($history_item->schedule_id)) {
                 $source['schedule_id'] = (int) $history_item->schedule_id;
-                $schedule = (new AIPS_Schedule_Repository())->get_by_id((int) $history_item->schedule_id);
+                $schedule = AIPS_Schedule_Repository::instance()->get_by_id((int) $history_item->schedule_id);
                 if ($schedule) {
                     $sched_name = !empty($schedule->title) ? (string) $schedule->title : (!empty($schedule->name) ? (string) $schedule->name : '');
                     if ($sched_name !== '') {

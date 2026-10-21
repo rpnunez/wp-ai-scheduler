@@ -535,12 +535,18 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 
 		$mock_history_repo = $this->getMockBuilder( 'AIPS_History_Repository' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'get_logs_by_history_id' ) )
+			->onlyMethods( array( 'get_schedule_history_logs' ) )
 			->getMock();
 
-		// get_logs_by_history_id should NOT be called when schedule_history_id is empty.
-		$mock_history_repo->expects( $this->never() )
-			->method( 'get_logs_by_history_id' );
+		$mock_history_repo->expects( $this->once() )
+			->method( 'get_schedule_history_logs' )
+			->with(
+				42,
+				array( AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR ),
+				0,
+				0
+			)
+			->willReturn( array() );
 
 		$controller = new AIPS_Schedule_Controller( $this->scheduler, $mock_schedule_repo, $mock_history_repo );
 

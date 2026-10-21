@@ -158,4 +158,140 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
          $this->assertWPError($result);
          $this->assertEquals('schedule_not_found', $result->get_error_code());
     }
+
+    /**
+     * Verifies that manual schedule execution passes AIPS_Generation_Trigger::METHOD_MANUAL
+     * when creating its schedule_lifecycle container.
+     */
+    public function test_run_schedule_now_passes_manual_trigger_method_to_result_handler() {
+        $schedule = (object) array(
+            'id'          => 123,
+            'template_id' => 456,
+            'topic'       => 'Manual Trigger Topic',
+            'frequency'   => 'daily',
+            'next_run'    => '2023-01-01 00:00:00',
+            'is_active'   => 1,
+        );
+
+        $template = (object) array(
+            'id'            => 456,
+            'name'          => 'Manual Trigger Template',
+            'post_quantity' => 1,
+            'is_active'     => 1,
+        );
+
+        $this->build_scheduler_with_mocks($schedule, $template, 789, 1);
+
+        $mock_history = $this->getMockBuilder('AIPS_History_Container')
+            ->disableOriginalConstructor()
+            ->onlyMethods(array('record', 'complete_success', 'complete_failure', 'get_id'))
+            ->getMock();
+        $mock_history->method('get_id')->willReturn(555);
+
+        $mock_result_handler = $this->getMockBuilder('AIPS_Schedule_Result_Handler')
+            ->disableOriginalConstructor()
+            ->onlyMethods(array('get_or_create_schedule_history', 'handle_execution_success'))
+            ->getMock();
+
+        $mock_result_handler->expects($this->once())
+            ->method('get_or_create_schedule_history')
+            ->with(123, AIPS_Generation_Trigger::METHOD_MANUAL)
+            ->willReturn($mock_history);
+
+        $mock_result_handler->expects($this->once())
+            ->method('handle_execution_success');
+
+        $processor_ref = new ReflectionProperty($this->scheduler, 'processor');
+        $processor_ref->setAccessible(true);
+        $processor = $processor_ref->getValue($this->scheduler);
+
+        $handler_ref = new ReflectionProperty($processor, 'result_handler');
+        $handler_ref->setAccessible(true);
+        $handler_ref->setValue($processor, $mock_result_handler);
+
+        $result = $this->scheduler->run_schedule_now(123, 1, false);
+        $this->assertSame(array(789), $result);
+    }
+
+    /**
+     * Verifies that an uncaught Throwable in process_schedule_batch_slice() closes
+     * the slice's schedule_lifecycle container as failed before rethrowing.
+     */
+    public function test_process_schedule_batch_slice_closes_history_on_exception() {
+        $schedule = (object) array(
+            'id'          => 123,
+            'schedule_id' => 123,
+            'template_id' => 456,
+            'title'       => 'Batch Slice Schedule',
+            'topic'       => 'Batch Topic',
+            'frequency'   => 'daily',
+            'next_run'    => '2023-01-01 00:00:00',
+            'is_active'   => 1,
+            'run_state'   => wp_json_encode(array('status' => 'batch_queued')),
+        );
+
+        $template = (object) array(
+            'id'            => 456,
+            'name'          => 'Batch Slice Template',
+            'prompt_template' => 'Write about {{topic}}',
+            'post_quantity' => 4,
+            'is_active'     => 1,
+        );
+
+        $mock_schedule_repo = $this->getMockBuilder('AIPS_Schedule_Repository')
+            ->onlyMethods(array('get_by_id', 'update_run_state'))
+            ->getMock();
+        $mock_schedule_repo->method('get_by_id')->with(123)->willReturn($schedule);
+
+        $mock_template_repo = $this->getMockBuilder('AIPS_Template_Repository')
+            ->onlyMethods(array('get_by_id'))
+            ->getMock();
+        $mock_template_repo->method('get_by_id')->with(456)->willReturn($template);
+
+        $mock_generator = $this->getMockBuilder('AIPS_Generator')
+            ->disableOriginalConstructor()
+            ->onlyMethods(array('generate_post'))
+            ->getMock();
+        $mock_generator->method('generate_post')
+            ->willThrowException(new RuntimeException('Simulated slice crash'));
+
+        $mock_history = $this->getMockBuilder('AIPS_History_Container')
+            ->disableOriginalConstructor()
+            ->onlyMethods(array('complete_failure'))
+            ->getMock();
+        $mock_history->expects($this->once())
+            ->method('complete_failure')
+            ->with(
+                'Simulated slice crash',
+                $this->callback(function ($data) {
+                    return isset($data['schedule_id'], $data['exception_class'])
+                        && 123 === $data['schedule_id']
+                        && 'RuntimeException' === $data['exception_class'];
+                })
+            );
+
+        $mock_result_handler = $this->getMockBuilder('AIPS_Schedule_Result_Handler')
+            ->disableOriginalConstructor()
+            ->onlyMethods(array('get_or_create_schedule_history'))
+            ->getMock();
+        $mock_result_handler->expects($this->once())
+            ->method('get_or_create_schedule_history')
+            ->with(123, AIPS_Generation_Trigger::METHOD_AUTOMATIC)
+            ->willReturn($mock_history);
+
+        $processor = new AIPS_Schedule_Processor(
+            $mock_schedule_repo,
+            $mock_template_repo,
+            $mock_generator,
+            null,
+            null,
+            null,
+            null,
+            $mock_result_handler
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Simulated slice crash');
+        $processor->process_batch_slice(123, 0, 2, 4, '');
+    }
 }
