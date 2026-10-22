@@ -284,12 +284,42 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 							<!-- Notifications Tab -->
 							<div id="settings-notifications-tab" class="aips-tab-content<?php echo 'settings-notifications' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-notifications' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-notifications' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Configure the notification email address and delivery channels for all plugin notifications.', 'ai-post-scheduler'); ?></p>
+
 								<div class="aips-settings-section-card">
-									<h3 class="aips-settings-card-title"><?php esc_html_e('Notification Channels & Delivery', 'ai-post-scheduler'); ?></h3>
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Email Routing & Delivery', 'ai-post-scheduler'); ?></h3>
 									<table class="form-table" role="presentation">
-										<?php do_settings_fields('aips-settings', 'aips_notifications_section'); ?>
+										<?php do_settings_fields('aips-settings', 'aips_notifications_delivery_section'); ?>
 									</table>
 								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('System Health & Resilience Alerts', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_notifications_system_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Content & Editorial Workflow Alerts', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_notifications_content_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Automation & Operational Maintenance', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_notifications_automation_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Scheduled Activity Digests & Reports', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_notifications_digests_section'); ?>
+									</table>
+								</div>
+
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -298,12 +328,35 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 							<!-- Resilience & Limits Tab -->
 							<div id="settings-resilience-tab" class="aips-tab-content<?php echo 'settings-resilience' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-resilience' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-resilience' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Configure advanced resilience options to protect the application from failing and being blocked when external services return errors.', 'ai-post-scheduler'); ?></p>
+
 								<div class="aips-settings-section-card">
-									<h3 class="aips-settings-card-title"><?php esc_html_e('Failover & Rate Limiting Guardrails', 'ai-post-scheduler'); ?></h3>
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Retry & Backoff Policy', 'ai-post-scheduler'); ?></h3>
 									<table class="form-table" role="presentation">
-										<?php do_settings_fields('aips-settings', 'aips_resilience_section'); ?>
+										<?php do_settings_fields('aips-settings', 'aips_resilience_retry_section'); ?>
 									</table>
 								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('API Rate Limiting', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_resilience_rate_limit_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Batch Pacing & Resume Cooldown', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_resilience_batch_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Circuit Breaker Protection', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_resilience_circuit_breaker_section'); ?>
+									</table>
+								</div>
+
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
