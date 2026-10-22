@@ -24,6 +24,18 @@
 - **Continuous Sync on Publish**: Automatically generates embeddings and updates relationship pairings when posts are published or updated.
 - **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
 
+## [3.8.0] - 2026-10-22
+
+### Added
+- **Prompt Profile Version History, Diff Engine & Rollback (Phase 1)**:
+  - New `wp_aips_prompt_profile_versions` table (`AIPS_Prompt_Profile_Versions_Repository`) snapshotting every edit's pre-mutation stage state, with a `parameters` JSON column reserved for Phase 2 generation-parameter history.
+  - Automatic versioning: every save made through the Prompt Profiles admin UI now snapshots the profile's prior state via `AIPS_Prompt_Profile_Version_Service::update_with_snapshot()` with a diff-derived human-readable change summary (e.g. "Changed: Post Title, Content Shell") before writing the new data.
+  - Dependency-free, pure LCS (longest common subsequence) word-level diff engine (`AIPS_Prompt_Profile_Diff_Engine`) comparing prompt text and full 9-stage snapshots.
+  - Rollback support: restore an entire historical version or a single stage field (`AIPS_Prompt_Profile_Version_Service::restore_version()` / `restore_stage()`), each itself auto-snapshotted so restores are undoable.
+  - 4 new AJAX endpoints: `aips_get_prompt_profile_versions`, `aips_get_prompt_profile_version_diff` (any two historical versions, or a version against the live profile), `aips_restore_prompt_profile_version`, `aips_restore_prompt_profile_stage`.
+  - New always-visible "Version History" panel in the Edit Prompt Profile modal (shown for existing profiles only) listing version number, timestamp, author, change summary, and Diff/Restore actions, with a nested diff viewer rendering green/red additions/removals.
+  - Backfill migration (`migrate_to_3_8_0`) seeds a version 1 snapshot for every pre-existing Prompt Profile.
+
 ## [3.7.0] - 2026-09-22
 
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.

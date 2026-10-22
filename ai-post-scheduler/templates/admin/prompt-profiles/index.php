@@ -540,6 +540,15 @@ if (!defined('ABSPATH')) {
 						</div>
 					</div>
 
+					<?php
+					// Always-visible Version History panel (hidden in "Create" mode via
+					// JS, since a brand-new profile has no history yet).
+					$version_history_template = AIPS_PLUGIN_DIR . 'templates/admin/prompt-profiles/tab-versions.php';
+					if (file_exists($version_history_template)) {
+						include $version_history_template;
+					}
+					?>
+
 					<!-- Modal Footer -->
 					<div class="aips-modal-footer">
 						<div class="aips-footer-left">

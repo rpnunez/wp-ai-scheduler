@@ -958,6 +958,47 @@ class AIPS_Admin_Assets {
             true
         );
 
+        wp_enqueue_script(
+            'aips-prompt-profiles-diff-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-prompt-profiles-diff.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-prompt-profiles-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-prompt-profiles-diff-script', 'aipsPromptProfilesDiffL10n', array(
+            'ajaxUrl'                 => admin_url('admin-ajax.php'),
+            'nonce'                   => wp_create_nonce('aips_ajax_nonce'),
+            'loadingVersions'         => __('Loading version history...', 'ai-post-scheduler'),
+            'errorLoadingVersions'    => __('Error loading version history.', 'ai-post-scheduler'),
+            'unknownUser'             => __('Unknown', 'ai-post-scheduler'),
+            'currentLiveState'        => __('Current (Live Profile)', 'ai-post-scheduler'),
+            'loadingDiff'             => __('Comparing versions...', 'ai-post-scheduler'),
+            'errorDiff'               => __('Error generating version diff.', 'ai-post-scheduler'),
+            'noDifferences'           => __('No differences between these two versions.', 'ai-post-scheduler'),
+            'confirmHeading'          => __('Confirm Restore', 'ai-post-scheduler'),
+            /* translators: %d is replaced client-side with the version number. */
+            'confirmRestoreVersion'   => __('Restore the entire profile to version %d? The current state will be saved as a new version first, so this can be undone.', 'ai-post-scheduler'),
+            /* translators: %s is replaced client-side with the stage label. */
+            'confirmRestoreStage'     => __('Restore the "%s" stage from this version? The current state will be saved as a new version first, so this can be undone.', 'ai-post-scheduler'),
+            'cancel'                  => __('Cancel', 'ai-post-scheduler'),
+            'restoreAction'           => __('Yes, Restore', 'ai-post-scheduler'),
+            'versionRestored'         => __('Prompt profile restored successfully.', 'ai-post-scheduler'),
+            'stageRestored'           => __('Prompt profile stage restored successfully.', 'ai-post-scheduler'),
+            'errorRestoring'          => __('Error restoring prompt profile version.', 'ai-post-scheduler'),
+            'stageLabels'             => array(
+                'title_prompt'            => __('Post Title', 'ai-post-scheduler'),
+                'title_followup_prompt'   => __('Follow-up Title', 'ai-post-scheduler'),
+                'content_prompt'          => __('Content Shell', 'ai-post-scheduler'),
+                'excerpt_prompt'          => __('Post Excerpt', 'ai-post-scheduler'),
+                'excerpt_followup_prompt' => __('Follow-up Excerpt', 'ai-post-scheduler'),
+                'featured_image_prompt'   => __('Featured Image', 'ai-post-scheduler'),
+                'topic_ideas_prompt'      => __('Author Topic Ideas', 'ai-post-scheduler'),
+                'metadata_prompt'         => __('SEO & Metadata', 'ai-post-scheduler'),
+                'taxonomy_prompt'         => __('Taxonomy Classification', 'ai-post-scheduler'),
+            ),
+        ));
+
         wp_localize_script('aips-prompt-profiles-script', 'aipsPromptProfilesL10n', array(
             'ajaxUrl'           => admin_url('admin-ajax.php'),
             'nonce'             => wp_create_nonce('aips_ajax_nonce'),
