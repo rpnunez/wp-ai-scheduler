@@ -162,9 +162,9 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 
 		$counts = $this->container->get_binding_counts();
 
-		// Should have 15 singleton bindings and no transient bindings
+		// Should have 40 singleton bindings and no transient bindings
 		$this->assertEquals(0, $counts['transient']);
-		$this->assertEquals(15, $counts['singleton']);
-		$this->assertEquals(15, $counts['total']);
+		$this->assertEquals(40, $counts['singleton']);
+		$this->assertEquals(40, $counts['total']);
 	}
 }
