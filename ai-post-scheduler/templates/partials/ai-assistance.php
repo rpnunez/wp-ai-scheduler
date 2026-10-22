@@ -61,7 +61,7 @@ if (!defined('ABSPATH')) {
 <div class="aips-ai-assist-history-item">
 	<div class="aips-ai-assist-history-response">{{response}}</div>
 	<div class="aips-ai-assist-history-meta">{{created_at}}</div>
-	<div class="aips-ai-assist-history-meta"><?php esc_html_e('Workflow:', 'ai-post-scheduler'); ?> {{context}}</div>
+	<div class="aips-ai-assist-history-meta"><?php esc_html_e('Context:', 'ai-post-scheduler'); ?> {{context}}</div>
 	<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-assist-history-use"
 		data-field-id="{{fieldId}}"
 		data-record-id="{{id}}">
