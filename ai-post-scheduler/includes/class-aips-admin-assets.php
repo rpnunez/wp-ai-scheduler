@@ -438,9 +438,16 @@ class AIPS_Admin_Assets {
         // Global Admin Styles and Scripts
 
         wp_enqueue_style(
+            'aips-design-tokens',
+            AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_style(
             'aips-admin-style',
             AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            array(),
+            array('aips-design-tokens'),
             AIPS_VERSION
         );
 
@@ -531,9 +538,16 @@ class AIPS_Admin_Assets {
      */
     private function enqueue_history_modal_opener_assets() {
         wp_enqueue_style(
+            'aips-design-tokens',
+            AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_style(
             'aips-admin-style',
             AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            array(),
+            array('aips-design-tokens'),
             AIPS_VERSION
         );
 
