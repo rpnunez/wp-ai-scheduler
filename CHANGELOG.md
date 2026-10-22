@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Sources reliability (3.7.19)
+- Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
+- Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
+- Require source groups when enabling sources on templates/authors. Preserve legacy generation with actionable diagnostics, current-URL archive selection, least-used/FIFO rotation, and a 16,000-character total snippet budget.
+- Keep previews read-only and record source usage at AI submission. Usage indicates submitted reference material, not proof that an AI relied on or cited it.
+- Report duplicate archive edits and group/schedule save failures accurately; replace source groups atomically. Pending archive rows remain editable and do not queue fetching.
+- Add opt-in source archive retention (0 days disables deletion), an eligible-row review count, and bounded daily cleanup preserving the newest usable snapshot for each current URL. Generation metadata survives deletion of full archived content.
+- Record references for content regeneration at the first provider attempt, skip locally rejected requests, and deduplicate usage across retries/JSON fallbacks. Restore identical Pending/Failed snapshots after a successful fetch, retry failed schema upgrades, and preserve the site-wide autoloaded-options cache during lease operations.
+
 ### Performance
 - **Embeddings, Similarity & Clustering Performance Hardening (#2218):**
   - Eliminated N+1 database queries in `AIPS_Similarity_Evaluator::find_similar_topics()`, `suggest_related_topics()`, and `calculate_max_similarity_for_topic()` by batch reading embeddings via `get_by_source_ids()` / `get_by_topic_ids()`.

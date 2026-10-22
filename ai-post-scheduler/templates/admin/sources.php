@@ -6,6 +6,13 @@
  * delete, and toggle URLs that the AI is encouraged to read from and cite
  * when generating post content. Also provides Source Groups management.
  *
+ * The table itself is rendered by AIPS_Sources_List_Table (server-side filtering,
+ * pagination and Screen Options); this template supplies the bulk-action toolbar,
+ * the filter bar, and the modals.
+ *
+ * @var AIPS_Sources_List_Table $sources_table
+ * @var array                   $source_groups
+ *
  * @package AI_Post_Scheduler
  * @since 1.8.0
  */
@@ -14,249 +21,88 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-// Ensure $sources is defined for static analysis and for direct includes.
-if (!isset($sources) || !is_array($sources)) {
-	$sources = array();
+// Defaults so the template works when included standalone.
+if (!isset($sources_table) || !($sources_table instanceof AIPS_Sources_List_Table)) {
+	$sources_table = new AIPS_Sources_List_Table();
+	$sources_table->prepare_items();
 }
-
-// $source_groups, $source_group_name_map, and $source_term_ids_map are passed from render_sources_page().
-// Provide safe defaults so the template works if included standalone.
 if (!isset($source_groups) || !is_array($source_groups)) {
-	$source_groups = get_terms(array('taxonomy' => 'aips_source_group', 'hide_empty' => false));
-	if (is_wp_error($source_groups)) {
-		$source_groups = array();
-	}
+	$source_groups = $sources_table->get_source_groups();
 }
-if (!isset($source_group_name_map) || !is_array($source_group_name_map)) {
-	$source_group_name_map = array();
-	foreach ($source_groups as $group) {
-		$source_group_name_map[(int) $group->term_id] = $group->name;
-	}
-}
-if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
-	$source_term_ids_map = array();
-}
+
+$source_filters = $sources_table->get_filters();
+$has_sources    = $sources_table->get_unfiltered_total() > 0;
+$sources_total  = $sources_table->get_total_items();
 ?>
-		<div class="aips-content-panel">
-			<?php if (!empty($sources)): ?>
+			<div class="aips-content-panel">
+				<?php if ($has_sources): ?>
 
-			<div class="aips-filter-bar">
-				<div class="aips-filter-left">
-					<?php if (!empty($source_groups)): ?>
-					<label class="screen-reader-text" for="aips-source-filter-group"><?php esc_html_e('Filter by Group:', 'ai-post-scheduler'); ?></label>
-					<select id="aips-source-filter-group" class="aips-form-select">
-						<option value=""><?php esc_html_e('All Groups', 'ai-post-scheduler'); ?></option>
-						<?php foreach ($source_groups as $group): ?>
-						<option value="<?php echo esc_attr($group->term_id); ?>"><?php echo esc_html($group->name); ?></option>
-						<?php endforeach; ?>
-					</select>
-					<?php endif; ?>
-					<label class="screen-reader-text" for="aips-source-filter-status"><?php esc_html_e('Filter by Status:', 'ai-post-scheduler'); ?></label>
-					<select id="aips-source-filter-status" class="aips-form-select">
-						<option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
-						<option value="active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></option>
-						<option value="inactive"><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></option>
-					</select>
+				<!-- Toolbar (Bulk Actions) -->
+				<div class="aips-panel-toolbar">
+					<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+						<select id="aips-source-bulk-action" class="aips-form-select">
+							<option value=""><?php esc_html_e('Bulk actions', 'ai-post-scheduler'); ?></option>
+							<option value="activate"><?php esc_html_e('Activate', 'ai-post-scheduler'); ?></option>
+							<option value="deactivate"><?php esc_html_e('Deactivate', 'ai-post-scheduler'); ?></option>
+							<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+						</select>
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-source-bulk-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+					</div>
 				</div>
-				<div class="aips-filter-right">
-					<label class="screen-reader-text" for="aips-source-search"><?php esc_html_e('Search Sources:', 'ai-post-scheduler'); ?></label>
-					<input type="search" id="aips-source-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sources…', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-source-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
-				</div>
-			</div>
 
-			<!-- Toolbar (Bulk Actions) -->
-			<div class="aips-panel-toolbar">
-				<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-					<select id="aips-source-bulk-action" class="aips-form-select">
-						<option value=""><?php esc_html_e('Bulk actions', 'ai-post-scheduler'); ?></option>
-						<option value="activate"><?php esc_html_e('Activate', 'ai-post-scheduler'); ?></option>
-						<option value="deactivate"><?php esc_html_e('Deactivate', 'ai-post-scheduler'); ?></option>
-						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-					</select>
-					<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-source-bulk-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
-				</div>
-			</div>
+				<!-- Filter Bar -->
+				<form method="get" class="aips-filter-bar aips-history-filter-bar aips-sources-filter-bar">
+					<input type="hidden" name="page" value="aips-automations">
+					<input type="hidden" name="tab" value="sources">
+					<div class="aips-history-filter-row">
+						<div class="aips-history-filter-selects">
+							<?php if (!empty($source_groups)): ?>
+							<select id="aips-source-filter-group" name="group" class="aips-form-select" aria-label="<?php esc_attr_e('Group', 'ai-post-scheduler'); ?>">
+								<option value=""><?php esc_html_e('All Groups', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($source_groups as $group): ?>
+								<option value="<?php echo esc_attr($group->term_id); ?>" <?php selected($source_filters['group'], (int) $group->term_id); ?>><?php echo esc_html($group->name); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
+							<select id="aips-source-filter-status" name="status" class="aips-form-select" aria-label="<?php esc_attr_e('Status', 'ai-post-scheduler'); ?>">
+								<option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
+								<option value="active" <?php selected($source_filters['status'], 'active'); ?>><?php esc_html_e('Active', 'ai-post-scheduler'); ?></option>
+								<option value="inactive" <?php selected($source_filters['status'], 'inactive'); ?>><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></option>
+							</select>
+						</div>
+						<div class="aips-history-filter-search">
+							<label class="screen-reader-text" for="aips-source-search"><?php esc_html_e('Search Sources:', 'ai-post-scheduler'); ?></label>
+							<input type="search" id="aips-source-search" name="s" class="aips-form-input" placeholder="<?php esc_attr_e('Search sources…', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($source_filters['search']); ?>">
+						</div>
+					</div>
+					<div class="aips-history-filter-row aips-history-filter-row-dates">
+						<button type="submit" class="aips-btn aips-btn-sm aips-btn-primary aips-history-filter-apply" id="aips-source-filter-btn"><span class="dashicons dashicons-filter" aria-hidden="true"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
+						<?php if ($sources_table->has_active_filters()): ?>
+						<a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('sources')); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+						<?php endif; ?>
+					</div>
+				</form>
 
-			<div class="aips-panel-body no-padding">
-				<table class="aips-table aips-sources-table" id="aips-sources-table">
-					<thead>
-						<tr>
-							<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-sources-cb-all"></th>
-							<th class="column-label"><?php esc_html_e('Label', 'ai-post-scheduler'); ?></th>
-							<th class="column-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></th>
-							<th class="column-groups"><?php esc_html_e('Groups', 'ai-post-scheduler'); ?></th>
-							<th class="column-fetch-status"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></th>
-							<th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-							<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ($sources as $source):
-							$src_id     = (int) $source->id;
-							$term_ids   = isset($source_term_ids_map[$src_id]) ? $source_term_ids_map[$src_id] : array();
-							$group_names = array();
-							foreach ($term_ids as $tid) {
-								$tid = (int) $tid;
-								if (isset($source_group_name_map[$tid])) {
-									$group_names[] = $source_group_name_map[$tid];
-								}
-							}
-						$fetch_interval        = isset($source->fetch_interval)   ? $source->fetch_interval   : '';
-						$last_fetched_at       = isset($source->last_fetched_at)  ? $source->last_fetched_at  : '';
-						$next_fetch_at         = isset($source->next_fetch_at)    ? $source->next_fetch_at    : '';
-						$fetch_data            = isset($source_fetch_data_map[$src_id]) ? $source_fetch_data_map[$src_id] : null;
-						$fetch_status_val      = $fetch_data ? $fetch_data->fetch_status : '';
-						$content_count_val     = isset($source_content_count_map[$src_id]) ? (int) $source_content_count_map[$src_id] : 0;
+				<div class="aips-panel-body no-padding aips-list-table-wrap">
+					<?php $sources_table->display(); ?>
+				</div>
+
+				<!-- Table footer -->
+				<div class="tablenav">
+					<span class="aips-table-footer-count">
+						<?php
+						printf(
+							esc_html(_n('%s source', '%s sources', $sources_total, 'ai-post-scheduler')),
+							number_format_i18n($sources_total)
+						);
 						?>
-						<tr data-source-id="<?php echo esc_attr($source->id); ?>"
-							data-url="<?php echo esc_attr($source->url); ?>"
-							data-label="<?php echo esc_attr($source->label); ?>"
-							data-description="<?php echo esc_attr($source->description); ?>"
-							data-active="<?php echo esc_attr($source->is_active); ?>"
-							data-fetch-interval="<?php echo esc_attr($fetch_interval); ?>"
-							data-term-ids="<?php echo esc_attr(wp_json_encode($term_ids)); ?>">
-							<th scope="row" class="check-column"><input type="checkbox" class="aips-source-cb" value="<?php echo esc_attr($source->id); ?>"></th>
-							<td class="column-label cell-primary">
-								<span class="aips-source-label-text"><?php echo esc_html(!empty($source->label) ? $source->label : '—'); ?></span>
-								<?php if ($fetch_interval): ?>
-									<span class="aips-badge aips-badge-neutral aips-source-frequency-chip"><?php echo esc_html($fetch_interval); ?></span>
-								<?php endif; ?>
-							</td>
-							<td class="column-url">
-								<a href="<?php echo esc_url($source->url); ?>" target="_blank" rel="noopener noreferrer">
-									<?php echo esc_html($source->url); ?>
-								</a>
-							</td>
-							<td class="column-groups">
-								<?php if (!empty($group_names)): ?>
-									<?php foreach ($group_names as $gname): ?>
-										<span class="aips-badge aips-badge-neutral" style="margin:2px 2px 2px 0;"><?php echo esc_html($gname); ?></span>
-									<?php endforeach; ?>
-								<?php else: ?>
-									<span class="cell-meta">—</span>
-								<?php endif; ?>
-							</td>
-							<td class="column-fetch-status">
-								<?php if ($content_count_val > 0): ?>
-									<span class="aips-badge aips-badge-success" title="<?php echo esc_attr($last_fetched_at); ?>">
-										<span class="dashicons dashicons-archive"></span>
-										<?php
-										printf(
-											/* translators: %d = number of archived content snapshots */
-											esc_html(_n('%d content', '%d content', $content_count_val, 'ai-post-scheduler')),
-											$content_count_val
-										);
-										?>
-									</span>
-								<?php elseif ($fetch_status_val === 'failed'): ?>
-									<span class="aips-badge aips-badge-warning">
-										<span class="dashicons dashicons-warning"></span>
-										<?php esc_html_e('Failed', 'ai-post-scheduler'); ?>
-									</span>
-								<?php elseif ($fetch_status_val === 'pending'): ?>
-									<span class="aips-badge aips-badge-neutral">
-										<span class="dashicons dashicons-clock"></span>
-										<?php esc_html_e('Pending', 'ai-post-scheduler'); ?>
-									</span>
-								<?php else: ?>
-									<span class="cell-meta">
-										<?php echo $fetch_interval ? esc_html__('Scheduled', 'ai-post-scheduler') : '—'; ?>
-									</span>
-								<?php endif; ?>
-
-							</td>
-							<td class="column-status">
-								<?php if ($source->is_active): ?>
-									<span class="aips-badge aips-badge-success">
-										<span class="dashicons dashicons-yes-alt"></span>
-										<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
-									</span>
-								<?php else: ?>
-									<span class="aips-badge aips-badge-neutral">
-										<span class="dashicons dashicons-minus"></span>
-										<?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
-									</span>
-								<?php endif; ?>
-							</td>
-							<td class="column-actions">
-								<div class="aips-action-buttons">
-									<button class="aips-btn aips-btn-sm aips-edit-source"
-										data-id="<?php echo esc_attr($source->id); ?>"
-										title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-										<span class="dashicons dashicons-edit"></span>
-										<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
-									</button>
-									<button class="aips-btn aips-btn-sm aips-btn-secondary aips-fetch-source-now"
-										data-id="<?php echo esc_attr($source->id); ?>"
-										title="<?php esc_attr_e('Fetch content now', 'ai-post-scheduler'); ?>">
-										<span class="dashicons dashicons-download"></span>
-										<span class="screen-reader-text"><?php esc_html_e('Fetch Now', 'ai-post-scheduler'); ?></span>
-									</button>
-									<a class="aips-btn aips-btn-sm aips-btn-secondary"
-										href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-source-data', array('source_id' => absint($source->id)))); ?>"
-										title="<?php esc_attr_e('Manage fetched source data', 'ai-post-scheduler'); ?>">
-										<span class="dashicons dashicons-archive"></span>
-										<span><?php esc_html_e('Manage Data', 'ai-post-scheduler'); ?></span>
-									</a>
-									<button class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-source"
-										data-id="<?php echo esc_attr($source->id); ?>"
-										data-active="<?php echo esc_attr($source->is_active); ?>"
-										title="<?php echo $source->is_active ? esc_attr__('Deactivate', 'ai-post-scheduler') : esc_attr__('Activate', 'ai-post-scheduler'); ?>">
-										<span class="dashicons <?php echo $source->is_active ? 'dashicons-hidden' : 'dashicons-visibility'; ?>"></span>
-										<span class="screen-reader-text">
-											<?php echo $source->is_active ? esc_html__('Deactivate', 'ai-post-scheduler') : esc_html__('Activate', 'ai-post-scheduler'); ?>
-										</span>
-									</button>
-									<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source"
-										data-id="<?php echo esc_attr($source->id); ?>"
-										title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
-										<span class="dashicons dashicons-trash"></span>
-										<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
-									</button>
-								</div>
-							</td>
-						</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
-			</div>
-
-			<!-- Table footer -->
-			<div class="tablenav">
-				<span class="aips-table-footer-count">
-					<?php
-					$count = count($sources);
-					printf(
-						esc_html(_n('%s source', '%s sources', $count, 'ai-post-scheduler')),
-						number_format_i18n($count)
-					);
-					?>
-				</span>
-			</div>
-
-			<div id="aips-source-search-no-results" class="aips-empty-state" style="display:none;">
-				<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
-				<h3 class="aips-empty-state-title"><?php esc_html_e('No Sources Found', 'ai-post-scheduler'); ?></h3>
-				<p class="aips-empty-state-description"><?php esc_html_e('No sources match your search criteria.', 'ai-post-scheduler'); ?></p>
-				<div class="aips-empty-state-actions">
-					<button type="button" class="aips-btn aips-btn-ghost" id="aips-source-search-clear-2" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
+					</span>
 				</div>
-			</div>
 
-			<?php else: ?>
-			<div class="aips-empty-state" id="aips-sources-empty">
-				<div class="dashicons dashicons-admin-links aips-empty-state-icon" aria-hidden="true"></div>
-				<h3 class="aips-empty-state-title"><?php esc_html_e('No Trusted Sources Yet', 'ai-post-scheduler'); ?></h3>
-				<p class="aips-empty-state-description"><?php esc_html_e('Add URLs that the AI should reference when generating post content. Assign them to Source Groups so Authors and Templates can selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
-				<div class="aips-empty-state-actions">
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-empty-btn">
-						<?php esc_html_e('Add Your First Source', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
+				<?php else: ?>
+				<?php $sources_table->no_items(); ?>
+				<?php endif; ?>
 			</div>
-			<?php endif; ?>
-		</div>
 
 <!-- Add / Edit Source Modal -->
 <div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
@@ -401,3 +247,5 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 		</div>
 	</div>
 </div>
+
+<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
