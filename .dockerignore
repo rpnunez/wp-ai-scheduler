@@ -52,10 +52,9 @@ node_modules/
 # Database data
 data/
 
-# CI/CD files
+# CI/CD and agent files
 .github/
-.jules/
-qodana.yaml
+.agents/
 
 # Docker volumes
 db_data_v2/

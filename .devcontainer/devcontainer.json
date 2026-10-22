@@ -12,7 +12,7 @@
           "**/vendor": true,
           "**/node_modules": true,
           "**/.git": true,
-          "**/.aips-agent": true
+          "**/.agents/findings": true
         },
         "editor.formatOnSave": true,
         "[php]": {
