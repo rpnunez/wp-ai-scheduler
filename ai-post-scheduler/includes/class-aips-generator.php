@@ -1122,7 +1122,7 @@ class AIPS_Generator {
         $generation_start = microtime(true);
         $component_statuses = array(
             'post_title'     => false,
-            'post_slug'      => method_exists($context, 'should_generate_slug') ? !$context->should_generate_slug() : true,
+            'post_slug'      => true, // Optional: a failed slug falls back to WordPress's title-based slug.
             'post_excerpt'   => false,
             'featured_image' => !$context->should_generate_featured_image(),
             'post_content'   => false,
@@ -1186,7 +1186,6 @@ class AIPS_Generator {
 		$resolved_image_prompt = $metadata_result['resolved_image_prompt'];
 
 		$component_statuses['post_title']   = $metadata_result['title_success'];
-		$component_statuses['post_slug']    = $metadata_result['slug_success'];
 		$component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
 
 		$pre_image_incomplete  = in_array(false, $component_statuses, true);
@@ -1833,17 +1832,18 @@ class AIPS_Generator {
 
 		$slug_success = false;
 
-		if ($metadata !== null && isset($metadata['slug']) && $metadata['slug'] !== '') {
-			$raw_slug     = trim((string) $metadata['slug']);
-			$slug         = sanitize_title($raw_slug);
+		$slug = '';
+
+		if ($metadata !== null) {
+			// The metadata turn already answered; do not spend another AI call if it left the slug blank.
+			$slug         = isset($metadata['slug']) ? sanitize_title((string) $metadata['slug']) : '';
 			$slug_success = ($slug !== '');
 		} else {
-			$raw_slug     = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
-			if (is_wp_error($raw_slug)) {
+			$slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
+			if (is_wp_error($slug)) {
 				$slug         = '';
 				$slug_success = false;
 			} else {
-				$slug         = sanitize_title($raw_slug);
 				$slug_success = $slug_success && ($slug !== '');
 			}
 		}

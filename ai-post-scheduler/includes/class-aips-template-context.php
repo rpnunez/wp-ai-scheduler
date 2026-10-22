@@ -105,12 +105,9 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	/**
 	 * Get the slug prompt.
 	 *
-	 * @return string Slug prompt from voice or template.
+	 * @return string Slug prompt from the template.
 	 */
 	public function get_slug_prompt() {
-		if ($this->voice && !empty($this->voice->slug_prompt)) {
-			return $this->voice->slug_prompt;
-		}
 		return isset($this->template->slug_prompt) ? $this->template->slug_prompt : '';
 	}
 

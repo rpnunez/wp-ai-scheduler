@@ -172,7 +172,7 @@ class AIPS_Template_Repository {
             'name' => sanitize_text_field($data['name']),
             'prompt_template' => wp_kses_post($data['prompt_template']),
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
-            'slug_prompt' => isset($data['slug_prompt']) ? sanitize_text_field($data['slug_prompt']) : '',
+            'slug_prompt' => isset($data['slug_prompt']) ? sanitize_textarea_field($data['slug_prompt']) : '',
             'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : null,
             'post_quantity' => isset($data['post_quantity']) ? absint($data['post_quantity']) : 1,
             'image_prompt' => isset($data['image_prompt']) ? wp_kses_post($data['image_prompt']) : '',
@@ -238,7 +238,7 @@ class AIPS_Template_Repository {
         }
 
         if (isset($data['slug_prompt'])) {
-            $update_data['slug_prompt'] = sanitize_text_field($data['slug_prompt']);
+            $update_data['slug_prompt'] = sanitize_textarea_field($data['slug_prompt']);
             $format[] = '%s';
         }
 

@@ -247,7 +247,7 @@ class AIPS_Component_Regeneration_Service {
 			return $result;
 		}
 
-		$slug = sanitize_title(trim($result));
+		$slug = trim($result);
 		if (empty($slug)) {
 			return new WP_Error('slug_generation_failed', __('Failed to generate a valid slug.', 'ai-post-scheduler'));
 		}
@@ -447,6 +447,14 @@ class AIPS_Component_Regeneration_Service {
 			$context['current_title'] = $title;
 		}
 
+		$content = $this->regenerate_content($context);
+		if (is_wp_error($content)) {
+			$result['errors']['content'] = $content->get_error_message();
+		} else {
+			$result['regenerated']['content'] = $content;
+			$context['current_content'] = $content;
+		}
+
 		if (method_exists($generation_context, 'should_generate_slug') && $generation_context->should_generate_slug()) {
 			$slug = $this->regenerate_slug($context);
 			if (is_wp_error($slug)) {
@@ -456,14 +464,6 @@ class AIPS_Component_Regeneration_Service {
 			}
 		} else {
 			$result['skipped']['slug'] = __('Slug generation skipped because it is not enabled for this context.', 'ai-post-scheduler');
-		}
-
-		$content = $this->regenerate_content($context);
-		if (is_wp_error($content)) {
-			$result['errors']['content'] = $content->get_error_message();
-		} else {
-			$result['regenerated']['content'] = $content;
-			$context['current_content'] = $content;
 		}
 
 		$excerpt = $this->regenerate_excerpt($context);
