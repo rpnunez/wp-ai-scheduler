@@ -280,6 +280,7 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 			return;
 		}
 		$this->record_topic_generation_trigger($history, $author, $creation_method);
+		$this->record_sources_selection_history($history);
 
 		if (is_wp_error($result)) {
 			$history->record(
@@ -329,6 +330,24 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 			)
 		);
 		$history->complete_success();
+	}
+
+	/** Preserve diagnostics and provenance for successful and failed topic requests. */
+	private function record_sources_selection_history($history) {
+		$selection = $this->topics_generator->get_last_sources_selection();
+		foreach ($selection['diagnostics'] ?? array() as $diagnostic) {
+			$history->record('warning', __('Source selection needs attention.', 'ai-post-scheduler'), $diagnostic, null, array(
+				'component' => 'topics',
+				'source_selection_diagnostic' => $diagnostic,
+			));
+		}
+		if (!empty($selection['snapshots'])) {
+			$history->record('activity', __('Included source references in topic generation request.', 'ai-post-scheduler'), array('snapshots' => $selection['snapshots']), null, array(
+				'component' => 'topics',
+				'source_snapshots' => $selection['snapshots'],
+				'source_group_ids' => $selection['group_ids'] ?? array(),
+			));
+		}
 	}
 
 	/**

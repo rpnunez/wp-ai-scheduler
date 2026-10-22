@@ -88,7 +88,7 @@ class AIPS_Admin_Menu {
         );
 
         // 5. Content
-        add_submenu_page(
+        $content_hook = add_submenu_page(
             'ai-post-scheduler',
             __('Content', 'ai-post-scheduler'),
             __('Content', 'ai-post-scheduler'),
@@ -96,6 +96,9 @@ class AIPS_Admin_Menu {
             'aips-generated-posts',
             array($this, 'render_generated_posts_page')
         );
+        if ($content_hook) {
+            add_action("load-{$content_hook}", array($this, 'setup_content_screen_options'));
+        }
 
         // 6. History
         $history_hook = add_submenu_page(
@@ -542,6 +545,36 @@ class AIPS_Admin_Menu {
             ),
             true
         );
+
+    }
+
+    /**
+     * Setup screen options for the Content page.
+     *
+     * Screen Options are per-screen, so they are scoped to the active tab. Only
+     * the Pending Review tab (a WP_List_Table) registers them: a free-form
+     * drafts-per-page control and show/hide toggles for its non-essential
+     * columns. Other Content tabs are custom panels with no Screen Options.
+     *
+     * @return void
+     */
+    public function setup_content_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'aips-generated-posts';
+        if ('aips-pending-review' !== $tab) {
+            return;
+        }
+
+        $table = new AIPS_Pending_Review_List_Table();
+        AIPS_List_Table::register_screen_options($screen->id, $table->get_hideable_columns(), array(
+            'label'   => __('Drafts per page', 'ai-post-scheduler'),
+            'option'  => AIPS_Pending_Review_List_Table::PER_PAGE_OPTION,
+            'default' => AIPS_Pending_Review_List_Table::PER_PAGE_DEFAULT,
+        ));
     }
 
     /**

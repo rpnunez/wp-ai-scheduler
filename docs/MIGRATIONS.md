@@ -1,5 +1,11 @@
 # AI Post Scheduler - Database Schema Updates
 
+## Sources reliability (3.7.19)
+
+The Sources table adds nullable `last_fetch_attempt_at`, `last_fetch_status`, and `last_fetch_error`. Legacy attempt state remains unknown until the next fetch; `last_fetched_at` continues to mean last successful fetch. `next_fetch_at` becomes nullable so disabling automatic fetching can clear it under strict MySQL. The guarded migration preserves existing due timestamps and can run repeatedly. It verifies the structural changes before acknowledging version 3.7.19 and restores the previous version gate on failure so the next request retries. Atomic group replacement requires a transactional source-group table, normally InnoDB; verify the storage engine on legacy installations.
+
+Snapshot deduplication now hashes the current URL plus normalized text, allowing identical text fetched from a changed URL to retain separate provenance. Lookups also recognize legacy text-only hashes by exact URL/text match, leaving historical fetch timestamps intact. The existing `(source_id, content_hash)` uniqueness constraint remains; no extra selection index is added without a measured EXPLAIN benefit. Validate the anti-join winner query and bounded maintenance DELETE on the target MySQL/MariaDB instance before enabling retention.
+
 ## How Database Schema Updates Work
 
 The AI Post Scheduler uses WordPress's built-in `dbDelta()` function to manage database schema updates. This is the standard WordPress approach for database migrations.

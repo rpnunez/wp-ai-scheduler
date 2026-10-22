@@ -703,3 +703,16 @@ Skip semantic re-indexing (embeddings + relationships) for a post save. Auto-lin
 *   **Arguments:**
     *   `bool $skip`: Default `false`.
     *   `int $post_id`: Post being saved.
+
+### Sources reliability hooks
+
+- `aips_fetch_sources`: earliest-due single-event fetch dispatcher. It replaces the legacy recurring event, preserving individual Source intervals. No event remains when no active Source has automatic fetching enabled.
+- `aips_fetch_sources_continue`: one single event after 60 seconds when overdue work remains or worker ownership is busy; every run rechecks due state. Default batch size is ten (`aips_sources_cron_max_per_run`), with a 20-second soft budget checked between Sources and an expiring 300-second owner lease shared with manual fetching.
+- `aips_sources_selection_diagnostic`: action with one associative payload: `reason` (`no_groups`, `no_active_sources`, `no_content`, `prompt_budget`), `group_ids`, `source_ids`, `omitted_source_ids`. Generation records diagnostics; previews return them without recording usage.
+- `aips_source_snapshots_injected`: compatible three-argument action (`snapshots`, `term_ids`, `sources`) at usage recording for a submitted AI request, including content regeneration. Render-only prompt previews emit no usage action. An AI-generated post preview submits a real request and counts usage. Usage records once at the first provider attempt, including failed calls and retries; unavailable providers, open circuits, and local rate-limit rejections do not count. Usage does not establish model reliance or publication.
+- `aips_sources_archive_maintenance`: daily cleanup only when `aips_source_archive_retention_days` is nonzero (default 0, maximum 3650).
+- `aips_sources_archive_maintenance_continue`: single 60-second continuation for remaining expired snapshots. Each run deletes at most 100 rows and protects the newest usable current-URL snapshot. Metadata in generation history is retained. Both maintenance hooks are cleared when retention is disabled or the plugin is deactivated.
+
+Response and prompt limits default through `AIPS_Config`: `aips_source_fetch_max_response_bytes` (2097152 bytes; responses reaching the limit are rejected) and `aips_source_prompt_total_max_chars` (16000 Unicode snippet characters). Per-Source limits remain in effect. Archive selection projects one least-used/FIFO snapshot per eligible Source without loading raw HTML.
+
+Injected `AIPS_AI_Service_Interface` implementations must support the internal `_aips_on_submission` option: invoke its callable immediately before the first provider attempt, after local guards, and strip it from provider parameters and logs. Preserve the same one-shot callback across retries and JSON fallbacks. The default service implements this boundary; rendering alone never invokes it.

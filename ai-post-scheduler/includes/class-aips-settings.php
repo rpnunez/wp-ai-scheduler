@@ -106,6 +106,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_default_category'],
 			),
+			'aips_bulk_publish_async_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_bulk_publish_async_threshold'),
+				'default'           => $defaults['aips_bulk_publish_async_threshold'],
+			),
 			'aips_enable_logging' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_logging'],
@@ -381,6 +385,10 @@ class AIPS_Settings {
 			'aips_link_click_tracking_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_link_click_tracking_enabled'],
+			),
+			'aips_source_archive_retention_days' => array(
+				'sanitize_callback' => array($ui, 'sanitize_source_archive_retention_days'),
+				'default' => $defaults['aips_source_archive_retention_days'],
 			),
 			'aips_link_click_retention_days' => array(
 				'sanitize_callback' => array($ui, 'sanitize_link_click_retention_days'),
@@ -707,7 +715,24 @@ class AIPS_Settings {
             'aips_general_section'
         );
 
+        add_settings_field(
+            'aips_bulk_publish_async_threshold',
+            __('Bulk Publish Background Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'bulk_publish_async_threshold_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
         // -----------------------------------------------------------------------
+		// Source archive retention is explicitly opt-in.
+		add_settings_field(
+			'aips_source_archive_retention_days',
+			__('Source Archive Retention', 'ai-post-scheduler'),
+			array($this->ui, 'source_archive_retention_field_callback'),
+			'aips-settings',
+			'aips_general_section'
+		);
+
         // Card 1: Content Generation AI Provider
         // -----------------------------------------------------------------------
         add_settings_section(
