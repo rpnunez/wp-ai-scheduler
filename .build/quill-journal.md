@@ -30,3 +30,17 @@
 - **Cache invalidation:** Hook-based invalidation (updated_option, added_option, deleted_option) and set_option() flush $this->cache as before.
 - **Backward compatibility:** Preserved AIPS_Config::get_option() signature, ad-hoc fallback behavior for unregistered options, and return types.
 - **Tests:** Test_AIPS_Config: added explicit-default caching and mixed-default tests; also corrected stale expectations (log level follows debug mode, similarity threshold 0.85). Not re-run after review fixes.
+
+## 2026-10-17 - Bulk Prime Post Caches in Internal Links Suggestions AJAX Endpoint
+
+- **Target:** ai-post-scheduler/includes/class-aips-internal-links-controller.php::AIPS_Internal_Links_Controller::ajax_get_suggestions
+- **Lens:** Sat (Admin/AJAX request cost)
+- **Problem:** In `AIPS_Internal_Links_Controller::ajax_get_suggestions()`, fetching paginated suggestions from `AIPS_Internal_Links_Repository::get_paginated()` followed by looping over items to build `source_edit_url`, `target_edit_url`, and `target_url` executed 1 query per post ID pair in $O(N)$ database lookups without post cache pre-priming.
+- **Fix:** Collected all non-empty `source_post_id` and `target_post_id` values from `$items` and called `_prime_post_caches(array_unique($post_ids), false, true)` before the enrichment loop.
+- **Before / After:**
+  - N=10: 14 queries -> 5 queries
+  - N=100: 104 queries -> 5 queries
+  - N=500: 504 queries -> 5 queries
+- **Cache invalidation:** N/A (uses WordPress post object cache; invalidated automatically on post edits/deletions).
+- **Backward compatibility:** Preserved `AIPS_Internal_Links_Controller::ajax_get_suggestions()` signature, response structure, and array item keys (`source_edit_url`, `target_edit_url`, `target_url`).
+- **Tests:** `Test_AIPS_Internal_Links_Controller_Suggestions_Query_Count` (asserts response equivalence and bounded O(1) query count across N=10 and N=100).
