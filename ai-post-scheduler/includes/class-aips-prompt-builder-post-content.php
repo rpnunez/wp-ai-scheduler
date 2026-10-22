@@ -22,6 +22,17 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Prompt_Builder_Post_Content {
 
+	private $sources_selection = array();
+
+	public function get_sources_selection() {
+		return $this->sources_selection;
+	}
+
+	public function set_sources_selection(array $selection) {
+		$this->sources_selection = $selection;
+	}
+
+
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
 	 */
@@ -59,6 +70,7 @@ class AIPS_Prompt_Builder_Post_Content {
 	 * @return string
 	 */
 	public function build($template_or_context, $topic = null, $voice = null) {
+		$this->sources_selection = array();
 		if ($template_or_context instanceof AIPS_Generation_Context) {
 			return $this->build_from_context($template_or_context);
 		}
@@ -125,7 +137,7 @@ class AIPS_Prompt_Builder_Post_Content {
 
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
 
-		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
+		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic, $this);
 	}
 
 	/**
@@ -167,7 +179,7 @@ class AIPS_Prompt_Builder_Post_Content {
 
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
 
-		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
+		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic, $this);
 	}
 
 	/**

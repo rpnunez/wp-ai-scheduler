@@ -13,6 +13,33 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Settings_UI {
 
+	/** Retention is disabled at zero; never convert a negative value into deletion. */
+	public function sanitize_source_archive_retention_days( $value ) {
+		return max( 0, min( 3650, (int) $value ) );
+	}
+
+	public function source_archive_retention_field_callback() {
+		$days = $this->sanitize_source_archive_retention_days( AIPS_Config::get_instance()->get_option( 'aips_source_archive_retention_days' ) );
+		echo '<input type="number" min="0" max="3650" step="1" id="aips_source_archive_retention_days" name="aips_source_archive_retention_days" value="' . esc_attr( (string) $days ) . '" class="small-text">';
+		echo '<p class="description">' . esc_html__( 'Days to retain source snapshots. 0 disables deletion. Daily cleanup removes up to 100 expired snapshots per batch and always keeps the newest usable snapshot for each current source URL. Generation history keeps its metadata, but full archived content becomes unavailable after deletion.', 'ai-post-scheduler' ) . '</p>';
+		// The review is submitted through the existing settings form; no new AJAX action.
+		$review_days = isset( $_GET['aips_retention_review_days'] ) ? $this->sanitize_source_archive_retention_days( wp_unslash( $_GET['aips_retention_review_days'] ) ) : $days;
+		echo '<label for="aips-retention-review-days">' . esc_html__( 'Review cutoff (days):', 'ai-post-scheduler' ) . '</label> ';
+		echo '<input type="number" id="aips-retention-review-days" min="1" max="3650" value="' . esc_attr( (string) max( 1, $review_days ) ) . '" class="small-text" oninput="this.nextElementSibling.href=this.nextElementSibling.dataset.base+encodeURIComponent(this.value)"> ';
+		$base = admin_url( 'admin.php?page=aips-settings&tab=settings-general&aips_retention_review_days=' );
+		echo '<a class="button" data-base="' . esc_url( $base ) . '" href="' . esc_url( $base . max( 1, $review_days ) ) . '">' . esc_html__( 'Review eligible snapshots', 'ai-post-scheduler' ) . '</a>';
+		if ( $review_days > 0 ) {
+			try {
+				$count = ( new AIPS_Sources_Data_Repository() )->count_prunable_archive( AIPS_DateTime::now()->timestamp() - $review_days * DAY_IN_SECONDS );
+			} catch ( Throwable $error ) {
+				echo '<p class="description">' . esc_html__( 'The eligible snapshot count is unavailable. Check the database before enabling retention.', 'ai-post-scheduler' ) . '</p>';
+				return;
+			}
+			/* translators: 1: snapshot count, 2: retention days. */
+			echo '<p class="description">' . esc_html( sprintf( __( '%1$d snapshots are eligible for deletion with a %2$d-day cutoff. Review this count before saving a nonzero retention period.', 'ai-post-scheduler' ), $count, $review_days ) ) . '</p>';
+		}
+	}
+
     /**
      * Render the description for the general settings section.
      *

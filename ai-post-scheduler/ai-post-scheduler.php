@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.18
+ * Version: 3.7.19
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.18');
+    define('AIPS_VERSION', '3.7.19');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -110,10 +110,6 @@ final class AI_Post_Scheduler {
             'aips_cleanup_export_files' => array(
                 'schedule' => 'daily',
                 'label'   => __( 'Export Cleanup', 'ai-post-scheduler' ),
-            ),
-            'aips_fetch_sources' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Sources Fetch', 'ai-post-scheduler' ),
             ),
             'aips_cleanup_bulk_batch_jobs' => array(
                 'schedule' => 'daily',
@@ -279,6 +275,8 @@ final class AI_Post_Scheduler {
             }
         }
         
+        AIPS_Sources_Cron::instance()->schedule();
+        AIPS_Sources_Maintenance::instance();
         flush_rewrite_rules();
 
         $logger->log('Plugin activation finished.');
@@ -316,6 +314,9 @@ final class AI_Post_Scheduler {
      */
     public function deactivate() {
         foreach (array_keys(self::get_cron_events()) as $hook) {
+            wp_clear_scheduled_hook($hook);
+        }
+        foreach (array('aips_fetch_sources', 'aips_fetch_sources_continue', 'aips_sources_archive_maintenance', 'aips_sources_archive_maintenance_continue') as $hook) {
             wp_clear_scheduled_hook($hook);
         }
         // Single events carry per-schedule args, which wp_clear_scheduled_hook()
@@ -656,6 +657,10 @@ final class AI_Post_Scheduler {
 
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
+
+        // Reconcile source scheduling in every request, including upgrades without activation.
+        AIPS_Sources_Cron::instance();
+        AIPS_Sources_Maintenance::instance();
 
         // Boot request-level telemetry if the option is enabled.
         if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
@@ -1082,11 +1087,6 @@ final class AI_Post_Scheduler {
 
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
-
-        // Sources cron: fetch content for sources that have a fetch_interval configured.
-        // AIPS_Sources_Cron::schedule() handles registering the cron event at the
-        // correct recurrence (every_6_hours) during construction.
-        AIPS_Sources_Cron::instance();
 
         // Notification event handler receives generation-failure/quota alerts from cron.
         new AIPS_Notifications();
