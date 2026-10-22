@@ -201,7 +201,7 @@ class AIPS_Prompt_Profiles_Repository {
 			return new WP_Error('db_insert_failed', $this->wpdb->last_error ?: __('Failed to create prompt profile.', 'ai-post-scheduler'));
 		}
 
-		$this->cache_invalidate_all();
+		$this->invalidate_cache_domain('prompt_profile', array(), 'profile_created');
 		return (int) $this->wpdb->insert_id;
 	}
 
@@ -242,7 +242,7 @@ class AIPS_Prompt_Profiles_Repository {
 			return new WP_Error('db_update_failed', $this->wpdb->last_error ?: __('Failed to update prompt profile.', 'ai-post-scheduler'));
 		}
 
-		$this->cache_invalidate_all();
+		$this->invalidate_cache_domain('prompt_profile', array('profile_id' => $id), 'profile_updated');
 		return true;
 	}
 
@@ -301,7 +301,7 @@ class AIPS_Prompt_Profiles_Repository {
 			}
 		}
 
-		$this->cache_invalidate_all();
+		$this->invalidate_cache_domain('prompt_profile', array('profile_id' => $id), 'profile_deleted');
 		return true;
 	}
 
@@ -332,7 +332,7 @@ class AIPS_Prompt_Profiles_Repository {
 			array('id' => $id)
 		);
 
-		$this->cache_invalidate_all();
+		$this->invalidate_cache_domain('prompt_profile', array('profile_id' => $id), 'profile_set_default');
 		return true;
 	}
 

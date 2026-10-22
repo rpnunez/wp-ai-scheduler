@@ -250,4 +250,126 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$after = $history_repository->get_by_id( $history_id );
 		$this->assertSame( 'post', $after->post_type, 'Migration must only backfill NULL post_type values, never overwrite an existing one.' );
 	}
+
+	/**
+	 * migrate_to_3_8_0() must seed a version_number = 1 snapshot into
+	 * wp_aips_prompt_profile_versions for every pre-existing row in
+	 * aips_prompt_profiles, built from that row's current stage fields.
+	 */
+	public function test_migrate_to_3_8_0_backfills_version_one_for_existing_profiles() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$profiles_table = $wpdb->prefix . 'aips_prompt_profiles';
+		$versions_table = $wpdb->prefix . 'aips_prompt_profile_versions';
+
+		$now = AIPS_DateTime::now()->timestamp();
+
+		$wpdb->insert( $profiles_table, array(
+			'name'           => 'Legacy Profile One',
+			'slug'           => 'legacy-profile-one',
+			'title_prompt'   => 'Write a title about {{topic}}.',
+			'content_prompt' => 'Write the full article body.',
+			'is_default'     => 1,
+			'is_active'      => 1,
+			'created_at'     => $now,
+			'updated_at'     => $now,
+		) );
+		$profile_one_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert( $profiles_table, array(
+			'name'           => 'Legacy Profile Two',
+			'slug'           => 'legacy-profile-two',
+			'title_prompt'   => 'A different title prompt.',
+			'content_prompt' => null,
+			'is_default'     => 0,
+			'is_active'      => 1,
+			'created_at'     => $now,
+			'updated_at'     => $now,
+		) );
+		$profile_two_id = (int) $wpdb->insert_id;
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$versions_one = $wpdb->get_results( $wpdb->prepare(
+			"SELECT * FROM `{$versions_table}` WHERE profile_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$profile_one_id
+		) );
+		$this->assertCount( 1, $versions_one, 'Exactly one backfilled version row should exist per pre-existing profile.' );
+		$this->assertSame( 1, (int) $versions_one[0]->version_number );
+
+		$decoded_stages_one = json_decode( $versions_one[0]->stages, true );
+		$this->assertIsArray( $decoded_stages_one );
+		$this->assertSame( 'Write a title about {{topic}}.', $decoded_stages_one['title_prompt'] );
+		$this->assertSame( 'Write the full article body.', $decoded_stages_one['content_prompt'] );
+
+		$versions_two = $wpdb->get_results( $wpdb->prepare(
+			"SELECT * FROM `{$versions_table}` WHERE profile_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$profile_two_id
+		) );
+		$this->assertCount( 1, $versions_two );
+		$this->assertSame( 1, (int) $versions_two[0]->version_number );
+
+		// Re-running the upgrade must be idempotent: no duplicate version rows.
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$versions_one_after_rerun = $wpdb->get_results( $wpdb->prepare(
+			"SELECT * FROM `{$versions_table}` WHERE profile_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$profile_one_id
+		) );
+		$this->assertCount( 1, $versions_one_after_rerun, 'Re-running migrate_to_3_8_0 must not duplicate version snapshots.' );
+
+		$versions_two_after_rerun = $wpdb->get_results( $wpdb->prepare(
+			"SELECT * FROM `{$versions_table}` WHERE profile_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$profile_two_id
+		) );
+		$this->assertCount( 1, $versions_two_after_rerun, 'Re-running migrate_to_3_8_0 must not duplicate version snapshots.' );
+	}
+
+	/**
+	 * A profile created AFTER migrate_to_3_8_0 has already run (e.g. one that
+	 * already has version rows from normal usage) must be left alone — the
+	 * backfill only seeds profiles that have no version rows at all.
+	 */
+	public function test_migrate_to_3_8_0_skips_profiles_that_already_have_versions() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$profiles_table = $wpdb->prefix . 'aips_prompt_profiles';
+		$versions_table = $wpdb->prefix . 'aips_prompt_profile_versions';
+		$now = AIPS_DateTime::now()->timestamp();
+
+		$wpdb->insert( $profiles_table, array(
+			'name'       => 'Already Versioned Profile',
+			'slug'       => 'already-versioned-profile',
+			'is_active'  => 1,
+			'created_at' => $now,
+			'updated_at' => $now,
+		) );
+		$profile_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert( $versions_table, array(
+			'profile_id'     => $profile_id,
+			'version_number' => 1,
+			'stages'         => wp_json_encode( array( 'title_prompt' => 'Pre-existing snapshot.' ) ),
+			'parameters'     => null,
+			'change_summary' => 'Pre-existing snapshot summary.',
+			'created_by'     => null,
+			'created_at'     => $now,
+		) );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$versions = $wpdb->get_results( $wpdb->prepare(
+			"SELECT * FROM `{$versions_table}` WHERE profile_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$profile_id
+		) );
+
+		$this->assertCount( 1, $versions, 'A profile that already has a version row must not get a second backfilled snapshot.' );
+		$decoded = json_decode( $versions[0]->stages, true );
+		$this->assertSame( 'Pre-existing snapshot.', $decoded['title_prompt'] );
+	}
 }

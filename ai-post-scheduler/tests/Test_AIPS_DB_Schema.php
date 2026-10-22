@@ -448,4 +448,56 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE id = %d", $schedule_id ) );
 		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}aips_templates WHERE id = %d", $template_id ) );
 	}
+
+	/**
+	 * Test that the aips_prompt_profile_versions table (introduced in 3.8.0)
+	 * exists with its expected columns.
+	 */
+	public function test_prompt_profile_versions_table_has_expected_columns() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_prompt_profile_versions';
+
+		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" );
+		$this->assertEquals( $table_name, $table_exists, 'aips_prompt_profile_versions table should exist' );
+
+		$columns = $wpdb->get_results( "SHOW COLUMNS FROM {$table_name}" );
+		$column_names = array_map( function ( $col ) {
+			return $col->Field;
+		}, $columns );
+
+		$expected_columns = array(
+			'id',
+			'profile_id',
+			'version_number',
+			'stages',
+			'parameters',
+			'change_summary',
+			'created_by',
+			'created_at',
+		);
+
+		foreach ( $expected_columns as $expected_column ) {
+			$this->assertContains(
+				$expected_column,
+				$column_names,
+				"Column '{$expected_column}' should exist in aips_prompt_profile_versions table"
+			);
+		}
+	}
+
+	/**
+	 * Test that aips_prompt_profile_versions has an index on profile_id for
+	 * efficient per-profile version-history lookups.
+	 */
+	public function test_prompt_profile_versions_table_has_profile_id_index() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_prompt_profile_versions';
+
+		$indexes = $wpdb->get_results( "SHOW INDEX FROM {$table_name}" );
+		$index_names = array_unique( array_map( function ( $index ) {
+			return $index->Key_name;
+		}, $indexes ) );
+
+		$this->assertContains( 'profile_id', $index_names, "Index 'profile_id' should exist on aips_prompt_profile_versions table" );
+	}
 }

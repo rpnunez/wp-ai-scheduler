@@ -38,6 +38,7 @@ class AIPS_DB_Manager {
         'aips_integration_field_mappings',
         'aips_content_audits',
         'aips_prompt_profiles',
+        'aips_prompt_profile_versions',
     );
 
     public function __construct() {
@@ -104,6 +105,7 @@ class AIPS_DB_Manager {
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
         $table_content_audits       = $tables['aips_content_audits'];
         $table_prompt_profiles      = $tables['aips_prompt_profiles'];
+        $table_prompt_profile_versions = $tables['aips_prompt_profile_versions'];
 
         $sql = array();
 
@@ -770,6 +772,20 @@ class AIPS_DB_Manager {
             UNIQUE KEY slug (slug),
             KEY is_default (is_default),
             KEY is_active (is_active)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_prompt_profile_versions (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            profile_id bigint(20) NOT NULL,
+            version_number int(11) NOT NULL DEFAULT 1,
+            stages longtext DEFAULT NULL,
+            parameters longtext DEFAULT NULL,
+            change_summary text DEFAULT NULL,
+            created_by bigint(20) DEFAULT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY profile_id (profile_id),
+            KEY profile_id_version_number (profile_id, version_number)
         ) $charset_collate;";
 
         return $sql;
