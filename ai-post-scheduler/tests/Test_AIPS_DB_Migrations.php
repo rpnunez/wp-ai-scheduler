@@ -251,6 +251,60 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertSame( 'post', $after->post_type, 'Migration must only backfill NULL post_type values, never overwrite an existing one.' );
 	}
 
+	public function test_sources_nullable_migration_failure_preserves_version_and_retries() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+		$table = $wpdb->prefix . 'aips_sources';
+		$wpdb->query( "UPDATE `$table` SET next_fetch_at = 0 WHERE next_fetch_at IS NULL" );
+		$wpdb->query( "ALTER TABLE `$table` MODIFY COLUMN next_fetch_at bigint(20) unsigned NOT NULL DEFAULT 0" );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.18' );
+		$fail_alter = static function( $query ) use ( $table ) {
+			return str_starts_with( $query, "ALTER TABLE `$table` MODIFY COLUMN `next_fetch_at`" ) ? 'INVALID nullable migration fixture' : $query;
+		};
+		$previous = $wpdb->suppress_errors( true );
+		add_filter( 'query', $fail_alter );
+		try {
+			AIPS_DB_Migrations::check_and_run();
+			$this->assertSame( '3.7.18', get_option( 'aips_db_version' ) );
+			$this->assertSame( '3.7.18', AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
+		} finally {
+			remove_filter( 'query', $fail_alter );
+			$wpdb->suppress_errors( $previous );
+			// Recover schema even if the assertions above fail.
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.18' );
+			AIPS_DB_Migrations::check_and_run();
+		}
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+		$this->assertSame( 'YES', $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" )->Null );
+	}
+
+	public function test_sources_attempt_migration_is_idempotent_and_preserves_legacy_due_time() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+		$table = $wpdb->prefix . 'aips_sources';
+		$wpdb->query( "UPDATE `$table` SET next_fetch_at = 0 WHERE next_fetch_at IS NULL" );
+		$wpdb->query( "ALTER TABLE `$table` MODIFY COLUMN next_fetch_at bigint(20) unsigned NOT NULL DEFAULT 0" );
+		foreach ( array( 'last_fetch_attempt_at', 'last_fetch_status', 'last_fetch_error' ) as $column ) {
+			$wpdb->query( "ALTER TABLE `$table` DROP COLUMN `$column`" );
+		}
+		$wpdb->insert( $table, array( 'url' => 'https://example.com/migration', 'fetch_interval' => 'hourly', 'next_fetch_at' => 123456 ) );
+		$id = (int) $wpdb->insert_id;
+		$migration = new ReflectionMethod( AIPS_DB_Migrations::class, 'migrate_to_3_7_19' );
+		$migration->setAccessible( true );
+		$instance = new AIPS_DB_Migrations();
+		$this->assertTrue( $migration->invoke( $instance ) );
+		$this->assertTrue( $migration->invoke( $instance ) );
+		$this->assertSame( '', $wpdb->last_error );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `$table` WHERE id = %d", $id ) );
+		$this->assertSame( 123456, (int) $row->next_fetch_at );
+		$this->assertNull( $row->last_fetch_attempt_at );
+		$this->assertNull( $row->last_fetch_status );
+		$this->assertNull( $row->last_fetch_error );
+		$this->assertNotFalse( $wpdb->update( $table, array( 'next_fetch_at' => null ), array( 'id' => $id ) ) );
+		$this->assertNull( $wpdb->get_var( $wpdb->prepare( "SELECT next_fetch_at FROM `$table` WHERE id = %d", $id ) ) );
+	}
+
+
 	/**
 	 * migrate_to_3_7_14() must ensure post_generation_lock exists on aips_authors
 	 * and claimed_at exists on aips_author_topics.

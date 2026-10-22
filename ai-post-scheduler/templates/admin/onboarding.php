@@ -353,3 +353,4 @@ window.aipsOnboarding = window.aipsOnboarding || {};
 window.aipsOnboarding.pageUrl = <?php echo wp_json_encode($wizard_url); ?>;
 </script>
 
+<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
