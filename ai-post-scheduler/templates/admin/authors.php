@@ -397,6 +397,20 @@ $site_ctx = AIPS_Site_Context::get();
                 </p>
             </div>
 
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="author_generate_slug" name="generate_slug" value="1">
+                    <?php esc_html_e('Generate Post Slug?', 'ai-post-scheduler'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, an SEO-friendly URL slug will be generated for posts written by this author.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group" id="author-slug-prompt-group" style="display: none;">
+                <label for="author_slug_prompt"><?php esc_html_e('Slug Prompt', 'ai-post-scheduler'); ?></label>
+                <input type="text" id="author_slug_prompt" name="slug_prompt" placeholder="<?php esc_attr_e('Leave empty for standard SEO-optimized slug', 'ai-post-scheduler'); ?>">
+                <p class="description"><?php esc_html_e('Optional custom instructions for post slug generation.', 'ai-post-scheduler'); ?></p>
+            </div>
+
             <div class="aips-modal-footer">
                 <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                 <button type="submit" class="aips-btn aips-btn-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>

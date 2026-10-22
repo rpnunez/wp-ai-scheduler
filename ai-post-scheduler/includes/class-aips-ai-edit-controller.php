@@ -175,7 +175,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
@@ -231,6 +231,9 @@ class AIPS_AI_Edit_Controller {
 		switch ($component) {
 			case 'title':
 				$result = $this->service->regenerate_title($context);
+				break;
+			case 'slug':
+				$result = $this->service->regenerate_slug($context);
 				break;
 			case 'excerpt':
 				$result = $this->service->regenerate_excerpt($context);
@@ -468,7 +471,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
@@ -516,7 +519,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
@@ -657,6 +660,9 @@ class AIPS_AI_Edit_Controller {
 		switch ($component) {
 			case 'title':
 				return sanitize_text_field((string) $value);
+
+			case 'slug':
+				return sanitize_title((string) $value);
 
 			case 'excerpt':
 				return sanitize_textarea_field((string) $value);

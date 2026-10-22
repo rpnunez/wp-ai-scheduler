@@ -47,9 +47,10 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 *                                              title and image prompts.
 	 * @param string                  $image_prompt Raw image prompt template, or '' when the
 	 *                                              post has no AI-generated featured image.
+	 * @param bool|null               $include_slug Whether to include slug generation (null = auto-detect).
 	 * @return string
 	 */
-	public function build($context, array $ai_variables = array(), $image_prompt = '') {
+	public function build($context, array $ai_variables = array(), $image_prompt = '', $include_slug = null) {
 		$topic_str = $context->get_topic();
 		$sections  = array();
 
@@ -84,6 +85,18 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 		$sections[] = "EXCERPT INSTRUCTIONS:\n" . $excerpt_instructions;
 
+		$include_slug = $include_slug !== null ? $include_slug : (method_exists($context, 'should_generate_slug') && $context->should_generate_slug());
+
+		if ($include_slug) {
+			$slug_builder      = new AIPS_Prompt_Builder_Post_Slug($this->template_processor);
+			$slug_instructions = $slug_builder->resolve_slug_instructions($context, $topic_str);
+			$slug_section      = "SLUG INSTRUCTIONS:\n" . $slug_builder->get_slug_guidelines();
+			if (!empty($slug_instructions)) {
+				$slug_section .= "\n\nSpecific instructions:\n" . $slug_instructions;
+			}
+			$sections[] = $slug_section;
+		}
+
 		if (!empty($image_prompt)) {
 			$sections[] = "FEATURED IMAGE INSTRUCTIONS:\nUsing the template below, produce a finished image generation prompt describing the article's featured image. Substitute every placeholder with a concrete value drawn from the article.\n\n" . $image_prompt;
 		}
@@ -94,7 +107,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 
 		$prompt = implode("\n\n", $sections);
 		$prompt = $this->append_diversity_blocks($prompt, $context);
-		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt));
+		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt), $include_slug);
 
 		/**
 		 * Filters the combined metadata prompt used by conversational generation.
@@ -118,13 +131,18 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 *
 	 * @param string[] $ai_variables  AI variable names to resolve.
 	 * @param bool     $include_image Whether an image prompt was requested.
+	 * @param bool     $include_slug  Whether a post slug was requested.
 	 * @return array
 	 */
-	public function get_schema(array $ai_variables = array(), $include_image = false) {
+	public function get_schema(array $ai_variables = array(), $include_image = false, $include_slug = false) {
 		$properties = array(
 			'title'   => array('type' => 'string'),
 			'excerpt' => array('type' => 'string'),
 		);
+
+		if ($include_slug) {
+			$properties['slug'] = array('type' => 'string');
+		}
 
 		if ($include_image) {
 			$properties['image_prompt'] = array('type' => 'string');
@@ -145,10 +163,21 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			);
 		}
 
+		$required = array('title', 'excerpt');
+		if ($include_slug) {
+			$required[] = 'slug';
+		}
+		if ($include_image) {
+			$required[] = 'image_prompt';
+		}
+		if (!empty($ai_variables)) {
+			$required[] = 'ai_variables';
+		}
+
 		return array(
-			'type'       => 'object',
-			'properties' => $properties,
-			'required'             => array_values(array_filter(array('title', 'excerpt', $include_image ? 'image_prompt' : null, !empty($ai_variables) ? 'ai_variables' : null))),
+			'type'                 => 'object',
+			'properties'           => $properties,
+			'required'             => $required,
 			'additionalProperties' => false,
 		);
 	}
@@ -199,13 +228,18 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 *
 	 * @param string[] $ai_variables  AI variable names.
 	 * @param bool     $include_image Whether an image prompt was requested.
+	 * @param bool     $include_slug  Whether a post slug was requested.
 	 * @return string
 	 */
-	private function build_response_shape(array $ai_variables, $include_image) {
+	private function build_response_shape(array $ai_variables, $include_image, $include_slug = false) {
 		$shape = array(
 			'"title": "the finished post title, with no surrounding quotes"',
 			'"excerpt": "the 40-60 word excerpt"',
 		);
+
+		if ($include_slug) {
+			$shape[] = '"slug": "the finished lowercase hyphenated URL slug"';
+		}
 
 		if ($include_image) {
 			$shape[] = '"image_prompt": "the finished featured image prompt"';

@@ -256,6 +256,10 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.18', '<' ) ) {
 			$this->migrate_to_3_7_18();
 		}
+
+		if ( version_compare( $from_version, '3.7.19', '<' ) ) {
+			$this->migrate_to_3_7_19();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1312,6 +1316,60 @@ class AIPS_DB_Migrations {
 			'aips_author_topic_fallback_action',
 		) as $option_name ) {
 			delete_option( $option_name );
+		}
+	}
+
+	/**
+	 * Migration for version 3.7.19.
+	 *
+	 * Adds generate_slug and slug_prompt to aips_templates and aips_authors.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_19() {
+		global $wpdb;
+
+		$table_templates = $wpdb->prefix . 'aips_templates';
+		$table_authors   = $wpdb->prefix . 'aips_authors';
+
+		// 1. Templates table: generate_slug and slug_prompt
+		$templates_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_templates ) );
+		if ( $templates_table_exists === $table_templates ) {
+			$has_gen_slug = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'generate_slug'
+			) );
+			if ( ! $has_gen_slug ) {
+				$wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+
+			$has_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'slug_prompt'
+			) );
+			if ( ! $has_slug_prompt ) {
+				$wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER title_prompt" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		// 2. Authors table: generate_slug and slug_prompt
+		$authors_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_authors ) );
+		if ( $authors_table_exists === $table_authors ) {
+			$has_author_gen_slug = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'generate_slug'
+			) );
+			if ( ! $has_author_gen_slug ) {
+				$wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+
+			$has_author_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'slug_prompt'
+			) );
+			if ( ! $has_author_slug_prompt ) {
+				$wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER generate_slug" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
 		}
 
 		$this->logger->log( 'Migration 3.7.18: Consolidated author topic auto-approval options and backfilled min_relevance.', 'info' );

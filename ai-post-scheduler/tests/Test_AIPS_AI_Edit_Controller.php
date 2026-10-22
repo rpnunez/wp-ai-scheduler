@@ -236,6 +236,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 				'title' => 'AI Generated Post: New Title',
 				'excerpt' => 'New excerpt',
 				'content' => 'New content',
+				'slug' => 'brand-new-slug',
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
@@ -257,6 +258,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertEquals('AI Generated Post: New Title', $updated_post->post_title);
 		$this->assertEquals('New excerpt', $updated_post->post_excerpt);
 		$this->assertEquals('New content', $updated_post->post_content);
+		$this->assertEquals('brand-new-slug', $updated_post->post_name);
 		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
 		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
 
@@ -266,6 +268,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertTrue($statuses['post_excerpt']);
 		$this->assertTrue($statuses['post_content']);
 		$this->assertTrue($statuses['featured_image']);
+		$this->assertTrue($statuses['post_slug']);
 	}
 	
 	/**
@@ -281,6 +284,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 				'title' => '<script>alert("xss")</script>Safe Title',
 				'excerpt' => '<script>alert("xss")</script>Safe excerpt',
 				'content' => '<p>Safe content</p><script>alert("xss")</script>',
+				'slug' => '<script>alert("xss")</script>Safe Slug!',
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
@@ -305,6 +309,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		// Content should allow safe HTML
 		$this->assertStringContainsString('<p>Safe content</p>', $updated_post->post_content);
 		$this->assertStringNotContainsString('<script>', $updated_post->post_content);
+		$this->assertEquals('safe-slug', $updated_post->post_name);
 	}
 
 	/**

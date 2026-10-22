@@ -549,6 +549,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $config = AIPS_Config::get_instance();
             switch ($type) {
                 case 'title':
+                case 'slug':
                     // Short titles: ~10-20 words.
                     $output_tokens = (int) $config->get_option('aips_max_tokens_title');
 					$minimum_tokens = self::SHORT_FORM_MIN_TOKENS;

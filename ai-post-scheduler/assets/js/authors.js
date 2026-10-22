@@ -51,6 +51,9 @@
 			// Toggle Source Groups panel when Include Sources? checkbox changes.
 			$(document).on('change', '#author_include_sources', this.toggleAuthorSourceGroups.bind(this));
 
+			// Toggle Slug Prompt when Generate Post Slug checkbox changes.
+			$(document).on('change', '#author_generate_slug', this.toggleAuthorSlugPrompt.bind(this));
+
 			// Toggle Topic Auto-Approval fields when policy changes.
 			$(document).on('change', '#topic_auto_approval_mode', this.toggleAutoApprovalFields.bind(this));
 
@@ -257,7 +260,21 @@
 			$('#author_include_sources').prop('checked', false);
 			$('.aips-author-source-group-cb').prop('checked', false);
 			$('#author-source-groups-selector').hide();
+
+			// Reset slug fields.
+			$('#author_generate_slug').prop('checked', false);
+			$('#author_slug_prompt').val('');
+			$('#author-slug-prompt-group').hide();
 			$('#aips-author-modal').fadeIn();
+		},
+
+		/**
+		 * Show or hide the Author Slug Prompt input.
+		 *
+		 * @param {Event} e - Change event from `#author_generate_slug`.
+		 */
+		toggleAuthorSlugPrompt: function (e) {
+			$('#author-slug-prompt-group').toggle($(e.currentTarget).is(':checked'));
 		},
 
 		/**
@@ -378,6 +395,12 @@
 						authorSgIds.forEach(function(tid) {
 							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
 						});
+
+						// Restore slug settings.
+						var generateSlug = author.generate_slug == 1;
+						$('#author_generate_slug').prop('checked', generateSlug);
+						$('#author_slug_prompt').val(author.slug_prompt || '');
+						$('#author-slug-prompt-group').toggle(generateSlug);
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 

@@ -105,6 +105,13 @@ $type_labels = array(
 				<span><?php echo esc_html($timeline_data['post_title']); ?></span>
 			</div>
 			<?php endif; ?>
+			<?php if (!empty($timeline_data['post_slug'])): ?>
+			<div class="aips-timeline-milestone-item">
+				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+				<strong><?php esc_html_e('Post Slug:', 'ai-post-scheduler'); ?></strong>
+				<span><?php echo esc_html($timeline_data['post_slug']); ?></span>
+			</div>
+			<?php endif; ?>
 			<?php if (!empty($timeline_data['post_excerpt'])): ?>
 			<div class="aips-timeline-milestone-item">
 				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
