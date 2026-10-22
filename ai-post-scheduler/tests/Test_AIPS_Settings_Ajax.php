@@ -242,6 +242,37 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		$this->assertContains('aips_enable_retry', $response['data']['updated']);
 		$this->assertSame(1, (int) get_option('aips_enable_retry'));
 	}
+
+	public function test_settings_sections_registered_for_resilience_and_notifications() {
+		global $wp_settings_sections, $wp_settings_fields;
+
+		$settings = new AIPS_Settings();
+		$settings->register_settings();
+
+		// Resilience sections
+		$this->assertArrayHasKey('aips_resilience_retry_section', $wp_settings_sections['aips-settings']);
+		$this->assertArrayHasKey('aips_resilience_rate_limit_section', $wp_settings_sections['aips-settings']);
+		$this->assertArrayHasKey('aips_resilience_batch_section', $wp_settings_sections['aips-settings']);
+		$this->assertArrayHasKey('aips_resilience_circuit_breaker_section', $wp_settings_sections['aips-settings']);
+
+		// Notifications sections
+		$this->assertArrayHasKey('aips_notifications_delivery_section', $wp_settings_sections['aips-settings']);
+		$this->assertArrayHasKey('aips_notifications_system_section', $wp_settings_sections['aips-settings']);
+		$this->assertArrayHasKey('aips_notifications_content_section', $wp_settings_sections['aips-settings']);
+		$this->assertArrayHasKey('aips_notifications_automation_section', $wp_settings_sections['aips-settings']);
+		$this->assertArrayHasKey('aips_notifications_digests_section', $wp_settings_sections['aips-settings']);
+
+		// Check fields mapped to sections
+		$this->assertArrayHasKey('aips_enable_retry', $wp_settings_fields['aips-settings']['aips_resilience_retry_section']);
+		$this->assertArrayHasKey('aips_enable_rate_limiting', $wp_settings_fields['aips-settings']['aips_resilience_rate_limit_section']);
+		$this->assertArrayHasKey('aips_generation_delay_seconds', $wp_settings_fields['aips-settings']['aips_resilience_batch_section']);
+		$this->assertArrayHasKey('aips_enable_circuit_breaker', $wp_settings_fields['aips-settings']['aips_resilience_circuit_breaker_section']);
+		$this->assertArrayHasKey('aips_review_notifications_email', $wp_settings_fields['aips-settings']['aips_notifications_delivery_section']);
+		$this->assertArrayHasKey('aips_notification_preferences_generation_failed', $wp_settings_fields['aips-settings']['aips_notifications_system_section']);
+		$this->assertArrayHasKey('aips_notification_preferences_post_generated', $wp_settings_fields['aips-settings']['aips_notifications_content_section']);
+		$this->assertArrayHasKey('aips_notification_preferences_template_generated', $wp_settings_fields['aips-settings']['aips_notifications_automation_section']);
+		$this->assertArrayHasKey('aips_notification_preferences_daily_digest', $wp_settings_fields['aips-settings']['aips_notifications_digests_section']);
+	}
 }
 
 class Test_AIPS_Settings_Ajax_Fake_AI_Service implements AIPS_AI_Service_Interface {

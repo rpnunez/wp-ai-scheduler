@@ -1353,12 +1353,12 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
-        // Notifications section: Email address + all per-type preferences
+        // Notifications sections: Email address + grouped notification preferences
         // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_notifications_section',
-            __('Notifications', 'ai-post-scheduler'),
-            array($this->ui, 'notifications_section_callback'),
+            'aips_notifications_delivery_section',
+            __('Email Routing & Delivery', 'ai-post-scheduler'),
+            '__return_empty_string',
             'aips-settings'
         );
 
@@ -1367,16 +1367,110 @@ class AIPS_Settings {
             __('Notifications Email Address', 'ai-post-scheduler'),
             array($this->ui, 'review_notifications_email_field_callback'),
             'aips-settings',
-            'aips_notifications_section'
+            'aips_notifications_delivery_section'
         );
 
-        foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
+        add_settings_section(
+            'aips_notifications_system_section',
+            __('System Health & Resilience Alerts', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_content_section',
+            __('Content & Editorial Workflow Alerts', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_automation_section',
+            __('Automation & Operational Maintenance', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_digests_section',
+            __('Scheduled Activity Digests & Reports', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        $notification_groups = array(
+            'aips_notifications_system_section' => array(
+                'generation_failed',
+                'quota_alert',
+                'circuit_breaker_opened',
+                'rate_limit_reached',
+                'integration_error',
+                'scheduler_error',
+                'system_error',
+            ),
+            'aips_notifications_content_section' => array(
+                'post_ready_for_review',
+                'post_generated',
+                'partial_generation_completed',
+                'post_rejected',
+                'post_consolidated',
+                'duplicate_groups_found',
+                'author_topics_generated',
+                'author_suggestions',
+                'research_topics_ready',
+            ),
+            'aips_notifications_automation_section' => array(
+                'template_generated',
+                'manual_generation_completed',
+                'template_change',
+                'seeder_complete',
+                'history_cleanup',
+            ),
+            'aips_notifications_digests_section' => array(
+                'daily_digest',
+                'weekly_summary',
+                'monthly_report',
+            ),
+        );
+
+        $type_registry = AIPS_Notifications::get_notification_type_registry();
+        $registered_types = array();
+
+        foreach ($notification_groups as $section_id => $types) {
+            foreach ($types as $type) {
+                if (isset($type_registry[$type])) {
+                    $meta = $type_registry[$type];
+                    add_settings_field(
+                        'aips_notification_preferences_' . $type,
+                        $meta['label'],
+                        array($this->ui, 'notification_preference_field_callback'),
+                        'aips-settings',
+                        $section_id,
+                        array(
+                            'type'        => $type,
+                            'description' => $meta['description'],
+                        )
+                    );
+                    $registered_types[$type] = true;
+                }
+            }
+        }
+
+        // Register any newly added or remaining types not in explicit groups.
+        foreach ($type_registry as $type => $meta) {
+            if (isset($registered_types[$type])) {
+                continue;
+            }
+            $fallback_section = (isset($meta['level']) && 'error' === $meta['level'])
+                ? 'aips_notifications_system_section'
+                : 'aips_notifications_content_section';
+
             add_settings_field(
                 'aips_notification_preferences_' . $type,
                 $meta['label'],
                 array($this->ui, 'notification_preference_field_callback'),
                 'aips-settings',
-                'aips_notifications_section',
+                $fallback_section,
                 array(
                     'type'        => $type,
                     'description' => $meta['description'],
@@ -1460,10 +1554,13 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
+        // -----------------------------------------------------------------------
+        // Resilience sections: Retry, Rate Limiting, Batch Pacing, Circuit Breaker
+        // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_resilience_section',
-            __('Resilience & Limits', 'ai-post-scheduler'),
-            array($this->ui, 'resilience_section_callback'),
+            'aips_resilience_retry_section',
+            __('Retry & Backoff Policy', 'ai-post-scheduler'),
+            '__return_empty_string',
             'aips-settings'
         );
 
@@ -1472,7 +1569,7 @@ class AIPS_Settings {
             __('Enable Retry', 'ai-post-scheduler'),
             array($this->ui, 'enable_retry_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
         );
 
         add_settings_field(
@@ -1480,7 +1577,7 @@ class AIPS_Settings {
             __('Max Retries on Failure', 'ai-post-scheduler'),
             array($this->ui, 'max_retries_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
         );
 
         add_settings_field(
@@ -1488,7 +1585,14 @@ class AIPS_Settings {
             __('Retry Initial Delay (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'retry_initial_delay_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_rate_limit_section',
+            __('API Rate Limiting', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
         );
 
         add_settings_field(
@@ -1496,7 +1600,7 @@ class AIPS_Settings {
             __('Enable Rate Limiting', 'ai-post-scheduler'),
             array($this->ui, 'enable_rate_limiting_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
         );
 
         add_settings_field(
@@ -1504,7 +1608,7 @@ class AIPS_Settings {
             __('Rate Limit Max Requests', 'ai-post-scheduler'),
             array($this->ui, 'rate_limit_requests_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
         );
 
         add_settings_field(
@@ -1512,7 +1616,14 @@ class AIPS_Settings {
             __('Rate Limit Period (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'rate_limit_period_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_batch_section',
+            __('Batch Pacing & Resume Cooldown', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
         );
 
         add_settings_field(
@@ -1520,7 +1631,7 @@ class AIPS_Settings {
             __('Delay Between Generations (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'generation_delay_seconds_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_batch_section'
         );
 
         add_settings_field(
@@ -1528,7 +1639,14 @@ class AIPS_Settings {
             __('Batch Resume Cooldown (Minutes)', 'ai-post-scheduler'),
             array($this->ui, 'batch_resume_cooldown_minutes_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_batch_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_circuit_breaker_section',
+            __('Circuit Breaker Protection', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
         );
 
         add_settings_field(
@@ -1536,7 +1654,7 @@ class AIPS_Settings {
             __('Enable Circuit Breaker', 'ai-post-scheduler'),
             array($this->ui, 'enable_circuit_breaker_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         add_settings_field(
@@ -1544,7 +1662,7 @@ class AIPS_Settings {
             __('Circuit Breaker Failure Threshold', 'ai-post-scheduler'),
             array($this->ui, 'circuit_breaker_threshold_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         add_settings_field(
@@ -1552,7 +1670,7 @@ class AIPS_Settings {
             __('Circuit Breaker Timeout (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'circuit_breaker_timeout_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         // -----------------------------------------------------------------------
