@@ -91,6 +91,29 @@ class AIPS_Authors_Repository {
 			}
 		);
 	}
+
+	/**
+	 * Get multiple authors by IDs using a single IN() query.
+	 *
+	 * @param int[] $ids Array of author IDs.
+	 * @return object[] Array of author objects.
+	 */
+	public function get_by_ids(array $ids): array {
+		$clean_ids = array_filter(array_map('absint', $ids));
+
+		if (empty($clean_ids)) {
+			return array();
+		}
+
+		$placeholders = implode(', ', array_fill(0, count($clean_ids), '%d'));
+
+		return $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE id IN ($placeholders)",
+				$clean_ids
+			)
+		);
+	}
 	
 	/**
 	 * Get a single author by ID.
