@@ -113,9 +113,9 @@ class AIPS_Author_Topics_Controller {
 		$this->feedback_repository    = new AIPS_Feedback_Repository();
 		$this->post_generator         = new AIPS_Author_Post_Generator();
 		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
-		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
+		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : $container->make(AIPS_History_Service::class);
 		$this->similarity_evaluator   = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());
-		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : $container->make(AIPS_History_Repository::class));
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
 		$this->embeddings_repo        = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());

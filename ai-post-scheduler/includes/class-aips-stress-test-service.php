@@ -156,12 +156,18 @@ class AIPS_Stress_Test_Service {
      */
     private $history_repository;
 
-    public function __construct($ai_service = null, $logger = null) {
+    /**
+     * @var AIPS_Stress_Test_Data_Cleaner
+     */
+    private $data_cleaner;
+
+    public function __construct($ai_service = null, $logger = null, ?AIPS_Stress_Test_Data_Cleaner $data_cleaner = null) {
         $container = AIPS_Container::get_instance();
 
         $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+        $this->data_cleaner = $data_cleaner ?: new AIPS_Stress_Test_Data_Cleaner($this->logger);
         $this->history_repository = $container->makeIfExists(AIPS_History_Repository_Interface::class, function() {
-            return new AIPS_History_Repository();
+            return AIPS_History_Repository::instance();
         });
 
         if ($ai_service) {
@@ -2057,15 +2063,24 @@ class AIPS_Stress_Test_Service {
     // -----------------------------------------------------------------------
 
     /**
+     * Get the test data cleaner instance.
+     *
+     * @return AIPS_Stress_Test_Data_Cleaner
+     */
+    public function get_data_cleaner(): AIPS_Stress_Test_Data_Cleaner {
+        if ($this->data_cleaner === null) {
+            $this->data_cleaner = new AIPS_Stress_Test_Data_Cleaner($this->logger);
+        }
+        return $this->data_cleaner;
+    }
+
+    /**
      * Count posts and attachments created by this page.
      *
      * @return array{posts: int, attachments: int}
      */
     public function count_test_data() {
-        return array(
-            'posts'       => count($this->get_test_post_ids()),
-            'attachments' => count($this->get_test_attachment_ids()),
-        );
+        return $this->get_data_cleaner()->count_test_data();
     }
 
     /**
@@ -2074,7 +2089,7 @@ class AIPS_Stress_Test_Service {
      * @return int[]
      */
     private function get_test_post_ids() {
-        return $this->collect_test_ids('any', self::TEST_POST_META);
+        return $this->get_data_cleaner()->get_test_post_ids();
     }
 
     /**
@@ -2083,7 +2098,7 @@ class AIPS_Stress_Test_Service {
      * @return int[]
      */
     private function get_test_attachment_ids() {
-        return $this->collect_test_ids('attachment', self::TEST_ATTACHMENT_META);
+        return $this->get_data_cleaner()->get_test_attachment_ids();
     }
 
     /**
@@ -2094,32 +2109,7 @@ class AIPS_Stress_Test_Service {
      * @return int[]
      */
     private function collect_test_ids($post_type, $meta_key) {
-        $ids = array();
-        $offset = 0;
-        $batch_size = 200;
-
-        while (true) {
-            $batch = get_posts(array(
-                'post_type'        => $post_type,
-                'post_status'      => 'any',
-                'numberposts'      => $batch_size,
-                'offset'           => $offset,
-                'orderby'          => 'ID',
-                'order'            => 'ASC',
-                'fields'           => 'ids',
-                'meta_key'         => $meta_key,
-                'suppress_filters' => false,
-            ));
-
-            if (empty($batch)) {
-                break;
-            }
-
-            $ids = array_merge($ids, $batch);
-            $offset += count($batch);
-        }
-
-        return $ids;
+        return $this->get_data_cleaner()->collect_test_ids($post_type, $meta_key);
     }
 
     /**
@@ -2128,29 +2118,7 @@ class AIPS_Stress_Test_Service {
      * @return array{posts: int, attachments: int}
      */
     public function cleanup_test_data() {
-        $deleted_posts = 0;
-        $deleted_media = 0;
-
-        foreach ($this->get_test_post_ids() as $post_id) {
-            // Bypass the trash: these are disposable fixtures, and leaving them in
-            // the trash would keep them counted as existing test data.
-            if (wp_delete_post($post_id, true)) {
-                $deleted_posts++;
-            }
-        }
-
-        foreach ($this->get_test_attachment_ids() as $attachment_id) {
-            if (wp_delete_attachment($attachment_id, true)) {
-                $deleted_media++;
-            }
-        }
-
-        $this->logger->log('Stress test data cleaned up', 'info', array(
-            'posts'       => $deleted_posts,
-            'attachments' => $deleted_media,
-        ));
-
-        return array('posts' => $deleted_posts, 'attachments' => $deleted_media);
+        return $this->get_data_cleaner()->cleanup_test_data();
     }
 
     /**

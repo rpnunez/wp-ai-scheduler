@@ -69,14 +69,31 @@ class AIPS_Research_Controller {
     
     /**
      * Initialize the controller.
+     *
+     * @param AIPS_Research_Service|null          $research_service       Optional research service.
+     * @param AIPS_Trending_Topics_Repository|null $repository             Optional repository.
+     * @param AIPS_Logger|null                    $logger                 Optional logger.
+     * @param AIPS_History_Service_Interface|null $history_service        Optional history service.
+     * @param AIPS_Content_Auditor|null           $content_auditor        Optional content auditor.
+     * @param AIPS_Bulk_Generator_Service|null    $bulk_generator_service Optional bulk generator service.
      */
-    public function __construct() {
-        $this->research_service       = new AIPS_Research_Service();
-        $this->repository             = new AIPS_Trending_Topics_Repository();
-        $this->logger                 = new AIPS_Logger();
-        $this->history_service        = new AIPS_History_Service();
-        $this->content_auditor        = new AIPS_Content_Auditor();
-        $this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
+    public function __construct(
+        $research_service = null,
+        $repository = null,
+        $logger = null,
+        ?AIPS_History_Service_Interface $history_service = null,
+        $content_auditor = null,
+        $bulk_generator_service = null
+    ) {
+        $container = AIPS_Container::get_instance();
+        $this->research_service       = $research_service ?: new AIPS_Research_Service();
+        $this->repository             = $repository ?: new AIPS_Trending_Topics_Repository();
+        $this->logger                 = $logger ?: new AIPS_Logger();
+        $this->history_service        = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
+            ? $container->make(AIPS_History_Service_Interface::class)
+            : AIPS_History_Service::instance());
+        $this->content_auditor        = $content_auditor ?: new AIPS_Content_Auditor();
+        $this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
         
         $this->init_hooks();
     }

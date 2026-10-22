@@ -42,7 +42,7 @@ class AIPS_Dashboard_Controller {
 		}
 
 		$dashboard_repo   = new AIPS_Dashboard_Repository();
-		$history_repo        = new AIPS_History_Repository();
+		$history_repo        = AIPS_Container::get_instance()->make(AIPS_History_Repository_Interface::class);
 		$schedule_repo       = new AIPS_Schedule_Repository();
 		$template_repo       = new AIPS_Template_Repository();
 		$post_review_repo    = new AIPS_Post_Review_Repository();
@@ -280,7 +280,7 @@ class AIPS_Dashboard_Controller {
 	public function render_page() {
 		// Use repositories instead of direct SQL
 		$dashboard_repo   = new AIPS_Dashboard_Repository();
-		$history_repo        = new AIPS_History_Repository();
+		$history_repo        = AIPS_Container::get_instance()->make(AIPS_History_Repository_Interface::class);
 		$schedule_repo       = new AIPS_Schedule_Repository();
 		$template_repo       = new AIPS_Template_Repository();
 		$post_review_repo    = new AIPS_Post_Review_Repository();
