@@ -380,8 +380,8 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 <tr class="aips-il-item aips-il-row" data-id="{{id}}">
 	<td class="aips-il-col-select"><input type="checkbox" class="aips-il-select" value="{{id}}" aria-label="{{selectLabel}}"{{checked}}></td>
 	<td class="aips-il-col-posts">
-		<div class="aips-il-post aips-il-post-source">{{source}}</div>
-		<div class="aips-il-post aips-il-post-target"><span class="aips-il-arrow" aria-hidden="true">→</span>{{target}}</div>
+		<div class="aips-il-post aips-il-post-source" title="{{sourceTitle}}">{{source}}</div>
+		<div class="aips-il-post aips-il-post-target" title="{{targetTitle}}"><span class="aips-il-arrow" aria-hidden="true">→</span>{{target}}</div>
 	</td>
 	<td class="aips-il-col-anchor"><span class="aips-il-anchor-cell" title="{{anchorTitle}}">{{anchor}}</span></td>
 	<td class="aips-il-col-direction">{{originChip}}</td>
@@ -400,9 +400,9 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 		<span class="aips-il-card-status">{{statusChip}}</span>
 	</header>
 	<div class="aips-il-card-posts">
-		<div class="aips-il-post aips-il-post-source">{{source}}</div>
+		<div class="aips-il-post aips-il-post-source" title="{{sourceTitle}}">{{source}}</div>
 		<div class="aips-il-card-link" aria-hidden="true">↓</div>
-		<div class="aips-il-post aips-il-post-target">{{target}}</div>
+		<div class="aips-il-post aips-il-post-target" title="{{targetTitle}}">{{target}}</div>
 	</div>
 	<div class="aips-il-card-anchor">
 		<span class="aips-il-anchor-label">{{anchorLabel}}</span>

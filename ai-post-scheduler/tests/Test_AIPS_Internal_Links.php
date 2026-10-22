@@ -170,7 +170,7 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	public function test_links_update_status_bulk() {
 		$a     = $this->links_repo->insert( 11, 21, 0.9 );
 		$b     = $this->links_repo->insert( 12, 22, 0.8 );
-		$other = $this->links_repo->insert( 13, 23, 0.7 );
+		$this->links_repo->insert( 13, 23, 0.7 );
 
 		$result = $this->links_repo->update_status_bulk( array( $a, $b ), 'rejected' );
 
@@ -178,7 +178,21 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 11 )[0]->status );
 		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 12 )[0]->status );
 		$this->assertEquals( 'pending', $this->links_repo->get_by_source_post( 13 )[0]->status );
-		$this->assertNotEmpty( $other );
+	}
+
+	/**
+	 * update_status_bulk() with $only_from should skip rows in other statuses.
+	 */
+	public function test_links_update_status_bulk_only_from() {
+		$pending  = $this->links_repo->insert( 18, 28, 0.9 );
+		$inserted = $this->links_repo->insert( 19, 29, 0.8 );
+		$this->links_repo->update_status( $inserted, 'inserted' );
+
+		$result = $this->links_repo->update_status_bulk( array( $pending, $inserted ), 'rejected', array( 'pending' ) );
+
+		$this->assertEquals( 1, $result );
+		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 18 )[0]->status );
+		$this->assertEquals( 'inserted', $this->links_repo->get_by_source_post( 19 )[0]->status );
 	}
 
 	/**

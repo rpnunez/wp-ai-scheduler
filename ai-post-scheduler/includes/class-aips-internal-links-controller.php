@@ -331,7 +331,7 @@ class AIPS_Internal_Links_Controller {
 		if ($bulk_action === 'delete') {
 			$result = $this->links_repo->delete_bulk($ids);
 		} else {
-			$result = $this->links_repo->update_status_bulk($ids, $bulk_action === 'accept' ? 'accepted' : 'rejected');
+			$result = $this->links_repo->update_status_bulk($ids, $bulk_action === 'accept' ? 'accepted' : 'rejected', array('pending'));
 		}
 
 		if ($result === false) {

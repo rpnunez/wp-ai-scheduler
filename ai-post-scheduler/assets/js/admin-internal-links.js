@@ -110,7 +110,9 @@
 				try {
 					window.localStorage.setItem('aipsInternalLinksView', this.viewMode);
 				} catch (err) { /* storage unavailable */ }
-				this.renderItems();
+				if (this._order.length) {
+					this.renderItems();
+				}
 			}
 		},
 
@@ -657,6 +659,7 @@
 					self._order.push(item.id);
 				});
 
+				self._total = parseInt(data.total, 10) || 0;
 				self.renderItems();
 				self.renderPagination(data.total, data.total_pages);
 			}).fail(function () {
@@ -817,6 +820,8 @@
 				anchorLabel: AIPS.Templates.escape(l10n.anchorLabel),
 				anchor:      anchor,
 				anchorTitle: AIPS.Templates.escape(item.anchor_text || ''),
+				sourceTitle: AIPS.Templates.escape(sourceTitle),
+				targetTitle: AIPS.Templates.escape(targetTitle),
 				statusChip:  statusChip,
 				actions:     actions,
 				selectLabel: AIPS.Templates.escape(l10n.selectRow),
@@ -884,10 +889,18 @@
 				return;
 			}
 
-			var $el  = this.getItemEl(id);
-			var $new = $(this.renderItem(item, this.viewMode === 'grid'));
-			$el.replaceWith($new);
-			$new.addClass('is-updated');
+			this.replaceItemEl(id);
+		},
+
+		/**
+		 * Re-render one cached suggestion in place, keeping its selected state.
+		 *
+		 * @param {number} id Suggestion ID.
+		 */
+		replaceItemEl: function (id) {
+			var $new = $(this.renderItem(this._items[id]));
+			this.getItemEl(id).replaceWith($new);
+			$new.toggleClass('is-selected', !!this._selected[id]).addClass('is-updated');
 		},
 
 		/**
@@ -901,6 +914,8 @@
 
 			delete this._items[id];
 			delete this._selected[id];
+			this._total = Math.max(0, (this._total || 0) - 1);
+			this.renderPagination(this._total, Math.ceil(this._total / this.perPage));
 			this._order = $.grep(this._order, function (x) { return x !== id; });
 
 			this.getItemEl(id).fadeOut(150, function () {
@@ -930,12 +945,11 @@
 			var l10n   = aipsInternalLinksL10n;
 			var skipped = 0;
 
-			// Accepting only applies to pending/rejected rows, rejecting to pending/accepted.
-			// Inserted rows are left alone so a bulk action can't undo a link already in a post.
+			// Accept / Reject only apply to pending rows (the only status the per-row buttons
+			// offer them on); the server enforces the same rule.
 			if (action !== 'delete') {
-				var eligible = action === 'accept' ? ['pending', 'rejected'] : ['pending', 'accepted'];
 				var keep = $.grep(ids, function (id) {
-					return $.inArray(self._items[id] && self._items[id].status, eligible) !== -1;
+					return self._items[id] && self._items[id].status === 'pending';
 				});
 				skipped = ids.length - keep.length;
 				ids = keep;
@@ -946,7 +960,7 @@
 				return;
 			}
 
-			var $buttons = $('.aips-il-bulk-btn').prop('disabled', true);
+			$('.aips-il-bulk-btn').prop('disabled', true);
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:      'aips_internal_links_bulk_action',
@@ -957,6 +971,12 @@
 				if (!response.success) {
 					self.updateBulkBar();
 					AIPS.Utilities.showToast((response.data && response.data.message) || l10n.bulkFailed, 'error');
+					return;
+				}
+
+				// Fewer rows changed than were sent: the page was stale, so resync it.
+				if (action !== 'delete' && parseInt(response.data.count, 10) < ids.length) {
+					self.loadSuggestions();
 					return;
 				}
 
@@ -1261,9 +1281,7 @@
 					// Re-render just this row/card from the cache.
 					if (self._items[id]) {
 						self._items[id].anchor_text = anchorText;
-						var $new = $(self.renderItem(self._items[id]));
-						self.getItemEl(id).replaceWith($new);
-						$new.addClass('is-updated');
+						self.replaceItemEl(id);
 					}
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');
 				} else {

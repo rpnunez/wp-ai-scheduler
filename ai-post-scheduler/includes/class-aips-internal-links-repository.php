@@ -272,9 +272,10 @@ class AIPS_Internal_Links_Repository {
 	 *
 	 * @param int[]  $ids    Row IDs.
 	 * @param string $status New status (pending|accepted|rejected|inserted|reverted).
+	 * @param string[] $only_from When given, only rows currently in one of these statuses are updated.
 	 * @return int|false Number of updated rows or false on failure.
 	 */
-	public function update_status_bulk(array $ids, $status) {
+	public function update_status_bulk(array $ids, $status, array $only_from = array()) {
 		$ids = array_values(array_filter(array_map('absint', $ids)));
 
 		if (empty($ids) || !in_array($status, self::VALID_STATUSES, true)) {
@@ -283,10 +284,17 @@ class AIPS_Internal_Links_Repository {
 
 		$placeholders = implode(', ', array_fill(0, count($ids), '%d'));
 		$args         = array_merge(array($status, AIPS_DateTime::now()->timestamp()), $ids);
+		$from_sql     = '';
+
+		$only_from = array_values(array_intersect($only_from, self::VALID_STATUSES));
+		if (!empty($only_from)) {
+			$from_sql = ' AND status IN (' . implode(', ', array_fill(0, count($only_from), '%s')) . ')';
+			$args     = array_merge($args, $only_from);
+		}
 
 		return $this->wpdb->query(
 			$this->wpdb->prepare(
-				"UPDATE {$this->table} SET status = %s, updated_at = %d WHERE id IN ({$placeholders})",
+				"UPDATE {$this->table} SET status = %s, updated_at = %d WHERE id IN ({$placeholders}){$from_sql}",
 				$args
 			)
 		);
