@@ -82,7 +82,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 				<table class="aips-table aips-sources-table" id="aips-sources-table">
 					<thead>
 						<tr>
-							<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-sources-cb-all"></th>
+							<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-sources-cb-all" aria-label="<?php esc_attr_e('Select all rows', 'ai-post-scheduler'); ?>"></th>
 							<th class="column-label"><?php esc_html_e('Label', 'ai-post-scheduler'); ?></th>
 							<th class="column-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></th>
 							<th class="column-groups"><?php esc_html_e('Groups', 'ai-post-scheduler'); ?></th>
@@ -116,7 +116,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 							data-active="<?php echo esc_attr($source->is_active); ?>"
 							data-fetch-interval="<?php echo esc_attr($fetch_interval); ?>"
 							data-term-ids="<?php echo esc_attr(wp_json_encode($term_ids)); ?>">
-							<th scope="row" class="check-column"><input type="checkbox" class="aips-source-cb" value="<?php echo esc_attr($source->id); ?>"></th>
+							<th scope="row" class="check-column"><input type="checkbox" class="aips-source-cb" value="<?php echo esc_attr($source->id); ?>" aria-label="<?php esc_attr_e('Select row', 'ai-post-scheduler'); ?>"></th>
 							<td class="column-label cell-primary">
 								<span class="aips-source-label-text"><?php echo esc_html(!empty($source->label) ? $source->label : '—'); ?></span>
 								<?php if ($fetch_interval): ?>

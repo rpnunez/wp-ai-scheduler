@@ -40,3 +40,9 @@
 **PR:** 🎨 Palette: Add aria-label to content indexer drawer close button
 **Learning:** Close buttons (`&times;`) in custom UI elements (like flyout drawers) often lack native `aria-label` attributes.
 **Action:** Always ensure custom close buttons have an explicit localized `aria-label` to remain accessible to screen readers.
+## 2024-10-10 - Add aria-labels to generated table check columns
+**Area:** History, Cache Monitor, and Sources Templates
+**Status:** opened PR
+**PR:** 🎨 Palette: Add accessible labels to row checkboxes in custom data tables
+**Learning:** Table bulk actions often leave `check-column` inputs unlabeled, which causes accessibility warnings. Adding `aria-label` makes them perceivable by screen readers.
+**Action:** When creating or maintaining admin list tables using standard WordPress `check-column` markup, always add `aria-label` attributes localized via `esc_attr_e()` to both the global toggle and individual row checkboxes.
