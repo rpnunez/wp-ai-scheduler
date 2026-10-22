@@ -122,9 +122,16 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 					continue;
 				}
 
-				if (!is_array($rows)) {
+				// Validate rows structure for audit tables that require it
+				if ('aips_post_feedback' === $table_name && !is_array($rows)) {
 					$error_count++;
 					continue;
+				}
+
+				if (!is_array($rows)) {
+					// Non-audit tables: malformed data should be reported, not silently skipped
+					$this->repository->enable_foreign_key_checks();
+					return new WP_Error('malformed_table_data', sprintf(__('Table %s contains malformed data.', 'ai-post-scheduler'), esc_html($table_name)));
 				}
 
 				$full_table_name = $tables[$table_name];

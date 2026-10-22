@@ -146,13 +146,11 @@ class AIPS_Authors_Controller {
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
 				: wp_json_encode(array()),
-			'is_active' => isset($_POST['is_active']) ? 1 : 0
+			'is_active' => isset($_POST['is_active']) ? 1 : 0,
+			'feedback_enabled' => isset($_POST['feedback_enabled']) ? AIPS_Post_Feedback_Settings::sanitize_enabled(sanitize_text_field(wp_unslash($_POST['feedback_enabled']))) : 'inherit',
 		);
-		if (isset($_POST['feedback_enabled'])) {
-			$data['feedback_enabled'] = AIPS_Post_Feedback_Settings::sanitize_enabled(sanitize_text_field(wp_unslash($_POST['feedback_enabled'])));
-			$feedback_config = AIPS_Post_Feedback_Settings::sanitize_config(isset($_POST['feedback_config']) ? $_POST['feedback_config'] : array());
-			$data['feedback_config'] = empty($feedback_config) ? null : wp_json_encode($feedback_config);
-		}
+		$feedback_config = AIPS_Post_Feedback_Settings::sanitize_config(isset($_POST['feedback_config']) ? $_POST['feedback_config'] : array());
+		$data['feedback_config'] = empty($feedback_config) ? null : wp_json_encode($feedback_config);
 		
 		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {

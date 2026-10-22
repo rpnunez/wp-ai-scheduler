@@ -184,7 +184,7 @@ class AIPS_Post_Review_Repository {
 		if ('unrated' === $args['feedback']) { $where[] = "(f.id IS NULL OR f.reaction = 'cleared')"; }
 		$where_sql = implode(' AND ', $where);
 		$total_sql = "SELECT COUNT(*) FROM {$this->table_name} h INNER JOIN {$this->wpdb->posts} p ON p.ID = h.post_id $feedback_join WHERE $where_sql";
-		$total = (int) (empty($values) ? $this->wpdb->get_var($total_sql) : $this->wpdb->get_var($this->wpdb->prepare($total_sql, $values)));
+		$total = (int) $this->wpdb->get_var($this->wpdb->prepare($total_sql, $values));
 		$query_values = $values; $query_values[] = max(1, absint($args['per_page'])); $query_values[] = max(0, (absint($args['page']) - 1) * absint($args['per_page']));
 		$sql = "SELECT h.*, p.post_title, p.post_status, f.reaction feedback_reaction, f.reason_category feedback_reason_category, f.comment feedback_comment, f.user_id feedback_user_id, f.created_at feedback_created_at FROM {$this->table_name} h INNER JOIN {$this->wpdb->posts} p ON p.ID = h.post_id $feedback_join WHERE $where_sql ORDER BY h.created_at DESC LIMIT %d OFFSET %d";
 		return array('items' => $this->wpdb->get_results($this->wpdb->prepare($sql, $query_values)), 'total' => $total, 'pages' => (int) ceil($total / max(1, absint($args['per_page']))), 'current_page' => absint($args['page']));

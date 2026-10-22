@@ -180,7 +180,8 @@ class AIPS_Generated_Posts_Controller {
 		}
 		$post_feedback = array();
 		if ($post_feedback_enabled && !empty($posts_data)) {
-			$feedback_service = new AIPS_Post_Feedback_Service();
+			$container = AIPS_Container::get_instance();
+			$feedback_service = $container->make(AIPS_Post_Feedback_Service::class);
 			$post_feedback = $feedback_service->get_current_many(array_column($posts_data, 'post_id'));
 			foreach ($posts_data as &$post_data) {
 				$post_data['feedback'] = $post_feedback[$post_data['post_id']] ?? null;
