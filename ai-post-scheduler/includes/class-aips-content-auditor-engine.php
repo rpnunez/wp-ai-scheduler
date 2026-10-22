@@ -179,9 +179,7 @@ class AIPS_Content_Auditor_Engine {
 		$result = $this->ai_service->generate_json($prompt, $options);
 
 		if (is_wp_error($result) || !is_array($result)) {
-			// Fallback text parsing
-			$text_res = $this->ai_service->generate_text($prompt, array('temperature' => 0.6));
-			$result   = is_string($text_res) ? $this->parse_json_fallback($text_res) : array();
+			$result = array();
 		}
 
 		return array(
@@ -255,8 +253,7 @@ class AIPS_Content_Auditor_Engine {
 		$result = $this->ai_service->generate_json($prompt, $options);
 
 		if (is_wp_error($result) || !is_array($result)) {
-			$text_res = $this->ai_service->generate_text($prompt, array('temperature' => 0.5));
-			$result   = is_string($text_res) ? $this->parse_json_fallback($text_res) : array();
+			$result = array();
 		}
 
 		$conflicts = array();
@@ -329,8 +326,7 @@ class AIPS_Content_Auditor_Engine {
 		$result = $this->ai_service->generate_json($prompt, $options);
 
 		if (is_wp_error($result) || !is_array($result)) {
-			$text_res = $this->ai_service->generate_text($prompt, array('temperature' => 0.5));
-			$result   = is_string($text_res) ? $this->parse_json_fallback($text_res) : array();
+			$result = array();
 		}
 
 		return array(
@@ -488,8 +484,7 @@ class AIPS_Content_Auditor_Engine {
 		$result = $this->ai_service->generate_json($prompt, $options);
 
 		if (is_wp_error($result) || !is_array($result)) {
-			$text_res = $this->ai_service->generate_text($prompt, array('temperature' => 0.6));
-			$result   = is_string($text_res) ? $this->parse_json_fallback($text_res) : array();
+			$result = array();
 		}
 
 		return array(

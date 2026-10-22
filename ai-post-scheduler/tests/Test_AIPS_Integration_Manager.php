@@ -127,7 +127,7 @@ class Test_AIPS_Integration_Manager extends WP_UnitTestCase {
 			'is_active'      => true,
 		));
 
-		$this->ai_service->next_json_response = new WP_Error('ai_unavailable', 'Batch call failed');
+		$this->ai_service->next_json_response = new WP_Error('batch_failed', 'Batch call failed');
 		$this->ai_service->next_response = 'Fallback Headline';
 
 		$context = $this->make_context($template_id);
@@ -137,6 +137,45 @@ class Test_AIPS_Integration_Manager extends WP_UnitTestCase {
 		$this->assertSame(1, $this->ai_service->text_call_count);
 		$this->assertSame(1, AIPS_Test_Stub_Manager_Integration::$write_calls);
 		$this->assertSame(array(558, 'field_headline', 'Fallback Headline'), AIPS_Test_Stub_Manager_Integration::$last_write);
+	}
+
+	public function test_apply_generatable_batch_skips_individual_retries_on_unrecoverable_error() {
+		$stub = new AIPS_Stub_AI_Provider();
+		$stub->text_throw = 'rate_limit_exceeded: Too many requests';
+		$ai_service = new AIPS_AI_Service(null, $stub);
+
+		$template_id = 999;
+		$this->repo->save_mapping(array(
+			'template_id'    => $template_id,
+			'integration_id' => 'stub',
+			'source_key'     => 'group_1',
+			'field_key'      => 'field_1',
+			'field_label'    => 'Field 1',
+			'field_type'     => 'text',
+			'is_active'      => true,
+		));
+		$this->repo->save_mapping(array(
+			'template_id'    => $template_id,
+			'integration_id' => 'stub',
+			'source_key'     => 'group_1',
+			'field_key'      => 'field_2',
+			'field_label'    => 'Field 2',
+			'field_type'     => 'textarea',
+			'is_active'      => true,
+		));
+
+		$post_id = $this->factory->post->create();
+		$manager = new AIPS_Integration_Manager($this->repo, $ai_service);
+		$context = $this->make_context($template_id);
+
+		$manager->handle_post_generated($post_id, null, null, $context);
+
+		$this->assertNotNull($this->last_applied);
+		$results = $this->last_applied['results'];
+		$this->assertArrayHasKey('field_1', $results);
+		$this->assertArrayHasKey('field_2', $results);
+		$this->assertWPError($results['field_1']);
+		$this->assertWPError($results['field_2']);
 	}
 
 	public function test_skips_field_missing_from_batch_response() {

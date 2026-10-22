@@ -382,9 +382,17 @@ class AIPS_Component_Regeneration_Service {
 			$context['history_container'] = $trigger_container; // Reused by the per-component calls below.
 		}
 
+		$unrecoverable = array('rate_limit_exceeded', 'circuit_breaker_open', 'ai_unavailable', 'invalid_api_key');
+
 		$title = $this->regenerate_title($context);
 		if (is_wp_error($title)) {
 			$result['errors']['title'] = $title->get_error_message();
+			if (in_array($title->get_error_code(), $unrecoverable, true)) {
+				$result['skipped']['content'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
+				$result['skipped']['excerpt'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
+				$result['skipped']['featured_image'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
+				return $result;
+			}
 		} else {
 			$result['regenerated']['title'] = $title;
 			$context['current_title'] = $title;
@@ -393,6 +401,11 @@ class AIPS_Component_Regeneration_Service {
 		$content = $this->regenerate_content($context);
 		if (is_wp_error($content)) {
 			$result['errors']['content'] = $content->get_error_message();
+			if (in_array($content->get_error_code(), $unrecoverable, true)) {
+				$result['skipped']['excerpt'] = __('Skipped due to provider failure during content generation.', 'ai-post-scheduler');
+				$result['skipped']['featured_image'] = __('Skipped due to provider failure during content generation.', 'ai-post-scheduler');
+				return $result;
+			}
 		} else {
 			$result['regenerated']['content'] = $content;
 			$context['current_content'] = $content;
@@ -401,6 +414,10 @@ class AIPS_Component_Regeneration_Service {
 		$excerpt = $this->regenerate_excerpt($context);
 		if (is_wp_error($excerpt)) {
 			$result['errors']['excerpt'] = $excerpt->get_error_message();
+			if (in_array($excerpt->get_error_code(), $unrecoverable, true)) {
+				$result['skipped']['featured_image'] = __('Skipped due to provider failure during excerpt generation.', 'ai-post-scheduler');
+				return $result;
+			}
 		} else {
 			$result['regenerated']['excerpt'] = $excerpt;
 		}

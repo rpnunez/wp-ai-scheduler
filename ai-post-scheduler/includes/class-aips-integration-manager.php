@@ -250,6 +250,20 @@ class AIPS_Integration_Manager {
 		$batch_response = $this->ai_service->generate_json($prompt);
 
 		if (is_wp_error($batch_response)) {
+			$unrecoverable_codes = array('rate_limit_exceeded', 'circuit_breaker_open', 'ai_unavailable', 'invalid_api_key');
+			if (in_array($batch_response->get_error_code(), $unrecoverable_codes, true)) {
+				$this->logger->log(
+					sprintf('AIPS_Integration_Manager: batch generation failed with unrecoverable error (%s) — skipping individual field retries.', $batch_response->get_error_code()),
+					'warning',
+					array('post_id' => $post_id)
+				);
+				$results = array();
+				foreach ($generatable as $item) {
+					$results[$item['mapping']->field_key] = $batch_response;
+				}
+				return $results;
+			}
+
 			$this->logger->log(
 				sprintf(
 					'AIPS_Integration_Manager: batch generation failed — %s. Falling back to one call per field.',
@@ -311,6 +325,16 @@ class AIPS_Integration_Manager {
 					array('post_id' => $post_id)
 				);
 				$results[$mapping->field_key] = $value;
+				$unrecoverable_codes = array('rate_limit_exceeded', 'circuit_breaker_open', 'ai_unavailable', 'invalid_api_key');
+				if (in_array($value->get_error_code(), $unrecoverable_codes, true)) {
+					foreach ($generatable as $remaining_item) {
+						$rk = $remaining_item['mapping']->field_key;
+						if (!isset($results[$rk])) {
+							$results[$rk] = $value;
+						}
+					}
+					break;
+				}
 				continue;
 			}
 
