@@ -316,6 +316,10 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 			$html .= '<div class="cell-meta aips-muted">' . esc_html($item->description) . '</div>';
 		}
 
+		if (!empty($item->include_sources) && empty(array_filter((array) json_decode($item->source_group_ids ?? '[]', true)))) {
+			$html .= '<p class="description">' . esc_html__('Sources enabled without a group. Edit this author and select at least one source group.', 'ai-post-scheduler') . '</p>';
+		}
+
 		// WordPress native row actions (revealed on hover)
 		$actions = array(
 			'topics'          => sprintf('<a href="%s">%s</a>', esc_url($topics_url), esc_html__('Manage Topics', 'ai-post-scheduler')),

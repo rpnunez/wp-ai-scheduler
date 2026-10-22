@@ -25,6 +25,23 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Prompt_Builder_Topic {
 
+	private $sources_selection = array();
+
+	public function get_sources_selection() {
+		return $this->sources_selection;
+	}
+
+	/** Commit only the selection from this build, once per submitted request. */
+	public function record_sources_usage(?array $selection = null) {
+		$selection = $selection ?? $this->sources_selection;
+		$this->sources_selection = array();
+		$this->base_builder->record_sources_usage($selection['snapshots'] ?? array());
+		if (!empty($selection['snapshots'])) {
+			do_action('aips_source_snapshots_injected', $selection['snapshots'], $selection['group_ids'], $selection['sources']);
+		}
+	}
+
+
 	/**
 	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.
 	 */
@@ -59,6 +76,7 @@ class AIPS_Prompt_Builder_Topic {
 		array $rejected_topics = array(),
 		$feedback_guidance = ''
 	) {
+		$this->sources_selection = array();
 		$quantity = (int) $author->topic_generation_quantity;
 		if ($quantity < 1) {
 			/**
@@ -83,7 +101,8 @@ class AIPS_Prompt_Builder_Topic {
 				$decoded   = json_decode($author->source_group_ids, true);
 				$group_ids = is_array($decoded) ? array_map('intval', $decoded) : array();
 			}
-			$sources_block = $this->base_builder->build_sources_block($group_ids);
+			$this->sources_selection = $this->base_builder->build_sources_selection($group_ids);
+			$sources_block = $this->sources_selection['block'];
 			if (!empty($sources_block)) {
 				$prompt .= $sources_block;
 			}
