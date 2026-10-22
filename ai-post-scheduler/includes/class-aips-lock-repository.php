@@ -7,7 +7,7 @@
  * transient is not.
  *
  * @package AI_Post_Scheduler
- * @since 3.7.19
+ * @since 3.7.20
  */
 
 if (!defined('ABSPATH')) {

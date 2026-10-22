@@ -257,18 +257,18 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_7_18();
 		}
 
-		// migrate_to_3_7_19() retires the Internal Links indexing job, which the
-		// Content Indexer's managed run replaced.
-		if ( version_compare( $from_version, '3.7.19', '<' ) ) {
-			$this->migrate_to_3_7_19();
-		}
-    
 		if ( version_compare( $from_version, '3.7.19', '<' ) && ! $this->migrate_to_3_7_19() ) {
 			// install_tables() has already stamped the schema version. Restore the
 			// previous gate so a failed structural ALTER is retried next request.
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
 			$this->logger->log( 'Source attempt-state migration failed; database upgrade will retry.', 'error' );
 			return;
+		}
+
+		// migrate_to_3_7_20() retires the Internal Links indexing job, which the
+		// Content Indexer's managed run replaced, and adopts legacy embedding labels.
+		if ( version_compare( $from_version, '3.7.20', '<' ) ) {
+			$this->migrate_to_3_7_20();
 		}
 
 		// Use AIPS_Config::set_option() so the per-request option cache is
@@ -1332,7 +1332,7 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
-	 * Keep existing embeddings from all turning "stale" when 3.7.19 starts comparing them
+	 * Keep existing embeddings from all turning "stale" when 3.7.20 starts comparing them
 	 * with the active model and dimensions. The old Content Indexer labelled rows with the
 	 * chat model when no embeddings model was set; those are relabelled to the active
 	 * embeddings model, and the dimension count in use is recorded from the stored rows.
@@ -1355,7 +1355,7 @@ class AIPS_DB_Migrations {
 
 		if ( '' !== $chat && $chat !== $active ) {
 			$relabelled = $wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET model = %s WHERE model = %s", $active, $chat ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$this->logger->log( sprintf( 'Migration 3.7.19: Relabelled %d embedding rows from chat model "%s" to "%s" (assumed made with the active embeddings model).', (int) $relabelled, $chat, $active ), 'info' );
+			$this->logger->log( sprintf( 'Migration 3.7.20: Relabelled %d embedding rows from chat model "%s" to "%s" (assumed made with the active embeddings model).', (int) $relabelled, $chat, $active ), 'info' );
 		}
 
 		$dimensions = (int) $wpdb->get_var( $wpdb->prepare( "SELECT dimensions FROM `{$table}` WHERE model = %s AND dimensions > 0 GROUP BY dimensions ORDER BY COUNT(*) DESC LIMIT 1", $active ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -1374,7 +1374,7 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
-	 * Migration for version 3.7.19.
+	 * Migration for version 3.7.20.
 	 *
 	 * Cancels any open `internal_links_indexing` background run and drops the
 	 * cron events of the retired Internal Links indexer. Post indexing is now the
@@ -1383,7 +1383,7 @@ class AIPS_DB_Migrations {
 	 *
 	 * @return void
 	 */
-	private function migrate_to_3_7_19() {
+	private function migrate_to_3_7_20() {
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'aips_background_processes';
@@ -1410,7 +1410,7 @@ class AIPS_DB_Migrations {
 
 		$this->adopt_legacy_embedding_labels();
 
-		$this->logger->log( 'Migration 3.7.19: Cancelled the retired internal_links_indexing background run.', 'info' );
+		$this->logger->log( 'Migration 3.7.20: Cancelled the retired internal_links_indexing background run.', 'info' );
 	}
 
 	/**
