@@ -6412,52 +6412,75 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 /* Source Data management */
 .aips-source-label-text {
 	display: inline-block;
-	max-width: calc(100% - 120px);
 	vertical-align: middle;
 }
 
-.aips-source-frequency-chip {
-	float: right;
-	margin-left: 8px;
+.aips-source-status-badge {
+	display: inline-block;
+	margin-left: 6px;
+	vertical-align: middle;
+}
+
+.aips-source-group-badge {
+	margin: 2px 2px 2px 0;
+}
+
+/* Sources list: Content cell on one line, icon-only last-attempt indicator. */
+.aips-sources-table .aips-source-content-cell {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
 	white-space: nowrap;
 }
 
-.aips-source-data-table .column-content {
-	max-width: 560px;
+.aips-source-fetch-indicator {
+	display: inline-flex;
+	cursor: help;
 }
 
-.aips-source-data-table .column-size {
+.aips-source-fetch-indicator .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+}
+
+.aips-source-fetch-success {
+	color: var(--aips-success-700);
+}
+
+.aips-source-fetch-failed {
+	color: var(--aips-error-700);
+}
+
+/* Sources list: all row actions on one line. */
+.aips-sources-table td.column-actions {
 	white-space: nowrap;
+}
+
+.aips-sources-table .aips-source-actions {
+	display: inline-flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	gap: 6px;
+}
+
+/* Manage Source Data: compact character range inputs in the History-style filter bar. */
+.aips-source-data-char-range {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.aips-source-data-filter-bar .aips-form-input[type="number"] {
 	width: 110px;
 }
 
-.aips-source-data-table .cell-actions {
-	position: relative;
-	width: 180px;
+.aips-source-data-filter-bar .aips-history-filter-search .aips-checkbox-label {
+	white-space: nowrap;
 }
 
-.aips-source-data-table .aips-row-action-group {
-	display: inline-flex;
-	align-items: stretch;
-	gap: 0;
-	border: 1px solid #dcdcde;
-	border-radius: 6px;
-	background: #fff;
-}
-
-.aips-source-data-table .aips-row-action-group .aips-btn {
-	border: 0;
-	border-radius: 0;
-	box-shadow: none;
-}
-
-.aips-source-data-table .aips-row-action-group .aips-btn:first-child {
-	border-radius: 5px 0 0 5px;
-}
-
-.aips-source-data-table .aips-row-action-group .aips-btn:last-child {
-	border-left: 1px solid #dcdcde;
-	border-radius: 0 5px 5px 0;
+.aips-source-data-table td.column-actions {
+	white-space: nowrap;
 }
 
 .aips-form-grid {
@@ -6469,8 +6492,13 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.aips-form-grid-3 {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 782px) {
-	.aips-form-grid-2 {
+	.aips-form-grid-2,
+	.aips-form-grid-3 {
 		grid-template-columns: 1fr;
 	}
 }
