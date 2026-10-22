@@ -124,6 +124,9 @@ class AIPS_History_Container {
 		if (isset($history->template_id) && $history->template_id) {
 			$metadata['template_id'] = $history->template_id;
 		}
+		if (isset($history->schedule_id) && $history->schedule_id) {
+			$metadata['schedule_id'] = $history->schedule_id;
+		}
 		if (isset($history->campaign_id) && $history->campaign_id) {
 			$metadata['campaign_id'] = $history->campaign_id;
 		}
@@ -408,6 +411,39 @@ class AIPS_History_Container {
 	}
 	
 	/**
+	 * Immediately persist post_id and initial post fields on this history record
+	 * while keeping the container in 'processing' status.
+	 *
+	 * Ensures that if PHP times out or fatals during subsequent steps (such as
+	 * featured image generation) or if WordPress hooks fire during post creation,
+	 * aips_history.post_id is already linked.
+	 *
+	 * @param int   $post_id   WordPress Post ID.
+	 * @param array $post_data Optional additional columns (post_type, generated_title, generated_content).
+	 * @return bool True on success, false on failure.
+	 */
+	public function record_post_created($post_id, array $post_data = array()) {
+		if (!$this->is_persisted) {
+			return false;
+		}
+
+		$post_id = absint($post_id);
+		if (!$post_id) {
+			return false;
+		}
+
+		$this->metadata['post_id'] = $post_id;
+
+		$update_data = array_merge(
+			$post_data,
+			array('post_id' => $post_id)
+		);
+		unset($update_data['status'], $update_data['completed_at']);
+
+		return $this->repository->update($this->history_id, $update_data) !== false;
+	}
+
+	/**
 	 * Complete this history container as terminated.
 	 *
 	 * Used when an operator setting stops the run before any work is attempted.
@@ -430,22 +466,9 @@ class AIPS_History_Container {
 			));
 		}
 
-		$update_data = apply_filters('aips_history_record_data', array_merge(
-			array(
-				'status'        => AIPS_History_Event_Status::TERMINATED,
-				'error_message' => $message,
-				'completed_at'  => AIPS_DateTime::now()->timestamp(),
-			),
-			$result_data
-		), $this->history_id);
+		$result_data['error_message'] = $message;
 
-		$success = $this->repository->update($this->history_id, $update_data) !== false;
-
-		if ($success) {
-			do_action('aips_history_updated', $this->history_id, $update_data, 'processing');
-		}
-
-		return $success;
+		return $this->close_with_status(AIPS_History_Event_Status::TERMINATED, $result_data);
 	}
 
 	/**
@@ -512,6 +535,14 @@ class AIPS_History_Container {
 	private function close_with_status($status, array $result_data) {
 		unset($result_data['status']);
 
+		if ($this->session && !array_key_exists('generation_log', $result_data)) {
+			$result_data['generation_log'] = $this->session->to_json();
+		}
+
+		if (!empty($this->metadata['schedule_id']) && !array_key_exists('schedule_id', $result_data)) {
+			$result_data['schedule_id'] = (int) $this->metadata['schedule_id'];
+		}
+
 		$update_data = array_merge(
 			array('completed_at' => AIPS_DateTime::now()->timestamp()),
 			$result_data,
@@ -532,11 +563,12 @@ class AIPS_History_Container {
 	/**
 	 * Complete this history container with failure
 	 *
-	 * @param string $error_message Error message
-	 * @param array $error_data Optional additional error data
+	 * @param string $error_message    Error message
+	 * @param array  $error_data       Optional additional error data
+	 * @param bool   $record_error_log Whether to record an error log entry (set false when caller already recorded a structured failure event).
 	 * @return bool True on success, false on failure
 	 */
-	public function complete_failure($error_message, $error_data = array()) {
+	public function complete_failure($error_message, $error_data = array(), $record_error_log = true) {
 		if (!$this->is_persisted) {
 			return false;
 		}
@@ -549,23 +581,14 @@ class AIPS_History_Container {
 			));
 		}
 		
-		// Log the error
-		$this->record('error', $error_message, null, null, $error_data);
-
-		// Update history status
-		$update_data = apply_filters('aips_history_record_data', array(
-			'status' => 'failed',
-			'error_message' => $error_message,
-			'completed_at' => AIPS_DateTime::now()->timestamp(),
-		), $this->history_id);
-
-		$success = $this->repository->update($this->history_id, $update_data) !== false;
-
-		if ($success) {
-			do_action('aips_history_updated', $this->history_id, $update_data, 'processing');
+		// Log the error unless the caller has already recorded a structured failure event.
+		if ($record_error_log) {
+			$this->record('error', $error_message, null, null, $error_data);
 		}
 
-		return $success;
+		return $this->close_with_status('failed', array(
+			'error_message' => $error_message,
+		));
 	}
 	
 	/**

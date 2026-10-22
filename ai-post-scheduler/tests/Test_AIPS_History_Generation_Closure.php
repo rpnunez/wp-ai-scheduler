@@ -22,7 +22,9 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 				return '';
 			}
 		};
-		AIPS_Container::get_instance()->instance(AIPS_Similarity_Evaluator::class, $evaluator);
+		AIPS_Container::get_instance()->bind(AIPS_Similarity_Evaluator::class, function () use ($evaluator) {
+			return $evaluator;
+		});
 
 		$generator = new class($generate) {
 			private $generate;
@@ -48,6 +50,14 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 			public function log_post_generation($topic_id, $post_id, $metadata) {}
 		};
 
+		$topics = new class {
+			public function claim_topic_for_generation($topic_id, $timeout = 900, $allow_regenerate = false) {
+				return true;
+			}
+			public function release_topic_claim($topic_id) {}
+			public function invalidate_topic_cache($topic_id, $author_id) {}
+		};
+
 		$post_generator = new AIPS_Author_Post_Generator();
 		$reflection     = new ReflectionClass($post_generator);
 		foreach (array(
@@ -55,6 +65,7 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 			'logger'             => $logger,
 			'authors_repository' => $authors,
 			'logs_repository'    => $logs,
+			'topics_repository'  => $topics,
 			'history_service'    => new AIPS_History_Service(new AIPS_History_Repository()),
 		) as $name => $value) {
 			$property = $reflection->getProperty($name);
@@ -162,13 +173,15 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 		$incomplete = self::factory()->post->create(array('post_status' => 'draft'));
 		update_post_meta($incomplete, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
 
-		$orphan_ok     = $this->insert_row('post_review_action', array('post_id' => 1), 'processing', 'success');
-		$orphan_failed = $this->insert_row('post_review_action', array('post_id' => 2), 'processing', 'failed');
-		$abandoned     = $this->insert_row('author_embeddings', array('author_id' => 1), 'processing', 'success', 3 * DAY_IN_SECONDS);
-		$active        = $this->insert_row('author_embeddings', array('author_id' => 2), 'processing', 'success', HOUR_IN_SECONDS);
-		$lifecycle     = $this->insert_row('schedule_lifecycle', array('schedule_id' => 1), 'processing', 'success', 30 * DAY_IN_SECONDS);
-		$generation    = $this->insert_row('post_generation', array('post_id' => $incomplete), 'completed');
-		$clean         = $this->insert_row('post_generation', array('post_id' => self::factory()->post->create()), 'completed');
+		$orphan_ok          = $this->insert_row('post_review_action', array('post_id' => 1), 'processing', 'success');
+		$orphan_failed      = $this->insert_row('post_review_action', array('post_id' => 2), 'processing', 'failed');
+		$abandoned          = $this->insert_row('author_embeddings', array('author_id' => 1), 'processing', 'success', 3 * DAY_IN_SECONDS);
+		$active             = $this->insert_row('author_embeddings', array('author_id' => 2), 'processing', 'success', HOUR_IN_SECONDS);
+		$template_lifecycle = $this->insert_row('template_lifecycle', array('template_id' => 1), 'processing', 'success', 30 * DAY_IN_SECONDS);
+		$schedule_lifecycle = $this->insert_row('schedule_lifecycle', array('schedule_id' => 1), 'processing', 'success', 30 * DAY_IN_SECONDS);
+		$schedule_exec_fail = $this->insert_row('schedule_execution', array('schedule_id' => 1), 'processing', 'failed', 30 * DAY_IN_SECONDS);
+		$generation         = $this->insert_row('post_generation', array('post_id' => $incomplete), 'completed');
+		$clean              = $this->insert_row('post_generation', array('post_id' => self::factory()->post->create()), 'completed');
 
 		AIPS_Config::get_instance()->set_option('aips_db_version', '3.7.11');
 		AIPS_DB_Migrations::check_and_run();
@@ -176,10 +189,13 @@ class Test_AIPS_History_Generation_Closure extends WP_UnitTestCase {
 		// 3.7.12: orphaned event rows close from their logged outcome.
 		$this->assertSame('completed', $this->status_of($orphan_ok));
 		$this->assertSame('failed', $this->status_of($orphan_failed));
-		// 3.7.12: a row idle for days is abandoned; recent and persistent rows are not.
+		// 3.7.12: a row idle for days is abandoned; recent and excluded lifecycle rows are not.
 		$this->assertSame('terminated', $this->status_of($abandoned));
 		$this->assertSame('processing', $this->status_of($active));
-		$this->assertSame('processing', $this->status_of($lifecycle));
+		$this->assertSame('processing', $this->status_of($template_lifecycle));
+		// 3.7.19: orphaned schedule_lifecycle and schedule_execution rows close from their logged outcome.
+		$this->assertSame('completed', $this->status_of($schedule_lifecycle));
+		$this->assertSame('failed', $this->status_of($schedule_exec_fail));
 		// 3.7.13: incomplete generations become partial.
 		$this->assertSame('partial', $this->status_of($generation));
 		$this->assertSame('completed', $this->status_of($clean));

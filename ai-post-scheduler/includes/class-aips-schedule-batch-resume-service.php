@@ -230,6 +230,8 @@ class AIPS_Schedule_Batch_Resume_Service {
                     'correlation_id' => $correlation_id,
                 )
             );
+
+            $history->complete_success();
         }
 
         return 'resumed';

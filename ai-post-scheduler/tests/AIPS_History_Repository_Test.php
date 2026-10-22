@@ -32,9 +32,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		);
 		$this->test_template_id = $this->template_repository->create($template_data);
 		
-		// Create test history entries
-		$this->create_test_history_entries();
+		// Create test schedule and history entries
 		$this->create_test_schedule();
+		$this->create_test_history_entries();
 	}
 
 	private function create_test_schedule() {
@@ -68,15 +68,17 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				$table,
 				array(
 					'template_id' => $this->test_template_id,
+					'schedule_id' => $this->test_schedule_id,
 					'post_id' => null,
 					'status' => 'completed',
+					'record_kind' => AIPS_History_Record_Kind::GENERATION,
 					'generated_title' => 'Test Title ' . $i,
 					'generated_content' => 'Test content ' . $i . ' with more details',
 					'prompt' => 'Test prompt ' . $i . ' with full context',
 					'error_message' => null,
 					'created_at' => current_time('mysql'),
 				),
-				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+				array('%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s')
 			);
 			$this->test_history_ids[] = $wpdb->insert_id;
 		}
@@ -460,10 +462,11 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'template_id'     => $this->test_template_id,
 				'status'          => 'partial',
 				'creation_method' => $flow,
+				'record_kind'     => AIPS_History_Record_Kind::GENERATION,
 				'created_at'      => $now,
 				'completed_at'    => 0,
 			),
-			array('%d', '%s', '%s', '%d', '%d')
+			array('%d', '%s', '%s', '%s', '%d', '%d')
 		);
 		$this->test_history_ids[] = $wpdb->insert_id;
 
@@ -474,10 +477,11 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'template_id'     => $this->test_template_id,
 				'status'          => 'completed',
 				'creation_method' => $flow,
+				'record_kind'     => AIPS_History_Record_Kind::GENERATION,
 				'created_at'      => $now,
 				'completed_at'    => $now + 42,
 			),
-			array('%d', '%s', '%s', '%d', '%d')
+			array('%d', '%s', '%s', '%s', '%d', '%d')
 		);
 		$this->test_history_ids[] = $wpdb->insert_id;
 
@@ -556,5 +560,277 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		$ids = array_map('intval', wp_list_pluck($results['items'], 'id'));
 		$this->assertContains((int) $matching_id, $ids);
 		$this->assertNotContains((int) $other_id, $ids);
+	}
+
+	// -----------------------------------------------------------------------
+	// schedule_id & generation_log (#2232)
+	// -----------------------------------------------------------------------
+
+	public function test_count_completed_for_schedule_isolates_by_schedule_id() {
+		global $wpdb;
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$this->markTestSkipped('Schedule count test requires the full WordPress test library.');
+		}
+
+		// Create a sibling schedule sharing the same template_id.
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_schedule',
+			array(
+				'template_id' => $this->test_template_id,
+				'title'       => 'Sibling Schedule',
+				'frequency'   => 'daily',
+				'next_run'    => current_time('mysql'),
+				'is_active'   => 1,
+				'status'      => 'active',
+				'created_at'  => gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS),
+			),
+			array('%d', '%s', '%s', '%s', '%d', '%s', '%s')
+		);
+		$sibling_schedule_id = (int) $wpdb->insert_id;
+
+		// Add 2 completed runs for sibling schedule and 1 manual run (no schedule_id) on the same template.
+		$this->test_history_ids[] = $this->repository->create(array(
+			'template_id'     => $this->test_template_id,
+			'schedule_id'     => $sibling_schedule_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+		));
+		$this->test_history_ids[] = $this->repository->create(array(
+			'template_id'     => $this->test_template_id,
+			'schedule_id'     => $sibling_schedule_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+		));
+		$this->test_history_ids[] = $this->repository->create(array(
+			'template_id'     => $this->test_template_id,
+			'status'          => 'completed',
+			'creation_method' => 'manual',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+		));
+
+		$this->assertSame(3, $this->repository->count_completed_for_schedule($this->test_schedule_id));
+		$this->assertSame(2, $this->repository->count_completed_for_schedule($sibling_schedule_id));
+
+		$wpdb->delete($wpdb->prefix . 'aips_schedule', array('id' => $sibling_schedule_id), array('%d'));
+	}
+
+	public function test_create_and_update_persist_schedule_id_and_generation_log() {
+		$id = $this->repository->create(array(
+			'template_id'     => $this->test_template_id,
+			'schedule_id'     => $this->test_schedule_id,
+			'status'          => 'processing',
+			'creation_method' => 'scheduled',
+			'generation_log'  => '{"started_at":123}',
+		));
+		$this->test_history_ids[] = $id;
+
+		$item = $this->repository->get_by_id($id);
+		$this->assertSame((int) $this->test_schedule_id, (int) $item->schedule_id);
+		$this->assertSame('{"started_at":123}', $item->generation_log);
+
+		$this->repository->update($id, array(
+			'schedule_id'    => $this->test_schedule_id + 100,
+			'generation_log' => '{"started_at":123,"completed_at":456}',
+		));
+
+		$updated = $this->repository->get_by_id($id);
+		$this->assertSame((int) $this->test_schedule_id + 100, (int) $updated->schedule_id);
+		$this->assertSame('{"started_at":123,"completed_at":456}', $updated->generation_log);
+	}
+
+	public function test_backfill_schedule_id_populates_from_schedule_logs_and_correlation_id() {
+		global $wpdb;
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$this->markTestSkipped('Backfill test requires the full WordPress test library.');
+		}
+
+		$corr_id = wp_generate_uuid4();
+
+		// 1. Container linked via aips_schedule.schedule_history_id
+		$lifecycle_id = $this->repository->create(array(
+			'status'          => 'completed',
+			'creation_method' => 'schedule_lifecycle',
+			'record_kind'     => AIPS_History_Record_Kind::EVENT,
+		));
+		$this->test_history_ids[] = $lifecycle_id;
+		$wpdb->update(
+			$wpdb->prefix . 'aips_schedule',
+			array('schedule_history_id' => $lifecycle_id),
+			array('id' => $this->test_schedule_id),
+			array('%d'),
+			array('%d')
+		);
+
+		// 2. Container with schedule_id inside aips_history_log details JSON
+		$exec_id = $this->repository->create(array(
+			'status'          => 'completed',
+			'creation_method' => 'schedule_execution',
+			'record_kind'     => AIPS_History_Record_Kind::EVENT,
+			'correlation_id'  => $corr_id,
+		));
+		$this->test_history_ids[] = $exec_id;
+		$this->repository->add_log_entry(
+			$exec_id,
+			array(
+				'log_subtype' => 'activity',
+				'message'     => 'Schedule started',
+				'context'     => array('schedule_id' => $this->test_schedule_id),
+			),
+			AIPS_History_Type::ACTIVITY
+		);
+
+		// 3. Sibling generation container sharing correlation_id
+		$gen_id = $this->repository->create(array(
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+			'correlation_id'  => $corr_id,
+		));
+		$this->test_history_ids[] = $gen_id;
+
+		$changed = $this->repository->backfill_schedule_id();
+		$this->assertGreaterThanOrEqual(3, $changed);
+
+		$this->assertSame((int) $this->test_schedule_id, (int) $this->repository->get_by_id($lifecycle_id)->schedule_id);
+		$this->assertSame((int) $this->test_schedule_id, (int) $this->repository->get_by_id($exec_id)->schedule_id);
+		$this->assertSame((int) $this->test_schedule_id, (int) $this->repository->get_by_id($gen_id)->schedule_id);
+	}
+
+	public function test_get_schedule_history_logs_merges_multiple_event_containers() {
+		$service = new AIPS_History_Service($this->repository);
+
+		$c1 = $service->create('schedule_lifecycle', array(
+			'schedule_id'     => $this->test_schedule_id,
+			'creation_method' => 'schedule_lifecycle',
+			'record_kind'     => AIPS_History_Record_Kind::EVENT,
+		));
+		$this->test_history_ids[] = $c1->get_id();
+		AIPS_Generation_Trigger::record(
+			$c1,
+			array('schedule_id' => $this->test_schedule_id, 'schedule_name' => 'Test Schedule'),
+			AIPS_Generation_Trigger::METHOD_AUTOMATIC
+		);
+		$c1->record('activity', 'Run 1 started', array('event_type' => 'schedule_executed', 'event_status' => 'success'));
+		$c1->complete_success();
+
+		$c2 = $service->create('schedule_lifecycle', array(
+			'schedule_id'     => $this->test_schedule_id,
+			'creation_method' => 'schedule_lifecycle',
+			'record_kind'     => AIPS_History_Record_Kind::EVENT,
+		));
+		$this->test_history_ids[] = $c2->get_id();
+		$c2->record('activity', 'Run 2 failed', array('event_type' => 'schedule_failed', 'event_status' => 'failed'));
+		$c2->complete_failure('Boom', array(), false);
+
+		$logs = $this->repository->get_schedule_history_logs(
+			$this->test_schedule_id,
+			array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
+		);
+
+		// Run 1 activity + Run 2 structured failure activity (no duplicate untyped error entry;
+		// trigger_source and trigger_method rows are excluded from schedule drawer logs).
+		$this->assertCount(2, $logs);
+		$messages = array_map(function ($row) {
+			$d = json_decode($row->details, true);
+			return $d['message'] ?? '';
+		}, $logs);
+		$this->assertContains('Run 1 started', $messages);
+		$this->assertContains('Run 2 failed', $messages);
+
+		// AIPS_History_Event_View exposes history_id on each normalized timeline entry.
+		$views = AIPS_History_Event_View::from_logs($logs);
+		$this->assertCount(2, $views);
+		$this->assertSame((int) $c2->get_id(), $views[0]['history_id']);
+		$this->assertSame((int) $c1->get_id(), $views[1]['history_id']);
+
+		// Meanwhile get_logs_by_history_id for c1 still includes the trigger metadata for the History modal.
+		$c1_logs = $this->repository->get_logs_by_history_id($c1->get_id());
+		$this->assertCount(3, $c1_logs);
+	}
+
+	public function test_count_completed_for_schedule_accepts_merged_schedule_object_and_history_subject_maps_schedule_id() {
+		$merged_schedule = (object) array(
+			'id'          => $this->test_template_id,
+			'schedule_id' => $this->test_schedule_id,
+			'template_id' => $this->test_template_id,
+		);
+		$this->assertSame(3, $this->repository->count_completed_for_schedule($merged_schedule));
+
+		// Creating an in-progress generation row and updating only its status to 'completed'
+		// (without passing schedule_id in the update array) must still invalidate the schedule cache.
+		$in_progress_id = $this->repository->create(array(
+			'template_id'     => $this->test_template_id,
+			'schedule_id'     => $this->test_schedule_id,
+			'status'          => 'processing',
+			'creation_method' => 'scheduled',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+		));
+		$this->test_history_ids[] = $in_progress_id;
+		$this->assertSame(3, $this->repository->count_completed_for_schedule($merged_schedule));
+
+		$this->repository->update($in_progress_id, array('status' => 'completed'));
+		$this->assertSame(4, $this->repository->count_completed_for_schedule($merged_schedule));
+
+		$subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_SCHEDULE, $this->test_schedule_id, 'Test Schedule');
+		$this->assertSame('schedule_id', $subject->container_meta_key());
+	}
+
+	public function test_get_schedule_generated_post_counts_supports_direct_and_legacy_fallback_containers() {
+		global $wpdb;
+
+		// Schedule 1 already has 3 completed generation rows from create_test_data().
+		$counts = $this->repository->get_schedule_generated_post_counts(array($this->test_schedule_id), true);
+		$this->assertSame(3, $counts[$this->test_schedule_id] ?? 0);
+
+		// Create a legacy un-backfilled schedule container (schedule_id IS NULL on aips_history,
+		// linked only via aips_schedule.schedule_history_id).
+		$legacy_history_id = $this->repository->create(array(
+			'template_id'     => $this->test_template_id,
+			'status'          => 'completed',
+			'creation_method' => 'schedule_lifecycle',
+			'record_kind'     => AIPS_History_Record_Kind::EVENT,
+		));
+		$this->test_history_ids[] = $legacy_history_id;
+
+		$this->repository->add_log_entry($legacy_history_id, array(
+			'message' => 'Legacy post 1',
+			'input'   => array(
+				'event_type'   => AIPS_History_Event_Type::POST_PUBLISHED,
+				'event_status' => 'success',
+			),
+		), AIPS_History_Type::ACTIVITY);
+		$this->repository->add_log_entry($legacy_history_id, array(
+			'message' => 'Legacy post 2',
+			'input'   => array(
+				'event_type'   => AIPS_History_Event_Type::POST_PUBLISHED,
+				'event_status' => 'success',
+			),
+		), AIPS_History_Type::ACTIVITY);
+
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_schedule',
+			array(
+				'template_id'         => $this->test_template_id,
+				'title'               => 'Legacy Unbackfilled Schedule',
+				'frequency'           => 'daily',
+				'next_run'            => current_time('mysql'),
+				'is_active'           => 1,
+				'status'              => 'active',
+				'schedule_history_id' => $legacy_history_id,
+			),
+			array('%d', '%s', '%s', '%s', '%d', '%s', '%d')
+		);
+		$legacy_schedule_id = (int) $wpdb->insert_id;
+
+		$both_counts = $this->repository->get_schedule_generated_post_counts(
+			array($this->test_schedule_id, $legacy_schedule_id),
+			true
+		);
+		$this->assertSame(3, $both_counts[$this->test_schedule_id] ?? 0);
+		$this->assertSame(2, $both_counts[$legacy_schedule_id] ?? 0);
+
+		$wpdb->delete($wpdb->prefix . 'aips_schedule', array('id' => $legacy_schedule_id), array('%d'));
 	}
 }

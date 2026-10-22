@@ -104,7 +104,10 @@ class AIPS_Generation_Execution_Runner {
 
 			$history = $this->history_service->create(
 				$history_type,
-				array_merge($history_meta, array('creation_method' => $history_type))
+				array_merge($history_meta, array(
+					'creation_method' => $history_type,
+					'record_kind'     => AIPS_History_Record_Kind::EVENT,
+				))
 			);
 
 			if ($history) {
@@ -114,6 +117,15 @@ class AIPS_Generation_Execution_Runner {
 					$e->getMessage()
 				);
 
+				$error_context = array_merge($history_meta, array(
+					'error'           => $e->getMessage(),
+					'exception_class' => get_class($e),
+					'exception_trace' => $e->getTraceAsString(),
+					'exception_code'  => $e->getCode(),
+					'exception_file'  => $e->getFile(),
+					'exception_line'  => $e->getLine(),
+				));
+
 				$history->record(
 					'error',
 					$failure_message,
@@ -122,24 +134,10 @@ class AIPS_Generation_Execution_Runner {
 						'event_status' => 'failed',
 					),
 					null,
-					array_merge($history_meta, array(
-						'error'           => $e->getMessage(),
-						'exception_class' => get_class($e),
-						'exception_trace' => $e->getTraceAsString(),
-						'exception_code'  => $e->getCode(),
-						'exception_file'  => $e->getFile(),
-						'exception_line'  => $e->getLine(),
-					))
+					$error_context
 				);
 
-				$this->history_service->update_history_record(
-					$history->get_id(),
-					array(
-						'status' => 'failed',
-						'error_message' => wp_strip_all_tags($e->getMessage()),
-						'completed_at' => AIPS_DateTime::now()->timestamp(),
-					)
-				);
+				$history->complete_failure(wp_strip_all_tags($e->getMessage()), $error_context, false);
 			}
 
 			if ($on_exception !== null) {

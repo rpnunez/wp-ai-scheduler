@@ -134,4 +134,34 @@ interface AIPS_History_Repository_Interface {
 	 * @return bool
 	 */
 	public function post_has_history_and_completed($post_id);
+
+	/**
+	 * Count generated posts per schedule in a single batch query.
+	 *
+	 * @param int[] $schedule_or_history_ids Schedule IDs (when $by_schedule_id is true) or history container IDs.
+	 * @param bool  $by_schedule_id          When true (default), keys and queries by schedule_id.
+	 * @return array<int, int> Map of ID => generated post count.
+	 */
+	public function get_schedule_generated_post_counts($schedule_or_history_ids, $by_schedule_id = true);
+
+	/**
+	 * Get all lifecycle/event log entries for a specific schedule across all of its
+	 * history containers, ordered by timestamp descending.
+	 *
+	 * @param int   $schedule_id         The schedule ID.
+	 * @param array $type_filter         Optional array of AIPS_History_Type constants to filter by.
+	 * @param int   $limit               Optional maximum rows to return (0 = no limit).
+	 * @param int   $fallback_history_id Optional schedule_history_id from aips_schedule for un-backfilled rows.
+	 * @return array Array of log entry objects.
+	 */
+	public function get_schedule_history_logs($schedule_id, $type_filter = array(), $limit = 0, $fallback_history_id = 0);
+
+	/**
+	 * Backfill aips_history.schedule_id for legacy rows.
+	 *
+	 * @param int $batch_size Rows inspected per batch when scanning log details.
+	 * @return int Total number of rows updated.
+	 */
+	public function backfill_schedule_id($batch_size = 500);
 }
+

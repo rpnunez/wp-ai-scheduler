@@ -314,4 +314,33 @@ class AIPS_Generation_Session {
 	public function get_context() {
 		return $this->context;
 	}
+
+	/**
+	 * Export the generation session state as an associative array.
+	 *
+	 * @return array Session state snapshot.
+	 */
+	public function to_array() {
+		return array(
+			'started_at'    => $this->started_at,
+			'completed_at'  => $this->completed_at,
+			'duration'      => $this->get_duration(),
+			'context'       => $this->context,
+			'template'      => $this->template,
+			'voice'         => $this->voice,
+			'ai_call_count' => $this->ai_call_count,
+			'error_count'   => $this->error_count,
+			'result'        => $this->result,
+		);
+	}
+
+	/**
+	 * Serialize the generation session state to a JSON string.
+	 *
+	 * @return string JSON-encoded session snapshot.
+	 */
+	public function to_json() {
+		$encoded = wp_json_encode($this->to_array());
+		return is_string($encoded) ? $encoded : '{}';
+	}
 }

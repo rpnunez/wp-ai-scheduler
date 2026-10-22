@@ -238,8 +238,8 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 
 		usort($filtered, function($a, $b) use ($orderby, $order) {
 			if ('status' === $orderby) {
-				$a_status = (!empty($a['is_active'])) ? 'active' : 'inactive';
-				$b_status = (!empty($b['is_active'])) ? 'active' : 'inactive';
+				$a_status = !empty($a['status']) ? (string) $a['status'] : ((!empty($a['is_active'])) ? 'active' : 'inactive');
+				$b_status = !empty($b['status']) ? (string) $b['status'] : ((!empty($b['is_active'])) ? 'active' : 'inactive');
 				$res      = strcmp($a_status, $b_status);
 			} elseif ('type' === $orderby) {
 				$res = strcmp($a['type'] ?? '', $b['type'] ?? '');
@@ -469,7 +469,10 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 		$html .= '<div class="aips-timing-next" style="margin-bottom:6px;">';
 		$html .= '<div class="cell-meta" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;">' . esc_html__('Next Run', 'ai-post-scheduler') . '</div>';
 		if (!$is_active) {
-			$html .= '<div class="cell-meta aips-muted">' . esc_html__('Paused (N/A)', 'ai-post-scheduler') . '</div>';
+			$inactive_timing_lbl = (isset($item['status']) && $item['status'] === 'completed')
+				? __('Completed', 'ai-post-scheduler')
+				: __('Paused (N/A)', 'ai-post-scheduler');
+			$html .= '<div class="cell-meta aips-muted">' . esc_html($inactive_timing_lbl) . '</div>';
 		} elseif ($next_run_ts) {
 			$html .= '<div class="cell-primary aips-next-run-countdown" title="' . esc_attr(date_i18n($this->date_format, $next_run_ts)) . '">';
 			$html .= esc_html($this->format_relative_time($next_run_ts));
@@ -554,6 +557,11 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 				$badge_cls  = 'aips-badge-error';
 				$icon_cls   = 'dashicons-warning';
 				$status_lbl = __('Failed', 'ai-post-scheduler');
+				break;
+			case 'completed':
+				$badge_cls  = 'aips-badge-success';
+				$icon_cls   = 'dashicons-yes-alt';
+				$status_lbl = __('Completed', 'ai-post-scheduler');
 				break;
 			case 'inactive':
 				$badge_cls  = 'aips-badge-neutral';

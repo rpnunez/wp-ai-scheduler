@@ -1145,6 +1145,11 @@ class AIPS_Generator {
             }
         }
 
+        $trigger_context = $context->get_trigger_context();
+        if (is_array($trigger_context) && !empty($trigger_context['schedule_id'])) {
+            $history_metadata['schedule_id'] = absint($trigger_context['schedule_id']);
+        }
+
         // Get creation_method from context, default to 'manual' if not specified
         $creation_method = $context->get_creation_method() ?: 'manual';
         $history_metadata['creation_method'] = $creation_method;
@@ -1182,19 +1187,27 @@ class AIPS_Generator {
 		$component_statuses['post_title']   = $metadata_result['title_success'];
 		$component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
 
-		$pre_image_incomplete  = in_array(false, $component_statuses, true);
+		// The featured image component is still pending here (it starts false when an image
+		// is requested), so only the text components decide whether the run is already incomplete.
+		$pre_image_statuses    = $component_statuses;
+		unset($pre_image_statuses['featured_image']);
+		$pre_image_incomplete  = in_array(false, $pre_image_statuses, true);
 		$generation_incomplete = $pre_image_incomplete;
 
         // Resolve the status the context/template would normally apply.
         $intended_post_status = $context->get_post_status();
 
+        // Stage 'publish' posts as 'draft' while featured image generation is still pending
+        // so posts never go live before all components (including featured image) succeed.
+        $stage_publish_for_featured_image = (
+            !$pre_image_incomplete
+            && $intended_post_status === 'publish'
+            && $context->should_generate_featured_image()
+        );
+
         // Only use the configured/intended Post Status (e.g. "publish") when
-        // every component known so far succeeded. If title/excerpt failed
-        // and fell back, force the post to be saved as a draft regardless of
-        // the template's configured status. Featured image failure (if
-        // requested) is resolved after post creation below and can only
-        // ever downgrade further, never upgrade back to the intended status.
-        $initial_post_status = $pre_image_incomplete ? 'draft' : $intended_post_status;
+        // every component known so far succeeded and no featured image step is pending.
+        $initial_post_status = ($pre_image_incomplete || $stage_publish_for_featured_image) ? 'draft' : $intended_post_status;
 
         // Generation-time affiliate link injection (when enabled on the template/author).
         if ( $context instanceof AIPS_Generation_Context && $context->get_affiliate_links_enabled() && ! empty( $content ) ) {
@@ -1253,6 +1266,14 @@ class AIPS_Generator {
             return $post_id;
         }
 
+        // Persist post_id on the history row immediately so crashes during featured
+        // image generation or downstream hooks never leave an unlinked WP post.
+        $this->current_history->record_post_created($post_id, array(
+            'post_type'         => $context->get_post_type(),
+            'generated_title'   => $title,
+            'generated_content' => $content,
+        ));
+
         if (!empty($this->current_source_snapshots)) {
             update_post_meta($post_id, 'aips_source_snapshots_used', $this->current_source_snapshots);
         }
@@ -1265,14 +1286,24 @@ class AIPS_Generator {
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
-        // If the featured image failed after post creation and the post was
-        // not already forced to draft pre-creation, downgrade it now. This
-        // never upgrades a post back to the intended status.
-        if ($generation_incomplete && !$pre_image_incomplete && $initial_post_status !== 'draft') {
+        // If the post was staged as draft while awaiting featured image generation and
+        // all components succeeded, transition it to publish now. If featured image failed
+        // on a non-draft post, downgrade it to draft.
+        if (!$generation_incomplete && $stage_publish_for_featured_image) {
+            $publish_result = $this->post_manager->force_post_status($post_id, 'publish');
+
+            if (is_wp_error($publish_result)) {
+                $this->logger->log(
+                    'Failed to transition post status to publish after featured image generation: ' . $publish_result->get_error_message(),
+                    'error',
+                    array('post_id' => $post_id)
+                );
+            }
+        } elseif ($generation_incomplete && !$pre_image_incomplete && $initial_post_status !== 'draft') {
             $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
 
             if (is_wp_error($downgrade_result)) {
-                $this->generation_logger->log(
+                $this->logger->log(
                     'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
                     'error',
                     array('post_id' => $post_id)

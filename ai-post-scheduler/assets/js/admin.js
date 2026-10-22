@@ -3474,12 +3474,12 @@
             var $icon    = $badge.find('.dashicons');
 
             $toggle.prop('checked', isActive === 1);
-            $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
+            $badge.removeClass('aips-badge-info aips-badge-success aips-badge-neutral aips-badge-error');
             $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
             $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
 
             if (isActive) {
-                $badge.addClass('aips-badge-success');
+                $badge.addClass('aips-badge-info');
                 $icon.addClass('dashicons-yes-alt');
                 $icon.after(' Active');
             } else {
@@ -3487,6 +3487,38 @@
                 $icon.addClass('dashicons-minus');
                 $icon.after(' Paused');
             }
+
+            var $timingNext = $row.find('.aips-timing-next');
+            if ($timingNext.length) {
+                var pausedLabel = (window.aipsScheduleL10n && aipsScheduleL10n.pausedNa) ? aipsScheduleL10n.pausedNa : 'Paused (N/A)';
+                var activeLabel = (window.aipsScheduleL10n && aipsScheduleL10n.activeScheduled) ? aipsScheduleL10n.activeScheduled : 'Active';
+
+                if ($timingNext.find('.cell-primary').length > 0) {
+                    var $override = $timingNext.find('.aips-timing-status-override');
+                    if (!isActive) {
+                        $timingNext.children().not(':first').not('.aips-timing-status-override').hide();
+                        if ($override.length === 0) {
+                            $('<div>', {
+                                'class': 'cell-meta aips-muted aips-timing-status-override',
+                                text: pausedLabel
+                            }).appendTo($timingNext);
+                        } else {
+                            $override.text(pausedLabel).show();
+                        }
+                    } else {
+                        $override.remove();
+                        $timingNext.children().not(':first').show();
+                    }
+                } else {
+                    var $nextMeta = $timingNext.find('.cell-meta').not(':first');
+                    if (!isActive && $nextMeta.length === 1) {
+                        $nextMeta.text(pausedLabel);
+                    } else if (isActive && $nextMeta.length === 1) {
+                        $nextMeta.text(activeLabel);
+                    }
+                }
+            }
+
             $row.data('is-active', isActive);
         },
 

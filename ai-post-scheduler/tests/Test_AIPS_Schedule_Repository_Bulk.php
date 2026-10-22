@@ -266,4 +266,51 @@ class Test_AIPS_Schedule_Repository_Bulk extends WP_UnitTestCase {
 		$count = $this->repository->get_post_count_for_schedules( array( 'bad', 0 ) );
 		$this->assertEquals( 0, $count );
 	}
+
+	public function test_set_active_and_unified_schedule_service_completed_status_and_list_table_rendering() {
+		$ids = $this->insert_schedules( 1, 0 );
+		$schedule_id = $ids[0];
+
+		// Soft-complete the once schedule and attach a schedule_history_id.
+		$this->repository->update( $schedule_id, array(
+			'is_active'           => 0,
+			'status'              => 'completed',
+			'schedule_history_id' => 555,
+		) );
+
+		$unified_service = new AIPS_Unified_Schedule_Service();
+		$grouped         = $unified_service->get_all_grouped( AIPS_Unified_Schedule_Service::TYPE_TEMPLATE, false );
+		$matched         = null;
+		foreach ( $grouped as $row ) {
+			if ( (int) $row['id'] === $schedule_id ) {
+				$matched = $row;
+				break;
+			}
+		}
+
+		$this->assertNotNull( $matched );
+		$this->assertSame( 'completed', $matched['status'] );
+		$this->assertSame( 555, $matched['history_id'] );
+
+		// Verify AIPS_Schedules_List_Table renders 'Completed' for both status badge and timing.
+		$table = new AIPS_Schedules_List_Table();
+		$ref_status = new ReflectionMethod( $table, 'column_status' );
+		$ref_status->setAccessible( true );
+		$status_html = $ref_status->invoke( $table, $matched );
+		$this->assertStringContainsString( 'aips-badge-success', $status_html );
+		$this->assertStringContainsString( 'Completed', $status_html );
+
+		$ref_timing = new ReflectionMethod( $table, 'column_timing' );
+		$ref_timing->setAccessible( true );
+		$timing_html = $ref_timing->invoke( $table, $matched );
+		$this->assertStringContainsString( 'Completed', $timing_html );
+		$this->assertStringNotContainsString( 'Paused (N/A)', $timing_html );
+
+		// Re-enabling via set_active(id, 1) resets status to 'active'.
+		$this->repository->set_active( $schedule_id, 1 );
+		$reloaded = $this->get_schedule( $schedule_id );
+		$this->assertSame( 1, (int) $reloaded->is_active );
+		$this->assertSame( 'active', $reloaded->status );
+	}
 }
+

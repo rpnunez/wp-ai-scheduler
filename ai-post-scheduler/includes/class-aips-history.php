@@ -48,47 +48,7 @@ class AIPS_History {
      * @return array<string,string>
      */
     private static function creation_method_labels(): array {
-        return array(
-            'manual'                  => __( 'Manual', 'ai-post-scheduler' ),
-            'scheduled'               => __( 'Scheduled', 'ai-post-scheduler' ),
-            'template_schedule'       => __( 'Template Schedule', 'ai-post-scheduler' ),
-            'author_topic_gen'        => __( 'Author Topics', 'ai-post-scheduler' ),
-            'author_post_gen'         => __( 'Author Posts', 'ai-post-scheduler' ),
-            'author_topic_generation' => __( 'Author Topics', 'ai-post-scheduler' ),
-            'author_post_generation'  => __( 'Author Posts', 'ai-post-scheduler' ),
-            'author_embeddings'       => __( 'Author Embeddings', 'ai-post-scheduler' ),
-            'content_indexing'        => __( 'Content Indexing', 'ai-post-scheduler' ),
-            'post_generation'         => __( 'Post Generation', 'ai-post-scheduler' ),
-            'bulk_generate'           => __( 'Bulk Generation', 'ai-post-scheduler' ),
-            'bulk_generate_now'       => __( 'Bulk Generation', 'ai-post-scheduler' ),
-            'bulk_generation'         => __( 'Bulk Generation', 'ai-post-scheduler' ),
-            'bulk_regenerate'         => __( 'Bulk Regeneration', 'ai-post-scheduler' ),
-            'planner_post'            => __( 'Planner Bulk Generation', 'ai-post-scheduler' ),
-            'trending_topic_post'     => __( 'Trending Topics Bulk Generation', 'ai-post-scheduler' ),
-            'author_topic_post'       => __( 'Author Topics Bulk Generation', 'ai-post-scheduler' ),
-            'retry'                   => __( 'Retry', 'ai-post-scheduler' ),
-            'regenerate'              => __( 'Regeneration', 'ai-post-scheduler' ),
-            'research_run'            => __( 'Research Run', 'ai-post-scheduler' ),
-            'source_fetch'            => __( 'Source Fetch', 'ai-post-scheduler' ),
-            'gsc_sync'                => __( 'Search Console Sync', 'ai-post-scheduler' ),
-            'post_review_action'      => __( 'Post Review', 'ai-post-scheduler' ),
-            'review_publish'          => __( 'Bulk Publish from Review', 'ai-post-scheduler' ),
-            'topic_post_generation'   => __( 'Topic Post Generation', 'ai-post-scheduler' ),
-            'manual_generation'       => __( 'Manual Generation', 'ai-post-scheduler' ),
-            'manual_regeneration'     => __( 'Manual Regeneration', 'ai-post-scheduler' ),
-            'bulk_delete'             => __( 'Bulk Delete', 'ai-post-scheduler' ),
-            'bulk_delete_feedback'    => __( 'Bulk Delete Feedback', 'ai-post-scheduler' ),
-            'bulk_schedule'           => __( 'Bulk Schedule', 'ai-post-scheduler' ),
-            'taxonomy_generation'     => __( 'Taxonomy Generation', 'ai-post-scheduler' ),
-            'stress_test'             => __( 'Stress Test', 'ai-post-scheduler' ),
-            'settings_connection_test' => __( 'AI Connection Test', 'ai-post-scheduler' ),
-            'notification_sent'       => __( 'Notification', 'ai-post-scheduler' ),
-            'schedule_lifecycle'      => __( 'Schedule Change', 'ai-post-scheduler' ),
-            'template_lifecycle'      => __( 'Template Change', 'ai-post-scheduler' ),
-            'campaign_lifecycle'      => __( 'Campaign Change', 'ai-post-scheduler' ),
-            'author_lifecycle'        => __( 'Author Change', 'ai-post-scheduler' ),
-            'source_lifecycle'        => __( 'Source Change', 'ai-post-scheduler' ),
-        );
+        return AIPS_History_Record_Kind::creation_method_labels();
     }
 
     /**
@@ -765,10 +725,21 @@ class AIPS_History {
             }
 
             if (!empty($history_item->author_id)) {
-                $source['author_id'] = (int) $history_item->author_id;
                 $author = AIPS_Authors_Repository::instance()->get_by_id((int) $history_item->author_id);
+                $source['author_id'] = (int) $history_item->author_id;
                 if ($author && !empty($author->name)) {
                     $source['author_name'] = (string) $author->name;
+                }
+            }
+
+            if (!empty($history_item->schedule_id)) {
+                $source['schedule_id'] = (int) $history_item->schedule_id;
+                $schedule = AIPS_Schedule_Repository::instance()->get_by_id((int) $history_item->schedule_id);
+                if ($schedule) {
+                    $sched_name = !empty($schedule->title) ? (string) $schedule->title : (!empty($schedule->name) ? (string) $schedule->name : '');
+                    if ($sched_name !== '') {
+                        $source['schedule_name'] = $sched_name;
+                    }
                 }
             }
         } catch (\Throwable $e) {
@@ -1062,6 +1033,7 @@ class AIPS_History {
 
         foreach (array(
             'actor_type' => __('Actor', 'ai-post-scheduler'),
+            'schedule_id' => __('Schedule ID', 'ai-post-scheduler'),
             'topic_id' => __('Topic ID', 'ai-post-scheduler'),
             'completed_at' => __('Completed', 'ai-post-scheduler'),
             'correlation_id' => __('Correlation ID', 'ai-post-scheduler'),
@@ -1265,6 +1237,7 @@ class AIPS_History {
             'post_edit_url' => $post_urls['post_edit_url'],
             'creation_method' => $creation_method,
             'actor_type' => $actor_type,
+            'schedule_id' => !empty($history_item->schedule_id) ? (int) $history_item->schedule_id : null,
             'topic_id' => !empty($history_item->topic_id) ? (int) $history_item->topic_id : null,
             'correlation_id' => isset($history_item->correlation_id) ? (string) $history_item->correlation_id : '',
             'completed_at' => $completed_at,

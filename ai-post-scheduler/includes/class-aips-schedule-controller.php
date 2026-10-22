@@ -535,6 +535,8 @@ class AIPS_Schedule_Controller {
         $verbs = array(
             AIPS_History_Event_Type::SCHEDULE_DELETED       => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
             AIPS_History_Event_Type::SCHEDULE_CIRCUIT_RESET => array(__('circuit breaker reset', 'ai-post-scheduler'), __('reset the circuit breaker for', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::SCHEDULE_ENABLED       => array(__('enabled', 'ai-post-scheduler'), __('enable', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::SCHEDULE_DISABLED      => array(__('disabled', 'ai-post-scheduler'), __('disable', 'ai-post-scheduler')),
         );
         $verb = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
 
@@ -633,7 +635,12 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('No schedule IDs provided.', 'ai-post-scheduler'));
         }
 
-        $updated = $this->schedule_repository->set_active_bulk($ids, $is_active);
+        $updated    = $this->schedule_repository->set_active_bulk($ids, $is_active);
+        $event_type = $is_active ? AIPS_History_Event_Type::SCHEDULE_ENABLED : AIPS_History_Event_Type::SCHEDULE_DISABLED;
+
+        foreach ($ids as $schedule_id) {
+            $this->record_schedule_event($event_type, $schedule_id, null, $updated !== false);
+        }
 
         if ($updated !== false) {
             $count = (int) $updated ?: count($ids);
@@ -788,13 +795,11 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Schedule not found.', 'ai-post-scheduler'));
         }
 
-        if (empty($schedule->schedule_history_id)) {
-            AIPS_Ajax_Response::success(array('entries' => array()));
-        }
-
-        $logs = $this->history_repository->get_logs_by_history_id(
-            absint($schedule->schedule_history_id),
-            array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
+        $logs = $this->history_repository->get_schedule_history_logs(
+            $schedule_id,
+            array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR),
+            0,
+            !empty($schedule->schedule_history_id) ? absint($schedule->schedule_history_id) : 0
         );
 
         // Normalize via the shared read model so event_type/event_status are

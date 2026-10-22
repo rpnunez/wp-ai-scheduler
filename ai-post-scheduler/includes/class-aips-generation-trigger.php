@@ -31,15 +31,7 @@ class AIPS_Generation_Trigger {
 	 * @return string[]
 	 */
 	private static function manual_methods() {
-		return array(
-			'manual', 'manual_generation', 'manual_regeneration', 'manual_ui', 'admin', 'preview',
-			'post_review_action', 'campaign_lifecycle', 'template_lifecycle', 'author_lifecycle', 'source_lifecycle',
-			'bulk_delete', 'bulk_delete_feedback',
-			'bulk_generate', 'bulk_generate_now', 'bulk_generation', 'bulk_regenerate',
-			'regenerate', 'retry',
-			// Background bulk jobs: started by a user, executed by cron slices.
-			'planner_post', 'trending_topic_post', 'author_topic_post',
-		);
+		return AIPS_History_Record_Kind::manual_creation_methods();
 	}
 
 	/**
@@ -48,11 +40,7 @@ class AIPS_Generation_Trigger {
 	 * @return string[]
 	 */
 	private static function automatic_methods() {
-		return array(
-			'scheduled', 'cron', 'bulk_batch_slice', 'template_schedule', 'schedule_execution', 'batch_job',
-			'author_topic_gen', 'author_post_gen',
-			'author_topic_generation', 'author_post_generation', 'author_embeddings',
-		);
+		return AIPS_History_Record_Kind::automatic_creation_methods();
 	}
 
 	/**

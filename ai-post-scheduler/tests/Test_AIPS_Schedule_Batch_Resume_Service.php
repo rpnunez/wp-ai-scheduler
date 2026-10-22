@@ -128,6 +128,8 @@ class Test_AIPS_Schedule_Batch_Resume_Service extends WP_UnitTestCase {
 					return $meta['event_type'] === AIPS_History_Event_Type::BATCH_RESUMED;
 				})
 			);
+		$history->expects($this->once())
+			->method('complete_success');
 		$this->result_handler->method('get_or_create_schedule_history')->willReturn($history);
 
 		$summary = $this->make_service()->resume_all();
