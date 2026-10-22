@@ -386,7 +386,7 @@
 							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
 						});
 					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
+						AIPS.Utilities.showAjaxError(response, aipsAuthorsL10n.errorLoading);
 
 						$('#aips-author-modal').fadeOut();
 					}
@@ -425,7 +425,7 @@
 
 						if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 1000); } else { setTimeout(() => location.reload(), 1000); }
 					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
+						AIPS.Utilities.showAjaxError(response, aipsAuthorsL10n.errorSaving);
 					}
 				},
 				error: () => {
@@ -1464,7 +1464,7 @@
 							window.location.reload();
 						}
 					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
+						AIPS.Utilities.showAjaxError(response, aipsAuthorsL10n.errorSaving);
 					}
 				},
 				error: () => {

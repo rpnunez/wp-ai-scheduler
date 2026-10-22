@@ -716,24 +716,7 @@ class AIPS_Resilience_Service {
      * @return int Seconds until a request slot becomes available (0 if under limit).
      */
     public function get_rate_limit_retry_after() {
-        $rl_config = $this->config->get_rate_limit_config();
-        $period    = $rl_config['period'];
-        $current_time = time();
-
-        $requests = get_transient('aips_rate_limiter_requests');
-        if (!is_array($requests) || empty($requests)) {
-            return 0;
-        }
-
-        $recent = array_filter($requests, function($ts) use ($current_time, $period) {
-            return ($current_time - $ts) < $period;
-        });
-
-        if (empty($recent)) {
-            return 0;
-        }
-
-        return max(0, (int) ceil(min($recent) + $period - $current_time));
+        return $this->seconds_until_rate_limit_slot_frees();
     }
 
     /**

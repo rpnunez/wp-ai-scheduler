@@ -968,7 +968,7 @@ class AIPS_Author_Topics_Controller {
 				));
 			}
 
-			AIPS_Ajax_Response::error($result->get_error_message());
+			AIPS_Ajax_Response::wp_error($result);
 		}
 
 		AIPS_Ajax_Response::success(array(

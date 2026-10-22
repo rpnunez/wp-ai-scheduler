@@ -42,7 +42,7 @@
 			var self = this;
 			xhr.done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.error, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.error);
 					return;
 				}
 				if (response.data.rules) {

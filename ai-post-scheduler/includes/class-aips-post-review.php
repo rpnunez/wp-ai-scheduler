@@ -543,7 +543,7 @@ class AIPS_Post_Review {
 			// Log the regeneration failure
 			$this->log_review_action(0, sprintf(__('Post regeneration failed: %s', 'ai-post-scheduler'), $result->get_error_message()), 'post_regenerated', 'failed', array('error' => $result->get_error_message()));
 			
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::wp_error($result);
 			return;
 		}
 		

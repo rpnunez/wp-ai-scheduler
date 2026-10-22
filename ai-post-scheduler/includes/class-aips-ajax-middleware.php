@@ -49,7 +49,7 @@ class AIPS_Ajax_Middleware {
 			// transient as a fallback (e.g. errors constructed outside the service).
 			$retry_after = isset( $response['retry_after'] )
 				? (int) $response['retry_after']
-				: ( new AIPS_Resilience_Service() )->get_rate_limit_retry_after();
+				: AIPS_Container::get_instance()->make( AIPS_Resilience_Service::class )->get_rate_limit_retry_after();
 
 			$response['retry_after'] = $retry_after;
 			$response['message']     = self::format_rate_limit_message( $retry_after );
@@ -73,10 +73,10 @@ class AIPS_Ajax_Middleware {
 
 			if ( $mins > 0 ) {
 				$when = $secs > 0
-					? sprintf( '%dm %ds', $mins, $secs )
-					: sprintf( '%dm', $mins );
+					? sprintf( __( '%dm %ds', 'ai-post-scheduler' ), $mins, $secs )
+					: sprintf( __( '%dm', 'ai-post-scheduler' ), $mins );
 			} else {
-				$when = sprintf( '%ds', $secs );
+				$when = sprintf( __( '%ds', 'ai-post-scheduler' ), $secs );
 			}
 
 			/* translators: %s: human-readable duration, e.g. "1m 42s" or "45s" */

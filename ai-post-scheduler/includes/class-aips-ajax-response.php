@@ -124,7 +124,7 @@ class AIPS_Ajax_Response {
 		$extra   = is_array( $data ) ? $data : array();
 
 		self::error(
-			array_merge( array( 'message' => $message, 'code' => $code ), $extra ),
+			array_merge( $extra, array( 'message' => $message, 'code' => $code ) ),
 			$code,
 			$http_status
 		);
