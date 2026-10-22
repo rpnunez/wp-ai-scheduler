@@ -1,0 +1,25 @@
+{
+  "id": "ea2667228d5c50119b76b5d91a31f69a4435b05e",
+  "type": "batch_job_store_datetime_gap",
+  "severity": "medium",
+  "status": "resolved",
+  "path": "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php",
+  "symbol": "AIPS_Bulk_Batch_Job_Store",
+  "anchor": "write-timestamps:raw-time-lifecycle",
+  "summary": "Async bulk job created_at and updated_at values were sourced from raw time() instead of the AIPS_DateTime abstraction required by the coding conventions.",
+  "why_it_matters": "Bulk job rows store BIGINT Unix timestamps that are read back through AIPS_DateTime::fromTimestamp(). Writing them with raw time() bypasses the single date/time entry point and leaves the persistence path inconsistent with the rest of the plugin.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php:109",
+    "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php:234",
+    "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php:259",
+    "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php:281",
+    "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php:318",
+    "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php:340"
+  ],
+  "suggested_fix": "Route every lifecycle timestamp write and the cleanup cutoff through AIPS_DateTime::now()->timestamp().",
+  "first_seen_run_id": "aips-20260509T202750Z",
+  "last_seen_run_id": "aips-20260509T202750Z",
+  "resolved_by": "aips-20260509T202750Z",
+  "resolved_at": "2026-05-09T20:27:50Z",
+  "resolution": "Replaced all six raw time() call sites (create, mark_completed, mark_processing, update_status, increment_processed, cleanup_old_jobs) with direct AIPS_DateTime::now()->timestamp() calls, matching the convention used elsewhere in the codebase. Behaviour is unchanged: both return the current UTC Unix timestamp."
+}
