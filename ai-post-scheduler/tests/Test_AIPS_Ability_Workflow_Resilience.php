@@ -244,6 +244,23 @@ class Test_AIPS_Ability_Workflow_Resilience extends WP_UnitTestCase {
 		$this->assertNotContains( $old_done, $stale, 'Finished runs are never stale.' );
 	}
 
+	public function test_old_queued_run_with_null_started_at_is_stale() {
+		global $wpdb;
+
+		$workflow_id = $this->make_workflow();
+		$run_id      = $this->queue_run( $workflow_id );
+		$this->age_run( $run_id, 10 * HOUR_IN_SECONDS );
+		$wpdb->update(
+			$wpdb->prefix . 'aips_ability_workflow_runs',
+			array( 'started_at' => null ),
+			array( 'id' => $run_id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+
+		$this->assertContains( $run_id, $this->workflows->get_stale_run_ids( time() - 6 * HOUR_IN_SECONDS ) );
+	}
+
 	public function test_recent_step_activity_keeps_an_old_run_from_being_stale() {
 		$workflow_id = $this->make_workflow();
 		$run_id      = $this->queue_run( $workflow_id );
@@ -254,6 +271,31 @@ class Test_AIPS_Ability_Workflow_Resilience extends WP_UnitTestCase {
 		$this->assertContains( $run_id, $this->workflows->get_stale_run_ids( time() - 6 * HOUR_IN_SECONDS ) );
 
 		$this->workflows->update_step_run_status( $step_run_id, 'running', array( 'started_at' => time() - 60 ) );
+
+		$this->assertNotContains( $run_id, $this->workflows->get_stale_run_ids( time() - 6 * HOUR_IN_SECONDS ) );
+	}
+
+	public function test_running_step_with_null_finished_at_keeps_a_recently_active_run_from_being_stale() {
+		global $wpdb;
+
+		$workflow_id = $this->make_workflow();
+		$run_id      = $this->queue_run( $workflow_id );
+		$this->age_run( $run_id, 10 * HOUR_IN_SECONDS );
+		$step        = $this->workflows->get_steps( $workflow_id )[0];
+		$step_run_id = $this->workflows->create_step_run( $run_id, $workflow_id, $step, array() );
+
+		$this->workflows->update_step_run_status(
+			$step_run_id,
+			'running',
+			array( 'started_at' => time() - 60 )
+		);
+		$wpdb->update(
+			$wpdb->prefix . 'aips_ability_workflow_step_runs',
+			array( 'finished_at' => null ),
+			array( 'id' => $step_run_id ),
+			array( '%s' ),
+			array( '%d' )
+		);
 
 		$this->assertNotContains( $run_id, $this->workflows->get_stale_run_ids( time() - 6 * HOUR_IN_SECONDS ) );
 	}

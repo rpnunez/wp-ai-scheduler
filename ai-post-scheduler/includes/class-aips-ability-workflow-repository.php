@@ -847,12 +847,12 @@ class AIPS_Ability_Workflow_Repository {
 			$this->wpdb->prepare(
 				"SELECT r.id FROM {$this->runs_table} r
 				LEFT JOIN (
-					SELECT run_id, MAX(GREATEST(started_at, finished_at)) AS last_activity
+					SELECT run_id, MAX(GREATEST(COALESCE(started_at, 0), COALESCE(finished_at, 0))) AS last_activity
 					FROM {$this->step_runs_table}
 					GROUP BY run_id
 				) s ON s.run_id = r.id
 				WHERE r.status IN ('queued','running')
-				AND GREATEST(r.created_at, r.started_at, COALESCE(s.last_activity, 0)) < %d
+				AND GREATEST(COALESCE(r.created_at, 0), COALESCE(r.started_at, 0), COALESCE(s.last_activity, 0)) < %d
 				ORDER BY r.id ASC
 				LIMIT %d",
 				$cutoff,
