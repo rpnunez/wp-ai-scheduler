@@ -564,6 +564,7 @@
 		renderHistoryTab: function (selector, records, fieldId) {
 			var $container = $(selector);
 			var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
+			var self = this;
 
 			if (!records || !records.length) {
 				$container.html('<p class="description">' + noHistoryMsg + '</p>');
@@ -581,10 +582,39 @@
 					response:   record.response,
 					created_at: record.created_at,
 					fieldId:    fieldId,
-					context:    record.context && record.context.workflow ? record.context.workflow : '',
+					context:    self.getHistoryContext(record.context),
 				});
 			});
 			$container.html(html);
+		},
+
+		/**
+		 * Format the workflow and declared sibling fields that informed a saved
+		 * suggestion. Template rendering escapes the resulting string.
+		 *
+		 * @param {Object} context Saved suggestion context.
+		 * @return {string} Explainable context summary.
+		 */
+		getHistoryContext: function (context) {
+			var parts = [];
+
+			if (!context || typeof context !== 'object') {
+				return '';
+			}
+
+			if (context.workflow) {
+				parts.push(context.workflow);
+			}
+
+			if (context.sibling_fields && typeof context.sibling_fields === 'object') {
+				$.each(context.sibling_fields, function (fieldName, value) {
+					if (typeof value === 'string' && value) {
+						parts.push(fieldName + ': ' + value);
+					}
+				});
+			}
+
+			return parts.join(' | ');
 		},
 
 		/**
@@ -616,12 +646,34 @@
 		},
 
 		showPreview: function ($field, value, apply) {
-			var $preview = $('<div class="notice notice-info aips-ai-assist-preview"><p><strong></strong></p><p class="aips-ai-assist-preview-value"></p><p><button type="button" class="button button-primary">' + AIPS.Templates.escape(aipsAIAssistanceL10n.apply) + '</button> <button type="button" class="button-link">' + AIPS.Templates.escape(aipsAIAssistanceL10n.keepCurrent) + '</button></p></div>');
+			var previewHtml = '<div class="notice notice-info aips-ai-assist-preview">' +
+				'<p><strong></strong></p>' +
+				'<p class="aips-ai-assist-preview-value"></p>' +
+				'<p><button type="button" class="button button-primary">' +
+					AIPS.Templates.escape(aipsAIAssistanceL10n.apply) +
+				'</button> <button type="button" class="button-link">' +
+					AIPS.Templates.escape(aipsAIAssistanceL10n.keepCurrent) +
+				'</button></p>' +
+			'</div>';
+			var $preview = $(previewHtml);
+			var $container = $field.closest('.form-group, .aips-form-row, tr');
+
 			$preview.find('strong').text(aipsAIAssistanceL10n.previewTitle);
 			$preview.find('.aips-ai-assist-preview-value').text(value);
-			$preview.find('.button-primary').on('click', function () { apply(); $preview.remove(); });
-			$preview.find('.button-link').on('click', function () { $preview.remove(); });
-			$field.closest('.form-group').append($preview);
+			$preview.find('.button-primary').on('click', function () {
+				apply();
+				$preview.remove();
+			});
+			$preview.find('.button-link').on('click', function () {
+				$preview.remove();
+			});
+
+			if ($container.length) {
+				$container.append($preview);
+				return;
+			}
+
+			$field.after($preview);
 		},
 
 		deleteHistoryValue: function (e) {

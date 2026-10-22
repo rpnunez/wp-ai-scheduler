@@ -163,6 +163,22 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		$this->assertSame(1, (int) get_option('aips_wp_ai_connector_failover'));
 	}
 
+	public function test_ajax_save_settings_accepts_ai_assistance_contexts() {
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_ai_assistance_contexts' => array('', 'authors', 'templates', 'invalid'),
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame(array('authors', 'templates'), get_option('aips_ai_assistance_contexts'));
+		$this->assertContains('aips_ai_assistance_contexts', $response['data']['updated']);
+	}
+
 	public function test_ajax_save_settings_rejects_empty_or_unknown_payloads() {
 		wp_set_current_user($this->admin_user_id);
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
