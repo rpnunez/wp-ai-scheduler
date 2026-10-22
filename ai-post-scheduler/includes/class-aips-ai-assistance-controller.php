@@ -71,6 +71,19 @@ class AIPS_AI_Assistance_Controller {
 			return;
 		}
 
+		$raw_context = wp_unslash( $_POST['context'] ?? array() );
+		$context     = array();
+
+		if ( is_array( $raw_context ) ) {
+			foreach ( $raw_context as $context_key => $context_value ) {
+				$context_key = sanitize_key( $context_key );
+				if ( '' === $context_key || ! is_scalar( $context_value ) ) {
+					continue;
+				}
+				$context[ $context_key ] = sanitize_textarea_field( (string) $context_value );
+			}
+		}
+
 		$field_config = array(
 			'field_name'        => sanitize_text_field( wp_unslash( $_POST['field_name'] ?? '' ) ),
 			'form_field_id'     => sanitize_text_field( wp_unslash( $_POST['field_key'] ?? '' ) ),
@@ -79,8 +92,7 @@ class AIPS_AI_Assistance_Controller {
 			'influence'         => sanitize_textarea_field( wp_unslash( $_POST['influence'] ?? '' ) ),
 			'expected_response' => sanitize_text_field( wp_unslash( $_POST['expected_response'] ?? '' ) ),
 			'current_value'     => sanitize_textarea_field( wp_unslash( $_POST['current_value'] ?? '' ) ),
-			'author_name'       => sanitize_text_field( wp_unslash( $_POST['author_name'] ?? '' ) ),
-			'field_niche'       => sanitize_text_field( wp_unslash( $_POST['field_niche'] ?? '' ) ),
+			'context'           => $context,
 		);
 
 		$session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );

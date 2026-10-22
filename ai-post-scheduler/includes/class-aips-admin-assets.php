@@ -438,9 +438,16 @@ class AIPS_Admin_Assets {
         // Global Admin Styles and Scripts
 
         wp_enqueue_style(
+            'aips-design-tokens',
+            AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_style(
             'aips-admin-style',
             AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            array(),
+            array('aips-design-tokens'),
             AIPS_VERSION
         );
 
@@ -531,9 +538,16 @@ class AIPS_Admin_Assets {
      */
     private function enqueue_history_modal_opener_assets() {
         wp_enqueue_style(
+            'aips-design-tokens',
+            AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_style(
             'aips-admin-style',
             AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            array(),
+            array('aips-design-tokens'),
             AIPS_VERSION
         );
 
@@ -883,33 +897,56 @@ class AIPS_Admin_Assets {
               true
           );
 
-          wp_enqueue_style(
-              'aips-ai-assistance-style',
-              AIPS_PLUGIN_URL . 'assets/css/ai-assistance.css',
-              array('aips-admin-style'),
-              AIPS_VERSION
-          );
+          $this->enqueue_ai_assistance_assets( array( 'aips-authors-script' ) );
+    }
 
-          wp_enqueue_script(
-              'aips-ai-assistance-script',
-              AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
-              array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script'),
-              AIPS_VERSION,
-              true
-          );
+    /**
+     * Enqueue the shared AI Assistance (per-field ✨ suggest / 🕐 history)
+     * CSS/JS, gated to users who can actually call its AJAX endpoints.
+     * Shared by every admin page that wires a form into AI Assistance, so
+     * the manage_options gate and dependency list live in exactly one place.
+     *
+     * wp_enqueue_style()/wp_enqueue_script() are idempotent (re-registering
+     * the same handle is a no-op), so this is safe to call from more than
+     * one enqueue_*_assets() method without double-enqueuing.
+     *
+     * @param array $extra_script_deps Extra script handles ai-assistance.js
+     *                                 should depend on for this page (e.g.
+     *                                 the page's own form script), in
+     *                                 addition to jquery/utilities/templates.
+     */
+    private function enqueue_ai_assistance_assets( array $extra_script_deps = array() ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
 
-          wp_localize_script('aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
-              'nonce'           => wp_create_nonce('aips_ajax_nonce'),
-              'loading'         => __('Loading...', 'ai-post-scheduler'),
-              'suggesting'      => __('Suggesting...', 'ai-post-scheduler'),
-              'suggested'       => __('AI suggestion applied.', 'ai-post-scheduler'),
-              'errorSuggesting' => __('Could not get AI suggestion. Please try again.', 'ai-post-scheduler'),
-              'valueApplied'    => __('Value applied from history.', 'ai-post-scheduler'),
-              'noHistory'       => __('No AI suggestions found for this field yet.', 'ai-post-scheduler'),
-              'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
-              'thisSession'     => __('This Session', 'ai-post-scheduler'),
-              'allTime'         => __('All Time', 'ai-post-scheduler'),
-          ));
+        wp_enqueue_style(
+            'aips-ai-assistance-style',
+            AIPS_PLUGIN_URL . 'assets/css/ai-assistance.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_script(
+            'aips-ai-assistance-script',
+            AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
+            array_merge( array('jquery', 'aips-utilities-script', 'aips-templates-script'), $extra_script_deps ),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
+            'nonce'           => wp_create_nonce('aips_ajax_nonce'),
+            'loading'         => __('Loading...', 'ai-post-scheduler'),
+            'suggesting'      => __('Suggesting...', 'ai-post-scheduler'),
+            'suggested'       => __('AI suggestion applied.', 'ai-post-scheduler'),
+            'errorSuggesting' => __('Could not get AI suggestion. Please try again.', 'ai-post-scheduler'),
+            'valueApplied'    => __('Value applied from history.', 'ai-post-scheduler'),
+            'noHistory'       => __('No AI suggestions found for this field yet.', 'ai-post-scheduler'),
+            'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
+            'thisSession'     => __('This Session', 'ai-post-scheduler'),
+            'allTime'         => __('All Time', 'ai-post-scheduler'),
+        ));
     }
 
     /**
@@ -954,6 +991,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the templates page.
      */
     private function enqueue_templates_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-script' ) );
+
             wp_enqueue_script(
                 'aips-admin-integrations',
                 AIPS_PLUGIN_URL . 'assets/js/admin-integrations.js',
@@ -1494,6 +1533,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the onboarding page.
      */
     private function enqueue_onboarding_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-onboarding' ) );
+
             wp_enqueue_script(
                 'aips-admin-onboarding',
                 AIPS_PLUGIN_URL . 'assets/js/onboarding.js',
@@ -1683,6 +1724,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the sources page.
      */
     private function enqueue_sources_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-sources' ) );
+
             wp_enqueue_script(
                 'aips-admin-sources',
                 AIPS_PLUGIN_URL . 'assets/js/admin-sources.js',
@@ -1720,6 +1763,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the settings page.
      */
     private function enqueue_settings_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-settings' ) );
+
             wp_enqueue_script(
                 'aips-admin-settings',
                 AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
