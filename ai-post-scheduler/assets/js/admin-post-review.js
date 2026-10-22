@@ -69,11 +69,34 @@
 
 			// Close preview modal.
 			$(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', this.closePreviewModal.bind(this));
+
+			// Pagination page-jump: the toolbar sits outside any form, so submit on Enter manually.
+			$(document).on('keydown', '.aips-review-pagination .current-page', this.onPageJump.bind(this));
 		},
 
 		// -----------------------------------------------------------------
 		// Event handlers – Select / checkbox
 		// -----------------------------------------------------------------
+
+		/**
+		 * Navigate to the page typed into the pagination input on Enter.
+		 *
+		 * @param {Event} e Keydown event.
+		 * @return {void}
+		 */
+		onPageJump: function (e) {
+			if (e.key !== 'Enter') {
+				return;
+			}
+			e.preventDefault();
+
+			var totalPages = parseInt($('.aips-review-pagination .total-pages').first().text(), 10) || 1;
+			var page       = Math.min(Math.max(parseInt($(e.currentTarget).val(), 10) || 1, 1), totalPages);
+			var url        = new URL(window.location.href);
+
+			url.searchParams.set('paged', page);
+			window.location.href = url.toString();
+		},
 
 		/**
 		 * Sync all row checkboxes when the select-all header checkbox changes.
@@ -356,12 +379,12 @@
 		},
 
 		/**
-		 * Update the page-header "Pending Approval" count from the pagination total.
+		 * Update the page-header "Pending Approval" count from the filter bar's total.
 		 *
 		 * @return {void}
 		 */
 		syncHeaderCount: function () {
-			var total = parseInt($('#aips-pending-review-tab .aips-review-pagination').data('total'), 10);
+			var total = parseInt($('#aips-pending-review-tab .aips-filter-bar').data('total'), 10);
 			if (isNaN(total)) {
 				return;
 			}

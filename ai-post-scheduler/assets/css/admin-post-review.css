@@ -156,7 +156,7 @@
 	z-index: 12;
 }
 
-.aips-post-review-table .column-actions {
+.aips-list-table-wrap .aips-post-review-table .column-actions {
 	width: 1%;
 	white-space: nowrap;
 	text-align: right;
@@ -240,8 +240,6 @@
 	background: #007c21;
 }
 
-
-
 /* Compact responsive mode */
 @media (max-width: 860px) {
 	.aips-row-action-group {
@@ -256,7 +254,6 @@
 		min-width: 150px;
 	}
 }
-
 
 /* View-post arrow next to the title */
 .aips-view-post-link {
@@ -278,4 +275,3 @@
 .aips-view-post-link:focus-visible {
 	color: var(--aips-primary);
 }
-

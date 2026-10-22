@@ -43,14 +43,14 @@ $review_total = $review_table->get_total_items();
 								<?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
 							</button>
 						</div>
-						<div class="aips-toolbar-right aips-review-pagination" data-total="<?php echo esc_attr((int) $review_total); ?>">
+						<div class="aips-toolbar-right aips-review-pagination">
 							<?php $review_table->pagination('top'); ?>
 						</div>
 					</div>
 					<?php endif; ?>
 
 				<!-- Filter Bar -->
-					<div class="aips-filter-bar">
+					<div class="aips-filter-bar" data-total="<?php echo esc_attr((int) $review_total); ?>">
 						<form method="get" class="aips-post-review-filters aips-filter-form">
 							<input type="hidden" name="page" value="aips-generated-posts">
 							<input type="hidden" name="tab" value="aips-pending-review">

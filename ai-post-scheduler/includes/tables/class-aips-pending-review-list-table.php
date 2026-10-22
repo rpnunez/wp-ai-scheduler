@@ -137,12 +137,13 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 	}
 
 	/**
-	 * Append the table class the admin-post-review CSS targets.
+	 * Append the legacy table class (cell styling) and the admin-post-review CSS hook.
 	 *
 	 * @return string[]
 	 */
 	protected function get_table_classes() {
 		$classes   = parent::get_table_classes();
+		$classes[] = 'aips-table';
 		$classes[] = 'aips-post-review-table';
 		return $classes;
 	}

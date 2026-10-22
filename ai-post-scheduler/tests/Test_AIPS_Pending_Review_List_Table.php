@@ -116,6 +116,41 @@ class Test_AIPS_Pending_Review_List_Table extends WP_UnitTestCase {
 		$this->assertStringNotContainsString('aips-view-session', $html, 'View Session was removed from the row menu.');
 	}
 
+	public function test_context_column_renders_source_line() {
+		$controller = new class {
+			public function format_source($item) {
+				return 'Author: Jane - Topic X';
+			}
+		};
+		$table  = new AIPS_Pending_Review_List_Table(array('controller' => $controller));
+		$method = new ReflectionMethod($table, 'column_context');
+		$method->setAccessible(true);
+
+		$html = $method->invoke($table, (object) array('post_id' => 42, 'id' => 7));
+
+		$this->assertStringContainsString('aips-cell-source', $html);
+		$this->assertStringContainsString('Author: Jane - Topic X', $html);
+	}
+
+	public function test_default_tablenav_is_suppressed_and_pagination_renders() {
+		$this->make_review_draft();
+
+		$table = new AIPS_Pending_Review_List_Table();
+		$table->prepare_items();
+
+		ob_start();
+		$table->display();
+		$display = ob_get_clean();
+
+		$this->assertStringNotContainsString('tablenav', $display, 'Pagination is rendered in the tab toolbar, not by display().');
+
+		ob_start();
+		$table->pagination('top');
+		$pagination = ob_get_clean();
+
+		$this->assertStringContainsString('displaying-num', $pagination);
+	}
+
 	public function test_row_checkbox_carries_post_and_history_ids() {
 		$table  = new AIPS_Pending_Review_List_Table();
 		$method = new ReflectionMethod($table, 'column_cb');

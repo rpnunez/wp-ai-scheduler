@@ -2367,6 +2367,16 @@ button.aips-btn-secondary:active {
     flex-direction: column;
 }
 
+.aips-modal > .aips-modal-overlay {
+    position: absolute;
+    inset: 0;
+}
+
+.aips-modal > .aips-modal-content {
+    position: relative;
+    z-index: 1;
+}
+
 .aips-modal-large {
     max-width: 900px;
 }
@@ -3035,6 +3045,16 @@ input[type="submit"].is-busy,
     cursor: wait !important;
     opacity: 0.75 !important;
     pointer-events: none !important;
+}
+
+.aips-modal > .aips-modal-overlay {
+    position: absolute;
+    inset: 0;
+}
+
+.aips-modal > .aips-modal-content {
+    position: relative;
+    z-index: 1;
 }
 
 .aips-modal-large {
