@@ -206,10 +206,11 @@ The `[xdebug]` block was removed from `dev-php.ini` — Xdebug config now comes 
 
 ### Canonical workflow (Docker, recommended)
 
-With the dev stack running (`./start-dev.sh`), run the suite inside the `web` container. No host PHP, Composer or svn needed:
+Follow the [Agent test protocol](../TESTING.md#agent-test-protocol-mandatory-for-ai-agents-and-humans-alike). With the stack provisioned once (`./start-dev.sh`), run the suite inside the `web` container. No host PHP, Composer or svn needed:
 
 ```bash
-make test                                  # whole suite (or: bash scripts/run-docker-test.sh)
+make test-session ARGS="tests/Test_A.php tests/Test_B.php"   # preferred: stops what it started
+make test                                  # whole suite (leaves the stack up)
 make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # one file
 make test ARGS="--fresh"                   # recreate the wp_tests database first
 make test-coverage                         # text coverage report (enables Xdebug coverage)
@@ -298,6 +299,18 @@ make start-dev ARGS="--import-sql path/to/dump.sql"
 ---
 
 ## Troubleshooting
+
+### Sources fetching and archive retention
+
+Each active Source chooses its own automatic fetch interval, or disables automatic fetching. The plugin schedules one WordPress single event for the earliest due Source. Existing recurring fetch events are replaced without resetting Source intervals or due times. Manual fetching shares the same worker lease; if busy, retry after the current worker finishes (a crashed worker's lease expires after five minutes).
+
+Runs process up to ten Sources and check a 20-second soft budget between requests. One HTTP request may take up to 15 seconds. Remaining overdue work continues after 60 seconds. Deactivation clears fetch and maintenance events.
+
+WordPress cron depends on site traffic. On low-traffic sites, configure an external scheduler to run `wp cron event run --due-now --path=/absolute/path/to/wordpress` every minute as the site account. Disable traffic-triggered cron with `define('DISABLE_WP_CRON', true);` in `wp-config.php` only after the external scheduler works. Actual execution still depends on the host and HTTP response times.
+
+Enable Sources on a template or author only after selecting Source Groups. Empty group selection never selects every Source. Existing configurations without groups still generate without references and report a configuration warning. Source references are untrusted input; enabling them does not guarantee that the AI will cite or use them. Only successful nonempty snapshots matching the Source's current URL are eligible. Editing a URL retains previous archives for inspection while excluding them from future reference selection. Previewing does not change usage counters.
+
+Under **Settings → General → Source Archive Retention**, zero days keeps all archives. Review eligible snapshots for a proposed cutoff before saving a nonzero value (1–3650 days). Cleanup runs daily in batches of 100 and preserves the newest usable snapshot for each current Source URL. Old-URL rows can expire. Generation history retains snapshot metadata, but deleted full content cannot be reopened. Keep retention disabled until fetching, selection, archive edits, and upgrade behavior have been validated on the target installation.
 
 | Symptom | Fix |
 |---------|-----|

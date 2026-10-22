@@ -72,6 +72,7 @@ class AIPS_History {
             'source_fetch'            => __( 'Source Fetch', 'ai-post-scheduler' ),
             'gsc_sync'                => __( 'Search Console Sync', 'ai-post-scheduler' ),
             'post_review_action'      => __( 'Post Review', 'ai-post-scheduler' ),
+            'review_publish'          => __( 'Bulk Publish from Review', 'ai-post-scheduler' ),
             'topic_post_generation'   => __( 'Topic Post Generation', 'ai-post-scheduler' ),
             'manual_generation'       => __( 'Manual Generation', 'ai-post-scheduler' ),
             'manual_regeneration'     => __( 'Manual Regeneration', 'ai-post-scheduler' ),
@@ -1342,6 +1343,21 @@ class AIPS_History {
     }
 
     /**
+     * Format a stored log timestamp (unix or datetime string) for display.
+     *
+     * @param mixed $value Raw timestamp value.
+     * @return string
+     */
+    private function format_history_log_timestamp($value) {
+        $ts = $this->normalize_history_timestamp_for_math($value);
+        if ($ts === null) {
+            return (string) $value;
+        }
+
+        return wp_date(get_option('date_format') . ' ' . get_option('time_format'), $ts);
+    }
+
+    /**
      * Pair AI request/response logs in a single pass and prepare display rows.
      *
      * @param array<int,array<string,mixed>> $logs             Normalized logs.
@@ -1358,6 +1374,7 @@ class AIPS_History {
                 $phase_key = $this->derive_ai_phase_key($log);
                 $display_logs[] = array(
                     'timestamp' => $log['timestamp'],
+                'timestamp_display' => $this->format_history_log_timestamp($log['timestamp']),
                     'type_label' => __('AI Request / Response', 'ai-post-scheduler'),
                     'type_class' => $this->get_history_type_class(5),
                     'log_type' => $this->humanize_ai_phase_label($phase_key),
@@ -1386,6 +1403,7 @@ class AIPS_History {
                 } else {
                     $display_logs[] = array(
                         'timestamp' => $log['timestamp'],
+                'timestamp_display' => $this->format_history_log_timestamp($log['timestamp']),
                         'type_label' => __('AI Response', 'ai-post-scheduler'),
                         'type_class' => $this->get_history_type_class(6),
                         'log_type' => $this->humanize_ai_phase_label($phase_key),
@@ -1401,6 +1419,7 @@ class AIPS_History {
 
             $display_logs[] = array(
                 'timestamp' => $log['timestamp'],
+                'timestamp_display' => $this->format_history_log_timestamp($log['timestamp']),
                 'type_label' => $log['type_label'],
                 'type_class' => $log['type_class'],
                 'log_type' => $log['log_type'],
@@ -1434,6 +1453,7 @@ class AIPS_History {
             'label' => $section_label,
             'show_header' => $section_label !== '',
             'timestamp' => isset($log['timestamp']) ? $log['timestamp'] : '',
+            'timestamp_display' => $this->format_history_log_timestamp(isset($log['timestamp']) ? $log['timestamp'] : ''),
             'message_html' => !empty($log['details']['message'])
                 ? $this->format_history_multiline_text($log['details']['message'])
                 : '',

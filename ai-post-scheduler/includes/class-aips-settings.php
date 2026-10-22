@@ -106,6 +106,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_default_category'],
 			),
+			'aips_bulk_publish_async_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_bulk_publish_async_threshold'),
+				'default'           => $defaults['aips_bulk_publish_async_threshold'],
+			),
 			'aips_enable_logging' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_logging'],
@@ -357,6 +361,10 @@ class AIPS_Settings {
 			'aips_link_click_tracking_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_link_click_tracking_enabled'],
+			),
+			'aips_source_archive_retention_days' => array(
+				'sanitize_callback' => array($ui, 'sanitize_source_archive_retention_days'),
+				'default' => $defaults['aips_source_archive_retention_days'],
 			),
 			'aips_link_click_retention_days' => array(
 				'sanitize_callback' => array($ui, 'sanitize_link_click_retention_days'),
@@ -619,6 +627,10 @@ class AIPS_Settings {
 			);
 		}
 
+		foreach ( self::get_ai_assistance_options() as $option_key => $meta ) {
+			$settings[$option_key] = $meta;
+		}
+
 		return $settings;
 	}
 
@@ -657,6 +669,30 @@ class AIPS_Settings {
             'aips-settings'
         );
 
+		add_settings_section(
+			'aips_ai_assistance_section',
+			__('AI Assistance', 'ai-post-scheduler'),
+			array($this->ui, 'ai_assistance_section_callback'),
+			'aips-settings'
+		);
+		$ai_assistance_fields = array(
+			'enabled' => __('Enable AI Assistance', 'ai-post-scheduler'),
+			'contexts' => __('Workflows', 'ai-post-scheduler'),
+			'response_length' => __('Response length', 'ai-post-scheduler'),
+			'guidance' => __('AI Assistance guidance', 'ai-post-scheduler'),
+			'overwrite_mode' => __('Existing field values', 'ai-post-scheduler'),
+			'retention_days' => __('History retention', 'ai-post-scheduler'),
+		);
+		foreach ( $ai_assistance_fields as $field => $label ) {
+			add_settings_field(
+				'aips_ai_assistance_' . $field,
+				$label,
+				array( $this->ui, 'ai_assistance_' . $field . '_field_callback' ),
+				'aips-settings',
+				'aips_ai_assistance_section'
+			);
+		}
+
         add_settings_field(
             'aips_default_post_status',
             __('Default Post Status', 'ai-post-scheduler'),
@@ -673,7 +709,24 @@ class AIPS_Settings {
             'aips_general_section'
         );
 
+        add_settings_field(
+            'aips_bulk_publish_async_threshold',
+            __('Bulk Publish Background Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'bulk_publish_async_threshold_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
         // -----------------------------------------------------------------------
+		// Source archive retention is explicitly opt-in.
+		add_settings_field(
+			'aips_source_archive_retention_days',
+			__('Source Archive Retention', 'ai-post-scheduler'),
+			array($this->ui, 'source_archive_retention_field_callback'),
+			'aips-settings',
+			'aips_general_section'
+		);
+
         // Card 1: Content Generation AI Provider
         // -----------------------------------------------------------------------
         add_settings_section(
@@ -1809,5 +1862,85 @@ class AIPS_Settings {
             ),
         );
     }
+
+	/**
+	 * Return the canonical AI Assistance setting definitions.
+	 *
+	 * @return array<string, array{sanitize_callback: callable|string, default: mixed}>
+	 */
+	public static function get_ai_assistance_options() {
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+
+		return array(
+			'aips_ai_assistance_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_ai_assistance_enabled'],
+			),
+			'aips_ai_assistance_contexts' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_contexts' ),
+				'default'           => $defaults['aips_ai_assistance_contexts'],
+			),
+			'aips_ai_assistance_response_length' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_response_length' ),
+				'default'           => $defaults['aips_ai_assistance_response_length'],
+			),
+			'aips_ai_assistance_guidance' => array(
+				'sanitize_callback' => 'sanitize_textarea_field',
+				'default'           => $defaults['aips_ai_assistance_guidance'],
+			),
+			'aips_ai_assistance_overwrite_mode' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_overwrite_mode' ),
+				'default'           => $defaults['aips_ai_assistance_overwrite_mode'],
+			),
+			'aips_ai_assistance_retention_days' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_retention_days' ),
+				'default'           => $defaults['aips_ai_assistance_retention_days'],
+			),
+		);
+	}
+
+	public static function get_ai_assistance_contexts() {
+		return array( 'authors', 'templates', 'sources', 'content_strategy' );
+	}
+
+	public static function sanitize_ai_assistance_contexts( $contexts ) {
+		$contexts = is_array( $contexts ) ? $contexts : array();
+		return array_values( array_intersect( self::get_ai_assistance_contexts(), array_map( 'sanitize_key', $contexts ) ) );
+	}
+
+	public static function sanitize_ai_assistance_response_length( $value ) {
+		return in_array( $value, array( 'concise', 'standard', 'detailed' ), true ) ? $value : 'standard';
+	}
+
+	public static function sanitize_ai_assistance_overwrite_mode( $value ) {
+		return in_array( $value, array( 'replace', 'preview' ), true ) ? $value : 'preview';
+	}
+
+	public static function sanitize_ai_assistance_retention_days( $value ) {
+		$value = absint( $value );
+		return in_array( $value, array( 0, 7, 30, 90, 365 ), true ) ? $value : 30;
+	}
+
+	public static function is_ai_assistance_enabled_for( $context ) {
+		return (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' )
+			&& in_array( $context, self::get_enabled_ai_assistance_contexts(), true );
+	}
+
+	public static function get_enabled_ai_assistance_contexts() {
+		return self::sanitize_ai_assistance_contexts( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_contexts' ) );
+	}
+
+	public static function get_ai_assistance_policy() {
+		return array(
+			'enabled'        => (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' ),
+			'contexts'       => self::get_enabled_ai_assistance_contexts(),
+			'overwriteMode'  => self::sanitize_ai_assistance_overwrite_mode( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_overwrite_mode' ) ),
+			'responseLength' => self::sanitize_ai_assistance_response_length( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_response_length' ) ),
+		);
+	}
+
+	public static function get_ai_assistance_retention_days() {
+		return self::sanitize_ai_assistance_retention_days( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_retention_days' ) );
+	}
         
 }
