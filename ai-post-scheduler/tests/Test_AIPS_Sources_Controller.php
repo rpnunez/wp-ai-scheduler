@@ -108,6 +108,46 @@ class Test_AIPS_Sources_Controller extends WP_Ajax_UnitTestCase {
 		$this->assertSame( 'Second', $this->data_repo->get_by_id( $row->id )->extracted_text );
 	}
 
+	public function test_get_source_data_returns_human_readable_timestamps() {
+		$this->data_repo->insert_if_new( 42, array( 'url' => 'https://example.com/ts', 'extracted_text' => 'Timestamps', 'fetched_at' => 1790391309 ) );
+		$row = $this->data_repo->get_by_source_id( 42 );
+
+		$_POST = array( 'data_id' => $row->id, 'nonce' => wp_create_nonce( 'aips_source_data_get' ) );
+		$_REQUEST = $_POST;
+		$this->_last_response = '';
+		ob_start();
+		try {
+			$this->controller->ajax_get_source_data();
+		} catch ( WPAjaxDieContinueException $e ) {
+		} catch ( WPAjaxDieStopException $e ) {
+		}
+		$output = ob_get_clean();
+		$response = json_decode( $this->_last_response ?: $output, true );
+
+		$this->assertTrue( $response['success'] );
+		$data = $response['data']['source_data'];
+		$this->assertSame( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $data['fetched_at'] ), $data['fetched_at_display'] );
+		$this->assertArrayHasKey( 'created_at_display', $data );
+		$this->assertArrayHasKey( 'updated_at_display', $data );
+		$this->assertDoesNotMatchRegularExpression( '/^\d{9,}$/', $data['fetched_at_display'] );
+	}
+
+	public function test_save_without_readonly_fields_preserves_existing_values() {
+		$this->data_repo->insert_if_new( 42, array( 'url' => 'https://example.com/keep', 'extracted_text' => 'Keep me', 'http_status' => 200, 'fetch_status' => 'success', 'fetched_at' => 1790391309 ) );
+		$row = $this->data_repo->get_by_source_id( 42 );
+		$original_fetched_at = (int) $row->fetched_at;
+
+		$response = $this->call_save( array( 'data_id' => $row->id, 'page_title' => 'Renamed' ) );
+		$this->assertTrue( $response['success'] );
+
+		$updated = $this->data_repo->get_by_id( $row->id );
+		$this->assertSame( 'Renamed', $updated->page_title );
+		$this->assertSame( 'https://example.com/keep', $updated->url );
+		$this->assertSame( 'success', $updated->fetch_status );
+		$this->assertSame( (int) $row->http_status, (int) $updated->http_status );
+		$this->assertSame( $original_fetched_at, (int) $updated->fetched_at );
+	}
+
 	public function test_restricted_raw_html_is_sanitized_and_pending_remains_supported() {
 		$user = wp_get_current_user();
 		$user->add_cap( 'unfiltered_html', false );
