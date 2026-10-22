@@ -56,6 +56,22 @@ class AIPS_Generation_Execution_Runner {
 	}
 
 	/**
+	 * Apply the configured PHP execution limit for a generation request.
+	 *
+	 * Some hosts disable set_time_limit(), so callers must continue safely when
+	 * it is unavailable. A non-positive configured timeout intentionally leaves
+	 * the current PHP execution limit unchanged.
+	 *
+	 * @return void
+	 */
+	public static function apply_configured_timeout(): void {
+		$timeout = (int) AIPS_Config::get_instance()->get_option('aips_generation_timeout_seconds', 120);
+		if (function_exists('set_time_limit') && $timeout > 0) {
+			@set_time_limit($timeout); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		}
+	}
+
+	/**
 	 * Run a generation callable inside the standard execution harness.
 	 *
 	 * Handles correlation ID lifecycle and Throwable safety net with history
@@ -86,6 +102,8 @@ class AIPS_Generation_Execution_Runner {
 	 * @return mixed Whatever the work callable returns, or WP_Error on caught Throwable.
 	 */
 	public function run(callable $work, $history_type, array $history_meta, $on_exception = null): mixed {
+		self::apply_configured_timeout();
+
 		$correlation_id = AIPS_Correlation_ID::generate();
 		$result = null;
 
