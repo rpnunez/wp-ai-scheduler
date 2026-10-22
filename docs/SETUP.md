@@ -308,7 +308,7 @@ make start-dev ARGS="--import-sql path/to/dump.sql"
 | No space left on device | `docker system prune -a --volumes` |
 | Database connection error | `docker compose down && docker compose up -d` |
 | Plugin activation fails | `docker compose exec web wp plugin activate ai-post-scheduler --allow-root` |
-| "healthcheck.sh: not found" | Run `./start-dev.sh` from repo root, not a subdirectory |
+| "docker/healthcheck.sh: not found" | Run `./start-dev.sh` from repo root, not a subdirectory |
 
 **Linux: "Cannot connect to Docker daemon"**
 

@@ -4,7 +4,7 @@ Fan out review agents to audit database schema definitions, `AIPS_DB_Manager`, `
 
 ## Purpose
 
-Audit all database structures and migrations in `ai-post-scheduler/` to verify compliance with the DB rules in `AGENTS.md` and `CLAUDE.md`:
+Audit all database structures and migrations in `ai-post-scheduler/` to verify compliance with the DB rules in `AGENTS.md`:
 1. Schema definitions centralized in `AIPS_DB_Manager::get_schema()`.
 2. Table upgrades handled cleanly via `dbDelta` in `install_tables()`.
 3. Migration logic defined in `AIPS_DB_Migrations::check_and_run()`.

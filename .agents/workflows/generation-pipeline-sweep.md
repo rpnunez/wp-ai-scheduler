@@ -4,7 +4,7 @@ Fan out agents across the AI generation pipeline to verify context object usage,
 
 ## Purpose
 
-Audit all content generation classes, prompt builders, context factories, and retry services against the architectural rules in `AGENTS.md` and `CLAUDE.md`:
+Audit all content generation classes, prompt builders, context factories, and retry services against the architectural rules in `AGENTS.md`:
 1. Generation requests use context objects (`AIPS_Generation_Context`, `AIPS_Template_Context`, `AIPS_Topic_Context`) via `AIPS_Generation_Context_Factory`.
 2. Prompts are constructed using shared `AIPS_Prompt_Builder*` classes—never string concatenation.
 3. Operations log events using `AIPS_History_Service`, `AIPS_Generation_Logger`, and `AIPS_Correlation_Id`.

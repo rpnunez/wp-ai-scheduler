@@ -37,5 +37,4 @@ Consolidate findings into a unified PR Review Decision:
 - **Verified Checklist**: Nonce checks, Capability checks, Repository boundaries, Escaping, Context generation, Test coverage.
 
 ## Useful references
-- `AGENTS.md` — canonical rules
-- `CLAUDE.md` — commands and architecture mapping
+- `AGENTS.md` — canonical rules, commands, and architecture mapping
