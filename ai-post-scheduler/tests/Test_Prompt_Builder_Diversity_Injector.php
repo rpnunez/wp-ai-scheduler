@@ -85,6 +85,37 @@ class Test_Prompt_Builder_Diversity_Injector extends WP_UnitTestCase {
 		$this->assertStringContainsString('Second Title', $second_block);
 	}
 
+	public function test_content_format_rotation_follows_history_total_across_calls_and_instances() {
+		add_filter('aips_diversity_content_formats', function () {
+			return array('alpha format', 'beta format', 'gamma format');
+		});
+
+		$repo = new class {
+			public $total = 0;
+			public function get_history($args = array()) {
+				return array('items' => array(), 'total' => $this->total);
+			}
+		};
+		$template = (object) array('id' => 11, 'name' => 'T', 'prompt_template' => 'x {{topic}}');
+		$context  = new AIPS_Template_Context($template, null, 'AI');
+
+		$injector = new AIPS_Prompt_Builder_Diversity_Injector($repo, null);
+		$this->assertStringContainsString('alpha format', $injector->build_content_format_block($context));
+
+		// A generation completed in the same process: rotation must advance.
+		$repo->total = 1;
+		$this->assertStringContainsString('beta format', $injector->build_content_format_block($context));
+
+		// A different instance/repository for the same template id is not shadowed.
+		$other = new class {
+			public function get_history($args = array()) {
+				return array('items' => array(), 'total' => 2);
+			}
+		};
+		$injector2 = new AIPS_Prompt_Builder_Diversity_Injector($other, null);
+		$this->assertStringContainsString('gamma format', $injector2->build_content_format_block($context));
+	}
+
 	public function test_build_created_topic_titles_block_uses_existing_author_topics() {
 		$topics_repository = new class {
 			public function get_by_author($author_id, $status = null) {

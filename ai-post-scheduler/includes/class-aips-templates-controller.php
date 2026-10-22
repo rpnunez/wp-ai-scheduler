@@ -154,13 +154,17 @@ class AIPS_Templates_Controller {
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
-            'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+            'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
+
+        if ($data['include_sources'] && empty(array_filter(json_decode($data['source_group_ids'], true)))) {
+            AIPS_Ajax_Response::error(__('Select at least one source group when sources are enabled.', 'ai-post-scheduler'));
+        }
 
         // post_type is write-once: only honor it when creating a new template
         // (no template_id yet). Existing templates ignore any post_type sent
@@ -435,7 +439,7 @@ class AIPS_Templates_Controller {
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
-            'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+            'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
@@ -496,6 +500,7 @@ class AIPS_Templates_Controller {
                 'article_structure' => $structure_name,
                 'sample_topic' => $sample_topic,
                 'include_sources' => !empty($template_data->include_sources),
+                'sources_selection' => $prompt_builder->get_post_content_builder()->get_sources_selection(),
             ),
         );
 

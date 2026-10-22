@@ -129,6 +129,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_text($prompt, $options = array()) {
+        $on_submission = $this->take_submission_callback($options);
         if (!$this->provider->is_available()) {
             $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, $options, $error);
@@ -167,8 +168,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state (record_failure / record_success) is managed by execute_safely — do NOT
         // call those methods inside this closure.
-        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params, $on_submission) {
             try {
+                $on_submission();
                 $result = $this->provider->generate_text($prompt, $params);
 
                 $this->logger->log('Received response from provider text generation', 'debug', array(
@@ -217,6 +219,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array|WP_Error The parsed JSON data as an array, or WP_Error on failure.
      */
     public function generate_json($prompt, $options = array()) {
+        $on_submission = $this->take_submission_callback($options);
         $available = $this->provider->is_available();
 
         $this->logger->log(
@@ -243,7 +246,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         if (!$this->provider->supports_native_json()) {
             $this->logger->log('Using fallback JSON generation (native JSON not supported)', 'info');
 
-            return $this->fallback_json_generation($prompt, $options);
+            return $this->fallback_json_generation($prompt, $options + array('_aips_on_submission' => $on_submission));
         }
 
         $params = $this->prepare_options($options, $prompt);
@@ -255,10 +258,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // generate_text() → execute_safely(), creating a nested resilience context inside a
         // retry iteration.  Instead, return WP_Error('json_query_unavailable', …) as a
         // sentinel so the caller can invoke the fallback after execute_safely() returns.
-        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params, $on_submission) {
             try {
                 // Use the provider's native structured-JSON path. It returns a
                 // decoded array, or null to request the text-based fallback.
+                $on_submission();
                 $result = $this->provider->generate_json($prompt, $params);
 
                 if ($result === null) {
@@ -321,7 +325,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // pass — no nesting within the retry closure above.
         if (is_wp_error($result) && $result->get_error_code() === 'json_query_unavailable') {
             $this->logger->log('Falling back to text-based JSON generation after simpleJsonQuery failure', 'info');
-            return $this->fallback_json_generation($prompt, $options);
+            return $this->fallback_json_generation($prompt, $options + array('_aips_on_submission' => $on_submission));
         }
 
         // Log resilience failures (circuit breaker, rate limit)
@@ -364,6 +368,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array|WP_Error
      */
     public function generate_json_from_text($prompt, $options = array()) {
+        $on_submission = $this->take_submission_callback($options);
         if (!$this->provider->is_available()) {
             $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, $options, $error);
@@ -394,8 +399,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
         $this->logger->log('Calling AI Engine for text-based JSON generation: ' . wp_json_encode($log_context), 'info');
 
-        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params, $on_submission) {
             try {
+                $on_submission();
                 $text_response = $this->provider->generate_text($prompt, $params);
 
                 if (!$text_response || empty($text_response)) {
@@ -581,6 +587,21 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 'include_prompt_tokens' => false,
             )
         );
+    }
+
+    /** Remove internal bookkeeping before logging or preparing provider options. */
+    private function take_submission_callback(array &$options): Closure {
+        $callback = $options['_aips_on_submission'] ?? null;
+        unset($options['_aips_on_submission']);
+        $submitted = false;
+        return static function () use ($callback, &$submitted) {
+            if (!$submitted) {
+                $submitted = true;
+                if (is_callable($callback)) {
+                    $callback();
+                }
+            }
+        };
     }
 
     /**

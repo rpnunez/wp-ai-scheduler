@@ -672,10 +672,12 @@ class AIPS_Post_History_UI {
 			return;
 		}
 
+		wp_register_style('aips-design-tokens', AIPS_PLUGIN_URL . 'assets/css/design-tokens.css', array(), AIPS_VERSION);
+
 		wp_enqueue_style(
 			'aips-admin-post-insights',
 			AIPS_PLUGIN_URL . 'assets/css/admin-post-insights.css',
-			array('dashicons'),
+			array('dashicons', 'aips-design-tokens'),
 			AIPS_VERSION
 		);
 
@@ -708,10 +710,12 @@ class AIPS_Post_History_UI {
 			return;
 		}
 
+		wp_register_style('aips-design-tokens', AIPS_PLUGIN_URL . 'assets/css/design-tokens.css', array(), AIPS_VERSION);
+
 		wp_enqueue_style(
 			'aips-admin-post-insights',
 			AIPS_PLUGIN_URL . 'assets/css/admin-post-insights.css',
-			array('wp-components'),
+			array('wp-components', 'aips-design-tokens'),
 			AIPS_VERSION
 		);
 

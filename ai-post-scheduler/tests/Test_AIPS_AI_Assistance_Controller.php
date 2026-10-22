@@ -33,6 +33,9 @@ class Test_AIPS_AI_Assistance_Controller extends WP_UnitTestCase {
 	public function tearDown(): void {
 		$_POST = array();
 		$_REQUEST = array();
+		delete_option('aips_ai_assistance_enabled');
+		delete_option('aips_ai_assistance_contexts');
+		delete_option('aips_ai_assistance_retention_days');
 		parent::tearDown();
 	}
 
@@ -97,6 +100,61 @@ class Test_AIPS_AI_Assistance_Controller extends WP_UnitTestCase {
 
 		$this->assertNotNull( $response );
 		$this->assertFalse( $response['success'] );
+	}
+
+	public function test_field_assist_rejects_when_global_policy_is_disabled() {
+		update_option( 'aips_ai_assistance_enabled', 0 );
+		$controller = $this->make_controller_with_mock_service( 'Should not be returned' );
+		$_POST = array(
+			'action'       => 'aips_ai_field_assist',
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context' => 'authors',
+			'field_key'    => 'author_name',
+			'field_name'   => 'Name',
+			'session_id'   => 'policy-disabled',
+		);
+		$this->sync_request_from_post();
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'disabled', $response['data']['message'] );
+	}
+
+	public function test_field_assist_rejects_when_context_is_disabled() {
+		update_option( 'aips_ai_assistance_enabled', 1 );
+		update_option( 'aips_ai_assistance_contexts', array( 'templates' ) );
+		$controller = $this->make_controller_with_mock_service( 'Should not be returned' );
+		$_POST = array(
+			'action'       => 'aips_ai_field_assist',
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context' => 'authors',
+			'field_key'    => 'author_name',
+			'field_name'   => 'Name',
+			'session_id'   => 'context-disabled',
+		);
+		$this->sync_request_from_post();
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'disabled', $response['data']['message'] );
+	}
+
+	public function test_no_retention_does_not_persist_a_suggestion() {
+		update_option( 'aips_ai_assistance_enabled', 1 );
+		update_option( 'aips_ai_assistance_contexts', array( 'authors' ) );
+		update_option( 'aips_ai_assistance_retention_days', 0 );
+		$controller = $this->make_controller_with_mock_service( 'Ephemeral suggestion' );
+		$_POST = array(
+			'action'       => 'aips_ai_field_assist',
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context' => 'authors',
+			'field_key'    => 'author_name',
+			'field_name'   => 'Name',
+			'session_id'   => 'no-retention',
+		);
+		$this->sync_request_from_post();
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+		$this->assertTrue( $response['success'] );
+		$this->assertSame( 0, $response['data']['record_id'] );
+		$this->assertCount( 0, $this->repository->get_by_session_and_field( 'no-retention', 'authors', 'author_name' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -194,6 +252,74 @@ class Test_AIPS_AI_Assistance_Controller extends WP_UnitTestCase {
 		$records = $this->repository->get_by_session_and_field( $session_id, 'authors', 'author_name' );
 		$this->assertCount( 1, $records );
 		$this->assertEquals( 'John Doe', $records[0]->response );
+	}
+
+	public function test_field_assist_sends_generic_context_and_form_specific_preamble() {
+		$controller = $this->make_controller_with_mock_service( 'Generated Suggestion' );
+
+		$session_id = 'test-session-context';
+		$_POST      = array(
+			'action'            => 'aips_ai_field_assist',
+			'nonce'             => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context'      => 'templates',
+			'field_key'         => 'prompt_template',
+			'field_name'        => 'Content Prompt Template',
+			'session_id'        => $session_id,
+			'description'       => 'The master content prompt',
+			'influence'         => 'Drives post generation',
+			'expected_response' => 'A detailed prompt',
+			'current_value'     => '',
+			'context'           => array(
+				'template_name' => 'Weekly Roundup',
+			),
+		);
+		$this->sync_request_from_post();
+
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+
+		$this->assertNotNull( $response );
+		$this->assertTrue( $response['success'], 'Expected success response' );
+
+		$records = $this->repository->get_by_session_and_field( $session_id, 'templates', 'prompt_template' );
+		$this->assertCount( 1, $records );
+
+		// The context value was read generically (no hardcoded author_name/field_niche)
+		// and the preamble reflects the 'templates' form context, not the Authors one.
+		$this->assertStringContainsString( 'Template Name: Weekly Roundup', $records[0]->prompt );
+		$this->assertStringContainsString( 'an AI content-generation template', $records[0]->prompt );
+		$this->assertStringNotContainsString( 'AI author persona', $records[0]->prompt );
+	}
+
+	public function test_field_assist_handles_hyphenated_context_keys() {
+		$controller = $this->make_controller_with_mock_service( 'Trusted industry blog.' );
+
+		$session_id = 'test-session-hyphenated';
+		$_POST      = array(
+			'action'            => 'aips_ai_field_assist',
+			'nonce'             => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context'      => 'sources',
+			'field_key'         => 'aips-source-description',
+			'field_name'        => 'Notes',
+			'session_id'        => $session_id,
+			'description'       => 'Notes about why this source is trusted',
+			'influence'         => 'Reference only',
+			'expected_response' => 'One to two sentences',
+			'current_value'     => '',
+			'context'           => array(
+				'aips-source-label' => 'Industry Leader',
+			),
+		);
+		$this->sync_request_from_post();
+
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+
+		$this->assertNotNull( $response );
+		$this->assertTrue( $response['success'], 'Expected success response' );
+
+		$records = $this->repository->get_by_session_and_field( $session_id, 'sources', 'aips-source-description' );
+		$this->assertCount( 1, $records );
+		$this->assertStringContainsString( 'Aips Source Label: Industry Leader', $records[0]->prompt );
+		$this->assertStringContainsString( 'a tracked external content source', $records[0]->prompt );
 	}
 
 	public function test_field_assist_propagates_ai_error() {

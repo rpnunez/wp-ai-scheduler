@@ -143,7 +143,7 @@ class AIPS_Authors_Controller {
 			'manual_post_generation_quantity' => isset($_POST['manual_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['manual_post_generation_quantity']))) : 1,
 			'scheduled_post_generation_quantity' => isset($_POST['scheduled_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['scheduled_post_generation_quantity']))) : 1,
 			// Source group fields
-			'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+			'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
 			'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
@@ -157,6 +157,10 @@ class AIPS_Authors_Controller {
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
+		if ($data['include_sources'] && empty(array_filter(json_decode($data['source_group_ids'], true)))) {
+			AIPS_Ajax_Response::error(__('Select at least one source group when sources are enabled.', 'ai-post-scheduler'));
+		}
+
 		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {
 			$now = AIPS_DateTime::now()->timestamp();

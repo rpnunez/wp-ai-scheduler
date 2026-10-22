@@ -36,6 +36,18 @@
 		/** Debounce timer handle for search input */
 		_searchTimer: null,
 
+		/** Active layout: 'list' or 'grid' */
+		viewMode: 'list',
+
+		/** Suggestions on the current page, keyed by id */
+		_items: {},
+
+		/** Ids of the current page in display order */
+		_order: [],
+
+		/** Selected suggestion ids (id → true) */
+		_selected: {},
+
 		/** Plain-text copy of the post content in the Insert modal */
 		_previewPlainText: '',
 
@@ -61,7 +73,47 @@
 			}
 
 			this.applyUrlFilters();
+			this.restoreViewMode();
 			this.loadSuggestions();
+		},
+
+		/**
+		 * Restore the List/Grid choice remembered in this browser.
+		 */
+		restoreViewMode: function () {
+			var saved = '';
+			try {
+				saved = window.localStorage.getItem('aipsInternalLinksView') || '';
+			} catch (err) {
+				saved = '';
+			}
+			this.setViewMode(saved === 'grid' ? 'grid' : 'list', false);
+		},
+
+		/**
+		 * Switch between List and Grid layouts without refetching.
+		 *
+		 * @param {string}  mode    'list' or 'grid'.
+		 * @param {boolean} persist Remember the choice in localStorage.
+		 */
+		setViewMode: function (mode, persist) {
+			this.viewMode = mode === 'grid' ? 'grid' : 'list';
+
+			$('.aips-il-view-btn').each(function () {
+				var active = $(this).data('view') === AIPS.InternalLinks.viewMode;
+				$(this).toggleClass('is-active', active).attr('aria-pressed', active ? 'true' : 'false');
+			});
+			$('#aips-il-list-view').toggle(this.viewMode === 'list');
+			$('#aips-il-grid-view').toggle(this.viewMode === 'grid');
+
+			if (persist) {
+				try {
+					window.localStorage.setItem('aipsInternalLinksView', this.viewMode);
+				} catch (err) { /* storage unavailable */ }
+				if (this._order.length) {
+					this.renderItems();
+				}
+			}
 		},
 
 		/**
@@ -109,6 +161,14 @@
 			// Per-post generation
 			$(document).on('click', '#aips-generate-for-post-btn', this.onGenerateForPostClick.bind(this));
 			$(document).on('click', '#aips-reindex-post-btn', this.onReindexPostClick.bind(this));
+
+			// View toggle, selection and bulk actions
+			$(document).on('click', '.aips-il-view-btn', function (e) {
+				AIPS.InternalLinks.setViewMode($(e.currentTarget).data('view'), true);
+			});
+			$(document).on('change', '.aips-il-select', this.onSelectChange.bind(this));
+			$(document).on('change', '#aips-il-select-all', this.onSelectAllChange.bind(this));
+			$(document).on('click', '.aips-il-bulk-btn', this.onBulkClick.bind(this));
 
 			// Row actions (delegated)
 			$(document).on('click', '.aips-il-accept-btn', this.onAcceptClick.bind(this));
@@ -292,7 +352,7 @@
 		 */
 		onAcceptClick: function (e) {
 			var $btn = $(e.currentTarget);
-			this.updateStatus($btn.data('id'), 'accepted', $btn.closest('tr'));
+			this.updateStatus($btn.data('id'), 'accepted', $btn);
 		},
 
 		/**
@@ -302,7 +362,7 @@
 		 */
 		onRejectClick: function (e) {
 			var $btn = $(e.currentTarget);
-			this.updateStatus($btn.data('id'), 'rejected', $btn.closest('tr'));
+			this.updateStatus($btn.data('id'), 'rejected', $btn);
 		},
 
 		/**
@@ -313,7 +373,6 @@
 		onDeleteClick: function (e) {
 			var $btn = $(e.currentTarget);
 			var id = $btn.data('id');
-			var $row = $btn.closest('tr');
 			var self = this;
 
 			AIPS.Utilities.confirm(
@@ -325,7 +384,67 @@
 						label: 'Delete',
 						className: 'aips-btn aips-btn-danger-solid',
 						action: function () {
-							self.deleteSuggestion(id, $row);
+							self.deleteSuggestion(id, $btn);
+						}
+					}
+				]
+			);
+		},
+
+		/**
+		 * Track a row/card checkbox in the selection.
+		 *
+		 * @param {Event} e Change event from an `.aips-il-select` checkbox.
+		 */
+		onSelectChange: function (e) {
+			var id = parseInt($(e.currentTarget).val(), 10);
+			this.setSelected(id, e.currentTarget.checked);
+			this.updateBulkBar();
+		},
+
+		/**
+		 * Select or clear every suggestion on the page.
+		 *
+		 * @param {Event} e Change event from `#aips-il-select-all`.
+		 */
+		onSelectAllChange: function (e) {
+			var checked = e.currentTarget.checked;
+			var self    = this;
+
+			$.each(this._order, function (i, id) {
+				self.setSelected(id, checked);
+			});
+			$('.aips-il-select').prop('checked', checked);
+			this.updateBulkBar();
+		},
+
+		/**
+		 * Run a bulk action (accept / reject / delete) on the selection.
+		 *
+		 * @param {Event} e Click event from an `.aips-il-bulk-btn` element.
+		 */
+		onBulkClick: function (e) {
+			var self   = this;
+			var action = $(e.currentTarget).data('bulk');
+			var ids    = this.getSelectedIds();
+
+			if (!ids.length) { return; }
+
+			if (action !== 'delete') {
+				this.runBulk(action, ids);
+				return;
+			}
+
+			AIPS.Utilities.confirm(
+				aipsInternalLinksL10n.confirmBulkDelete,
+				aipsInternalLinksL10n.bulkDeleteTitle,
+				[
+					{ label: aipsInternalLinksL10n.cancel, className: 'aips-btn aips-btn-secondary' },
+					{
+						label: aipsInternalLinksL10n.delete,
+						className: 'aips-btn aips-btn-danger-solid',
+						action: function () {
+							self.runBulk('delete', ids);
 						}
 					}
 				]
@@ -504,12 +623,10 @@
 		 * Load and render the suggestions table.
 		 */
 		loadSuggestions: function () {
-			var self   = this;
-			var $tbody = $('#aips-suggestions-tbody');
+			var self = this;
 
-			$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-loading', {
-				message: aipsInternalLinksL10n.loading,
-			}));
+			this._reloadQueued = false;
+			this.showMessage('aips-tmpl-il-tbody-loading', aipsInternalLinksL10n.loading);
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:   'aips_internal_links_get_suggestions',
@@ -521,42 +638,93 @@
 				origin:   self.currentOrigin,
 			}, function (response) {
 				if (!response.success) {
-					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
-						message: aipsInternalLinksL10n.errorLoading,
-					}));
+					self.showMessage('aips-tmpl-il-tbody-message', aipsInternalLinksL10n.errorLoading);
 					return;
 				}
 
 				var data = response.data;
 
 				if (!data.items || data.items.length === 0) {
-					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
-						message: aipsInternalLinksL10n.noSuggestions,
-					}));
+					self.showMessage('aips-tmpl-il-tbody-message', aipsInternalLinksL10n.noSuggestions);
 					self.renderPagination(0, 0);
 					return;
 				}
 
-				$tbody.html('');
+				self._items    = {};
+				self._order    = [];
+				self._selected = {};
 				$.each(data.items, function (i, item) {
-					$tbody.append(self.renderRow(item));
+					item.id = parseInt(item.id, 10);
+					self._items[item.id] = item;
+					self._order.push(item.id);
 				});
 
+				self._total = parseInt(data.total, 10) || 0;
+				self.renderItems();
 				self.renderPagination(data.total, data.total_pages);
 			}).fail(function () {
-				$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
-					message: aipsInternalLinksL10n.errorLoading,
-				}));
+				self.showMessage('aips-tmpl-il-tbody-message', aipsInternalLinksL10n.errorLoading);
 			});
 		},
 
 		/**
-		 * Render a single suggestions table row.
+		 * Replace both layouts' content with a loading / empty / error message.
 		 *
-		 * @param {Object} item Suggestion data object.
-		 * @return {string} HTML string for the row.
+		 * @param {string} tmplId  tbody message template id.
+		 * @param {string} message Message text.
 		 */
-		renderRow: function (item) {
+		showMessage: function (tmplId, message) {
+			this._items    = {};
+			this._order    = [];
+			this._selected = {};
+
+			$('#aips-suggestions-tbody').html(AIPS.Templates.render(tmplId, { message: message }));
+			$('#aips-il-grid').html(AIPS.Templates.render('aips-tmpl-il-notice-muted', { message: message }));
+			this.updateBulkBar();
+		},
+
+		/**
+		 * Render the current page of suggestions into the active layout.
+		 */
+		renderItems: function () {
+			var self  = this;
+			var html  = '';
+			var isGrid = this.viewMode === 'grid';
+
+			$.each(this._order, function (i, id) {
+				html += self.renderItem(self._items[id], isGrid);
+			});
+
+			// Only the active layout is filled; switching views re-renders from the cache.
+			if (isGrid) {
+				$('#aips-il-grid').html(html);
+				$('#aips-suggestions-tbody').empty();
+			} else {
+				$('#aips-suggestions-tbody').html(html);
+				$('#aips-il-grid').empty();
+			}
+
+			this.updateBulkBar();
+		},
+
+		/**
+		 * The row/card element(s) for a suggestion in whichever layout is active.
+		 *
+		 * @param {number} id Suggestion ID.
+		 * @return {jQuery}
+		 */
+		getItemEl: function (id) {
+			return $('.aips-il-item[data-id="' + id + '"]');
+		},
+
+		/**
+		 * Render a single suggestion as a list row or a grid card.
+		 *
+		 * @param {Object}  item   Suggestion data object.
+		 * @param {boolean} isGrid Render the grid card instead of the table row.
+		 * @return {string} HTML string.
+		 */
+		renderItem: function (item, isGrid) {
 			var l10n   = aipsInternalLinksL10n;
 			var rawScore = parseFloat(item.similarity_score) || 0;
 			var anchor = item.anchor_text
@@ -584,14 +752,11 @@
 				title: isInbound ? l10n.chipInboundTip : l10n.chipOutboundTip,
 			});
 
-			// The Status filter already says which status is listed, except for "All".
-			var statusChip = this.currentStatus === ''
-				? AIPS.Templates.render('aips-tmpl-il-chip', {
-					cls:   'aips-status-' + item.status,
-					label: this.getStatusLabel(item.status),
-					title: '',
-				})
-				: '';
+			var statusChip = AIPS.Templates.render('aips-tmpl-il-chip', {
+				cls:   'aips-status-' + item.status,
+				label: this.getStatusLabel(item.status),
+				title: '',
+			});
 
 			var sourceTitle = item.source_post_title || '(#' + item.source_post_id + ')';
 			var targetTitle = item.target_post_title || '(#' + item.target_post_id + ')';
@@ -610,6 +775,9 @@
 				})
 				: AIPS.Templates.escape(targetTitle);
 
+			// Four fixed slots (accept/insert, reject, edit, delete): a slot that does not
+			// apply to this status is filled with a spacer so the rest never shift.
+			var spacer  = AIPS.Templates.get('aips-tmpl-il-action-spacer');
 			var actions = '';
 
 			if (item.status === 'pending') {
@@ -620,14 +788,14 @@
 					acceptTip:    aipsInternalLinksL10n.tipAccept,
 					rejectTip:    aipsInternalLinksL10n.tipReject,
 				});
-			}
-
-			if (item.status === 'accepted') {
+			} else if (item.status === 'accepted') {
 				actions += AIPS.Templates.render('aips-tmpl-il-actions-accepted', {
 					id:          item.id,
 					insertLabel: aipsInternalLinksL10n.insertLink,
 					insertTip:   aipsInternalLinksL10n.tipInsert,
-				});
+				}) + spacer;
+			} else {
+				actions += spacer + spacer;
 			}
 
 			actions += AIPS.Templates.render('aips-tmpl-il-actions-edit-delete', {
@@ -639,7 +807,11 @@
 				deleteTip:   aipsInternalLinksL10n.tipDelete,
 			});
 
-			return AIPS.Templates.renderRaw('aips-tmpl-il-suggestion-row', {
+			if (typeof isGrid === 'undefined') {
+				isGrid = this.viewMode === 'grid';
+			}
+
+			return AIPS.Templates.renderRaw(isGrid ? 'aips-tmpl-il-suggestion-card' : 'aips-tmpl-il-suggestion-row', {
 				id:          item.id,
 				source:      source,
 				target:      target,
@@ -647,8 +819,187 @@
 				originChip:  originChip,
 				anchorLabel: AIPS.Templates.escape(l10n.anchorLabel),
 				anchor:      anchor,
+				anchorTitle: AIPS.Templates.escape(item.anchor_text || ''),
+				sourceTitle: AIPS.Templates.escape(sourceTitle),
+				targetTitle: AIPS.Templates.escape(targetTitle),
 				statusChip:  statusChip,
 				actions:     actions,
+				selectLabel: AIPS.Templates.escape(l10n.selectRow),
+				checked:     this._selected[item.id] ? ' checked' : '',
+			});
+		},
+
+		// -----------------------------------------------------------------------
+		// In-place updates and selection
+		// -----------------------------------------------------------------------
+
+		/**
+		 * Mark a suggestion (un)selected and mirror it on its row/card.
+		 *
+		 * @param {number}  id      Suggestion ID.
+		 * @param {boolean} checked Selected state.
+		 */
+		setSelected: function (id, checked) {
+			if (checked) {
+				this._selected[id] = true;
+			} else {
+				delete this._selected[id];
+			}
+			this.getItemEl(id).toggleClass('is-selected', !!checked);
+		},
+
+		/**
+		 * @return {number[]} Selected ids that are still on the page.
+		 */
+		getSelectedIds: function () {
+			var self = this;
+			return $.grep(this._order, function (id) { return self._selected[id]; });
+		},
+
+		/**
+		 * Sync the bulk bar (count, button state, select-all) with the selection.
+		 */
+		updateBulkBar: function () {
+			var n   = this.getSelectedIds().length;
+			var all = this._order.length > 0 && n === this._order.length;
+
+			$('#aips-il-bulk-count').text(n ? aipsInternalLinksL10n.selectedCount.replace('%d', String(n)) : '');
+			$('.aips-il-bulk-btn').prop('disabled', n === 0);
+			$('#aips-il-select-all')
+				.prop('checked', all)
+				.prop('indeterminate', n > 0 && !all)
+				.prop('disabled', this._order.length === 0);
+		},
+
+		/**
+		 * Apply a new status to a cached suggestion and update only its element:
+		 * re-render it in place, or remove it when it no longer matches the Status filter.
+		 *
+		 * @param {number} id     Suggestion ID.
+		 * @param {string} status New status.
+		 */
+		applyStatusLocally: function (id, status) {
+			var item = this._items[id];
+			if (!item) { return; }
+
+			item.status = status;
+
+			if (this.currentStatus !== '' && this.currentStatus !== status) {
+				this.removeItem(id);
+				return;
+			}
+
+			this.replaceItemEl(id);
+		},
+
+		/**
+		 * Re-render one cached suggestion in place, keeping its selected state.
+		 *
+		 * @param {number} id Suggestion ID.
+		 */
+		replaceItemEl: function (id) {
+			var $new = $(this.renderItem(this._items[id]));
+			this.getItemEl(id).replaceWith($new);
+			$new.toggleClass('is-selected', !!this._selected[id]).addClass('is-updated');
+		},
+
+		/**
+		 * Remove a suggestion's element and forget it. Reloads only when the page
+		 * has emptied, so the next page of results can slide in.
+		 *
+		 * @param {number} id Suggestion ID.
+		 */
+		removeItem: function (id) {
+			var self = this;
+
+			delete this._items[id];
+			delete this._selected[id];
+			this._total = Math.max(0, (this._total || 0) - 1);
+			this.renderPagination(this._total, Math.ceil(this._total / this.perPage));
+			this._order = $.grep(this._order, function (x) { return x !== id; });
+
+			this.getItemEl(id).fadeOut(150, function () {
+				$(this).remove();
+
+				if (self._order.length === 0 && !self._reloadQueued) {
+					self._reloadQueued = true;
+					if (self.currentPage > 1) {
+						self.currentPage--;
+					}
+					self.loadSuggestions();
+				}
+			});
+
+			this.updateBulkBar();
+		},
+
+		/**
+		 * Run accept / reject / delete on several suggestions at once.
+		 *
+		 * @param {string}   action 'accept', 'reject' or 'delete'.
+		 * @param {number[]} ids    Selected ids.
+		 */
+		runBulk: function (action, ids) {
+			var self   = this;
+			var status = action === 'accept' ? 'accepted' : 'rejected';
+			var l10n   = aipsInternalLinksL10n;
+			var skipped = 0;
+
+			// Accept / Reject only apply to pending rows (the only status the per-row buttons
+			// offer them on); the server enforces the same rule.
+			if (action !== 'delete') {
+				var keep = $.grep(ids, function (id) {
+					return self._items[id] && self._items[id].status === 'pending';
+				});
+				skipped = ids.length - keep.length;
+				ids = keep;
+			}
+
+			if (!ids.length) {
+				AIPS.Utilities.showToast(l10n.bulkSkipped.replace('%d', String(skipped)), 'info');
+				return;
+			}
+
+			$('.aips-il-bulk-btn').prop('disabled', true);
+
+			$.post(aipsAjax.ajaxUrl, {
+				action:      'aips_internal_links_bulk_action',
+				nonce:       l10n.nonce,
+				bulk_action: action,
+				ids:         ids,
+			}, function (response) {
+				if (!response.success) {
+					self.updateBulkBar();
+					AIPS.Utilities.showToast((response.data && response.data.message) || l10n.bulkFailed, 'error');
+					return;
+				}
+
+				// Fewer rows changed than were sent: the page was stale, so resync it.
+				if (action !== 'delete' && parseInt(response.data.count, 10) < ids.length) {
+					self.loadSuggestions();
+					return;
+				}
+
+				$.each(ids, function (i, id) {
+					if (action === 'delete') {
+						self.removeItem(id);
+					} else {
+						self.applyStatusLocally(id, status);
+					}
+				});
+
+				var msg = (action === 'delete' ? l10n.bulkDeleted : (action === 'accept' ? l10n.bulkAccepted : l10n.bulkRejected))
+					.replace('%d', String(ids.length));
+				AIPS.Utilities.showToast(msg, 'success');
+				if (skipped) {
+					AIPS.Utilities.showToast(l10n.bulkSkipped.replace('%d', String(skipped)), 'info');
+				}
+
+				self.updateBulkBar();
+				self.refreshStatus();
+			}).fail(function () {
+				self.updateBulkBar();
+				AIPS.Utilities.showToast(l10n.bulkFailed, 'error');
 			});
 		},
 
@@ -847,12 +1198,16 @@
 		/**
 		 * Update the status of a suggestion row.
 		 *
+		 * Only the actioned row/card is touched; the table is not reloaded.
+		 *
 		 * @param {number} id     Suggestion ID.
 		 * @param {string} status New status.
-		 * @param {jQuery} $row   Table row element.
+		 * @param {jQuery} $btn   The clicked button (disabled while the request runs).
 		 */
-		updateStatus: function (id, status, $row) {
+		updateStatus: function (id, status, $btn) {
 			var self = this;
+
+			$btn.prop('disabled', true);
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_update_status',
@@ -861,24 +1216,30 @@
 				status: status,
 			}, function (response) {
 				if (response.success) {
-					// Reload to reflect updated status and re-render actions
-					self.loadSuggestions();
+					self.applyStatusLocally(id, status);
+					self.updateBulkBar();
 					self.refreshStatus();
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdated, 'success');
 				} else {
+					$btn.prop('disabled', false);
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdateFailed, 'error');
 				}
+			}).fail(function () {
+				$btn.prop('disabled', false);
+				AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdateFailed, 'error');
 			});
 		},
 
 		/**
-		 * Delete a suggestion row.
+		 * Delete a suggestion and remove just its row/card.
 		 *
 		 * @param {number} id   Suggestion ID.
-		 * @param {jQuery} $row Table row element.
+		 * @param {jQuery} $btn The clicked delete button.
 		 */
-		deleteSuggestion: function (id, $row) {
+		deleteSuggestion: function (id, $btn) {
 			var self = this;
+
+			$btn.prop('disabled', true);
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_delete',
@@ -886,12 +1247,15 @@
 				id:     id,
 			}, function (response) {
 				if (response.success) {
-					// A suggestion is two table rows (post pair + anchor/actions).
-					$('#aips-suggestions-tbody tr[data-id="' + id + '"]').fadeOut(200, function () { $(this).remove(); });
+					self.removeItem(id);
 					self.refreshStatus();
 				} else {
+					$btn.prop('disabled', false);
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.errorDeleting, 'error');
 				}
+			}).fail(function () {
+				$btn.prop('disabled', false);
+				AIPS.Utilities.showToast(aipsInternalLinksL10n.errorDeleting, 'error');
 			});
 		},
 
@@ -914,15 +1278,11 @@
 				$('#aips-anchor-modal').hide();
 
 				if (response.success) {
-					// Update cell in table
-					var $anchorCell = $('tr[data-id="' + id + '"] .aips-il-anchor-cell');
-					if (anchorText) {
-						$anchorCell.text(anchorText);
-					} else {
-						$anchorCell.html('<em class="aips-text-muted">' + AIPS.Templates.escape(aipsInternalLinksL10n.noAnchor) + '</em>');
+					// Re-render just this row/card from the cache.
+					if (self._items[id]) {
+						self._items[id].anchor_text = anchorText;
+						self.replaceItemEl(id);
 					}
-					// Update data attribute on edit button
-					$('tr[data-id="' + id + '"] .aips-il-edit-anchor-btn').data('anchor', anchorText);
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');
 				} else {
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdateFailed, 'error');

@@ -348,7 +348,9 @@ class AIPS_Component_Regeneration_Service {
 		$prompt = $this->post_content_prompt_builder->build($generation_context);
 
 		// Generate content using the prompt
-		$result = $this->generator->generate_content($prompt);
+		$result = $this->generator->generate_content($prompt, array(
+			'_aips_sources_selection' => $this->post_content_prompt_builder->get_sources_selection(),
+		));
 		
 		if (is_wp_error($result)) {
 			return $result;
