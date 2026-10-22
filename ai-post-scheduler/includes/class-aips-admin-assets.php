@@ -897,7 +897,7 @@ class AIPS_Admin_Assets {
               true
           );
 
-          $this->enqueue_ai_assistance_assets( array( 'aips-authors-script' ) );
+          $this->enqueue_ai_assistance_assets( array( 'aips-authors-script' ), 'authors' );
     }
 
     /**
@@ -915,8 +915,8 @@ class AIPS_Admin_Assets {
      *                                 the page's own form script), in
      *                                 addition to jquery/utilities/templates.
      */
-    private function enqueue_ai_assistance_assets( array $extra_script_deps = array() ) {
-        if ( ! current_user_can( 'manage_options' ) ) {
+    private function enqueue_ai_assistance_assets( array $extra_script_deps = array(), $context = 'authors' ) {
+        if ( ! current_user_can( 'manage_options' ) || ! AIPS_Settings::is_ai_assistance_enabled_for( $context ) ) {
             return;
         }
 
@@ -946,7 +946,12 @@ class AIPS_Admin_Assets {
             'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
             'thisSession'     => __('This Session', 'ai-post-scheduler'),
             'allTime'         => __('All Time', 'ai-post-scheduler'),
-        ));
+			'policy'          => AIPS_Settings::get_ai_assistance_policy(),
+			'previewTitle'    => __('Review AI suggestion', 'ai-post-scheduler'),
+			'apply'           => __('Apply suggestion', 'ai-post-scheduler'),
+			'keepCurrent'     => __('Keep current value', 'ai-post-scheduler'),
+			'regenerate'      => __('Regenerate', 'ai-post-scheduler'),
+		));
     }
 
     /**
@@ -991,7 +996,7 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the templates page.
      */
     private function enqueue_templates_assets() {
-            $this->enqueue_ai_assistance_assets( array( 'aips-admin-script' ) );
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-script' ), 'templates' );
 
             wp_enqueue_script(
                 'aips-admin-integrations',
@@ -1332,7 +1337,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script', 'aips-admin-view-session'),
+                array('aips-admin-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1534,7 +1539,7 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the onboarding page.
      */
     private function enqueue_onboarding_assets() {
-            $this->enqueue_ai_assistance_assets( array( 'aips-admin-onboarding' ) );
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-onboarding' ), 'content_strategy' );
 
             wp_enqueue_script(
                 'aips-admin-onboarding',
@@ -1725,7 +1730,7 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the sources page.
      */
     private function enqueue_sources_assets() {
-            $this->enqueue_ai_assistance_assets( array( 'aips-admin-sources' ) );
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-sources' ), 'sources' );
 
             wp_enqueue_script(
                 'aips-admin-sources',
@@ -1764,7 +1769,7 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the settings page.
      */
     private function enqueue_settings_assets() {
-            $this->enqueue_ai_assistance_assets( array( 'aips-admin-settings' ) );
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-settings' ), 'content_strategy' );
 
             wp_enqueue_script(
                 'aips-admin-settings',

@@ -361,6 +361,8 @@ class AIPS_Ajax_Registry {
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+		'aips_delete_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+		'aips_clear_field_assist_history' => 'AIPS_AI_Assistance_Controller',
 
 		// Cache Monitor Controller
 		'aips_cache_monitor_summary'           => 'AIPS_Cache_Monitor_Controller',
