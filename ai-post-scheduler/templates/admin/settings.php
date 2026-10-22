@@ -373,3 +373,5 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 
 	</div>
 </div>
+
+<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>

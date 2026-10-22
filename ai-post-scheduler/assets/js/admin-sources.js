@@ -719,6 +719,10 @@
 
 	$(document).ready(function () {
 		AIPS.initSources();
+
+		if (typeof AIPS.AIAssistance !== 'undefined') {
+			AIPS.AIAssistance.init({ formContext: 'sources' });
+		}
 	});
 
 })(jQuery);

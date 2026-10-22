@@ -980,3 +980,5 @@ if (!defined('ABSPATH')) {
             </td>
         </tr>
     </script>
+
+    <?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
