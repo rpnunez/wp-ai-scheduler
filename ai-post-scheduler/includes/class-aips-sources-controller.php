@@ -426,6 +426,12 @@ class AIPS_Sources_Controller {
 			return;
 		}
 
+		$datetime_format = get_option('date_format') . ' ' . get_option('time_format');
+		foreach (array('fetched_at', 'created_at', 'updated_at') as $field) {
+			$timestamp                   = isset($row->$field) ? (int) $row->$field : 0;
+			$row->{$field . '_display'} = $timestamp > 0 ? wp_date($datetime_format, $timestamp) : __('Not recorded', 'ai-post-scheduler');
+		}
+
 		AIPS_Ajax_Response::success(array(
 			'source_data' => $row,
 			'usage'       => $this->data_repo->get_generation_usage($id, 10),
