@@ -571,21 +571,21 @@
 				return;
 			}
 
-			var html = '';
-			$.each(records, function (i, record) {
+			var items = $.map(records, function (record) {
 				// Cache raw response by record ID to avoid embedding unescaped
 				// AI content in DOM attributes.
 				_historyRecordCache[record.id] = record.response;
 
-				html += AIPS.Templates.render('aips-tmpl-ai-assist-history-item', {
+				return {
 					id:         record.id,
 					response:   record.response,
 					created_at: record.created_at,
 					fieldId:    fieldId,
 					context:    self.getHistoryContext(record.context),
-				});
+				};
 			});
-			$container.html(html);
+
+			$container.html(AIPS.Templates.render('aips-tmpl-ai-assist-history-item', { items: items }));
 		},
 
 		/**

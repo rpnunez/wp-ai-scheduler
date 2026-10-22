@@ -58,15 +58,17 @@ if (!defined('ABSPATH')) {
 
 <!-- AI Assistance: History Item Template -->
 <script type="text/html" id="aips-tmpl-ai-assist-history-item">
+<# _.each( data.items, function( item ) { #>
 <div class="aips-ai-assist-history-item">
-	<div class="aips-ai-assist-history-response">{{response}}</div>
-	<div class="aips-ai-assist-history-meta">{{created_at}}</div>
-	<div class="aips-ai-assist-history-meta"><?php esc_html_e('Context:', 'ai-post-scheduler'); ?> {{context}}</div>
+	<div class="aips-ai-assist-history-response">{{ item.response }}</div>
+	<div class="aips-ai-assist-history-meta">{{ item.created_at }}</div>
+	<div class="aips-ai-assist-history-meta"><?php esc_html_e('Context:', 'ai-post-scheduler'); ?> {{ item.context }}</div>
 	<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-assist-history-use"
-		data-field-id="{{fieldId}}"
-		data-record-id="{{id}}">
+		data-field-id="{{ item.fieldId }}"
+		data-record-id="{{ item.id }}">
 		<?php esc_html_e('Use This Value', 'ai-post-scheduler'); ?>
 	</button>
-	<button type="button" class="button-link-delete aips-ai-assist-history-delete" data-record-id="{{id}}"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></button>
+	<button type="button" class="button-link-delete aips-ai-assist-history-delete" data-record-id="{{ item.id }}"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></button>
 </div>
+<# } ); #>
 </script>
