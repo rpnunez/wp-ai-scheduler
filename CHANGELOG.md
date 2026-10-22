@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Sources reliability (3.7.12)
+- Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
+- Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
+- Require source groups when enabling sources on templates/authors. Preserve legacy generation with actionable diagnostics, current-URL archive selection, least-used/FIFO rotation, and a 16,000-character total snippet budget.
+- Keep previews read-only and record source usage at AI submission. Usage indicates submitted reference material, not proof that an AI relied on or cited it.
+- Report duplicate archive edits and group/schedule save failures accurately; replace source groups atomically. Pending archive rows remain editable and do not queue fetching.
+- Add opt-in source archive retention (0 days disables deletion), an eligible-row review count, and bounded daily cleanup preserving the newest usable snapshot for each current URL. Generation metadata survives deletion of full archived content.
+
 ### Fixed
 - **Stress Test Data Privacy:**
   - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.

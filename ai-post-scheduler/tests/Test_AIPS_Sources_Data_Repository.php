@@ -164,6 +164,8 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 
 	/** @test */
 	public function test_get_extracted_texts_by_source_ids_returns_only_success_rows() {
+		global $wpdb;
+		$wpdb->insert( $wpdb->prefix . 'aips_sources', array( 'id' => 100, 'url' => 'https://a.example.com', 'is_active' => 1 ) );
 		$this->repo->insert_if_new( 100, array(
 			'url'            => 'https://a.example.com',
 			'extracted_text' => 'Content from source A.',
@@ -313,7 +315,7 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 		$this->assertTrue( $result );
 		$this->assertEquals( 'Updated Title', $updated->page_title );
 		$this->assertEquals( strlen( 'Updated source data content.' ), (int) $updated->char_count );
-		$this->assertEquals( hash( 'sha256', 'Updated source data content.' ), $updated->content_hash );
+		$this->assertEquals( AIPS_Sources_Data_Repository::content_hash( $updated->url, 'Updated source data content.' ), $updated->content_hash );
 	}
 
 	/** @test */
@@ -353,4 +355,124 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 		$this->repo->delete_by_source_id( 88888 );
 		$this->assertTrue( true );
 	}
+
+	public function test_duplicate_edits_preserve_both_rows() {
+		$this->repo->insert_if_new( 42, array( 'url' => 'https://example.com', 'extracted_text' => 'First' ) );
+		$first = $this->repo->get_by_source_id( 42 );
+		$this->repo->insert_if_new( 42, array( 'url' => 'https://example.com', 'extracted_text' => 'Second' ) );
+		$second = $this->repo->get_by_source_id( 42 );
+		$result = $this->repo->update_with_result( $second->id, array( 'extracted_text' => 'First' ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'duplicate_source_content', $result->get_error_code() );
+		$this->assertSame( 'Second', $this->repo->get_by_id( $second->id )->extracted_text );
+		$this->assertNotNull( $this->repo->get_by_id( $first->id ) );
+	}
+
+	public function test_missing_edit_is_reported() {
+		$result = $this->repo->update_with_result( 9999999, array( 'extracted_text' => 'Missing' ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'source_data_not_found', $result->get_error_code() );
+	}
+
+	public function test_normalization_keeps_multibyte_counts_consistent() {
+		$text = "caf\u{00e9} \u{65e5}\u{672c}\u{8a9e}";
+		$this->repo->insert_if_new( 42, array( 'extracted_text' => '  ' . $text . '  ', 'char_count' => 999 ) );
+		$row = $this->repo->get_by_source_id( 42 );
+		$this->assertSame( $text, $row->extracted_text );
+		$this->assertSame( 8, (int) $row->char_count );
+		$this->assertSame( AIPS_Sources_Data_Repository::content_hash( '', $text ), $row->content_hash );
+	}
+
+	public function test_url_change_with_same_text_preserves_both_provenances() {
+		$sources = new AIPS_Sources_Repository();
+		$id = $sources->create( array( 'url' => 'https://example.com/a' ) );
+		$this->repo->insert_if_new( $id, array( 'url' => 'https://example.com/a', 'extracted_text' => 'Same content' ) );
+		$old = $this->repo->get_by_source_id( $id );
+		$sources->update( $id, array( 'url' => 'https://example.com/b' ) );
+		$this->assertEmpty( $this->repo->pick_next_for_prompt_bulk( array( $id ) ) );
+		$this->assertTrue( $this->repo->insert_if_new( $id, array( 'url' => 'https://example.com/b', 'extracted_text' => 'Same content' ) ) );
+		$selected = $this->repo->pick_next_for_prompt_bulk( array( $id ) );
+		$this->assertSame( 'https://example.com/b', $selected[$id]->url );
+		$this->assertFalse( property_exists( $selected[$id], 'raw_html' ) );
+		$this->assertSame( 'https://example.com/a', $this->repo->get_by_id( $old->id )->url );
+	}
+
+	public function test_retention_preserves_newest_current_snapshot_and_batches() {
+		global $wpdb;
+		$sources = new AIPS_Sources_Repository();
+		$id = $sources->create( array( 'url' => 'https://example.com/current' ) );
+		for ( $i = 0; $i < 103; $i++ ) {
+			$this->repo->insert_if_new( $id, array( 'url' => 'https://example.com/current', 'extracted_text' => 'Snapshot ' . $i ) );
+		}
+		$latest = $this->repo->get_by_source_id( $id );
+		$wpdb->query( "UPDATE {$wpdb->prefix}aips_sources_data SET fetched_at = 10" );
+		$this->assertSame( 102, $this->repo->count_prunable_archive( 11 ) );
+		$this->assertSame( 100, $this->repo->prune_archive( 11, 500 ) );
+		$this->assertSame( 2, $this->repo->prune_archive( 11 ) );
+		$this->assertSame( 0, $this->repo->prune_archive( 11 ) );
+		$this->assertNotNull( $this->repo->get_by_id( $latest->id ) );
+	}
+
+
+	public function test_insert_collision_requires_verified_duplicate() {
+		foreach ( array( 7, null ) as $race_id ) {
+			$db = $this->getMockBuilder( wpdb::class )->disableOriginalConstructor()->onlyMethods( array( 'prepare', 'get_var', 'insert' ) )->getMock();
+			$db->method( 'prepare' )->willReturnArgument( 0 );
+			$db->expects( $this->exactly( 2 ) )->method( 'get_var' )->willReturnOnConsecutiveCalls( null, $race_id );
+			$db->expects( $this->once() )->method( 'insert' )->willReturn( false );
+			$repo = new AIPS_Sources_Data_Repository();
+			$property = new ReflectionProperty( $repo, 'wpdb' );
+			$property->setAccessible( true );
+			$property->setValue( $repo, $db );
+			$this->assertSame( null !== $race_id, $repo->insert_if_new( 42, array( 'url' => 'https://example.com', 'extracted_text' => 'Concurrent body' ) ) );
+		}
+	}
+
+	public function test_update_race_classifies_unique_collision_and_other_write_errors() {
+		foreach ( array( 7, null ) as $race_id ) {
+			$db = $this->getMockBuilder( wpdb::class )->disableOriginalConstructor()->onlyMethods( array( 'prepare', 'get_var', 'get_row', 'update' ) )->getMock();
+			$db->method( 'prepare' )->willReturnArgument( 0 );
+			$db->method( 'get_row' )->willReturn( (object) array( 'id' => 1, 'source_id' => 42, 'url' => 'https://example.com' ) );
+			$db->expects( $this->exactly( 2 ) )->method( 'get_var' )->willReturnOnConsecutiveCalls( null, $race_id );
+			$db->expects( $this->once() )->method( 'update' )->willReturn( false );
+			$repo = new AIPS_Sources_Data_Repository();
+			$property = new ReflectionProperty( $repo, 'wpdb' );
+			$property->setAccessible( true );
+			$property->setValue( $repo, $db );
+			$result = $repo->update_with_result( 1, array( 'extracted_text' => 'Concurrent edit' ) );
+			$this->assertWPError( $result );
+			$this->assertSame( null !== $race_id ? 'duplicate_source_content' : 'source_data_write_failed', $result->get_error_code() );
+		}
+	}
+
+
+	public function test_retention_boundaries_previous_url_and_history_metadata() {
+		global $wpdb;
+		$sources = new AIPS_Sources_Repository();
+		$id = $sources->create( array( 'url' => 'https://example.com/current' ) );
+		$this->repo->insert_if_new( $id, array( 'url' => 'https://example.com/previous', 'extracted_text' => 'Previous URL' ) );
+		$previous = $this->repo->get_by_source_id( $id );
+		$this->repo->insert_if_new( $id, array( 'url' => 'https://example.com/current', 'extracted_text' => 'Usable current' ) );
+		$usable = $this->repo->get_by_source_id( $id );
+		$this->repo->mark_fetch_failed( $id, 'A newer failure', 500 );
+		$failed = $this->repo->get_by_source_id( $id );
+		$this->repo->insert_if_new( $id, array( 'url' => 'https://example.com/previous', 'extracted_text' => 'Boundary' ) );
+		$boundary = $this->repo->get_by_source_id( $id );
+		$table = $wpdb->prefix . 'aips_sources_data';
+		$wpdb->update( $table, array( 'fetched_at' => 5 ), array( 'id' => $previous->id ) );
+		$wpdb->update( $table, array( 'fetched_at' => 6 ), array( 'id' => $usable->id ) );
+		$wpdb->update( $table, array( 'fetched_at' => 9 ), array( 'id' => $failed->id ) );
+		$wpdb->update( $table, array( 'fetched_at' => 10 ), array( 'id' => $boundary->id ) );
+		$post_id = self::factory()->post->create();
+		$metadata = array( array( 'source_id' => $id, 'source_data_id' => (int) $previous->id, 'url' => $previous->url, 'excerpt' => 'Previous URL' ) );
+		update_post_meta( $post_id, 'aips_source_snapshots_used', $metadata );
+		$this->assertSame( 2, $this->repo->count_prunable_archive( 10 ) );
+		$this->assertSame( 2, $this->repo->prune_archive( 10 ) );
+		$this->assertNull( $this->repo->get_by_id( $previous->id ) );
+		$this->assertNull( $this->repo->get_by_id( $failed->id ) );
+		$this->assertNotNull( $this->repo->get_by_id( $usable->id ) );
+		$this->assertNotNull( $this->repo->get_by_id( $boundary->id ) );
+		$this->assertSame( $metadata, get_post_meta( $post_id, 'aips_source_snapshots_used', true ) );
+	}
+
 }

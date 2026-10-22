@@ -209,6 +209,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_7_8();
 		}
     
+		if ( version_compare( $from_version, '3.7.12', '<' ) ) {
+			$this->migrate_to_3_7_12();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1435,5 +1439,28 @@ class AIPS_DB_Migrations {
 			'info'
 		);
 	}
+	/** Guarded attempt-state addition; legacy attempt status remains unknown. */
+	private function migrate_to_3_7_12() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_sources';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
+		if ( $schedule_column && 'YES' !== $schedule_column->Null ) {
+			$wpdb->query( "ALTER TABLE `$table` MODIFY COLUMN `next_fetch_at` bigint(20) unsigned DEFAULT NULL" );
+		}
+		$columns = array(
+			'last_fetch_attempt_at' => 'bigint(20) unsigned DEFAULT NULL',
+			'last_fetch_status' => 'varchar(20) DEFAULT NULL',
+			'last_fetch_error' => 'text DEFAULT NULL',
+		);
+		foreach ( $columns as $column => $definition ) {
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `$table` LIKE %s", $column ) ) ) {
+				$wpdb->query( "ALTER TABLE `$table` ADD COLUMN `$column` $definition" );
+			}
+		}
+	}
+
 }
 

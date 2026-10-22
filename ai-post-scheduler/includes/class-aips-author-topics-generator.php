@@ -19,6 +19,12 @@ if (!defined('ABSPATH')) {
  * Generates AI-powered topic suggestions for authors.
  */
 class AIPS_Author_Topics_Generator {
+	private $last_sources_selection = array();
+
+	/** Selection metadata for the most recent run; preserves the topic-array return contract. */
+	public function get_last_sources_selection() {
+		return $this->last_sources_selection;
+	}
 	
 	/**
 	 * @var AIPS_AI_Service_Interface AI service for making API calls
@@ -147,6 +153,7 @@ class AIPS_Author_Topics_Generator {
 	 * @return array|WP_Error Array of generated topics or WP_Error on failure.
 	 */
 	public function generate_topics($author, $apply_auto_approval = true) {
+		$this->last_sources_selection = array();
 		if (!$author || !isset($author->id)) {
 			return new WP_Error('invalid_author', 'Invalid author object provided');
 		}
@@ -163,6 +170,14 @@ class AIPS_Author_Topics_Generator {
 
 		$prompt = $this->prompt_builder->build($author, $approved_topics, $rejected_topics, $feedback_guidance);
 		
+		// Usage means reference inclusion in the request, even when the provider fails.
+		$selection = $this->prompt_builder->get_sources_selection();
+		$this->last_sources_selection = $selection;
+		foreach ($selection['diagnostics'] ?? array() as $diagnostic) {
+			$this->logger->log('Source selection warning: ' . $diagnostic['reason'], 'warning', $diagnostic);
+		}
+		$this->prompt_builder->record_sources_usage();
+
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
 			'temperature' => 0.7,

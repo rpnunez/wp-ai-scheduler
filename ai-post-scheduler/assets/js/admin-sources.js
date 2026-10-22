@@ -640,7 +640,8 @@
 					return;
 				}
 
-				AIPS.Utilities.showToast(response.data.message, 'success');
+				var fetched = response.data.fetch_result && response.data.fetch_result.success;
+				AIPS.Utilities.showToast(response.data.message, fetched ? 'success' : 'error');
 				self.refreshPage();
 			}).fail(function () {
 				AIPS.Utilities.showToast('Fetch failed.', 'error');

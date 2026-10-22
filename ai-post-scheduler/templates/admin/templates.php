@@ -102,6 +102,9 @@ if (!defined('ABSPATH')) {
                             <th scope="row" class="check-column"><input type="checkbox" class="aips-template-cb" value="<?php echo esc_attr($template->id); ?>"></th>
                             <td class="column-name">
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
+                                <?php if (!empty($template->include_sources) && empty(array_filter((array) json_decode($template->source_group_ids ?? '[]', true)))): ?>
+                                    <p class="description"><?php esc_html_e('Sources enabled without a group. Edit this template and select at least one source group.', 'ai-post-scheduler'); ?></p>
+                                <?php endif; ?>
                                 <?php if (!empty($template->campaign_id) && isset($campaign_map[(int) $template->campaign_id])) : ?>
                                     <?php $campaign = $campaign_map[(int) $template->campaign_id]; ?>
                                     <div class="cell-meta aips-mt-xs">
@@ -455,7 +458,7 @@ if (!defined('ABSPATH')) {
                                 <input type="checkbox" id="include_sources" name="include_sources" value="1">
                                 <?php esc_html_e('Include Sources?', 'ai-post-scheduler'); ?>
                             </label>
-                            <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the content generation prompt.', 'ai-post-scheduler'); ?></p>
+                            <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the content generation prompt. Select at least one group. Only successful snapshots matching each source URL are eligible. References do not guarantee that the AI will use or cite them.', 'ai-post-scheduler'); ?></p>
                         </div>
 
                         <div id="template-source-groups-selector" style="display:none; margin-top:8px;">

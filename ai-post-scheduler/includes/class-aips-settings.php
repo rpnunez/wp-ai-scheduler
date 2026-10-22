@@ -358,6 +358,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_link_click_tracking_enabled'],
 			),
+			'aips_source_archive_retention_days' => array(
+				'sanitize_callback' => array($ui, 'sanitize_source_archive_retention_days'),
+				'default' => $defaults['aips_source_archive_retention_days'],
+			),
 			'aips_link_click_retention_days' => array(
 				'sanitize_callback' => array($ui, 'sanitize_link_click_retention_days'),
 				'default'           => $defaults['aips_link_click_retention_days'],
@@ -670,6 +674,15 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
+		// Source archive retention is explicitly opt-in.
+		add_settings_field(
+			'aips_source_archive_retention_days',
+			__('Source Archive Retention', 'ai-post-scheduler'),
+			array($this->ui, 'source_archive_retention_field_callback'),
+			'aips-settings',
+			'aips_general_section'
+		);
+
         // Card 1: Content Generation AI Provider
         // -----------------------------------------------------------------------
         add_settings_section(

@@ -250,4 +250,31 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$after = $history_repository->get_by_id( $history_id );
 		$this->assertSame( 'post', $after->post_type, 'Migration must only backfill NULL post_type values, never overwrite an existing one.' );
 	}
+
+	public function test_sources_attempt_migration_is_idempotent_and_preserves_legacy_due_time() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+		$table = $wpdb->prefix . 'aips_sources';
+		$wpdb->query( "UPDATE `$table` SET next_fetch_at = 0 WHERE next_fetch_at IS NULL" );
+		$wpdb->query( "ALTER TABLE `$table` MODIFY COLUMN next_fetch_at bigint(20) unsigned NOT NULL DEFAULT 0" );
+		foreach ( array( 'last_fetch_attempt_at', 'last_fetch_status', 'last_fetch_error' ) as $column ) {
+			$wpdb->query( "ALTER TABLE `$table` DROP COLUMN `$column`" );
+		}
+		$wpdb->insert( $table, array( 'url' => 'https://example.com/migration', 'fetch_interval' => 'hourly', 'next_fetch_at' => 123456 ) );
+		$id = (int) $wpdb->insert_id;
+		$migration = new ReflectionMethod( AIPS_DB_Migrations::class, 'migrate_to_3_7_12' );
+		$migration->setAccessible( true );
+		$instance = new AIPS_DB_Migrations();
+		$migration->invoke( $instance );
+		$migration->invoke( $instance );
+		$this->assertSame( '', $wpdb->last_error );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `$table` WHERE id = %d", $id ) );
+		$this->assertSame( 123456, (int) $row->next_fetch_at );
+		$this->assertNull( $row->last_fetch_attempt_at );
+		$this->assertNull( $row->last_fetch_status );
+		$this->assertNull( $row->last_fetch_error );
+		$this->assertNotFalse( $wpdb->update( $table, array( 'next_fetch_at' => null ), array( 'id' => $id ) ) );
+		$this->assertNull( $wpdb->get_var( $wpdb->prepare( "SELECT next_fetch_at FROM `$table` WHERE id = %d", $id ) ) );
+	}
+
 }

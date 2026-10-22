@@ -340,7 +340,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <input type="checkbox" id="author_include_sources" name="include_sources" value="1">
                     <?php esc_html_e('Include Sources?', 'ai-post-scheduler'); ?>
                 </label>
-                <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author.', 'ai-post-scheduler'); ?></p>
+                <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author. Select at least one group. Only successful snapshots matching each source URL are eligible. References do not guarantee that the AI will use or cite them.', 'ai-post-scheduler'); ?></p>
             </div>
 
             <div id="author-source-groups-selector" style="display:none;">
