@@ -5475,6 +5475,13 @@
         if ($('#voice_search').length) {
             AIPS.searchVoices.call($('#voice_search'));
         }
+
+        // Templates page: #prompt_template only exists in the content-template
+        // wizard form, so its presence is used to feature-detect this page
+        // (admin.js is loaded globally across admin pages).
+        if (typeof AIPS.AIAssistance !== 'undefined' && $('#prompt_template').length) {
+            AIPS.AIAssistance.init({ formContext: 'templates' });
+        }
     });
 
 })(jQuery);
