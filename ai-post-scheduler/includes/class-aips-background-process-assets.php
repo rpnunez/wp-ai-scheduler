@@ -26,11 +26,18 @@ class AIPS_Background_Process_Assets {
 			return;
 		}
 
+		wp_register_style(
+			'aips-design-tokens',
+			AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
+			array(),
+			AIPS_Admin_Bar::asset_version('assets/css/design-tokens.css')
+		);
+
 		wp_enqueue_style(
 			'aips-background-processes',
 			AIPS_PLUGIN_URL . 'assets/css/background-processes.css',
-			array(),
-			AIPS_VERSION
+			array('aips-design-tokens'),
+			AIPS_Admin_Bar::asset_version('assets/css/background-processes.css')
 		);
 
 		if (wp_script_is('aips-background-processes', 'enqueued')) {
@@ -41,7 +48,7 @@ class AIPS_Background_Process_Assets {
 			'aips-background-processes',
 			AIPS_PLUGIN_URL . 'assets/js/background-processes.js',
 			array('jquery', 'heartbeat'),
-			AIPS_VERSION,
+			AIPS_Admin_Bar::asset_version('assets/js/background-processes.js'),
 			true
 		);
 
@@ -60,6 +67,7 @@ class AIPS_Background_Process_Assets {
 			'hours'          => __('h', 'ai-post-scheduler'),
 			'days'           => __('d', 'ai-post-scheduler'),
 			'noneRunning'    => __('No background processes running', 'ai-post-scheduler'),
+			'playing'        => __('Playing', 'ai-post-scheduler'),
 			'pause'          => __('Pause', 'ai-post-scheduler'),
 			'resume'         => __('Resume', 'ai-post-scheduler'),
 			'stop'           => __('Stop', 'ai-post-scheduler'),

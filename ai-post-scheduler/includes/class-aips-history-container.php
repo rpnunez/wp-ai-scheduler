@@ -467,13 +467,55 @@ class AIPS_History_Container {
 			));
 		}
 		
-		// Update history status
+		return $this->close_with_status('completed', $result_data);
+	}
+
+	/**
+	 * Complete this history container as partially successful.
+	 *
+	 * Some intended outcomes succeeded and others did not (for example a post was
+	 * created but a component failed).
+	 *
+	 * @param string $message     Human-readable summary of what did not succeed.
+	 * @param array  $result_data Optional additional columns to persist.
+	 * @return bool True on success, false on failure
+	 */
+	public function complete_partial($message = '', $result_data = array()) {
+		if (!$this->is_persisted) {
+			return false;
+		}
+
+		if ($this->session) {
+			$this->session->complete(array_merge(
+				array('success' => true, 'partial' => true),
+				$result_data
+			));
+		}
+
+		if ($message !== '') {
+			$result_data['error_message'] = $message;
+		}
+
+		return $this->close_with_status('partial', $result_data);
+	}
+
+	/**
+	 * Persist a terminal status for this container.
+	 *
+	 * The status is applied after the caller's data, so a `status` key inside
+	 * $result_data can never override the outcome the completing method names.
+	 *
+	 * @param string $status      Terminal status to write.
+	 * @param array  $result_data Additional columns to persist.
+	 * @return bool True on success, false on failure
+	 */
+	private function close_with_status($status, array $result_data) {
+		unset($result_data['status']);
+
 		$update_data = array_merge(
-			array(
-				'status' => 'completed',
-				'completed_at' => AIPS_DateTime::now()->timestamp(),
-			),
-			$result_data
+			array('completed_at' => AIPS_DateTime::now()->timestamp()),
+			$result_data,
+			array('status' => $status)
 		);
 
 		$update_data = apply_filters('aips_history_record_data', $update_data, $this->history_id);

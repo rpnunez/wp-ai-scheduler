@@ -358,6 +358,46 @@ class AIPS_Embeddings_Service {
 
 		return null;
 	}
+
+	/**
+	 * Retrieve vector embeddings for multiple Author Topics in a single batch query.
+	 *
+	 * Batches repository access using an IN (...) query and decodes vectors using
+	 * the multi-tier memory/object/transient cache. Missing topics are skipped rather
+	 * than triggering per-topic fallback queries.
+	 *
+	 * @param int[] $topic_ids Array of Author Topic IDs.
+	 * @return array<int, array> Array of float[] vectors keyed by topic_id.
+	 */
+	public function get_topic_embeddings(array $topic_ids): array {
+		if (empty($topic_ids)) {
+			return array();
+		}
+
+		$embeddings_repo = $this->get_embeddings_repository();
+		if (!$embeddings_repo) {
+			return array();
+		}
+
+		$records = $embeddings_repo->get_by_topic_ids($topic_ids);
+		$vectors = array();
+
+		foreach ($records as $topic_id => $record) {
+			if (!empty($record->embedding)) {
+				$vec = $embeddings_repo->decode_embedding(
+					$record->embedding,
+					'topic',
+					(int) $topic_id,
+					!empty($record->content_hash) ? $record->content_hash : ''
+				);
+				if (is_array($vec) && !empty($vec)) {
+					$vectors[(int) $topic_id] = $vec;
+				}
+			}
+		}
+
+		return $vectors;
+	}
 	
 	/**
 	 * Batch generate embeddings for multiple texts.

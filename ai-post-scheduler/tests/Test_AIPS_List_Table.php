@@ -8,6 +8,14 @@
 class Test_AIPS_List_Table extends WP_UnitTestCase {
 
 	/**
+	 * Don't leak the tab selection into other tests, even when an assertion fails.
+	 */
+	public function tearDown(): void {
+		unset($_GET['topic_status']);
+		parent::tearDown();
+	}
+
+	/**
 	 * Test base list table initialization and empty state rendering.
 	 */
 	public function test_base_list_table_initialization() {
@@ -20,7 +28,7 @@ class Test_AIPS_List_Table extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString('aips-list-table-empty', $output);
-		$this->assertStringContainsString('No authors Found', $output);
+		$this->assertStringContainsString('No authors found', $output);
 	}
 
 	/**
@@ -50,10 +58,63 @@ class Test_AIPS_List_Table extends WP_UnitTestCase {
 		$this->assertIsArray($columns);
 		$this->assertArrayHasKey('cb', $columns);
 		$this->assertArrayHasKey('topic', $columns);
-		$this->assertArrayHasKey('structure', $columns);
-		$this->assertArrayHasKey('status', $columns);
+		$this->assertArrayNotHasKey('structure', $columns);
+		$this->assertArrayNotHasKey('status', $columns, 'Status is implied by the default Pending tab.');
 		$this->assertArrayHasKey('created_at', $columns);
 		$this->assertArrayHasKey('actions', $columns);
+	}
+
+	/**
+	 * Status column is only shown on the mixed "All" tab.
+	 */
+	public function test_author_topics_status_column_only_on_all_tab() {
+		foreach (array('pending', 'approved', 'rejected', 'posts_generated') as $view) {
+			$_GET['topic_status'] = $view;
+			$table = new AIPS_Author_Topics_List_Table(array('author_id' => 1));
+			$this->assertArrayNotHasKey('status', $table->get_columns(), $view);
+			$this->assertArrayNotHasKey('structure', $table->get_columns(), $view);
+		}
+
+		$_GET['topic_status'] = 'all';
+		$table = new AIPS_Author_Topics_List_Table(array('author_id' => 1));
+		$this->assertArrayHasKey('status', $table->get_columns());
+		$this->assertArrayNotHasKey('structure', $table->get_columns());
+	}
+
+	/**
+	 * Screen Options must be able to offer Status regardless of the active tab.
+	 */
+	public function test_author_topics_all_columns_includes_status() {
+		$_GET['topic_status'] = 'approved';
+		$table = new AIPS_Author_Topics_List_Table(array('author_id' => 1));
+		$this->assertArrayHasKey('status', $table->get_all_columns());
+	}
+
+	/**
+	 * Hover row actions depend on the topic status.
+	 */
+	public function test_author_topics_row_actions_by_status() {
+		$table = new AIPS_Author_Topics_List_Table(array('author_id' => 1));
+		$method = new ReflectionMethod($table, 'column_topic');
+		$method->setAccessible(true);
+
+		$render = function ($status) use ($table, $method) {
+			return $method->invoke($table, (object) array('id' => 5, 'topic' => 'T', 'status' => $status));
+		};
+
+		$pending = $render('pending');
+		$this->assertStringNotContainsString('class="aips-reject-topic"', $pending);
+
+		$rejected = $render('rejected');
+		$this->assertStringNotContainsString('class="aips-reject-topic"', $rejected);
+		$this->assertStringContainsString('class="aips-approve-topic"', $rejected);
+
+		$approved = $render('approved');
+		$this->assertStringContainsString('class="aips-reject-topic"', $approved);
+
+		$this->assertStringNotContainsString('aips-generate-post-now', $pending);
+		$this->assertStringNotContainsString('aips-generate-post-now', $rejected);
+		$this->assertStringContainsString('aips-generate-post-now', $approved);
 	}
 
 	/**

@@ -133,7 +133,7 @@ class Test_AIPS_Generate_Now_Timing extends WP_UnitTestCase {
 		$this->inject('authors_repository',  $authors_repo);
 		$this->inject('logs_repository',     $logs_repo);
 		$this->inject('history_service',     $history_service);
-		$this->inject('expansion_service',   $expansion_service);
+		AIPS_Container::get_instance()->instance(AIPS_Similarity_Evaluator::class, $expansion_service);
 		$this->inject('interval_calculator', $interval_calculator);
 		$this->inject('generator',           $generator);
 		$this->inject('logger',              $logger);

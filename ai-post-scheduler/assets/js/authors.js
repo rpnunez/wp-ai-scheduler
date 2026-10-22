@@ -242,8 +242,9 @@
 
 			// Reset auto-approval fields
 			$('#topic_auto_approval_mode').val('inherit');
-			$('#topic_auto_approval_min_score').val('65');
-			$('#topic_auto_approval_max_similarity').val('0.80');
+			$('#topic_auto_approval_min_score').val('70');
+			$('#topic_auto_approval_min_relevance').val('65');
+			$('#topic_auto_approval_max_similarity').val('0.85');
 			$('#topic_auto_approval_fallback').val('smart_split');
 			this.toggleAutoApprovalFields();
 
@@ -273,9 +274,19 @@
 		 */
 		toggleAutoApprovalFields: function () {
 			const mode = $('#topic_auto_approval_mode').val() || 'inherit';
-			$('#aips-auto-approval-score-group').toggle(mode === 'score');
-			$('#aips-auto-approval-similarity-group').toggle(mode === 'similarity');
-			$('#aips-auto-approval-fallback-group').toggle(mode !== 'manual' && mode !== 'inherit');
+			const showScore = mode === 'score';
+			const showSimilarity = mode === 'similarity';
+			const showFallback = mode === 'score' || mode === 'similarity';
+
+			$('#aips-auto-approval-effective-policy').toggle(mode === 'inherit');
+			$('#aips-auto-approval-score-group').toggle(showScore);
+			$('#aips-auto-approval-similarity-group').toggle(showSimilarity);
+			$('#aips-auto-approval-fallback-group').toggle(showFallback);
+
+			// Hidden groups must not post, otherwise stale values would be saved.
+			$('#aips-auto-approval-score-group :input').prop('disabled', !showScore);
+			$('#aips-auto-approval-similarity-group :input').prop('disabled', !showSimilarity);
+			$('#aips-auto-approval-fallback-group :input').prop('disabled', !showFallback);
 		},
 
 		/**
@@ -343,9 +354,10 @@
 						$('#is_active').prop('checked', author.is_active == 1);
 
 						// Auto-approval configuration
-						$('#topic_auto_approval_mode').val(author.topic_auto_approval_mode || 'manual');
+						$('#topic_auto_approval_mode').val(author.topic_auto_approval_mode || 'inherit');
 						$('#topic_auto_approval_min_score').val(author.topic_auto_approval_min_score != null ? author.topic_auto_approval_min_score : 70);
-						$('#topic_auto_approval_max_similarity').val(author.topic_auto_approval_max_similarity != null ? author.topic_auto_approval_max_similarity : '0.80');
+						$('#topic_auto_approval_min_relevance').val(author.topic_auto_approval_min_relevance != null ? author.topic_auto_approval_min_relevance : 65);
+						$('#topic_auto_approval_max_similarity').val(author.topic_auto_approval_max_similarity != null ? author.topic_auto_approval_max_similarity : '0.85');
 						$('#topic_auto_approval_fallback').val(author.topic_auto_approval_fallback || 'pending');
 						this.toggleAutoApprovalFields();
 
@@ -632,6 +644,34 @@
 
 
 		/**
+		 * Re-fetch the current page and swap in the server-rendered topics list
+		 * table and stat cards, preserving the active tab, search and paging.
+		 */
+		refreshListTable: function () {
+			// Coalesce overlapping refreshes (e.g. rapid double actions) into one request.
+			if (this.refreshingListTable) {
+				return;
+			}
+			this.refreshingListTable = true;
+			const $panel = $('#aips-author-topics-panel').css('opacity', 0.6);
+
+			$.get(window.location.href).done(function (html) {
+				const $doc = $('<div>').append($.parseHTML(html));
+				['#aips-author-topics-panel', '.aips-author-topics-stats'].forEach(function (selector) {
+					const $fresh = $doc.find(selector).first();
+					if ($fresh.length) {
+						$(selector).first().replaceWith($fresh);
+					}
+				});
+			}).fail(function () {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.errorLoadingTopics, 'error');
+			}).always(() => {
+				this.refreshingListTable = false;
+				$panel.css('opacity', '');
+			});
+		},
+
+		/**
 		 * Fetch topics for the current author filtered by status.
 		 *
 		 * Sends the `aips_get_author_topics` AJAX action. On success, calls
@@ -642,6 +682,12 @@
 		 *                          (`'pending'`, `'approved'`, or `'rejected'`).
 		 */
 		loadTopics: function (status) {
+			// The Author Topics page is a server-rendered list table; refresh it in place.
+			if ($('#aips-author-topics-panel .aips-list-table-wrap').length) {
+				this.refreshListTable();
+				return;
+			}
+
 			// Immediately show a loading skeleton while the AJAX request is in flight.
 			this.showTopicsLoading();
 
@@ -1516,7 +1562,7 @@
 		 */
 		deleteTopic: function (e) {
 			e.preventDefault();
-			const topicId = $(e.currentTarget).data('id');
+			const topicId = $(e.currentTarget).data('topic-id') || $(e.currentTarget).data('id');
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmDeleteTopic, 'Notice', [
 				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
@@ -1658,7 +1704,7 @@
 		 */
 		generatePostNow: function (e) {
 			e.preventDefault();
-			const topicId = $(e.currentTarget).data('id');
+			const topicId = $(e.currentTarget).data('topic-id') || $(e.currentTarget).data('id');
 			const $btn = $(e.currentTarget);
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGeneratePost, 'Notice', [
@@ -1782,7 +1828,7 @@
 		 */
 		viewTopicLog: function (e) {
 			e.preventDefault();
-			const topicId = $(e.currentTarget).data('id');
+			const topicId = $(e.currentTarget).data('topic-id') || $(e.currentTarget).data('id');
 
 			$('#aips-topic-logs-modal').find('.aips-modal-content-body').html('<p>' + (aipsAuthorsL10n.logViewerLoading || 'Loading logs...') + '</p>');
 			$('#aips-topic-logs-modal').fadeIn();
@@ -2987,13 +3033,20 @@
 		AuthorsModule.init();
 		GenerationQueueModule.init();
 
+		if (typeof AIPS !== 'undefined' && AIPS.AIAssistance) {
+			AIPS.AIAssistance.init({ formContext: 'authors' });
+		}
+
 		// On the Author Topics full-page view, auto-load topics for the current author.
 		// The author ID is passed via aipsAuthorContext.authorId (set by PHP when the
 		// page param is 'aips-author-topics'), so no inline script injection is needed.
 		if ( typeof aipsAuthorContext !== 'undefined' && aipsAuthorContext.authorId ) {
 			AuthorsModule.currentAuthorId = aipsAuthorContext.authorId;
-			AuthorsModule.updateBulkActionDropdown('pending');
-			AuthorsModule.loadTopics('pending');
+			// The list-table page is server-rendered; only legacy markup needs the AJAX load.
+			if (!$('#aips-author-topics-panel .aips-list-table-wrap').length) {
+				AuthorsModule.updateBulkActionDropdown('pending');
+				AuthorsModule.loadTopics('pending');
+			}
 		}
 
 		// Deep-link: on the Authors list page, open the Edit modal directly when

@@ -184,8 +184,24 @@
 
 			$root.find('[data-aips-bg-bar]').css('width', snap.percent + '%');
 
+			// Play/pause toggle (admin bar): resume when paused, otherwise pause; hidden when neither applies.
+			$root.find('[data-aips-bg-toggle]').each(function () {
+				var $btn      = $(this);
+				var isResume  = !!snap.can_resume;
+				var label     = isResume ? (L10n.resume || 'Resume') : (L10n.pause || 'Pause');
+
+				$btn
+					.attr('data-aips-bg-action', isResume ? 'resume' : 'pause')
+					.attr('aria-label', label)
+					.attr('title', label)
+					.prop('hidden', !(snap.can_resume || snap.can_pause))
+					.find('.dashicons')
+					.toggleClass('dashicons-controls-play', isResume)
+					.toggleClass('dashicons-controls-pause', !isResume);
+			});
+
 			var flags = { start: 'can_start', pause: 'can_pause', resume: 'can_resume', cancel: 'can_cancel' };
-			$root.find('[data-aips-bg-action]').each(function () {
+			$root.find('[data-aips-bg-action]').not('[data-aips-bg-toggle]').each(function () {
 				var $btn = $(this);
 				var flag = flags[$btn.attr('data-aips-bg-action')];
 
@@ -207,6 +223,14 @@
 				case 'status_label':
 					if (snap.status === 'idle' && snap.last_status && (L10n.statusLabels || {})[snap.last_status]) {
 						return snap.status_label + ' · ' + (L10n.lastRun || '%s').replace('%s', L10n.statusLabels[snap.last_status]);
+					}
+					return snap.status_label;
+				case 'bar_status':
+					if (snap.status === 'running') {
+						return L10n.playing || 'Playing';
+					}
+					if ((snap.status === 'waiting_quota' || snap.status === 'cooldown') && snap.next_run_at) {
+						return snap.status_label + ' · ' + (L10n.resumesIn || 'Resumes in %s').replace('%s', this.until(snap.next_run_at));
 					}
 					return snap.status_label;
 				case 'processed':
@@ -289,33 +313,26 @@
 		buildAdminBarItem: function (snap) {
 			var $item = $('<span class="aips-bg-item"></span>').attr('data-aips-bg-key', snap.key);
 
+			// Single play/pause toggle; renderWidget() picks the action, icon and label.
 			$item.append(
-				$('<span class="aips-bg-item-head"></span>')
-					.append($('<span class="aips-bg-item-label"></span>').text(snap.label))
-					.append($('<span class="aips-bg-item-status" data-aips-bg-field="status_label"></span>'))
+				$('<button type="button" class="aips-bg-toggle" data-aips-bg-toggle></button>')
+					.append($('<span class="dashicons" aria-hidden="true"></span>'))
 			);
 
-			$item.append(
-				$('<span class="aips-bg-mini"></span>').append($('<span class="aips-bg-mini-fill" data-aips-bg-bar></span>'))
-			);
+			$item.append($('<span class="aips-bg-item-label"></span>').text(snap.label));
 
 			$item.append(
 				$('<span class="aips-bg-item-meta"></span>')
 					.append($('<span data-aips-bg-field="processed"></span>'))
 					.append(document.createTextNode(' / '))
 					.append($('<span data-aips-bg-field="total"></span>'))
-					.append($('<span class="aips-bg-item-next" data-aips-bg-field="next_run"></span>'))
+					.append(document.createTextNode(' · '))
+					.append($('<span class="aips-bg-item-status" data-aips-bg-field="bar_status"></span>'))
 			);
 
-			var $controls = $('<span class="aips-bg-item-controls"></span>');
-			$.each([['pause', L10n.pause || 'Pause'], ['resume', L10n.resume || 'Resume'], ['cancel', L10n.stop || 'Stop']], function (i, pair) {
-				$controls.append(
-					$('<button type="button" class="aips-bg-link"></button>')
-						.attr('data-aips-bg-action', pair[0])
-						.text(pair[1])
-				);
-			});
-			$item.append($controls);
+			$item.append(
+				$('<span class="aips-bg-mini"></span>').append($('<span class="aips-bg-mini-fill" data-aips-bg-bar></span>'))
+			);
 
 			this.renderWidget($item, snap);
 

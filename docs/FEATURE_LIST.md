@@ -23,9 +23,8 @@
 7. [Research](#7-research)
 8. [History & Observability](#8-history--observability)
 9. [Data, Settings & Admin UI](#9-data-settings--admin-ui)
-10. [MCP Bridge](#10-mcp-bridge)
-11. [Cron Jobs](#cron-jobs)
-12. [Database Tables](#database-tables)
+10. [Cron Jobs](#cron-jobs)
+11. [Database Tables](#database-tables)
 
 ---
 
@@ -228,7 +227,7 @@ Extracted from `AIPS_AI_Service` to separate reliability concerns:
 - Rate limiter (request-per-minute cap)
 - Retry logic with exponential backoff
 
-### AI Assistance — Component Editing (`AIPS_AI_Edit_Controller`, `AIPS_Component_Regeneration_Service`)
+### AI Edit — Component Editing (`AIPS_AI_Edit_Controller`, `AIPS_Component_Regeneration_Service`)
 Post-generation editing via AI:
 
 - Regenerate individual post components: title, content, excerpt, or featured image
@@ -367,19 +366,6 @@ Available only when `aips_developer_mode` is enabled in Settings:
 - Cache and transient clearing
 - AJAX registry inspector
 - Raw DB query tools
-
----
-
-## 10. MCP Bridge
-
-`ai-post-scheduler/mcp-bridge.php` exposes a subset of plugin functionality via a JSON-RPC–style interface for MCP (Model Context Protocol) integration.
-
-- Schema defined in `mcp-bridge-schema.json`
-- Not auto-loaded in the standard plugin runtime — loaded on demand
-- Enables external AI agents and tools to query and trigger plugin operations
-- Validated by `validate-mcp-bridge.php` (CLI-only, no WordPress required)
-
-Full MCP documentation: [docs/MCP_BRIDGE.md](MCP_BRIDGE.md)
 
 ---
 

@@ -28,13 +28,24 @@
 		},
 
 		/**
+		 * Row checkboxes of the Pending Review table only (never other tabs' or
+		 * the header/footer select-all inputs), so selection counts are exact.
+		 *
+		 * @return {jQuery}
+		 */
+		rowCheckboxes: function () {
+			return $('#aips-post-review-form tbody .aips-post-checkbox');
+		},
+
+		/**
 		 * Bind all UI event listeners.
 		 *
 		 * @return {void}
 		 */
 		bindEvents: function () {
-			// Select-all checkbox.
-			$(document).on('change', '#cb-select-all-1', this.onSelectAllChange.bind(this));
+			// Select-all checkbox. WP_List_Table renders one in the top header and one
+			// in the footer (cb-select-all-1 / cb-select-all-2), so match both by id prefix.
+			$(document).on('change', 'input[id^="cb-select-all-"]', this.onSelectAllChange.bind(this));
 
 			// Individual row checkbox.
 			$(document).on('change', '.aips-post-checkbox', this.onCheckboxChange.bind(this));
@@ -47,9 +58,7 @@
 			$(document).on('click', '.aips-publish-post',    this.onPublishClick.bind(this));
 			$(document).on('click', '.aips-delete-post',     this.onDeleteClick.bind(this));
 			$(document).on('click', '.aips-regenerate-post', this.onRegenerateClick.bind(this));
-			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
-			$(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.onRowActionItemClick.bind(this));
-			$(document).on('click', this.onDocumentClick.bind(this));
+			// Overflow toggle / item click / outside click are handled globally by admin.js.
 			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
 
 			// Bulk actions.
@@ -60,11 +69,34 @@
 
 			// Close preview modal.
 			$(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', this.closePreviewModal.bind(this));
+
+			// Pagination page-jump: the toolbar sits outside any form, so submit on Enter manually.
+			$(document).on('keydown', '.aips-review-pagination .current-page', this.onPageJump.bind(this));
 		},
 
 		// -----------------------------------------------------------------
 		// Event handlers – Select / checkbox
 		// -----------------------------------------------------------------
+
+		/**
+		 * Navigate to the page typed into the pagination input on Enter.
+		 *
+		 * @param {Event} e Keydown event.
+		 * @return {void}
+		 */
+		onPageJump: function (e) {
+			if (e.key !== 'Enter') {
+				return;
+			}
+			e.preventDefault();
+
+			var totalPages = parseInt($('.aips-review-pagination .total-pages').first().text(), 10) || 1;
+			var page       = Math.min(Math.max(parseInt($(e.currentTarget).val(), 10) || 1, 1), totalPages);
+			var url        = new URL(window.location.href);
+
+			url.searchParams.set('paged', page);
+			window.location.href = url.toString();
+		},
 
 		/**
 		 * Sync all row checkboxes when the select-all header checkbox changes.
@@ -73,7 +105,7 @@
 		 * @return {void}
 		 */
 		onSelectAllChange: function (e) {
-			$('.aips-post-checkbox').prop('checked', $(e.currentTarget).prop('checked'));
+			AIPS.PostReview.rowCheckboxes().prop('checked', $(e.currentTarget).prop('checked'));
 		},
 
 		/**
@@ -83,8 +115,9 @@
 		 * @return {void}
 		 */
 		onCheckboxChange: function (e) {
-			var allChecked = $('.aips-post-checkbox').length === $('.aips-post-checkbox:checked').length;
-			$('#cb-select-all-1').prop('checked', allChecked);
+			var $rows      = AIPS.PostReview.rowCheckboxes();
+			var allChecked = $rows.length > 0 && $rows.length === $rows.filter(':checked').length;
+			$('input[id^="cb-select-all-"]').prop('checked', allChecked);
 		},
 
 		// -----------------------------------------------------------------
@@ -117,56 +150,6 @@
 		},
 
 		/**
-		 * Toggle a compact row overflow menu.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		onRowActionOverflowToggle: function (e) {
-			e.preventDefault();
-			e.stopPropagation();
-
-			var $toggle = $(e.currentTarget);
-			var menuId = $toggle.attr('aria-controls');
-			var $menu = menuId ? $('#' + menuId) : $();
-
-			if (!$menu.length) {
-				return;
-			}
-
-			var isExpanded = $toggle.attr('aria-expanded') === 'true';
-			this.closeAllRowActionMenus();
-
-			if (!isExpanded) {
-				$toggle.attr('aria-expanded', 'true');
-				$menu.prop('hidden', false);
-			}
-		},
-
-		/**
-		 * Close overflow menus after a menu action is selected.
-		 *
-		 * @return {void}
-		 */
-		onRowActionItemClick: function () {
-			this.closeAllRowActionMenus();
-		},
-
-		/**
-		 * Close menus when clicking outside of row action controls.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		onDocumentClick: function (e) {
-			if ($(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
-				return;
-			}
-
-			this.closeAllRowActionMenus();
-		},
-
-		/**
 		 * Close overflow menus when pressing Escape.
 		 *
 		 * @param {KeyboardEvent} e Keyboard event.
@@ -174,18 +157,8 @@
 		 */
 		onDocumentKeyDown: function (e) {
 			if (e.key === 'Escape') {
-				this.closeAllRowActionMenus();
+				AIPS.closeAllRowActionMenus();
 			}
-		},
-
-		/**
-		 * Hide all compact row action overflow menus.
-		 *
-		 * @return {void}
-		 */
-		closeAllRowActionMenus: function () {
-			$('.aips-row-action-overflow-toggle[aria-expanded="true"]').attr('aria-expanded', 'false');
-			$('.aips-row-action-menu').prop('hidden', true);
 		},
 
 		/**
@@ -358,7 +331,7 @@
 				return;
 			}
 
-			var checkedBoxes = $('.aips-post-checkbox:checked');
+			var checkedBoxes = this.rowCheckboxes().filter(':checked');
 			if (checkedBoxes.length === 0) {
 				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
 				return;
@@ -378,14 +351,44 @@
 		// -----------------------------------------------------------------
 
 		/**
-		 * Reload the page when the reload button is clicked.
+		 * Refresh the Pending Review list in place when the reload button is clicked.
 		 *
 		 * @param {Event} e Click event.
 		 * @return {void}
 		 */
 		onReloadClick: function (e) {
 			e.preventDefault();
-			location.reload();
+			var $btn = $(e.currentTarget);
+			AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.reloading || 'Reloading...');
+			this.refreshList();
+		},
+
+		/**
+		 * Re-fetch the Pending Review panel from the server and swap it in.
+		 *
+		 * Picks up the next page of drafts after rows are removed, keeps the
+		 * current filters / pagination, and syncs the header count badge.
+		 *
+		 * @return {void}
+		 */
+		refreshList: function () {
+			AIPS.refreshContentPanel('#aips-pending-review-tab .aips-filter-bar', null, function () {
+				$('input[id^="cb-select-all-"]').prop('checked', false);
+				AIPS.PostReview.syncHeaderCount();
+			});
+		},
+
+		/**
+		 * Update the page-header "Pending Approval" count from the filter bar's total.
+		 *
+		 * @return {void}
+		 */
+		syncHeaderCount: function () {
+			var total = parseInt($('#aips-pending-review-tab .aips-filter-bar').data('total'), 10);
+			if (isNaN(total)) {
+				return;
+			}
+			$('.aips-page-header .aips-page-summary-strip .aips-summary-chip-value').first().text(total);
 		},
 
 		/**
@@ -436,15 +439,15 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
+								var msg;
+								if (response.data && response.data.queued) {
+									// Large selection: the server queued a background publish job.
+									msg = response.data.message || (aipsPostReviewL10n.bulkPublishQueued || '').replace('%d', count);
+								} else {
+									msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
+								}
 								AIPS.Utilities.showToast(msg, 'success');
-								checkedBoxes.each(function () {
-									$(this).closest('tr').fadeOut(400, function () {
-										$(this).remove();
-										AIPS.PostReview.updateDraftCount();
-										AIPS.PostReview.checkEmptyState();
-									});
-								});
+								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {
 								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
 							}
@@ -495,13 +498,7 @@
 							if (response.success) {
 								var msg = aipsPostReviewL10n.bulkDeleteSuccess.replace('%d', response.data.count || count);
 								AIPS.Utilities.showToast(msg, 'success');
-								checkedBoxes.each(function () {
-									$(this).closest('tr').fadeOut(400, function () {
-										$(this).remove();
-										AIPS.PostReview.updateDraftCount();
-										AIPS.PostReview.checkEmptyState();
-									});
-								});
+								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {
 								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
 							}
@@ -574,13 +571,7 @@
 									});
 								}
 
-								$rowsToRemove.each(function () {
-									$(this).closest('tr').fadeOut(400, function () {
-										$(this).remove();
-										AIPS.PostReview.updateDraftCount();
-										AIPS.PostReview.checkEmptyState();
-									});
-								});
+								AIPS.PostReview.removeRowsThenRefresh($rowsToRemove);
 
 								if (response.data && response.data.failed_count) {
 									var failMsg = aipsPostReviewL10n.bulkRegeneratePartialFailure || aipsPostReviewL10n.regenerateError;
@@ -694,8 +685,36 @@
 		 * @return {void}
 		 */
 		updateDraftCount: function () {
-			var visibleRows = $('.aips-post-review-table tbody tr:visible').length;
+			var visibleRows = $('#aips-pending-review-tab .aips-post-review-table tbody tr:visible').length;
 			$('#aips-draft-count').text(visibleRows);
+
+			// A row was removed: keep the header chip in step with the server total.
+			var $chip = $('.aips-page-header .aips-page-summary-strip .aips-summary-chip-value').first();
+			var remaining = parseInt($chip.text(), 10);
+			if (!isNaN(remaining)) {
+				$chip.text(Math.max(0, remaining - 1));
+			}
+		},
+
+		/**
+		 * Fade out the rows belonging to the given checkboxes, then refresh the
+		 * list from the server so remaining drafts (e.g. on later pages) load.
+		 *
+		 * @param {jQuery} $boxes Checked `.aips-post-checkbox` elements.
+		 * @return {void}
+		 */
+		removeRowsThenRefresh: function ($boxes) {
+			var $rows = $boxes.closest('tr');
+			if (!$rows.length) {
+				AIPS.PostReview.refreshList();
+				return;
+			}
+			var pending = $rows.length;
+			$rows.fadeOut(300, function () {
+				if (--pending === 0) {
+					AIPS.PostReview.refreshList();
+				}
+			});
 		},
 
 		/**
@@ -709,13 +728,20 @@
 		 * @return {void}
 		 */
 		checkEmptyState: function () {
-			var visibleRows = $('.aips-post-review-table tbody tr:visible').length;
+			var visibleRows = $('#aips-pending-review-tab .aips-post-review-table tbody tr:visible').length;
 
 			if (visibleRows === 0) {
-				$('.aips-post-review-table').hide();
-				$('.tablenav').hide();
+				// More drafts may remain on other pages: reload the list instead of showing the empty state.
+				var remaining = parseInt($('.aips-page-header .aips-page-summary-strip .aips-summary-chip-value').first().text(), 10);
+				if (remaining > 0) {
+					AIPS.PostReview.refreshList();
+					return;
+				}
 
-				if ($('.aips-empty-state').length === 0) {
+				$('#aips-pending-review-tab .aips-post-review-table').hide();
+				$('#aips-pending-review-tab .aips-panel-toolbar').hide();
+
+				if ($('#aips-pending-review-tab .aips-empty-state').length === 0) {
 					var emptyStateHtml = '<div class="aips-empty-state">' +
 						'<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>' +
 						'<h3>' + (aipsPostReviewL10n.noDraftPosts || 'No Draft Posts') + '</h3>' +
@@ -723,7 +749,7 @@
 						'</div>';
 					$('#aips-post-review-form').after(emptyStateHtml);
 				} else {
-					$('.aips-empty-state').show();
+					$('#aips-pending-review-tab .aips-empty-state').show();
 				}
 			}
 		},

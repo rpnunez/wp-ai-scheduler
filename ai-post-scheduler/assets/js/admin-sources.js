@@ -61,10 +61,6 @@
 			// $(document).on('click', '#aips-source-modal .aips-modal-close', this.closeModal.bind(this)); // Handled globally by admin.js
 			$(document).on('click', '#aips-source-modal', this.onOverlayClick.bind(this));
 
-			// Live search / filter.
-			$(document).on('input', '#aips-source-search', this.filterSources.bind(this));
-			$(document).on('click', '#aips-source-search-clear, #aips-source-search-clear-2', this.clearSearch.bind(this));
-
 			// Source data modal.
 			$(document).on('click', '.aips-view-source-data', this.openSourceDataModal.bind(this));
 			$(document).on('click', '.aips-delete-source-data', this.deleteSourceData.bind(this));
@@ -344,30 +340,30 @@
 					return;
 				}
 
-				var formFields = ['aips-source-data-id', 'aips-source-data-display-id', 'aips-source-data-source-id', 'aips-source-data-url', 'aips-source-data-page-title', 'aips-source-data-meta-description', 'aips-source-data-extracted-text', 'aips-source-data-raw-html', 'aips-source-data-fetch-status', 'aips-source-data-http-status', 'aips-source-data-error-message', 'aips-source-data-fetched-at', 'aips-source-data-char-count', 'aips-source-data-content-hash', 'aips-source-data-num-used', 'aips-source-data-created-at', 'aips-source-data-updated-at'];
+				var formFields = ['aips-source-data-id', 'aips-source-data-url', 'aips-source-data-page-title', 'aips-source-data-meta-description', 'aips-source-data-extracted-text', 'aips-source-data-raw-html', 'aips-source-data-fetch-status', 'aips-source-data-http-status', 'aips-source-data-error-message', 'aips-source-data-fetched-at', 'aips-source-data-char-count', 'aips-source-data-content-hash', 'aips-source-data-num-used', 'aips-source-data-created-at', 'aips-source-data-updated-at'];
 				var missingFields = formFields.filter(function(field) { return !$('#' + field).length; });
 				if (missingFields.length > 0) {
 					AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
 					return;
 				}
 
+				var status = row.fetch_status || 'success';
+
 				$('#aips-source-data-id').val(row.id || 0);
-				$('#aips-source-data-display-id').val(row.id || 0);
-				$('#aips-source-data-source-id').val(row.source_id || 0);
 				$('#aips-source-data-url').val(row.url || '');
 				$('#aips-source-data-page-title').val(row.page_title || '');
 				$('#aips-source-data-meta-description').val(row.meta_description || '');
 				$('#aips-source-data-extracted-text').val(row.extracted_text || '');
 				$('#aips-source-data-raw-html').val(row.raw_html || '');
-				$('#aips-source-data-fetch-status').val(row.fetch_status || 'success');
-				$('#aips-source-data-http-status').val(row.http_status || 0);
+				$('#aips-source-data-fetch-status').val(status.charAt(0).toUpperCase() + status.slice(1));
+				$('#aips-source-data-http-status').val(row.http_status || 'N/A');
 				$('#aips-source-data-error-message').val(row.error_message || '');
-				$('#aips-source-data-fetched-at').val(row.fetched_at || 0);
+				$('#aips-source-data-fetched-at').val(row.fetched_at_display || '');
 				$('#aips-source-data-char-count').val(row.char_count || 0);
 				$('#aips-source-data-content-hash').val(row.content_hash || '');
 				$('#aips-source-data-num-used').val(row.num_used || 0);
-				$('#aips-source-data-created-at').val(row.created_at || 0);
-				$('#aips-source-data-updated-at').val(row.updated_at || 0);
+				$('#aips-source-data-created-at').val(row.created_at_display || '');
+				$('#aips-source-data-updated-at').val(row.updated_at_display || '');
 				self.renderSourceDataUsage(response.data.usage || []);
 				$modal.show();
 			}).fail(function () {
@@ -391,7 +387,21 @@
 				return;
 			}
 
-			$links.html(AIPS.Templates.render('aips-source-data-usage-list', { items: usage }));
+			var items = usage.map(function (item) {
+				var historyId = parseInt(item.history_id || 0, 10);
+				var label     = item.title || ('History #' + historyId);
+				var url       = item.post_edit_url || item.history_url || '';
+				var link      = url
+					? AIPS.Templates.render('aips-tmpl-source-data-usage-link', { url: url, label: label })
+					: AIPS.Templates.escape(label);
+				var history   = item.history_url
+					? AIPS.Templates.render('aips-tmpl-source-data-usage-history', { url: item.history_url, label: 'History #' + historyId })
+					: '';
+
+				return AIPS.Templates.renderRaw('aips-tmpl-source-data-usage-item', { link: link, history: history });
+			});
+
+			$links.html('<ul>' + items.join('') + '</ul>');
 			$wrap.show();
 		},
 
@@ -407,15 +417,10 @@
 				action:           'aips_save_source_data',
 				nonce:            aipsSourcesL10n.sourceDataNonces.save,
 				data_id:          $('#aips-source-data-id').val(),
-				url:              $('#aips-source-data-url').val(),
 				page_title:       $('#aips-source-data-page-title').val(),
 				meta_description: $('#aips-source-data-meta-description').val(),
 				extracted_text:   $('#aips-source-data-extracted-text').val(),
 				raw_html:         $('#aips-source-data-raw-html').val(),
-				fetch_status:     $('#aips-source-data-fetch-status').val(),
-				http_status:      $('#aips-source-data-http-status').val(),
-				error_message:    $('#aips-source-data-error-message').val(),
-				fetched_at:       $('#aips-source-data-fetched-at').val(),
 			};
 
 			var $btn = $('#aips-save-source-data-btn');
@@ -640,53 +645,14 @@
 					return;
 				}
 
-				AIPS.Utilities.showToast(response.data.message, 'success');
+				var fetched = response.data.fetch_result && response.data.fetch_result.success;
+				AIPS.Utilities.showToast(response.data.message, fetched ? 'success' : 'error');
 				self.refreshPage();
 			}).fail(function () {
 				AIPS.Utilities.showToast('Fetch failed.', 'error');
 			});
 
 			AIPS.Utilities.withLock($btn, req, { timeout: 120000 });
-		},
-
-		// -----------------------------------------------------------------
-		// Search / Filter
-		// -----------------------------------------------------------------
-
-		/**
-		 * Filter the sources table rows based on the search input value.
-		 *
-		 * @param {Event} e Input event.
-		 * @return {void}
-		 */
-		filterSources: function (e) {
-			var term   = $(e.currentTarget).val().toLowerCase().trim();
-			var $rows  = $('#aips-sources-table tbody tr');
-			var visible = 0;
-
-			$('#aips-source-search-clear').toggle(term.length > 0);
-
-			$rows.each(function () {
-				var text = $(this).text().toLowerCase();
-				var show = !term || text.indexOf(term) !== -1;
-				$(this).toggle(show);
-				if (show) {
-					visible++;
-				}
-			});
-
-			$('#aips-source-search-no-results').toggle(visible === 0 && term.length > 0);
-		},
-
-		/**
-		 * Clear the search input and restore all rows.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		clearSearch: function (e) {
-			e.preventDefault();
-			$('#aips-source-search').val('').trigger('input');
 		},
 
 		// -----------------------------------------------------------------
@@ -718,6 +684,10 @@
 
 	$(document).ready(function () {
 		AIPS.initSources();
+
+		if (typeof AIPS.AIAssistance !== 'undefined') {
+			AIPS.AIAssistance.init({ formContext: 'sources' });
+		}
 	});
 
 })(jQuery);

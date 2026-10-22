@@ -46,6 +46,14 @@ class AIPS_Config {
     private $null_sentinel = null;
 
     /**
+     * Option names whose per-request cache entry came from the registered default
+     * rather than a stored value.
+     *
+     * @var array<string,bool>
+     */
+    private $default_resolved = array();
+
+    /**
      * @var array Options that should use persistent cache to reduce DB hits on every page load.
      */
     private static $persistent_cache_options = array(
@@ -106,6 +114,12 @@ class AIPS_Config {
             if ($this->cache !== null) {
                 $this->cache->delete($option);
             }
+            // Persistent entries (up to an hour TTL) must also drop when the
+            // option is written outside set_option() — e.g. the onboarding
+            // wizard's update_option()/delete_option() or the Settings API.
+            if (in_array($option, self::$persistent_cache_options, true)) {
+                AIPS_Cache_Factory::instance()->delete($option);
+            }
         };
         add_action('updated_option', $invalidate);
         add_action('added_option',   $invalidate);
@@ -151,6 +165,9 @@ class AIPS_Config {
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            // Pending Review: selections of this many drafts or more are published
+            // in the background (cron) instead of synchronously in the request.
+            'aips_bulk_publish_async_threshold' => 30,
             // General
             'aips_unsplash_access_key' => '',
             'aips_gsc_service_account' => '',
@@ -161,6 +178,18 @@ class AIPS_Config {
             'aips_persist_table_filters' => true,
             'aips_log_retention_days' => 30,
             'aips_topic_similarity_threshold' => 0.85,
+			// AI Assistance policy.
+			'aips_ai_assistance_enabled'         => true,
+			'aips_ai_assistance_contexts'        => array(
+				'authors',
+				'templates',
+				'sources',
+				'content_strategy',
+			),
+			'aips_ai_assistance_response_length' => 'standard',
+			'aips_ai_assistance_guidance'        => '',
+			'aips_ai_assistance_overwrite_mode'  => 'preview',
+			'aips_ai_assistance_retention_days'  => 30,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
@@ -257,10 +286,11 @@ class AIPS_Config {
             'aips_indexer_error_pause_unit'            => 'minutes',
             'aips_indexer_consecutive_error_threshold' => 2,
             'aips_post_clusters'                       => array(),
-            'aips_author_topic_auto_approval_mode'     => 'similarity',
+            'aips_author_topic_auto_approval_mode'     => 'manual',
             'aips_author_topic_auto_approval_min_score' => 70,
+            'aips_author_topic_auto_approval_min_relevance' => 65,
             'aips_author_topic_auto_approval_max_similarity' => 0.85,
-            'aips_author_topic_auto_approval_fallback' => 'reject',
+            'aips_author_topic_auto_approval_fallback' => 'smart_split',
             'aips_link_index_enabled'                  => true,
             'aips_link_index_post_types'               => array('post', 'page'),
             'aips_link_index_batch_size'               => 50,
@@ -272,6 +302,9 @@ class AIPS_Config {
             'aips_publish_linking_outbound'            => true,
             'aips_link_click_tracking_enabled'         => false,
             'aips_link_click_retention_days'           => 365,
+			'aips_source_archive_retention_days' => 0,
+			'aips_source_fetch_max_response_bytes' => 2097152,
+			'aips_source_prompt_total_max_chars' => 16000,
             'aips_silo_guide_enabled'                  => true,
             'aips_silo_guide_position'                 => 'end',
             'aips_silo_guide_max'                      => 10,
@@ -290,12 +323,6 @@ class AIPS_Config {
             'aips_indexer_topics_continuous_sync'      => true,
             'aips_indexer_topics_execution_timing'     => 'immediate',
             'aips_indexer_scan_entity_scope'           => 'all',
-            // Author Topics Semantic Auto-Approval
-            'aips_author_topic_auto_approval_enabled'  => false,
-            'aips_author_topic_approval_mode'          => 'embeddings',
-            'aips_author_topic_min_relevance'          => 0.65,
-            'aips_author_topic_max_duplicate'          => 0.80,
-            'aips_author_topic_fallback_action'        => 'smart_split',
             // Related Posts
             'aips_related_posts_enabled'               => true,
             'aips_related_posts_auto_append'           => false,
@@ -339,9 +366,10 @@ class AIPS_Config {
      * Critical options (those accessed on every page load) use persistent cache
      * to reduce database queries. Other values use a per-request in-memory cache.
      *
-     * When an explicit $default is supplied by the caller the result is NOT
-     * cached (to avoid polluting the cache with ad-hoc fallback values that
-     * differ from the authoritative AIPS_Config defaults).
+     * When an explicit $default is supplied by the caller and the option is not
+     * stored, the result is only cached if the default equals the authoritative
+     * AIPS_Config default (to avoid polluting the cache with ad-hoc fallback
+     * values). Stored values are always cached.
      *
      * @param string $option_name Option name.
      * @param mixed  $default     Optional. Default value if option not found.
@@ -366,9 +394,14 @@ class AIPS_Config {
         }
 
         // Use per-request cache for all other options
-        if ($default === null && $this->cache !== null && $this->cache->has($option_name)) {
+        if ($this->cache !== null && $this->cache->has($option_name)) {
             $cached = $this->cache->get($option_name);
-            return ($cached === $this->null_sentinel) ? null : $cached;
+            $cached = ($cached === $this->null_sentinel) ? null : $cached;
+            // A cached registered default is only valid for callers that want that
+            // same default; anything else must fall through to honour its fallback.
+            if ($default === null || empty($this->default_resolved[$option_name]) || $cached === $default) {
+                return $cached;
+            }
         }
 
         // Use a sentinel to distinguish "option not in database" from a stored
@@ -383,22 +416,26 @@ class AIPS_Config {
 
         if ($value === $not_set) {
             // Option is not stored in the database.
-            if ($default === null) {
-                $defaults = $this->get_default_options();
-                $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
-                // Cache only authoritative defaults; use the null sentinel when
+            $defaults     = $this->get_default_options();
+            $auth_default = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+
+            if ($default === null || $default === $auth_default) {
+                $value = $auth_default;
+                // Cache authoritative defaults; use the null sentinel when
                 // the resolved value is null so that has() returns true next time.
                 if ($this->cache !== null) {
+                    $this->default_resolved[$option_name] = true;
                     $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
                 }
             } else {
-                // Caller supplied a fallback — honour it but do NOT cache.
+                // Caller supplied an ad-hoc fallback — honour it but do NOT cache.
                 $value = $default;
             }
         } else {
             // Option exists in the database — always cache the live value;
             // use the null sentinel when the DB value is null.
             if ($this->cache !== null) {
+                unset($this->default_resolved[$option_name]);
                 $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
             }
         }

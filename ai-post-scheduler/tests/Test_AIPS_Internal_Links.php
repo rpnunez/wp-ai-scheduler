@@ -165,6 +165,63 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	}
 
 	/**
+	 * update_status_bulk() should change every listed row and leave the rest alone.
+	 */
+	public function test_links_update_status_bulk() {
+		$a     = $this->links_repo->insert( 11, 21, 0.9 );
+		$b     = $this->links_repo->insert( 12, 22, 0.8 );
+		$this->links_repo->insert( 13, 23, 0.7 );
+
+		$result = $this->links_repo->update_status_bulk( array( $a, $b ), 'rejected' );
+
+		$this->assertEquals( 2, $result );
+		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 11 )[0]->status );
+		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 12 )[0]->status );
+		$this->assertEquals( 'pending', $this->links_repo->get_by_source_post( 13 )[0]->status );
+	}
+
+	/**
+	 * update_status_bulk() with $only_from should skip rows in other statuses.
+	 */
+	public function test_links_update_status_bulk_only_from() {
+		$pending  = $this->links_repo->insert( 18, 28, 0.9 );
+		$inserted = $this->links_repo->insert( 19, 29, 0.8 );
+		$this->links_repo->update_status( $inserted, 'inserted' );
+
+		$result = $this->links_repo->update_status_bulk( array( $pending, $inserted ), 'rejected', array( 'pending' ) );
+
+		$this->assertEquals( 1, $result );
+		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 18 )[0]->status );
+		$this->assertEquals( 'inserted', $this->links_repo->get_by_source_post( 19 )[0]->status );
+	}
+
+	/**
+	 * update_status_bulk() should refuse invalid statuses and empty id lists.
+	 */
+	public function test_links_update_status_bulk_rejects_invalid() {
+		$id = $this->links_repo->insert( 14, 24, 0.9 );
+
+		$this->assertFalse( $this->links_repo->update_status_bulk( array( $id ), 'nope' ) );
+		$this->assertFalse( $this->links_repo->update_status_bulk( array(), 'accepted' ) );
+		$this->assertEquals( 'pending', $this->links_repo->get_by_source_post( 14 )[0]->status );
+	}
+
+	/**
+	 * delete_bulk() should remove only the listed rows.
+	 */
+	public function test_links_delete_bulk() {
+		$a = $this->links_repo->insert( 15, 25, 0.9 );
+		$b = $this->links_repo->insert( 16, 26, 0.8 );
+		$this->links_repo->insert( 17, 27, 0.7 );
+
+		$this->assertEquals( 2, $this->links_repo->delete_bulk( array( $a, $b ) ) );
+		$this->assertCount( 0, $this->links_repo->get_by_source_post( 15 ) );
+		$this->assertCount( 0, $this->links_repo->get_by_source_post( 16 ) );
+		$this->assertCount( 1, $this->links_repo->get_by_source_post( 17 ) );
+		$this->assertFalse( $this->links_repo->delete_bulk( array() ) );
+	}
+
+	/**
 	 * update_anchor_text() should update the anchor.
 	 */
 	public function test_links_update_anchor_text() {
@@ -300,8 +357,11 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 
 		$emb_service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'generate_embedding', 'get_active_model' ) )
+			->onlyMethods( array( 'generate_embedding', 'get_active_model', 'is_enabled' ) )
 			->getMock();
+
+		$emb_service->method( 'is_enabled' )
+			->willReturn( true );
 
 		// generate_embedding must be called exactly once despite calling index_post twice.
 		$emb_service->expects( $this->once() )

@@ -4,7 +4,8 @@
  */
 
 .aips-research {
-    max-width: 1200px;
+    width: 100%;
+    max-width: none;
 }
 
 /* Stats Cards */
@@ -44,7 +45,7 @@
 }
 
 .aips-research-table th {
-    background: #f6f7f7;
+    background: var(--aips-gray-tint);
     font-weight: 600;
 }
 
@@ -56,10 +57,10 @@
 .topic-badge {
     display: inline-block;
     padding: 3px 8px;
-    background: #f0f0f1;
+    background: var(--aips-gray-50);
     border-radius: 3px;
     font-size: 12px;
-    color: #646970;
+    color: var(--aips-gray-500);
 }
 
 /* Research Actions */
@@ -77,7 +78,7 @@
 .aips-empty-research {
     text-align: center;
     padding: 40px 20px;
-    color: #646970;
+    color: var(--aips-gray-500);
 }
 
 .aips-empty-research .dashicons {
@@ -107,13 +108,13 @@
     border: 1px solid #ccd0d4;
     border-radius: 3px;
     text-decoration: none;
-    color: #2271b1;
+    color: var(--aips-primary);
 }
 
 .aips-research-pagination .page-numbers span.current {
-    background: #2271b1;
-    color: #fff;
-    border-color: #2271b1;
+    background: var(--aips-primary);
+    color: var(--aips-white);
+    border-color: var(--aips-primary);
 }
 
 /* Gap Analysis Grid */
@@ -124,9 +125,9 @@
 }
 
 .aips-gap-card {
-    background: #fff;
+    background: var(--aips-white);
     border: 1px solid #ccd0d4;
-    border-left: 4px solid #d63638; /* Red for missing/alert */
+    border-left: 4px solid var(--aips-error); /* Red for missing/alert */
     border-radius: 4px;
     padding: 20px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -136,13 +137,13 @@
 }
 
 .aips-gap-card.priority-medium {
-    border-left-color: #dba617; /* Orange for medium */
+    border-left-color: var(--aips-warning); /* Orange for medium */
 }
 
 .aips-gap-card h4 {
     margin: 0 0 10px;
     font-size: 16px;
-    color: #1d2327;
+    color: var(--aips-gray-900);
 }
 
 .aips-gap-badge {
@@ -157,24 +158,24 @@
 
 .aips-gap-badge.high {
     background-color: #fbeaea;
-    color: #d63638;
+    color: var(--aips-error);
 }
 
 .aips-gap-badge.medium {
     background-color: #fdf3d6;
-    color: #dba617;
+    color: var(--aips-warning);
 }
 
 .aips-gap-reason {
     font-size: 13px;
-    color: #50575e;
+    color: var(--aips-gray-600);
     margin-bottom: 15px;
     line-height: 1.4;
 }
 
 .aips-gap-intent {
     font-size: 12px;
-    color: #646970;
+    color: var(--aips-gray-500);
     margin-bottom: 15px;
     font-style: italic;
 }
@@ -199,8 +200,8 @@
     display: inline-block;
     padding: 2px 8px;
     margin-top: 4px;
-    background-color: #2271b1;
-    color: #fff;
+    background-color: var(--aips-primary);
+    color: var(--aips-white);
     border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
@@ -210,7 +211,7 @@
 }
 
 .aips-post-count-badge:hover {
-    background-color: #135e96;
+    background-color: var(--aips-primary-hover);
 }
 
 .aips-post-count-badge .dashicons {

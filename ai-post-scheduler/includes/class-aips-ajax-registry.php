@@ -281,6 +281,7 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_update_status'          => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_update_anchor'          => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_delete'                 => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_bulk_action'            => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
@@ -368,6 +369,8 @@ class AIPS_Ajax_Registry {
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+		'aips_delete_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+		'aips_clear_field_assist_history' => 'AIPS_AI_Assistance_Controller',
 
 		// Cache Monitor Controller
 		'aips_cache_monitor_summary'           => 'AIPS_Cache_Monitor_Controller',
