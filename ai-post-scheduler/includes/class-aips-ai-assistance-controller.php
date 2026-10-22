@@ -51,6 +51,8 @@ class AIPS_AI_Assistance_Controller {
 
 		add_action( 'wp_ajax_aips_ai_field_assist',          array( $this, 'ajax_field_assist' ) );
 		add_action( 'wp_ajax_aips_get_field_assist_history', array( $this, 'ajax_get_field_assist_history' ) );
+		add_action( 'wp_ajax_aips_delete_field_assist_history', array( $this, 'ajax_delete_field_assist_history' ) );
+		add_action( 'wp_ajax_aips_clear_field_assist_history', array( $this, 'ajax_clear_field_assist_history' ) );
 	}
 
 	/**
@@ -102,6 +104,14 @@ class AIPS_AI_Assistance_Controller {
 			AIPS_Ajax_Response::invalid_request( __( 'Required field parameters are missing.', 'ai-post-scheduler' ) );
 			return;
 		}
+		if ( ! AIPS_Settings::is_ai_assistance_enabled_for( $field_config['form_context'] ) ) {
+			AIPS_Ajax_Response::error(
+				__( 'AI Assistance is disabled for this workflow. Enable it in Settings > AI Assistance.', 'ai-post-scheduler' ),
+				'ai_assistance_disabled',
+				403
+			);
+			return;
+		}
 
 		$result = $this->service->get_field_suggestion( $field_config, $session_id, $user_id );
 
@@ -142,11 +152,25 @@ class AIPS_AI_Assistance_Controller {
 			AIPS_Ajax_Response::invalid_request( __( 'Required parameters are missing.', 'ai-post-scheduler' ) );
 			return;
 		}
+		if ( ! AIPS_Settings::is_ai_assistance_enabled_for( $form_context ) ) {
+			AIPS_Ajax_Response::error(
+				__( 'AI Assistance history is disabled for this workflow.', 'ai-post-scheduler' ),
+				'ai_assistance_disabled',
+				403
+			);
+			return;
+		}
 
 		$session_records = $this->repository->get_by_session_and_field( $session_id, $form_context, $field_key );
 		$alltime_records = $this->repository->get_by_field( $form_context, $field_key, 15 );
 
 		$format_record = function( $record ) {
+			$request = json_decode( $record->request_object ?? '', true );
+			$record->context = is_array( $request ) ? array(
+				'workflow' => $request['form_context'] ?? '',
+				'sibling_fields' => $request['context'] ?? array(),
+			) : array();
+			unset( $record->request_object );
 			if ( ! empty( $record->created_at ) ) {
 				$dt = AIPS_DateTime::fromTimestampOrNull( (int) $record->created_at );
 				$record->created_at = $dt ? $dt->toDisplay() : '';
@@ -161,5 +185,29 @@ class AIPS_AI_Assistance_Controller {
 			'session' => $session_records,
 			'alltime' => $alltime_records,
 		) );
+	}
+
+	public function ajax_delete_field_assist_history() {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) || ! current_user_can( 'manage_options' ) ) {
+			AIPS_Ajax_Response::permission_denied();
+			return;
+		}
+
+		$id = absint( $_POST['record_id'] ?? 0 );
+		if ( ! $id || ! $this->repository->delete( $id ) ) {
+			AIPS_Ajax_Response::invalid_request( __( 'History entry could not be deleted.', 'ai-post-scheduler' ) );
+			return;
+		}
+
+		AIPS_Ajax_Response::success();
+	}
+
+	public function ajax_clear_field_assist_history() {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) || ! current_user_can( 'manage_options' ) ) {
+			AIPS_Ajax_Response::permission_denied();
+			return;
+		}
+		$this->repository->clear_all();
+		AIPS_Ajax_Response::success();
 	}
 }
