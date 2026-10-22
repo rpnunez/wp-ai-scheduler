@@ -106,6 +106,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_default_category'],
 			),
+			'aips_bulk_publish_async_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_bulk_publish_async_threshold'),
+				'default'           => $defaults['aips_bulk_publish_async_threshold'],
+			),
 			'aips_enable_logging' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_logging'],
@@ -669,6 +673,14 @@ class AIPS_Settings {
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
             array($this->ui, 'category_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_bulk_publish_async_threshold',
+            __('Bulk Publish Background Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'bulk_publish_async_threshold_field_callback'),
             'aips-settings',
             'aips_general_section'
         );

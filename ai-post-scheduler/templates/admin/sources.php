@@ -401,3 +401,5 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 		</div>
 	</div>
 </div>
+
+<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>

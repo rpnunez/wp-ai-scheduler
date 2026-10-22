@@ -37,63 +37,203 @@
 				description:      'The display name for this AI author persona',
 				influence:        'Sets the author byline on generated posts; used in topic-generation prompts as the attributed author',
 				expectedResponse: 'A short, memorable author pen name (1–3 words)',
+				contextFields:    [],
 			},
 			author_field_niche: {
 				fieldName:        'Field/Niche',
 				description:      'The subject-matter niche this author specialises in',
 				influence:        'Focuses AI topic generation and content toward this niche',
 				expectedResponse: 'A concise niche description (1–5 words, e.g. "Personal Finance for Millennials")',
+				contextFields:    [],
 			},
 			author_keywords: {
 				fieldName:        'Keywords',
 				description:      'Comma-separated keywords associated with this author\'s content',
 				influence:        'Guides keyword selection during post and topic generation',
 				expectedResponse: 'A comma-separated list of 5–10 relevant keywords',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_details: {
 				fieldName:        'Details',
 				description:      'Short background details about this author persona',
 				influence:        'Provides context to the AI when generating posts in the author\'s voice',
 				expectedResponse: 'Two to four sentences describing the author\'s background and expertise',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_description: {
 				fieldName:        'Description',
 				description:      'A longer public-facing bio or description for this author',
 				influence:        'May be appended to generated posts as an author bio section',
 				expectedResponse: 'A 3–5 sentence author biography in first or third person',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			voice_tone: {
 				fieldName:        'Tone',
 				description:      'The emotional tone this author uses when writing',
 				influence:        'Instructs the AI to match this tone throughout every generated post',
 				expectedResponse: 'One to three descriptive words (e.g. "friendly, authoritative, approachable")',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			writing_style: {
 				fieldName:        'Writing Style',
 				description:      'The structural and stylistic approach this author takes',
 				influence:        'Shapes sentence length, vocabulary, and narrative style in AI-generated content',
 				expectedResponse: 'A brief style description (e.g. "conversational with data-driven examples")',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_target_audience: {
 				fieldName:        'Target Audience',
 				description:      'The intended readership for this author\'s content',
 				influence:        'Tailors complexity, vocabulary, and examples to this audience in generated posts',
 				expectedResponse: 'A concise audience description (e.g. "beginner home cooks aged 25–45")',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_content_goals: {
 				fieldName:        'Content Goals',
 				description:      'The primary objectives this author\'s content should achieve',
 				influence:        'Aligns AI-generated post structure and calls-to-action with these goals',
 				expectedResponse: 'One to three goal statements (e.g. "educate readers, drive newsletter signups")',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
 			},
 			author_excluded_topics: {
 				fieldName:        'Excluded Topics',
 				description:      'Topics or subject areas this author should never write about',
 				influence:        'Prevents the AI from generating posts or topics in these areas',
 				expectedResponse: 'A comma-separated list of excluded topics or themes',
+				contextFields:    [ 'author_name', 'author_field_niche' ],
+			},
+			'aips-suggest-site-niche': {
+				fieldName:        'Site Niche / Primary Topic',
+				description:      'The main topic or industry the site covers',
+				influence:        'Steers which author personas the AI suggests in this bulk-suggestion request',
+				expectedResponse: 'A concise niche description (1-5 words)',
+				contextFields:    [],
+			},
+			'aips-suggest-target-audience': {
+				fieldName:        'Target Audience',
+				description:      'Who the suggested authors\' content should be written for',
+				influence:        'Steers which author personas the AI suggests in this bulk-suggestion request',
+				expectedResponse: 'A concise audience description',
+				contextFields:    [ 'aips-suggest-site-niche' ],
+			},
+			'aips-suggest-content-goals': {
+				fieldName:        'Content Goals',
+				description:      'What the suggested authors\' content should achieve',
+				influence:        'Steers which author personas the AI suggests in this bulk-suggestion request',
+				expectedResponse: 'One to three goal statements',
+				contextFields:    [ 'aips-suggest-site-niche', 'aips-suggest-target-audience' ],
+			},
+		},
+		templates: {
+			template_name: {
+				fieldName:        'Template Name',
+				description:      'A descriptive name for this content-generation template',
+				influence:        'Used only to identify the template in lists; does not affect generated content',
+				expectedResponse: 'A short, descriptive template name (e.g. "Weekly Tech News Roundup")',
+				contextFields:    [],
+			},
+			template_description: {
+				fieldName:        'Template Description',
+				description:      'Optional notes about what this template is used for',
+				influence:        'Used only to help identify the template later; does not affect generated content',
+				expectedResponse: 'One to two sentences describing the template\'s purpose',
+				contextFields:    [ 'template_name' ],
+			},
+			title_prompt: {
+				fieldName:        'Title Prompt',
+				description:      'Instructions telling the AI how to generate post titles',
+				influence:        'Directly shapes how titles are generated for every post created from this template',
+				expectedResponse: 'A short instruction for generating titles, optionally using {{AI variable}} placeholders',
+				contextFields:    [ 'template_name', 'prompt_template' ],
+			},
+			prompt_template: {
+				fieldName:        'Content Prompt',
+				description:      'The master prompt instructing the AI what content to generate',
+				influence:        'Directly determines the structure, topic, and style of every post generated from this template',
+				expectedResponse: 'A detailed, specific content prompt (topic, style, length, audience)',
+				contextFields:    [ 'template_name', 'template_description' ],
+			},
+			image_prompt: {
+				fieldName:        'Image Prompt',
+				description:      'Instructions describing the featured image to generate with AI',
+				influence:        'Directly shapes the AI-generated featured image for every post created from this template',
+				expectedResponse: 'A vivid, descriptive image prompt',
+				contextFields:    [ 'template_name', 'prompt_template' ],
+			},
+		},
+		sources: {
+			'aips-source-label': {
+				fieldName:        'Label',
+				description:      'A short name identifying this content source',
+				influence:        'Used only to identify the source in lists; does not affect fetched content',
+				expectedResponse: 'A short, descriptive label (2-5 words)',
+				contextFields:    [],
+			},
+			'aips-source-description': {
+				fieldName:        'Notes',
+				description:      'Notes about why this source is trusted or how it\'s used',
+				influence:        'Used only for the site administrator\'s reference; does not affect fetched content',
+				expectedResponse: 'One to two sentences of notes about this source',
+				contextFields:    [ 'aips-source-label' ],
+			},
+		},
+		// Shared by the Onboarding wizard's Strategy step and the Settings ›
+		// Site Content Strategy tab — both edit the same aips_site_* options,
+		// so suggestions and history are shared across whichever page the
+		// user is currently editing them from.
+		content_strategy: {
+			aips_site_niche: {
+				fieldName:        'Site Niche',
+				description:      'The overall subject-matter niche for this site\'s content strategy',
+				influence:        'Seeds the default author\'s niche and every topic/content prompt generated site-wide',
+				expectedResponse: 'A concise niche description (1-5 words)',
+				contextFields:    [],
+			},
+			aips_site_target_audience: {
+				fieldName:        'Target Audience',
+				description:      'The intended readership for this site\'s content',
+				influence:        'Tailors complexity, vocabulary, and examples in generated content to this audience',
+				expectedResponse: 'A concise audience description',
+				contextFields:    [ 'aips_site_niche' ],
+			},
+			aips_site_content_goals: {
+				fieldName:        'Content Goals',
+				description:      'The primary objectives this site\'s content should achieve',
+				influence:        'Aligns generated post structure and calls-to-action with these goals',
+				expectedResponse: 'One to three goal statements',
+				contextFields:    [ 'aips_site_niche', 'aips_site_target_audience' ],
+			},
+			aips_site_brand_voice: {
+				fieldName:        'Brand Voice',
+				description:      'The tone and style this site\'s content should be written in',
+				influence:        'Instructs the AI to match this tone throughout every generated post',
+				expectedResponse: 'One to three descriptive words (e.g. "friendly, authoritative, approachable")',
+				contextFields:    [ 'aips_site_niche' ],
+			},
+			aips_site_content_guidelines: {
+				fieldName:        'Content Guidelines',
+				description:      'Specific rules or guidelines generated content must follow',
+				influence:        'Directly constrains how the AI writes every generated post',
+				expectedResponse: 'A short list of concrete content guidelines',
+				contextFields:    [ 'aips_site_niche', 'aips_site_brand_voice' ],
+			},
+			aips_site_excluded_topics: {
+				fieldName:        'Excluded Topics',
+				description:      'Topics or subject areas this site should never write about',
+				influence:        'Prevents the AI from generating posts or topics in these areas, site-wide',
+				expectedResponse: 'A comma-separated list of excluded topics or themes',
+				contextFields:    [ 'aips_site_niche' ],
 			},
 		},
 	};
+
+	/**
+	 * sessionStorage key used to persist the field-assist session id across
+	 * page loads within the same browser session.
+	 *
+	 * @type {string}
+	 */
+	var SESSION_STORAGE_KEY = 'aipsAIAssistanceSessionId';
 
 	/**
 	 * AIPS.AIAssistance module.
@@ -105,7 +245,8 @@
 	AIPS.AIAssistance = {
 
 		/**
-		 * Unique session identifier generated once per page load.
+		 * Unique session identifier, persisted in sessionStorage so the
+		 * "This Session" history tab survives a page reload.
 		 *
 		 * @type {string}
 		 */
@@ -113,29 +254,84 @@
 
 		/**
 		 * The form context identifier used for all requests on this page.
+		 * Set via init({ formContext: '...' }); defaults to 'authors' for
+		 * backward compatibility with callers that don't pass one.
 		 *
 		 * @type {string}
 		 */
 		formContext: 'authors',
 
 		/**
-		 * Initialise the module: generate session ID, inject buttons, bind events.
+		 * Guards against double-initialisation (and therefore duplicate
+		 * document-delegated event bindings) if init() is ever called more
+		 * than once on the same page.
 		 *
-		 * @return {void}
+		 * @type {boolean}
 		 */
-		init: function () {
+		_initialized: false,
+
+		/**
+		 * Generate a new random identifier for session grouping.
+		 *
+		 * @return {string}
+		 */
+		_generateSessionId: function () {
 			if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-				this.sessionId = crypto.randomUUID();
-			} else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+				return crypto.randomUUID();
+			}
+			if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
 				var buf = new Uint8Array(16);
 				crypto.getRandomValues(buf);
-				this.sessionId = Array.prototype.map.call(buf, function (b) {
+				return Array.prototype.map.call(buf, function (b) {
 					return ('0' + b.toString(16)).slice(-2);
 				}).join('');
-			} else {
-				// Last-resort fallback (non-security context: session grouping only).
-				this.sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
 			}
+			// Last-resort fallback (non-security context: session grouping only).
+			return Date.now().toString(36) + Math.random().toString(36).slice(2);
+		},
+
+		/**
+		 * Load the persisted session id from sessionStorage, or generate and
+		 * persist a new one. Falls back to an in-memory id if storage is
+		 * unavailable (private browsing, blocked site data, etc).
+		 *
+		 * @return {string}
+		 */
+		_loadOrCreateSessionId: function () {
+			try {
+				var stored = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+				if (stored) {
+					return stored;
+				}
+				var fresh = this._generateSessionId();
+				window.sessionStorage.setItem(SESSION_STORAGE_KEY, fresh);
+				return fresh;
+			} catch (e) {
+				return this._generateSessionId();
+			}
+		},
+
+		/**
+		 * Initialise the module: resolve form context, load/generate the
+		 * session ID, inject buttons, bind events. Safe to call only once per
+		 * page — subsequent calls are no-ops so document-delegated handlers
+		 * are never bound twice.
+		 *
+		 * @param {Object} [options] Optional configuration.
+		 * @param {string} [options.formContext] The form context key to use (see AIPS_FIELD_MAPS).
+		 * @return {void}
+		 */
+		init: function (options) {
+			if (this._initialized) {
+				return;
+			}
+			this._initialized = true;
+
+			if (options && options.formContext) {
+				this.formContext = options.formContext;
+			}
+
+			this.sessionId = this._loadOrCreateSessionId();
 			this.injectButtons();
 			this.bindEvents();
 		},
@@ -161,7 +357,11 @@
 					return; // skip if field not in DOM
 				}
 
-				var $formGroup = $field.closest('.form-group');
+				// Different admin forms use different row-wrapper class names
+				// (Authors: .form-group, Templates and others: .aips-form-row);
+				// this is purely a CSS positioning hook, so it's harmless to
+				// no-op when neither is found.
+				var $formGroup = $field.closest('.form-group, .aips-form-row');
 				if ($formGroup.length) {
 					$formGroup.addClass('aips-ai-assist-wrap');
 				}
@@ -211,8 +411,14 @@
 
 			var $field = $('#' + fieldId);
 			var currentValue = $field.val() || '';
-			var authorName = $('#author_name').val() || '';
-			var fieldNiche = $('#author_field_niche').val() || '';
+
+			// Generic sibling-field context: each field map entry declares
+			// which other fields on the same form should be read and sent
+			// along as extra context, instead of hardcoding specific IDs here.
+			var context = {};
+			$.each(fieldConfig.contextFields || [], function (i, contextFieldId) {
+				context[contextFieldId] = $('#' + contextFieldId).val() || '';
+			});
 
 			// Loading state
 			$btn.prop('disabled', true).addClass('loading');
@@ -237,8 +443,7 @@
 					expected_response: fieldConfig.expectedResponse,
 					current_value:     currentValue,
 					session_id:        self.sessionId,
-					author_name:       authorName,
-					field_niche:       fieldNiche,
+					context:           context,
 				},
 				function (response) {
 					$btn.prop('disabled', false).removeClass('loading');
@@ -410,8 +615,10 @@
 		},
 	};
 
-	$(document).ready(function () {
-		AIPS.AIAssistance.init();
-	});
+	// Intentionally no auto-init here: each admin page that wants AI
+	// Assistance must call AIPS.AIAssistance.init({ formContext: '...' })
+	// itself (see assets/js/authors.js for the Authors page). init() is
+	// idempotent, but each page should only call it once, with its own
+	// formContext, so the right field map and sibling-field context apply.
 
 })(jQuery);
