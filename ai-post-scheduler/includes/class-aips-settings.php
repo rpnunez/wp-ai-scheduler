@@ -627,6 +627,10 @@ class AIPS_Settings {
 			);
 		}
 
+		foreach ( self::get_ai_assistance_options() as $option_key => $meta ) {
+			$settings[$option_key] = $meta;
+		}
+
 		return $settings;
 	}
 
@@ -664,6 +668,30 @@ class AIPS_Settings {
             array($this->ui, 'general_section_callback'),
             'aips-settings'
         );
+
+		add_settings_section(
+			'aips_ai_assistance_section',
+			__('AI Assistance', 'ai-post-scheduler'),
+			array($this->ui, 'ai_assistance_section_callback'),
+			'aips-settings'
+		);
+		$ai_assistance_fields = array(
+			'enabled' => __('Enable AI Assistance', 'ai-post-scheduler'),
+			'contexts' => __('Workflows', 'ai-post-scheduler'),
+			'response_length' => __('Response length', 'ai-post-scheduler'),
+			'guidance' => __('AI Assistance guidance', 'ai-post-scheduler'),
+			'overwrite_mode' => __('Existing field values', 'ai-post-scheduler'),
+			'retention_days' => __('History retention', 'ai-post-scheduler'),
+		);
+		foreach ( $ai_assistance_fields as $field => $label ) {
+			add_settings_field(
+				'aips_ai_assistance_' . $field,
+				$label,
+				array( $this->ui, 'ai_assistance_' . $field . '_field_callback' ),
+				'aips-settings',
+				'aips_ai_assistance_section'
+			);
+		}
 
         add_settings_field(
             'aips_default_post_status',
@@ -1325,12 +1353,12 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
-        // Notifications section: Email address + all per-type preferences
+        // Notifications sections: Email address + grouped notification preferences
         // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_notifications_section',
-            __('Notifications', 'ai-post-scheduler'),
-            array($this->ui, 'notifications_section_callback'),
+            'aips_notifications_delivery_section',
+            __('Email Routing & Delivery', 'ai-post-scheduler'),
+            '__return_empty_string',
             'aips-settings'
         );
 
@@ -1339,16 +1367,110 @@ class AIPS_Settings {
             __('Notifications Email Address', 'ai-post-scheduler'),
             array($this->ui, 'review_notifications_email_field_callback'),
             'aips-settings',
-            'aips_notifications_section'
+            'aips_notifications_delivery_section'
         );
 
-        foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
+        add_settings_section(
+            'aips_notifications_system_section',
+            __('System Health & Resilience Alerts', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_content_section',
+            __('Content & Editorial Workflow Alerts', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_automation_section',
+            __('Automation & Operational Maintenance', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_digests_section',
+            __('Scheduled Activity Digests & Reports', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        $notification_groups = array(
+            'aips_notifications_system_section' => array(
+                'generation_failed',
+                'quota_alert',
+                'circuit_breaker_opened',
+                'rate_limit_reached',
+                'integration_error',
+                'scheduler_error',
+                'system_error',
+            ),
+            'aips_notifications_content_section' => array(
+                'post_ready_for_review',
+                'post_generated',
+                'partial_generation_completed',
+                'post_rejected',
+                'post_consolidated',
+                'duplicate_groups_found',
+                'author_topics_generated',
+                'author_suggestions',
+                'research_topics_ready',
+            ),
+            'aips_notifications_automation_section' => array(
+                'template_generated',
+                'manual_generation_completed',
+                'template_change',
+                'seeder_complete',
+                'history_cleanup',
+            ),
+            'aips_notifications_digests_section' => array(
+                'daily_digest',
+                'weekly_summary',
+                'monthly_report',
+            ),
+        );
+
+        $type_registry = AIPS_Notifications::get_notification_type_registry();
+        $registered_types = array();
+
+        foreach ($notification_groups as $section_id => $types) {
+            foreach ($types as $type) {
+                if (isset($type_registry[$type])) {
+                    $meta = $type_registry[$type];
+                    add_settings_field(
+                        'aips_notification_preferences_' . $type,
+                        $meta['label'],
+                        array($this->ui, 'notification_preference_field_callback'),
+                        'aips-settings',
+                        $section_id,
+                        array(
+                            'type'        => $type,
+                            'description' => $meta['description'],
+                        )
+                    );
+                    $registered_types[$type] = true;
+                }
+            }
+        }
+
+        // Register any newly added or remaining types not in explicit groups.
+        foreach ($type_registry as $type => $meta) {
+            if (isset($registered_types[$type])) {
+                continue;
+            }
+            $fallback_section = (isset($meta['level']) && 'error' === $meta['level'])
+                ? 'aips_notifications_system_section'
+                : 'aips_notifications_content_section';
+
             add_settings_field(
                 'aips_notification_preferences_' . $type,
                 $meta['label'],
                 array($this->ui, 'notification_preference_field_callback'),
                 'aips-settings',
-                'aips_notifications_section',
+                $fallback_section,
                 array(
                     'type'        => $type,
                     'description' => $meta['description'],
@@ -1432,10 +1554,13 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
+        // -----------------------------------------------------------------------
+        // Resilience sections: Retry, Rate Limiting, Batch Pacing, Circuit Breaker
+        // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_resilience_section',
-            __('Resilience & Limits', 'ai-post-scheduler'),
-            array($this->ui, 'resilience_section_callback'),
+            'aips_resilience_retry_section',
+            __('Retry & Backoff Policy', 'ai-post-scheduler'),
+            '__return_empty_string',
             'aips-settings'
         );
 
@@ -1444,7 +1569,7 @@ class AIPS_Settings {
             __('Enable Retry', 'ai-post-scheduler'),
             array($this->ui, 'enable_retry_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
         );
 
         add_settings_field(
@@ -1452,7 +1577,7 @@ class AIPS_Settings {
             __('Max Retries on Failure', 'ai-post-scheduler'),
             array($this->ui, 'max_retries_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
         );
 
         add_settings_field(
@@ -1460,7 +1585,14 @@ class AIPS_Settings {
             __('Retry Initial Delay (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'retry_initial_delay_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_rate_limit_section',
+            __('API Rate Limiting', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
         );
 
         add_settings_field(
@@ -1468,7 +1600,7 @@ class AIPS_Settings {
             __('Enable Rate Limiting', 'ai-post-scheduler'),
             array($this->ui, 'enable_rate_limiting_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
         );
 
         add_settings_field(
@@ -1476,7 +1608,7 @@ class AIPS_Settings {
             __('Rate Limit Max Requests', 'ai-post-scheduler'),
             array($this->ui, 'rate_limit_requests_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
         );
 
         add_settings_field(
@@ -1484,7 +1616,14 @@ class AIPS_Settings {
             __('Rate Limit Period (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'rate_limit_period_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_batch_section',
+            __('Batch Pacing & Resume Cooldown', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
         );
 
         add_settings_field(
@@ -1492,7 +1631,7 @@ class AIPS_Settings {
             __('Delay Between Generations (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'generation_delay_seconds_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_batch_section'
         );
 
         add_settings_field(
@@ -1500,7 +1639,14 @@ class AIPS_Settings {
             __('Batch Resume Cooldown (Minutes)', 'ai-post-scheduler'),
             array($this->ui, 'batch_resume_cooldown_minutes_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_batch_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_circuit_breaker_section',
+            __('Circuit Breaker Protection', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
         );
 
         add_settings_field(
@@ -1508,7 +1654,7 @@ class AIPS_Settings {
             __('Enable Circuit Breaker', 'ai-post-scheduler'),
             array($this->ui, 'enable_circuit_breaker_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         add_settings_field(
@@ -1516,7 +1662,7 @@ class AIPS_Settings {
             __('Circuit Breaker Failure Threshold', 'ai-post-scheduler'),
             array($this->ui, 'circuit_breaker_threshold_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         add_settings_field(
@@ -1524,7 +1670,7 @@ class AIPS_Settings {
             __('Circuit Breaker Timeout (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'circuit_breaker_timeout_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         // -----------------------------------------------------------------------
@@ -1716,5 +1862,85 @@ class AIPS_Settings {
             ),
         );
     }
+
+	/**
+	 * Return the canonical AI Assistance setting definitions.
+	 *
+	 * @return array<string, array{sanitize_callback: callable|string, default: mixed}>
+	 */
+	public static function get_ai_assistance_options() {
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+
+		return array(
+			'aips_ai_assistance_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_ai_assistance_enabled'],
+			),
+			'aips_ai_assistance_contexts' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_contexts' ),
+				'default'           => $defaults['aips_ai_assistance_contexts'],
+			),
+			'aips_ai_assistance_response_length' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_response_length' ),
+				'default'           => $defaults['aips_ai_assistance_response_length'],
+			),
+			'aips_ai_assistance_guidance' => array(
+				'sanitize_callback' => 'sanitize_textarea_field',
+				'default'           => $defaults['aips_ai_assistance_guidance'],
+			),
+			'aips_ai_assistance_overwrite_mode' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_overwrite_mode' ),
+				'default'           => $defaults['aips_ai_assistance_overwrite_mode'],
+			),
+			'aips_ai_assistance_retention_days' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_retention_days' ),
+				'default'           => $defaults['aips_ai_assistance_retention_days'],
+			),
+		);
+	}
+
+	public static function get_ai_assistance_contexts() {
+		return array( 'authors', 'templates', 'sources', 'content_strategy' );
+	}
+
+	public static function sanitize_ai_assistance_contexts( $contexts ) {
+		$contexts = is_array( $contexts ) ? $contexts : array();
+		return array_values( array_intersect( self::get_ai_assistance_contexts(), array_map( 'sanitize_key', $contexts ) ) );
+	}
+
+	public static function sanitize_ai_assistance_response_length( $value ) {
+		return in_array( $value, array( 'concise', 'standard', 'detailed' ), true ) ? $value : 'standard';
+	}
+
+	public static function sanitize_ai_assistance_overwrite_mode( $value ) {
+		return in_array( $value, array( 'replace', 'preview' ), true ) ? $value : 'preview';
+	}
+
+	public static function sanitize_ai_assistance_retention_days( $value ) {
+		$value = absint( $value );
+		return in_array( $value, array( 0, 7, 30, 90, 365 ), true ) ? $value : 30;
+	}
+
+	public static function is_ai_assistance_enabled_for( $context ) {
+		return (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' )
+			&& in_array( $context, self::get_enabled_ai_assistance_contexts(), true );
+	}
+
+	public static function get_enabled_ai_assistance_contexts() {
+		return self::sanitize_ai_assistance_contexts( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_contexts' ) );
+	}
+
+	public static function get_ai_assistance_policy() {
+		return array(
+			'enabled'        => (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' ),
+			'contexts'       => self::get_enabled_ai_assistance_contexts(),
+			'overwriteMode'  => self::sanitize_ai_assistance_overwrite_mode( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_overwrite_mode' ) ),
+			'responseLength' => self::sanitize_ai_assistance_response_length( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_response_length' ) ),
+		);
+	}
+
+	public static function get_ai_assistance_retention_days() {
+		return self::sanitize_ai_assistance_retention_days( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_retention_days' ) );
+	}
         
 }

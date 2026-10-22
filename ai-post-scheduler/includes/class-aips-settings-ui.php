@@ -1118,6 +1118,96 @@ class AIPS_Settings_UI {
     // Site Content Strategy field callbacks
     // -------------------------------------------------------------------------
 
+	public function ai_assistance_section_callback() {
+		echo '<p>' . esc_html__( 'Configure consistent, admin-only AI suggestions. Current field values and declared sibling fields are sent to your AI provider to produce a suggestion.', 'ai-post-scheduler' ) . '</p>';
+	}
+
+	public function ai_assistance_enabled_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' );
+		?>
+		<label>
+			<input type="checkbox" name="aips_ai_assistance_enabled" value="1" <?php checked( $value ); ?>>
+			<?php esc_html_e( 'Enable AI Assistance site-wide', 'ai-post-scheduler' ); ?>
+		</label>
+		<?php
+	}
+
+	public function ai_assistance_contexts_field_callback() {
+		$enabled = AIPS_Settings::get_enabled_ai_assistance_contexts();
+		$labels  = array(
+			'authors'          => __( 'Authors', 'ai-post-scheduler' ),
+			'templates'        => __( 'Templates', 'ai-post-scheduler' ),
+			'sources'          => __( 'Sources', 'ai-post-scheduler' ),
+			'content_strategy' => __( 'Site Content Strategy', 'ai-post-scheduler' ),
+		);
+		?>
+		<input type="hidden" name="aips_ai_assistance_contexts[]" value="">
+		<?php foreach ( $labels as $context => $label ) : ?>
+			<label style="display:block">
+				<input type="checkbox" name="aips_ai_assistance_contexts[]" value="<?php echo esc_attr( $context ); ?>" <?php checked( in_array( $context, $enabled, true ) ); ?>>
+				<?php echo esc_html( $label ); ?>
+			</label>
+		<?php endforeach; ?>
+		<?php
+	}
+
+	public function ai_assistance_response_length_field_callback() {
+		$value   = AIPS_Settings::sanitize_ai_assistance_response_length( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_response_length' ) );
+		$options = array(
+			'concise'  => __( 'Concise', 'ai-post-scheduler' ),
+			'standard' => __( 'Standard', 'ai-post-scheduler' ),
+			'detailed' => __( 'Detailed', 'ai-post-scheduler' ),
+		);
+		?>
+		<select name="aips_ai_assistance_response_length">
+			<?php foreach ( $options as $key => $label ) : ?>
+				<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $value, $key ); ?>><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	public function ai_assistance_guidance_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_guidance' );
+		?>
+		<textarea class="large-text" rows="3" name="aips_ai_assistance_guidance"><?php echo esc_textarea( $value ); ?></textarea>
+		<p class="description"><?php esc_html_e( 'Optional instructions that supplement the Site Content Strategy.', 'ai-post-scheduler' ); ?></p>
+		<?php
+	}
+
+	public function ai_assistance_overwrite_mode_field_callback() {
+		$value = AIPS_Settings::sanitize_ai_assistance_overwrite_mode( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_overwrite_mode' ) );
+		?>
+		<label>
+			<input type="radio" name="aips_ai_assistance_overwrite_mode" value="replace" <?php checked( $value, 'replace' ); ?>>
+			<?php esc_html_e( 'Replace automatically', 'ai-post-scheduler' ); ?>
+		</label>
+		<br>
+		<label>
+			<input type="radio" name="aips_ai_assistance_overwrite_mode" value="preview" <?php checked( $value, 'preview' ); ?>>
+			<?php esc_html_e( 'Show preview and apply choice', 'ai-post-scheduler' ); ?>
+		</label>
+		<?php
+	}
+
+	public function ai_assistance_retention_days_field_callback() {
+		$value   = AIPS_Settings::get_ai_assistance_retention_days();
+		$options = array(
+			0   => __( 'Do not retain', 'ai-post-scheduler' ),
+			7   => __( '7 days', 'ai-post-scheduler' ),
+			30  => __( '30 days', 'ai-post-scheduler' ),
+			90  => __( '90 days', 'ai-post-scheduler' ),
+			365 => __( '1 year', 'ai-post-scheduler' ),
+		);
+		?>
+		<select name="aips_ai_assistance_retention_days">
+			<?php foreach ( $options as $days => $label ) : ?>
+				<option value="<?php echo esc_attr( $days ); ?>" <?php selected( $value, $days ); ?>><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
     /**
      * Render the description for the site content strategy settings section.
      *

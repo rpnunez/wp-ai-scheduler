@@ -387,6 +387,8 @@
 			$(document).on('click', '.aips-ai-assist-history-btn', this.onHistoryClick.bind(this));
 			$(document).on('click', '#aips-ai-assist-history-modal .aips-modal-close', this.closeHistoryModal.bind(this));
 			$(document).on('click', '.aips-ai-assist-history-use', this.useHistoryValue.bind(this));
+			$(document).on('click', '.aips-ai-assist-history-delete', this.deleteHistoryValue.bind(this));
+			$(document).on('click', '.aips-ai-assist-history-clear', this.clearHistory.bind(this));
 		},
 
 		/**
@@ -404,6 +406,7 @@
 			var $btn = $(e.currentTarget);
 			var fieldId = $btn.data('field-id');
 			var fieldConfig = AIPS_FIELD_MAPS[this.formContext][fieldId];
+			if (!aipsAIAssistanceL10n.policy.contexts || aipsAIAssistanceL10n.policy.contexts.indexOf(this.formContext) === -1) { return; }
 
 			if (!fieldConfig) {
 				return;
@@ -450,7 +453,13 @@
 					$label.text(originalLabel);
 
 					if (response.success && response.data && response.data.hasOwnProperty('response')) {
-						$field.val(response.data.response).trigger('change');
+						if (currentValue && aipsAIAssistanceL10n.policy.overwriteMode === 'preview') {
+							self.showPreview($field, response.data.response, function () {
+								$field.val(response.data.response).trigger('change');
+							});
+						} else {
+							$field.val(response.data.response).trigger('change');
+						}
 
 						// Show the history button for this field
 						$btn.closest('.aips-ai-assist-btn-group').find('.aips-ai-assist-history-btn[data-field-id="' + fieldId + '"]').show();
@@ -572,6 +581,7 @@
 					response:   record.response,
 					created_at: record.created_at,
 					fieldId:    fieldId,
+					context:    record.context && record.context.workflow ? record.context.workflow : '',
 				});
 			});
 			$container.html(html);
@@ -603,6 +613,25 @@
 					'success'
 				);
 			}
+		},
+
+		showPreview: function ($field, value, apply) {
+			var $preview = $('<div class="notice notice-info aips-ai-assist-preview"><p><strong></strong></p><p class="aips-ai-assist-preview-value"></p><p><button type="button" class="button button-primary">' + AIPS.Templates.escape(aipsAIAssistanceL10n.apply) + '</button> <button type="button" class="button-link">' + AIPS.Templates.escape(aipsAIAssistanceL10n.keepCurrent) + '</button></p></div>');
+			$preview.find('strong').text(aipsAIAssistanceL10n.previewTitle);
+			$preview.find('.aips-ai-assist-preview-value').text(value);
+			$preview.find('.button-primary').on('click', function () { apply(); $preview.remove(); });
+			$preview.find('.button-link').on('click', function () { $preview.remove(); });
+			$field.closest('.form-group').append($preview);
+		},
+
+		deleteHistoryValue: function (e) {
+			e.preventDefault(); var $btn = $(e.currentTarget);
+			$.post(ajaxurl, {action: 'aips_delete_field_assist_history', nonce: aipsAIAssistanceL10n.nonce, record_id: $btn.data('record-id')}, function (response) { if (response.success) { $btn.closest('.aips-ai-assist-history-item').remove(); } });
+		},
+
+		clearHistory: function (e) {
+			e.preventDefault(); if (!window.confirm('Clear all AI Assistance history?')) { return; }
+			$.post(ajaxurl, {action: 'aips_clear_field_assist_history', nonce: aipsAIAssistanceL10n.nonce}, function (response) { if (response.success) { $('#aips-ai-assist-history-session-tab, #aips-ai-assist-history-alltime-tab').empty(); } });
 		},
 
 		/**
