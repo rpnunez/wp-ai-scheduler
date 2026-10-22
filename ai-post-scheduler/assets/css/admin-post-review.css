@@ -151,7 +151,47 @@
 	background: var(--aips-white);
 	margin-top: 6px;
 	position: absolute;
+	top: 100%;
+	right: 0;
 	z-index: 12;
+}
+
+.aips-post-review-table .column-actions {
+	width: 1%;
+	white-space: nowrap;
+	text-align: right;
+}
+
+.aips-post-review-table .column-actions .cell-actions {
+	display: inline-block;
+	text-align: left;
+}
+
+.aips-post-review-table .column-created {
+	white-space: nowrap;
+}
+
+.aips-post-review-table .column-context {
+	color: var(--aips-text-tertiary);
+}
+
+.aips-post-review-table .aips-cell-source {
+	margin-top: 0;
+}
+
+/* Pagination lives in the bulk-actions toolbar, like the History table. */
+.aips-panel-toolbar .tablenav-pages {
+	float: none;
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.aips-panel-toolbar .tablenav-pages .pagination-links {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
 }
 
 .aips-row-action-menu[hidden] {
@@ -200,13 +240,7 @@
 	background: #007c21;
 }
 
-.aips-row-action-menu .aips-ai-edit-btn {
-	color: #4a2ca3;
-}
 
-.aips-row-action-menu .aips-regenerate-post {
-	color: #8a4b00;
-}
 
 /* Compact responsive mode */
 @media (max-width: 860px) {
@@ -223,11 +257,6 @@
 	}
 }
 
-/* Created column: keep date and AM/PM on one line */
-.aips-post-review-table .aips-col-created {
-	min-width: 200px;
-	white-space: nowrap;
-}
 
 /* View-post arrow next to the title */
 .aips-view-post-link {
@@ -250,9 +279,3 @@
 	color: var(--aips-primary);
 }
 
-@media (max-width: 860px) {
-	.aips-post-review-table .aips-col-created {
-		min-width: 0;
-		white-space: normal;
-	}
-}

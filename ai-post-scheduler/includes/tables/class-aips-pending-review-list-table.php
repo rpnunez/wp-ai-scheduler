@@ -95,6 +95,7 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 		return array(
 			'cb'      => '<input type="checkbox" />',
 			'title'   => esc_html__('Post', 'ai-post-scheduler'),
+			'context' => esc_html__('Context', 'ai-post-scheduler'),
 			'type'    => esc_html__('Type', 'ai-post-scheduler'),
 			'created' => esc_html__('Created', 'ai-post-scheduler'),
 			'actions' => esc_html__('Actions', 'ai-post-scheduler'),
@@ -111,6 +112,7 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 	 */
 	public function get_hideable_columns() {
 		return array(
+			'context' => esc_html__('Context', 'ai-post-scheduler'),
 			'type'    => esc_html__('Type', 'ai-post-scheduler'),
 			'created' => esc_html__('Created', 'ai-post-scheduler'),
 		);
@@ -135,15 +137,24 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 	}
 
 	/**
-	 * Append the legacy table classes so existing admin-post-review CSS applies.
+	 * Append the table class the admin-post-review CSS targets.
 	 *
 	 * @return string[]
 	 */
 	protected function get_table_classes() {
 		$classes   = parent::get_table_classes();
-		$classes[] = 'aips-table';
 		$classes[] = 'aips-post-review-table';
 		return $classes;
+	}
+
+	/**
+	 * The tab template renders pagination in its own toolbar (like the History
+	 * table), so the default top/bottom tablenav is suppressed.
+	 *
+	 * @param string $which 'top' or 'bottom'.
+	 * @return void
+	 */
+	protected function display_tablenav($which) {
 	}
 
 	/**
@@ -234,16 +245,13 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 	}
 
 	/**
-	 * Post title column: edit link, preview link, and source line.
+	 * Post title column: edit link and preview link.
 	 *
 	 * @param object $item Draft row object.
 	 * @return string
 	 */
 	protected function column_title($item) {
 		$title = $item->post_title ?: ($item->generated_title ?: __('Untitled', 'ai-post-scheduler'));
-		$source = ($this->controller && method_exists($this->controller, 'format_source'))
-			? $this->controller->format_source($item)
-			: '';
 
 		$html  = sprintf(
 			'<a href="%s" class="cell-primary" target="_blank">%s</a>',
@@ -256,9 +264,22 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 			esc_attr__('View post', 'ai-post-scheduler'),
 			esc_attr__('View post', 'ai-post-scheduler')
 		);
-		$html .= '<span class="aips-cell-source">' . esc_html($source) . '</span>';
 
 		return $html;
+	}
+
+	/**
+	 * Context column: the author/topic/template source line.
+	 *
+	 * @param object $item Draft row object.
+	 * @return string
+	 */
+	protected function column_context($item) {
+		$source = ($this->controller && method_exists($this->controller, 'format_source'))
+			? $this->controller->format_source($item)
+			: '';
+
+		return '<span class="aips-cell-source">' . esc_html($source) . '</span>';
 	}
 
 	/**
@@ -356,14 +377,8 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 					data-post-id="<?php echo esc_attr($post_id); ?>"
 					title="<?php esc_attr_e('View history for this post', 'ai-post-scheduler'); ?>">
 					<span class="dashicons dashicons-backup"></span>
-					<span><?php esc_html_e('History', 'ai-post-scheduler'); ?></span>
+					<span><?php esc_html_e('View History', 'ai-post-scheduler'); ?></span>
 				</a>
-				<button type="button" class="aips-row-action-item aips-view-session"
-					data-history-id="<?php echo esc_attr($history_id); ?>"
-					title="<?php esc_attr_e('View generation session', 'ai-post-scheduler'); ?>">
-					<span class="dashicons dashicons-visibility"></span>
-					<span><?php esc_html_e('View Session', 'ai-post-scheduler'); ?></span>
-				</button>
 				<button type="button" class="aips-row-action-item aips-regenerate-post"
 					data-history-id="<?php echo esc_attr($history_id); ?>"
 					data-post-id="<?php echo esc_attr($post_id); ?>"

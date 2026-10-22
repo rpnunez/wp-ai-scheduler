@@ -56,16 +56,25 @@ class Test_AIPS_Pending_Review_List_Table extends WP_UnitTestCase {
 		$table   = new AIPS_Pending_Review_List_Table();
 		$columns = $table->get_columns();
 
-		foreach (array('cb', 'title', 'type', 'created', 'actions') as $key) {
+		foreach (array('cb', 'title', 'context', 'type', 'created', 'actions') as $key) {
 			$this->assertArrayHasKey($key, $columns);
 		}
+	}
+
+	public function test_columns_are_ordered_with_actions_last() {
+		$table = new AIPS_Pending_Review_List_Table();
+
+		$this->assertSame(
+			array('cb', 'title', 'context', 'type', 'created', 'actions'),
+			array_keys($table->get_columns())
+		);
 	}
 
 	public function test_only_non_essential_columns_are_hideable() {
 		$table    = new AIPS_Pending_Review_List_Table();
 		$hideable = $table->get_hideable_columns();
 
-		$this->assertSame(array('type', 'created'), array_keys($hideable), 'Only Type and Created are toggleable.');
+		$this->assertSame(array('context', 'type', 'created'), array_keys($hideable), 'Only Context, Type and Created are toggleable.');
 		$this->assertArrayNotHasKey('title', $hideable, 'Post title is always shown.');
 		$this->assertArrayNotHasKey('actions', $hideable, 'Actions is always shown.');
 		$this->assertArrayNotHasKey('cb', $hideable, 'The checkbox column is never toggleable.');
@@ -102,6 +111,9 @@ class Test_AIPS_Pending_Review_List_Table extends WP_UnitTestCase {
 		$this->assertStringContainsString('aips-row-action-overflow-toggle', $html);
 		$this->assertStringContainsString('aips-review-row-actions-42', $html);
 		$this->assertStringContainsString('data-post-id="42"', $html);
+		$this->assertStringContainsString('aips-open-history-modal', $html);
+		$this->assertStringContainsString('View History', $html);
+		$this->assertStringNotContainsString('aips-view-session', $html, 'View Session was removed from the row menu.');
 	}
 
 	public function test_row_checkbox_carries_post_and_history_ids() {

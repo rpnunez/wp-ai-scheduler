@@ -28,6 +28,16 @@
 		},
 
 		/**
+		 * Row checkboxes of the Pending Review table only (never other tabs' or
+		 * the header/footer select-all inputs), so selection counts are exact.
+		 *
+		 * @return {jQuery}
+		 */
+		rowCheckboxes: function () {
+			return $('#aips-post-review-form tbody .aips-post-checkbox');
+		},
+
+		/**
 		 * Bind all UI event listeners.
 		 *
 		 * @return {void}
@@ -72,7 +82,7 @@
 		 * @return {void}
 		 */
 		onSelectAllChange: function (e) {
-			$('.aips-post-checkbox').prop('checked', $(e.currentTarget).prop('checked'));
+			AIPS.PostReview.rowCheckboxes().prop('checked', $(e.currentTarget).prop('checked'));
 		},
 
 		/**
@@ -82,7 +92,8 @@
 		 * @return {void}
 		 */
 		onCheckboxChange: function (e) {
-			var allChecked = $('.aips-post-checkbox').length === $('.aips-post-checkbox:checked').length;
+			var $rows      = AIPS.PostReview.rowCheckboxes();
+			var allChecked = $rows.length > 0 && $rows.length === $rows.filter(':checked').length;
 			$('input[id^="cb-select-all-"]').prop('checked', allChecked);
 		},
 
@@ -297,7 +308,7 @@
 				return;
 			}
 
-			var checkedBoxes = $('.aips-post-checkbox:checked');
+			var checkedBoxes = this.rowCheckboxes().filter(':checked');
 			if (checkedBoxes.length === 0) {
 				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
 				return;
@@ -345,12 +356,12 @@
 		},
 
 		/**
-		 * Update the page-header "Pending Approval" count from the footer total.
+		 * Update the page-header "Pending Approval" count from the pagination total.
 		 *
 		 * @return {void}
 		 */
 		syncHeaderCount: function () {
-			var total = parseInt($('#aips-pending-review-tab .aips-table-footer-count').data('total'), 10);
+			var total = parseInt($('#aips-pending-review-tab .aips-review-pagination').data('total'), 10);
 			if (isNaN(total)) {
 				return;
 			}
@@ -705,7 +716,7 @@
 				}
 
 				$('#aips-pending-review-tab .aips-post-review-table').hide();
-				$('#aips-pending-review-tab .tablenav').hide();
+				$('#aips-pending-review-tab .aips-panel-toolbar').hide();
 
 				if ($('#aips-pending-review-tab .aips-empty-state').length === 0) {
 					var emptyStateHtml = '<div class="aips-empty-state">' +

@@ -28,6 +28,27 @@ if (!defined('ABSPATH')) {
 
 $review_total = $review_table->get_total_items();
 ?>
+					<?php if ($review_table->has_items()): ?>
+					<!-- Bulk Actions Toolbar (pagination + count sit on the right, like History) -->
+					<div class="aips-panel-toolbar">
+						<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+							<select name="bulk_action" id="bulk-action-selector-top" class="aips-form-select" style="width: auto;">
+								<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+								<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
+								<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+							</select>
+							<button type="button" id="aips-bulk-action-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+							<button type="button" id="aips-reload-posts-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
+								<span class="dashicons dashicons-update" aria-hidden="true"></span>
+								<?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
+							</button>
+						</div>
+						<div class="aips-toolbar-right aips-review-pagination" data-total="<?php echo esc_attr((int) $review_total); ?>">
+							<?php $review_table->pagination('top'); ?>
+						</div>
+					</div>
+					<?php endif; ?>
+
 				<!-- Filter Bar -->
 					<div class="aips-filter-bar">
 						<form method="get" class="aips-post-review-filters aips-filter-form">
@@ -56,8 +77,8 @@ $review_total = $review_table->get_total_items();
 									<?php endforeach; ?>
 								</select>
 								<?php endif; ?>
-								<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
-									<span class="dashicons dashicons-filter"></span>
+								<button type="submit" class="aips-btn aips-btn-sm aips-btn-primary aips-history-filter-apply">
+									<span class="dashicons dashicons-filter" aria-hidden="true"></span>
 									<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 								</button>
 								<?php if (!empty($template_id) || !empty($post_type_filter)): ?>
@@ -79,36 +100,9 @@ $review_total = $review_table->get_total_items();
 					</div>
 
 					<?php if ($review_table->has_items()): ?>
-					<form id="aips-post-review-form" method="post">
-						<!-- Bulk Actions Toolbar -->
-						<div class="aips-panel-toolbar">
-							<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-								<select name="bulk_action" id="bulk-action-selector-top" class="aips-form-select" style="width: auto;">
-									<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-									<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
-									<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-								</select>
-								<button type="button" id="aips-bulk-action-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
-							</div>
-							<div class="aips-toolbar-right">
-								<button type="button" id="aips-reload-posts-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
-									<span class="dashicons dashicons-update"></span>
-									<?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
-								</button>
-							</div>
-						</div>
-
-						<div class="aips-panel-body no-padding">
-							<?php $review_table->display(); ?>
-						</div><!-- .aips-panel-body -->
+					<form id="aips-post-review-form" method="post" class="aips-list-table-wrap">
+						<?php $review_table->display(); ?>
 					</form>
-
-					<!-- Table footer: total feeds the header count chip via JS. -->
-					<div class="tablenav">
-						<span class="aips-table-footer-count" data-total="<?php echo esc_attr((int) $review_total); ?>">
-							<?php printf( esc_html( _n( '%d draft', '%d drafts', $review_total, 'ai-post-scheduler' ) ), (int) $review_total ); ?>
-						</span>
-					</div>
 					<?php else: ?>
 					<div class="aips-panel-body">
 						<?php if (!empty($search_query)): ?>
