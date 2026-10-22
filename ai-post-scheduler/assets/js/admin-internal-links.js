@@ -1021,37 +1021,36 @@
 			}
 
 			$toolbar.show();
-			var html = '';
+			var buttons = [];
 
 			if (self.currentPage > 1) {
-				html += AIPS.Templates.render('aips-tmpl-il-page-btn', {
+				buttons.push({
 					page:    self.currentPage - 1,
 					classes: 'aips-btn-secondary',
 					label:   '\u00ab',
-				}) + ' ';
+				});
 			}
 
 			var start = Math.max(1, self.currentPage - 2);
 			var end   = Math.min(totalPages, self.currentPage + 2);
 
 			for (var p = start; p <= end; p++) {
-				var classes = p === self.currentPage ? 'aips-btn-primary' : 'aips-btn-secondary';
-				html += AIPS.Templates.render('aips-tmpl-il-page-btn', {
+				buttons.push({
 					page:    p,
-					classes: classes,
+					classes: p === self.currentPage ? 'aips-btn-primary' : 'aips-btn-secondary',
 					label:   p,
-				}) + ' ';
+				});
 			}
 
 			if (self.currentPage < totalPages) {
-				html += AIPS.Templates.render('aips-tmpl-il-page-btn', {
+				buttons.push({
 					page:    self.currentPage + 1,
 					classes: 'aips-btn-secondary',
 					label:   '\u00bb',
 				});
 			}
 
-			$wrap.html(html);
+			$wrap.html(AIPS.Templates.render('aips-tmpl-il-page-btn', { buttons: buttons }));
 		},
 
 		// -----------------------------------------------------------------------

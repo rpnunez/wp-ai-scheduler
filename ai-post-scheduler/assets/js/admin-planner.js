@@ -97,10 +97,7 @@
          * @param {boolean}       [append=false] - If `true`, append rather than replace.
          */
         renderTopics: function(topics, append) {
-            var html = '';
-            topics.forEach(function(topic) {
-                html += AIPS.Templates.render('aips-tmpl-planner-topic-item', { topic: topic });
-            });
+            var html = AIPS.Templates.render('aips-tmpl-planner-topic-item', { topics: topics });
 
             if (append) {
                 $('#topics-list').append(html);

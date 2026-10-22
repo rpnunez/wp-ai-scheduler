@@ -483,7 +483,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-templates-script',
             AIPS_PLUGIN_URL . 'assets/js/templates.js',
-            array('jquery'),
+            array('jquery', 'wp-util'),
             AIPS_VERSION,
             true
         );
@@ -491,7 +491,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'wp-util'),
             AIPS_VERSION,
             true
         );

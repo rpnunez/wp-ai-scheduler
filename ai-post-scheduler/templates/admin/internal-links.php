@@ -419,7 +419,9 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 
 <!-- Single pagination button -->
 <script type="text/html" id="aips-tmpl-il-page-btn">
-<button type="button" class="aips-btn aips-btn-sm {{classes}} aips-page-btn" data-page="{{page}}">{{label}}</button>
+<# _.each( data.buttons, function( button ) { #>
+<button type="button" class="aips-btn aips-btn-sm {{ button.classes }} aips-page-btn" data-page="{{ button.page }}">{{ button.label }}</button>
+<# } ); #>
 </script>
 
 <!-- Indexed / total stat display -->

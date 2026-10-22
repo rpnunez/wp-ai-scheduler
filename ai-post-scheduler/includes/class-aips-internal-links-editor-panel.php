@@ -108,7 +108,7 @@ class AIPS_Internal_Links_Editor_Panel {
 
 		wp_register_style('aips-design-tokens', AIPS_PLUGIN_URL . 'assets/css/design-tokens.css', array(), AIPS_VERSION);
 		wp_enqueue_style('aips-internal-links-panel', AIPS_PLUGIN_URL . 'assets/css/admin-internal-links-panel.css', array('aips-design-tokens'), AIPS_VERSION);
-		wp_enqueue_script('aips-templates-script', AIPS_PLUGIN_URL . 'assets/js/templates.js', array('jquery'), AIPS_VERSION, true);
+		wp_enqueue_script('aips-templates-script', AIPS_PLUGIN_URL . 'assets/js/templates.js', array('jquery', 'wp-util'), AIPS_VERSION, true);
 		wp_enqueue_script(
 			'aips-internal-links-metabox',
 			AIPS_PLUGIN_URL . 'assets/js/admin-internal-links-metabox.js',

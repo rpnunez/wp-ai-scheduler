@@ -60,6 +60,10 @@ cd ai-post-scheduler && composer test
 
 # Repository boundary lint
 cd ai-post-scheduler && composer lint:repository-boundary
+
+# JS unit tests (Jest + jsdom) for assets/js/, currently covering AIPS.Templates
+cd ai-post-scheduler && npm install   # once
+cd ai-post-scheduler && npm test
 ```
 
 Docker development environment:
