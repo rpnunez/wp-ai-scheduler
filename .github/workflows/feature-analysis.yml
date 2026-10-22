@@ -461,7 +461,7 @@ jobs:
 
           > **Note**: This workflow currently generates placeholder analysis files with template structure.
           > A future enhancement will integrate actual content generation via GitHub Copilot agent API
-          > or a custom analysis script. See [\`.github/agents/feature-analysis.agent.md\`](.github/agents/feature-analysis.agent.md)
+          > or a custom analysis script. See [\`.agents/subagents/feature-analysis.agent.md\`](.agents/subagents/feature-analysis.agent.md)
           > for the intended analysis methodology and templates.
 
           ### 📁 Analysis Directory
@@ -525,7 +525,7 @@ jobs:
 
           *Generated at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')*  
           *Workflow: [Feature Analysis](.github/workflows/feature-analysis.yml)*  
-          *Agent: [Feature Analysis Agent](.github/agents/feature-analysis.agent.md)*" \
+          *Agent: [Feature Analysis Agent](.agents/subagents/feature-analysis.agent.md)*" \
             --base main \
             --head "${BRANCH_NAME}"
       

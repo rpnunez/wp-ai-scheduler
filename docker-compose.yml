@@ -118,7 +118,7 @@ services:
 
       # Bind-mount development PHP/Xdebug settings so they can be edited
       # locally and applied with an Apache reload instead of a rebuild.
-      - ./dev-php.ini:/usr/local/etc/php/conf.d/zz-dev-php.ini:ro
+      - ./docker/dev-php.ini:/usr/local/etc/php/conf.d/zz-dev-php.ini:ro
 
       # CRITICAL: Mount plugin source for live development
       # This allows you to edit files in your local ai-post-scheduler directory

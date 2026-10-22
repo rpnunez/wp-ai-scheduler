@@ -14,7 +14,7 @@
 - **Admin Assets**: `ai-post-scheduler/assets/`
 - **Tests**: `ai-post-scheduler/tests/`
 - **Agent Skills, Subagents & Workflows**: `.agents/`
-- **Changelog**: `ai-post-scheduler/CHANGELOG.md`
+- **Changelog**: `CHANGELOG.md`
 - **Deeper Documentation**: [README.md](README.md), [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md), [docs/AI_AGENT_REFERENCE.md](docs/AI_AGENT_REFERENCE.md), [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md), [docs/HOOKS.md](docs/HOOKS.md), [docs/MIGRATIONS.md](docs/MIGRATIONS.md), [docs/SETUP.md](docs/SETUP.md).
 
 ## Agents, Subagents & Skills

@@ -221,7 +221,7 @@ All variables live in `.env` (created from `.env.example`, gitignored). `docker 
 | `NO_COLOR` | unset | Shell variable: disable colors in `make` output. |
 | `WP_USERNAME`, `WP_APP_PASSWORD` | placeholders | WordPress credentials placeholders in `.env.example`; reserved for future use. |
 
-PHP limits (`memory_limit`, upload size, execution time) are not environment variables here: edit `dev-php.ini` and run `make reload-php`. Test-runner variables (`AIPS_WP_TEST_*`, `WP_TESTS_DIR`, `WP_CORE_DIR`) are listed in [TESTING.md](TESTING.md).
+PHP limits (`memory_limit`, upload size, execution time) are not environment variables here: edit `docker/dev-php.ini` and run `make reload-php`. Test-runner variables (`AIPS_WP_TEST_*`, `WP_TESTS_DIR`, `WP_CORE_DIR`) are listed in [TESTING.md](TESTING.md).
 
 ### Manual/Non-Docker Setup
 

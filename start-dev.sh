@@ -264,13 +264,13 @@ main() {
     }
 
     # Check if required files exist
-    if [ ! -f "healthcheck.sh" ]; then
-        echo -e "${RED}Error: healthcheck.sh not found in current directory.${NC}"
+    if [ ! -f "docker/healthcheck.sh" ]; then
+        echo -e "${RED}Error: docker/healthcheck.sh not found.${NC}"
         exit 1
     fi
 
-    if [ ! -f "docker-entrypoint.sh" ]; then
-        echo -e "${RED}Error: docker-entrypoint.sh not found in current directory.${NC}"
+    if [ ! -f "docker/docker-entrypoint.sh" ]; then
+        echo -e "${RED}Error: docker/docker-entrypoint.sh not found.${NC}"
         exit 1
     fi
 

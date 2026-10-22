@@ -192,7 +192,7 @@ After hand-editing `.env`, apply with `docker compose up -d --force-recreate web
 
 ### PHP-only settings
 
-`dev-php.ini` still holds the general PHP settings (`memory_limit`, `upload_max_filesize`, `display_errors`, …). Edit it and apply with:
+`docker/dev-php.ini` still holds the general PHP settings (`memory_limit`, `upload_max_filesize`, `display_errors`, …). Edit it and apply with:
 
 ```bash
 make reload-php

@@ -62,7 +62,6 @@ wordpress_data_v2/
 
 # Scripts (not needed in image)
 scripts/
-collect_changelogs.py
 
 # Development start scripts (not needed in image)
 start-dev.sh
@@ -70,8 +69,9 @@ start-dev.bat
 start-dev.ps1
 
 # Note: The following files are required and NOT ignored:
-# - healthcheck.sh
-# - docker-entrypoint.sh
+# - docker/healthcheck.sh
+# - docker/docker-entrypoint.sh
+# - docker/dev-php.ini
 # - docker-compose.yml
 # - Dockerfile
 # - ai-post-scheduler/
