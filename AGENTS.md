@@ -199,6 +199,73 @@ All admin scripts in `assets/js/` follow this structure:
 - Tables use `table.aips-table`.
 - Modals follow `.aips-modal` > `.aips-modal-content` > `.aips-modal-header` / `.aips-modal-body` / `.aips-modal-footer`.
 
+## File-Type Specific Implementation Instructions
+
+All agents modifying code in this repository must strictly adhere to the following rules based on the file type and subsystem being edited:
+
+### 1. JavaScript Files (`assets/js/*.js`)
+- **Module Pattern**: Wrap all scripts in an IIFE receiving jQuery: `(function($) { 'use strict'; ... })(jQuery);`.
+- **Global Namespace**: Initialize and reuse `window.AIPS = window.AIPS || {}; var AIPS = window.AIPS;`.
+- **Sub-Module Registration**: Define features as named sub-modules on `AIPS` (e.g., `AIPS.ModuleName = { ... }`).
+- **Bootstrap & Event Binding**:
+  - Provide an `init()` method as the main entry point.
+  - Provide a `bindEvents()` method registering DOM listeners to named methods (`this.handler.bind(this)`). Avoid anonymous inline callbacks.
+  - Use delegated listeners on `document` (e.g., `$(document).on('click', '.selector', ...)`) for dynamic admin elements.
+  - Place a single `$(document).ready(function() { AIPS.ModuleName.init(); });` at the bottom of the file.
+- **Documentation**: Add JSDoc comments for all methods, including `@param {Event} e` for event handlers.
+- **HTML Generation**: Always use `AIPS.Templates.render(templateId, data)` (auto-escaped) or `renderRaw()` (for trusted markup only). Never assemble markup via manual string concatenation.
+- **User Feedback**:
+  - Toasts: `AIPS.Utilities.showToast(message, type)` — never use `alert()`.
+  - Confirmations: `AIPS.Utilities.confirm(message, heading, buttons)` — never use `confirm()`.
+- **DOM Refresh**: Re-fetch updated data via AJAX and re-render with `AIPS.Templates`; never call `location.reload()`.
+- **AJAX Submissions**: Sanitize and validate client values before dispatching; use standard `ajaxurl`, nonces, and action hooks.
+
+### 2. Core Business Logic & PHP Classes (`includes/*.php`)
+- **WordPress Standards**: Always use native WordPress APIs (actions, filters, capabilities, nonces, sanitization/escaping helpers).
+- **Separation of Concerns (Strict)**:
+  - **Controllers** (`class-aips-*-controller.php`): Own request/response flow, capability checks (`current_user_can('manage_options')`), nonce checks, input sanitization (`wp_unslash()`), and return responses via `AIPS_Ajax_Response`.
+  - **Repositories** (`class-aips-*-repository.php`): Own persistence logic and all `$wpdb` SQL queries.
+  - **Services** (`class-aips-*-service.php`): Own business logic, workflows, external API integrations, and transactions. Never call `$wpdb` directly.
+  - **Supporting Patterns**: Use Containers, Processors, Managers, and Factories for distinct responsibilities.
+- **Strict AJAX Ownership**:
+  - Register `wp_ajax_*` hooks inside the respective Controller constructor.
+  - Keep callback methods on the same controller (e.g. `ajax_*` handlers). Never register AJAX hooks in repositories, services, or templates.
+- **Strict SQL Ownership**:
+  - All SQL queries belong exclusively in Repository classes. Never compose raw SQL in Controllers, Services, cron jobs, or templates.
+- **Observability & History Logging**:
+  - Record structured events for automations, AI generations, and failures via `AIPS_History_Service::get_instance()->create(...)` and `AIPS_History_Container`.
+  - Explicitly log complete lifecycles (started, item progress, warning/error, success/failure completion) with correlation IDs.
+- **Class & File Naming**: `AIPS_`-prefixed, underscore-separated PHP classes matching filename `class-aips-*.php`.
+- **File Guard**: Start every PHP file with `if (!defined('ABSPATH')) { exit; }`.
+- **Syntax**: Use tabs for indentation and `array()` syntax. Target PHP 8.2+ and WordPress 5.8+.
+
+### 3. Admin View Templates (`templates/**/*.php`)
+- **Presentation Layer Only**: Keep business logic, direct data fetches, and heavy processing out of templates. Data must be prepared in advance by controllers/services/repositories.
+- **No Direct SQL**: Never invoke `$wpdb` in templates.
+- **Page Wrapper Shell**:
+  `div.wrap.aips-wrap` > `div.aips-page-container` > `div.aips-page-header` / `div.aips-content-panel`.
+  Reuse layout blocks: `aips-page-header-top`, `aips-page-actions`, `aips-filter-bar`, `aips-panel-toolbar`, `aips-panel-body`.
+- **Component Classes & IDs**: Use `aips-*` classes for visual elements and `data-*` attributes for JavaScript bindings.
+- **Data Grids**: Use `table.aips-table` with semantic `thead`, `tbody`, and optional `tfoot`. Use standard column classes (`column-*`, `check-column`, `cell-primary`, `cell-meta`, `cell-actions`). Preserve row `data-*` attributes.
+- **Buttons & Icons**: Use `aips-btn` with size (`aips-btn-sm`) and intent modifiers (`aips-btn-primary`, `aips-btn-secondary`, `aips-btn-danger`, `aips-btn-ghost`). Use Dashicons (`span.dashicons dashicons-*`). Include accessible labels (`screen-reader-text` or `aria-label`) for icon-only buttons.
+- **Modals**: `.aips-modal` wrapper > `.aips-modal-content` (size modifier `.aips-modal-large`) > `.aips-modal-header`, `.aips-modal-body`, `.aips-modal-footer`. Close control `.aips-modal-close` with accessibility labels.
+- **Tabs**: Use `.aips-tab-link` or `.nav-tab` with matching `data-tab` / hash targets and active-state classes aligned with JS handlers.
+- **Security & Sanitization**:
+  - Escape all output: `esc_html()`, `esc_attr()`, `esc_url()`, or `wp_kses_post()`.
+  - Never trust raw `$_GET`, `$_POST`, or `$_REQUEST` values in templates; sanitize with WordPress helpers.
+  - Wrap all user-visible strings in i18n functions (`__()`, `_e()`, `esc_html__()`).
+  - Never add new one-off inline styles; use utility classes.
+
+### 4. General WordPress Standards & Best Practices (`**/*.php`)
+- **Core Extensibility**: Never modify WordPress core; extend strictly through actions and filters.
+- **Execution Guard**: Guard direct execution with `defined('ABSPATH') || exit;`.
+- **Prefixing**: Use unique prefixes (`AIPS_`, `aips_`) across all functions, classes, hooks, and options to prevent namespace collisions.
+- **Asset Enqueuing**: Enqueue all scripts and styles using `wp_enqueue_script` / `wp_enqueue_style`. Never output raw `<script>` or `<style>` tags directly in PHP templates. Enqueue conditionally only on relevant admin screens.
+- **Internationalization (i18n)**: All user-facing strings must be wrapped in translation functions (`__()`, `_e()`, `_x()`, `esc_html__()`) using the plugin's text domain (`ai-post-scheduler`).
+- **Database Safety**: Always use `$wpdb->prepare()` with dynamic placeholders (`%d`, `%s`, `%f`). Never interpolate variables directly into SQL queries.
+- **Performance**: Defer expensive calculations to targeted hooks; never run heavy processing on global `init`. Use transients or object caching for repeat queries.
+- **Change Discipline**: Keep changes small, reviewable, and focused. Prefer existing repositories, services, and controllers over inventing parallel patterns.
+
 ## Security & WordPress Hygiene
 - **Output Escaping**: Escape all output with `esc_html()`, `esc_attr()`, `esc_url()`, or `wp_kses_post()`.
 - **Nonce Verification**: Verify nonces with `check_ajax_referer('action', 'nonce', false)`. Always pass `false` as the third parameter to prevent default HTML `wp_die()` outputs and return structured JSON.

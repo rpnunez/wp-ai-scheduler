@@ -31,4 +31,4 @@ For every AJAX controller change, verify the following before approving.
 ## Key files to read
 - `ai-post-scheduler/includes/class-aips-ajax-registry.php`
 - `ai-post-scheduler/includes/class-aips-ajax-response.php`
-- `.github/instructions/includes-php.instructions.md`
+- `AGENTS.md` — File-Type Specific Implementation Instructions (Core PHP Classes)

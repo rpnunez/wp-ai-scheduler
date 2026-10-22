@@ -42,5 +42,4 @@ Use this skill when changing WordPress admin pages, menus, templates, and admin 
 - `ai-post-scheduler/assets/css/`
 
 ## Useful references
-- `.github/instructions/templates-php.instructions.md`
-- `.github/instructions/assets-js.instructions.md`
+- `AGENTS.md` — File-Type Specific Implementation Instructions (Templates & JavaScript)
