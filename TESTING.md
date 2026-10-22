@@ -4,6 +4,35 @@ This repository maintains a single PHPUnit suite: the full WordPress test-librar
 
 The recommended way to run it is **inside the running dev stack**: PHPUnit executes in the `web` container against a separate `wp_tests` database on the `db` container. No host PHP, Composer, or `svn` is needed, and your development data is never touched.
 
+## Agent test protocol (mandatory for AI agents and humans alike)
+
+This is the single supported way to run tests. Every other instruction file (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.codex/`, `.jules/`) points here.
+
+**Run:**
+
+```bash
+make test-session ARGS="tests/Test_A.php tests/Test_B.php"   # preferred: runs, then stops what it started
+make test ARGS="tests/Test_A.php"                            # same run, but leaves the stack up
+```
+
+Several `*.php` files run as a single PHPUnit process (PHPUnit 9 only takes one path, so the runner lists them in a temporary config), giving one summary and one set of coverage/log outputs. Options such as `--filter` apply to every file. A run where zero tests executed exits non-zero. Quote regex filters: `ARGS="--filter 'Test_A|Test_B'"`. The argument parsing is covered by `bash scripts/tests/test-run-docker-test.sh`.
+
+Rules:
+
+1. **Entrypoint is `make`.** Do not call `scripts/run-docker-test.sh` directly, do not wrap it in `bash.exe -lc "..."`, and do not hand-roll `docker compose exec ... phpunit`. On Windows run `make` from Git Bash (PowerShell/cmd also work: the Makefile pins Git for Windows' POSIX tools, so Git for Windows must be installed in `C:\Program Files\Git`).
+2. **One invocation per batch.** Pass every file (and any flags) in a single `ARGS`. Do not loop over files, and do not chain runs with `&&` / `;`: each run re-checks the stack and recreates the DB, and a failure in one hides the rest.
+3. **Do not filter output.** No piping to `grep`, `head` or `tail`; it hides failure detail and forces a rerun. If output is long, redirect it to a file in your scratch directory and read that.
+4. **Never run `./start-dev.sh` just to test.** It is first-time provisioning (image build, `.env`, API-key prompt). The test runner starts `db` and `web` itself. Use `start-dev.sh` only when the checkout has never been provisioned, with `AIPS_SKIP_API_KEY_CHECK=1` when no key is available.
+5. **Scope.** Run the tests that cover the touched code. Run the full suite (`make test-session`) only before opening a PR or when asked. Install dev dependencies once with `make composer-install` if `vendor/bin/phpunit` is missing.
+
+**Clean up after yourself.** Leave the machine the way you found it:
+
+1. Before testing, note whether the stack was already running (`docker compose ps`). `make test-session` does this and the next step for you.
+2. If you started the stack, stop it when finished: `make stop` (or `make test-stop`, which also stops phpMyAdmin). If it was already running, leave it alone; it may belong to the user or to another agent.
+3. Never use `make down`, `docker compose down -v`, `make clean`, `make prune` or any reset to clean up. They destroy containers or data volumes.
+4. Delete files you generated and do not intend to keep: `ai-post-scheduler/coverage/`, `ai-post-scheduler/.artifacts/`, scratch SQL/output files, stray background jobs or watchers you started.
+5. Say in your final report what you started and what you stopped (for example "stack was already up, left running" or "started db+web, stopped them").
+
 ## Requirements
 
 - Docker Desktop (or Docker Engine + Docker Compose v2), running
@@ -140,6 +169,50 @@ Run `bash scripts/run-wp-tests-docker.sh` (reinstalls the test library and core 
 ### Docker Hub errors while starting the stack
 
 `start-dev.sh` retries transient `auth.docker.io` 5xx errors and reuses cached images; see [README.md](README.md#troubleshooting).
+
+## SQL diagnostics (`sql-batch`)
+
+`ai-post-scheduler/bin/sql-batch.php` runs a file of read-only SQL queries against the database of the WordPress install it lives in and writes the results to `REPORT.md` + one JSON file per query + a zip. It reads the DB credentials from `wp-config.php`, so the same file works on dev and production.
+
+Query file format (`{prefix}` becomes `$table_prefix`):
+
+```sql
+-- name: orphaned_history_rows
+-- purpose: Why this query is being run (shown in REPORT.md)
+SELECT COUNT(*) AS n FROM {prefix}aips_history WHERE ...;
+```
+
+Redaction is best effort: it masks sensitive columns (also when aliased), keys inside serialized/JSON values, and the value columns of queries that filter on a secret-looking option/meta name (`api_key`, `secret`, `token`, `password`, ...). A secret selected under another name through an expression or a differently named filter can still appear, so select only the columns you need.
+
+Safety, enforced by the runner: CLI only; only `SELECT` / `WITH` / `SHOW` / `DESCRIBE` / `EXPLAIN` run (anything else is refused); read-only transaction; 60 s per-query timeout; 10,000-row cap; passwords, e-mails, tokens and API keys are replaced with `[REDACTED]` (`--no-redact` to disable); output is never written inside the WordPress directory.
+
+**Dev (Docker)** - start the stack, then:
+
+```bash
+make sql-batch QUERIES=.artifacts/sql-queries/my-queries.sql
+```
+
+Results land in `.artifacts/sql-results/sql-batch-<timestamp>-<db>/` (read `REPORT.md` first) next to the `.zip`. Validate new queries here before running them on production.
+
+**Production (SSH or Webuzo Terminal)** - the script ships with the plugin via `git pull`. Run it through the plugin symlink so `wp-config.php` is auto-discovered, or pass `--wp-config`:
+
+```bash
+php /home/USER/sites/SITE/public_html/wp-content/plugins/ai-post-scheduler/bin/sql-batch.php ~/queries.sql
+# or, from the repo path:
+php /home/USER/repos/REPO/ai-post-scheduler/bin/sql-batch.php ~/queries.sql --wp-config=/home/USER/sites/SITE/public_html/wp-config.php
+# or paste the queries without uploading a file:
+php .../bin/sql-batch.php - <<'SQL'
+SELECT ...;
+SQL
+```
+
+It prints `RESULTS_ZIP=...` (default folder `~/sql-results/`). Download that zip (scp or the Webuzo File Manager), then:
+
+```bash
+make sql-batch-unpack ZIP=~/Downloads/sql-batch-20261013-142200-dbname.zip
+```
+
+and point the agent at `.artifacts/sql-results/<run>/REPORT.md`. Unit tests: `make test ARGS="tests/Test_AIPS_Sql_Batch.php"`.
 
 ## Notes
 

@@ -119,7 +119,7 @@ services:
   phpmyadmin:
     image: "${PMA_IMAGE:-phpmyadmin/phpmyadmin:latest}"
     container_name: "${AIPS_PMA_CONTAINER:-wp-ai-scheduler-phpmyadmin}"
-    restart: always
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy

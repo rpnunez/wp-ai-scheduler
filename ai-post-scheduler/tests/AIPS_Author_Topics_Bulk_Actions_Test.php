@@ -389,6 +389,55 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_Ajax_UnitTestCase {
 	}
 
 	/**
+	 * Test update_status_bulk behavioral equivalence and database update.
+	 */
+	public function test_update_status_bulk_behavioral_equivalence() {
+		$topic_ids = $this->create_test_topics(5);
+
+		// Bulk update to approved
+		$updated = $this->repository->update_status_bulk($topic_ids, 'approved', $this->admin_user_id);
+		$this->assertEquals(5, $updated);
+
+		foreach ($topic_ids as $topic_id) {
+			$topic = $this->repository->get_by_id($topic_id);
+			$this->assertEquals('approved', $topic->status);
+			$this->assertEquals($this->admin_user_id, (int) $topic->reviewed_by);
+		}
+
+		// Bulk update to rejected
+		$updated_reject = $this->repository->update_status_bulk($topic_ids, 'rejected', $this->admin_user_id);
+		$this->assertEquals(5, $updated_reject);
+
+		foreach ($topic_ids as $topic_id) {
+			$topic = $this->repository->get_by_id($topic_id);
+			$this->assertEquals('rejected', $topic->status);
+		}
+	}
+
+	/**
+	 * Test query count is bounded to 1 UPDATE query during bulk approve/reject regardless of N.
+	 */
+	public function test_bulk_approve_reject_query_count_bounded() {
+		global $wpdb;
+		wp_set_current_user($this->admin_user_id);
+
+		$topic_ids = $this->create_test_topics(10);
+
+		$update_queries = 0;
+		$counter = function($sql) use (&$update_queries) {
+			if (0 === stripos(trim($sql), 'UPDATE')) {
+				$update_queries++;
+			}
+			return $sql;
+		};
+		add_filter('query', $counter);
+		$this->repository->update_status_bulk($topic_ids, 'approved', $this->admin_user_id);
+		remove_filter('query', $counter);
+
+		$this->assertEquals(1, $update_queries);
+	}
+
+	/**
 	 * Fractional averages should be rounded UP via ceil().
 	 *
 	 * E.g. [10.0, 11.0] → avg = 10.5 → per_post_seconds = 11.

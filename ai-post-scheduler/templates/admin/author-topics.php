@@ -40,10 +40,10 @@ if (!$author) {
 }
 
 $topics_repository  = new AIPS_Author_Topics_Repository();
-$logs_repository    = new AIPS_Author_Topic_Logs_Repository();
 $status_counts      = $topics_repository->get_status_counts($author_id);
 $total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'] + $status_counts['posts_generated'];
-$posts_count        = $logs_repository->count_generated_posts_by_author($author_id);
+// Same bucket as the "Posts Generated" tab so the card, tab count and table agree.
+$posts_count        = (int) $status_counts['posts_generated'];
 ?>
 
 		<!-- Author Stats -->

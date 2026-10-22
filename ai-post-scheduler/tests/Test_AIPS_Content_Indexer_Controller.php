@@ -129,6 +129,8 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		$this->assertSame( 1, $response['data']['count'] );
 		$this->assertSame( 'cluster_1', $response['data']['clusters'][0]['id'] );
 		$this->assertSame( 5, $response['data']['orphans'][0]['id'] );
+		$this->assertArrayHasKey( 'truncated', $response['data'] );
+		$this->assertArrayHasKey( 'meta', $response['data'] );
 	}
 
 	public function test_ajax_get_post_clusters_separates_unlinked_posts_from_orphans() {

@@ -1,6 +1,6 @@
 # AI Post Scheduler - Database Schema Updates
 
-## Sources reliability (3.7.12)
+## Sources reliability (3.7.19)
 
 The Sources table adds nullable `last_fetch_attempt_at`, `last_fetch_status`, and `last_fetch_error`. Legacy attempt state remains unknown until the next fetch; `last_fetched_at` continues to mean last successful fetch. `next_fetch_at` becomes nullable so disabling automatic fetching can clear it under strict MySQL. The guarded migration preserves existing due timestamps and can run repeatedly.
 
@@ -19,6 +19,17 @@ The AI Post Scheduler uses WordPress's built-in `dbDelta()` function to manage d
   - Updates column types where needed
 - **Idempotent**: Safe to run multiple times - won't duplicate or break existing data
 - **Version Tracking**: Plugin tracks DB version in `aips_db_version` option
+
+## Version-Specific Data Migrations
+
+### 3.7.18 - Author topic auto-approval consolidation
+
+Runs after `install_tables()` adds `aips_authors.topic_auto_approval_min_relevance`:
+
+- Copies `topic_auto_approval_min_score` into `topic_auto_approval_min_relevance` for authors in `similarity`/`embeddings` mode.
+- Switches authors with mode `manual`, empty or NULL (the old column default) to `inherit`; explicit `score`, `all` and `similarity` modes are unchanged.
+- Renames the stored global fallback `reject` to `rejected`.
+- Deletes the retired option family (`aips_author_topic_auto_approval_enabled`, `aips_author_topic_approval_mode`, `aips_author_topic_min_relevance`, `aips_author_topic_max_duplicate`, `aips_author_topic_fallback_action`).
 
 ## How Updates Are Applied
 

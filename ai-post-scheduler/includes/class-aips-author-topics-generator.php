@@ -533,11 +533,6 @@ class AIPS_Author_Topics_Generator {
 		}
 
 		$author_id = isset($author->id) ? (int) $author->id : 0;
-		$cache_key = 'aips_author_composite_vec_' . $author_id;
-		$cached    = get_transient($cache_key);
-		if (is_array($cached) && !empty($cached)) {
-			return $cached;
-		}
 
 		// 1. Build composite profile text from persona, bio, style, goals, and focus topics
 		$profile_parts = array(
@@ -550,7 +545,33 @@ class AIPS_Author_Topics_Generator {
 			!empty($author->niche) ? $author->niche : '',
 		);
 		$profile_text = trim(implode(' ', array_filter($profile_parts)));
-		if (empty($profile_text) || !$this->embeddings_service->is_enabled() || $this->rate_limiter->is_in_cooldown()) {
+		if (empty($profile_text) || !$this->embeddings_service->is_enabled()) {
+			return null;
+		}
+
+		$content_hash     = md5($profile_text);
+		$cache_key        = 'aips_author_composite_vec_' . $author_id . '_' . substr($content_hash, 0, 12);
+		$legacy_cache_key = 'aips_author_composite_vec_' . $author_id;
+
+		$cached = get_transient($cache_key);
+		if (is_array($cached) && !empty($cached)) {
+			return $cached;
+		}
+
+		// Check persistent storage in aips_embeddings table
+		if ($this->embeddings_repo && $author_id > 0) {
+			$existing = $this->embeddings_repo->get_by_object('author', $author_id);
+			if ($existing && !empty($existing->content_hash) && $existing->content_hash === $content_hash) {
+				$decoded = $this->embeddings_repo->decode_embedding($existing->embedding, 'author', $author_id, $content_hash);
+				if (!empty($decoded) && is_array($decoded)) {
+					set_transient($cache_key, $decoded, 12 * HOUR_IN_SECONDS);
+					set_transient($legacy_cache_key, $decoded, 12 * HOUR_IN_SECONDS);
+					return $decoded;
+				}
+			}
+		}
+
+		if ($this->rate_limiter->is_in_cooldown()) {
 			return null;
 		}
 
@@ -599,7 +620,20 @@ class AIPS_Author_Topics_Generator {
 			$composite[$i] /= $count;
 		}
 
+		if ($this->embeddings_repo && $author_id > 0) {
+			$model = $this->embeddings_service->get_active_model();
+			$this->embeddings_repo->upsert(
+				'author',
+				$author_id,
+				$composite,
+				$model,
+				$dimensions,
+				$content_hash
+			);
+		}
+
 		set_transient($cache_key, $composite, 12 * HOUR_IN_SECONDS);
+		set_transient($legacy_cache_key, $composite, 12 * HOUR_IN_SECONDS);
 		return $composite;
 	}
 
@@ -614,29 +648,10 @@ class AIPS_Author_Topics_Generator {
 	 * @return array Processed topic arrays.
 	 */
 	public function apply_auto_approval_rules($author, array $topics): array {
-		$config = AIPS_Config::get_instance();
-
-		// Determine effective policy: inherit from global settings or use author custom settings
-		$author_mode = !empty($author->topic_auto_approval_mode) ? $author->topic_auto_approval_mode : 'inherit';
-
-		if ($author_mode === 'inherit') {
-			$global_enabled = (bool) $config->get_option('aips_author_topic_auto_approval_enabled', false);
-			if (!$global_enabled) {
-				return $topics; // Manual review by default
-			}
-			$mode           = (string) $config->get_option('aips_author_topic_approval_mode', 'embeddings');
-			$min_score      = 70;
-			$min_relevance  = (float) $config->get_option('aips_author_topic_min_relevance', 0.65);
-			$max_similarity = (float) $config->get_option('aips_author_topic_max_duplicate', 0.80);
-			$fallback       = (string) $config->get_option('aips_author_topic_fallback_action', 'smart_split');
-		} else {
-			$mode           = $author_mode;
-			$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
-			// In similarity/embeddings mode, topic_auto_approval_min_score stores relevance percentage (1-100)
-			$min_relevance  = isset($author->topic_auto_approval_min_score) ? max(0.01, min(1.0, (float) ($author->topic_auto_approval_min_score / 100))) : 0.65;
-			$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.80;
-			$fallback       = !empty($author->topic_auto_approval_fallback) ? $author->topic_auto_approval_fallback : 'smart_split';
-		}
+		// Resolve the effective policy once (author columns, or global options for
+		// 'inherit') and pass it to the evaluator so both agree.
+		$policy = AIPS_Author_Topic_Approval_Policy::resolve($author);
+		$mode   = $policy['mode'];
 
 		if ($mode === 'manual') {
 			return $topics;
@@ -645,7 +660,7 @@ class AIPS_Author_Topics_Generator {
 		$now                 = AIPS_DateTime::now()->timestamp();
 		$author_baseline_vec = null;
 
-		if (in_array($mode, array('similarity', 'embeddings'), true)) {
+		if ('similarity' === $mode) {
 			// Check rate limits and auto-cooldown before attempting remote embedding calls
 			if ($this->rate_limiter->is_in_cooldown()) {
 				$cooldown_info = $this->rate_limiter->get_cooldown_status();
@@ -673,10 +688,34 @@ class AIPS_Author_Topics_Generator {
 			}
 
 			$author_baseline_vec = $this->get_author_composite_embedding($author);
+
+			// Pre-populate candidate embeddings in batch for any topics lacking one
+			$missing_indices = array();
+			$missing_texts   = array();
+			foreach ($topics as $idx => $t) {
+				$t_meta = isset($t['metadata']) && is_string($t['metadata'])
+					? json_decode($t['metadata'], true)
+					: (isset($t['metadata']) && is_array($t['metadata']) ? $t['metadata'] : array());
+				$has_vec = (!empty($t['embedding']) && is_array($t['embedding']))
+					|| (!empty($t_meta['embedding']) && is_array($t_meta['embedding']));
+				if (!$has_vec && !empty($t['topic_title'])) {
+					$missing_indices[] = $idx;
+					$missing_texts[]   = (string) $t['topic_title'];
+				}
+			}
+
+			if (!empty($missing_texts) && $this->embeddings_service->is_enabled()) {
+				$batch_vecs = $this->embeddings_service->batch_generate_embeddings($missing_texts);
+				foreach ($missing_indices as $pos => $topic_idx) {
+					if (isset($batch_vecs[$pos]) && is_array($batch_vecs[$pos]) && !is_wp_error($batch_vecs[$pos])) {
+						$topics[$topic_idx]['embedding'] = $batch_vecs[$pos];
+					}
+				}
+			}
 		}
 
 		foreach ($topics as &$topic) {
-			$eval_result = $this->similarity_evaluator->evaluate_author_topic_auto_approval($topic, $author, $author_baseline_vec);
+			$eval_result = $this->similarity_evaluator->evaluate_author_topic_auto_approval($topic, $author, $author_baseline_vec, $policy);
 
 			$topic['status']   = $eval_result['decision'];
 			$topic['metadata'] = wp_json_encode($eval_result['meta']);
