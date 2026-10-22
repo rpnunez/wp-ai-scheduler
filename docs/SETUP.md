@@ -188,7 +188,7 @@ After hand-editing `.env`, apply with `docker compose up -d --force-recreate web
 7. When done: `make xdebug-off` to remove the overhead.
 
 - **Port:** `XDEBUG_CLIENT_PORT` (default `9003`)
-- **Path mappings:** pre-configured in `.vscode/launch.json`
+- **Path mappings:** map `/var/www/html/wp-content/plugins/ai-post-scheduler` to your local `ai-post-scheduler/` directory in your IDE debugger.
 
 ### PHP-only settings
 
