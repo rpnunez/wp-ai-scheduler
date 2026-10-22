@@ -30,14 +30,35 @@ class AIPS_Prompt_Profiles_Controller {
 	private $resolver;
 
 	/**
+	 * @var AIPS_Prompt_Profile_Version_Service
+	 */
+	private $version_service;
+
+	/**
+	 * @var AIPS_Prompt_Profile_Versions_Repository
+	 */
+	private $versions_repo;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_Prompt_Profiles_Repository|null $repo Optional repository.
-	 * @param AIPS_Prompt_Profile_Resolver|null   $resolver Optional resolver.
+	 * @param AIPS_Prompt_Profiles_Repository|null          $repo Optional repository.
+	 * @param AIPS_Prompt_Profile_Resolver|null             $resolver Optional resolver.
+	 * @param AIPS_Prompt_Profile_Version_Service|null      $version_service Optional version service.
+	 * @param AIPS_Prompt_Profile_Versions_Repository|null  $versions_repo Optional versions repository.
 	 */
-	public function __construct($repo = null, $resolver = null) {
-		$this->repo     = $repo ?: AIPS_Prompt_Profiles_Repository::instance();
-		$this->resolver = $resolver ?: AIPS_Prompt_Profile_Resolver::instance($this->repo);
+	public function __construct($repo = null, $resolver = null, $version_service = null, $versions_repo = null) {
+		$this->repo          = $repo ?: AIPS_Prompt_Profiles_Repository::instance();
+		$this->resolver      = $resolver ?: AIPS_Prompt_Profile_Resolver::instance($this->repo);
+		$this->versions_repo = $versions_repo ?: AIPS_Prompt_Profile_Versions_Repository::instance();
+
+		if ($version_service) {
+			$this->version_service = $version_service;
+		} elseif (class_exists('AIPS_Container')) {
+			$this->version_service = AIPS_Container::get_instance()->make(AIPS_Prompt_Profile_Version_Service::class);
+		} else {
+			$this->version_service = new AIPS_Prompt_Profile_Version_Service($this->repo, $this->versions_repo);
+		}
 
 		add_action('wp_ajax_aips_get_prompt_profiles', array($this, 'ajax_get_prompt_profiles'));
 		add_action('wp_ajax_aips_get_prompt_profile', array($this, 'ajax_get_prompt_profile'));
@@ -46,6 +67,10 @@ class AIPS_Prompt_Profiles_Controller {
 		add_action('wp_ajax_aips_set_default_prompt_profile', array($this, 'ajax_set_default_prompt_profile'));
 		add_action('wp_ajax_aips_preview_prompt_profile', array($this, 'ajax_preview_prompt_profile'));
 		add_action('wp_ajax_aips_clone_prompt_profile', array($this, 'ajax_clone_prompt_profile'));
+		add_action('wp_ajax_aips_get_prompt_profile_versions', array($this, 'ajax_get_prompt_profile_versions'));
+		add_action('wp_ajax_aips_get_prompt_profile_version_diff', array($this, 'ajax_get_prompt_profile_version_diff'));
+		add_action('wp_ajax_aips_restore_prompt_profile_version', array($this, 'ajax_restore_prompt_profile_version'));
+		add_action('wp_ajax_aips_restore_prompt_profile_stage', array($this, 'ajax_restore_prompt_profile_stage'));
 	}
 
 	/**
@@ -172,7 +197,11 @@ class AIPS_Prompt_Profiles_Controller {
 		);
 
 		if ($id > 0) {
-			$res = $this->repo->update($id, $data);
+			// Route updates through the version service so every edit made
+			// through the UI is auto-versioned: it snapshots the profile's
+			// pre-mutation state (with a diff-derived change summary) before
+			// writing the new data via the profiles repository.
+			$res = $this->version_service->update_with_snapshot($id, $data, get_current_user_id());
 			if (is_wp_error($res)) {
 				AIPS_Ajax_Response::error($res->get_error_message());
 			}
@@ -357,6 +386,158 @@ class AIPS_Prompt_Profiles_Controller {
 			'stage'            => $stage,
 			'assembled_prompt' => $assembled,
 			'preview_prompt'   => $assembled,
+		));
+	}
+
+	/**
+	 * AJAX: Get the version history timeline for a profile.
+	 */
+	public function ajax_get_prompt_profile_versions() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$profile_id = !empty($_POST['profile_id']) ? absint($_POST['profile_id']) : (!empty($_POST['id']) ? absint($_POST['id']) : 0);
+		if (!$profile_id) {
+			AIPS_Ajax_Response::error(__('Invalid profile ID.', 'ai-post-scheduler'));
+		}
+
+		$profile = $this->repo->get_by_id($profile_id);
+		if (!$profile) {
+			AIPS_Ajax_Response::error(__('Profile not found.', 'ai-post-scheduler'));
+		}
+
+		$versions = $this->versions_repo->get_versions($profile_id);
+
+		$timeline = array();
+		foreach ($versions as $version) {
+			$created_by_name = '';
+			if (!empty($version->created_by)) {
+				$user = get_userdata((int) $version->created_by);
+				$created_by_name = $user ? $user->display_name : '';
+			}
+
+			$timeline[] = array(
+				'id'             => (int) $version->id,
+				'version_number' => (int) $version->version_number,
+				'change_summary' => (string) $version->change_summary,
+				'created_by'     => $created_by_name,
+				'created_at'     => (int) $version->created_at,
+			);
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'profile_id' => $profile_id,
+			'versions'   => $timeline,
+		));
+	}
+
+	/**
+	 * AJAX: Compare two historical versions, or a historical version against
+	 * the current live profile state when version_id_b is omitted/'current'.
+	 */
+	public function ajax_get_prompt_profile_version_diff() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$profile_id   = !empty($_POST['profile_id']) ? absint($_POST['profile_id']) : 0;
+		$version_id_a = !empty($_POST['version_id_a']) ? absint($_POST['version_id_a']) : 0;
+		$version_id_b = isset($_POST['version_id_b']) ? sanitize_text_field(wp_unslash($_POST['version_id_b'])) : null;
+
+		if (!$profile_id) {
+			AIPS_Ajax_Response::error(__('Invalid profile ID.', 'ai-post-scheduler'));
+		}
+		if (!$version_id_a) {
+			AIPS_Ajax_Response::error(__('Invalid version ID.', 'ai-post-scheduler'));
+		}
+
+		$result = $this->version_service->diff_versions($profile_id, $version_id_a, $version_id_b);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message());
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'profile_id' => $profile_id,
+			'diff'       => $result,
+		));
+	}
+
+	/**
+	 * AJAX: Restore all 9 stage fields of a profile from a historical version.
+	 */
+	public function ajax_restore_prompt_profile_version() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$profile_id = !empty($_POST['profile_id']) ? absint($_POST['profile_id']) : 0;
+		$version_id = !empty($_POST['version_id']) ? absint($_POST['version_id']) : 0;
+
+		if (!$profile_id) {
+			AIPS_Ajax_Response::error(__('Invalid profile ID.', 'ai-post-scheduler'));
+		}
+		if (!$version_id) {
+			AIPS_Ajax_Response::error(__('Invalid version ID.', 'ai-post-scheduler'));
+		}
+
+		$res = $this->version_service->restore_version($profile_id, $version_id, get_current_user_id());
+		if (is_wp_error($res)) {
+			AIPS_Ajax_Response::error($res->get_error_message());
+		}
+
+		$updated = $this->repo->get_by_id($profile_id);
+		AIPS_Ajax_Response::success(array(
+			'message'    => __('Prompt profile restored successfully.', 'ai-post-scheduler'),
+			'profile_id' => $profile_id,
+			'profile'    => $updated,
+		));
+	}
+
+	/**
+	 * AJAX: Restore a single stage field of a profile from a historical version.
+	 */
+	public function ajax_restore_prompt_profile_stage() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$profile_id = !empty($_POST['profile_id']) ? absint($_POST['profile_id']) : 0;
+		$version_id = !empty($_POST['version_id']) ? absint($_POST['version_id']) : 0;
+		$stage      = isset($_POST['stage']) ? sanitize_key(wp_unslash($_POST['stage'])) : '';
+
+		if (!$profile_id) {
+			AIPS_Ajax_Response::error(__('Invalid profile ID.', 'ai-post-scheduler'));
+		}
+		if (!$version_id) {
+			AIPS_Ajax_Response::error(__('Invalid version ID.', 'ai-post-scheduler'));
+		}
+		if (empty($stage)) {
+			AIPS_Ajax_Response::error(__('Invalid stage key.', 'ai-post-scheduler'));
+		}
+
+		$res = $this->version_service->restore_stage($profile_id, $version_id, $stage, get_current_user_id());
+		if (is_wp_error($res)) {
+			AIPS_Ajax_Response::error($res->get_error_message());
+		}
+
+		$updated = $this->repo->get_by_id($profile_id);
+		AIPS_Ajax_Response::success(array(
+			'message'    => __('Prompt profile stage restored successfully.', 'ai-post-scheduler'),
+			'profile_id' => $profile_id,
+			'profile'    => $updated,
 		));
 	}
 

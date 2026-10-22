@@ -145,6 +145,10 @@ class AIPS_Ajax_Registry {
 		'aips_set_default_prompt_profile' => 'AIPS_Prompt_Profiles_Controller',
 		'aips_preview_prompt_profile'     => 'AIPS_Prompt_Profiles_Controller',
 		'aips_clone_prompt_profile'       => 'AIPS_Prompt_Profiles_Controller',
+		'aips_get_prompt_profile_versions'      => 'AIPS_Prompt_Profiles_Controller',
+		'aips_get_prompt_profile_version_diff'  => 'AIPS_Prompt_Profiles_Controller',
+		'aips_restore_prompt_profile_version'   => 'AIPS_Prompt_Profiles_Controller',
+		'aips_restore_prompt_profile_stage'     => 'AIPS_Prompt_Profiles_Controller',
 
 		// Prompt Sections Controller
 		'aips_get_prompt_sections'        => 'AIPS_Prompt_Sections_Controller',
