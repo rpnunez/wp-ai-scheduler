@@ -623,7 +623,7 @@ class AIPS_Settings {
 			);
 		}
 
-		foreach (AIPS_AI_Assistance_Settings::get_option_schema() as $option_key => $meta) {
+		foreach ( AIPS_AI_Assistance_Settings::get_option_schema() as $option_key => $meta ) {
 			$settings[$option_key] = $meta;
 		}
 
@@ -671,15 +671,22 @@ class AIPS_Settings {
 			array($this->ui, 'ai_assistance_section_callback'),
 			'aips-settings'
 		);
-		foreach (array(
+		$ai_assistance_fields = array(
 			'enabled' => __('Enable AI Assistance', 'ai-post-scheduler'),
 			'contexts' => __('Workflows', 'ai-post-scheduler'),
 			'response_length' => __('Response length', 'ai-post-scheduler'),
 			'guidance' => __('AI Assistance guidance', 'ai-post-scheduler'),
 			'overwrite_mode' => __('Existing field values', 'ai-post-scheduler'),
 			'retention_days' => __('History retention', 'ai-post-scheduler'),
-		) as $field => $label) {
-			add_settings_field('aips_ai_assistance_' . $field, $label, array($this->ui, 'ai_assistance_' . $field . '_field_callback'), 'aips-settings', 'aips_ai_assistance_section');
+		);
+		foreach ( $ai_assistance_fields as $field => $label ) {
+			add_settings_field(
+				'aips_ai_assistance_' . $field,
+				$label,
+				array( $this->ui, 'ai_assistance_' . $field . '_field_callback' ),
+				'aips-settings',
+				'aips_ai_assistance_section'
+			);
 		}
 
         add_settings_field(

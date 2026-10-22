@@ -102,46 +102,58 @@ class Test_AIPS_AI_Assistance_Controller extends WP_UnitTestCase {
 	}
 
 	public function test_field_assist_rejects_when_global_policy_is_disabled() {
-		update_option('aips_ai_assistance_enabled', 0);
-		$controller = $this->make_controller_with_mock_service('Should not be returned');
+		update_option( 'aips_ai_assistance_enabled', 0 );
+		$controller = $this->make_controller_with_mock_service( 'Should not be returned' );
 		$_POST = array(
-			'action' => 'aips_ai_field_assist', 'nonce' => wp_create_nonce('aips_ajax_nonce'),
-			'form_context' => 'authors', 'field_key' => 'author_name', 'field_name' => 'Name', 'session_id' => 'policy-disabled',
+			'action'       => 'aips_ai_field_assist',
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context' => 'authors',
+			'field_key'    => 'author_name',
+			'field_name'   => 'Name',
+			'session_id'   => 'policy-disabled',
 		);
 		$this->sync_request_from_post();
-		$response = $this->run_ajax(array($controller, 'ajax_field_assist'));
-		$this->assertFalse($response['success']);
-		$this->assertStringContainsString('disabled', $response['data']['message']);
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'disabled', $response['data']['message'] );
 	}
 
 	public function test_field_assist_rejects_when_context_is_disabled() {
-		update_option('aips_ai_assistance_enabled', 1);
-		update_option('aips_ai_assistance_contexts', array('templates'));
-		$controller = $this->make_controller_with_mock_service('Should not be returned');
+		update_option( 'aips_ai_assistance_enabled', 1 );
+		update_option( 'aips_ai_assistance_contexts', array( 'templates' ) );
+		$controller = $this->make_controller_with_mock_service( 'Should not be returned' );
 		$_POST = array(
-			'action' => 'aips_ai_field_assist', 'nonce' => wp_create_nonce('aips_ajax_nonce'),
-			'form_context' => 'authors', 'field_key' => 'author_name', 'field_name' => 'Name', 'session_id' => 'context-disabled',
+			'action'       => 'aips_ai_field_assist',
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context' => 'authors',
+			'field_key'    => 'author_name',
+			'field_name'   => 'Name',
+			'session_id'   => 'context-disabled',
 		);
 		$this->sync_request_from_post();
-		$response = $this->run_ajax(array($controller, 'ajax_field_assist'));
-		$this->assertFalse($response['success']);
-		$this->assertStringContainsString('disabled', $response['data']['message']);
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'disabled', $response['data']['message'] );
 	}
 
 	public function test_no_retention_does_not_persist_a_suggestion() {
-		update_option('aips_ai_assistance_enabled', 1);
-		update_option('aips_ai_assistance_contexts', array('authors'));
-		update_option('aips_ai_assistance_retention_days', 0);
-		$controller = $this->make_controller_with_mock_service('Ephemeral suggestion');
+		update_option( 'aips_ai_assistance_enabled', 1 );
+		update_option( 'aips_ai_assistance_contexts', array( 'authors' ) );
+		update_option( 'aips_ai_assistance_retention_days', 0 );
+		$controller = $this->make_controller_with_mock_service( 'Ephemeral suggestion' );
 		$_POST = array(
-			'action' => 'aips_ai_field_assist', 'nonce' => wp_create_nonce('aips_ajax_nonce'),
-			'form_context' => 'authors', 'field_key' => 'author_name', 'field_name' => 'Name', 'session_id' => 'no-retention',
+			'action'       => 'aips_ai_field_assist',
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'form_context' => 'authors',
+			'field_key'    => 'author_name',
+			'field_name'   => 'Name',
+			'session_id'   => 'no-retention',
 		);
 		$this->sync_request_from_post();
-		$response = $this->run_ajax(array($controller, 'ajax_field_assist'));
-		$this->assertTrue($response['success']);
-		$this->assertSame(0, $response['data']['record_id']);
-		$this->assertCount(0, $this->repository->get_by_session_and_field('no-retention', 'authors', 'author_name'));
+		$response = $this->run_ajax( array( $controller, 'ajax_field_assist' ) );
+		$this->assertTrue( $response['success'] );
+		$this->assertSame( 0, $response['data']['record_id'] );
+		$this->assertCount( 0, $this->repository->get_by_session_and_field( 'no-retention', 'authors', 'author_name' ) );
 	}
 
 	// -------------------------------------------------------------------------

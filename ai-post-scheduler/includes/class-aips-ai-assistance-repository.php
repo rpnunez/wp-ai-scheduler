@@ -58,6 +58,7 @@ class AIPS_AI_Assistance_Repository {
 		if ( AIPS_AI_Assistance_Settings::get_retention_days() === 0 ) {
 			return 0;
 		}
+
 		$this->delete_expired();
 		$result = $this->wpdb->insert(
 			$this->table_name,
@@ -127,24 +128,47 @@ class AIPS_AI_Assistance_Repository {
 		);
 	}
 
-	/** Delete one history record owned by the current admin-visible library. */
+	/**
+	 * Delete one history record owned by the current admin-visible library.
+	 *
+	 * @param int $id History record ID.
+	 * @return bool Whether the delete query succeeded.
+	 */
 	public function delete( int $id ): bool {
-		return false !== $this->wpdb->delete($this->table_name, array('id' => absint($id)), array('%d'));
+		return false !== $this->wpdb->delete(
+			$this->table_name,
+			array( 'id' => absint( $id ) ),
+			array( '%d' )
+		);
 	}
 
-	/** Delete every AI Assistance history record. */
+	/**
+	 * Delete every AI Assistance history record.
+	 *
+	 * @return bool Whether the delete query succeeded.
+	 */
 	public function clear_all(): bool {
-		return false !== $this->wpdb->query("DELETE FROM {$this->table_name}");
+		return false !== $this->wpdb->query( "DELETE FROM {$this->table_name}" );
 	}
 
-	/** Remove records outside the selected retention period. */
+	/**
+	 * Remove records outside the selected retention period.
+	 *
+	 * @return void
+	 */
 	public function delete_expired(): void {
 		$days = AIPS_AI_Assistance_Settings::get_retention_days();
-		if ($days === 0) {
+		if ( $days === 0 ) {
 			$this->clear_all();
 			return;
 		}
+
 		$cutoff = AIPS_DateTime::now()->timestamp() - ($days * DAY_IN_SECONDS);
-		$this->wpdb->query($this->wpdb->prepare("DELETE FROM {$this->table_name} WHERE created_at < %d", $cutoff));
+		$this->wpdb->query(
+			$this->wpdb->prepare(
+				"DELETE FROM {$this->table_name} WHERE created_at < %d",
+				$cutoff
+			)
+		);
 	}
 }
