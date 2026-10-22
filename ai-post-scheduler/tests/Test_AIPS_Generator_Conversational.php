@@ -163,6 +163,21 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$this->assertSame('draft', $post_manager->created_post_data['post_status']);
 	}
 
+	public function test_slug_generation_wp_error_marks_component_failed_and_draft_status() {
+		update_option('aips_conversational_generation', 0);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		// Body, Title, Excerpt, then Slug returns WP_Error (provider failure)
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', new WP_Error('provider_error', 'API error')));
+		$ai_service->conversation_supported = false;
+
+		$context = $this->make_context('scheduled', true);
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_slug']);
+		$this->assertSame('draft', $post_manager->created_post_data['post_status']);
+	}
+
 	public function test_set_conversation_is_ignored_when_the_feature_is_off() {
 		$ai_service = $this->make_service(array('An excerpt.'));
 		$ai_service->conversation_supported = true;

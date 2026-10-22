@@ -1805,8 +1805,13 @@ class AIPS_Generator {
 			$slug_success = ($slug !== '');
 		} else {
 			$raw_slug     = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
-			$slug         = sanitize_title($raw_slug);
-			$slug_success = $slug_success && ($slug !== '');
+			if (is_wp_error($raw_slug)) {
+				$slug         = '';
+				$slug_success = false;
+			} else {
+				$slug         = sanitize_title($raw_slug);
+				$slug_success = $slug_success && ($slug !== '');
+			}
 		}
 
 		if ($slug_success) {
@@ -1845,7 +1850,7 @@ class AIPS_Generator {
 	 * @param string                  $title              Generated article title.
 	 * @param array                   $options            AI options.
 	 * @param bool|null               $generation_success Output parameter. Set to true on success, false on failure.
-	 * @return string Generated slug string. Empty string on failure.
+	 * @return string|WP_Error Generated slug string or WP_Error on failure.
 	 */
 	public function generate_slug_from_context($context, $content = '', $title = '', $options = array(), &$generation_success = null) {
 		if ($this->conversation !== null) {
@@ -1867,7 +1872,7 @@ class AIPS_Generator {
 
 		if (is_wp_error($result)) {
 			$generation_success = false;
-			return '';
+			return $result;
 		}
 
 		$generation_success = true;
