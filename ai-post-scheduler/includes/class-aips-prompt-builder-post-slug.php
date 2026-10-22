@@ -55,7 +55,7 @@ class AIPS_Prompt_Builder_Post_Slug {
 			$context   = $template_or_context;
 			$topic_str = $context->get_topic();
 
-			$slug_instructions = $this->resolve_slug_instructions($context, $topic_str);
+			$slug_instructions = $this->resolve_slug_instructions($context, $topic_str, $title);
 			$prompt            = $this->build_base_prompt($slug_instructions, $content, $title, $context);
 
 			return apply_filters('aips_slug_prompt', $prompt, $context, $topic_str, null, $content, $title);
@@ -67,6 +67,10 @@ class AIPS_Prompt_Builder_Post_Slug {
 			$slug_instructions = $this->template_processor->process($voice->slug_prompt, $topic);
 		} elseif (!empty($template->slug_prompt)) {
 			$slug_instructions = $this->template_processor->process($template->slug_prompt, $topic);
+		}
+
+		if (!empty($slug_instructions) && !empty($title)) {
+			$slug_instructions = str_replace('{{title}}', (string) $title, $slug_instructions);
 		}
 
 		$prompt = $this->build_base_prompt($slug_instructions, $content, $title, $template);
@@ -83,7 +87,7 @@ class AIPS_Prompt_Builder_Post_Slug {
 	 */
 	public function build_followup($context, $title = '') {
 		$topic_str          = $context->get_topic();
-		$slug_instructions  = $this->resolve_slug_instructions($context, $topic_str);
+		$slug_instructions  = $this->resolve_slug_instructions($context, $topic_str, $title);
 
 		$prompt  = 'Now generate an SEO-friendly URL slug for the article.';
 		if (!empty($title)) {
@@ -107,9 +111,10 @@ class AIPS_Prompt_Builder_Post_Slug {
 	 *
 	 * @param AIPS_Generation_Context|object $context Context or template object.
 	 * @param string|null                    $topic   Optional topic string.
+	 * @param string                         $title   Optional article title.
 	 * @return string
 	 */
-	public function resolve_slug_instructions($context, $topic = null) {
+	public function resolve_slug_instructions($context, $topic = null, $title = '') {
 		$slug_instructions = '';
 
 		if ($context instanceof AIPS_Generation_Context) {
@@ -128,6 +133,10 @@ class AIPS_Prompt_Builder_Post_Slug {
 			}
 		} elseif (is_object($context) && !empty($context->slug_prompt)) {
 			$slug_instructions = $this->template_processor->process($context->slug_prompt, $topic);
+		}
+
+		if (!empty($slug_instructions) && !empty($title)) {
+			$slug_instructions = str_replace('{{title}}', (string) $title, $slug_instructions);
 		}
 
 		return $slug_instructions;

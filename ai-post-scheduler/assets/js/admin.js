@@ -5068,9 +5068,9 @@
             var generateSlug = $('#generate_slug').is(':checked');
             if (generateSlug) {
                 var slugPrompt = $('#slug_prompt').val();
-                $modal.find('#summary_generate_slug').text(slugPrompt ? 'Yes (Custom Prompt)' : 'Yes (SEO Standard)');
+                $modal.find('#summary_generate_slug').text(slugPrompt ? (aipsTemplatesL10n.slugYesCustom || 'Yes (Custom Prompt)') : (aipsTemplatesL10n.slugYesStandard || 'Yes (SEO Standard)'));
             } else {
-                $modal.find('#summary_generate_slug').text('No');
+                $modal.find('#summary_generate_slug').text(aipsTemplatesL10n.slugNo || 'No');
             }
         },
 

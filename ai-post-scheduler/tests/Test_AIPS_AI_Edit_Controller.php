@@ -135,6 +135,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			$this->assertTrue($response['success']);
 			$this->assertArrayHasKey('components', $response['data']);
 			$this->assertArrayHasKey('title', $response['data']['components']);
+			$this->assertArrayHasKey('slug', $response['data']['components']);
 			$this->assertArrayHasKey('excerpt', $response['data']['components']);
 			$this->assertArrayHasKey('content', $response['data']['components']);
 			$this->assertArrayHasKey('featured_image', $response['data']['components']);

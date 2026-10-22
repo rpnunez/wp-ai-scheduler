@@ -990,6 +990,9 @@ class AIPS_Admin_Assets {
                 'featuredImageNo'         => __('No', 'ai-post-scheduler'),
                 /* translators: %s: featured image source name */
                 'featuredImageYes'        => __('Yes (%s)', 'ai-post-scheduler'),
+                'slugNo'                  => __('No', 'ai-post-scheduler'),
+                'slugYesStandard'         => __('Yes (SEO Standard)', 'ai-post-scheduler'),
+                'slugYesCustom'           => __('Yes (Custom Prompt)', 'ai-post-scheduler'),
                 // AI variable tag tooltip
                 'clickToCopy'             => __('Click to copy', 'ai-post-scheduler'),
                 // Template content preview

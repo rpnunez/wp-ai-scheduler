@@ -252,13 +252,6 @@ class AIPS_Component_Regeneration_Service {
 			return new WP_Error('slug_generation_failed', __('Failed to generate a valid slug.', 'ai-post-scheduler'));
 		}
 
-		if ($post_id) {
-			wp_update_post(array(
-				'ID'        => $post_id,
-				'post_name' => $slug,
-			));
-		}
-
 		return $slug;
 	}
 	
@@ -459,6 +452,8 @@ class AIPS_Component_Regeneration_Service {
 			} else {
 				$result['regenerated']['slug'] = $slug;
 			}
+		} else {
+			$result['skipped']['slug'] = __('Slug generation skipped because it is not enabled for this context.', 'ai-post-scheduler');
 		}
 
 		$content = $this->regenerate_content($context);

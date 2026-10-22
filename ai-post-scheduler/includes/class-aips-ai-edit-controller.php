@@ -139,6 +139,9 @@ class AIPS_AI_Edit_Controller {
 				'content' => array(
 					'value' => $post->post_content,
 				),
+				'slug' => array(
+					'value' => $post->post_name,
+				),
 				'featured_image' => array(
 					'attachment_id' => $featured_image_id,
 					'url' => $featured_image_url,

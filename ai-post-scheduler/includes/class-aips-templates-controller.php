@@ -301,6 +301,8 @@ class AIPS_Templates_Controller {
             'featured_image_source' => $template->featured_image_source,
             'featured_image_unsplash_keywords' => $template->featured_image_unsplash_keywords,
             'featured_image_media_ids' => $template->featured_image_media_ids,
+            'generate_slug' => isset($template->generate_slug) ? $template->generate_slug : 0,
+            'slug_prompt' => isset($template->slug_prompt) ? $template->slug_prompt : '',
             'post_status' => $template->post_status,
             'post_type' => isset($template->post_type) ? $template->post_type : 'post',
             'post_category' => $template->post_category,
