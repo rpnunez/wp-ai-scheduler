@@ -173,16 +173,30 @@ class AIPS_Author_Topics_Generator {
 		// Usage means reference inclusion in the request, even when the provider fails.
 		$selection = $this->prompt_builder->get_sources_selection();
 		$this->last_sources_selection = $selection;
+		// Diagnostics describe selection even if a local guard prevents submission.
+		if ($selection) {
+			$this->last_sources_selection['snapshots'] = array();
+		}
 		foreach ($selection['diagnostics'] ?? array() as $diagnostic) {
 			$this->logger->log('Source selection warning: ' . $diagnostic['reason'], 'warning', $diagnostic);
 		}
-		$this->prompt_builder->record_sources_usage();
-
-		// Use generate_json for structured topic data
-		$response = $this->ai_service->generate_json($prompt, array(
+		$options = array(
 			'temperature' => 0.7,
 			'json_schema' => $this->get_topic_json_schema(),
-		));
+		);
+		if ($selection) {
+			$submitted = false;
+			$options['_aips_on_submission'] = function () use ($selection, &$submitted) {
+				if (!$submitted) {
+					$submitted = true;
+					$this->last_sources_selection = $selection;
+					$this->prompt_builder->record_sources_usage($selection);
+				}
+			};
+		}
+
+		// Use generate_json for structured topic data.
+		$response = $this->ai_service->generate_json($prompt, $options);
 		
 		if (is_wp_error($response)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $response->get_error_message(), 'error');

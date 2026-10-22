@@ -73,6 +73,10 @@ class Test_AIPS_Sources_Selection extends WP_UnitTestCase {
 			public $recorded_at_submission = array();
 			public function __construct($builder) { $this->builder = $builder; }
 			public function generate_text($prompt, $options) {
+				if (isset($options['_aips_on_submission'])) {
+					$options['_aips_on_submission']();
+					$options['_aips_on_submission'](); // An injected transport must not double-commit.
+				}
 				$this->recorded_at_submission[] = count($this->builder->recorded);
 				return new WP_Error('fixture_failure', 'Provider unavailable');
 			}
@@ -91,6 +95,76 @@ class Test_AIPS_Sources_Selection extends WP_UnitTestCase {
 		$this->assertWPError($generator->generate_content('Second request', array(), 'content'));
 		$this->assertSame(array(1, 1), $service->recorded_at_submission);
 		$this->assertCount(1, $builder->recorded);
+	}
+
+	public function test_custom_service_preflight_rejection_does_not_record_usage() {
+		$reflection = new ReflectionClass(AIPS_Generator::class);
+		$generator = $reflection->newInstanceWithoutConstructor();
+		$builder = new class {
+			public $recorded = array();
+			public function record_sources_usage(array $snapshots) { $this->recorded = $snapshots; }
+		};
+		$values = array(
+			'prompt_builder' => $builder,
+			'ai_service' => new class { public function generate_text($prompt, $options) { return new WP_Error('ai_unavailable', 'No submission'); } },
+			'logger' => new class { public function log($message, $level, $context = array()) {} },
+			'pending_sources_selection' => array('snapshots' => array(array('source_data_id' => 33)), 'diagnostics' => array()),
+		);
+		foreach ($values as $name => $value) { $reflection->getProperty($name)->setValue($generator, $value); }
+		$this->assertWPError($generator->generate_content('References'));
+		$this->assertSame(array(), $builder->recorded);
+	}
+
+	public function test_component_regeneration_records_explicit_selection_at_submission() {
+		$sources = new AIPS_Sources_Repository();
+		$id = $sources->create(array('url' => 'https://regeneration.selection.example.com', 'is_active' => 1));
+		$sources->set_source_terms($id, array(796));
+		$data = new AIPS_Sources_Data_Repository();
+		$data->insert_if_new($id, array('url' => 'https://regeneration.selection.example.com', 'extracted_text' => 'Regeneration reference', 'fetch_status' => 'success'));
+		$row = $data->pick_next_for_prompt_bulk(array($id))[$id];
+		$ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai->method('generate_text')->willReturnCallback(function ($prompt, $options) use ($data, $row) {
+			$this->assertStringContainsString('Regeneration reference', $prompt);
+			$this->assertSame(0, (int) $data->get_by_id($row->id)->num_used);
+			if (isset($options['_aips_on_submission'])) { $options['_aips_on_submission'](); }
+			return 'Regenerated article';
+		});
+		$service = new AIPS_Component_Regeneration_Service();
+		$reflection = new ReflectionClass($service);
+		$reflection->getProperty('generator')->setValue($service, new AIPS_Generator(null, $ai));
+		$template = (object) array('id' => 1, 'prompt_template' => 'Write {{topic}}', 'include_sources' => 1, 'source_group_ids' => '[796]');
+		$post_id = self::factory()->post->create();
+		$history = (new AIPS_History_Repository())->create(array('post_id' => $post_id, 'status' => 'completed'));
+		$result = $service->regenerate_content(array('generation_context' => new AIPS_Template_Context($template, null, 'Example'), 'post_id' => $post_id, 'history_id' => $history));
+		$this->assertSame('Regenerated article', $result);
+		$this->assertSame(1, (int) $data->get_by_id($row->id)->num_used);
+		$sources->delete($id);
+	}
+
+	public function test_topic_usage_and_history_distinguish_preflight_from_failed_submission() {
+		$sources = new AIPS_Sources_Repository();
+		$id = $sources->create(array('url' => 'https://topics.selection.example.com', 'is_active' => 1));
+		$sources->set_source_terms($id, array(797));
+		$data = new AIPS_Sources_Data_Repository();
+		$data->insert_if_new($id, array('url' => 'https://topics.selection.example.com', 'extracted_text' => 'Topic reference', 'fetch_status' => 'success'));
+		$row = $data->pick_next_for_prompt_bulk(array($id))[$id];
+		$author = (object) array('id' => 1, 'name' => 'Fixture', 'field_niche' => 'Science', 'topic_generation_quantity' => 1, 'include_sources' => 1, 'source_group_ids' => '[797]');
+		foreach (array(false, true) as $submitted) {
+			$ai = $this->createMock(AIPS_AI_Service_Interface::class);
+			$ai->method('generate_json')->willReturnCallback(function ($prompt, $options) use ($submitted) {
+				$this->assertStringContainsString('Topic reference', $prompt);
+				if ($submitted && isset($options['_aips_on_submission'])) {
+					$options['_aips_on_submission']();
+					$options['_aips_on_submission']();
+				}
+				return new WP_Error($submitted ? 'provider_failed' : 'ai_unavailable', 'Fixture failure');
+			});
+			$generator = new AIPS_Author_Topics_Generator($ai);
+			$this->assertWPError($generator->generate_topics($author));
+			$this->assertCount($submitted ? 1 : 0, $generator->get_last_sources_selection()['snapshots']);
+			$this->assertSame($submitted ? 1 : 0, (int) $data->get_by_id($row->id)->num_used);
+		}
+		$sources->delete($id);
 	}
 
 	public function test_topic_history_preserves_each_selection_diagnostic() {

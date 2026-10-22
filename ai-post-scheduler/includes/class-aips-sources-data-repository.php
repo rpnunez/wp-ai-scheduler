@@ -93,6 +93,7 @@ class AIPS_Sources_Data_Repository {
 		$snapshot_url   = isset( $data['url'] ) ? esc_url_raw( $data['url'] ) : '';
 		$content_hash   = '' !== $extracted_text ? self::content_hash( $snapshot_url, $extracted_text ) : null;
 		$char_count     = mb_strlen( $extracted_text, 'UTF-8' );
+		$now            = AIPS_DateTime::now()->timestamp();
 
 		// Skip if this exact content snapshot is already stored.
 		if ( null !== $content_hash ) {
@@ -105,9 +106,25 @@ class AIPS_Sources_Data_Repository {
 			if ( $existing_id ) {
 				return true;
 			}
+			if ( ! isset( $data['fetch_status'] ) || 'success' === $data['fetch_status'] ) {
+				// An editor may have marked this exact snapshot pending/failed.
+				// Restore usability after a real successful fetch without replacing
+				// its provenance or requiring legacy text-only hashes to be rewritten.
+				$promoted = $this->wpdb->query( $this->wpdb->prepare(
+					"UPDATE {$this->table_name} SET fetch_status = 'success', error_message = '', http_status = %d, updated_at = %d
+					 WHERE source_id = %d AND fetch_status IN ('pending', 'failed')
+					 AND BINARY url = BINARY %s AND BINARY extracted_text = BINARY %s LIMIT 1",
+					isset( $data['http_status'] ) ? absint( $data['http_status'] ) : 0,
+					$now, $source_id, $snapshot_url, $extracted_text
+				) );
+				if ( false === $promoted ) {
+					return false;
+				}
+				if ( $promoted > 0 ) {
+					return true;
+				}
+			}
 		}
-
-		$now = AIPS_DateTime::now()->timestamp();
 
 		$row = array(
 			'source_id'        => $source_id,

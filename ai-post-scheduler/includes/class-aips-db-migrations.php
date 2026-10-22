@@ -257,8 +257,12 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_7_18();
 		}
     
-		if ( version_compare( $from_version, '3.7.19', '<' ) ) {
-			$this->migrate_to_3_7_19();
+		if ( version_compare( $from_version, '3.7.19', '<' ) && ! $this->migrate_to_3_7_19() ) {
+			// install_tables() has already stamped the schema version. Restore the
+			// previous gate so a failed structural ALTER is retried next request.
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Source attempt-state migration failed; database upgrade will retry.', 'error' );
+			return;
 		}
 
 		// Use AIPS_Config::set_option() so the per-request option cache is
@@ -1751,16 +1755,21 @@ class AIPS_DB_Migrations {
 			'info'
 		);
 	}
-	/** Guarded attempt-state addition; legacy attempt status remains unknown. */
+	/** Guarded attempt-state addition; legacy attempt status remains unknown. @return bool */
 	private function migrate_to_3_7_19() {
 		global $wpdb;
 		$table = $wpdb->prefix . 'aips_sources';
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
-			return;
+			return false;
 		}
 		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
-		if ( $schedule_column && 'YES' !== $schedule_column->Null ) {
-			$wpdb->query( "ALTER TABLE `$table` MODIFY COLUMN `next_fetch_at` bigint(20) unsigned DEFAULT NULL" );
+		if ( ! $schedule_column ) {
+			return false;
+		}
+		if ( 'YES' !== $schedule_column->Null ) {
+			if ( false === $wpdb->query( "ALTER TABLE `$table` MODIFY COLUMN `next_fetch_at` bigint(20) unsigned DEFAULT NULL" ) ) {
+				return false;
+			}
 		}
 		$columns = array(
 			'last_fetch_attempt_at' => 'bigint(20) unsigned DEFAULT NULL',
@@ -1769,9 +1778,16 @@ class AIPS_DB_Migrations {
 		);
 		foreach ( $columns as $column => $definition ) {
 			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `$table` LIKE %s", $column ) ) ) {
-				$wpdb->query( "ALTER TABLE `$table` ADD COLUMN `$column` $definition" );
+				if ( false === $wpdb->query( "ALTER TABLE `$table` ADD COLUMN `$column` $definition" ) ) {
+					return false;
+				}
+			}
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `$table` LIKE %s", $column ) ) ) {
+				return false;
 			}
 		}
+		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
+		return $schedule_column && 'YES' === $schedule_column->Null;
 	}
 
 }

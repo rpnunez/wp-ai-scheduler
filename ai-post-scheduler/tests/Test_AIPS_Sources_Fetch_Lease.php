@@ -23,6 +23,16 @@ class Test_AIPS_Sources_Fetch_Lease extends WP_UnitTestCase {
 		$lease->release( 'crashed' );
 		$this->assertFalse( $lease->acquire() );
 	}
+	public function test_nonautoload_lease_preserves_the_sitewide_options_cache() {
+		$alloptions = wp_load_alloptions();
+		wp_cache_set( 'alloptions', $alloptions, 'options' );
+		$lease = new AIPS_Sources_Fetch_Lease();
+		$owner = $lease->acquire();
+		$this->assertIsString( $owner );
+		$this->assertSame( $alloptions, wp_cache_get( 'alloptions', 'options' ) );
+		$lease->release( $owner );
+		$this->assertSame( $alloptions, wp_cache_get( 'alloptions', 'options' ) );
+	}
 	public function test_interleaved_first_acquisition_never_overwrites_competing_owner() {
 		$lease = new AIPS_Sources_Fetch_Lease();
 		$interleaved = false;

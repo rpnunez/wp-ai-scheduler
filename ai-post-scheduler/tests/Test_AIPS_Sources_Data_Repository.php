@@ -416,8 +416,9 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 
 	public function test_insert_collision_requires_verified_duplicate() {
 		foreach ( array( 7, null ) as $race_id ) {
-			$db = $this->getMockBuilder( wpdb::class )->disableOriginalConstructor()->onlyMethods( array( 'prepare', 'get_var', 'insert' ) )->getMock();
+			$db = $this->getMockBuilder( wpdb::class )->disableOriginalConstructor()->onlyMethods( array( 'prepare', 'get_var', 'insert', 'query' ) )->getMock();
 			$db->method( 'prepare' )->willReturnArgument( 0 );
+			$db->method( 'query' )->willReturn( 0 );
 			$db->expects( $this->exactly( 2 ) )->method( 'get_var' )->willReturnOnConsecutiveCalls( null, $race_id );
 			$db->expects( $this->once() )->method( 'insert' )->willReturn( false );
 			$repo = new AIPS_Sources_Data_Repository();
@@ -426,6 +427,53 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 			$property->setValue( $repo, $db );
 			$this->assertSame( null !== $race_id, $repo->insert_if_new( 42, array( 'url' => 'https://example.com', 'extracted_text' => 'Concurrent body' ) ) );
 		}
+	}
+
+	public function test_fetch_promotes_non_success_snapshot_without_changing_provenance() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_sources_data';
+		foreach ( array( 'pending', 'failed' ) as $index => $status ) {
+			$source_id = 800 + $index;
+			$data = array( 'url' => 'https://example.com/recovered', 'extracted_text' => 'Recovered unchanged content', 'http_status' => 200 );
+			$this->assertTrue( $this->repo->insert_if_new( $source_id, $data ) );
+			$original = $this->repo->get_by_source_id( $source_id );
+			$wpdb->update( $table, array( 'fetched_at' => 1, 'created_at' => 2 ), array( 'id' => $original->id ) );
+			$this->assertTrue( $this->repo->update( $original->id, array( 'fetch_status' => $status, 'error_message' => 'Old failure' ) ) );
+			// Exercise both the URL-aware hash and pre-upgrade text-only hash.
+			if ( 'failed' === $status ) {
+				$wpdb->update( $table, array( 'content_hash' => hash( 'sha256', $data['extracted_text'] ) ), array( 'id' => $original->id ) );
+			}
+			$original = $this->repo->get_by_id( $original->id );
+			$this->assertTrue( $this->repo->insert_if_new( $source_id, $data ) );
+			$recovered = $this->repo->get_by_id( $original->id );
+			$this->assertSame( 'success', $recovered->fetch_status );
+			$this->assertSame( '', $recovered->error_message );
+			$this->assertSame( $original->url, $recovered->url );
+			$this->assertSame( $original->fetched_at, $recovered->fetched_at );
+			$this->assertSame( $original->created_at, $recovered->created_at );
+			$this->assertSame( $original->content_hash, $recovered->content_hash );
+			$this->assertSame( 1, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $table WHERE source_id = %d", $source_id ) ) );
+		}
+	}
+
+	public function test_promotion_write_error_does_not_report_fetch_success() {
+		global $wpdb;
+		$data = array( 'url' => 'https://example.com/promotion-error', 'extracted_text' => 'Unchanged pending content' );
+		$this->assertTrue( $this->repo->insert_if_new( 802, $data ) );
+		$original = $this->repo->get_by_source_id( 802 );
+		$this->assertTrue( $this->repo->update( $original->id, array( 'fetch_status' => 'pending' ) ) );
+		$fail_update = static function( $query ) use ( $wpdb ) {
+			return str_starts_with( $query, "UPDATE {$wpdb->prefix}aips_sources_data SET fetch_status = 'success'" ) ? 'INVALID promotion write fixture' : $query;
+		};
+		$previous = $wpdb->suppress_errors( true );
+		add_filter( 'query', $fail_update );
+		try {
+			$this->assertFalse( $this->repo->insert_if_new( 802, $data ) );
+		} finally {
+			remove_filter( 'query', $fail_update );
+			$wpdb->suppress_errors( $previous );
+		}
+		$this->assertSame( 'pending', $this->repo->get_by_id( $original->id )->fetch_status );
 	}
 
 	public function test_update_race_classifies_unique_collision_and_other_write_errors() {

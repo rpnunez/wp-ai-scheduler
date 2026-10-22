@@ -53,6 +53,6 @@ class AIPS_Sources_Fetch_Lease {
 	private function clear_cache(): void {
 		wp_cache_delete( $this->option_name, 'options' );
 		wp_cache_delete( 'notoptions', 'options' );
-		wp_cache_delete( 'alloptions', 'options' );
+		// Lease rows are always nonautoloaded; keep the unrelated site options warm.
 	}
 }

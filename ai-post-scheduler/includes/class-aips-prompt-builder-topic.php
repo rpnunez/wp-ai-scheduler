@@ -32,12 +32,13 @@ class AIPS_Prompt_Builder_Topic {
 	}
 
 	/** Commit only the selection from this build, once per submitted request. */
-	public function record_sources_usage() {
-		$this->base_builder->record_sources_usage($this->sources_selection['snapshots'] ?? array());
-		if (!empty($this->sources_selection['snapshots'])) {
-			do_action('aips_source_snapshots_injected', $this->sources_selection['snapshots'], $this->sources_selection['group_ids'], $this->sources_selection['sources']);
-		}
+	public function record_sources_usage(?array $selection = null) {
+		$selection = $selection ?? $this->sources_selection;
 		$this->sources_selection = array();
+		$this->base_builder->record_sources_usage($selection['snapshots'] ?? array());
+		if (!empty($selection['snapshots'])) {
+			do_action('aips_source_snapshots_injected', $selection['snapshots'], $selection['group_ids'], $selection['sources']);
+		}
 	}
 
 

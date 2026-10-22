@@ -142,10 +142,18 @@ class AIPS_Generator {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
+        $selection = $options['_aips_sources_selection'] ?? $this->pending_sources_selection;
+        unset($options['_aips_sources_selection']);
+        if (in_array($log_type, array('content', 'content_preview'), true)) {
+            $this->pending_sources_selection = array();
+        } else {
+            $selection = array();
+        }
         // Snapshot the caller's options for history records. The request options are
         // mutated below to carry the conversation transcript, which holds the whole
         // article and must never be serialized into a history row.
         $loggable_options = $options;
+        unset($loggable_options['_aips_on_submission']);
 
         // Log AI request before making the call
         if ($this->current_history) {
@@ -173,8 +181,16 @@ class AIPS_Generator {
             $options['conversation'] = $this->conversation;
         }
 
-        if (in_array($log_type, array('content', 'content_preview'), true)) {
-            $this->submit_sources_selection();
+        if ($selection) {
+            $submitted = false;
+            // Injected AI services must invoke this once transport is attempted,
+            // after their local availability, circuit-breaker and rate-limit guards.
+            $options['_aips_on_submission'] = function () use ($selection, &$submitted) {
+                if (!$submitted) {
+                    $submitted = true;
+                    $this->submit_sources_selection($selection);
+                }
+            };
         }
         $result = $this->ai_service->generate_text($prompt, $options);
 
@@ -1377,10 +1393,7 @@ class AIPS_Generator {
      * @param array $sources   Source rows.
      * @return void
      */
-    private function submit_sources_selection() {
-        $selection = $this->pending_sources_selection;
-        // Clear before calling hooks so a nested request cannot commit it twice.
-        $this->pending_sources_selection = array();
+    private function submit_sources_selection(array $selection) {
         foreach ($selection['diagnostics'] ?? array() as $diagnostic) {
             $this->logger->log('Source selection warning: ' . $diagnostic['reason'], 'warning', $diagnostic);
             if ($this->current_history) {
