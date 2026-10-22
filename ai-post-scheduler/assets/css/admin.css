@@ -8295,54 +8295,134 @@ tr.aips-row-details > td {
 
 
 /* ==========================================================================
-   Internal Links > Suggestions: one suggestion = a post-pair row plus an
-   anchor/actions sub-row. The actions live in a flex wrapper inside the cell;
-   making the <td> itself flex (the old .cell-actions) pulled it out of table
-   layout and left it misaligned with its row.
+   Internal Links > Suggestions
+   One suggestion = one item (.aips-il-item), rendered either as a table row
+   (List view) or a card (Grid view). Every column / slot has a fixed width so
+   status badges and action buttons sit in the same place on every row.
    ========================================================================== */
+
+/* View toggle (segmented control) */
+.aips-il-view-toggle {
+	display: inline-flex;
+	border: 1px solid var(--aips-gray-300);
+	border-radius: 6px;
+	overflow: hidden;
+	background: var(--aips-white);
+}
+
+.aips-il-view-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: var(--aips-control-h);
+	padding: 0 14px;
+	border: 0;
+	background: transparent;
+	color: var(--aips-gray-700);
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.aips-il-view-btn + .aips-il-view-btn {
+	border-left: 1px solid var(--aips-gray-300);
+}
+
+.aips-il-view-btn .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+}
+
+.aips-il-view-btn:hover {
+	background: var(--aips-gray-50);
+}
+
+.aips-il-view-btn.is-active {
+	background: var(--aips-primary);
+	color: var(--aips-white);
+}
+
+/* Bulk bar */
+.aips-il-bulk-bar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 12px;
+	padding: 8px 16px;
+	border-bottom: 1px solid var(--aips-gray-200);
+	background: var(--aips-gray-50);
+}
+
+.aips-il-bulk-select {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+}
+
+.aips-il-bulk-count {
+	color: var(--aips-gray-500);
+	min-width: 90px;
+}
+
+.aips-il-bulk-actions {
+	display: flex;
+	gap: 6px;
+	margin-left: auto;
+}
+
+.aips-il-bulk-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.aips-il-bulk-btn .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.aips-il-bulk-btn.is-danger:not(:disabled):hover {
+	border-color: var(--aips-danger);
+	color: var(--aips-danger);
+	background: #fcf0f1;
+}
+
+/* List view */
 .aips-internal-links-table {
 	width: 100%;
 	table-layout: fixed;
-}
-
-.aips-internal-links-table .aips-il-match-col {
-	width: 110px;
 }
 
 .aips-internal-links-table td {
 	vertical-align: middle;
 }
 
-.aips-internal-links-table .aips-il-row-main td {
-	padding-bottom: 6px;
-	border-bottom: 0;
-}
+.aips-internal-links-table .aips-il-col-select    { width: 40px; text-align: center; }
+.aips-internal-links-table .aips-il-col-anchor    { width: 20%; }
+.aips-internal-links-table .aips-il-col-direction { width: 96px; }
+.aips-internal-links-table .aips-il-col-match     { width: 120px; }
+.aips-internal-links-table .aips-il-col-status    { width: 100px; }
+.aips-internal-links-table .aips-il-col-actions   { width: 160px; }
 
-.aips-internal-links-table .aips-il-row-sub td {
-	padding-top: 0;
-	border-top: 0;
-}
-
-.aips-il-match {
-	text-align: center;
+.aips-il-post {
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.aips-il-subrow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	flex-wrap: wrap;
-	gap: 12px;
-	padding: 4px 0 8px;
+.aips-il-post-source {
+	font-weight: 600;
 }
 
-.aips-il-anchor-line {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 8px;
-	min-width: 0;
+.aips-il-post-target {
+	color: var(--aips-gray-700);
+}
+
+.aips-il-arrow {
+	margin-right: 6px;
+	color: var(--aips-gray-500);
 }
 
 .aips-il-anchor-label {
@@ -8354,15 +8434,25 @@ tr.aips-row-details > td {
 }
 
 .aips-il-anchor-cell {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	font-weight: 600;
-	overflow-wrap: anywhere;
 }
 
+/* Actions: four fixed slots so a button never changes position. */
 .aips-il-actions {
-	display: flex;
-	align-items: center;
+	display: grid;
+	grid-template-columns: repeat(4, var(--aips-control-h));
+	justify-content: end;
 	gap: 6px;
-	flex-shrink: 0;
+}
+
+.aips-il-action-spacer {
+	display: block;
+	width: var(--aips-control-h);
+	height: var(--aips-control-h);
 }
 
 .aips-il-icon-btn {
@@ -8399,12 +8489,92 @@ tr.aips-row-details > td {
 	background: #fcf0f1;
 }
 
-/* Highlight both rows of a suggestion together (a suggestion is two <tr>s). */
-.aips-internal-links-table .aips-il-row-main:hover,
-.aips-internal-links-table .aips-il-row-main:hover + .aips-il-row-sub,
-.aips-internal-links-table .aips-il-row-sub:hover,
-.aips-internal-links-table .aips-il-row-main:has(+ .aips-il-row-sub:hover) {
+.aips-il-row:hover,
+.aips-il-row.is-selected {
 	background: var(--aips-gray-50);
+}
+
+/* Grid view */
+.aips-il-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+	gap: 16px;
+	padding: 16px;
+}
+
+.aips-il-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 12px 14px;
+	border: 1px solid var(--aips-gray-200);
+	border-radius: 8px;
+	background: var(--aips-white);
+}
+
+.aips-il-card:hover,
+.aips-il-card.is-selected {
+	border-color: var(--aips-primary);
+}
+
+.aips-il-card-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.aips-il-card-chips {
+	display: inline-flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.aips-il-card-status {
+	margin-left: auto;
+	min-width: 72px;
+	text-align: right;
+}
+
+.aips-il-card-posts .aips-il-post {
+	white-space: normal;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.aips-il-card-link {
+	color: var(--aips-gray-500);
+	line-height: 1.4;
+}
+
+.aips-il-card-anchor {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 8px 10px;
+	border-radius: 6px;
+	background: var(--aips-gray-50);
+}
+
+.aips-il-card-foot {
+	margin-top: auto;
+}
+
+/* Brief highlight after an in-place update */
+.aips-il-item.is-updated {
+	animation: aips-il-flash 900ms ease-out;
+}
+
+@keyframes aips-il-flash {
+	from { background-color: #fff8c5; }
+	to   { background-color: transparent; }
+}
+
+@media (max-width: 960px) {
+	.aips-internal-links-table .aips-il-col-direction,
+	.aips-internal-links-table .aips-il-col-match {
+		display: none;
+	}
 }
 
 
