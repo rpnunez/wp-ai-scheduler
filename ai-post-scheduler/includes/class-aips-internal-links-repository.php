@@ -268,6 +268,54 @@ class AIPS_Internal_Links_Repository {
 	}
 
 	/**
+	 * Update the status of several suggestions in one query.
+	 *
+	 * @param int[]  $ids    Row IDs.
+	 * @param string $status New status (pending|accepted|rejected|inserted|reverted).
+	 * @return int|false Number of updated rows or false on failure.
+	 */
+	public function update_status_bulk(array $ids, $status) {
+		$ids = array_values(array_filter(array_map('absint', $ids)));
+
+		if (empty($ids) || !in_array($status, self::VALID_STATUSES, true)) {
+			return false;
+		}
+
+		$placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+		$args         = array_merge(array($status, AIPS_DateTime::now()->timestamp()), $ids);
+
+		return $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->table} SET status = %s, updated_at = %d WHERE id IN ({$placeholders})",
+				$args
+			)
+		);
+	}
+
+	/**
+	 * Delete several suggestions in one query.
+	 *
+	 * @param int[] $ids Row IDs.
+	 * @return int|false Number of deleted rows or false on failure.
+	 */
+	public function delete_bulk(array $ids) {
+		$ids = array_values(array_filter(array_map('absint', $ids)));
+
+		if (empty($ids)) {
+			return false;
+		}
+
+		$placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+
+		return $this->wpdb->query(
+			$this->wpdb->prepare(
+				"DELETE FROM {$this->table} WHERE id IN ({$placeholders})",
+				$ids
+			)
+		);
+	}
+
+	/**
 	 * Update the anchor text of a suggestion.
 	 *
 	 * @param int    $id          Row ID.

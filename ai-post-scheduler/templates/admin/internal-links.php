@@ -129,6 +129,16 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 				<!-- Filter Bar -->
 				<div class="aips-filter-bar">
 					<div class="aips-filter-left">
+						<div class="aips-il-view-toggle" role="group" aria-label="<?php esc_attr_e('Suggestion layout', 'ai-post-scheduler'); ?>">
+							<button type="button" class="aips-il-view-btn is-active" data-view="list" aria-pressed="true">
+								<span class="dashicons dashicons-list-view" aria-hidden="true"></span>
+								<?php esc_html_e('List', 'ai-post-scheduler'); ?>
+							</button>
+							<button type="button" class="aips-il-view-btn" data-view="grid" aria-pressed="false">
+								<span class="dashicons dashicons-grid-view" aria-hidden="true"></span>
+								<?php esc_html_e('Grid', 'ai-post-scheduler'); ?>
+							</button>
+						</div>
 						<label class="screen-reader-text" for="aips-il-status-filter"><?php esc_html_e('Filter by status:', 'ai-post-scheduler'); ?></label>
 						<select id="aips-il-status-filter" class="aips-form-select">
 							<option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
@@ -153,23 +163,58 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 				</div>
 
 				<div class="aips-panel-body no-padding">
-					<table class="aips-table aips-internal-links-table" id="aips-suggestions-table">
-						<thead>
-							<tr>
-								<th><?php esc_html_e('Source Post', 'ai-post-scheduler'); ?></th>
-								<th class="aips-il-match-col"><span class="screen-reader-text"><?php esc_html_e('Match', 'ai-post-scheduler'); ?></span></th>
-								<th><?php esc_html_e('Target Post', 'ai-post-scheduler'); ?></th>
-							</tr>
-						</thead>
-						<tbody id="aips-suggestions-tbody">
-							<tr class="aips-table-loading">
-								<td colspan="3">
-									<span class="spinner is-active"></span>
-									<?php esc_html_e('Loading…', 'ai-post-scheduler'); ?>
-								</td>
-							</tr>
-						</tbody>
-					</table>
+					<!-- Bulk bar: always visible so the layout does not jump; buttons enable on selection -->
+					<div class="aips-il-bulk-bar" id="aips-il-bulk-bar">
+						<label class="aips-il-bulk-select">
+							<input type="checkbox" id="aips-il-select-all">
+							<span><?php esc_html_e('Select all on page', 'ai-post-scheduler'); ?></span>
+						</label>
+						<span class="aips-il-bulk-count" id="aips-il-bulk-count" aria-live="polite"></span>
+						<div class="aips-il-bulk-actions">
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-bulk-btn" data-bulk="accept" disabled>
+								<span class="dashicons dashicons-yes" aria-hidden="true"></span>
+								<?php esc_html_e('Accept', 'ai-post-scheduler'); ?>
+							</button>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-bulk-btn" data-bulk="reject" disabled>
+								<span class="dashicons dashicons-no" aria-hidden="true"></span>
+								<?php esc_html_e('Reject', 'ai-post-scheduler'); ?>
+							</button>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-bulk-btn is-danger" data-bulk="delete" disabled>
+								<span class="dashicons dashicons-trash" aria-hidden="true"></span>
+								<?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
+							</button>
+						</div>
+					</div>
+
+					<!-- List view -->
+					<div id="aips-il-list-view">
+						<table class="aips-table aips-internal-links-table" id="aips-suggestions-table">
+							<thead>
+								<tr>
+									<th class="aips-il-col-select"><span class="screen-reader-text"><?php esc_html_e('Select', 'ai-post-scheduler'); ?></span></th>
+									<th class="aips-il-col-posts"><?php esc_html_e('Source → Target', 'ai-post-scheduler'); ?></th>
+									<th class="aips-il-col-anchor"><?php esc_html_e('Anchor', 'ai-post-scheduler'); ?></th>
+									<th class="aips-il-col-direction"><?php esc_html_e('Direction', 'ai-post-scheduler'); ?></th>
+									<th class="aips-il-col-match"><?php esc_html_e('Match', 'ai-post-scheduler'); ?></th>
+									<th class="aips-il-col-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+									<th class="aips-il-col-actions"><span class="screen-reader-text"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></span></th>
+								</tr>
+							</thead>
+							<tbody id="aips-suggestions-tbody">
+								<tr class="aips-table-loading">
+									<td colspan="7">
+										<span class="spinner is-active"></span>
+										<?php esc_html_e('Loading…', 'ai-post-scheduler'); ?>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					<!-- Grid view -->
+					<div id="aips-il-grid-view" style="display:none;">
+						<div class="aips-il-grid" id="aips-il-grid"></div>
+					</div>
 
 					<!-- Pagination -->
 					<div class="aips-panel-toolbar aips-il-pagination-toolbar" id="aips-il-pagination" style="display:none;">
@@ -295,12 +340,12 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 
 <!-- Loading row for the suggestions table -->
 <script type="text/html" id="aips-tmpl-il-tbody-loading">
-<tr class="aips-table-loading"><td colspan="3"><span class="spinner is-active"></span>{{message}}</td></tr>
+<tr class="aips-table-loading"><td colspan="7"><span class="spinner is-active"></span>{{message}}</td></tr>
 </script>
 
 <!-- Generic message row (empty state / error) -->
 <script type="text/html" id="aips-tmpl-il-tbody-message">
-<tr><td colspan="3" class="aips-table-empty">{{message}}</td></tr>
+<tr><td colspan="7" class="aips-table-empty">{{message}}</td></tr>
 </script>
 
 <!-- Linked post title (source or target column) -->
@@ -325,26 +370,46 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn is-danger aips-il-delete-btn" data-id="{{id}}" title="{{deleteTip}}" aria-label="{{deleteLabel}}"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button>
 </script>
 
-<!-- Full suggestion table row -->
+<!-- Empty action slot: keeps every button in the same column across statuses -->
+<script type="text/html" id="aips-tmpl-il-action-spacer">
+<span class="aips-il-action-spacer" aria-hidden="true"></span>
+</script>
+
+<!-- List view: one table row per suggestion -->
 <script type="text/html" id="aips-tmpl-il-suggestion-row">
-<tr class="aips-il-row aips-il-row-main" data-id="{{id}}">
-	<td class="cell-primary aips-il-source">{{source}}</td>
-	<td class="aips-il-match">{{match}}</td>
-	<td class="aips-il-target">{{target}}</td>
-</tr>
-<tr class="aips-il-row aips-il-row-sub" data-id="{{id}}">
-	<td colspan="3">
-		<div class="aips-il-subrow">
-			<div class="aips-il-anchor-line">
-				{{originChip}}
-				<span class="aips-il-anchor-label">{{anchorLabel}}</span>
-				<span class="aips-il-anchor-cell">{{anchor}}</span>
-				{{statusChip}}
-			</div>
-			<div class="aips-il-actions">{{actions}}</div>
-		</div>
+<tr class="aips-il-item aips-il-row" data-id="{{id}}">
+	<td class="aips-il-col-select"><input type="checkbox" class="aips-il-select" value="{{id}}" aria-label="{{selectLabel}}"{{checked}}></td>
+	<td class="aips-il-col-posts">
+		<div class="aips-il-post aips-il-post-source">{{source}}</div>
+		<div class="aips-il-post aips-il-post-target"><span class="aips-il-arrow" aria-hidden="true">→</span>{{target}}</div>
 	</td>
+	<td class="aips-il-col-anchor"><span class="aips-il-anchor-cell" title="{{anchorTitle}}">{{anchor}}</span></td>
+	<td class="aips-il-col-direction">{{originChip}}</td>
+	<td class="aips-il-col-match">{{match}}</td>
+	<td class="aips-il-col-status">{{statusChip}}</td>
+	<td class="aips-il-col-actions"><div class="aips-il-actions">{{actions}}</div></td>
 </tr>
+</script>
+
+<!-- Grid view: one card per suggestion -->
+<script type="text/html" id="aips-tmpl-il-suggestion-card">
+<article class="aips-il-item aips-il-card" data-id="{{id}}">
+	<header class="aips-il-card-head">
+		<input type="checkbox" class="aips-il-select" value="{{id}}" aria-label="{{selectLabel}}"{{checked}}>
+		<span class="aips-il-card-chips">{{originChip}}{{match}}</span>
+		<span class="aips-il-card-status">{{statusChip}}</span>
+	</header>
+	<div class="aips-il-card-posts">
+		<div class="aips-il-post aips-il-post-source">{{source}}</div>
+		<div class="aips-il-card-link" aria-hidden="true">↓</div>
+		<div class="aips-il-post aips-il-post-target">{{target}}</div>
+	</div>
+	<div class="aips-il-card-anchor">
+		<span class="aips-il-anchor-label">{{anchorLabel}}</span>
+		<span class="aips-il-anchor-cell" title="{{anchorTitle}}">{{anchor}}</span>
+	</div>
+	<footer class="aips-il-card-foot"><div class="aips-il-actions">{{actions}}</div></footer>
+</article>
 </script>
 
 <!-- Small status/direction/similarity chip -->

@@ -274,6 +274,7 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_update_status'          => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_update_anchor'          => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_delete'                 => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_bulk_action'            => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
