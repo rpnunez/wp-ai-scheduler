@@ -15,16 +15,18 @@ if ($is_child_row) {
     $row_classes[] = 'aips-history-group-child';
 }
 
-$is_stalled = false;
+// One status per row: an idle in-progress run is shown as Stalled instead of Processing.
+$display_status = isset($item->effective_status) ? (string) $item->effective_status : (string) $item->status;
+$is_stalled = $display_status === 'stalled';
 $elapsed_label = '';
 if (isset($item->status) && $item->status === 'processing' && !empty($item->created_at)) {
     $now_ts = AIPS_DateTime::now()->timestamp();
     $created_ts = (int) $item->created_at;
-    $elapsed_seconds = max(0, $now_ts - $created_ts);
-    if ($elapsed_seconds >= 900) {
-        $is_stalled = true;
+    if ($is_stalled && !empty($item->last_activity_at)) {
+        $elapsed_label = sprintf(__('Last activity %s ago', 'ai-post-scheduler'), human_time_diff((int) $item->last_activity_at, $now_ts));
+    } else {
+        $elapsed_label = sprintf(__('Started %s ago', 'ai-post-scheduler'), human_time_diff($created_ts, $now_ts));
     }
-    $elapsed_label = sprintf(__('Started %s ago', 'ai-post-scheduler'), human_time_diff($created_ts, $now_ts));
 }
 ?>
 <tr class="<?php echo esc_attr(implode(' ', $row_classes)); ?>" data-id="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>" style="display: none;"<?php endif; ?> tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
@@ -69,7 +71,7 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
     <td class="column-status">
         <?php
         $status_class = 'aips-badge ';
-        switch ($item->status) {
+        switch ($display_status) {
             case 'completed':
             case 'indexed':
                 $status_class .= 'aips-badge-success';
@@ -83,21 +85,23 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
                 $status_class .= 'aips-badge-info';
                 $icon = 'update';
                 break;
+            case 'stalled':
+                $status_class .= 'aips-badge-warning aips-stalled-badge';
+                $icon = 'warning';
+                break;
+            case 'partial':
+                $status_class .= 'aips-badge-warning';
+                $icon = 'warning';
+                break;
             default:
                 $status_class .= 'aips-badge-neutral';
                 $icon = 'minus';
         }
         ?>
-        <span class="<?php echo esc_attr($status_class); ?>">
+        <span class="<?php echo esc_attr($status_class); ?>"<?php if ($is_stalled): ?> title="<?php esc_attr_e('This run is still marked in progress but has logged no activity for a while, so it appears stalled.', 'ai-post-scheduler'); ?>"<?php endif; ?>>
             <span class="dashicons dashicons-<?php echo esc_attr($icon); ?>"></span>
-            <?php echo esc_html(ucfirst($item->status)); ?>
+            <?php echo esc_html(ucfirst($display_status)); ?>
         </span>
-        <?php if ($is_stalled): ?>
-            <span class="aips-badge aips-badge-warning aips-stalled-badge" title="<?php esc_attr_e('This run has been processing for over 15 minutes and appears stalled.', 'ai-post-scheduler'); ?>">
-                <span class="dashicons dashicons-warning" aria-hidden="true"></span>
-                <?php esc_html_e('Stalled', 'ai-post-scheduler'); ?>
-            </span>
-        <?php endif; ?>
         <?php if ($item->error_count > 0 || $item->warning_count > 0): ?>
             <span class="aips-history-issue-counts">
                 <?php if ($item->error_count > 0): ?><span class="aips-history-count-error"><?php echo esc_html(sprintf(_n('%d error', '%d errors', $item->error_count, 'ai-post-scheduler'), $item->error_count)); ?></span><?php endif; ?>
@@ -143,7 +147,7 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
                    class="aips-row-action-item"
                    target="_blank"
                    rel="noopener noreferrer">
-                    <?php esc_html_e('View Topic', 'ai-post-scheduler'); ?>
+                    <?php esc_html_e('View Post', 'ai-post-scheduler'); ?>
                 </a>
                 <?php endif; ?>
                 <?php if ($item->status === 'failed' && $item->template_id): ?>

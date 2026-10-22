@@ -134,8 +134,8 @@ class AIPS_History_Event_Recorder {
 	}
 
 	/**
-	 * creation_method values used for lifecycle containers (configuration and
-	 * entity changes rather than generation runs). They are hidden from the
+	 * creation_method values used for lifecycle containers (configuration,
+	 * entity changes and review-queue actions rather than generation runs). They are hidden from the
 	 * main History list and dashboard generation statistics.
 	 *
 	 * @return string[]
@@ -147,6 +147,7 @@ class AIPS_History_Event_Recorder {
 			'campaign_lifecycle',
 			'author_lifecycle',
 			'source_lifecycle',
+			'post_review_action',
 		);
 	}
 

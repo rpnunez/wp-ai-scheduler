@@ -89,7 +89,7 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 
 		$container = $history_service->created[0]['container'];
 		$this->assertSame(array('activity', 'ai_request', 'ai_response'), array_column($container->records, 'type'));
-		$this->assertSame(array('status' => 'success'), $container->success_data);
+		$this->assertSame(array(), $container->success_data);
 	}
 
 	public function test_ajax_test_connection_records_failure_history_for_wp_error() {
