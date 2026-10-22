@@ -1366,6 +1366,7 @@ class AIPS_Admin_Assets {
                 'confirmBulkRegenerate' => __('Are you sure you want to regenerate %d selected post(s)? The current posts will be deleted.', 'ai-post-scheduler'),
                 'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
                 'bulkPublishSuccess' => __('%d posts published successfully!', 'ai-post-scheduler'),
+                'bulkPublishQueued' => __('Publishing %d posts in the background. They will go live shortly.', 'ai-post-scheduler'),
                 'deleteSuccess' => __('Post deleted successfully!', 'ai-post-scheduler'),
                 'bulkDeleteSuccess' => __('%d posts deleted successfully!', 'ai-post-scheduler'),
                 'regenerateSuccess' => __('Post regeneration started!', 'ai-post-scheduler'),

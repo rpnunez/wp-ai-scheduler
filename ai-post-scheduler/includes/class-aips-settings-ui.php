@@ -178,6 +178,36 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the bulk-publish background threshold field.
+     */
+    public function bulk_publish_async_threshold_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_bulk_publish_async_threshold');
+        ?>
+        <input type="number" name="aips_bulk_publish_async_threshold" value="<?php echo esc_attr($value); ?>" min="2" max="500" step="1" class="small-text">
+        <p class="description">
+            <?php esc_html_e('On the Content → Pending Review screen, when you bulk-publish this many drafts or more, they are published in the background (via WP-Cron) so the page responds instantly instead of waiting for every post. You can watch progress under Diagnostics → Background Processes. Smaller selections publish immediately. Raise this to keep more selections publishing instantly; lower it to offload medium-sized batches to the background sooner. Default: 30.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Sanitize the bulk-publish background threshold: a whole number, clamped to
+     * a sane range so the Pending Review publish path always behaves predictably.
+     *
+     * @param mixed $value Raw submitted value.
+     * @return int
+     */
+    public function sanitize_bulk_publish_async_threshold($value) {
+        $value = absint($value);
+        if ($value < 2) {
+            $value = 2;
+        } elseif ($value > 500) {
+            $value = 500;
+        }
+        return $value;
+    }
+
+    /**
      * Render the AI provider selection field.
      *
      * Lets the admin pick which AI backend serves requests. "Auto-detect" lets
