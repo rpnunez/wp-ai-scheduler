@@ -466,4 +466,87 @@ class AIPS_Ajax_Registry {
 	public static function count() {
 		return count(self::$map);
 	}
+
+	/**
+	 * Get the entire action-to-controller map.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function get_map() {
+		return self::$map;
+	}
+
+	/**
+	 * Get all action names associated with a specific controller class.
+	 *
+	 * @param string $controller_class Fully-qualified class name.
+	 * @return array<string> List of action names.
+	 */
+	public static function get_actions_for_controller($controller_class) {
+		$actions = array();
+		foreach (self::$map as $action => $class) {
+			if ($class === $controller_class) {
+				$actions[] = $action;
+			}
+		}
+		return $actions;
+	}
+
+	/**
+	 * Canonically register all WordPress wp_ajax_* actions for a controller.
+	 *
+	 * Automatically resolves method names matching `ajax_{action}` or explicitly provided mappings.
+	 *
+	 * @param object               $controller        Controller instance.
+	 * @param array<string,string> $action_method_map Optional custom mapping of action => method name.
+	 * @return array<string, string> Registered actions and their mapped method names.
+	 */
+	public static function register_controller_actions($controller, array $action_method_map = array()) {
+		if (!is_object($controller)) {
+			return array();
+		}
+
+		$controller_class = get_class($controller);
+		$actions = self::get_actions_for_controller($controller_class);
+		$registered = array();
+
+		foreach ($actions as $action) {
+			$method = null;
+
+			if (isset($action_method_map[$action])) {
+				$method = $action_method_map[$action];
+			} else {
+				// Candidate 1: ajax_ + action without aips_ prefix (e.g. aips_save_schedule -> ajax_save_schedule)
+				$unprefixed = strncmp($action, 'aips_', 5) === 0 ? substr($action, 5) : $action;
+				$candidate1 = 'ajax_' . $unprefixed;
+
+				// Candidate 2: ajax_ + action without aips_<feature>_ prefix (e.g. aips_indexer_get_status -> ajax_get_status)
+				$feature_stripped = preg_replace('/^[a-z0-9]+_/', '', $unprefixed);
+				$candidate2 = 'ajax_' . $feature_stripped;
+
+				// Candidate 3: ajax_ + full action (e.g. ajax_aips_save_schedule)
+				$candidate3 = 'ajax_' . $action;
+
+				// Candidate 4: full action name as method
+				$candidate4 = $action;
+
+				if (method_exists($controller, $candidate1)) {
+					$method = $candidate1;
+				} elseif (method_exists($controller, $candidate2)) {
+					$method = $candidate2;
+				} elseif (method_exists($controller, $candidate3)) {
+					$method = $candidate3;
+				} elseif (method_exists($controller, $candidate4)) {
+					$method = $candidate4;
+				}
+			}
+
+			if ($method && method_exists($controller, $method)) {
+				add_action('wp_ajax_' . $action, array($controller, $method));
+				$registered[$action] = $method;
+			}
+		}
+
+		return $registered;
+	}
 }
