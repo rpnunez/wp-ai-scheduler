@@ -13,8 +13,8 @@
 }
 
 .aips-post-slices-summary-card {
-	background: #fff;
-	border: 1px solid #dcdcde;
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-100);
 	border-radius: 6px;
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 	padding: 14px 16px;
@@ -27,12 +27,12 @@
 }
 
 .aips-post-slices-summary-card:hover {
-	border-color: #c3c4c7;
+	border-color: var(--aips-gray-200);
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 .aips-post-slices-summary-value {
-	color: #1d2327;
+	color: var(--aips-gray-900);
 	display: block;
 	font-size: 24px;
 	font-weight: 700;

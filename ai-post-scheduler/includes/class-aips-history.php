@@ -72,6 +72,7 @@ class AIPS_History {
             'source_fetch'            => __( 'Source Fetch', 'ai-post-scheduler' ),
             'gsc_sync'                => __( 'Search Console Sync', 'ai-post-scheduler' ),
             'post_review_action'      => __( 'Post Review', 'ai-post-scheduler' ),
+            'review_publish'          => __( 'Bulk Publish from Review', 'ai-post-scheduler' ),
             'topic_post_generation'   => __( 'Topic Post Generation', 'ai-post-scheduler' ),
             'manual_generation'       => __( 'Manual Generation', 'ai-post-scheduler' ),
             'manual_regeneration'     => __( 'Manual Regeneration', 'ai-post-scheduler' ),

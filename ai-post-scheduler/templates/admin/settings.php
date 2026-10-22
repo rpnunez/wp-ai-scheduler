@@ -51,6 +51,14 @@ $settings_rail_items = array(
 		'active'      => ($active_settings_tab === 'settings-ai'),
 	),
 	array(
+		'key'         => 'settings-ai-assistance',
+		'label'       => __('AI Assistance', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-superhero-alt',
+		'description' => __('Suggestion behavior & privacy', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-ai-assistance'),
+		'active'      => ($active_settings_tab === 'settings-ai-assistance'),
+	),
+	array(
 		'key'         => 'settings-linking',
 		'label'       => __('Internal Linking', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-admin-links',
@@ -209,6 +217,20 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 									</table>
 								</div>
 
+								<p class="submit">
+									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+								</p>
+							</div>
+
+							<!-- AI Assistance Tab -->
+							<div id="settings-ai-assistance-tab" class="aips-tab-content<?php echo 'settings-ai-assistance' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-ai-assistance' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-ai-assistance' === $active_settings_tab ? '' : 'hidden'; ?>>
+								<p class="description"><?php esc_html_e('Set the site-wide policy for guided AI field suggestions.', 'ai-post-scheduler'); ?></p>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('AI Assistance Policy', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_ai_assistance_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -373,3 +395,5 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 
 	</div>
 </div>
+
+<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
