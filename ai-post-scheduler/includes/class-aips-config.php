@@ -178,6 +178,13 @@ class AIPS_Config {
             'aips_persist_table_filters' => true,
             'aips_log_retention_days' => 30,
             'aips_topic_similarity_threshold' => 0.85,
+			// AI Assistance policy.
+			'aips_ai_assistance_enabled' => true,
+			'aips_ai_assistance_contexts' => array('authors', 'templates', 'sources', 'content_strategy'),
+			'aips_ai_assistance_response_length' => 'standard',
+			'aips_ai_assistance_guidance' => '',
+			'aips_ai_assistance_overwrite_mode' => 'preview',
+			'aips_ai_assistance_retention_days' => 30,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(

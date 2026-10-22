@@ -75,6 +75,9 @@ class AIPS_AI_Assistance_Service {
 	 * @return array|WP_Error Array with 'response', 'record_id', 'prompt', or WP_Error on failure.
 	 */
 	public function get_field_suggestion( array $field_config, string $session_id, int $user_id ) {
+		if ( ! AIPS_AI_Assistance_Settings::is_enabled_for($field_config['form_context'] ?? '') ) {
+			return new WP_Error('ai_assistance_disabled', __('AI Assistance is disabled for this workflow. Enable it in Settings > AI Assistance.', 'ai-post-scheduler'));
+		}
 		$prompt = $this->build_prompt( $field_config );
 
 		$response = $this->ai_service->generate_text( $prompt );
@@ -116,7 +119,8 @@ class AIPS_AI_Assistance_Service {
 	private function build_prompt( array $field_config ): string {
 		$form_context = $field_config['form_context'] ?? '';
 		$preamble     = $this->preambles[ $form_context ] ?? 'a WordPress admin form';
-
+		$lengths = array('concise' => 'Keep it concise.', 'standard' => 'Use an appropriately complete answer.', 'detailed' => 'Provide a detailed, useful answer.');
+		$policy = AIPS_AI_Assistance_Settings::get_policy();
 		$lines = array(
 			'You are a helpful assistant for an AI content creation WordPress plugin.',
 			'Help fill in a form field for ' . $preamble . '.',
@@ -126,6 +130,18 @@ class AIPS_AI_Assistance_Service {
 			'How it influences AI content generation: ' . ( $field_config['influence'] ?? '' ),
 			'Current value: ' . ( $field_config['current_value'] ?? '' ),
 		);
+		$lines[] = 'Workflow: ' . ($field_config['form_context'] ?? '');
+		$lines[] = $lengths[$policy['responseLength']];
+		$guidance = AIPS_Config::get_instance()->get_option('aips_ai_assistance_guidance');
+		if (!empty($guidance)) {
+			$lines[] = 'Additional site guidance: ' . $guidance;
+		}
+		foreach ((array) AIPS_Site_Context::get() as $context_key => $context_value) {
+			if ('' === $context_value || is_array($context_value)) {
+				continue;
+			}
+			$lines[] = 'Site Content Strategy — ' . ucwords(str_replace('_', ' ', $context_key)) . ': ' . $context_value;
+		}
 
 		foreach ( (array) ( $field_config['context'] ?? array() ) as $context_key => $context_value ) {
 			if ( '' === $context_value ) {
