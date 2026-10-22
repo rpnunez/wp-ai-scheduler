@@ -21,7 +21,7 @@
 	align-items: center;
 	margin: 0;
 	padding: 6px 2px;
-	border: 1px solid var(--aips-gray-100);
+	border: 1px solid #dcdcde;
 	border-radius: 4px;
 	text-align: center;
 }
@@ -33,17 +33,17 @@
 
 .aips-link-panel .aips-link-panel-counts span {
 	font-size: 11px;
-	color: var(--aips-gray-600);
+	color: #50575e;
 }
 
 .aips-link-panel .aips-link-panel-broken strong {
-	color: var(--aips-error);
+	color: #d63638;
 }
 
 .aips-link-panel .aips-link-panel-orphan {
 	margin: 0 0 10px;
 	padding: 6px 8px;
-	border-left: 3px solid var(--aips-warning);
+	border-left: 3px solid #dba617;
 	background: #fcf9e8;
 }
 
@@ -66,7 +66,7 @@
 .aips-link-panel .aips-link-panel-suggestion {
 	margin: 0 0 8px;
 	padding: 8px;
-	border: 1px solid var(--aips-gray-100);
+	border: 1px solid #dcdcde;
 	border-radius: 4px;
 }
 
@@ -84,7 +84,7 @@
 	display: block;
 	margin: 4px 0 6px;
 	font-size: 12px;
-	color: var(--aips-gray-600);
+	color: #50575e;
 }
 
 .aips-link-panel .aips-link-panel-actions {
@@ -96,7 +96,7 @@
 
 .aips-link-panel .aips-link-panel-inserted {
 	font-weight: 600;
-	color: var(--aips-success);
+	color: #00a32a;
 }
 
 .aips-link-panel .aips-link-panel-footer {
@@ -111,7 +111,7 @@
 }
 
 .aips-link-panel .aips-link-panel-error {
-	color: var(--aips-error);
+	color: #d63638;
 }
 
 .aips-link-panel .hidden {

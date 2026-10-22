@@ -158,8 +158,8 @@ if ('aips-generated-posts' === $active_tab && isset($history['total'])) {
 } elseif ('aips-partial-generations' === $active_tab && isset($partial_generations['total'])) {
 	$p_cnt = (int) $partial_generations['total'];
 	$summary_items[] = array('label' => __('Incomplete Runs', 'ai-post-scheduler'), 'value' => $p_cnt, 'type' => $p_cnt > 0 ? 'warning' : 'success', 'icon' => 'dashicons-warning');
-} elseif ('aips-pending-review' === $active_tab && isset($review_table) && $review_table instanceof AIPS_Pending_Review_List_Table) {
-	$d_cnt = (int) $review_table->get_total_items();
+} elseif ('aips-pending-review' === $active_tab && isset($draft_posts['total'])) {
+	$d_cnt = (int) $draft_posts['total'];
 	$summary_items[] = array('label' => __('Pending Approval', 'ai-post-scheduler'), 'value' => $d_cnt, 'type' => $d_cnt > 0 ? 'warning' : 'neutral', 'icon' => 'dashicons-visibility');
 }
 

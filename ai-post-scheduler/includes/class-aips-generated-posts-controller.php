@@ -71,7 +71,7 @@ class AIPS_Generated_Posts_Controller {
 	public function render_page() {
 		// Use separate pagination parameters for each tab
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
-		// Pending Review paginates through the WP_List_Table (native 'paged' param).
+		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
 		$partial_page = isset($_GET['partial_paged']) ? absint($_GET['partial_paged']) : 1;
 		$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
@@ -147,12 +147,31 @@ class AIPS_Generated_Posts_Controller {
 			);
 		}
 		
-		// Pending Review tab renders through a WP_List_Table subclass so it gains
-		// native Screen Options (drafts-per-page + column show/hide). It reads its
-		// own filters and pagination (via get_pagenum()) and loads its own page of
-		// drafts, including the per-item created-at formatting.
-		$review_table = new AIPS_Pending_Review_List_Table(array('controller' => $this));
-		$review_table->prepare_items();
+		// Get draft posts for Post Review tab
+		$draft_posts = $this->post_review_repository->get_draft_posts(array(
+			'page' => $review_page,
+			'search' => $search_query,
+			'template_id' => $template_id,
+			'post_type' => $post_type_filter,
+		));
+
+		// If the requested page is past the end (e.g. after bulk actions emptied it), fall back to the last page.
+		if (empty($draft_posts['items']) && $review_page > 1 && !empty($draft_posts['pages'])) {
+			$review_page = (int) $draft_posts['pages'];
+			$draft_posts = $this->post_review_repository->get_draft_posts(array(
+				'page' => $review_page,
+				'search' => $search_query,
+				'template_id' => $template_id,
+				'post_type' => $post_type_filter,
+			));
+		}
+
+		// Pre-format dates for draft posts
+		if (!empty($draft_posts['items'])) {
+			foreach ($draft_posts['items'] as $item) {
+				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format);
+			}
+		}
 
 		$partial_generations = $this->history_repository->get_partial_generations(array(
 			'page' => $partial_page,
@@ -203,6 +222,7 @@ class AIPS_Generated_Posts_Controller {
 		
 		// Pass separate page variables for each tab
 		$current_page = $generated_page; // For Generated Posts tab
+		$review_current_page = $review_page; // For Pending Review tab
 		$partial_current_page = $partial_page; // For Partial Generations tab
 		
 		// Get templates for filter dropdown

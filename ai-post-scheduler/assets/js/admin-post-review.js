@@ -33,9 +33,8 @@
 		 * @return {void}
 		 */
 		bindEvents: function () {
-			// Select-all checkbox. WP_List_Table renders one in the top header and one
-			// in the footer (cb-select-all-1 / cb-select-all-2), so match both by id prefix.
-			$(document).on('change', 'input[id^="cb-select-all-"]', this.onSelectAllChange.bind(this));
+			// Select-all checkbox.
+			$(document).on('change', '#cb-select-all-1', this.onSelectAllChange.bind(this));
 
 			// Individual row checkbox.
 			$(document).on('change', '.aips-post-checkbox', this.onCheckboxChange.bind(this));
@@ -83,7 +82,7 @@
 		 */
 		onCheckboxChange: function (e) {
 			var allChecked = $('.aips-post-checkbox').length === $('.aips-post-checkbox:checked').length;
-			$('input[id^="cb-select-all-"]').prop('checked', allChecked);
+			$('#cb-select-all-1').prop('checked', allChecked);
 		},
 
 		// -----------------------------------------------------------------
@@ -339,7 +338,7 @@
 		 */
 		refreshList: function () {
 			AIPS.refreshContentPanel('#aips-pending-review-tab .aips-filter-bar', null, function () {
-				$('input[id^="cb-select-all-"]').prop('checked', false);
+				$('#cb-select-all-1').prop('checked', false);
 				AIPS.PostReview.syncHeaderCount();
 			});
 		},
@@ -405,13 +404,7 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								var msg;
-								if (response.data && response.data.queued) {
-									// Large selection: the server queued a background publish job.
-									msg = response.data.message || (aipsPostReviewL10n.bulkPublishQueued || '').replace('%d', count);
-								} else {
-									msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
-								}
+								var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
 								AIPS.Utilities.showToast(msg, 'success');
 								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {

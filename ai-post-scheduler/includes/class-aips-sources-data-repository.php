@@ -89,42 +89,25 @@ class AIPS_Sources_Data_Repository {
 			return false;
 		}
 
-		$extracted_text = isset( $data['extracted_text'] ) ? self::normalize_text( $data['extracted_text'] ) : '';
-		$snapshot_url   = isset( $data['url'] ) ? esc_url_raw( $data['url'] ) : '';
-		$content_hash   = '' !== $extracted_text ? self::content_hash( $snapshot_url, $extracted_text ) : null;
-		$char_count     = mb_strlen( $extracted_text, 'UTF-8' );
-		$now            = AIPS_DateTime::now()->timestamp();
+		$extracted_text = isset( $data['extracted_text'] ) ? sanitize_textarea_field( $data['extracted_text'] ) : '';
+		$content_hash   = '' !== $extracted_text ? hash( 'sha256', $extracted_text ) : null;
+		$char_count     = isset( $data['char_count'] ) ? absint( $data['char_count'] ) : ( function_exists( 'mb_strlen' ) ? mb_strlen( $extracted_text ) : strlen( $extracted_text ) );
 
 		// Skip if this exact content snapshot is already stored.
 		if ( null !== $content_hash ) {
 			$existing_id = $this->wpdb->get_var(
 				$this->wpdb->prepare(
-					"SELECT id FROM {$this->table_name} WHERE source_id = %d AND fetch_status = 'success' AND (content_hash = %s OR (BINARY url = BINARY %s AND BINARY extracted_text = BINARY %s)) LIMIT 1",
-					$source_id, $content_hash, $snapshot_url, $extracted_text
+					"SELECT id FROM {$this->table_name} WHERE source_id = %d AND content_hash = %s LIMIT 1",
+					$source_id,
+					$content_hash
 				)
 			);
 			if ( $existing_id ) {
 				return true;
 			}
-			if ( ! isset( $data['fetch_status'] ) || 'success' === $data['fetch_status'] ) {
-				// An editor may have marked this exact snapshot pending/failed.
-				// Restore usability after a real successful fetch without replacing
-				// its provenance or requiring legacy text-only hashes to be rewritten.
-				$promoted = $this->wpdb->query( $this->wpdb->prepare(
-					"UPDATE {$this->table_name} SET fetch_status = 'success', error_message = '', http_status = %d, updated_at = %d
-					 WHERE source_id = %d AND fetch_status IN ('pending', 'failed')
-					 AND BINARY url = BINARY %s AND BINARY extracted_text = BINARY %s LIMIT 1",
-					isset( $data['http_status'] ) ? absint( $data['http_status'] ) : 0,
-					$now, $source_id, $snapshot_url, $extracted_text
-				) );
-				if ( false === $promoted ) {
-					return false;
-				}
-				if ( $promoted > 0 ) {
-					return true;
-				}
-			}
 		}
+
+		$now = AIPS_DateTime::now()->timestamp();
 
 		$row = array(
 			'source_id'        => $source_id,
@@ -146,14 +129,7 @@ class AIPS_Sources_Data_Repository {
 
 		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d', '%d' );
 		$result = $this->wpdb->insert( $this->table_name, $row, $format );
-		if ( false !== $result ) {
-			return true;
-		}
-		// A concurrent identical insert is success only after verifying the row.
-		return null !== $content_hash && (bool) $this->wpdb->get_var( $this->wpdb->prepare(
-			"SELECT id FROM {$this->table_name} WHERE source_id = %d AND fetch_status = 'success' AND content_hash = %s AND BINARY extracted_text = BINARY %s LIMIT 1",
-			$source_id, $content_hash, $extracted_text
-		) );
+		return $result !== false;
 	}
 
 	/**
@@ -462,25 +438,9 @@ class AIPS_Sources_Data_Repository {
 	 * @return bool True when the update succeeded, false otherwise.
 	 */
 	public function update( $id, array $data ) {
-		return true === $this->update_with_result( $id, $data );
-	}
-
-	/** Normalize text identically before hashing, counting, and storage. */
-	public static function content_hash( string $url, string $text ): string {
-		return hash( 'sha256', $url . "\n" . $text );
-	}
-
-	public static function normalize_text( $text ): string {
-		$text = sanitize_textarea_field( (string) $text );
-		return trim( preg_replace( '/[\p{Z}\t]+/u', ' ', $text ) ?? '' );
-	}
-
-	/** Update an archive row with an actionable failure code. @return true|WP_Error */
-	public function update_with_result( $id, array $data ) {
 		$id = absint( $id );
-		$existing = $this->get_by_id( $id );
-		if ( ! $existing ) {
-			return new WP_Error( 'source_data_not_found', __( 'Source data record not found.', 'ai-post-scheduler' ) );
+		if ( $id <= 0 ) {
+			return false;
 		}
 
 		$allowed = array(
@@ -506,16 +466,11 @@ class AIPS_Sources_Data_Repository {
 		}
 
 		if ( empty( $row ) ) {
-			return new WP_Error( 'source_data_write_failed', __( 'No archive fields supplied.', 'ai-post-scheduler' ) );
+			return false;
 		}
 
-		if ( array_key_exists( 'extracted_text', $row ) || array_key_exists( 'url', $row ) ) {
-			if ( ! array_key_exists( 'extracted_text', $row ) ) {
-				$row['extracted_text'] = $existing->extracted_text;
-				$format[] = '%s';
-			}
-			$text       = self::normalize_text( $row['extracted_text'] );
-			$row['extracted_text'] = $text;
+		if ( array_key_exists( 'extracted_text', $row ) ) {
+			$text       = (string) $row['extracted_text'];
 			$char_count = function_exists( 'mb_strlen' ) ? mb_strlen( $text ) : strlen( $text );
 			if ( array_key_exists( 'char_count', $row ) ) {
 				$row['char_count'] = $char_count;
@@ -523,12 +478,8 @@ class AIPS_Sources_Data_Repository {
 				$row['char_count'] = $char_count;
 				$format[]          = '%d';
 			}
-			$row['content_hash'] = '' !== $text ? self::content_hash( isset( $row['url'] ) ? $row['url'] : $existing->url, $text ) : null;
+			$row['content_hash'] = '' !== $text ? hash( 'sha256', $text ) : null;
 			$format[]            = '%s';
-		}
-
-		if ( ! empty( $row['content_hash'] ) && $this->duplicate_content_id( $existing->source_id, $row['content_hash'], $id, $row['extracted_text'], $row['url'] ?? $existing->url ) ) {
-			return $this->duplicate_content_error();
 		}
 
 		$row['updated_at'] = AIPS_DateTime::now()->timestamp();
@@ -542,28 +493,7 @@ class AIPS_Sources_Data_Repository {
 			array( '%d' )
 		);
 
-		if ( false === $result ) {
-			if ( ! empty( $row['content_hash'] ) && $this->duplicate_content_id( $existing->source_id, $row['content_hash'], $id, $row['extracted_text'], $row['url'] ?? $existing->url ) ) {
-				return $this->duplicate_content_error();
-			}
-			return new WP_Error( 'source_data_write_failed', __( 'Failed to update source data.', 'ai-post-scheduler' ) );
-		}
-		if ( ! $this->get_by_id( $id ) ) {
-			return new WP_Error( 'source_data_not_found', __( 'Source data record not found.', 'ai-post-scheduler' ) );
-		}
-		return true;
-	}
-
-	private function duplicate_content_id( $source_id, $hash, $id, $text, $url ) {
-		return $this->wpdb->get_var( $this->wpdb->prepare(
-			"SELECT id FROM {$this->table_name} WHERE source_id = %d AND (content_hash = %s OR (BINARY extracted_text = BINARY %s AND BINARY url = BINARY %s)) AND id != %d LIMIT 1",
-			$source_id, $hash, $text, $url, $id
-		) );
-	}
-
-	private function duplicate_content_error() {
-		return new WP_Error( 'duplicate_source_content', __( 'Another archive snapshot for this source already contains this text. Both snapshots have been kept; change the text before saving.', 'ai-post-scheduler' ) );
-
+		return false !== $result;
 	}
 
 	/**
@@ -760,7 +690,36 @@ class AIPS_Sources_Data_Repository {
 	 * @return array<int,object> Map of source_id => row object (only rows where extracted_text is non-empty).
 	 */
 	public function get_extracted_texts_by_source_ids( array $source_ids ) {
-		return $this->pick_next_for_prompt_bulk( $source_ids );
+		if ( empty( $source_ids ) ) {
+			return array();
+		}
+
+		$source_ids   = array_map( 'absint', $source_ids );
+		$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
+
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT * FROM {$this->table_name}
+				 WHERE source_id IN ($placeholders)
+				   AND extracted_text != ''
+				   AND fetch_status = 'success'
+				 ORDER BY source_id ASC, num_used ASC, id ASC",
+				...$source_ids
+			)
+		);
+		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+		// Keep only the first (best) row per source_id.
+		$map = array();
+		foreach ( $rows as $row ) {
+			$sid = (int) $row->source_id;
+			if ( ! isset( $map[ $sid ] ) ) {
+				$map[ $sid ] = $row;
+			}
+		}
+		return $map;
 	}
 
 	/**
@@ -776,29 +735,34 @@ class AIPS_Sources_Data_Repository {
 	 * @return array<int,object> Map of source_id => row object (only success rows with extracted_text).
 	 */
 	public function pick_next_for_prompt_bulk( array $source_ids ) {
-		$source_ids = array_values( array_unique( array_filter( array_map( 'absint', $source_ids ) ) ) );
 		if ( empty( $source_ids ) ) {
 			return array();
 		}
+
+		$source_ids   = array_map( 'absint', $source_ids );
 		$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
-		$sources = $this->wpdb->prefix . 'aips_sources';
-		$rows = $this->wpdb->get_results( $this->wpdb->prepare(
-			"SELECT d.id, d.source_id, d.url, d.page_title, d.meta_description,
-			        d.extracted_text, d.char_count, d.num_used, d.fetched_at
-			 FROM {$this->table_name} d
-			 INNER JOIN {$sources} s ON s.id = d.source_id AND BINARY s.url = BINARY d.url
-			 LEFT JOIN {$this->table_name} better ON better.source_id = d.source_id
-			   AND BINARY better.url = BINARY s.url AND better.fetch_status = 'success'
-			   AND TRIM(better.extracted_text) != ''
-			   AND (better.num_used < d.num_used OR (better.num_used = d.num_used AND better.id < d.id))
-			 WHERE d.source_id IN ($placeholders) AND s.is_active = 1
-			   AND d.fetch_status = 'success' AND TRIM(d.extracted_text) != '' AND better.id IS NULL
-			 ORDER BY d.source_id ASC",
-			...$source_ids
-		) );
+
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT * FROM {$this->table_name}
+				 WHERE source_id IN ($placeholders)
+				   AND extracted_text != ''
+				   AND fetch_status = 'success'
+				 ORDER BY source_id ASC, num_used ASC, id ASC",
+				...$source_ids
+			)
+		);
+		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+		// PHP-side: keep the first row per source_id (lowest num_used, oldest id wins).
 		$map = array();
 		foreach ( $rows as $row ) {
-			$map[ (int) $row->source_id ] = $row;
+			$sid = (int) $row->source_id;
+			if ( ! isset( $map[ $sid ] ) ) {
+				$map[ $sid ] = $row;
+			}
 		}
 		return $map;
 	}
@@ -950,41 +914,4 @@ class AIPS_Sources_Data_Repository {
 			);
 		}
 	}
-	/** Shared retention predicate: preserve the newest usable current-URL snapshot. */
-	private function prunable_query( int $cutoff ): string {
-		$sources = $this->wpdb->prefix . 'aips_sources';
-		return $this->wpdb->prepare(
-			"FROM {$this->table_name} d
-			 LEFT JOIN {$sources} s ON s.id = d.source_id
-			 WHERE d.fetched_at < %d AND NOT (
-			   s.id IS NOT NULL AND BINARY d.url = BINARY s.url
-			   AND d.fetch_status = 'success' AND TRIM(d.extracted_text) != ''
-			   AND NOT EXISTS (SELECT 1 FROM {$this->table_name} newer
-			      WHERE newer.source_id = d.source_id AND BINARY newer.url = BINARY s.url
-			      AND newer.fetch_status = 'success' AND TRIM(newer.extracted_text) != ''
-			      AND (newer.fetched_at > d.fetched_at OR (newer.fetched_at = d.fetched_at AND newer.id > d.id)))
-			 )", $cutoff
-		);
-	}
-
-	public function count_prunable_archive( int $cutoff ): int {
-		$count = $this->wpdb->get_var( 'SELECT COUNT(*) ' . $this->prunable_query( $cutoff ) );
-		if ( ! empty( $this->wpdb->last_error ) ) {
-			throw new RuntimeException( 'Could not count eligible source archive rows.' );
-		}
-		return (int) $count;
-	}
-
-	/** Delete only archive rows; generation history retains its snapshot metadata. @return int|false */
-	public function prune_archive( int $cutoff, int $limit = 100 ) {
-		$limit = max( 1, min( 100, $limit ) );
-		// The LIMIT forces materialization of the derived table (MySQL 5.7+),
-		// allowing a self-referencing deletion while checking eligibility in
-		// the same statement instead of deleting stale, previously selected IDs.
-		$candidates = 'SELECT d.id ' . $this->prunable_query( $cutoff ) . ' ORDER BY d.fetched_at ASC, d.id ASC LIMIT ' . $limit;
-		return $this->wpdb->query(
-			"DELETE FROM {$this->table_name} WHERE id IN (SELECT id FROM ($candidates) AS prunable_archive)"
-		);
-	}
-
 }

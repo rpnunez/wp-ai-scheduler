@@ -28,12 +28,12 @@
 }
 
 .aips-stat-card.aips-bg-active {
-	border-color: var(--aips-primary);
+	border-color: #2271b1;
 	animation: aips-bg-pulse 2s ease-out infinite;
 }
 
 .aips-stat-card.aips-bg-paused {
-	border-color: var(--aips-warning);
+	border-color: #dba617;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -60,7 +60,7 @@
 	gap: 6px;
 	margin: 0 0 8px;
 	font-size: 12px;
-	color: var(--aips-gray-600);
+	color: #50575e;
 }
 
 .aips-bg-controls .aips-bg-buttons {
@@ -73,15 +73,15 @@
 	display: inline-block;
 	padding: 1px 8px;
 	border-radius: 10px;
-	background: var(--aips-gray-50);
-	color: var(--aips-gray-600);
+	background: #f0f0f1;
+	color: #50575e;
 	font-size: 11px;
 	font-weight: 600;
 }
 
 [data-aips-bg-status="running"] .aips-bg-chip {
 	background: #e5f1fa;
-	color: var(--aips-primary-hover);
+	color: #135e96;
 }
 
 [data-aips-bg-status="waiting_quota"] .aips-bg-chip,
@@ -101,7 +101,7 @@
 .aips-bg-table .aips-bg-progress-bar {
 	height: 6px;
 	border-radius: 3px;
-	background: var(--aips-gray-100);
+	background: #dcdcde;
 	overflow: hidden;
 	margin-top: 4px;
 }
@@ -109,7 +109,7 @@
 .aips-bg-table .aips-bg-progress-bar > span {
 	display: block;
 	height: 100%;
-	background: var(--aips-primary);
+	background: #2271b1;
 	transition: width 0.4s ease;
 }
 
@@ -122,7 +122,7 @@
 	display: block;
 	margin-top: 2px;
 	font-size: 12px;
-	color: var(--aips-gray-500);
+	color: #646970;
 }
 
 .aips-bg-table .aips-bg-actions {
@@ -149,7 +149,7 @@
 	height: 8px;
 	margin-left: 6px;
 	border-radius: 50%;
-	background: var(--aips-success);
+	background: #00a32a;
 	vertical-align: middle;
 }
 
@@ -189,7 +189,7 @@
 	letter-spacing: 0.05em;
 	text-transform: uppercase;
 	font-weight: 600;
-	color: var(--aips-gray-50);
+	color: #f0f0f1;
 }
 
 /* Compact row: [play/pause] label ........ 14 / 578 · Paused, thin progress bar underneath. */
@@ -213,7 +213,7 @@
 	white-space: nowrap;
 	font-size: 12px;
 	line-height: 1.4;
-	color: var(--aips-gray-50);
+	color: #f0f0f1;
 }
 
 #wpadminbar .aips-bg-item-status,
@@ -221,7 +221,7 @@
 #wpadminbar .aips-bg-none {
 	font-size: 12px;
 	line-height: 1.4;
-	color: var(--aips-gray-300);
+	color: #a7aaad;
 }
 
 #wpadminbar .aips-bg-item-meta {
@@ -262,7 +262,7 @@
 #wpadminbar .aips-bg-toggle:hover,
 #wpadminbar .aips-bg-toggle:focus {
 	background: rgba(255, 255, 255, 0.18);
-	color: var(--aips-white);
+	color: #fff;
 }
 
 #wpadminbar .aips-bg-toggle .dashicons {
@@ -307,16 +307,16 @@
 	max-width: 360px;
 	padding: 10px 14px;
 	border-radius: 4px;
-	background: var(--aips-gray-900);
-	color: var(--aips-white);
+	background: #1d2327;
+	color: #fff;
 	font-size: 13px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .aips-bg-toast-error {
-	background: var(--aips-error);
+	background: #d63638;
 }
 
 .aips-bg-toast-success {
-	background: var(--aips-success);
+	background: #00a32a;
 }

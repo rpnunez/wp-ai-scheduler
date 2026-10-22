@@ -608,34 +608,4 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 		$this->assertTrue( $result['success'] );
 	}
-
-	public function test_empty_malformed_and_truncated_bodies_never_store_success() {
-		$cases = array(
-			array( '<rss><broken>', 'application/rss+xml' ),
-			array( '{broken', 'application/json' ),
-			array( '<body><script>noise</script>  </body>', 'text/html' ),
-			array( '', 'text/html' ),
-			array( str_repeat( 'x', 2097152 ), 'text/html' ),
-		);
-		foreach ( $cases as $case ) {
-			$repo = $this->createMock( AIPS_Sources_Data_Repository::class );
-			$sources = $this->createMock( AIPS_Sources_Repository::class );
-			$repo->expects( $this->never() )->method( 'insert_if_new' );
-			$repo->expects( $this->once() )->method( 'mark_fetch_failed' );
-			$sources->expects( $this->once() )->method( 'update_after_fetch' )->with( 42, false, $this->isType( 'string' ) );
-			$filter = function ( $pre, $args ) use ( $case ) {
-				$this->assertSame( 2097152, $args['limit_response_size'] );
-				$this->assertTrue( $args['reject_unsafe_urls'] );
-				return $this->make_http_response( $case[0], 200, array( 'content-type' => $case[1] ) );
-			};
-			add_filter( 'pre_http_request', $filter, 10, 2 );
-			try {
-				$result = ( new AIPS_Sources_Fetcher( $repo, $sources ) )->fetch( $this->make_source( 42, 'https://example.com' ) );
-				$this->assertFalse( $result['success'] );
-			} finally {
-				remove_filter( 'pre_http_request', $filter, 10 );
-			}
-		}
-	}
-
 }

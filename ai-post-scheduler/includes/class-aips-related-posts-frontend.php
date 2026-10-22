@@ -55,16 +55,9 @@ class AIPS_Related_Posts_Frontend {
 	public function enqueue_assets() {
 		if ($this->config->get_option('aips_related_posts_enabled', true)) {
 			wp_register_style(
-				'aips-design-tokens',
-				AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
-				array(),
-				AIPS_VERSION
-			);
-
-			wp_register_style(
 				'aips-related-posts',
 				AIPS_PLUGIN_URL . 'assets/css/related-posts.css',
-				array('aips-design-tokens'),
+				array(),
 				AIPS_VERSION
 			);
 

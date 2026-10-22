@@ -173,8 +173,4 @@ jQuery(document).ready(function ($) {
 			window.location.reload();
 		});
 	});
-
-	if (typeof window.AIPS !== 'undefined' && window.AIPS.AIAssistance) {
-		window.AIPS.AIAssistance.init({ formContext: 'content_strategy' });
-	}
 });

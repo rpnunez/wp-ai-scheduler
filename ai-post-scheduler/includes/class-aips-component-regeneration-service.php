@@ -293,9 +293,7 @@ class AIPS_Component_Regeneration_Service {
 		$prompt = $this->post_content_prompt_builder->build($generation_context);
 
 		// Generate content using the prompt
-		$result = $this->generator->generate_content($prompt, array(
-			'_aips_sources_selection' => $this->post_content_prompt_builder->get_sources_selection(),
-		));
+		$result = $this->generator->generate_content($prompt);
 		
 		if (is_wp_error($result)) {
 			return $result;
@@ -384,12 +382,10 @@ class AIPS_Component_Regeneration_Service {
 			$context['history_container'] = $trigger_container; // Reused by the per-component calls below.
 		}
 
-		$unrecoverable = array('rate_limit_exceeded', 'circuit_breaker_open', 'ai_unavailable', 'invalid_api_key');
-
 		$title = $this->regenerate_title($context);
 		if (is_wp_error($title)) {
 			$result['errors']['title'] = $title->get_error_message();
-			if (in_array($title->get_error_code(), $unrecoverable, true)) {
+			if (AIPS_AI_Service::is_unrecoverable_error($title)) {
 				$result['skipped']['content'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
 				$result['skipped']['excerpt'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
 				$result['skipped']['featured_image'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
@@ -403,7 +399,7 @@ class AIPS_Component_Regeneration_Service {
 		$content = $this->regenerate_content($context);
 		if (is_wp_error($content)) {
 			$result['errors']['content'] = $content->get_error_message();
-			if (in_array($content->get_error_code(), $unrecoverable, true)) {
+			if (AIPS_AI_Service::is_unrecoverable_error($content)) {
 				$result['skipped']['excerpt'] = __('Skipped due to provider failure during content generation.', 'ai-post-scheduler');
 				$result['skipped']['featured_image'] = __('Skipped due to provider failure during content generation.', 'ai-post-scheduler');
 				return $result;
@@ -416,7 +412,7 @@ class AIPS_Component_Regeneration_Service {
 		$excerpt = $this->regenerate_excerpt($context);
 		if (is_wp_error($excerpt)) {
 			$result['errors']['excerpt'] = $excerpt->get_error_message();
-			if (in_array($excerpt->get_error_code(), $unrecoverable, true)) {
+			if (AIPS_AI_Service::is_unrecoverable_error($excerpt)) {
 				$result['skipped']['featured_image'] = __('Skipped due to provider failure during excerpt generation.', 'ai-post-scheduler');
 				return $result;
 			}

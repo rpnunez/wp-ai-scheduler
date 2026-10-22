@@ -640,8 +640,7 @@
 					return;
 				}
 
-				var fetched = response.data.fetch_result && response.data.fetch_result.success;
-				AIPS.Utilities.showToast(response.data.message, fetched ? 'success' : 'error');
+				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.refreshPage();
 			}).fail(function () {
 				AIPS.Utilities.showToast('Fetch failed.', 'error');
@@ -719,10 +718,6 @@
 
 	$(document).ready(function () {
 		AIPS.initSources();
-
-		if (typeof AIPS.AIAssistance !== 'undefined') {
-			AIPS.AIAssistance.init({ formContext: 'sources' });
-		}
 	});
 
 })(jQuery);

@@ -16,7 +16,7 @@
 }
 
 .topic-item {
-    background: var(--aips-white);
+    background: #fff;
     padding: 4px 8px;
     border: 1px solid #eee;
     display: flex;
@@ -35,7 +35,7 @@
     background: transparent;
     padding: 3px 5px;
     font-size: 14px;
-    color: var(--aips-gray-900);
+    color: #1d2327;
 }
 
 .aips-remove-topic-btn {
@@ -55,7 +55,7 @@
 
 .aips-remove-topic-btn:hover {
     background: #fee2e2;
-    color: var(--aips-error);
+    color: #d63638;
 }
 
 .aips-remove-topic-btn .dashicons {
@@ -66,13 +66,13 @@
 
 .topic-text-input:hover {
     border: 1px solid #ccc;
-    background: var(--aips-white);
+    background: #fff;
 }
 
 .topic-text-input:focus {
-    border: 1px solid var(--aips-primary);
-    background: var(--aips-white);
-    box-shadow: 0 0 0 1px var(--aips-primary);
+    border: 1px solid #2271b1;
+    background: #fff;
+    box-shadow: 0 0 0 1px #2271b1;
     outline: none;
 }
 
@@ -95,7 +95,7 @@
 .aips-planner-divider {
     margin: 24px 0;
     border: none;
-    border-top: 1px solid var(--aips-border-color);
+    border-top: 1px solid var(--aips-border-color, #ddd);
 }
 
 .aips-planner-results { margin-top: 0;
@@ -113,7 +113,7 @@
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--aips-border-color);
+    border-bottom: 1px solid var(--aips-border-color, #ddd);
 }
 
 .aips-planner-select-all {
@@ -128,7 +128,7 @@
 
 .aips-planner-selection-count {
     margin-left: 16px;
-    color: var(--aips-gray-500);
+    color: #646970;
 }
 
 .aips-planner-toolbar-right {
@@ -144,7 +144,7 @@
 .aips-planner-schedule-settings {
     margin-top: 24px;
     padding-top: 24px;
-    border-top: 1px solid var(--aips-border-color);
+    border-top: 1px solid var(--aips-border-color, #ddd);
 }
 
 .aips-planner-schedule-settings h4 {

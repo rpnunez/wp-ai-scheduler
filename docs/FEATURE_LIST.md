@@ -227,7 +227,7 @@ Extracted from `AIPS_AI_Service` to separate reliability concerns:
 - Rate limiter (request-per-minute cap)
 - Retry logic with exponential backoff
 
-### AI Edit — Component Editing (`AIPS_AI_Edit_Controller`, `AIPS_Component_Regeneration_Service`)
+### AI Assistance — Component Editing (`AIPS_AI_Edit_Controller`, `AIPS_Component_Regeneration_Service`)
 Post-generation editing via AI:
 
 - Regenerate individual post components: title, content, excerpt, or featured image

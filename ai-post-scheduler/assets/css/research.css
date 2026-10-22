@@ -45,7 +45,7 @@
 }
 
 .aips-research-table th {
-    background: var(--aips-gray-tint);
+    background: #f6f7f7;
     font-weight: 600;
 }
 
@@ -57,10 +57,10 @@
 .topic-badge {
     display: inline-block;
     padding: 3px 8px;
-    background: var(--aips-gray-50);
+    background: #f0f0f1;
     border-radius: 3px;
     font-size: 12px;
-    color: var(--aips-gray-500);
+    color: #646970;
 }
 
 /* Research Actions */
@@ -78,7 +78,7 @@
 .aips-empty-research {
     text-align: center;
     padding: 40px 20px;
-    color: var(--aips-gray-500);
+    color: #646970;
 }
 
 .aips-empty-research .dashicons {
@@ -108,13 +108,13 @@
     border: 1px solid #ccd0d4;
     border-radius: 3px;
     text-decoration: none;
-    color: var(--aips-primary);
+    color: #2271b1;
 }
 
 .aips-research-pagination .page-numbers span.current {
-    background: var(--aips-primary);
-    color: var(--aips-white);
-    border-color: var(--aips-primary);
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
 }
 
 /* Gap Analysis Grid */
@@ -125,9 +125,9 @@
 }
 
 .aips-gap-card {
-    background: var(--aips-white);
+    background: #fff;
     border: 1px solid #ccd0d4;
-    border-left: 4px solid var(--aips-error); /* Red for missing/alert */
+    border-left: 4px solid #d63638; /* Red for missing/alert */
     border-radius: 4px;
     padding: 20px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -137,13 +137,13 @@
 }
 
 .aips-gap-card.priority-medium {
-    border-left-color: var(--aips-warning); /* Orange for medium */
+    border-left-color: #dba617; /* Orange for medium */
 }
 
 .aips-gap-card h4 {
     margin: 0 0 10px;
     font-size: 16px;
-    color: var(--aips-gray-900);
+    color: #1d2327;
 }
 
 .aips-gap-badge {
@@ -158,24 +158,24 @@
 
 .aips-gap-badge.high {
     background-color: #fbeaea;
-    color: var(--aips-error);
+    color: #d63638;
 }
 
 .aips-gap-badge.medium {
     background-color: #fdf3d6;
-    color: var(--aips-warning);
+    color: #dba617;
 }
 
 .aips-gap-reason {
     font-size: 13px;
-    color: var(--aips-gray-600);
+    color: #50575e;
     margin-bottom: 15px;
     line-height: 1.4;
 }
 
 .aips-gap-intent {
     font-size: 12px;
-    color: var(--aips-gray-500);
+    color: #646970;
     margin-bottom: 15px;
     font-style: italic;
 }
@@ -200,8 +200,8 @@
     display: inline-block;
     padding: 2px 8px;
     margin-top: 4px;
-    background-color: var(--aips-primary);
-    color: var(--aips-white);
+    background-color: #2271b1;
+    color: #fff;
     border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
@@ -211,7 +211,7 @@
 }
 
 .aips-post-count-badge:hover {
-    background-color: var(--aips-primary-hover);
+    background-color: #135e96;
 }
 
 .aips-post-count-badge .dashicons {

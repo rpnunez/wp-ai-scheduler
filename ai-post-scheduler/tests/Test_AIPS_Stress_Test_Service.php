@@ -11,31 +11,11 @@ class AIPS_Test_Stress_Logger implements AIPS_Logger_Interface {
     public function addSeparator($text) {}
 }
 
-class AIPS_Test_Stress_AI_Service implements AIPS_AI_Service_Interface {
+class AIPS_Test_Stress_AI_Service {
     public $json_options = array();
 
     public function is_available() {
         return true;
-    }
-
-    public function generate_text($prompt, $options = array()) {
-        return 'Generated text value for stress test.';
-    }
-
-    public function generate_image($prompt, $options = array()) {
-        return new WP_Error('image_unsupported', 'Image generation is not stubbed.');
-    }
-
-    public function generate_embedding($text, $options = array()) {
-        return array_fill(0, 768, 0.05);
-    }
-
-    public function supports_embeddings() {
-        return true;
-    }
-
-    public function supports_conversation() {
-        return false;
     }
 
     public function clear_call_log() {}
@@ -62,21 +42,9 @@ class AIPS_Test_Stress_AI_Service implements AIPS_AI_Service_Interface {
  * AI service stub whose generate_json returns a value for every integration
  * field key the meta cases use, so the write-back path can be exercised.
  */
-class AIPS_Test_Stress_Meta_AI_Service implements AIPS_AI_Service_Interface {
+class AIPS_Test_Stress_Meta_AI_Service {
     public function is_available() {
         return true;
-    }
-
-    public function generate_image($prompt, $options = array()) {
-        return new WP_Error('image_unsupported', 'Image generation is not stubbed.');
-    }
-
-    public function supports_embeddings() {
-        return true;
-    }
-
-    public function supports_conversation() {
-        return false;
     }
 
     public function clear_call_log() {}

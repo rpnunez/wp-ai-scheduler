@@ -26,17 +26,10 @@ class AIPS_Background_Process_Assets {
 			return;
 		}
 
-		wp_register_style(
-			'aips-design-tokens',
-			AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
-			array(),
-			AIPS_Admin_Bar::asset_version('assets/css/design-tokens.css')
-		);
-
 		wp_enqueue_style(
 			'aips-background-processes',
 			AIPS_PLUGIN_URL . 'assets/css/background-processes.css',
-			array('aips-design-tokens'),
+			array(),
 			AIPS_Admin_Bar::asset_version('assets/css/background-processes.css')
 		);
 

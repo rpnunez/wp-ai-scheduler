@@ -3033,10 +3033,6 @@
 		AuthorsModule.init();
 		GenerationQueueModule.init();
 
-		if (typeof AIPS !== 'undefined' && AIPS.AIAssistance) {
-			AIPS.AIAssistance.init({ formContext: 'authors' });
-		}
-
 		// On the Author Topics full-page view, auto-load topics for the current author.
 		// The author ID is passed via aipsAuthorContext.authorId (set by PHP when the
 		// page param is 'aips-author-topics'), so no inline script injection is needed.

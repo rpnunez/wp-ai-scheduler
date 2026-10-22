@@ -1,16 +1,14 @@
-# AI Edit — Revision Viewer
+# AI Assistance — Revision Viewer
 
 ## Overview
 
-The AI Edit feature includes a Revision Viewer that allows users to view and restore previous versions of post components (title, excerpt, content, featured image).
-
-> **Not to be confused with:** this is unrelated to the **AI Assistance** per-field ✨/🕐 widget (see `docs/features/ai-assistance/AI_ASSISTANCE_DEV_GUIDE.md`). The revision viewer described here is part of AI Edit's post-component regeneration flow, with its own controller, service, and runtime files (listed below).
+The AI Assistance feature includes a Revision Viewer that allows users to view and restore previous versions of post components (title, excerpt, content, featured image).
 
 ## User Interface
 
 ### Component Structure
 
-Each component in the AI Edit modal has:
+Each component in the AI Assistance modal has:
 
 1. **Component Header** - Title and Regenerate button
 2. **Component Body** - Input field (text/textarea/image)
@@ -128,6 +126,8 @@ Added to each component section:
 
 #### 2. CSS Styling
 
+> **Compatibility note:** The runtime files below retain their original `ai-edit` filenames. These names are legacy identifiers in the codebase and will be updated in a separate refactoring pass.
+
 **File:** `assets/css/admin-ai-edit.css`
 
 **Key Classes:**
@@ -170,6 +170,8 @@ $(document).on('click', '.aips-restore-revision-btn', window.AIPS.restoreRevisio
 ### Backend Integration
 
 #### AJAX Endpoints
+
+> **Compatibility note:** These AJAX action names use the legacy `aips_*_component*` convention. They remain unchanged for runtime compatibility.
 
 **1. Get Component Revisions**
 - **Action:** `aips_get_component_revisions`
@@ -215,7 +217,7 @@ $(document).on('click', '.aips-restore-revision-btn', window.AIPS.restoreRevisio
 
 ### Viewing Revisions
 
-1. User opens AI Edit modal for a post
+1. User opens AI Assistance modal for a post
 2. User clicks "View Revisions" button on any component
 3. System:
    - Shows loading spinner
@@ -287,6 +289,8 @@ Every action has visual feedback:
 - [ ] Works for all component types (title, excerpt, content, image)
 
 ## Related Files
+
+> **Compatibility note:** The runtime files listed below retain their original `ai-edit` filenames. These are legacy identifiers in the codebase and will be updated in a separate refactoring pass.
 
 - `templates/admin/generated-posts.php`
 - `assets/css/admin-ai-edit.css`

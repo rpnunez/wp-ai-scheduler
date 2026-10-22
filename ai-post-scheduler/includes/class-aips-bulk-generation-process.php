@@ -74,7 +74,7 @@ class AIPS_Bulk_Generation_Process extends AIPS_Background_Process_Base {
 	private function get_job_types(): array {
 		return array_values(array_filter(array_map('sanitize_key', (array) apply_filters(
 			'aips_bulk_generation_job_types',
-			array('author_topic_post', 'planner_post', 'trending_topic_post', 'review_publish')
+			array('author_topic_post', 'planner_post', 'trending_topic_post')
 		))));
 	}
 

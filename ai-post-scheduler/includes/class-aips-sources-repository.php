@@ -291,22 +291,26 @@ class AIPS_Sources_Repository {
 	 *
 	 * @param int   $source_id Source ID.
 	 * @param int[] $term_ids  Array of term IDs (may be empty to clear all groups).
-	 * @return bool True only when all replacements commit.
+	 * @return void
 	 */
 	public function set_source_terms($source_id, array $term_ids) {
-		if ( false === $this->wpdb->query( 'START TRANSACTION' ) ) { return false; }
-		$ok = false !== $this->wpdb->delete( $this->groups_table, array( 'source_id' => $source_id ), array( '%d' ) );
-		foreach ( array_unique( array_map( 'absint', $term_ids ) ) as $term_id ) {
-			if ( ! $ok ) { break; }
-			if ( $term_id > 0 ) {
-				$ok = false !== $this->wpdb->insert( $this->groups_table, array( 'source_id' => $source_id, 'term_id' => $term_id ), array( '%d', '%d' ) );
+		// Remove all existing assignments for this source.
+		$this->wpdb->delete(
+			$this->groups_table,
+			array('source_id' => $source_id),
+			array('%d')
+		);
+
+		foreach ($term_ids as $term_id) {
+			$term_id = (int) $term_id;
+			if ($term_id > 0) {
+				$this->wpdb->insert(
+					$this->groups_table,
+					array('source_id' => $source_id, 'term_id' => $term_id),
+					array('%d', '%d')
+				);
 			}
 		}
-		if ( ! $ok || false === $this->wpdb->query( 'COMMIT' ) ) {
-			$this->wpdb->query( 'ROLLBACK' );
-			return false;
-		}
-		return true;
 	}
 
 	/**
@@ -360,12 +364,6 @@ class AIPS_Sources_Repository {
 	// Scheduled-fetch helpers (Phase 1.4 / 2.4.0)
 	// -------------------------------------------------------------------------
 
-	/** Earliest active automatically scheduled source; NULL due times are immediately due. */
-	public function get_next_fetch_at(): ?int {
-		$value = $this->wpdb->get_var( "SELECT MIN(COALESCE(next_fetch_at, 0)) FROM {$this->table_name} WHERE is_active = 1 AND fetch_interval IS NOT NULL AND fetch_interval != ''" );
-		return null === $value ? null : (int) $value;
-	}
-
 	/**
 	 * Get sources that are due for a fetch run.
 	 *
@@ -386,7 +384,7 @@ class AIPS_Sources_Repository {
 				  AND fetch_interval IS NOT NULL
 				  AND fetch_interval != ''
 				  AND (next_fetch_at IS NULL OR next_fetch_at <= %d)
-				ORDER BY next_fetch_at ASC, id ASC
+				ORDER BY next_fetch_at ASC
 				LIMIT %d",
 				$current_time,
 				$limit
@@ -403,10 +401,6 @@ class AIPS_Sources_Repository {
 	 * @return bool True on success, false on failure.
 	 */
 	public function set_fetch_schedule( $id, $interval_key ) {
-		$source = $this->get_by_id( absint( $id ) );
-		if ( ! $source ) { return false; }
-		$interval_key = null === $interval_key || '' === $interval_key ? null : sanitize_text_field( $interval_key );
-		if ( $interval_key === ( $source->fetch_interval ?: null ) && ( null !== $interval_key || null === $source->next_fetch_at ) ) { return true; }
 		$data   = array();
 		$format = array();
 
@@ -453,7 +447,7 @@ class AIPS_Sources_Repository {
 	 * @param bool $success Whether the fetch was successful.
 	 * @return void
 	 */
-	public function update_after_fetch( $id, $success, $error = '' ) {
+	public function update_after_fetch( $id, $success ) {
 		$id     = absint( $id );
 		$source = $this->get_by_id( $id );
 
@@ -461,12 +455,8 @@ class AIPS_Sources_Repository {
 			return;
 		}
 
-		$data = array(
-			'last_fetch_attempt_at' => AIPS_DateTime::now()->timestamp(),
-			'last_fetch_status' => $success ? 'success' : 'failed',
-			'last_fetch_error' => $success ? null : sanitize_text_field( $error ),
-		);
-		$format = array( '%d', '%s', '%s' );
+		$data   = array();
+		$format = array();
 
 		if ( $success ) {
 			$data['last_fetched_at'] = AIPS_DateTime::now()->timestamp();

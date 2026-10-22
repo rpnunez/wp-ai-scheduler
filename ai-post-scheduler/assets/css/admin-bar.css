@@ -39,7 +39,7 @@
 	height: 18px;
 	padding: 0 4px;
 	border-radius: 9px;
-	background: var(--aips-ab-error);
+	background: #d63638;
 	color: #fff;
 	font-size: 11px;
 	font-weight: 600;
@@ -50,17 +50,10 @@
 
 /* -------------------------------------------------------
    Palette (single source of truth for row accents)
-
-   Defined on :root rather than the toolbar node so every selector in
-   this file can rely on these vars resolving with no fallback needed.
-   This file is intentionally self-contained (loaded standalone on the
-   front-end toolbar, not just wp-admin) rather than referencing the
-   shared --aips-* tokens in admin.css, which isn't guaranteed loaded here.
 ------------------------------------------------------- */
-:root {
+#wpadminbar #wp-admin-bar-aips-toolbar {
 	--aips-ab-success: #00a32a;
 	--aips-ab-review: #72aee6;
-	--aips-ab-review-hover: #a8d0f0;
 	--aips-ab-warning: #f0b429;
 	--aips-ab-error: #d63638;
 	--aips-ab-info: #8c8f94;
@@ -130,7 +123,7 @@
 #wpadminbar .aips-toolbar-group-notifications,
 #wpadminbar .aips-bg-items {
 	scrollbar-width: thin;
-	scrollbar-color: var(--aips-ab-scroll-thumb) transparent;
+	scrollbar-color: var(--aips-ab-scroll-thumb, rgba(255, 255, 255, 0.22)) transparent;
 }
 
 #wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar,
@@ -191,7 +184,7 @@
 #wpadminbar #wp-admin-bar-aips-toolbar-bg-all > .ab-item:hover,
 #wpadminbar #wp-admin-bar-aips-toolbar-bg-all > .ab-item:focus {
 	background: rgba(255, 255, 255, 0.1);
-	color: var(--aips-ab-review);
+	color: #72aee6;
 }
 
 /* Dashicons inside the toolbar: force the icon font so glyphs never fall back to a box. */
@@ -383,12 +376,12 @@
 }
 
 #wpadminbar .aips-notif-message a {
-	color: var(--aips-ab-review);
+	color: #72aee6;
 	text-decoration: underline;
 }
 
 #wpadminbar .aips-notif-message a:hover {
-	color: var(--aips-ab-review-hover);
+	color: #a8d0f0;
 }
 
 #wpadminbar .aips-mark-read {
@@ -405,7 +398,7 @@
 
 #wpadminbar .aips-mark-read:hover,
 #wpadminbar .aips-mark-read:focus {
-	color: var(--aips-ab-success-text);
+	color: #4ab866;
 }
 
 #wpadminbar .aips-mark-read .dashicons {
@@ -465,7 +458,7 @@
 #wpadminbar #wp-admin-bar-aips-toolbar .aips-bg-toggle:focus-visible,
 #wpadminbar #wp-admin-bar-aips-toolbar-links > li > .ab-item:focus-visible,
 #wpadminbar #wp-admin-bar-aips-toolbar-bg-all > .ab-item:focus-visible {
-	outline: 2px solid var(--aips-ab-review);
+	outline: 2px solid #72aee6;
 	outline-offset: -2px;
 }
 

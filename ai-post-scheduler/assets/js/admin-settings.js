@@ -528,10 +528,6 @@
 		if ($('#aips_cache_driver').length) {
 			$(document).on('change', '#aips_cache_driver', updateCacheDriverFields);
 		}
-
-		if (typeof AIPS.AIAssistance !== 'undefined') {
-			AIPS.AIAssistance.init({ formContext: 'content_strategy' });
-		}
 	});
 
 })(jQuery);

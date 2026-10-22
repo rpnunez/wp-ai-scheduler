@@ -255,7 +255,34 @@ class AIPS_Post_Review {
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 
-		$result = $this->publish_review_post($post_id);
+		if (!$post_id) {
+			$this->log_review_action(0, __('Post publish failed: Invalid post ID', 'ai-post-scheduler'), 'post_published', 'failed');
+			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
+		}
+
+		// Verify the post exists and is a draft managed by this plugin
+		$post = get_post($post_id);
+		if (!$post || $post->post_status !== 'draft') {
+			$this->log_review_action($post_id, __('Post publish failed: Post not found or not a draft', 'ai-post-scheduler'), 'post_published', 'failed');
+			AIPS_Ajax_Response::error(__('Post not found or not a draft.', 'ai-post-scheduler'));
+		}
+
+		// Verify the post is in the review queue (has a history record)
+		if (!$this->history_service->post_has_history_and_completed($post_id)) {
+			$this->log_review_action($post_id, __('Post publish failed: Post not found in review queue', 'ai-post-scheduler'), 'post_published', 'failed');
+			AIPS_Ajax_Response::error(__('Post not found in review queue.', 'ai-post-scheduler'));
+		}
+
+		// Check per-post capability
+		if (!current_user_can('publish_post', $post_id)) {
+			$this->log_review_action($post_id, __('Post publish failed: Insufficient permissions', 'ai-post-scheduler'), 'post_published', 'failed');
+			AIPS_Ajax_Response::error(__('You do not have permission to publish this post.', 'ai-post-scheduler'));
+		}
+
+		$result = wp_update_post(array(
+			'ID' => $post_id,
+			'post_status' => 'publish',
+		));
 
 		if (is_wp_error($result)) {
 			$this->log_review_action($post_id, sprintf(__('Post publish failed: %s', 'ai-post-scheduler'), $result->get_error_message()), 'post_published', 'failed', array('error' => $result->get_error_message()));
@@ -264,6 +291,13 @@ class AIPS_Post_Review {
 
 		// Log the publish activity
 		$this->log_review_action($post_id, __('Post published from review queue', 'ai-post-scheduler'), 'post_published', 'success');
+
+		/**
+		 * Fires after a post is published from the review queue.
+		 *
+		 * @param int $post_id Post ID that was published.
+		 */
+		do_action('aips_post_review_published', $post_id);
 
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post published successfully.', 'ai-post-scheduler'),
@@ -300,37 +334,59 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
 		}
 		
-		// Large selections publish in the background so the request returns
-		// immediately; small ones publish synchronously. The cutoff is admin-
-		// configurable (Settings → Bulk Publish Background Threshold, default 30);
-		// the filter still allows a programmatic override.
-		$configured      = (int) AIPS_Config::get_instance()->get_option('aips_bulk_publish_async_threshold');
-		$async_threshold = max(2, (int) apply_filters('aips_bulk_publish_async_threshold', $configured > 0 ? $configured : 30));
-
-		if (count($post_ids) >= $async_threshold) {
-			$this->dispatch_bulk_publish_async($post_ids);
-			return;
-		}
-
-		// A summary container for the whole action; each post also gets its own
-		// linked row so its publish outcome is traceable from the post.
-		$bulk_history  = $this->history_service->create('post_review_action', array());
+		// A summary container for the whole action; each post also gets its own linked row
+		// so its publish outcome is traceable from the post.
+		$bulk_history = $this->history_service->create('post_review_action', array());
 		$success_count = 0;
-		$failed_count  = 0;
+		$failed_count = 0;
 
-		if (function_exists('_prime_post_caches')) {
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
 			_prime_post_caches(array_unique(array_map('intval', $post_ids)), false, true);
 		}
 
 		foreach ($post_ids as $post_id) {
-			$result = $this->publish_review_post($post_id);
+			// Verify the post exists and is a draft
+			$post = get_post($post_id);
+			if (!$post || $post->post_status !== 'draft') {
+				$failed_count++;
+				$this->log_review_action($post_id, __('Bulk publish failed: Post not found or not a draft', 'ai-post-scheduler'), 'post_published', 'failed');
+				continue;
+			}
 
-			if (is_wp_error($result)) {
+			// Verify the post is in the review queue
+			if (!$this->history_service->post_has_history_and_completed($post_id)) {
+				$failed_count++;
+				$this->log_review_action($post_id, __('Bulk publish failed: Post not in review queue', 'ai-post-scheduler'), 'post_published', 'failed');
+				continue;
+			}
+
+			// Check per-post capability
+			if (!current_user_can('publish_post', $post_id)) {
+				$failed_count++;
+				$this->log_review_action($post_id, __('Bulk publish failed: Insufficient permissions', 'ai-post-scheduler'), 'post_published', 'failed');
+				continue;
+			}
+
+			$result = wp_update_post(array(
+				'ID' => $post_id,
+				'post_status' => 'publish',
+			));
+
+			if (!is_wp_error($result)) {
+				$success_count++;
+
+				// Log the publish activity
+				$this->log_review_action($post_id, __('Post published from review queue (bulk)', 'ai-post-scheduler'), 'post_published', 'success');
+
+				/**
+				 * Fires after a post is published from the review queue.
+				 *
+				 * @param int $post_id Post ID that was published.
+				 */
+				do_action('aips_post_review_published', $post_id);
+			} else {
 				$failed_count++;
 				$this->log_review_action($post_id, sprintf(__('Bulk publish failed: %s', 'ai-post-scheduler'), $result->get_error_message()), 'post_published', 'failed', array('error' => $result->get_error_message()));
-			} else {
-				$success_count++;
-				$this->log_review_action($post_id, __('Post published from review queue (bulk)', 'ai-post-scheduler'), 'post_published', 'success');
 			}
 		}
 
@@ -348,138 +404,8 @@ class AIPS_Post_Review {
 
 		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(__('%d posts published successfully.', 'ai-post-scheduler'), $success_count),
-			'count'   => $success_count,
-			'failed'  => $failed_count,
-		));
-	}
-
-	/**
-	 * Publish a single draft post from the review queue.
-	 *
-	 * Shared by the single, synchronous-bulk, and background-bulk publish paths.
-	 * Runs the review-queue guards, then uses wp_publish_post() — WordPress's
-	 * purpose-built draft→publish transition. It is lighter than wp_update_post()
-	 * (no field re-sanitisation, no revision) while still firing the publish
-	 * transition hooks, and is the same call WordPress uses to publish scheduled
-	 * posts. The post-publish action fires here so it runs exactly once regardless
-	 * of caller; logging is left to the caller so each path can record into its
-	 * own history container.
-	 *
-	 * @param int $post_id Draft post ID to publish.
-	 * @return int|WP_Error Published post ID, or WP_Error on failure.
-	 */
-	public function publish_review_post($post_id) {
-		$post_id = absint($post_id);
-
-		if (!$post_id) {
-			return new WP_Error('aips_invalid_post_id', __('Invalid post ID.', 'ai-post-scheduler'));
-		}
-
-		// Verify the post exists and is a draft managed by this plugin.
-		$post = get_post($post_id);
-		if (!$post || $post->post_status !== 'draft') {
-			return new WP_Error('aips_not_draft', __('Post not found or not a draft.', 'ai-post-scheduler'));
-		}
-
-		// Verify the post is in the review queue (has a completed history record).
-		if (!$this->history_service->post_has_history_and_completed($post_id)) {
-			return new WP_Error('aips_not_in_review_queue', __('Post not found in review queue.', 'ai-post-scheduler'));
-		}
-
-		// Per-post capability check.
-		if (!current_user_can('publish_post', $post_id)) {
-			return new WP_Error('aips_cannot_publish', __('You do not have permission to publish this post.', 'ai-post-scheduler'));
-		}
-
-		// wp_publish_post() returns void; confirm the transition from the stored status.
-		wp_publish_post($post_id);
-		clean_post_cache($post_id);
-
-		if ('publish' !== get_post_status($post_id)) {
-			return new WP_Error('aips_publish_failed', __('Failed to publish the post.', 'ai-post-scheduler'));
-		}
-
-		/**
-		 * Fires after a post is published from the review queue.
-		 *
-		 * @param int $post_id Post ID that was published.
-		 */
-		do_action('aips_post_review_published', $post_id);
-
-		return $post_id;
-	}
-
-	/**
-	 * Queue a large bulk-publish selection for background processing.
-	 *
-	 * Reuses the shared AIPS_Bulk_Generator_Service dispatch harness with the
-	 * 'review_publish' job type (registered in boot_cron()). The request returns
-	 * immediately; AIPS_Bulk_Batch_Processor publishes each post in cron slices
-	 * and progress is visible under Diagnostics → Background Processes.
-	 *
-	 * Publishing has no AI rate limits, so the batch spread is tightened relative
-	 * to generation (scoped to this dispatch only) so the posts go live promptly.
-	 *
-	 * @param int[] $post_ids Sanitised draft post IDs to publish.
-	 * @return void Emits a JSON response and exits.
-	 */
-	private function dispatch_bulk_publish_async(array $post_ids) {
-		$count = count($post_ids);
-
-		// Publishing is cheap and rate-limit free: fire the slices close together
-		// instead of across the generation window. Scoped to this dispatch only.
-		$tighten_window = static function() { return max(0, (int) apply_filters('aips_bulk_publish_window_seconds', 60)); };
-		$cap_slices     = static function() { return max(1, (int) apply_filters('aips_bulk_publish_max_slices', 4)); };
-		add_filter('aips_batch_window_seconds', $tighten_window);
-		add_filter('aips_batch_max_slices', $cap_slices);
-
-		try {
-			$result = $this->bulk_generator_service->run(
-				$post_ids,
-				array($this, 'publish_review_post'),
-				array(
-					'queue_job_type'  => 'review_publish',
-					'history_type'    => 'review_publish',
-					'trigger_name'    => 'ajax_bulk_publish_posts',
-					'user_action'     => 'bulk_publish',
-					/* translators: %d: number of posts */
-					'user_message'    => sprintf(__('User initiated bulk publish for %d posts', 'ai-post-scheduler'), $count),
-					// Persisted into the job so the cron strategy can publish as the
-					// acting administrator (cron has no current user of its own).
-					'history_meta'    => array('acting_user_id' => get_current_user_id()),
-					// Never truncate/reject on the rare synchronous fallback (when the
-					// global large-batch threshold is filtered above this selection).
-					'limit_default'   => $count,
-					'limit_mode'      => 'soft',
-					'error_formatter' => static function($post_id, $msg) {
-						/* translators: 1: post ID, 2: error message */
-						return sprintf(__('Post ID %1$d: %2$s', 'ai-post-scheduler'), (int) $post_id, $msg);
-					},
-				)
-			);
-		} finally {
-			remove_filter('aips_batch_window_seconds', $tighten_window);
-			remove_filter('aips_batch_max_slices', $cap_slices);
-		}
-
-		if ($result->was_queued) {
-			AIPS_Ajax_Response::success(array(
-				'queued'  => true,
-				'job_id'  => $result->job_id,
-				'count'   => 0,
-				'failed'  => 0,
-				/* translators: %d: number of posts */
-				'message' => sprintf(__('Publishing %d posts in the background. They will go live shortly.', 'ai-post-scheduler'), $count),
-			));
-		}
-
-		// Synchronous fallback (large-batch queuing disabled or unavailable): the
-		// harness published inline, so report its real counts.
-		AIPS_Ajax_Response::success(array(
-			'count'   => $result->success_count,
-			'failed'  => $result->failed_count,
-			/* translators: %d: number of posts published */
-			'message' => sprintf(__('%d posts published successfully.', 'ai-post-scheduler'), $result->success_count),
+			'count' => $success_count,
+			'failed' => $failed_count,
 		));
 	}
 	

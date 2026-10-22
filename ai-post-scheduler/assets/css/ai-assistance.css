@@ -119,8 +119,8 @@
 
 #aips-ai-assist-history-modal .aips-tab-nav .aips-tab-link.active,
 #aips-ai-assist-history-modal .aips-tab-nav .aips-tab-link:hover {
-	color: var(--aips-primary);
-	border-bottom-color: var(--aips-primary);
+	color: #2271b1;
+	border-bottom-color: #2271b1;
 }
 
 /* --------------------------------------------------------

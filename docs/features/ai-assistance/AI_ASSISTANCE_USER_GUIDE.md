@@ -1,21 +1,19 @@
-# AI Edit — User Guide
+# AI Assistance — User Guide
 
 ## Overview
 
-The AI Edit feature allows you to regenerate individual components of AI-generated posts without regenerating the entire post. This provides granular control over your content while maintaining consistency with the original generation context.
+The AI Assistance feature allows you to regenerate individual components of AI-generated posts without regenerating the entire post. This provides granular control over your content while maintaining consistency with the original generation context.
 
-> **Not to be confused with:** this feature is unrelated to **AI Assistance** — the per-field ✨ "AI Suggest" / 🕐 history widget available on forms such as Add/Edit Author. AI Edit operates only on already-generated posts (title/excerpt/content/featured image) using their original generation context; it does not use the AI Assistance controller, service, or field maps. See `docs/features/ai-assistance/AI_ASSISTANCE_DEV_GUIDE.md` for that feature.
+## Accessing AI Assistance
 
-## Accessing AI Edit
+The AI Assistance feature is available in two locations:
 
-The AI Edit feature is available in two locations:
-
-1. **Generated Posts Tab**: Click the "AI Edit" button next to any published post
-2. **Pending Review Tab**: Click the "AI Edit" button next to any draft post
+1. **Generated Posts Tab**: Click the "AI Assistance" button next to any published post
+2. **Pending Review Tab**: Click the "AI Assistance" button next to any draft post
 
 ## Using the Modal
 
-When you click "AI Edit", a modal window will open showing:
+When you click "AI Assistance", a modal window will open showing:
 
 ### Generation Context
 - **Template**: The template used to generate the post
@@ -126,16 +124,18 @@ Actual times may vary based on:
 
 ### AJAX Endpoints
 
+> **Compatibility note:** These AJAX action names use the legacy `aips_*_component*` convention. They remain unchanged for runtime compatibility.
+
 - `aips_get_post_components` - Fetches post data and context
 - `aips_regenerate_component` - Regenerates a single component
 - `aips_save_post_components` - Saves all modified components
 
 ## Developer Hooks
 
-The AI Edit feature currently leverages the plugin's global `aips_*` events
+The AI Assistance feature currently leverages the plugin's global `aips_*` events
 (such as post generation and schedule execution actions) documented in the
 main plugin developer documentation. At this time, there are no additional
-AI-Edit-specific WordPress actions or filters. Future versions may introduce
+AI-Assistance-specific WordPress actions or filters. Future versions may introduce
 dedicated hooks for this feature, and they will be documented here when
 available.
 

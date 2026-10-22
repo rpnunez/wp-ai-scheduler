@@ -24,11 +24,6 @@ interface AIPS_AI_Service_Interface {
 	/**
 	 * Generate text from a prompt.
 	 *
-	 * The reserved `_aips_on_submission` option is a one-shot callable. Services
-	 * invoke it immediately before their first provider transport attempt, after
-	 * local guards, including for a subsequently failed request. Strip it from
-	 * provider parameters and logs; retries and JSON fallbacks share one callback.
-	 *
 	 * @param string $prompt Prompt text.
 	 * @param array  $options Request options.
 	 * @return string|WP_Error
@@ -37,7 +32,6 @@ interface AIPS_AI_Service_Interface {
 
 	/**
 	 * Generate structured JSON-like output from a prompt.
-	 * Supports the same reserved submission callback contract as generate_text().
 	 *
 	 * @param string $prompt Prompt text.
 	 * @param array  $options Request options.

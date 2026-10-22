@@ -23,9 +23,9 @@
 }
 
 .aips-auditor-modules-selection {
-	background: var(--aips-gray-50);
-	border: 1px solid var(--aips-gray-100);
-	border-radius: var(--aips-radius-lg);
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
 	padding: 15px 20px;
 	margin-bottom: 20px;
 }
@@ -33,8 +33,8 @@
 .aips-modules-label {
 	display: block;
 	margin-bottom: 10px;
-	color: var(--aips-gray-800);
-	font-size: var(--aips-text-sm);
+	color: #1e293b;
+	font-size: 13px;
 }
 
 .aips-checkbox-pills {
@@ -57,19 +57,19 @@
 	align-items: center;
 	gap: 6px;
 	padding: 6px 14px;
-	background: var(--aips-white);
-	border: 1px solid var(--aips-gray-200);
-	border-radius: var(--aips-radius-full);
-	font-size: var(--aips-text-sm);
-	color: var(--aips-gray-600);
-	transition: all var(--aips-transition-base);
+	background: #ffffff;
+	border: 1px solid #cbd5e1;
+	border-radius: 20px;
+	font-size: 13px;
+	color: #475569;
+	transition: all 0.2s ease;
 }
 
 .aips-pill-checkbox input:checked + .aips-pill-text {
-	background: var(--aips-primary);
-	border-color: var(--aips-primary);
-	color: var(--aips-white);
-	font-weight: var(--aips-font-medium);
+	background: #2563eb;
+	border-color: #2563eb;
+	color: #ffffff;
+	font-weight: 500;
 }
 
 .aips-pill-checkbox .aips-pill-text .dashicons {
@@ -89,9 +89,9 @@
 .aips-auditor-progress-wrap {
 	margin-top: 25px;
 	padding: 20px;
-	background: var(--aips-gray-50);
-	border-radius: var(--aips-radius-lg);
-	border: 1px solid var(--aips-gray-100);
+	background: #f1f5f9;
+	border-radius: 8px;
+	border: 1px solid #e2e8f0;
 }
 
 .aips-progress-header {
@@ -99,23 +99,23 @@
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: 8px;
-	font-weight: var(--aips-font-semibold);
-	color: var(--aips-gray-800);
+	font-weight: 600;
+	color: #1e293b;
 }
 
 .aips-progress-bar-bg {
 	width: 100%;
 	height: 10px;
-	background: var(--aips-gray-100);
-	border-radius: var(--aips-radius-full);
+	background: #e2e8f0;
+	border-radius: 5px;
 	overflow: hidden;
 	margin-bottom: 15px;
 }
 
 .aips-progress-bar-fill {
 	height: 100%;
-	background: linear-gradient(90deg, var(--aips-primary-hover), var(--aips-primary));
-	border-radius: var(--aips-radius-full);
+	background: linear-gradient(90deg, #2563eb, #38bdf8);
+	border-radius: 5px;
 	transition: width 0.4s ease-in-out;
 }
 
@@ -123,8 +123,8 @@
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
 	gap: 10px;
-	font-size: var(--aips-text-xs);
-	color: var(--aips-gray-500);
+	font-size: 12px;
+	color: #64748b;
 }
 
 .aips-pipe-step {
@@ -137,27 +137,27 @@
 	width: 8px;
 	height: 8px;
 	border-radius: 50%;
-	background: var(--aips-gray-200);
+	background: #cbd5e1;
 }
 
 .aips-pipe-step.active .aips-pipe-dot {
-	background: var(--aips-primary);
-	box-shadow: 0 0 0 3px var(--aips-primary-light);
+	background: #3b82f6;
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 .aips-pipe-step.completed .aips-pipe-dot {
-	background: var(--aips-success);
+	background: #10b981;
 }
 
 .aips-pipe-step.completed {
-	color: var(--aips-gray-900);
-	font-weight: var(--aips-font-semibold);
+	color: #0f172a;
+	font-weight: 600;
 }
 
 /* Health Scorecard */
 .aips-scorecard-panel {
-	background: var(--aips-white);
-	border-top: 3px solid var(--aips-primary);
+	background: #ffffff;
+	border-top: 3px solid #2563eb;
 }
 
 .aips-scorecard-grid {
@@ -180,9 +180,9 @@
 	align-items: center;
 	justify-content: center;
 	padding: 20px;
-	background: var(--aips-gray-50);
-	border-radius: var(--aips-radius-xl);
-	border: 1px solid var(--aips-gray-100);
+	background: #f8fafc;
+	border-radius: 12px;
+	border: 1px solid #e2e8f0;
 }
 
 .aips-gauge-circle {
@@ -193,55 +193,55 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	background: var(--aips-white);
-	border: 6px solid var(--aips-success);
-	box-shadow: var(--aips-shadow-xs);
+	background: #ffffff;
+	border: 6px solid #10b981;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 	margin-bottom: 12px;
 }
 
 .aips-gauge-circle.tier-warning {
-	border-color: var(--aips-warning);
+	border-color: #f59e0b;
 }
 
 .aips-gauge-circle.tier-danger {
-	border-color: var(--aips-error);
+	border-color: #ef4444;
 }
 
 .aips-gauge-number {
 	font-size: 32px;
 	font-weight: 800;
-	color: var(--aips-gray-900);
+	color: #0f172a;
 	line-height: 1;
 }
 
 .aips-gauge-caption {
-	font-size: var(--aips-text-2xs);
+	font-size: 10px;
 	text-transform: uppercase;
-	color: var(--aips-gray-500);
-	font-weight: var(--aips-font-semibold);
+	color: #64748b;
+	font-weight: 600;
 	margin-top: 4px;
 }
 
 .aips-status-badge {
 	padding: 4px 12px;
-	border-radius: var(--aips-radius-full);
-	font-size: var(--aips-text-xs);
-	font-weight: var(--aips-font-semibold);
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 600;
 }
 
 .aips-badge-good {
-	background: var(--aips-success-bg);
-	color: var(--aips-success-dark);
+	background: #d1fae5;
+	color: #065f46;
 }
 
 .aips-badge-warning {
-	background: var(--aips-warning-bg);
-	color: var(--aips-warning-dark);
+	background: #fef3c7;
+	color: #92400e;
 }
 
 .aips-badge-danger {
-	background: var(--aips-error-bg);
-	color: var(--aips-error-dark);
+	background: #fee2e2;
+	color: #991b1b;
 }
 
 .aips-subscores-grid {
@@ -261,16 +261,16 @@
 	align-items: center;
 	gap: 14px;
 	padding: 14px 18px;
-	background: var(--aips-gray-50);
-	border: 1px solid var(--aips-gray-100);
-	border-radius: var(--aips-radius-lg);
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
 }
 
 .aips-subscore-icon {
 	font-size: 24px;
 	width: 24px;
 	height: 24px;
-	color: var(--aips-primary);
+	color: #3b82f6;
 }
 
 .aips-subscore-info {
@@ -279,22 +279,22 @@
 }
 
 .aips-subscore-label {
-	font-size: var(--aips-text-xs);
-	color: var(--aips-gray-500);
-	font-weight: var(--aips-font-medium);
+	font-size: 12px;
+	color: #64748b;
+	font-weight: 500;
 }
 
 .aips-subscore-value {
-	font-size: var(--aips-text-lg);
-	font-weight: var(--aips-font-bold);
-	color: var(--aips-gray-900);
+	font-size: 18px;
+	font-weight: 700;
+	color: #0f172a;
 }
 
 .aips-takeaways-box {
-	background: var(--aips-info-bg);
-	border-left: 4px solid var(--aips-primary);
+	background: #eff6ff;
+	border-left: 4px solid #3b82f6;
 	padding: 15px 20px;
-	border-radius: 0 var(--aips-radius-lg) var(--aips-radius-lg) 0;
+	border-radius: 0 8px 8px 0;
 }
 
 .aips-takeaways-box h4 {
@@ -302,15 +302,15 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	color: var(--aips-info-dark);
-	font-size: var(--aips-text-base);
+	color: #1e40af;
+	font-size: 14px;
 }
 
 .aips-takeaways-box ul {
 	margin: 0;
 	padding-left: 20px;
-	color: var(--aips-info-dark);
-	font-size: var(--aips-text-sm);
+	color: #1e3a8a;
+	font-size: 13px;
 	line-height: 1.5;
 }
 
@@ -320,8 +320,8 @@
 	flex-wrap: wrap;
 	gap: 8px;
 	padding: 12px 18px;
-	background: var(--aips-gray-50);
-	border-bottom: 1px solid var(--aips-gray-100);
+	background: #f8fafc;
+	border-bottom: 1px solid #e2e8f0;
 }
 
 .aips-findings-tab-btn {
@@ -331,97 +331,97 @@
 	padding: 8px 14px;
 	background: transparent;
 	border: 1px solid transparent;
-	border-radius: var(--aips-radius-md);
+	border-radius: 6px;
 	cursor: pointer;
-	font-size: var(--aips-text-sm);
-	font-weight: var(--aips-font-medium);
-	color: var(--aips-gray-600);
-	transition: all var(--aips-transition-base);
+	font-size: 13px;
+	font-weight: 500;
+	color: #475569;
+	transition: all 0.2s;
 }
 
 .aips-findings-tab-btn:hover {
-	background: var(--aips-gray-100);
-	color: var(--aips-gray-900);
+	background: #e2e8f0;
+	color: #0f172a;
 }
 
 .aips-findings-tab-btn.active {
-	background: var(--aips-white);
-	border-color: var(--aips-gray-200);
-	color: var(--aips-primary);
-	font-weight: var(--aips-font-semibold);
-	box-shadow: var(--aips-shadow-xs);
+	background: #ffffff;
+	border-color: #cbd5e1;
+	color: #2563eb;
+	font-weight: 600;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .aips-tab-badge {
 	display: inline-block;
 	padding: 1px 6px;
-	border-radius: var(--aips-radius-full);
+	border-radius: 10px;
 	font-size: 11px;
-	background: var(--aips-gray-100);
-	color: var(--aips-gray-600);
+	background: #e2e8f0;
+	color: #475569;
 }
 
 .aips-findings-tab-btn.active .aips-tab-badge {
-	background: var(--aips-info-bg);
-	color: var(--aips-info-dark);
+	background: #dbeafe;
+	color: #1d4ed8;
 }
 
 /* Tables & Finding Cards */
 .aips-findings-table {
 	width: 100%;
 	border-collapse: collapse;
-	font-size: var(--aips-text-sm);
+	font-size: 13px;
 }
 
 .aips-findings-table th {
-	background: var(--aips-gray-50);
-	color: var(--aips-gray-600);
+	background: #f8fafc;
+	color: #475569;
 	text-align: left;
 	padding: 12px 15px;
-	border-bottom: 1px solid var(--aips-gray-100);
-	font-weight: var(--aips-font-semibold);
+	border-bottom: 1px solid #e2e8f0;
+	font-weight: 600;
 }
 
 .aips-findings-table td {
 	padding: 14px 15px;
-	border-bottom: 1px solid var(--aips-gray-50);
+	border-bottom: 1px solid #f1f5f9;
 	vertical-align: top;
 }
 
 .aips-pill-badge {
 	display: inline-block;
 	padding: 2px 8px;
-	border-radius: var(--aips-radius-full);
+	border-radius: 10px;
 	font-size: 11px;
-	font-weight: var(--aips-font-semibold);
+	font-weight: 600;
 	text-transform: uppercase;
 }
 
 .aips-badge-high {
-	background: var(--aips-error-bg);
-	color: var(--aips-error-dark);
+	background: #fee2e2;
+	color: #b91c1c;
 }
 
 .aips-badge-medium {
-	background: var(--aips-warning-bg);
-	color: var(--aips-warning-dark);
+	background: #fef3c7;
+	color: #b45309;
 }
 
 .aips-badge-pillar {
-	background: var(--aips-topic-light);
-	color: var(--aips-topic-dark);
+	background: #ede9fe;
+	color: #6d28d9;
 }
 
 .aips-badge-cluster {
-	background: var(--aips-info-bg);
-	color: var(--aips-info-dark);
+	background: #e0e7ff;
+	color: #3730a3;
 }
 
 /* Cannibalization Cards */
 .aips-cannibalization-card {
-	background: var(--aips-white);
-	border: 1px solid var(--aips-gray-100);
-	border-radius: var(--aips-radius-lg);
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
 	padding: 18px;
 	margin-bottom: 15px;
 }
@@ -432,8 +432,8 @@
 	gap: 20px;
 	margin: 12px 0;
 	padding: 12px;
-	background: var(--aips-gray-50);
-	border-radius: var(--aips-radius-md);
+	background: #f8fafc;
+	border-radius: 6px;
 }
 
 @media (max-width: 700px) {
@@ -455,8 +455,8 @@
 }
 
 .aips-timestamp-badge {
-	font-size: var(--aips-text-xs);
-	color: var(--aips-gray-500);
+	font-size: 12px;
+	color: #64748b;
 	margin-right: 10px;
 }
 
@@ -464,11 +464,11 @@
 	position: absolute;
 	right: 0;
 	top: 100%;
-	background: var(--aips-white);
-	border: 1px solid var(--aips-gray-200);
-	border-radius: var(--aips-radius-md);
-	box-shadow: var(--aips-shadow-sm);
-	z-index: var(--aips-z-dropdown);
+	background: #ffffff;
+	border: 1px solid #cbd5e1;
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+	z-index: 100;
 	min-width: 140px;
 	margin-top: 4px;
 }
@@ -476,12 +476,12 @@
 .aips-dropdown-item {
 	display: block;
 	padding: 8px 14px;
-	color: var(--aips-gray-700);
+	color: #334155;
 	text-decoration: none;
-	font-size: var(--aips-text-sm);
+	font-size: 13px;
 }
 
 .aips-dropdown-item:hover {
-	background: var(--aips-gray-50);
-	color: var(--aips-primary);
+	background: #f1f5f9;
+	color: #2563eb;
 }
