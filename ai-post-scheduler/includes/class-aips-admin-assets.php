@@ -916,7 +916,7 @@ class AIPS_Admin_Assets {
      *                                 addition to jquery/utilities/templates.
      */
     private function enqueue_ai_assistance_assets( array $extra_script_deps = array(), $context = 'authors' ) {
-        if ( ! current_user_can( 'manage_options' ) || ! AIPS_AI_Assistance_Settings::is_enabled_for($context) ) {
+        if ( ! current_user_can( 'manage_options' ) || ! AIPS_Settings::is_ai_assistance_enabled_for( $context ) ) {
             return;
         }
 
@@ -946,7 +946,7 @@ class AIPS_Admin_Assets {
             'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
             'thisSession'     => __('This Session', 'ai-post-scheduler'),
             'allTime'         => __('All Time', 'ai-post-scheduler'),
-			'policy'          => AIPS_AI_Assistance_Settings::get_policy(),
+			'policy'          => AIPS_Settings::get_ai_assistance_policy(),
 			'previewTitle'    => __('Review AI suggestion', 'ai-post-scheduler'),
 			'apply'           => __('Apply suggestion', 'ai-post-scheduler'),
 			'keepCurrent'     => __('Keep current value', 'ai-post-scheduler'),

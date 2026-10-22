@@ -222,7 +222,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 								</p>
 							</div>
 
-							<!-- Internal Linking Tab -->
+							<!-- AI Assistance Tab -->
 							<div id="settings-ai-assistance-tab" class="aips-tab-content<?php echo 'settings-ai-assistance' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-ai-assistance' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-ai-assistance' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Set the site-wide policy for guided AI field suggestions.', 'ai-post-scheduler'); ?></p>
 								<div class="aips-settings-section-card">

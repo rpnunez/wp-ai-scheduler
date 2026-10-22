@@ -104,7 +104,7 @@ class AIPS_AI_Assistance_Controller {
 			AIPS_Ajax_Response::invalid_request( __( 'Required field parameters are missing.', 'ai-post-scheduler' ) );
 			return;
 		}
-		if ( ! AIPS_AI_Assistance_Settings::is_enabled_for( $field_config['form_context'] ) ) {
+		if ( ! AIPS_Settings::is_ai_assistance_enabled_for( $field_config['form_context'] ) ) {
 			AIPS_Ajax_Response::error(
 				__( 'AI Assistance is disabled for this workflow. Enable it in Settings > AI Assistance.', 'ai-post-scheduler' ),
 				'ai_assistance_disabled',
@@ -152,7 +152,7 @@ class AIPS_AI_Assistance_Controller {
 			AIPS_Ajax_Response::invalid_request( __( 'Required parameters are missing.', 'ai-post-scheduler' ) );
 			return;
 		}
-		if ( ! AIPS_AI_Assistance_Settings::is_enabled_for( $form_context ) ) {
+		if ( ! AIPS_Settings::is_ai_assistance_enabled_for( $form_context ) ) {
 			AIPS_Ajax_Response::error(
 				__( 'AI Assistance history is disabled for this workflow.', 'ai-post-scheduler' ),
 				'ai_assistance_disabled',

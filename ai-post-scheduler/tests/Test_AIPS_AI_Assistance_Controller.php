@@ -35,6 +35,7 @@ class Test_AIPS_AI_Assistance_Controller extends WP_UnitTestCase {
 		$_REQUEST = array();
 		delete_option('aips_ai_assistance_enabled');
 		delete_option('aips_ai_assistance_contexts');
+		delete_option('aips_ai_assistance_retention_days');
 		parent::tearDown();
 	}
 

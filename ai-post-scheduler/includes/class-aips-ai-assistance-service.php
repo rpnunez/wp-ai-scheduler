@@ -75,7 +75,7 @@ class AIPS_AI_Assistance_Service {
 	 * @return array|WP_Error Array with 'response', 'record_id', 'prompt', or WP_Error on failure.
 	 */
 	public function get_field_suggestion( array $field_config, string $session_id, int $user_id ) {
-		if ( ! AIPS_AI_Assistance_Settings::is_enabled_for( $field_config['form_context'] ?? '' ) ) {
+		if ( ! AIPS_Settings::is_ai_assistance_enabled_for( $field_config['form_context'] ?? '' ) ) {
 			return new WP_Error(
 				'ai_assistance_disabled',
 				__( 'AI Assistance is disabled for this workflow. Enable it in Settings > AI Assistance.', 'ai-post-scheduler' )
@@ -127,7 +127,7 @@ class AIPS_AI_Assistance_Service {
 			'standard' => 'Use an appropriately complete answer.',
 			'detailed' => 'Provide a detailed, useful answer.',
 		);
-		$policy = AIPS_AI_Assistance_Settings::get_policy();
+		$policy = AIPS_Settings::get_ai_assistance_policy();
 		$lines = array(
 			'You are a helpful assistant for an AI content creation WordPress plugin.',
 			'Help fill in a form field for ' . $preamble . '.',

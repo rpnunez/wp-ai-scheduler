@@ -55,7 +55,7 @@ class AIPS_AI_Assistance_Repository {
 	 * @return int|false New record ID on success, false on failure.
 	 */
 	public function create( array $data ) {
-		if ( AIPS_AI_Assistance_Settings::get_retention_days() === 0 ) {
+		if ( AIPS_Settings::get_ai_assistance_retention_days() === 0 ) {
 			return 0;
 		}
 
@@ -157,7 +157,7 @@ class AIPS_AI_Assistance_Repository {
 	 * @return void
 	 */
 	public function delete_expired(): void {
-		$days = AIPS_AI_Assistance_Settings::get_retention_days();
+		$days = AIPS_Settings::get_ai_assistance_retention_days();
 		if ( $days === 0 ) {
 			$this->clear_all();
 			return;

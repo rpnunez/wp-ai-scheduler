@@ -1133,7 +1133,7 @@ class AIPS_Settings_UI {
 	}
 
 	public function ai_assistance_contexts_field_callback() {
-		$enabled = AIPS_AI_Assistance_Settings::get_enabled_contexts();
+		$enabled = AIPS_Settings::get_enabled_ai_assistance_contexts();
 		$labels  = array(
 			'authors'          => __( 'Authors', 'ai-post-scheduler' ),
 			'templates'        => __( 'Templates', 'ai-post-scheduler' ),
@@ -1152,7 +1152,7 @@ class AIPS_Settings_UI {
 	}
 
 	public function ai_assistance_response_length_field_callback() {
-		$value   = AIPS_AI_Assistance_Settings::sanitize_response_length( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_response_length' ) );
+		$value   = AIPS_Settings::sanitize_ai_assistance_response_length( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_response_length' ) );
 		$options = array(
 			'concise'  => __( 'Concise', 'ai-post-scheduler' ),
 			'standard' => __( 'Standard', 'ai-post-scheduler' ),
@@ -1176,7 +1176,7 @@ class AIPS_Settings_UI {
 	}
 
 	public function ai_assistance_overwrite_mode_field_callback() {
-		$value = AIPS_AI_Assistance_Settings::sanitize_overwrite_mode( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_overwrite_mode' ) );
+		$value = AIPS_Settings::sanitize_ai_assistance_overwrite_mode( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_overwrite_mode' ) );
 		?>
 		<label>
 			<input type="radio" name="aips_ai_assistance_overwrite_mode" value="replace" <?php checked( $value, 'replace' ); ?>>
@@ -1191,7 +1191,7 @@ class AIPS_Settings_UI {
 	}
 
 	public function ai_assistance_retention_days_field_callback() {
-		$value   = AIPS_AI_Assistance_Settings::get_retention_days();
+		$value   = AIPS_Settings::get_ai_assistance_retention_days();
 		$options = array(
 			0   => __( 'Do not retain', 'ai-post-scheduler' ),
 			7   => __( '7 days', 'ai-post-scheduler' ),
