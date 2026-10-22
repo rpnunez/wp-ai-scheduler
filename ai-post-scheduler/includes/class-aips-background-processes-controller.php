@@ -165,7 +165,7 @@ class AIPS_Background_Processes_Controller {
 
 	/**
 	 * Start options a client may send: an AI call budget (0 = none), a run mode
-	 * ('missing' or 'all') and an author scope. Each process ignores the ones it
+	 * ('missing', 'all' or 'stale') and an author scope. Each process ignores the ones it
 	 * does not use.
 	 *
 	 * @return array
@@ -179,7 +179,7 @@ class AIPS_Background_Processes_Controller {
 
 		if (isset($_POST['mode'])) {
 			$mode = sanitize_key(wp_unslash($_POST['mode']));
-			if (in_array($mode, array('missing', 'all'), true)) {
+			if (in_array($mode, array('missing', 'all', 'stale'), true)) {
 				$options['mode'] = $mode;
 			}
 		}

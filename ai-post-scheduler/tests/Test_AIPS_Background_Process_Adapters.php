@@ -465,7 +465,7 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 		$controller = new AIPS_Background_Processes_Controller();
 
 		$supports = array(
-			'internal_links_indexing'  => true,
+			'content_indexing'  => true,
 			'author_topic_embeddings'  => true,
 			'content_indexer_queue'    => false,
 			'relationships_recompute'  => false,

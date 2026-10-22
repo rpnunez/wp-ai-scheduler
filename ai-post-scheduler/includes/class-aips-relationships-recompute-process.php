@@ -94,7 +94,7 @@ class AIPS_Relationships_Recompute_Process extends AIPS_Managed_Background_Proce
 		return parent::start($options);
 	}
 
-	protected function count_remaining(): int {
+	protected function count_remaining(array $options = array()): int {
 		return $this->relationships_repo->count_source_post_ids(
 			$this->builder->get_post_types(),
 			'publish',

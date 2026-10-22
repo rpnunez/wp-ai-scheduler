@@ -57,9 +57,11 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	/**
 	 * Items left to process right now.
 	 *
+	 * @param array $options Options the run is being started with (empty when counting
+	 *                       outside start()); a process whose workload depends on a mode uses them.
 	 * @return int
 	 */
-	abstract protected function count_remaining(): int;
+	abstract protected function count_remaining(array $options = array()): int;
 
 	/**
 	 * Process up to $limit items starting after $cursor.
@@ -182,7 +184,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 			return $can_run;
 		}
 
-		$remaining = $this->count_remaining();
+		$remaining = $this->count_remaining($options);
 		if ($remaining <= 0) {
 			return new WP_Error(
 				'aips_bg_nothing_to_do',
@@ -290,6 +292,43 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	}
 
 	/**
+	 * Run the next slice now instead of at the scheduled retry time.
+	 *
+	 * Used after an administrator clears a cooldown, so a run waiting on it carries on
+	 * at once. Does nothing when there is no active run.
+	 *
+	 * @return bool True when a tick was queued.
+	 */
+	public function wake(): bool {
+		$run = $this->repository->get_open($this->get_key());
+		if (!$run || !in_array($run->status, AIPS_Background_Process_Repository::active_statuses(), true)) {
+			return false;
+		}
+
+		$this->replace_tick(0);
+
+		return true;
+	}
+
+	/**
+	 * Transient key of the per-process tick lock (the single place it is built).
+	 *
+	 * @return string
+	 */
+	protected function tick_lock_key(): string {
+		return 'aips_bg_lock_' . $this->get_key();
+	}
+
+	/**
+	 * Whether a slice of this process is executing right now (its tick lock is held).
+	 *
+	 * @return bool
+	 */
+	public function is_tick_running(): bool {
+		return (bool) get_transient($this->tick_lock_key());
+	}
+
+	/**
 	 * Re-queue a running process whose tick event went missing (for example
 	 * after cron events were flushed). Safe to call on every status poll.
 	 *
@@ -324,7 +363,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		}
 
 		// Overlapping ticks (a spawned cron plus a manual run) would double-process a slice.
-		$lock_key = 'aips_bg_lock_' . $this->get_key();
+		$lock_key = $this->tick_lock_key();
 		if (get_transient($lock_key)) {
 			$this->schedule_tick(30);
 			return;

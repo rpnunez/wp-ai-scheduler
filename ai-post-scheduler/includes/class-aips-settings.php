@@ -358,6 +358,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_publish_linking_outbound'],
 			),
+			'aips_publish_linking_embed_inline' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_publish_linking_embed_inline'],
+			),
 			'aips_link_click_tracking_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_link_click_tracking_enabled'],
@@ -561,6 +565,10 @@ class AIPS_Settings {
 			'aips_indexer_quota_pause_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_indexer_quota_pause_enabled'],
+			),
+			'aips_indexer_auto_reindex_stale' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_auto_reindex_stale'],
 			),
 			'aips_indexer_queue_notifications_enabled' => array(
 				'sanitize_callback' => 'absint',

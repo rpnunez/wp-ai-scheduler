@@ -246,20 +246,14 @@ class AIPS_Automations_Controller {
 					),
 				);
 			case 'internal-links':
+				// Indexing is managed from the Content Indexer, not from this tab.
 				return array(
 					array(
-						'type'  => 'button',
-						'id'    => 'aips-start-indexing-btn',
+						'type'  => 'link',
+						'url'   => AIPS_Admin_Menu_Helper::get_page_url('content_indexer'),
 						'class' => 'aips-btn aips-btn-secondary',
-						'icon'  => 'dashicons-database-import',
-						'label' => __('Index Posts', 'ai-post-scheduler'),
-					),
-					array(
-						'type'  => 'button',
-						'id'    => 'aips-clear-index-btn',
-						'class' => 'aips-btn aips-btn-ghost aips-btn-danger',
-						'icon'  => 'dashicons-trash',
-						'label' => __('Clear Index', 'ai-post-scheduler'),
+						'icon'  => 'dashicons-database',
+						'label' => __('Manage Index in Content Indexer', 'ai-post-scheduler'),
 					),
 				);
 			case 'taxonomy':

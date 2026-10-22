@@ -1,11 +1,11 @@
 <?php
 /**
- * Tests for AIPS_Internal_Links_Indexing_Process (the managed "Index Posts" job).
+ * Tests for AIPS_Content_Indexer_Process (the managed content indexing job).
  *
  * @package AI_Post_Scheduler
  */
 
-class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
+class Test_AIPS_Content_Indexer_Process extends WP_UnitTestCase {
 
 	/** @var AIPS_Background_Process_Repository */
 	private $repo;
@@ -16,7 +16,7 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 	/** @var AIPS_Embeddings_Service|\PHPUnit\Framework\MockObject\MockObject */
 	private $embeddings_service;
 
-	/** @var AIPS_Internal_Links_Indexing_Process */
+	/** @var AIPS_Content_Indexer_Process */
 	private $process;
 
 	/** @var int Number of embeddings the mock has generated. */
@@ -28,6 +28,8 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 
 		$config = AIPS_Config::get_instance();
 		$config->set_option( 'aips_embeddings_scope', 'all' );
+		$config->set_option( 'aips_embeddings_dimensions', 3 );
+		$config->set_option( 'aips_indexer_scan_entity_scope', 'posts' );
 		$config->set_option( 'aips_indexer_post_types', array( 'post' ) );
 		$config->set_option( 'aips_indexer_batch_size', 10 );
 		$config->set_option( 'aips_indexer_quota_pause_enabled', false );
@@ -64,16 +66,16 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 		} );
 
 		$embeddings_repo = new AIPS_Embeddings_Repository();
-		$service         = new AIPS_Internal_Links_Service( $embeddings_repo, new AIPS_Internal_Links_Repository(), $this->embeddings_service );
+		$indexer         = new AIPS_Content_Indexer_Service( $embeddings_repo, null, $this->embeddings_service, null, null, $config );
 
-		$this->process = new AIPS_Internal_Links_Indexing_Process( $this->repo, $service, $this->embeddings_service, $config );
+		$this->process = new AIPS_Content_Indexer_Process( $this->repo, $indexer, $this->embeddings_service, $config );
 	}
 
 	public function tearDown(): void {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_background_processes' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
-		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) );
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) );
 		$this->limiter->reset_history();
 		delete_option( 'aips_embeddings_rate_limits_enabled' );
 		delete_option( 'aips_embeddings_daily_limit' );
@@ -109,7 +111,7 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual( 3, $snapshot['total'] );
 		$this->assertTrue( $snapshot['can_pause'] );
 		$this->assertFalse( $snapshot['can_start'] );
-		$this->assertNotFalse( wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) ) );
+		$this->assertNotFalse( wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) ) );
 	}
 
 	public function test_start_refuses_a_second_run_and_an_empty_run() {
@@ -134,13 +136,7 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 		$this->assertSame( 3, $this->generated );
 		$this->assertSame( 3, $snapshot['processed'] );
 		$this->assertSame( 3, $snapshot['ai_calls_used'] );
-		$this->assertSame( 'running', $snapshot['status'], 'A slice that found work is followed by another to confirm nothing is left.' );
-
-		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) );
-		$this->process->tick();
-
-		$snapshot = $this->process->get_snapshot();
-		$this->assertSame( 'idle', $snapshot['status'] );
+		$this->assertSame( 'idle', $snapshot['status'], 'The slice indexed everything in scope, so the run is finished.' );
 		$this->assertSame( 'completed', $snapshot['last_status'] );
 	}
 
@@ -150,14 +146,14 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 
 		$this->assertTrue( $this->process->pause() );
 		$this->assertSame( 'paused', $this->process->get_snapshot()['status'] );
-		$this->assertFalse( wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) ) );
+		$this->assertFalse( wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) ) );
 
 		$this->process->tick();
 		$this->assertSame( 0, $this->generated, 'A paused run must not process anything.' );
 
 		$this->assertTrue( $this->process->resume() );
 		$this->assertSame( 'running', $this->process->get_snapshot()['status'] );
-		$this->assertNotFalse( wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) ) );
+		$this->assertNotFalse( wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) ) );
 
 		$this->process->tick();
 		$this->assertSame( 3, $this->generated );
@@ -185,15 +181,16 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 		$limiter = $this->limiter;
 		$this->embeddings_service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'is_enabled', 'is_embeddings_supported', 'generate_embedding', 'get_rate_limiter' ) )
+			->onlyMethods( array( 'is_enabled', 'is_embeddings_supported', 'generate_embedding', 'get_active_model', 'get_rate_limiter' ) )
 			->getMock();
 		$this->embeddings_service->method( 'is_enabled' )->willReturn( true );
 		$this->embeddings_service->method( 'is_embeddings_supported' )->willReturn( true );
 		$this->embeddings_service->method( 'get_rate_limiter' )->willReturn( $limiter );
+		$this->embeddings_service->method( 'get_active_model' )->willReturn( 'text-embedding-3-small' );
 		$this->embeddings_service->expects( $this->never() )->method( 'generate_embedding' );
 
-		$service = new AIPS_Internal_Links_Service( new AIPS_Embeddings_Repository(), new AIPS_Internal_Links_Repository(), $this->embeddings_service );
-		$process = new AIPS_Internal_Links_Indexing_Process( $this->repo, $service, $this->embeddings_service, AIPS_Config::get_instance() );
+		$indexer = new AIPS_Content_Indexer_Service( new AIPS_Embeddings_Repository(), null, $this->embeddings_service, null, null, AIPS_Config::get_instance() );
+		$process = new AIPS_Content_Indexer_Process( $this->repo, $indexer, $this->embeddings_service, AIPS_Config::get_instance() );
 
 		$process->start();
 		$process->tick();
@@ -229,7 +226,7 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 		$this->process->tick();
 		$this->assertSame( 2, $this->generated, 'The slice is capped to the remaining budget.' );
 
-		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) );
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) );
 		$this->process->tick();
 
 		$snapshot = $this->process->get_snapshot();
@@ -248,5 +245,115 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 		$this->assertSame( 50, $estimate['daily_rate'] );
 		$this->assertSame( (int) ceil( $estimate['items'] / 50 ), $estimate['days'] );
 		$this->assertNotEmpty( $estimate['message'] );
+	}
+
+	public function test_stale_mode_reindexes_only_stale_posts() {
+		$ids = $this->create_posts( 3 );
+		$this->process->start();
+		$this->process->tick();
+		$this->assertSame( 3, $this->generated );
+
+		// Two rows predate a model change.
+		$repo = new AIPS_Embeddings_Repository();
+		foreach ( array( $ids[0], $ids[1] ) as $id ) {
+			$row = $repo->get_by_post_id( $id );
+			$repo->upsert( 'post', $id, array( 0.1, 0.2, 0.3 ), 'an-older-model', 3, $row->content_hash, 'post' );
+		}
+
+		$this->assertSame( 2, $this->process->get_estimate( array( 'mode' => 'stale' ) )['items'] );
+
+		$this->generated = 0;
+		$this->process->start( array( 'mode' => 'stale' ) );
+		$this->process->tick();
+
+		$this->assertSame( 2, $this->generated, 'Only the stale posts are re-embedded.' );
+		$this->assertSame( 'completed', $this->process->get_snapshot()['last_status'] );
+	}
+
+	public function test_upgrade_migration_cancels_an_open_internal_links_indexing_run() {
+		$run_id = $this->repo->create( 'internal_links_indexing', 5 );
+		$this->assertGreaterThan( 0, $run_id );
+		wp_schedule_single_event( time() + 60, AIPS_Managed_Background_Process::TICK_HOOK, array( 'internal_links_indexing' ) );
+
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_20' );
+		$method->setAccessible( true );
+		$method->invoke( $migrations );
+
+		$this->assertNull( $this->repo->get_open( 'internal_links_indexing' ) );
+		$this->assertSame( 'cancelled', $this->repo->get( $run_id )->status );
+		$this->assertFalse( wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( 'internal_links_indexing' ) ) );
+	}
+
+	public function test_old_process_key_is_no_longer_registered() {
+		$keys = array_keys( ( new AIPS_Background_Process_Manager() )->all() );
+
+		$this->assertContains( 'content_indexing', $keys );
+		$this->assertNotContains( 'internal_links_indexing', $keys );
+	}
+
+	public function test_rate_limit_mid_slice_keeps_the_run_open() {
+		$this->create_posts( 3 );
+		$limiter = $this->limiter;
+
+		$count   = 0;
+		$service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'is_enabled', 'is_embeddings_supported', 'generate_embedding', 'get_active_model', 'get_rate_limiter' ) )
+			->getMock();
+		$service->method( 'is_enabled' )->willReturn( true );
+		$service->method( 'is_embeddings_supported' )->willReturn( true );
+		$service->method( 'get_active_model' )->willReturn( 'text-embedding-3-small' );
+		$service->method( 'get_rate_limiter' )->willReturn( $limiter );
+		$service->method( 'generate_embedding' )->willReturnCallback( function () use ( &$count, $limiter ) {
+			$count++;
+			if ( $count > 1 ) {
+				return new WP_Error( 'rate_limit_exceeded', 'Rate limit reached.' );
+			}
+			$limiter->record_usage( 1 );
+			return array( 0.1, 0.2, 0.3 );
+		} );
+
+		$config  = AIPS_Config::get_instance();
+		$indexer = new AIPS_Content_Indexer_Service( new AIPS_Embeddings_Repository(), null, $service, null, null, $config );
+		$process = new AIPS_Content_Indexer_Process( $this->repo, $indexer, $service, $config );
+
+		$process->start();
+		$process->tick();
+
+		$snapshot = $process->get_snapshot();
+		$this->assertSame( 1, $snapshot['processed'] );
+		$this->assertTrue( $snapshot['is_active'], 'A rate limit mid-slice must not complete the run.' );
+		$this->assertNotSame( 'idle', $snapshot['status'] );
+	}
+
+	public function test_stale_run_starts_when_nothing_is_unindexed() {
+		$ids = $this->create_posts( 2 );
+		$this->process->start();
+		$this->process->tick();
+
+		$repo = new AIPS_Embeddings_Repository();
+		$row  = $repo->get_by_post_id( $ids[0] );
+		$repo->upsert( 'post', $ids[0], array( 0.1, 0.2, 0.3 ), 'an-older-model', 3, $row->content_hash, 'post' );
+
+		$snapshot = $this->process->start( array( 'mode' => 'stale' ) );
+
+		$this->assertIsArray( $snapshot, 'A stale run needs stale posts, not unindexed ones.' );
+		$this->assertSame( 1, $snapshot['total'] );
+	}
+
+	public function test_wake_queues_an_immediate_tick_for_a_waiting_run() {
+		$this->create_posts( 2 );
+		$this->process->start();
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) );
+		wp_schedule_single_event( time() + 3600, AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) );
+
+		$this->assertTrue( $this->process->wake() );
+
+		$this->assertLessThanOrEqual( time() + 5, wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) ) );
+	}
+
+	public function test_wake_does_nothing_without_an_active_run() {
+		$this->assertFalse( $this->process->wake() );
 	}
 }

@@ -5,7 +5,11 @@
  * @package AI_Post_Scheduler
  */
 
+require_once __DIR__ . '/Trait_AIPS_Clear_Lock_Cleanup.php';
+
 class Test_AIPS_Internal_Links extends WP_UnitTestCase {
+
+	use Trait_AIPS_Clear_Lock_Cleanup;
 
 	/** @var AIPS_Embeddings_Repository */
 	private $embeddings_repo;
@@ -25,6 +29,8 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_internal_links' );
 		parent::tearDown();
+
+		$this->purge_committed_lock_rows();
 	}
 
 	// -------------------------------------------------------------------------
@@ -288,9 +294,9 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	}
 
 	/**
-	 * index_post should skip the AI call if the content hash has not changed.
+	 * generate_suggestions_for_post embeds an unindexed source post exactly once, and not at all once indexed.
 	 */
-	public function test_index_post_skips_ai_call_when_content_hash_matches() {
+	public function test_generate_suggestions_embeds_unindexed_source_once() {
 		$p1 = wp_insert_post( array(
 			'post_title'   => 'Unchanged Article Title',
 			'post_content' => 'Sample body content for hashing test.',
@@ -298,39 +304,71 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 			'post_type'    => 'post',
 		) );
 
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_dimensions', 3 );
+
 		$emb_service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'generate_embedding', 'get_active_model', 'is_enabled' ) )
+			->onlyMethods( array( 'generate_embedding', 'get_active_model', 'is_enabled', 'get_rate_limiter' ) )
 			->getMock();
+		$emb_service->method( 'is_enabled' )->willReturn( true );
+		$emb_service->method( 'get_active_model' )->willReturn( 'text-embedding-3-small' );
+		$emb_service->method( 'get_rate_limiter' )->willReturn( new AIPS_Embeddings_Rate_Limiter( AIPS_Config::get_instance() ) );
 
-		$emb_service->method( 'is_enabled' )
-			->willReturn( true );
-
-		// generate_embedding must be called exactly once despite calling index_post twice.
+		// Called exactly once across two generate calls.
 		$emb_service->expects( $this->once() )
 			->method( 'generate_embedding' )
 			->willReturn( array( 0.1, 0.2, 0.3 ) );
 
-		$emb_service->method( 'get_active_model' )
-			->willReturn( 'text-embedding-3-small' );
+		$indexer = new AIPS_Content_Indexer_Service( $this->embeddings_repo, null, $emb_service, null, null, AIPS_Config::get_instance() );
+		$service = new AIPS_Internal_Links_Service( $this->embeddings_repo, $this->links_repo, $emb_service, null, null, null, $indexer );
 
-		$service = new AIPS_Internal_Links_Service(
-			$this->embeddings_repo,
-			$this->links_repo,
-			$emb_service
-		);
-
-		// First call: generates embedding and saves content hash
-		$res1 = $service->index_post( $p1 );
-		$this->assertTrue( $res1 );
+		$this->assertNotWPError( $service->generate_suggestions_for_post( $p1 ) );
 
 		$row = $this->embeddings_repo->get_by_post_id( $p1 );
 		$this->assertNotNull( $row );
 		$this->assertNotEmpty( $row->content_hash );
+		$this->assertSame( 'text-embedding-3-small', $row->model );
 
-		// Second call: skips AI generation because hash matches
-		$res2 = $service->index_post( $p1 );
-		$this->assertTrue( $res2 );
+		// Second call: the row is current, so no AI call.
+		$this->assertNotWPError( $service->generate_suggestions_for_post( $p1 ) );
+	}
+
+	/**
+	 * Internal Links no longer owns an indexer: it delegates to the Content Indexer.
+	 */
+	public function test_internal_links_service_has_no_post_indexing_of_its_own() {
+		$this->assertFalse( method_exists( 'AIPS_Internal_Links_Service', 'index_post' ) );
+		$this->assertFalse( method_exists( 'AIPS_Internal_Links_Service', 'process_indexing_batch' ) );
+	}
+
+	/**
+	 * The Internal Links status is the Content Indexer's status.
+	 */
+	public function test_indexing_status_equals_the_content_indexer_status() {
+		wp_insert_post( array( 'post_title' => 'Status post', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+
+		$indexer = AIPS_Container::get_instance()->make( AIPS_Content_Indexer_Service::class );
+		$service = new AIPS_Internal_Links_Service( $this->embeddings_repo, $this->links_repo, null, null, null, null, $indexer );
+
+		$types    = (array) AIPS_Config::get_instance()->get_option( 'aips_indexer_post_types', array( 'post' ) );
+		$expected = $indexer->get_indexing_status( $types );
+		$actual   = $service->get_indexing_status();
+
+		foreach ( array( 'total_posts', 'indexed', 'unindexed', 'stale', 'percent' ) as $key ) {
+			$this->assertSame( $expected[ $key ], $actual[ $key ], "Status key {$key} must match the Content Indexer." );
+		}
+	}
+
+	/**
+	 * No Internal Links action can delete topic embeddings.
+	 */
+	public function test_internal_links_controller_has_no_index_clearing_actions() {
+		$this->assertFalse( method_exists( 'AIPS_Internal_Links_Controller', 'ajax_clear_index' ) );
+		$this->assertFalse( method_exists( 'AIPS_Internal_Links_Controller', 'ajax_start_indexing' ) );
+		$this->assertFalse( AIPS_Ajax_Registry::has_action( 'aips_internal_links_clear_index' ) );
+		$this->assertFalse( AIPS_Ajax_Registry::has_action( 'aips_internal_links_start_indexing' ) );
+		$this->assertFalse( AIPS_Ajax_Registry::has_action( 'aips_indexer_process_batch' ) );
 	}
 
 	/**
@@ -372,9 +410,18 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 		$this->embeddings_repo->upsert( 'post', $target1,   array( 0.95, 0.05, 0.0 ), 'test-model' );
 		$this->embeddings_repo->upsert( 'post', $target2,   array( 0.20, 0.80, 0.0 ), 'test-model' );
 
+		// The embeddings above are fixtures; the indexer must not call a provider for them.
+		$indexer = $this->createMock( AIPS_Content_Indexer_Service::class );
+		$indexer->method( 'ensure_indexed' )->willReturn( true );
+
 		$service = new AIPS_Internal_Links_Service(
 			$this->embeddings_repo,
-			$this->links_repo
+			$this->links_repo,
+			null,
+			null,
+			null,
+			null,
+			$indexer
 		);
 
 		$created_ids = $service->generate_suggestions_for_post( $source_id, 5, 0.70 );

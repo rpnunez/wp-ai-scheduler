@@ -31,14 +31,30 @@ if (!defined('ABSPATH')) {
 				<option value="topics" <?php selected(!empty($settings['scan_entity_scope']) ? $settings['scan_entity_scope'] : 'all', 'topics'); ?>><?php esc_html_e('Author Topics Only', 'ai-post-scheduler'); ?></option>
 			</select>
 		</div>
-		<div class="aips-toolbar-right aips-btn-group">
-			<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
+		<div class="aips-toolbar-right aips-btn-group" data-aips-bg-key="content_indexing" data-aips-bg-status="idle">
+			<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary" data-aips-bg-action="start" title="<?php esc_attr_e('Index everything in scope in the background. Shows a cost estimate first; the run can be paused or stopped at any time.', 'ai-post-scheduler'); ?>">
 				<span class="dashicons dashicons-database-import" aria-hidden="true"></span>
 				<span class="btn-text"><?php esc_html_e('Start Scan', 'ai-post-scheduler'); ?></span>
 			</button>
-			<button type="button" id="aips-pause-indexing-btn" class="aips-btn aips-btn-secondary aips-hidden">
+			<button type="button" id="aips-reindex-stale-btn" class="aips-btn aips-btn-secondary" data-aips-bg-action="start" data-aips-bg-mode="stale" title="<?php esc_attr_e('Re-embed posts that were indexed with a different embeddings model or dimension count.', 'ai-post-scheduler'); ?>"<?php echo empty($metrics['stale']) ? ' style="display:none;"' : ''; ?>>
+				<span class="dashicons dashicons-update" aria-hidden="true"></span>
+				<span class="btn-text"><?php echo esc_html(sprintf(
+					/* translators: %s: number of stale embeddings. */
+					__('Re-index Stale (%s)', 'ai-post-scheduler'),
+					number_format_i18n((int) (isset($metrics['stale']) ? $metrics['stale'] : 0))
+				)); ?></span>
+			</button>
+			<button type="button" id="aips-pause-indexing-btn" class="aips-btn aips-btn-secondary" data-aips-bg-action="pause" hidden>
 				<span class="dashicons dashicons-controls-pause" aria-hidden="true"></span>
 				<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
+			</button>
+			<button type="button" id="aips-resume-indexing-btn" class="aips-btn aips-btn-primary" data-aips-bg-action="resume" hidden>
+				<span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
+				<?php esc_html_e('Resume', 'ai-post-scheduler'); ?>
+			</button>
+			<button type="button" id="aips-cancel-indexing-btn" class="aips-btn aips-btn-ghost aips-btn-danger" data-aips-bg-action="cancel" hidden>
+				<span class="dashicons dashicons-no" aria-hidden="true"></span>
+				<?php esc_html_e('Stop', 'ai-post-scheduler'); ?>
 			</button>
 			<button type="button" id="aips-clear-index-btn" class="aips-btn aips-btn-ghost aips-btn-danger">
 				<span class="dashicons dashicons-trash" aria-hidden="true"></span>
@@ -206,21 +222,33 @@ if (!defined('ABSPATH')) {
 			<p class="aips-stat-subtext">
 				<strong><?php echo esc_html((string) $metrics['active_dims']); ?></strong> <?php esc_html_e('dimensions', 'ai-post-scheduler'); ?>
 			</p>
+			<p class="aips-stat-subtext aips-text-warning" id="aips-stat-stale-line"<?php echo empty($metrics['stale']) ? ' style="display:none;"' : ''; ?>>
+				<?php
+				echo esc_html(sprintf(
+					/* translators: %s: number of stale embeddings. */
+					_n('%s embedding was made with another model or dimensions.', '%s embeddings were made with another model or dimensions.', (int) $metrics['stale'], 'ai-post-scheduler'),
+					number_format_i18n((int) $metrics['stale'])
+				));
+				?>
+			</p>
 		</div>
 
 	</div><!-- /.aips-stats-grid -->
 
 	<!-- Live Progress Banner (Hidden by default, shown while batch running) -->
-	<div id="aips-indexer-live-banner" class="aips-indexer-banner aips-hidden">
+	<div id="aips-indexer-live-banner" class="aips-indexer-banner aips-hidden" data-aips-bg-key="content_indexing" aria-live="polite">
 		<div class="aips-indexer-banner-spinner">
 			<span class="spinner is-active"></span>
 		</div>
 		<div class="aips-indexer-banner-text">
-			<strong id="aips-indexer-banner-title"><?php esc_html_e('Indexing Content in Progress…', 'ai-post-scheduler'); ?></strong>
-			<span id="aips-indexer-banner-desc"><?php esc_html_e('Processing batch slices safely without browser timeouts.', 'ai-post-scheduler'); ?></span>
+			<strong id="aips-indexer-banner-title" data-aips-bg-field="status_label"><?php esc_html_e('Indexing Content in Progress…', 'ai-post-scheduler'); ?></strong>
+			<span id="aips-indexer-banner-desc"><?php esc_html_e('Running in the background. You can leave this page; progress continues and can be paused or stopped at any time.', 'ai-post-scheduler'); ?></span>
+			<span class="aips-bg-message" data-aips-bg-field="message"></span>
+			<span class="aips-bg-message" data-aips-bg-field="next_run"></span>
 		</div>
 		<div class="aips-indexer-banner-counter">
-			<span id="aips-indexer-slice-count">0 / 0</span>
+			<span id="aips-indexer-slice-count"><span data-aips-bg-field="processed">0</span> / <span data-aips-bg-field="total">0</span></span>
+			<div class="aips-bg-progress-bar"><span data-aips-bg-bar style="width:0%"></span></div>
 		</div>
 	</div>
 

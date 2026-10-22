@@ -598,6 +598,15 @@ class AIPS_Internal_Links_Repository {
 	}
 
 	/**
+	 * Delete every pending suggestion, keeping accepted, rejected, inserted and undone ones.
+	 *
+	 * @return int|false Number of rows deleted or false on failure.
+	 */
+	public function delete_all_pending() {
+		return $this->wpdb->delete($this->table, array('status' => 'pending'), array('%s'));
+	}
+
+	/**
 	 * Delete all link suggestions.
 	 *
 	 * @return int|false Number of rows deleted or false on failure.
