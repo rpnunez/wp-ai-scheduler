@@ -1,0 +1,428 @@
+<?php
+/**
+ * Ability Workflow Document Validator
+ *
+ * Validates a decoded workflow document (a workflow's steps + settings)
+ * before it is persisted. Pure logic composed from the condition evaluator,
+ * variable resolver, and (optionally) the ability catalog — no direct SQL.
+ *
+ * Used by the "save workflow steps" AJAX handler before calling
+ * AIPS_Ability_Workflow_Repository::save_steps().
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.2.0
+ */
+
+if (!defined('ABSPATH')) {
+	exit;
+}
+
+/**
+ * Class AIPS_Ability_Workflow_Document_Validator
+ */
+class AIPS_Ability_Workflow_Document_Validator {
+
+	/**
+	 * Allowed on_success/on_failure strategies.
+	 */
+	const STRATEGIES = array( 'continue', 'stop', 'skip' );
+
+	/**
+	 * Allowed characters for step keys and output aliases. Both are used as
+	 * path segments in {{steps.<name>.output.field}} references, which are split
+	 * on dots, so a dot or any other punctuation would make a step unreachable.
+	 */
+	const KEY_PATTERN = '/^[A-Za-z0-9_]+$/';
+
+	/**
+	 * @var AIPS_Ability_Workflow_Condition_Evaluator
+	 */
+	private $condition_evaluator;
+
+	/**
+	 * @var AIPS_Ability_Workflow_Variable_Resolver
+	 */
+	private $resolver;
+
+	/**
+	 * @var AIPS_Ability_Catalog_Service|null
+	 */
+	private $catalog;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Ability_Workflow_Condition_Evaluator|null $condition_evaluator Condition evaluator.
+	 * @param AIPS_Ability_Workflow_Variable_Resolver|null   $resolver            Variable resolver.
+	 * @param AIPS_Ability_Catalog_Service|null              $catalog             Ability catalog service.
+	 */
+	public function __construct(
+		?AIPS_Ability_Workflow_Condition_Evaluator $condition_evaluator = null,
+		?AIPS_Ability_Workflow_Variable_Resolver $resolver = null,
+		?AIPS_Ability_Catalog_Service $catalog = null
+	) {
+		$this->resolver            = $resolver ?: new AIPS_Ability_Workflow_Variable_Resolver();
+		$this->condition_evaluator = $condition_evaluator ?: new AIPS_Ability_Workflow_Condition_Evaluator( $this->resolver );
+		$this->catalog             = $catalog;
+	}
+
+	/**
+	 * Validate a workflow document's steps.
+	 *
+	 * @param array $workflow_document {
+	 *     @type array $steps Array of step field arrays.
+	 * }
+	 * @param bool  $skip_ability_check When true, skip catalog ability-availability checks
+	 *                                  (useful offline/in tests where no provider is registered).
+	 * @return true|WP_Error WP_Error data carries a list of per-field errors.
+	 */
+	public function validate( array $workflow_document, bool $skip_ability_check = false ) {
+		$steps = isset( $workflow_document['steps'] ) && is_array( $workflow_document['steps'] ) ? $workflow_document['steps'] : array();
+		$errors = array();
+
+		$seen_keys     = array();
+		$earlier_keys  = array();
+		$earlier_alias = array();
+		$alias_owner   = array();
+
+		foreach ( $steps as $index => $step ) {
+			if ( ! is_array( $step ) ) {
+				/* translators: %d: position of the step in the list */
+				$errors[] = sprintf( __( 'Step at index %d must be an array.', 'ai-post-scheduler' ), $index );
+				continue;
+			}
+
+			$step_key = isset( $step['step_key'] ) ? (string) $step['step_key'] : '';
+
+			if ( '' === $step_key ) {
+				/* translators: %d: position of the step in the list */
+				$errors[] = sprintf( __( 'Step at index %d is missing a step_key.', 'ai-post-scheduler' ), $index );
+			} elseif ( isset( $seen_keys[ $step_key ] ) ) {
+				/* translators: %s: step key */
+				$errors[] = sprintf( __( 'Duplicate step_key "%s".', 'ai-post-scheduler' ), $step_key );
+			} else {
+				$seen_keys[ $step_key ] = true;
+			}
+
+			if ( '' !== $step_key ) {
+				$key_error = $this->validate_identifier( $step_key, 'step_key', AIPS_Ability_Workflow_Repository::STEP_KEY_MAX_LENGTH );
+				if ( '' !== $key_error ) {
+					$errors[] = $key_error;
+				}
+			}
+
+			// Outputs are addressed by output_alias, or by step_key when no
+			// alias is set (that is how the executor stores them).
+			$alias = isset( $step['output_alias'] ) && is_scalar( $step['output_alias'] ) ? (string) $step['output_alias'] : '';
+
+			if ( '' !== $alias ) {
+				$alias_error = $this->validate_identifier( $alias, 'output_alias', AIPS_Ability_Workflow_Repository::OUTPUT_ALIAS_MAX_LENGTH );
+				if ( '' !== $alias_error ) {
+					$errors[] = $this->step_error( $step_key, $alias_error );
+				}
+			}
+
+			$effective_alias = '' !== $alias ? $alias : $step_key;
+
+			if ( '' !== $effective_alias ) {
+				if ( isset( $alias_owner[ $effective_alias ] ) && $alias_owner[ $effective_alias ] !== $step_key ) {
+					/* translators: 1: step key, 2: output name, 3: step key that already uses it */
+					$errors[] = sprintf( __( 'Step "%1$s" output name "%2$s" is already used by step "%3$s".', 'ai-post-scheduler' ), $step_key, $effective_alias, $alias_owner[ $effective_alias ] );
+				} else {
+					$alias_owner[ $effective_alias ] = $step_key;
+				}
+			}
+
+			if ( empty( $step['ability_name'] ) ) {
+				/* translators: %s: step key */
+				$errors[] = sprintf( __( 'Step "%s" is missing an ability_name.', 'ai-post-scheduler' ), $step_key );
+			} elseif ( ! $skip_ability_check && $this->catalog instanceof AIPS_Ability_Catalog_Service ) {
+				$available = $this->catalog->validate_ability_available( (string) $step['ability_name'] );
+				if ( is_wp_error( $available ) ) {
+					$errors[] = $this->step_error( $step_key, $available->get_error_message() );
+				} else {
+					$input_map = isset( $step['input_map'] ) && is_array( $step['input_map'] ) ? $step['input_map'] : array();
+
+					foreach ( $this->validate_against_input_schema( (string) $step['ability_name'], $input_map ) as $message ) {
+						$errors[] = $this->step_error( $step_key, $message );
+					}
+				}
+			}
+
+			foreach ( array( 'depends_on' ) as $ref_field ) {
+				if ( ! empty( $step[ $ref_field ] ) && is_array( $step[ $ref_field ] ) ) {
+					foreach ( $step[ $ref_field ] as $dep_key ) {
+						if ( ! in_array( (string) $dep_key, $earlier_keys, true ) ) {
+							/* translators: 1: step key, 2: step key it depends on */
+							$errors[] = sprintf( __( 'Step "%1$s" depends_on unknown or later step "%2$s".', 'ai-post-scheduler' ), $step_key, $dep_key );
+						}
+					}
+				}
+			}
+
+			if ( ! empty( $step['condition_tree'] ) && is_array( $step['condition_tree'] ) ) {
+				$condition_result = $this->condition_evaluator->validate_condition_tree( $step['condition_tree'] );
+				if ( is_wp_error( $condition_result ) ) {
+					$errors[] = $this->step_error( $step_key, $condition_result->get_error_message() );
+				}
+
+				// Left and right operands may both reference earlier outputs.
+				foreach ( $this->validate_input_map( $step['condition_tree'], $earlier_alias ) as $message ) {
+					$errors[] = $this->step_error( $step_key, $message );
+				}
+			}
+
+			if ( ! empty( $step['input_map'] ) && is_array( $step['input_map'] ) ) {
+				$input_map_errors = $this->validate_input_map( $step['input_map'], $earlier_alias );
+				foreach ( $input_map_errors as $message ) {
+					$errors[] = $this->step_error( $step_key, $message );
+				}
+			}
+
+			foreach ( array( 'on_success', 'on_failure' ) as $strategy_field ) {
+				if ( ! empty( $step[ $strategy_field ]['strategy'] ) && ! in_array( $step[ $strategy_field ]['strategy'], self::STRATEGIES, true ) ) {
+					/* translators: 1: step key, 2: field name (on_success or on_failure), 3: the strategy given */
+					$errors[] = sprintf( __( 'Step "%1$s" has an invalid %2$s.strategy "%3$s".', 'ai-post-scheduler' ), $step_key, $strategy_field, $step[ $strategy_field ]['strategy'] );
+				}
+			}
+
+			if ( ! empty( $step['retry_policy'] ) && is_array( $step['retry_policy'] ) ) {
+				foreach ( array( 'attempts', 'backoff_seconds' ) as $retry_field ) {
+					if ( isset( $step['retry_policy'][ $retry_field ] ) && ( ! is_numeric( $step['retry_policy'][ $retry_field ] ) || (int) $step['retry_policy'][ $retry_field ] < 0 ) ) {
+						/* translators: 1: step key, 2: retry_policy field name */
+						$errors[] = sprintf( __( 'Step "%1$s" retry_policy.%2$s must be a non-negative integer.', 'ai-post-scheduler' ), $step_key, $retry_field );
+					}
+				}
+			}
+
+			if ( '' !== $step_key ) {
+				$earlier_keys[] = $step_key;
+			}
+			if ( '' !== $effective_alias ) {
+				$earlier_alias[] = $effective_alias;
+			}
+		}
+
+		if ( ! empty( $errors ) ) {
+			return new WP_Error( 'ability_workflow_validation_failed', __( 'Workflow validation failed.', 'ai-post-scheduler' ), array( 'errors' => $errors ) );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check a step's input map against the ability's declared input schema.
+	 *
+	 * Reports required fields that are missing, fields the schema does not allow,
+	 * and fixed values of the wrong type or outside an enum. A value that is
+	 * (or contains) a {{reference}} is only known at run time, so it is not
+	 * checked. Only the top level of the input is checked, and schema keywords
+	 * beyond type, enum, required and additionalProperties are left to the
+	 * ability itself.
+	 *
+	 * @param string $ability_name Ability slug.
+	 * @param array  $input_map    The step's input map.
+	 * @return string[] Messages, empty when the input fits (or the ability declares no input fields).
+	 */
+	private function validate_against_input_schema( string $ability_name, array $input_map ): array {
+		if ( ! $this->catalog instanceof AIPS_Ability_Catalog_Service ) {
+			return array();
+		}
+
+		$schema = $this->catalog->get_input_schema( $ability_name );
+
+		if ( is_wp_error( $schema ) || ! is_array( $schema ) || empty( $schema ) ) {
+			return array();
+		}
+
+		$properties = isset( $schema['properties'] ) && is_array( $schema['properties'] ) ? $schema['properties'] : array();
+		$required   = isset( $schema['required'] ) && is_array( $schema['required'] ) ? $schema['required'] : array();
+		$errors     = array();
+
+		foreach ( $required as $field ) {
+			if ( is_string( $field ) && ! array_key_exists( $field, $input_map ) ) {
+				/* translators: %s: input field name */
+				$errors[] = sprintf( __( 'The ability needs the input field "%s".', 'ai-post-scheduler' ), $field );
+			}
+		}
+
+		foreach ( $input_map as $field => $value ) {
+			$field = (string) $field;
+
+			if ( ! isset( $properties[ $field ] ) || ! is_array( $properties[ $field ] ) ) {
+				if ( ! empty( $properties ) && isset( $schema['additionalProperties'] ) && false === $schema['additionalProperties'] ) {
+					/* translators: %s: input field name */
+					$errors[] = sprintf( __( 'The ability has no input field "%s".', 'ai-post-scheduler' ), $field );
+				}
+				continue;
+			}
+
+			if ( $this->contains_reference( $value ) ) {
+				continue;
+			}
+
+			$property = $properties[ $field ];
+
+			if ( isset( $property['type'] ) && ! $this->matches_type( $value, $property['type'] ) ) {
+				/* translators: 1: input field name, 2: expected type */
+				$errors[] = sprintf( __( 'Input field "%1$s" should be of type %2$s.', 'ai-post-scheduler' ), $field, implode( '/', (array) $property['type'] ) );
+				continue;
+			}
+
+			if ( isset( $property['enum'] ) && is_array( $property['enum'] ) && is_scalar( $value ) && ! in_array( $value, $property['enum'], true ) ) {
+				$allowed = array_map(
+					function ( $option ) {
+						return is_bool( $option ) ? ( $option ? 'true' : 'false' ) : (string) $option;
+					},
+					array_filter( $property['enum'], 'is_scalar' )
+				);
+
+				/* translators: 1: input field name, 2: comma-separated allowed values */
+				$errors[] = sprintf( __( 'Input field "%1$s" must be one of: %2$s.', 'ai-post-scheduler' ), $field, implode( ', ', $allowed ) );
+			}
+		}
+
+		return $errors;
+	}
+
+	/**
+	 * Whether a value is, or contains, a {{reference}} resolved at run time.
+	 *
+	 * @param mixed $value Input value.
+	 * @return bool
+	 */
+	private function contains_reference( $value ): bool {
+		if ( is_string( $value ) ) {
+			return false !== strpos( $value, '{{' );
+		}
+
+		if ( is_array( $value ) ) {
+			foreach ( $value as $item ) {
+				if ( $this->contains_reference( $item ) ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether a fixed value fits a JSON Schema type (or list of types).
+	 *
+	 * Unrecognised type names are accepted rather than rejected.
+	 *
+	 * @param mixed        $value Input value.
+	 * @param string|array $types Schema type or types.
+	 * @return bool
+	 */
+	private function matches_type( $value, $types ): bool {
+		foreach ( (array) $types as $type ) {
+			switch ( $type ) {
+				case 'string':
+					$ok = is_string( $value );
+					break;
+				case 'integer':
+					$ok = is_int( $value ) || ( is_float( $value ) && floor( $value ) === $value );
+					break;
+				case 'number':
+					$ok = is_int( $value ) || is_float( $value );
+					break;
+				case 'boolean':
+					$ok = is_bool( $value );
+					break;
+				case 'null':
+					$ok = null === $value;
+					break;
+				case 'array':
+					$ok = is_array( $value ) && ( array() === $value || array_keys( $value ) === range( 0, count( $value ) - 1 ) );
+					break;
+				case 'object':
+					$ok = is_array( $value ) && ( array() === $value || array_keys( $value ) !== range( 0, count( $value ) - 1 ) );
+					break;
+				default:
+					$ok = true;
+			}
+
+			if ( $ok ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Prefix a message with the step it belongs to.
+	 *
+	 * @param string $step_key Step key.
+	 * @param string $message  Message about the step.
+	 * @return string
+	 */
+	private function step_error( string $step_key, string $message ): string {
+		/* translators: 1: step key, 2: what is wrong with the step */
+		return sprintf( __( 'Step "%1$s": %2$s', 'ai-post-scheduler' ), $step_key, $message );
+	}
+
+	/**
+	 * Check a step key or output alias for allowed characters and length.
+	 *
+	 * @param string $value      Value to check.
+	 * @param string $field      Field name for the message.
+	 * @param int    $max_length Column width.
+	 * @return string Error message, or an empty string when valid.
+	 */
+	private function validate_identifier( string $value, string $field, int $max_length ): string {
+		if ( ! preg_match( self::KEY_PATTERN, $value ) ) {
+			/* translators: 1: field name, 2: the value given */
+			return sprintf( __( '%1$s "%2$s" may only contain letters, numbers and underscores.', 'ai-post-scheduler' ), $field, $value );
+		}
+
+		if ( strlen( $value ) > $max_length ) {
+			/* translators: 1: field name, 2: the value given, 3: longest allowed length */
+			return sprintf( __( '%1$s "%2$s" must be at most %3$d characters.', 'ai-post-scheduler' ), $field, $value, $max_length );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Validate every token in an input map, ensuring tokens are structurally
+	 * valid and — for steps.* tokens — reference only earlier steps' output_alias.
+	 *
+	 * @param array $input_map     Input map (dest field => template value or nested map).
+	 * @param array $earlier_alias Output aliases seen so far, in step order.
+	 * @return string[] Error messages, empty when valid.
+	 */
+	private function validate_input_map( array $input_map, array $earlier_alias ): array {
+		$errors = array();
+
+		array_walk_recursive(
+			$input_map,
+			function ( $value ) use ( &$errors, $earlier_alias ) {
+				if ( ! is_string( $value ) || false === strpos( $value, '{{' ) ) {
+					return;
+				}
+
+				foreach ( $this->resolver->extract_tokens( $value ) as $token ) {
+					$token_result = $this->resolver->validate_token( $token );
+
+					if ( is_wp_error( $token_result ) ) {
+						$errors[] = $token_result->get_error_message();
+						continue;
+					}
+
+					if ( 0 === strpos( $token, 'steps.' ) ) {
+						$alias = explode( '.', $token )[1] ?? '';
+						if ( ! in_array( $alias, $earlier_alias, true ) ) {
+							/* translators: %s: output alias */
+							$errors[] = sprintf( __( 'Input map references unknown or later step output alias "%s".', 'ai-post-scheduler' ), $alias );
+						}
+					}
+				}
+			}
+		);
+
+		return $errors;
+	}
+}

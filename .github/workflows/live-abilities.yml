@@ -1,0 +1,56 @@
+name: Live Abilities Checks
+
+# Weekly, non-blocking checks of the Abilities integration against the real
+# WordPress core abilities and, when the GOOGLE_API_KEY repository secret exists,
+# the real WordPress AI plugin with Google. Never runs on pull requests, so a
+# provider outage or quota problem cannot block a merge; failures are visible in
+# the Actions tab (and via the scheduled run's notification).
+
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-abilities
+  cancel-in-progress: false
+
+jobs:
+  live-abilities:
+    name: Live Abilities (core + AI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, xml, curl, zip, dom, fileinfo
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Start the Docker stack
+        run: docker compose up -d --build --wait --wait-timeout 300 db web
+
+      - name: Run the live Abilities checks
+        env:
+          # Empty when the secret is not configured: the AI group is then skipped.
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: bash scripts/run-live-abilities.sh
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+
+      - name: Tear down Docker services
+        if: always()
+        run: docker compose down -v

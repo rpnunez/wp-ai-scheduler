@@ -69,6 +69,20 @@ What the script does:
 
 You do not need to run `./start-dev.sh` every time: once the stack exists, `make start` brings it back, and the test script starts `db`/`web` itself if they are stopped.
 
+## Live Abilities checks (opt-in, not part of the suite)
+
+Two PHPUnit groups talk to real WordPress abilities instead of fixtures:
+
+- `abilities-live`: the abilities WordPress core registers. No secrets.
+- `abilities-live-ai`: the WordPress AI plugin with Google. Needs `GOOGLE_API_KEY`.
+
+```bash
+make test-live-abilities                      # core group; the AI group is skipped without a key
+GOOGLE_API_KEY=... make test-live-abilities   # both groups
+```
+
+The key is passed to the container as an environment variable for that run only and is never written to a file. For the AI group the script downloads the `ai` and `ai-provider-for-google` plugins from wordpress.org into the container's plugins directory (not activated). A scheduled GitHub Actions workflow (`.github/workflows/live-abilities.yml`) runs this weekly using the `GOOGLE_API_KEY` repository secret; it never runs on pull requests, so it cannot block a merge. This is a maintainer check, not part of the Agent test protocol above.
+
 ## Code coverage
 
 ```bash

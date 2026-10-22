@@ -66,7 +66,7 @@ class AIPS_History_Record_Kind {
 		$methods = array(
 			'content_indexing', 'content_index_operation', 'author_embeddings', 'author_suggestion',
 			'author_topic_generation', 'bulk_batch_slice', 'source_fetch', 'research_run', 'gsc_sync',
-			'link_index_run',
+			'link_index_run', 'ability_workflow_run',
 		);
 
 		/**

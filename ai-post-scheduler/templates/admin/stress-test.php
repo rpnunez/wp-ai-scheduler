@@ -70,8 +70,8 @@ foreach ($cases as $case) {
 						<button type="button" class="aips-btn aips-btn-danger" id="aips-stress-cleanup">
 							<span class="dashicons dashicons-trash"></span>
 							<?php esc_html_e('Delete Data', 'ai-post-scheduler'); ?>
-							<span class="aips-stress-testdata-count"<?php echo ($test_data['posts'] + $test_data['attachments']) > 0 ? '' : ' hidden'; ?>>
-								<?php echo esc_html((string) ($test_data['posts'] + $test_data['attachments'])); ?>
+							<span class="aips-stress-testdata-count"<?php echo ($test_data['posts'] + $test_data['attachments'] + $test_data['workflows']) > 0 ? '' : ' hidden'; ?>>
+								<?php echo esc_html((string) ($test_data['posts'] + $test_data['attachments'] + $test_data['workflows'])); ?>
 							</span>
 						</button>
 					<?php endif; ?>

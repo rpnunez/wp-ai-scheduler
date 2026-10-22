@@ -822,6 +822,111 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the enable Ability Workflows setting field.
+     *
+     * Displays a checkbox to enable or disable the Ability Workflows admin
+     * pages and AJAX endpoints.
+     *
+     * @return void
+     */
+    public function enable_ability_workflows_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_ability_workflows');
+        ?>
+        <input type="hidden" name="aips_enable_ability_workflows" value="0">
+        <label>
+            <input type="checkbox" name="aips_enable_ability_workflows" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enable Ability Workflows', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Adds an admin page for building multi-step automation workflows out of installed WordPress Abilities.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+  
+    /**
+     * Displays a checkbox to enable post-generation Ability enrichment.
+     *
+     * @return void
+     */
+    public function enable_ability_enrichment_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_ability_enrichment');
+        ?>
+        <input type="hidden" name="aips_enable_ability_enrichment" value="0">
+        <label>
+            <input type="checkbox" name="aips_enable_ability_enrichment" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enrich generated posts with WordPress Abilities', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('After a post is generated, call installed abilities (for example AI alt text for the featured image). Failures never affect generation.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Displays the service user used when generation runs without a logged-in user.
+     *
+     * @return void
+     */
+    public function ability_enrichment_user_id_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_ability_enrichment_user_id');
+        ?>
+        <input type="number" min="0" step="1" class="small-text" name="aips_ability_enrichment_user_id" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('User ID that ability enrichment runs as during scheduled (cron) generation. The user must be able to edit the generated post. Leave 0 to skip enrichment when nobody is logged in.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the minimum SEO score field of the quality-gate enrichment step.
+     *
+     * @return void
+     */
+    public function ability_enrichment_min_seo_score_field_callback() {
+        $this->quality_score_field('aips_ability_enrichment_min_seo_score', __('SEO score', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the minimum readability score field of the quality-gate enrichment step.
+     *
+     * @return void
+     */
+    public function ability_enrichment_min_readability_score_field_callback() {
+        $this->quality_score_field('aips_ability_enrichment_min_readability_score', __('readability score', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Shared markup of the two quality-gate threshold fields.
+     *
+     * @param string $option Option name.
+     * @param string $label  Lower-case name of the score.
+     * @return void
+     */
+    private function quality_score_field($option, $label) {
+        $value = (int) AIPS_Config::get_instance()->get_option($option);
+        ?>
+        <input type="number" min="0" max="100" step="1" class="small-text" name="<?php echo esc_attr($option); ?>" value="<?php echo esc_attr($value); ?>">
+        <p class="description">
+            <?php
+            echo esc_html(sprintf(
+                /* translators: %s: name of the score, for example "SEO score" */
+                __('When Yoast SEO provides its %s ability, generated posts scoring below this value (0 to 100) are flagged for review. The score is always recorded. Use 0 to record without flagging. Nothing is regenerated automatically.', 'ai-post-scheduler'),
+                $label
+            ));
+            ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render the Ability Workflow run retention setting field.
+     *
+     * @return void
+     */
+    public function ability_workflow_retention_days_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_ability_workflow_retention_days');
+        ?>
+        <input type="number" min="0" step="1" class="small-text" name="aips_ability_workflow_retention_days" value="<?php echo esc_attr($value); ?>">
+        <?php esc_html_e('days', 'ai-post-scheduler'); ?>
+        <p class="description"><?php esc_html_e('Finished Ability Workflow runs, with the inputs and outputs stored for each step, are deleted after this many days. Use 0 to keep them. Large values are shortened when stored, and the aips_ability_workflow_redact_payload filter can remove sensitive fields before anything is stored.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /*
      * Render the cache monitor setting field.
      *
      * Displays a checkbox to enable or disable the Cache Monitor

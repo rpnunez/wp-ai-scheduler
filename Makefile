@@ -4,7 +4,7 @@
 .PHONY: help up build down stop start start-dev restart reload-php rebuild \
 	logs logs-web logs-db shell wp-shell db-shell status info install clean prune \
 	plugin-activate plugin-deactivate plugin-list \
-	test test-verbose test-coverage test-session test-stop test-ci composer-install composer-update \
+	test test-verbose test-coverage test-session test-live-abilities test-stop test-ci composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
 	urls sync-wp-core sql-batch sql-batch-unpack
@@ -206,6 +206,10 @@ test-coverage: ## Run all tests with coverage: text summary + HTML in ai-post-sc
 test-session: ## Run tests, then stop the services this run started (PREFERRED for agents; ARGS="tests/A.php tests/B.php")
 	@echo "$(BLUE)Running tests (session: stops what it started)...$(NC)"
 	bash ./scripts/test-session.sh $(ARGS)
+
+test-live-abilities: ## Live Abilities checks: core abilities, plus real AI abilities when GOOGLE_API_KEY is set
+	@echo "$(BLUE)Running live Abilities checks...$(NC)"
+	bash ./scripts/run-live-abilities.sh
 
 test-stop: ## Stop the db, web and phpMyAdmin containers (keeps containers' data volumes)
 	@echo "$(YELLOW)Stopping test stack...$(NC)"

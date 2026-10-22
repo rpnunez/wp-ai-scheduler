@@ -301,6 +301,26 @@ class AIPS_Admin_Menu {
                 array($this, 'render_dev_tools_page')
             );
         }
+
+        if (AIPS_Config::get_instance()->get_option('aips_enable_ability_workflows')) {
+            add_submenu_page(
+                'ai-post-scheduler',
+                __('Ability Workflows', 'ai-post-scheduler'),
+                __('Ability Workflows', 'ai-post-scheduler'),
+                'manage_options',
+                'aips-ability-workflows',
+                array($this, 'render_ability_workflows_page')
+            );
+
+            add_submenu_page(
+                null,
+                __('Ability Workflow Builder', 'ai-post-scheduler'),
+                __('Ability Workflow Builder', 'ai-post-scheduler'),
+                'manage_options',
+                'aips-ability-workflow-builder',
+                array($this, 'render_ability_workflow_builder_page')
+            );
+        }
     }
 
     /**
@@ -314,7 +334,7 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page) || $this->is_studio_child_page($page)) {
+        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page) || $this->is_studio_child_page($page) || $this->is_ability_workflows_child_page($page)) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -340,6 +360,9 @@ class AIPS_Admin_Menu {
         }
         if ($this->is_studio_child_page($page)) {
             return 'aips-studio';
+        }
+        if ($this->is_ability_workflows_child_page($page)) {
+            return 'aips-ability-workflows';
         }
         return $submenu_file;
     }
@@ -506,6 +529,23 @@ class AIPS_Admin_Menu {
             'option'  => 'aips_history_per_page',
             'default' => 50,
         ));
+    }
+
+    /**
+     * Determine whether a hidden page belongs under Ability Workflows.
+     *
+     * @param string $page Current admin page slug.
+     * @return bool
+     */
+    private function is_ability_workflows_child_page($page) {
+        return in_array(
+            $page,
+            array(
+                'aips-ability-workflow-builder',
+            ),
+            true
+        );
+
     }
 
     /**
@@ -902,6 +942,25 @@ class AIPS_Admin_Menu {
      */
     public function render_dev_tools_page() {
         $this->redirect_to_hub('aips-diagnostics', 'dev-tools');
+    }
+
+    /**
+     * Render the Ability Workflows list page.
+     *
+     * @return void
+     */
+    public function render_ability_workflows_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/ability-workflows.php';
+    }
+
+    /**
+     * Render the Ability Workflow Builder page (hidden — consolidated under
+     * the visible Ability Workflows submenu item).
+     *
+     * @return void
+     */
+    public function render_ability_workflow_builder_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/ability-workflow-builder.php';
     }
 
     /**
