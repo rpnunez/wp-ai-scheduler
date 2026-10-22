@@ -657,6 +657,30 @@
 }
 
 /* -----------------------------------------------------------------------
+ * Mobile
+ * -------------------------------------------------------------------- */
+
+@media screen and (max-width: 782px) {
+	/* inline-flex doesn't wrap by default; without this the select + two
+	 * buttons stay on one line and can push the panel header wider than
+	 * the viewport. */
+	.aips-stress-history-picker {
+		flex-wrap: wrap;
+		width: 100%;
+	}
+
+	.aips-stress-history-select {
+		max-width: none;
+		flex: 1 1 auto;
+	}
+
+	.aips-stress-diff-meta-grid,
+	.aips-stress-diff-split {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* -----------------------------------------------------------------------
  * Reduced motion
  * -------------------------------------------------------------------- */
 

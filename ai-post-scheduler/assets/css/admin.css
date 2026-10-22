@@ -2001,9 +2001,37 @@ button.aips-btn-secondary:active {
         padding: var(--aips-space-2) var(--aips-space-3);
     }
 
+    /* Safety net: a table with fixed-width columns (e.g. the Stress Test
+     * case list) can still be wider than the viewport even after layout
+     * fixes elsewhere. Scroll the table itself instead of the whole page. */
+    .aips-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .aips-grid-cols-2,
     .aips-grid-cols-3,
     .aips-grid-cols-4 {
+        grid-template-columns: 1fr;
+    }
+
+    /* Panel header toolbars (title + action buttons) must wrap instead of
+     * forcing the panel, and the whole page, wider than the viewport. */
+    .aips-panel-header {
+        flex-wrap: wrap;
+    }
+
+    .aips-panel-header-actions {
+        width: 100%;
+    }
+
+    /* Two-column fr-based grids used on dashboard/AI-preview/planner pages:
+     * stack them so cramped columns don't squeeze unbreakable content
+     * (badges, counters) into page-wide overflow. */
+    .aips-dashboard-overview-grid,
+    .aips-ai-preview-columns,
+    .aips-planner-form-grid-2-1 {
         grid-template-columns: 1fr;
     }
 }
@@ -7240,11 +7268,16 @@ button.aips-rail-item.aips-rail-item-child.active,
 
 /* Responsive adjustment for Rail */
 @media screen and (max-width: 782px) {
+	/* The base rule uses !important, so the override needs it too or the
+	 * two-column grid never collapses and the whole admin page is forced
+	 * into horizontal scroll on phones. */
 	.aips-rail-layout {
-		grid-template-columns: 1fr;
+		grid-template-columns: 1fr !important;
 	}
 	.aips-rail-sidebar {
 		position: static;
+		width: 100% !important;
+		min-width: 0 !important;
 		margin-bottom: var(--aips-space-4);
 	}
 }
