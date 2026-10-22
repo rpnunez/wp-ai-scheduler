@@ -77,20 +77,14 @@ class AIPS_Sources_Fetcher {
 	 * Fetch and store content for a source row.
 	 *
 	 * @param object $source Source row from aips_sources (must have id, url properties).
-	 * @return array {
-	 *     Result summary.
-	 *
-	 *     @type bool   $success    True if fetch and storage succeeded.
-	 *     @type int    $char_count Number of characters stored.
-	 *     @type string $error      Error message on failure (empty on success).
-	 * }
+	 * @return int|WP_Error Number of characters stored on success, WP_Error on failure.
 	 */
 	public function fetch( $source ) {
 		$source_id = isset( $source->id ) ? absint( $source->id ) : 0;
 		$url       = isset( $source->url ) ? esc_url_raw( $source->url ) : '';
 
 		if ( ! $source_id || empty( $url ) ) {
-			return array( 'success' => false, 'char_count' => 0, 'error' => 'Invalid source data.' );
+			return new WP_Error( 'invalid_source', 'Invalid source data.' );
 		}
 
 		if ( ! wp_http_validate_url( $url ) ) {
@@ -99,7 +93,7 @@ class AIPS_Sources_Fetcher {
 			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: rejected unsafe URL for source #%d (%s)', $source_id, $url ), 'warning' );
-			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+			return new WP_Error( 'unsafe_url', $error_msg );
 		}
 
 		$start = microtime( true );
@@ -122,7 +116,7 @@ class AIPS_Sources_Fetcher {
 			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: fetch failed for source #%d — %s', $source_id, $error_msg ), 'warning' );
-			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+			return new WP_Error( $response->get_error_code() ?: 'http_request_failed', $error_msg );
 		}
 
 		$http_status = wp_remote_retrieve_response_code( $response );
@@ -134,14 +128,14 @@ class AIPS_Sources_Fetcher {
 			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: HTTP error for source #%d — %s', $source_id, $error_msg ), 'warning' );
-			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+			return new WP_Error( 'http_error', $error_msg, array( 'http_status' => $http_status ) );
 		}
 
 		if ( strlen( $body ) >= $max_bytes ) {
 			$error_msg = __( 'Source response reached the body limit and may be truncated.', 'ai-post-scheduler' );
 			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, $http_status );
 			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
-			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+			return new WP_Error( 'response_truncated', $error_msg, array( 'http_status' => $http_status ) );
 		}
 
 		// Auto-detect content type and parse accordingly.
@@ -171,7 +165,7 @@ class AIPS_Sources_Fetcher {
 			$error_msg = __( 'Source returned no usable text. Check the URL and response format.', 'ai-post-scheduler' );
 			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, $http_status );
 			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
-			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+			return new WP_Error( 'empty_extracted_text', $error_msg, array( 'http_status' => $http_status ) );
 		}
 
 		$max_chars = absint( get_option( 'aips_source_fetch_max_chars', self::DEFAULT_MAX_CHARS ) );
@@ -205,7 +199,7 @@ class AIPS_Sources_Fetcher {
 			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: insert failed for source #%d', $source_id ), 'warning' );
-			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+			return new WP_Error( 'storage_failed', $error_msg, array( 'http_status' => $http_status ) );
 		}
 
 		$this->sources_repo->update_after_fetch( $source_id, true );
@@ -221,7 +215,7 @@ class AIPS_Sources_Fetcher {
 			'info'
 		);
 
-		return array( 'success' => true, 'char_count' => $char_count, 'error' => '' );
+		return $char_count;
 	}
 
 	/**
