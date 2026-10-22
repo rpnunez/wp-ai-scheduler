@@ -224,6 +224,13 @@ class AIPS_Stress_Test_Service {
                 'creates'     => false,
             ),
             array(
+                'id'          => 'generate_slug',
+                'label'       => __('Generate Post Slug', 'ai-post-scheduler'),
+                'description' => __('Sends a slug prompt and compares the raw response with the sanitized slug.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => false,
+            ),
+            array(
                 'id'          => 'generate_content',
                 'label'       => __('Generate Content', 'ai-post-scheduler'),
                 'description' => __('Requests an article body and shows it before and after HTML normalization.', 'ai-post-scheduler'),
@@ -461,6 +468,9 @@ class AIPS_Stress_Test_Service {
                 case 'generate_title':
                     $result = $this->case_generate_title();
                     break;
+                case 'generate_slug':
+                    $result = $this->case_generate_slug();
+                    break;
                 case 'generate_content':
                     $result = $this->case_generate_content();
                     break;
@@ -692,6 +702,45 @@ class AIPS_Stress_Test_Service {
             'summary'      => sprintf(
                 /* translators: %d: character count */
                 __('Title generated (%d characters).', 'ai-post-scheduler'),
+                mb_strlen($result)
+            ),
+            'ai_value'     => $raw,
+            'plugin_value' => $result,
+        );
+    }
+
+    /**
+     * Slug generation: raw response versus the sanitized slug.
+     *
+     * @return array<string, mixed>
+     */
+    private function case_generate_slug() {
+        $context = $this->build_context();
+        $success = false;
+        $title   = $this->sample_topic();
+        $result  = $this->get_generator()->generate_slug_from_context($context, $this->sample_article(), $title, array(), $success);
+
+        if (is_wp_error($result)) {
+            return array('status' => 'failed', 'error' => $result->get_error_message(), 'summary' => $result->get_error_message());
+        }
+
+        $raw = $this->last_ai_response_text();
+
+        if (!$success || trim((string) $result) === '') {
+            return array(
+                'status'   => 'failed',
+                'error'    => __('The provider returned an empty or invalid slug.', 'ai-post-scheduler'),
+                'summary'  => __('Empty or invalid slug returned.', 'ai-post-scheduler'),
+                'ai_value' => $raw,
+            );
+        }
+
+        return array(
+            'status'       => 'passed',
+            'summary'      => sprintf(
+                /* translators: 1: slug text, 2: character count */
+                __('Slug generated: %1$s (%2$d characters).', 'ai-post-scheduler'),
+                $result,
                 mb_strlen($result)
             ),
             'ai_value'     => $raw,
@@ -1926,6 +1975,8 @@ class AIPS_Stress_Test_Service {
             'title_prompt'            => __('Write a clear, specific title. No colons, no clickbait.', 'ai-post-scheduler'),
             'image_prompt'            => '',
             'generate_featured_image' => false,
+            'generate_slug'           => true,
+            'slug_prompt'             => '',
             'post_status'             => 'private',
             'post_type'               => $post_type,
             'post_category'           => '',

@@ -119,6 +119,7 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $ids     = wp_list_pluck($service->get_cases(), 'id');
 
         $this->assertContains('save_page', $ids);
+        $this->assertContains('generate_slug', $ids);
         $this->assertContains('meta_fields_single', $ids);
         $this->assertContains('meta_fields_multi', $ids);
         $this->assertContains('meta_fields_post_3', $ids);
@@ -147,6 +148,14 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
 
         $this->assertSame('passed', $result['status']);
         $this->assertGreaterThan(0, $result['plugin_value']['topic_count']);
+    }
+
+    public function test_generate_slug_case() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Meta_AI_Service(), new AIPS_Test_Stress_Logger());
+        $result  = $service->run('generate_slug');
+
+        $this->assertSame('passed', $result['status']);
+        $this->assertSame('generated-text-value-for-stress-test', $result['plugin_value']);
     }
 
     public function test_generate_embedding_case() {
