@@ -1029,6 +1029,27 @@ final class AI_Post_Scheduler {
             }
         );
 
+        // Background bulk-publish from the Pending Review queue. Each slice item is
+        // a draft post ID; AIPS_Post_Review::publish_review_post() runs the same
+        // review-queue guards and wp_publish_post() transition as the synchronous
+        // path. Cron has no current user, so we restore the administrator who
+        // enqueued the job (stored in job options) before the per-post capability
+        // check runs.
+        $processor->register(
+            'review_publish',
+            function( $item, $job_id, $job ) {
+                $acting_user_id = isset( $job->options['history_meta']['acting_user_id'] )
+                    ? (int) $job->options['history_meta']['acting_user_id']
+                    : 0;
+
+                if ( $acting_user_id > 0 && get_current_user_id() !== $acting_user_id ) {
+                    wp_set_current_user( $acting_user_id );
+                }
+
+                return AIPS_Post_Review::instance()->publish_review_post( (int) $item );
+            }
+        );
+
         // Daily cleanup of completed/failed bulk-batch job rows.
         add_action('aips_cleanup_bulk_batch_jobs', function() {
             $store   = new AIPS_Bulk_Batch_Job_Store();

@@ -165,6 +165,9 @@ class AIPS_Config {
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            // Pending Review: selections of this many drafts or more are published
+            // in the background (cron) instead of synchronously in the request.
+            'aips_bulk_publish_async_threshold' => 30,
             // General
             'aips_unsplash_access_key' => '',
             'aips_gsc_service_account' => '',
