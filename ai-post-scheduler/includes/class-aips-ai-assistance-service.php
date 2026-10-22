@@ -30,6 +30,20 @@ class AIPS_AI_Assistance_Service {
 	private $repository;
 
 	/**
+	 * Prompt preamble describing the kind of form being filled in, keyed by
+	 * form_context. Falls back to a generic description for an unrecognised
+	 * context so a new form never gets Author-specific wording by default.
+	 *
+	 * @var array<string, string>
+	 */
+	private $preambles = array(
+		'authors'          => 'an AI author persona',
+		'templates'        => 'an AI content-generation template',
+		'sources'          => 'a tracked external content source',
+		'content_strategy' => 'a site-wide AI content strategy',
+	);
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_AI_Service               $ai_service AI service.
@@ -52,14 +66,21 @@ class AIPS_AI_Assistance_Service {
 	 *     @type string $influence         How this field influences AI content.
 	 *     @type string $expected_response Format hint for the AI response.
 	 *     @type string $current_value     Current value in the field.
-	 *     @type string $author_name       Optional: author name for context.
-	 *     @type string $field_niche       Optional: niche for context.
+	 *     @type array  $context           Optional: map of sibling field id => value,
+	 *                                     as declared by that field's contextFields
+	 *                                     entry in the form's field map.
 	 * }
 	 * @param string $session_id  Browser session identifier.
 	 * @param int    $user_id     WordPress user ID.
 	 * @return array|WP_Error Array with 'response', 'record_id', 'prompt', or WP_Error on failure.
 	 */
 	public function get_field_suggestion( array $field_config, string $session_id, int $user_id ) {
+		if ( ! AIPS_Settings::is_ai_assistance_enabled_for( $field_config['form_context'] ?? '' ) ) {
+			return new WP_Error(
+				'ai_assistance_disabled',
+				__( 'AI Assistance is disabled for this workflow. Enable it in Settings > AI Assistance.', 'ai-post-scheduler' )
+			);
+		}
 		$prompt = $this->build_prompt( $field_config );
 
 		$response = $this->ai_service->generate_text( $prompt );
@@ -99,22 +120,41 @@ class AIPS_AI_Assistance_Service {
 	 * @return string The prompt string.
 	 */
 	private function build_prompt( array $field_config ): string {
+		$form_context = $field_config['form_context'] ?? '';
+		$preamble     = $this->preambles[ $form_context ] ?? 'a WordPress admin form';
+		$lengths = array(
+			'concise'  => 'Keep it concise.',
+			'standard' => 'Use an appropriately complete answer.',
+			'detailed' => 'Provide a detailed, useful answer.',
+		);
+		$policy = AIPS_Settings::get_ai_assistance_policy();
 		$lines = array(
 			'You are a helpful assistant for an AI content creation WordPress plugin.',
-			'Help fill in a form field for an AI author persona.',
+			'Help fill in a form field for ' . $preamble . '.',
 			'',
 			'Field: ' . ( $field_config['field_name'] ?? '' ),
 			'Purpose: ' . ( $field_config['description'] ?? '' ),
 			'How it influences AI content generation: ' . ( $field_config['influence'] ?? '' ),
 			'Current value: ' . ( $field_config['current_value'] ?? '' ),
 		);
-
-		if ( ! empty( $field_config['author_name'] ) ) {
-			$lines[] = 'Author Name: ' . $field_config['author_name'];
+		$lines[] = 'Workflow: ' . ( $field_config['form_context'] ?? '' );
+		$lines[] = $lengths[$policy['responseLength']];
+		$guidance = AIPS_Config::get_instance()->get_option('aips_ai_assistance_guidance');
+		if ( ! empty( $guidance ) ) {
+			$lines[] = 'Additional site guidance: ' . $guidance;
+		}
+		foreach ( (array) AIPS_Site_Context::get() as $context_key => $context_value ) {
+			if ( '' === $context_value || is_array( $context_value ) ) {
+				continue;
+			}
+			$lines[] = 'Site Content Strategy — ' . ucwords( str_replace( '_', ' ', $context_key ) ) . ': ' . $context_value;
 		}
 
-		if ( ! empty( $field_config['field_niche'] ) ) {
-			$lines[] = 'Author Niche: ' . $field_config['field_niche'];
+		foreach ( (array) ( $field_config['context'] ?? array() ) as $context_key => $context_value ) {
+			if ( '' === $context_value ) {
+				continue;
+			}
+			$lines[] = ucwords( str_replace( array( '_', '-' ), ' ', $context_key ) ) . ': ' . $context_value;
 		}
 
 		$lines[] = '';

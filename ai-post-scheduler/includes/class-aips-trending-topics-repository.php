@@ -178,7 +178,7 @@ class AIPS_Trending_Topics_Repository {
             AND p.post_status NOT IN ('auto-draft', 'trash')
             GROUP BY topic_id";
 
-        $prepare_values = array_merge(array('_aips_trending_topic_id'), $topic_ids, array('post'));
+        $prepare_values = array_merge(array(AIPS_Post_Manager::META_TRENDING_TOPIC_ID), $topic_ids, array('post'));
         $rows = $this->wpdb->get_results($this->wpdb->prepare($query, $prepare_values), ARRAY_A);
 
         $counts = array();
@@ -214,7 +214,7 @@ class AIPS_Trending_Topics_Repository {
             AND p.post_type = %s
             AND p.post_status NOT IN ('auto-draft', 'trash')
             ORDER BY p.post_date DESC",
-            '_aips_trending_topic_id',
+            AIPS_Post_Manager::META_TRENDING_TOPIC_ID,
             $topic_id,
             'post'
         );

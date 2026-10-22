@@ -1,8 +1,10 @@
-# AI Edit Feature - User Guide
+# AI Edit — User Guide
 
 ## Overview
 
 The AI Edit feature allows you to regenerate individual components of AI-generated posts without regenerating the entire post. This provides granular control over your content while maintaining consistency with the original generation context.
+
+> **Not to be confused with:** this feature is unrelated to **AI Assistance** — the per-field ✨ "AI Suggest" / 🕐 history widget available on forms such as Add/Edit Author. AI Edit operates only on already-generated posts (title/excerpt/content/featured image) using their original generation context; it does not use the AI Assistance controller, service, or field maps. See `docs/features/ai-assistance/AI_ASSISTANCE_DEV_GUIDE.md` for that feature.
 
 ## Accessing AI Edit
 
@@ -69,7 +71,7 @@ To cancel without saving:
 ## Performance Notes
 
 - **Title regeneration**: ~3 seconds
-- **Excerpt regeneration**: ~5 seconds  
+- **Excerpt regeneration**: ~5 seconds
 - **Content regeneration**: ~10 seconds
 - **Image regeneration**: ~15 seconds
 
@@ -123,6 +125,7 @@ Actual times may vary based on:
 - Only modified components are included in save request
 
 ### AJAX Endpoints
+
 - `aips_get_post_components` - Fetches post data and context
 - `aips_regenerate_component` - Regenerates a single component
 - `aips_save_post_components` - Saves all modified components
@@ -143,8 +146,3 @@ For issues or questions:
 2. Review WordPress debug logs
 3. Contact your site administrator
 4. Report issues on the plugin's support forum
-
----
-
-**Last Updated**: 2026-02-09  
-**Feature Version**: 2.0.0

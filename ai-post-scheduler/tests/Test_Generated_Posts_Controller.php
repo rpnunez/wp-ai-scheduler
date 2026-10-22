@@ -86,18 +86,16 @@ class Test_Generated_Posts_Controller extends WP_UnitTestCase {
 		// Add a log entry with AI_REQUEST type
 		$log_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'title_request',
-			array('prompt' => 'Generate a title', 'options' => array()),
+			array('log_subtype' => 'title_request', 'prompt' => 'Generate a title', 'options' => array()),
 			AIPS_History_Type::AI_REQUEST
 		);
-		
+
 		$this->assertNotFalse($log_id);
-		
+
 		// Add a log entry with AI_RESPONSE type
 		$log_id2 = $this->history_repository->add_log_entry(
 			$history_id,
-			'title_response',
-			array('response' => base64_encode('Test Title Generated')),
+			array('log_subtype' => 'title_response', 'response' => base64_encode('Test Title Generated')),
 			AIPS_History_Type::AI_RESPONSE
 		);
 		

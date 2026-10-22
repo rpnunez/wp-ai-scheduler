@@ -6,33 +6,64 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PLUGIN_DIR="$REPO_ROOT/ai-post-scheduler"
 INSTALL_SCRIPT="$REPO_ROOT/scripts/install-wp-tests.sh"
 
+# Load environment variables from .env if present. Parsed key by key (no eval),
+# so values containing quotes, '$' or '=' are taken literally. Variables that
+# are already set in the environment win over .env.
+if [[ -f "$REPO_ROOT/.env" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+    key="${BASH_REMATCH[1]}"
+    value="${BASH_REMATCH[2]}"
+    value="${value#\"}"; value="${value%\"}"
+    value="${value#\'}"; value="${value%\'}"
+    if [[ -z "${!key+x}" ]]; then
+      export "$key=$value"
+    fi
+  done < "$REPO_ROOT/.env"
+fi
+
+
 MODE="${1:-test}"
 case "$MODE" in
   test)
     COMPOSER_COMMAND="composer test"
     ;;
+  ai-api|ai_api)
+    COMPOSER_COMMAND="composer test:setup && php vendor/bin/phpunit --configuration phpunit.xml tests/Test_AIPS_AI_Service.php tests/Test_AIPS_AI_Service_With_Provider.php tests/Test_AIPS_AI_Provider_Factory.php tests/Test_AIPS_WP_AI_Client_Provider.php tests/Test_AIPS_Provider_Availability.php tests/Test_AIPS_Resilience_Service.php tests/Test_AIPS_Resilience_Improvements.php"
+    ;;
   coverage|--coverage)
     COMPOSER_COMMAND="XDEBUG_MODE=coverage composer test:coverage"
     ;;
   *)
-    echo "Usage: bash scripts/run-wp-tests-docker.sh [test|coverage]" >&2
+    echo "Usage: bash scripts/run-wp-tests-docker.sh [test|ai-api|coverage]" >&2
     exit 1
     ;;
 esac
 
-DB_CONTAINER="${AIPS_DOCKER_DB_CONTAINER:-wp-ai-scheduler-db}"
+# Resolve the DB container/port from the per-instance values loaded from .env
+# above (AIPS_DB_CONTAINER / MYSQL_PORT), falling back to the shared defaults.
+DB_CONTAINER="${AIPS_DOCKER_DB_CONTAINER:-${AIPS_DB_CONTAINER:-wp-ai-scheduler-db}}"
 DB_NAME="${AIPS_WP_TEST_DB_NAME:-wp_ns_tests_docker}"
 DB_USER="${AIPS_WP_TEST_DB_USER:-root}"
-DB_PASS="${AIPS_WP_TEST_DB_PASS:-root}"
-DB_HOST="${AIPS_WP_TEST_DB_HOST:-127.0.0.1:3307}"
+DB_PASS="${AIPS_WP_TEST_DB_PASS:-${MYSQL_ROOT_PASSWORD:-root}}"
+DB_HOST="${AIPS_WP_TEST_DB_HOST:-127.0.0.1:${MYSQL_PORT:-3307}}"
 WP_VERSION="${AIPS_WP_TEST_WP_VERSION:-latest}"
-WP_TESTS_DIR_WIN="${WP_TESTS_DIR:-C:/tmp/wordpress-tests-lib-docker}"
-WP_CORE_DIR_WIN="${WP_CORE_DIR:-C:/tmp/wordpress-docker}"
 
+# Default paths are only Windows-style (C:/tmp/...) on Git-Bash/Cygwin, where
+# cygpath is available to translate them back to a Unix path below. On native
+# Linux/macOS (no cygpath), a C:/tmp/... default would be treated as a
+# relative path (no leading /) and silently resolve under the plugin
+# directory -- so default to a real absolute /tmp path there instead.
 if command -v cygpath >/dev/null 2>&1; then
+  WP_TESTS_DIR_WIN="${WP_TESTS_DIR:-C:/tmp/wordpress-tests-lib-docker}"
+  WP_CORE_DIR_WIN="${WP_CORE_DIR:-C:/tmp/wordpress-docker}"
   WP_TESTS_DIR_UNIX="$(cygpath -u "$WP_TESTS_DIR_WIN")"
   WP_CORE_DIR_UNIX="$(cygpath -u "$WP_CORE_DIR_WIN")"
 else
+  WP_TESTS_DIR_WIN="${WP_TESTS_DIR:-/tmp/wordpress-tests-lib-docker}"
+  WP_CORE_DIR_WIN="${WP_CORE_DIR:-/tmp/wordpress-docker}"
   WP_TESTS_DIR_UNIX="$WP_TESTS_DIR_WIN"
   WP_CORE_DIR_UNIX="$WP_CORE_DIR_WIN"
 fi
@@ -45,7 +76,8 @@ require_command() {
 }
 
 require_command docker
-require_command svn
+# svn is optional: install-wp-tests.sh falls back to the packaged
+# vendor/wp-phpunit library when it is not available.
 
 if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
   echo "Either curl or wget is required." >&2
@@ -62,6 +94,12 @@ echo "Ensuring Docker DB container is up..."
   cd "$REPO_ROOT"
   docker compose up -d db >/dev/null
 )
+
+# Resolve the actual DB container (works with per-instance container names).
+RESOLVED_DB_ID="$(cd "$REPO_ROOT" && docker compose ps -q db 2>/dev/null | head -n 1)"
+if [[ -n "$RESOLVED_DB_ID" ]]; then
+  DB_CONTAINER="$RESOLVED_DB_ID"
+fi
 
 echo "Waiting for Docker DB health..."
 for _ in {1..60}; do
@@ -81,7 +119,8 @@ fi
 echo "Recreating disposable test database: $DB_NAME"
 (
   cd "$REPO_ROOT"
-  docker compose exec -T db mysql -uroot -proot -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; CREATE DATABASE \`$DB_NAME\`;"
+  docker compose exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-root}" db \
+    mariadb --skip-ssl -uroot -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; CREATE DATABASE \`$DB_NAME\`;"
 )
 
 echo "Refreshing WordPress test library and core paths..."

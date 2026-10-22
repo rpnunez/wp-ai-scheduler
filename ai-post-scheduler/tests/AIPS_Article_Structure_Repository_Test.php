@@ -11,6 +11,7 @@ class AIPS_Article_Structure_Repository_Test extends WP_UnitTestCase {
 	
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		$this->repository = new AIPS_Article_Structure_Repository();
 	}
 	
@@ -21,6 +22,7 @@ class AIPS_Article_Structure_Repository_Test extends WP_UnitTestCase {
 		$wpdb->query("DELETE FROM $table_name WHERE name LIKE 'Test%'");
 		delete_option('aips_default_article_structure_id');
 		AIPS_Config::get_instance()->flush_option_cache();
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 	

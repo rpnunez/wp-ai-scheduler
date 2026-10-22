@@ -176,6 +176,33 @@ class Test_History_Template extends WP_UnitTestCase {
         $this->assertSame($expected, $items[0]->formatted_date);
     }
 
+    public function test_content_indexing_summary_reads_nested_log_metrics() {
+        $container = array(
+            'creation_method' => 'content_indexing',
+            'template_name'   => '',
+            'status'          => 'completed',
+        );
+        $logs = array(
+            array(
+                'details' => array(
+                    'input' => array(
+                        'dimensions'          => 1536,
+                        'relationships_saved' => 0,
+                    ),
+                ),
+            ),
+        );
+
+        $method = new ReflectionMethod(AIPS_History::class, 'analyze_history_modal_summary');
+        $method->setAccessible(true);
+        $summary = $method->invoke($this->history_instance, $container, $logs);
+
+        $this->assertSame(
+            'Generated 1536-dimension vector; Recomputed related posts',
+            $summary['what_changed']
+        );
+    }
+
     public function test_ajax_reload_history_response_includes_timeline_html() {
         $admin_user_id = $this->factory->user->create(array('role' => 'administrator'));
         wp_set_current_user($admin_user_id);

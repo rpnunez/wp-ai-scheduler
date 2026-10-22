@@ -123,6 +123,13 @@ class AIPS_Notification_Registry {
 				'level'         => 'warning',
 				'dedupe_window' => 60,
 			),
+			'post_generated' => array(
+				'label'         => __('Post Generated', 'ai-post-scheduler'),
+				'description'   => __('A new post finished generating (from a template, author topic, planner, or trending-topic run).', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'info',
+				'dedupe_window' => 60,
+			),
 			'daily_digest' => array(
 				'label'         => __('Daily Digest', 'ai-post-scheduler'),
 				'description'   => __('Daily summary of generation and review activity.', 'ai-post-scheduler'),
@@ -192,6 +199,20 @@ class AIPS_Notification_Registry {
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
 				'dedupe_window' => 300,
+			),
+			'post_consolidated' => array(
+				'label'         => __('Posts Consolidated', 'ai-post-scheduler'),
+				'description'   => __('Two overlapping posts were consolidated: one was moved to draft, redirected and its links re-pointed to the post that was kept.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'info',
+				'dedupe_window' => 0,
+			),
+			'duplicate_groups_found' => array(
+				'label'         => __('Duplicate Posts Found', 'ai-post-scheduler'),
+				'description'   => __('A scheduled duplicate scan found new groups of near-duplicate posts to review in the Cannibalization Shield.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 0,
 			),
 		);
 	}

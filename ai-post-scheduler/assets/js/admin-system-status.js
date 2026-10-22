@@ -1,5 +1,6 @@
 /**
- * System Status page — toggle log detail rows and reset the circuit breaker.
+ * System Status page — log detail toggles, circuit breaker reset, and the
+ * System Health maintenance operations (including the one-click Refresh System).
  *
  * Relies on `aipsSystemStatusL10n` localised by AIPS_Admin_Assets:
  *   - nonce                           {string} wp_nonce for aips_reset_circuit_breaker
@@ -8,11 +9,19 @@
  *   - nonceRepairCampaignData         {string} wp_nonce for aips_status_repair_campaign_data
  *   - nonceClearPartialGenerations    {string} wp_nonce for aips_status_clear_partial_generations
  *   - nonceCleanupStaleJobsCache      {string} wp_nonce for aips_status_cleanup_stale_jobs_cache
+ *   - nonceRebuildCaches              {string} wp_nonce for aips_rebuild_caches
+ *   - nonceRefreshSystem              {string} wp_nonce for aips_status_refresh_system
+ *   - nonceCacheMaintenance           {string} wp_nonce for aips_status_cache_maintenance
+ *   - nonceCleanupNotifications       {string} wp_nonce for aips_status_cleanup_notifications
+ *   - nonceResetResilience            {string} wp_nonce for aips_status_reset_resilience
+ *   - nonceRepairDatetime             {string} wp_nonce for aips_status_repair_datetime
  *   - hideDetails                     {string} "Hide Details" label
  *   - showDetails                     {string} "Show Details" label
  *   - resetSuccess                    {string} Success confirmation text
  *   - resetFailed                     {string} Generic failure text
  *   - requestFailed                   {string} Network/AJAX failure text
+ *   - refreshRunning / refreshDone / refreshPartial {string} Refresh System status text
+ *   - selectTasksRequired             {string} No-task-selected validation text
  *
  * @package AI_Post_Scheduler
  */
@@ -48,147 +57,64 @@
 		 */
 		bindEvents: function() {
 			$(document).on('click', '.aips-toggle-log-details', this.toggleLogDetails.bind(this));
-			$(document).on('click', '.aips-status-data-panel', this.toggleStatusSectionFromPanel.bind(this));
-			$(document).on('click', '.aips-panel-collapse-toggle', this.toggleStatusSection.bind(this));
-			$(document).on('click', '.aips-status-sections-toggle', this.toggleAllStatusSections.bind(this));
 			$(document).on('click', '.aips-reset-circuit-breaker', this.resetCircuitBreaker.bind(this));
 			$(document).on('click', '.aips-status-op', this.runStatusOperation.bind(this));
 			$(document).on('click', '.aips-rebuild-cache-btn', this.rebuildCaches.bind(this));
+			$(document).on('click', '.aips-toggle-refresh-tasks', this.toggleRefreshTasks.bind(this));
+			$(document).on('click', '.aips-toggle-cache-tasks', this.toggleCacheTasks.bind(this));
+			$(document).on('click', '.aips-refresh-system', this.refreshSystem.bind(this));
+			$(document).on('click', '.aips-copy-system-report', this.copySystemReport.bind(this));
 		},
 
 		/**
-		 * Toggle a data section when clicking anywhere on its panel.
-		 *
-		 * Clicks on interactive controls inside the panel are ignored so those
-		 * controls keep their native behaviour.
+		 * Copy the Markdown-formatted system report to clipboard.
 		 *
 		 * @param {Event} e Click event.
 		 * @return {void}
 		 */
-		toggleStatusSectionFromPanel: function(e) {
-			var $target = $(e.target);
-			var isInteractive = $target.closest('a, button, input, select, textarea, label').length > 0;
-
-			if (isInteractive) {
-				return;
-			}
-
-			var $panel = $(e.currentTarget);
-			var $button = $panel.find('.aips-panel-collapse-toggle').first();
-
-			if ($button.length) {
-				$button.trigger('click');
-			}
-		},
-
-		/**
-		 * Synchronize the "Expand all / Collapse all" control state based on
-		 * current data section visibility.
-		 *
-		 * @return {void}
-		 */
-		syncStatusSectionsToggleState: function() {
-			var $toggle = $('.aips-status-sections-toggle').first();
-			if (!$toggle.length) {
-				return;
-			}
-
-			var $bodies = $('.aips-status-data-panel-body');
-			if (!$bodies.length) {
-				$toggle.hide();
-				return;
-			}
-
-			var hiddenCount = $bodies.filter(function() {
-				return !$(this).is(':visible');
-			}).length;
-
-			if (hiddenCount === 0) {
-				$toggle.attr('data-mode', 'collapse').text('Collapse all');
-			} else {
-				$toggle.attr('data-mode', 'expand').text('Expand all');
-			}
-		},
-
-		/**
-		 * Toggle a System Status data section panel body.
-		 *
-		 * Only applies to table/info sections that include a collapse button.
-		 * Action sections do not include this control and remain always expanded.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		toggleStatusSection: function(e) {
+		copySystemReport: function(e) {
 			e.preventDefault();
-			e.stopPropagation();
+			var self = this;
+			var reportText = $('#aips-system-report-raw').val() || '';
 
-			var $button = $(e.currentTarget);
-			var targetId = $button.data('target');
-			var $panelBody = $('#' + targetId);
-
-			if (!$panelBody.length) {
+			if (!reportText) {
 				return;
 			}
 
-			var isExpanded = $button.attr('aria-expanded') === 'true';
-			var nextExpanded = !isExpanded;
-			var $icon = $button.find('.dashicons');
-			var $label = $button.find('.aips-panel-collapse-label');
-
-			$button.attr('aria-expanded', nextExpanded ? 'true' : 'false');
-			$icon
-				.toggleClass('dashicons-arrow-up-alt2', nextExpanded)
-				.toggleClass('dashicons-arrow-down-alt2', !nextExpanded);
-			$icon.addClass('aips-chevron-pop');
-			window.setTimeout(function() {
-				$icon.removeClass('aips-chevron-pop');
-			}, 180);
-			$label.text(nextExpanded ? 'Collapse' : 'Expand');
-
-			$panelBody
-				.attr('aria-hidden', nextExpanded ? 'false' : 'true')
-				.slideToggle(140);
-
-			this.syncStatusSectionsToggleState();
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(reportText).then(function() {
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('System report copied to clipboard!', 'success');
+					}
+				}).catch(function() {
+					self.fallbackCopy(reportText);
+				});
+			} else {
+				this.fallbackCopy(reportText);
+			}
 		},
 
 		/**
-		 * Expand or collapse all System Status data sections.
+		 * Fallback clipboard copy using temporary textarea element.
 		 *
-		 * This only affects data table/info sections and intentionally excludes
-		 * action sections.
-		 *
-		 * @param {Event} e Click event.
+		 * @param {string} text Text to copy.
 		 * @return {void}
 		 */
-		toggleAllStatusSections: function(e) {
-			e.preventDefault();
-
-			var $button = $(e.currentTarget);
-			var mode = $button.attr('data-mode') || 'expand';
-			var shouldExpand = mode === 'expand';
-			var $panelBodies = $('.aips-status-data-panel-body');
-			var $sectionButtons = $('.aips-panel-collapse-toggle');
-
-			if (shouldExpand) {
-				$panelBodies.stop(true, true).slideDown(140).attr('aria-hidden', 'false');
-				$sectionButtons.attr('aria-expanded', 'true');
-				$sectionButtons.find('.dashicons').removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-up-alt2');
-				$sectionButtons.find('.aips-panel-collapse-label').text('Collapse');
-			} else {
-				$panelBodies.stop(true, true).slideUp(140).attr('aria-hidden', 'true');
-				$sectionButtons.attr('aria-expanded', 'false');
-				$sectionButtons.find('.dashicons').removeClass('dashicons-arrow-up-alt2').addClass('dashicons-arrow-down-alt2');
-				$sectionButtons.find('.aips-panel-collapse-label').text('Expand');
+		fallbackCopy: function(text) {
+			var $temp = $('<textarea>');
+			$('body').append($temp);
+			$temp.val(text).select();
+			try {
+				document.execCommand('copy');
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast('System report copied to clipboard!', 'success');
+				}
+			} catch (err) {
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast('Failed to copy report.', 'error');
+				}
 			}
-
-			$sectionButtons.find('.dashicons').addClass('aips-chevron-pop');
-			window.setTimeout(function() {
-				$sectionButtons.find('.dashicons').removeClass('aips-chevron-pop');
-			}, 180);
-
-			this.syncStatusSectionsToggleState();
+			$temp.remove();
 		},
 
 		/**
@@ -235,9 +161,7 @@
 			var $btn    = $(e.currentTarget);
 			var $result = $btn.siblings('.aips-reset-circuit-result');
 
-			$btn.prop('disabled', true);
-
-			$.post(
+			var req = $.post(
 				ajaxurl,
 				{
 					action: 'aips_reset_circuit_breaker',
@@ -252,13 +176,13 @@
 							? response.data.message
 							: (l10n.resetFailed || 'Reset failed.');
 						$result.text(msg).show();
-						$btn.prop('disabled', false);
 					}
 				}
 			).fail(function() {
 				$result.text(l10n.requestFailed || 'Request failed. Please try again.').show();
-				$btn.prop('disabled', false);
 			});
+
+			AIPS.Utilities.withLock($btn, req, { timeout: 30000 });
 		},
 
 		/**
@@ -282,51 +206,243 @@
 				'aips_status_retry_failed_slices': l10n.nonceRetrySlices || '',
 				'aips_status_repair_campaign_data': l10n.nonceRepairCampaignData || '',
 				'aips_status_clear_partial_generations': l10n.nonceClearPartialGenerations || '',
-				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || ''
+				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || '',
+				'aips_status_cache_maintenance': l10n.nonceCacheMaintenance || '',
+				'aips_status_clear_embeddings_cache': l10n.nonceClearEmbeddingsCache || '',
+				'aips_status_cleanup_notifications': l10n.nonceCleanupNotifications || '',
+				'aips_status_reset_resilience': l10n.nonceResetResilience || '',
+				'aips_status_repair_datetime': l10n.nonceRepairDatetime || ''
 			};
 
 			var nonce = nonceMap[action] || '';
 
-			$btn.prop('disabled', true);
-			$.post(ajaxurl, { action: action, nonce: nonce }, function(response) {
+			var req = $.post(ajaxurl, { action: action, nonce: nonce }, function(response) {
 				if (response && response.success) {
 					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
 				} else {
 					$result.text((response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.')).show();
 				}
-				$btn.prop('disabled', false);
 			}).fail(function() {
 				$result.text(l10n.requestFailed || 'Request failed.').show();
-				$btn.prop('disabled', false);
 			});
+
+			AIPS.Utilities.withLock($btn, req, { timeout: 60000 });
 		},
 
-
+		/**
+		 * Rebuild the selected cache subsystems.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
 		rebuildCaches: function(e) {
 			e.preventDefault();
 			var l10n = window.aipsSystemStatusL10n || {};
 			var $btn = $(e.currentTarget);
-			var subsystem = $('#aips-cache-subsystem').val() || 'all';
+			var $spinner = $btn.siblings('.spinner');
 			var $result = $('.aips-status-op-result');
-			$btn.prop('disabled', true);
-			$.post(ajaxurl, { action: 'aips_rebuild_caches', nonce: l10n.nonceRebuildCaches || '', subsystem: subsystem }, function(response) {
-				if (response && response.success) {
-					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
-				} else {
-					$result.text((response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.')).show();
+			var selectedSubsystems = this.getSelectedCacheSubsystems();
+
+			if (!selectedSubsystems.length) {
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast(l10n.selectCachesRequired || 'Select at least one cache subsystem to rebuild.', 'warning');
 				}
-				$btn.prop('disabled', false);
-			}).fail(function() {
+				return;
+			}
+
+			$spinner.addClass('is-active');
+
+			if (AIPS.Utilities && AIPS.Utilities.showToast) {
+				AIPS.Utilities.showToast(l10n.rebuildingCaches || 'Rebuilding caches…', 'info');
+			}
+
+			var req = $.post(
+				ajaxurl,
+				{
+					action: 'aips_rebuild_caches',
+					nonce: l10n.nonceRebuildCaches || '',
+					subsystems: selectedSubsystems
+				},
+				function(response) {
+					if (response && response.success) {
+						var msg = (response.data && response.data.message) ? response.data.message : (l10n.rebuildDone || 'Caches rebuilt successfully.');
+						$result.text(msg).show();
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(msg, 'success');
+						}
+					} else {
+						var errMsg = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.');
+						$result.text(errMsg).show();
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(errMsg, 'error');
+						}
+					}
+				}
+			).fail(function() {
 				$result.text(l10n.requestFailed || 'Request failed.').show();
-				$btn.prop('disabled', false);
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+				}
+			}).always(function() {
+				$spinner.removeClass('is-active');
 			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: l10n.rebuildingCaches || 'Rebuilding caches…',
+				timeout: 60000
+			});
+		},
+
+		/**
+		 * Toggle the full Refresh System task selection set.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		toggleRefreshTasks: function(e) {
+			e.preventDefault();
+
+			var $tasks = $('.aips-refresh-task');
+			var allChecked = $tasks.length > 0 && $tasks.filter(':checked').length === $tasks.length;
+
+			$tasks.prop('checked', !allChecked);
+		},
+
+		/**
+		 * Toggle the Cache Subsystems selection set.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		toggleCacheTasks: function(e) {
+			e.preventDefault();
+
+			var $tasks = $('.aips-cache-subsystem-task');
+			var allChecked = $tasks.length > 0 && $tasks.filter(':checked').length === $tasks.length;
+
+			$tasks.prop('checked', !allChecked);
+		},
+
+		/**
+		 * Collect the currently selected Refresh System task IDs.
+		 *
+		 * @return {Array}
+		 */
+		getSelectedRefreshTasks: function() {
+			return $('.aips-refresh-task:checked').map(function() {
+				return $(this).val();
+			}).get();
+		},
+
+		/**
+		 * Collect the currently selected Cache subsystem IDs.
+		 *
+		 * @return {Array}
+		 */
+		getSelectedCacheSubsystems: function() {
+			return $('.aips-cache-subsystem-task:checked').map(function() {
+				return $(this).val();
+			}).get();
+		},
+
+		/**
+		 * Run the selected safe maintenance operations in one request and render the
+		 * per-step results returned by the server.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		refreshSystem: function(e) {
+			e.preventDefault();
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+			var $spinner = $btn.siblings('.spinner');
+			var $results = $('.aips-refresh-system-results');
+			var selectedTasks = this.getSelectedRefreshTasks();
+
+			if (!selectedTasks.length) {
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast(l10n.selectTasksRequired, 'warning');
+				}
+				$results.hide().empty();
+				return;
+			}
+
+			$spinner.addClass('is-active');
+			$results.hide().empty();
+
+			if (AIPS.Utilities && AIPS.Utilities.showToast) {
+				AIPS.Utilities.showToast(l10n.refreshRunning || 'Refreshing system…', 'info');
+			}
+
+			var req = $.post(ajaxurl, { action: 'aips_status_refresh_system', nonce: l10n.nonceRefreshSystem || '', tasks: selectedTasks }, function(response) {
+				if (response && response.success && response.data) {
+					var data = response.data;
+					var failed = data.failed || 0;
+					var message = data.message || (failed > 0 ? (l10n.refreshPartial || 'System refresh finished with some failures.') : (l10n.refreshDone || 'System refresh complete.'));
+
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(message, failed > 0 ? 'warning' : 'success');
+					}
+					self.renderRefreshResults($results, data.steps || []);
+				} else {
+					var errMsg = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.');
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(errMsg, 'error');
+					}
+				}
+			}).fail(function() {
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+				}
+			}).always(function() {
+				$spinner.removeClass('is-active');
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: l10n.refreshRunning || 'Refreshing system…',
+				timeout: 120000
+			});
+		},
+
+		/**
+		 * Render the Refresh System per-step results list.
+		 *
+		 * Rows are built with .text() so server strings are never injected as HTML.
+		 *
+		 * @param {jQuery} $results Container element.
+		 * @param {Array}  steps    Step result objects {step, label, success, message}.
+		 * @return {void}
+		 */
+		renderRefreshResults: function($results, steps) {
+			// The server payload can omit or mangle `steps`; normalize before rendering.
+			var normalizedSteps = Array.isArray(steps) ? steps : [];
+
+			if (!normalizedSteps.length) {
+				$results.empty().hide();
+				return;
+			}
+
+			$results.empty();
+
+			normalizedSteps.forEach(function(step) {
+				var refreshStep = step || {};
+				var success = !!refreshStep.success;
+				var $row = $('<div>').addClass('aips-refresh-step' + (success ? ' aips-refresh-step-ok' : ' aips-refresh-step-failed'));
+				$row.append($('<span>').addClass('dashicons ' + (success ? 'dashicons-yes-alt' : 'dashicons-dismiss')));
+				$row.append($('<strong>').text(refreshStep.label || refreshStep.step || ''));
+				$row.append($('<span>').addClass('aips-refresh-step-message').text(refreshStep.message || ''));
+				$results.append($row);
+			});
+
+			$results.show();
 		},
 
 	};
 
 	$(document).ready(function() {
 		AIPS.SystemStatus.init();
-		AIPS.SystemStatus.syncStatusSectionsToggleState();
 	});
 
 })(jQuery);

@@ -32,6 +32,10 @@ class AIPS_Cache_Array_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorab
 	 */
 	private $expiries = array();
 
+	public function is_available() {
+		return true;
+	}
+
 	/**
 	 * {@inheritdoc}
 	 */
@@ -48,6 +52,17 @@ class AIPS_Cache_Array_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorab
 		}
 
 		return $this->store[ $k ];
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function get_multiple( array $keys, $group = 'default' ) {
+		$results = array();
+		foreach ( $keys as $key ) {
+			$results[ (string) $key ] = $this->get( $key, $group );
+		}
+		return $results;
 	}
 
 	/**

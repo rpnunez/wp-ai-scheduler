@@ -132,6 +132,7 @@ class AIPS_Author_Suggestions_Service {
 
 		$response = $this->ai_service->generate_json($prompt, array(
 			'temperature' => 0.8,
+			'json_schema' => $this->get_author_json_schema(),
 		));
 
 		if (is_wp_error($response)) {
@@ -182,6 +183,35 @@ class AIPS_Author_Suggestions_Service {
 		);
 
 		return $suggestions;
+	}
+
+	/**
+	 * JSON schema for the author suggestion array returned by the AI.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_author_json_schema(): array {
+		return array(
+			'type'  => 'array',
+			'items' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'name'                     => array('type' => 'string'),
+					'field_niche'              => array('type' => 'string'),
+					'description'              => array('type' => 'string'),
+					'details'                  => array('type' => 'string'),
+					'keywords'                 => array('type' => 'string'),
+					'voice_tone'               => array('type' => 'string'),
+					'writing_style'            => array('type' => 'string'),
+					'target_audience'          => array('type' => 'string'),
+					'expertise_level'          => array('type' => 'string', 'enum' => array('beginner', 'intermediate', 'expert', 'thought_leader')),
+					'content_goals'            => array('type' => 'string'),
+					'preferred_content_length' => array('type' => 'string', 'enum' => array('short', 'medium', 'long')),
+					'topic_generation_prompt'  => array('type' => 'string'),
+				),
+				'required' => array('name', 'field_niche', 'description', 'details', 'keywords', 'voice_tone', 'writing_style', 'target_audience', 'expertise_level', 'content_goals', 'preferred_content_length', 'topic_generation_prompt'),
+			),
+		);
 	}
 
 	/**

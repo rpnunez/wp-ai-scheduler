@@ -5,7 +5,7 @@
 - Project: WordPress plugin for scheduling and generating AI-written posts through Meow Apps AI Engine.
 - Plugin app root: `ai-post-scheduler/`; run Composer, PHPUnit, and plugin scripts from that directory.
 - Bootstrap/version source: `ai-post-scheduler/ai-post-scheduler.php`.
-- Current plugin version: **2.9.1** (`Version:` header and `AIPS_VERSION`).
+- Current plugin version: **3.7.19** (`Version:` header and `AIPS_VERSION`).
 - Runtime targets: PHP 8.2+ and WordPress 5.8+.
 
 ## Key paths
@@ -31,6 +31,8 @@
 - Register every AJAX action in `AIPS_Ajax_Registry::$map` with its controller.
 - Controllers register `wp_ajax_*` hooks in constructors and own nonce checks, capability checks, sanitization, and JSON responses.
 - Keep SQL/persistence in repositories; avoid direct `$wpdb` in controllers or services when a repository exists.
+- Repositories managing collections/repeaters must provide atomic group sync to purge removed records.
+- Entity clone actions (e.g. cloning Templates) must duplicate all child/relational mappings to the new entity.
 - Prefer `AIPS_Generation_Context`, `AIPS_Template_Context`, `AIPS_Topic_Context`, and `AIPS_Generation_Context_Factory` for generation flows.
 - Use shared/specialized prompt builders rather than ad hoc prompt assembly.
 - Use `AIPS_History_Service`, `AIPS_History_Container`, `AIPS_Generation_Logger`, `AIPS_Logger`, and `AIPS_Correlation_Id` for lifecycle logging and tracing.
@@ -42,13 +44,17 @@
 - Verify nonces for state-changing actions.
 - Check `current_user_can('manage_options')` for admin/AJAX actions.
 - Sanitize request data with WordPress helpers.
+- Parse AJAX boolean parameters using `filter_var($val, FILTER_VALIDATE_BOOLEAN)` (jQuery transmits `"false"` as a string).
 - Use `AIPS_Ajax_Response` for consistent AJAX JSON responses.
 - Handle missing Meow Apps AI Engine dependency gracefully.
 
 ## Testing policy
-- No local unit tests by default: do not run `composer test`, PHPUnit, or test setup commands unless the user explicitly asks or the task requires it.
-- Prefer focused static/syntax checks for touched files; note unrun test suites in the final response.
-- When full tests are explicitly needed, run from `ai-post-scheduler/`; use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
+- Run PHPUnit for code changes: run the tests that cover (or were added for) the touched code, plus focused static/syntax checks on touched files. Report results, and note any suite you could not run, in the final response.
+- **The one way to run tests** is defined in `TESTING.md` ("Agent test protocol"); follow it exactly: `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` (all files in ONE invocation; it stops the containers it started when done). Do not call `scripts/run-docker-test.sh` or `bash.exe -lc` directly, do not loop/chain runs with `&&`/`;`, do not pipe output through `grep`/`head`/`tail`, and do not run `./start-dev.sh` just to test (first-time provisioning only; `AIPS_SKIP_API_KEY_CHECK=1` if no key). Install dev dependencies once with `make composer-install`. Coverage: `make test-coverage` (HTML in `ai-post-scheduler/coverage/`; let it finish). `--fresh` resets the `wp_tests` database.
+- **Clean up after yourself.** If you started the Docker stack, stop it when finished (`make test-session` does this; otherwise `make stop`). If it was already running, leave it. Never use `make down`, `down -v`, `make clean`/`prune` to clean up. Delete scratch/coverage files you created, and state in your final response what you started and stopped.
+- `make test` runs PHPUnit inside the `web` container against a separate `wp_tests` database; it needs no host PHP. Host-side `composer test` / `make test-ci` are for CI parity only; set `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable there.
+- Need data from a database (dev or production) to diagnose a bug? Do not hand-roll `docker exec` SQL or ask the user to paste queries into phpMyAdmin: write the queries to `.artifacts/sql-queries/*.sql` and follow `.claude/skills/sql-batch/SKILL.md` (`make sql-batch QUERIES=...`; read-only, secrets redacted, results in `.artifacts/sql-results/`).
+- Each `./start-dev.sh` run logs to `.artifacts/start-dev-*.log` (gitignored); check the newest one when the environment misbehaves. Never print or commit API keys from `.env`.
 
 ## Documentation ownership
 - Keep this file concise (about 40–60 lines) and high-level.

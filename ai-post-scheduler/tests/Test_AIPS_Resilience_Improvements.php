@@ -61,413 +61,633 @@ class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 
 	// -----------------------------------------------------------------------
 	// extract_error_code_from_message — message-pattern based
-// -----------------------------------------------------------------------
-
-/**
- * "High demand" messages from Meow AI Engine are transient — must be retryable.
- */
-public function test_extract_error_code_high_demand_message_returns_empty() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.'
-    );
-    $this->assertSame( '', $code, '"High demand" is transient and must NOT be classified as non-retryable' );
-}
-
-/**
- * Empty response messages are transient — must remain retryable.
- */
-public function test_extract_error_code_empty_response_message_returns_empty() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        'AI Engine returned an empty response.'
-    );
-    $this->assertSame( '', $code, '"Empty response" is transient and must NOT be classified as non-retryable' );
-}
-
-/**
- * "Incorrect API key" message → invalid_api_key (non-retryable).
- */
-public function test_extract_error_code_incorrect_api_key_message() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        'Incorrect API key provided: sk-xxx. You can find your API key at https://platform.openai.com/account/api-keys.'
-    );
-    $this->assertSame( 'invalid_api_key', $code );
-}
-
-/**
- * "Invalid API key" message variant → invalid_api_key.
- */
-public function test_extract_error_code_invalid_api_key_message() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        'Invalid API key. Please check your credentials.'
-    );
-    $this->assertSame( 'invalid_api_key', $code );
-}
-
-/**
- * "Exceeded your current quota" → insufficient_quota (immediate open).
- */
-public function test_extract_error_code_exceeded_quota_message() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        'You exceeded your current quota, please check your plan and billing details.'
-    );
-    $this->assertSame( 'insufficient_quota', $code );
-}
-
-/**
- * "Maximum context length" → context_length_exceeded (non-retryable).
- */
-public function test_extract_error_code_context_length_message() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        "This model's maximum context length is 4097 tokens. Please reduce the length of your messages."
-    );
-    $this->assertSame( 'context_length_exceeded', $code );
-}
-
-/**
- * "Model does not exist" → model_not_found (non-retryable).
- */
-public function test_extract_error_code_model_not_found_message() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        'The model `gpt-5-fake` does not exist.'
-    );
-    $this->assertSame( 'model_not_found', $code );
-}
-
-/**
- * Generic unknown transient error still returns empty (retryable).
- */
-public function test_extract_error_code_returns_empty_for_unknown_transient_message() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        'Unexpected network error. Please retry later.'
-    );
-    $this->assertSame( '', $code );
-}
-
-/**
- * JSON-embedded error block → code extracted from JSON.
- */
-public function test_extract_error_code_parses_json_error_block() {
-    $message = 'Error 400: {"error":{"message":"Incorrect API key provided.","type":"invalid_request_error","code":"invalid_api_key"}}';
-    $code    = AIPS_Resilience_Service::extract_error_code_from_message( $message );
-    $this->assertSame( 'invalid_api_key', $code );
-}
-
-/**
- * JSON-embedded error block with type but no code field.
- */
-public function test_extract_error_code_parses_json_error_type_when_no_code() {
-    $message = 'Error 400: {"error":{"message":"Context limit","type":"context_length_exceeded"}}';
-    $code    = AIPS_Resilience_Service::extract_error_code_from_message( $message );
-    $this->assertSame( 'context_length_exceeded', $code );
-}
-
-/**
- * Pattern matching is case-insensitive.
- */
-public function test_extract_error_code_is_case_insensitive() {
-    $code = AIPS_Resilience_Service::extract_error_code_from_message(
-        'Error: Maximum Context Length reached for this request.'
-    );
-    $this->assertSame( 'context_length_exceeded', $code );
-}
-
-// -----------------------------------------------------------------------
-// NON_RETRYABLE_CODES constant
-// -----------------------------------------------------------------------
-
-public function test_non_retryable_codes_constant_is_not_empty() {
-$this->assertNotEmpty( AIPS_Resilience_Service::NON_RETRYABLE_CODES );
-}
-
-public function test_non_retryable_codes_contains_invalid_api_key() {
-$this->assertContains( 'invalid_api_key', AIPS_Resilience_Service::NON_RETRYABLE_CODES );
-}
-
-public function test_non_retryable_codes_contains_context_length_exceeded() {
-$this->assertContains( 'context_length_exceeded', AIPS_Resilience_Service::NON_RETRYABLE_CODES );
-}
-
-// -----------------------------------------------------------------------
-// IMMEDIATE_OPEN_CODES constant
-// -----------------------------------------------------------------------
-
-public function test_immediate_open_codes_contains_insufficient_quota() {
-$this->assertContains( 'insufficient_quota', AIPS_Resilience_Service::IMMEDIATE_OPEN_CODES );
-}
-
-// -----------------------------------------------------------------------
-// Selective retry behaviour
-// -----------------------------------------------------------------------
-
-public function test_execute_with_retry_calls_function_once_for_non_retryable_error() {
-$service = $this->make_retry_service( 3 );
-$calls   = 0;
-
-$result = $service->execute_with_retry(
-function() use ( &$calls ) {
-$calls++;
-return new WP_Error( 'invalid_api_key', 'Bad API key' );
-},
-'text',
-'prompt',
-array()
-);
-
-$this->assertInstanceOf( WP_Error::class, $result );
-$this->assertSame( 1, $calls, 'Should not retry a non-retryable error' );
-}
-
-public function test_execute_with_retry_calls_function_once_for_immediate_open_error() {
-$service = $this->make_retry_service( 3 );
-$calls   = 0;
-
-$result = $service->execute_with_retry(
-function() use ( &$calls ) {
-$calls++;
-return new WP_Error( 'insufficient_quota', 'You exceeded your current quota' );
-},
-'text',
-'prompt',
-array()
-);
-
-$this->assertInstanceOf( WP_Error::class, $result );
-$this->assertSame( 1, $calls, 'IMMEDIATE_OPEN_CODES should abort the retry loop on first attempt' );
-}
-
-public function test_execute_with_retry_retries_for_retryable_error() {
-$service = $this->make_retry_service( 3 );
-$calls   = 0;
-
-$result = $service->execute_with_retry(
-function() use ( &$calls ) {
-$calls++;
-return new WP_Error( 'generation_failed', 'Temporary failure' );
-},
-'text',
-'prompt',
-array()
-);
-
-$this->assertInstanceOf( WP_Error::class, $result );
-$this->assertSame( 3, $calls, 'Should retry up to max_attempts for a retryable error' );
-}
-
-public function test_execute_with_retry_returns_success_on_subsequent_attempt() {
-$service = $this->make_retry_service( 3 );
-$calls   = 0;
-
-$result = $service->execute_with_retry(
-function() use ( &$calls ) {
-$calls++;
-if ( $calls < 2 ) {
-return new WP_Error( 'generation_failed', 'Transient failure' );
-}
-return 'Generated content';
-},
-'text',
-'prompt',
-array()
-);
-
-$this->assertSame( 'Generated content', $result );
-$this->assertSame( 2, $calls );
-}
-
-// -----------------------------------------------------------------------
-// Immediate circuit opening
-// -----------------------------------------------------------------------
-
-public function test_record_failure_with_insufficient_quota_opens_circuit_immediately() {
-$service = $this->make_cb_enabled_service( 10 ); // high threshold
-
-$service->record_failure( 'insufficient_quota' );
-
-$status = $service->get_circuit_breaker_status();
-$this->assertSame( 'open', $status['state'], 'Circuit should open immediately for insufficient_quota' );
-}
-
-public function test_record_failure_without_error_code_respects_threshold() {
-$service = $this->make_cb_enabled_service( 3 );
-
-// 1st and 2nd failures — circuit should remain closed
-$service->record_failure( '' );
-$status = $service->get_circuit_breaker_status();
-$this->assertSame( 'closed', $status['state'] );
-
-$service->record_failure( '' );
-$status = $service->get_circuit_breaker_status();
-$this->assertSame( 'closed', $status['state'] );
-
-// 3rd failure — threshold reached, circuit should open
-$service->record_failure( '' );
-$status = $service->get_circuit_breaker_status();
-$this->assertSame( 'open', $status['state'] );
-}
-
-public function test_record_failure_with_non_retryable_non_immediate_code_respects_threshold() {
-$service = $this->make_cb_enabled_service( 5 );
-
-// A non-retryable code that is NOT in IMMEDIATE_OPEN_CODES should not
-// bypass the threshold check
-$service->record_failure( 'invalid_api_key' );
-$status = $service->get_circuit_breaker_status();
-$this->assertNotSame( 'open', $status['state'],
-'invalid_api_key is not in IMMEDIATE_OPEN_CODES so threshold should govern' );
-}
-
-// -----------------------------------------------------------------------
-// Notification action fired on circuit-open
-// -----------------------------------------------------------------------
-
-public function test_circuit_breaker_opened_action_fires_when_circuit_transitions_to_open() {
-$service  = $this->make_cb_enabled_service( 1 );
-$received = null;
-
-add_action( 'aips_circuit_breaker_opened', function( $payload ) use ( &$received ) {
-$received = $payload;
-} );
-
-$service->record_failure( '' );
-
-remove_all_actions( 'aips_circuit_breaker_opened' );
-
-$this->assertNotNull( $received, 'aips_circuit_breaker_opened action should have fired' );
-$this->assertArrayHasKey( 'failures', $received );
-}
-
-public function test_circuit_breaker_opened_action_fires_only_once_per_transition() {
-$service = $this->make_cb_enabled_service( 1 );
-$count   = 0;
-
-add_action( 'aips_circuit_breaker_opened', function() use ( &$count ) {
-$count++;
-} );
-
-// First record_failure opens the circuit → action fires
-$service->record_failure( '' );
-// Second record_failure keeps circuit open → action should NOT fire again
-$service->record_failure( '' );
-
-remove_all_actions( 'aips_circuit_breaker_opened' );
-
-$this->assertSame( 1, $count, 'Action should fire exactly once per open transition' );
-}
-
-// -----------------------------------------------------------------------
-// Rate-limit notification action
-// -----------------------------------------------------------------------
-
-public function test_rate_limit_reached_action_fires_when_limit_exceeded() {
-$GLOBALS['aips_test_options'] = array(
-'aips_enable_circuit_breaker' => false,
-'aips_enable_retry'           => false,
-'aips_enable_rate_limiting'   => true,
-'aips_rate_limit_requests'    => 2,
-'aips_rate_limit_period'      => 60,
-);
-delete_transient( 'aips_rate_limiter_requests' );
-
-$service  = new AIPS_Resilience_Service();
-$received = null;
-
-add_action( 'aips_rate_limit_reached', function( $payload ) use ( &$received ) {
-$received = $payload;
-} );
-
-$service->check_rate_limit(); // 1st — allowed
-$service->check_rate_limit(); // 2nd — allowed (hits limit)
-$service->check_rate_limit(); // 3rd — blocked, fires action
-
-remove_all_actions( 'aips_rate_limit_reached' );
-delete_transient( 'aips_rate_limiter_requests' );
-
-$this->assertNotNull( $received, 'aips_rate_limit_reached action should have fired' );
-$this->assertArrayHasKey( 'max_requests', $received );
-}
-
-// -----------------------------------------------------------------------
-// execute_safely — CB state mutated exactly once per operation
-// -----------------------------------------------------------------------
-
-/**
- * Helper: service with both retry and circuit breaker enabled.
- *
- * @param int $threshold CB failure threshold.
- * @param int $max_attempts Retry attempts.
- * @return AIPS_Resilience_Service
- */
-private function make_full_service( $threshold = 10, $max_attempts = 3 ) {
-$GLOBALS['aips_test_options'] = array(
-'aips_enable_circuit_breaker'    => true,
-'aips_circuit_breaker_threshold' => $threshold,
-'aips_circuit_breaker_timeout'   => 300,
-'aips_enable_retry'              => true,
-'aips_retry_max_attempts'        => $max_attempts,
-'aips_retry_initial_delay'       => 0,
-'aips_retry_jitter'              => false,
-'aips_enable_rate_limiting'      => false,
-);
-
-delete_transient( 'aips_circuit_breaker_state' );
-
-return new AIPS_Resilience_Service();
-}
-
-/**
- * execute_safely must record exactly one failure even when the retry loop
- * makes multiple attempts — not one per attempt.
- */
-public function test_execute_safely_records_failure_once_after_multiple_retries() {
-$service = $this->make_full_service( 10, 3 );
-
-$service->execute_safely(
-function() {
-return new WP_Error( 'generation_failed', 'Transient error' );
-},
-'text', 'prompt', array()
-);
-
-$status = $service->get_circuit_breaker_status();
-$this->assertSame( 1, $status['failures'], 'Failure counter should be 1, not 3 (one per retry)' );
-}
-
-/**
- * execute_safely must record exactly one success.
- */
-public function test_execute_safely_records_success_once() {
-$service = $this->make_full_service( 10, 3 );
-
-// Record a couple of failures first so we have something to reset.
-$service->record_failure();
-$service->record_failure();
-
-$service->execute_safely(
-function() {
-return 'OK';
-},
-'text', 'prompt', array()
-);
-
-$status = $service->get_circuit_breaker_status();
-$this->assertSame( 0, $status['failures'], 'Failure counter should be reset to 0 on success' );
-}
-
-/**
- * execute_safely must NOT record a failure for the json_query_unavailable
- * sentinel — that is a non-fault fallback signal, not a provider failure.
- */
-public function test_execute_safely_does_not_record_failure_for_json_query_unavailable() {
-$service = $this->make_full_service( 10, 1 );
-
-$service->execute_safely(
-function() {
-return new WP_Error( 'json_query_unavailable', 'Method failed' );
-},
-'json', 'prompt', array()
-);
-
-$status = $service->get_circuit_breaker_status();
-$this->assertSame( 0, $status['failures'], 'json_query_unavailable should not count as a CB failure' );
-}
+	// -----------------------------------------------------------------------
+
+	/**
+	 * "High demand" messages from Meow AI Engine are transient — must be retryable.
+	 */
+	public function test_extract_error_code_high_demand_message_returns_empty() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.'
+		);
+		$this->assertSame( '', $code, '"High demand" is transient and must NOT be classified as non-retryable' );
+	}
+
+	/**
+	 * Empty response messages are transient — must remain retryable.
+	 */
+	public function test_extract_error_code_empty_response_message_returns_empty() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			'AI Engine returned an empty response.'
+		);
+		$this->assertSame( '', $code, '"Empty response" is transient and must NOT be classified as non-retryable' );
+	}
+
+	/**
+	 * "Incorrect API key" message → invalid_api_key (non-retryable).
+	 */
+	public function test_extract_error_code_incorrect_api_key_message() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			'Incorrect API key provided: sk-xxx. You can find your API key at https://platform.openai.com/account/api-keys.'
+		);
+		$this->assertSame( 'invalid_api_key', $code );
+	}
+
+	/**
+	 * "Invalid API key" message variant → invalid_api_key.
+	 */
+	public function test_extract_error_code_invalid_api_key_message() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			'Invalid API key. Please check your credentials.'
+		);
+		$this->assertSame( 'invalid_api_key', $code );
+	}
+
+	/**
+	 * "Exceeded your current quota" → insufficient_quota (immediate open).
+	 */
+	public function test_extract_error_code_exceeded_quota_message() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			'You exceeded your current quota, please check your plan and billing details.'
+		);
+		$this->assertSame( 'insufficient_quota', $code );
+	}
+
+	/**
+	 * "Maximum context length" → context_length_exceeded (non-retryable).
+	 */
+	public function test_extract_error_code_context_length_message() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			"This model's maximum context length is 4097 tokens. Please reduce the length of your messages."
+		);
+		$this->assertSame( 'context_length_exceeded', $code );
+	}
+
+	/**
+	 * "Model does not exist" → model_not_found (non-retryable).
+	 */
+	public function test_extract_error_code_model_not_found_message() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			'The model `gpt-5-fake` does not exist.'
+		);
+		$this->assertSame( 'model_not_found', $code );
+	}
+
+	/**
+	 * Generic unknown transient error still returns empty (retryable).
+	 */
+	public function test_extract_error_code_returns_empty_for_unknown_transient_message() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			'Unexpected network error. Please retry later.'
+		);
+		$this->assertSame( '', $code );
+	}
+
+	/**
+	 * JSON-embedded error block → code extracted from JSON.
+	 */
+	public function test_extract_error_code_parses_json_error_block() {
+		$message = 'Error 400: {"error":{"message":"Incorrect API key provided.","type":"invalid_request_error","code":"invalid_api_key"}}';
+		$code    = AIPS_Resilience_Service::extract_error_code_from_message( $message );
+		$this->assertSame( 'invalid_api_key', $code );
+	}
+
+	/**
+	 * JSON-embedded error block with type but no code field.
+	 */
+	public function test_extract_error_code_parses_json_error_type_when_no_code() {
+		$message = 'Error 400: {"error":{"message":"Context limit","type":"context_length_exceeded"}}';
+		$code    = AIPS_Resilience_Service::extract_error_code_from_message( $message );
+		$this->assertSame( 'context_length_exceeded', $code );
+	}
+
+	/**
+	 * Pattern matching is case-insensitive.
+	 */
+	public function test_extract_error_code_is_case_insensitive() {
+		$code = AIPS_Resilience_Service::extract_error_code_from_message(
+			'Error: Maximum Context Length reached for this request.'
+		);
+		$this->assertSame( 'context_length_exceeded', $code );
+	}
+
+	// -----------------------------------------------------------------------
+	// NON_RETRYABLE_CODES constant
+	// -----------------------------------------------------------------------
+
+	public function test_non_retryable_codes_constant_is_not_empty() {
+		$this->assertNotEmpty( AIPS_Resilience_Service::NON_RETRYABLE_CODES );
+	}
+
+	public function test_non_retryable_codes_contains_invalid_api_key() {
+		$this->assertContains( 'invalid_api_key', AIPS_Resilience_Service::NON_RETRYABLE_CODES );
+	}
+
+	public function test_non_retryable_codes_contains_context_length_exceeded() {
+		$this->assertContains( 'context_length_exceeded', AIPS_Resilience_Service::NON_RETRYABLE_CODES );
+	}
+
+	// -----------------------------------------------------------------------
+	// IMMEDIATE_OPEN_CODES constant
+	// -----------------------------------------------------------------------
+
+	public function test_immediate_open_codes_contains_insufficient_quota() {
+		$this->assertContains( 'insufficient_quota', AIPS_Resilience_Service::IMMEDIATE_OPEN_CODES );
+	}
+
+	// -----------------------------------------------------------------------
+	// Selective retry behaviour
+	// -----------------------------------------------------------------------
+
+	public function test_execute_with_retry_calls_function_once_for_non_retryable_error() {
+		$service = $this->make_retry_service( 3 );
+		$calls   = 0;
+
+		$result = $service->execute_with_retry(
+			function() use ( &$calls ) {
+				$calls++;
+				return new WP_Error( 'invalid_api_key', 'Bad API key' );
+			},
+			'text',
+			'prompt',
+			array()
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 1, $calls, 'Should not retry a non-retryable error' );
+	}
+
+	public function test_execute_with_retry_calls_function_once_for_immediate_open_error() {
+		$service = $this->make_retry_service( 3 );
+		$calls   = 0;
+
+		$result = $service->execute_with_retry(
+			function() use ( &$calls ) {
+				$calls++;
+				return new WP_Error( 'insufficient_quota', 'You exceeded your current quota' );
+			},
+			'text',
+			'prompt',
+			array()
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 1, $calls, 'IMMEDIATE_OPEN_CODES should abort the retry loop on first attempt' );
+	}
+
+	public function test_execute_with_retry_retries_for_retryable_error() {
+		$service = $this->make_retry_service( 3 );
+		$calls   = 0;
+
+		$result = $service->execute_with_retry(
+			function() use ( &$calls ) {
+				$calls++;
+				return new WP_Error( 'generation_failed', 'Temporary failure' );
+			},
+			'text',
+			'prompt',
+			array()
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 3, $calls, 'Should retry up to max_attempts for a retryable error' );
+	}
+
+	public function test_execute_with_retry_returns_success_on_subsequent_attempt() {
+		$service = $this->make_retry_service( 3 );
+		$calls   = 0;
+
+		$result = $service->execute_with_retry(
+			function() use ( &$calls ) {
+				$calls++;
+				if ( $calls < 2 ) {
+					return new WP_Error( 'generation_failed', 'Transient failure' );
+				}
+				return 'Generated content';
+			},
+			'text',
+			'prompt',
+			array()
+		);
+
+		$this->assertSame( 'Generated content', $result );
+		$this->assertSame( 2, $calls );
+	}
+
+	// -----------------------------------------------------------------------
+	// Immediate circuit opening
+	// -----------------------------------------------------------------------
+
+	public function test_record_failure_with_insufficient_quota_opens_circuit_immediately() {
+		$service = $this->make_cb_enabled_service( 10 ); // high threshold
+
+		$service->record_failure( 'insufficient_quota' );
+
+		$status = $service->get_circuit_breaker_status();
+		$this->assertSame( 'open', $status['state'], 'Circuit should open immediately for insufficient_quota' );
+	}
+
+	public function test_record_failure_without_error_code_respects_threshold() {
+		$service = $this->make_cb_enabled_service( 3 );
+
+		// 1st and 2nd failures — circuit should remain closed
+		$service->record_failure( '' );
+		$status = $service->get_circuit_breaker_status();
+		$this->assertSame( 'closed', $status['state'] );
+
+		$service->record_failure( '' );
+		$status = $service->get_circuit_breaker_status();
+		$this->assertSame( 'closed', $status['state'] );
+
+		// 3rd failure — threshold reached, circuit should open
+		$service->record_failure( '' );
+		$status = $service->get_circuit_breaker_status();
+		$this->assertSame( 'open', $status['state'] );
+	}
+
+	public function test_record_failure_with_non_retryable_non_immediate_code_respects_threshold() {
+		$service = $this->make_cb_enabled_service( 5 );
+
+		// A non-retryable code that is NOT in IMMEDIATE_OPEN_CODES should not
+		// bypass the threshold check
+		$service->record_failure( 'invalid_api_key' );
+		$status = $service->get_circuit_breaker_status();
+		$this->assertNotSame( 'open', $status['state'],
+			'invalid_api_key is not in IMMEDIATE_OPEN_CODES so threshold should govern' );
+	}
+
+	// -----------------------------------------------------------------------
+	// Notification action fired on circuit-open
+	// -----------------------------------------------------------------------
+
+	public function test_circuit_breaker_opened_action_fires_when_circuit_transitions_to_open() {
+		$service  = $this->make_cb_enabled_service( 1 );
+		$received = null;
+
+		add_action( 'aips_circuit_breaker_opened', function( $payload ) use ( &$received ) {
+				$received = $payload;
+			} );
+
+		$service->record_failure( '' );
+
+		remove_all_actions( 'aips_circuit_breaker_opened' );
+
+		$this->assertNotNull( $received, 'aips_circuit_breaker_opened action should have fired' );
+		$this->assertArrayHasKey( 'failures', $received );
+	}
+
+	public function test_circuit_breaker_opened_action_fires_only_once_per_transition() {
+		$service = $this->make_cb_enabled_service( 1 );
+		$count   = 0;
+
+		add_action( 'aips_circuit_breaker_opened', function() use ( &$count ) {
+				$count++;
+			} );
+
+		// First record_failure opens the circuit → action fires
+		$service->record_failure( '' );
+		// Second record_failure keeps circuit open → action should NOT fire again
+		$service->record_failure( '' );
+
+		remove_all_actions( 'aips_circuit_breaker_opened' );
+
+		$this->assertSame( 1, $count, 'Action should fire exactly once per open transition' );
+	}
+
+	// -----------------------------------------------------------------------
+	// Rate-limit notification action
+	// -----------------------------------------------------------------------
+
+	public function test_rate_limit_reached_action_fires_when_limit_exceeded() {
+		$GLOBALS['aips_test_options'] = array(
+			'aips_enable_circuit_breaker' => false,
+			'aips_enable_retry'           => false,
+			'aips_enable_rate_limiting'   => true,
+			'aips_rate_limit_requests'    => 2,
+			'aips_rate_limit_period'      => 60,
+		);
+		delete_transient( 'aips_rate_limiter_requests' );
+
+		$service  = new AIPS_Resilience_Service();
+		$received = null;
+
+		add_action( 'aips_rate_limit_reached', function( $payload ) use ( &$received ) {
+				$received = $payload;
+			} );
+
+		$service->check_rate_limit(); // 1st — allowed
+		$service->check_rate_limit(); // 2nd — allowed (hits limit)
+		$service->check_rate_limit(); // 3rd — blocked, fires action
+
+		remove_all_actions( 'aips_rate_limit_reached' );
+		delete_transient( 'aips_rate_limiter_requests' );
+
+		$this->assertNotNull( $received, 'aips_rate_limit_reached action should have fired' );
+		$this->assertArrayHasKey( 'max_requests', $received );
+	}
+
+	// -----------------------------------------------------------------------
+	// execute_safely — CB state mutated exactly once per operation
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Helper: service with both retry and circuit breaker enabled.
+	 *
+	 * @param int $threshold CB failure threshold.
+	 * @param int $max_attempts Retry attempts.
+	 * @return AIPS_Resilience_Service
+	 */
+	private function make_full_service( $threshold = 10, $max_attempts = 3 ) {
+		$GLOBALS['aips_test_options'] = array(
+			'aips_enable_circuit_breaker'    => true,
+			'aips_circuit_breaker_threshold' => $threshold,
+			'aips_circuit_breaker_timeout'   => 300,
+			'aips_enable_retry'              => true,
+			'aips_retry_max_attempts'        => $max_attempts,
+			'aips_retry_initial_delay'       => 0,
+			'aips_retry_jitter'              => false,
+			'aips_enable_rate_limiting'      => false,
+		);
+
+		delete_transient( 'aips_circuit_breaker_state' );
+
+		return new AIPS_Resilience_Service();
+	}
+
+	/**
+	 * execute_safely must record exactly one failure even when the retry loop
+	 * makes multiple attempts — not one per attempt.
+	 */
+	public function test_execute_safely_records_failure_once_after_multiple_retries() {
+		$service = $this->make_full_service( 10, 3 );
+
+		$service->execute_safely(
+			function() {
+				return new WP_Error( 'generation_failed', 'Transient error' );
+			},
+			'text', 'prompt', array()
+		);
+
+		$status = $service->get_circuit_breaker_status();
+		$this->assertSame( 1, $status['failures'], 'Failure counter should be 1, not 3 (one per retry)' );
+	}
+
+	/**
+	 * execute_safely must record exactly one success.
+	 */
+	public function test_execute_safely_records_success_once() {
+		$service = $this->make_full_service( 10, 3 );
+
+		// Record a couple of failures first so we have something to reset.
+		$service->record_failure();
+		$service->record_failure();
+
+		$service->execute_safely(
+			function() {
+				return 'OK';
+			},
+			'text', 'prompt', array()
+		);
+
+		$status = $service->get_circuit_breaker_status();
+		$this->assertSame( 0, $status['failures'], 'Failure counter should be reset to 0 on success' );
+	}
+
+	/**
+	 * execute_safely must NOT record a failure for the json_query_unavailable
+	 * sentinel — that is a non-fault fallback signal, not a provider failure.
+	 */
+	public function test_execute_safely_does_not_record_failure_for_json_query_unavailable() {
+		$service = $this->make_full_service( 10, 1 );
+
+		$service->execute_safely(
+			function() {
+				return new WP_Error( 'json_query_unavailable', 'Method failed' );
+			},
+			'json', 'prompt', array()
+		);
+
+		$status = $service->get_circuit_breaker_status();
+		$this->assertSame( 0, $status['failures'], 'json_query_unavailable should not count as a CB failure' );
+	}
+
+	// -----------------------------------------------------------------------
+	// execute_safely — local rate-limiter retry/backoff
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Create a resilience service with the local rate limiter ENABLED (a
+	 * $max_requests-per-$period window), plus circuit breaker/retry disabled so
+	 * only the rate-limit gate is under test.
+	 *
+	 * @param int $period       Rate limit window, in seconds.
+	 * @param int $max_requests Requests allowed per window.
+	 * @return AIPS_Resilience_Service
+	 */
+	private function make_rate_limited_service( $period = 1, $max_requests = 1 ) {
+		$GLOBALS['aips_test_options'] = array(
+			'aips_enable_circuit_breaker' => false,
+			'aips_enable_retry'           => false,
+			'aips_enable_rate_limiting'   => true,
+			'aips_rate_limit_requests'    => $max_requests,
+			'aips_rate_limit_period'      => $period,
+		);
+		update_option( 'aips_enable_circuit_breaker', false );
+		update_option( 'aips_enable_retry', false );
+		update_option( 'aips_enable_rate_limiting', true );
+		update_option( 'aips_rate_limit_requests', $max_requests );
+		update_option( 'aips_rate_limit_period', $period );
+
+		delete_transient( 'aips_circuit_breaker_state' );
+		delete_transient( 'aips_rate_limiter_requests' );
+
+		return new AIPS_Resilience_Service();
+	}
+
+	/**
+	 * Invoke the private seconds_until_rate_limit_slot_frees() helper.
+	 *
+	 * @param AIPS_Resilience_Service $service Service under test.
+	 * @return int
+	 */
+	private function seconds_until_slot_frees( $service ) {
+		$method = new ReflectionMethod( AIPS_Resilience_Service::class, 'seconds_until_rate_limit_slot_frees' );
+		$method->setAccessible( true );
+
+		return $method->invoke( $service );
+	}
+
+	/**
+	 * When the local rate-limiter window frees up within
+	 * RATE_LIMIT_RETRY_MAX_ATTEMPTS, execute_safely() must wait and retry the
+	 * gate rather than failing the call outright.
+	 */
+	public function test_execute_safely_waits_for_rate_limit_capacity_to_free_up() {
+		$service = $this->make_rate_limited_service( 1 ); // 1-second window
+
+		// Exhaust the single-slot window immediately.
+		$service->check_rate_limit();
+
+		$calls = 0;
+		$result = $service->execute_safely(
+			function() use ( &$calls ) {
+				$calls++;
+				return 'OK';
+			},
+			'text', 'prompt', array()
+		);
+
+		delete_transient( 'aips_rate_limiter_requests' );
+
+		$this->assertSame( 1, $calls, 'Underlying function should run once capacity frees up' );
+		$this->assertSame( 'OK', $result );
+	}
+
+	/**
+	 * When the local rate-limiter never frees up within the bounded attempts,
+	 * execute_safely() must still fail with rate_limit_exceeded, and that
+	 * failure must not be recorded against the circuit breaker.
+	 *
+	 * It must also fail *fast*: when the next slot frees up further out than
+	 * RATE_LIMIT_RETRY_MAX_WAIT_SECONDS, sleeping cannot possibly help, so the
+	 * caller must not be made to wait out the full retry budget first.
+	 */
+	public function test_execute_safely_returns_rate_limit_exceeded_when_capacity_never_frees() {
+		// A long window guarantees capacity will not free up within the bounded
+		// retry attempts, so the gate must give up and return an error.
+		$service = $this->make_rate_limited_service( 3600 );
+
+		// Exhaust the single-slot window immediately.
+		$service->check_rate_limit();
+
+		$calls   = 0;
+		$started = microtime( true );
+		$result  = $service->execute_safely(
+			function() use ( &$calls ) {
+				$calls++;
+				return 'OK';
+			},
+			'text', 'prompt', array()
+		);
+		$elapsed = microtime( true ) - $started;
+
+		delete_transient( 'aips_rate_limiter_requests' );
+
+		$this->assertSame( 0, $calls, 'Underlying function must never run while rate-limited' );
+		$this->assertTrue( is_wp_error( $result ) );
+		$this->assertSame( 'rate_limit_exceeded', $result->get_error_code() );
+		$this->assertLessThan(
+			2,
+			$elapsed,
+			'Gate must fail fast when the next slot is further out than the wait budget, not sleep through every attempt'
+		);
+
+		$status = $service->get_circuit_breaker_status();
+		$this->assertSame( 0, $status['failures'], 'rate_limit_exceeded must not count as a CB failure' );
+	}
+
+	/**
+	 * Timestamps that have already aged out of the sliding window must not be
+	 * counted when computing the wait. check_rate_limit() does not persist its
+	 * filtered array when it denies a request, so the transient really can hold
+	 * expired entries; measuring from one of those understates the wait and
+	 * makes the gate retry too early.
+	 */
+	public function test_seconds_until_slot_frees_ignores_expired_requests() {
+		$service = $this->make_rate_limited_service( 60, 2 );
+
+		$now = time();
+		set_transient(
+			'aips_rate_limiter_requests',
+			array( $now - 500, $now - 10, $now - 5 ), // first entry is long expired
+			60
+		);
+
+		$wait = $this->seconds_until_slot_frees( $service );
+
+		delete_transient( 'aips_rate_limiter_requests' );
+
+		// Only the two in-window entries count; the oldest of those frees at
+		// ( $now - 10 ) + 60, i.e. 50s out. Measuring from $now - 500 would
+		// wrongly report 0.
+		$this->assertEqualsWithDelta( 50, $wait, 1, 'Expired timestamps must be filtered before measuring the wait' );
+	}
+
+	/**
+	 * When the configured limit has been lowered while requests were already
+	 * tracked, more than one entry has to expire before a request is admitted.
+	 * The wait must cover the newest of those, not just the oldest entry.
+	 */
+	public function test_seconds_until_slot_frees_accounts_for_multiple_expiries() {
+		$service = $this->make_rate_limited_service( 60, 1 );
+
+		$now = time();
+		set_transient( 'aips_rate_limiter_requests', array( $now - 30, $now - 20, $now - 10 ), 60 );
+
+		$wait = $this->seconds_until_slot_frees( $service );
+
+		delete_transient( 'aips_rate_limiter_requests' );
+
+		// Three tracked requests against a limit of 1: all three must age out, so
+		// the wait is governed by the newest ( $now - 10 ) + 60 = 50s, not by the
+		// oldest ( $now - 30 ) + 60 = 30s.
+		$this->assertEqualsWithDelta( 50, $wait, 1, 'Wait must cover every entry that has to expire' );
+	}
+
+	/**
+	 * A corrupted (non-array) transient must not blow up the rate limiter —
+	 * array_filter() would raise a TypeError on PHP 8.
+	 */
+	public function test_rate_limiter_tolerates_corrupted_transient() {
+		$service = $this->make_rate_limited_service( 60, 2 );
+
+		set_transient( 'aips_rate_limiter_requests', 'not-an-array', 60 );
+		$this->assertSame( 0, $this->seconds_until_slot_frees( $service ) );
+
+		set_transient( 'aips_rate_limiter_requests', 'not-an-array', 60 );
+		$this->assertTrue( $service->check_rate_limit(), 'A corrupted transient should be treated as an empty window' );
+
+		set_transient( 'aips_rate_limiter_requests', 'not-an-array', 60 );
+		$status = $service->get_rate_limiter_status();
+		$this->assertSame( 0, $status['current_requests'] );
+
+		delete_transient( 'aips_rate_limiter_requests' );
+	}
+
+	/**
+	 * The circuit breaker must remain fail-fast: no wait/retry when it is open,
+	 * regardless of the new rate-limit retry logic.
+	 */
+	public function test_execute_safely_circuit_breaker_still_fails_fast() {
+		$GLOBALS['aips_test_options'] = array(
+			'aips_enable_circuit_breaker'    => true,
+			'aips_circuit_breaker_threshold' => 1,
+			'aips_circuit_breaker_timeout'   => 300,
+			'aips_enable_retry'              => false,
+			'aips_enable_rate_limiting'      => false,
+		);
+		update_option( 'aips_enable_circuit_breaker', true );
+		update_option( 'aips_circuit_breaker_threshold', 1 );
+		update_option( 'aips_circuit_breaker_timeout', 300 );
+		update_option( 'aips_enable_retry', false );
+		update_option( 'aips_enable_rate_limiting', false );
+
+		delete_transient( 'aips_circuit_breaker_state' );
+
+		$service = new AIPS_Resilience_Service();
+		$service->record_failure( 'generation_failed' );
+
+		$calls = 0;
+		$result = $service->execute_safely(
+			function() use ( &$calls ) {
+				$calls++;
+				return 'OK';
+			},
+			'text', 'prompt', array()
+		);
+
+		$this->assertSame( 0, $calls, 'Underlying function must never run while circuit breaker is open' );
+		$this->assertTrue( is_wp_error( $result ) );
+		$this->assertSame( 'circuit_breaker_open', $result->get_error_code() );
+	}
 }

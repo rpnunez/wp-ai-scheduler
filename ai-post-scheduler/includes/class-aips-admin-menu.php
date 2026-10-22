@@ -44,7 +44,7 @@ class AIPS_Admin_Menu {
             30
         );
 
-        // Dashboard (top level)
+        // 1. Dashboard
         add_submenu_page(
             'ai-post-scheduler',
             __('Dashboard', 'ai-post-scheduler'),
@@ -54,7 +54,8 @@ class AIPS_Admin_Menu {
             array($this, 'render_dashboard_page')
         );
 
-        add_submenu_page(
+        // 2. Automations
+        $automations_hook = add_submenu_page(
             'ai-post-scheduler',
             __('Automations', 'ai-post-scheduler'),
             __('Automations', 'ai-post-scheduler'),
@@ -62,62 +63,21 @@ class AIPS_Admin_Menu {
             'aips-automations',
             array($this, 'render_automations_page')
         );
+        if ($automations_hook) {
+            add_action("load-{$automations_hook}", array($this, 'setup_automations_screen_options'));
+        }
 
-        add_submenu_page(
-            null,
-            __('Templates', 'ai-post-scheduler'),
-            __('Templates', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-templates',
-            array($this, 'render_templates_page')
-        );
-
+        // 3. Studio
         add_submenu_page(
             'ai-post-scheduler',
-            __('Voices', 'ai-post-scheduler'),
-            __('Voices', 'ai-post-scheduler'),
+            __('Studio', 'ai-post-scheduler'),
+            __('Studio', 'ai-post-scheduler'),
             'manage_options',
-            'aips-voices',
-            array($this, 'render_voices_page')
+            'aips-studio',
+            array($this, 'render_studio_page')
         );
 
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Article Structures', 'ai-post-scheduler'),
-            __('Article Structures', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-structures',
-            array($this, 'render_structures_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Authors', 'ai-post-scheduler'),
-            __('Authors', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-authors',
-            array($this, 'render_authors_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Post Slices', 'ai-post-scheduler'),
-            __('Post Slices', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-post-slices',
-            array($this, 'render_post_slices_page')
-        );
-
-        // Author Topics page - hidden from menu navigation, accessible via URL.
-        add_submenu_page(
-            null,
-            __('Author Topics', 'ai-post-scheduler'),
-            __('Author Topics', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-author-topics',
-            array($this, 'render_author_topics_page')
-        );
-
+        // 4. Research
         add_submenu_page(
             'ai-post-scheduler',
             __('Research', 'ai-post-scheduler'),
@@ -127,24 +87,53 @@ class AIPS_Admin_Menu {
             array($this, 'render_research_page')
         );
 
-        add_submenu_page(
-            null,
-            __('Schedule', 'ai-post-scheduler'),
-            __('Schedule', 'ai-post-scheduler'),
+        // 5. Content
+        $content_hook = add_submenu_page(
+            'ai-post-scheduler',
+            __('Content', 'ai-post-scheduler'),
+            __('Content', 'ai-post-scheduler'),
             'manage_options',
-            'aips-schedule',
-            array($this, 'render_schedule_page')
+            'aips-generated-posts',
+            array($this, 'render_generated_posts_page')
+        );
+        if ($content_hook) {
+            add_action("load-{$content_hook}", array($this, 'setup_content_screen_options'));
+        }
+
+        // 6. History
+        $history_hook = add_submenu_page(
+            'ai-post-scheduler',
+            __('History', 'ai-post-scheduler'),
+            __('History', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-history',
+            array($this, 'render_history_page')
+        );
+        if ($history_hook) {
+            add_action("load-{$history_hook}", array($this, 'setup_history_screen_options'));
+        }
+
+        // 7. Settings
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Settings', 'ai-post-scheduler'),
+            __('Settings', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-settings',
+            array($this, 'render_settings_page')
         );
 
+        // 8. Diagnostics
         add_submenu_page(
-            null,
-            __('Campaigns', 'ai-post-scheduler'),
-            __('Campaigns', 'ai-post-scheduler'),
+            'ai-post-scheduler',
+            __('Diagnostics', 'ai-post-scheduler'),
+            __('Diagnostics', 'ai-post-scheduler'),
             'manage_options',
-            'aips-campaigns',
-            array($this, 'render_campaigns_page')
+            'aips-diagnostics',
+            array($this, 'render_diagnostics_page')
         );
 
+        // Hidden child pages accessible directly via URL / redirects
         add_submenu_page(
             null,
             __('Campaign Wizard', 'ai-post-scheduler'),
@@ -163,33 +152,15 @@ class AIPS_Admin_Menu {
             array($this, 'render_campaign_detail_page')
         );
 
-
         add_submenu_page(
-            'ai-post-scheduler',
-            __('Schedule Calendar', 'ai-post-scheduler'),
-            __('Schedule Calendar', 'ai-post-scheduler'),
+            null,
+            __('Author Topics', 'ai-post-scheduler'),
+            __('Author Topics', 'ai-post-scheduler'),
             'manage_options',
-            'aips-schedule-calendar',
-            array($this, 'render_schedule_calendar_page')
+            'aips-author-topics',
+            array($this, 'render_author_topics_page')
         );
 
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Content', 'ai-post-scheduler'),
-            __('Content', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-generated-posts',
-            array($this, 'render_generated_posts_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('History', 'ai-post-scheduler'),
-            __('History', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-history',
-            array($this, 'render_history_page')
-        );
         add_submenu_page(
             null,
             __('Sources', 'ai-post-scheduler'),
@@ -198,6 +169,18 @@ class AIPS_Admin_Menu {
             'aips-sources',
             array($this, 'render_sources_page')
         );
+
+        $source_data_hook = add_submenu_page(
+            null,
+            __('Manage Source Data', 'ai-post-scheduler'),
+            __('Manage Source Data', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-source-data',
+            array($this, 'render_source_data_page')
+        );
+        if ($source_data_hook) {
+            add_action("load-{$source_data_hook}", array($this, 'setup_source_data_screen_options'));
+        }
 
         add_submenu_page(
             null,
@@ -218,21 +201,48 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
-            __('Settings', 'ai-post-scheduler'),
-            __('Settings', 'ai-post-scheduler'),
+            null,
+            __('Content Intelligence', 'ai-post-scheduler'),
+            __('Content Intelligence', 'ai-post-scheduler'),
             'manage_options',
-            'aips-settings',
-            array($this, 'render_settings_page')
+            'aips-content-intelligence',
+            array($this, 'render_content_intelligence_page')
         );
 
         add_submenu_page(
-            'ai-post-scheduler',
-            __('Diagnostics', 'ai-post-scheduler'),
-            __('Diagnostics', 'ai-post-scheduler'),
+            null,
+            __('Topic Clusters & Gaps', 'ai-post-scheduler'),
+            __('Topic Clusters & Gaps', 'ai-post-scheduler'),
             'manage_options',
-            'aips-diagnostics',
-            array($this, 'render_diagnostics_page')
+            'aips-post-clusters',
+            array($this, 'render_post_clusters_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Cannibalization Audit', 'ai-post-scheduler'),
+            __('Cannibalization Audit', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-cannibalization',
+            array($this, 'render_cannibalization_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Content Indexer', 'ai-post-scheduler'),
+            __('Content Indexer', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-indexer',
+            array($this, 'render_content_indexer_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Affiliate Links', 'ai-post-scheduler'),
+            __('Affiliate Links', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-affiliate-links',
+            array($this, 'render_affiliate_links_page')
         );
 
         add_submenu_page(
@@ -242,15 +252,6 @@ class AIPS_Admin_Menu {
             'manage_options',
             'aips-status',
             array($this, 'render_status_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Seeder', 'ai-post-scheduler'),
-            __('Seeder', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-seeder',
-            array($this, 'render_seeder_page')
         );
 
         add_submenu_page(
@@ -275,12 +276,24 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             null,
-            __('Cache Monitor', 'ai-post-scheduler'),
-            __('Cache Monitor', 'ai-post-scheduler'),
+            __('Stress Test', 'ai-post-scheduler'),
+            __('Stress Test', 'ai-post-scheduler'),
             'manage_options',
-            'aips-cache-monitor',
-            array($this, 'render_cache_monitor_page')
+            AIPS_Stress_Test_Controller::PAGE_SLUG,
+            array($this, 'render_stress_test_page')
         );
+
+        if (AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled')) {
+            add_submenu_page(
+                null,
+                __('Cache Monitor', 'ai-post-scheduler'),
+                __('Cache Monitor', 'ai-post-scheduler'),
+                'manage_options',
+                'aips-cache-monitor',
+                array($this, 'render_cache_monitor_page')
+            );
+        }
+      
         if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
                 null,
@@ -304,7 +317,7 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page)) {
+        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page) || $this->is_studio_child_page($page)) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -314,7 +327,7 @@ class AIPS_Admin_Menu {
      * Highlight consolidated submenu items for hidden child pages.
      *
      * Hidden pages registered with a null parent do not automatically activate a submenu
-     * item in WordPress. This filter maps Diagnostics and Automations child pages to
+     * item in WordPress. This filter maps Diagnostics, Automations, and Studio child pages to
      * their corresponding visible submenu entries.
      *
      * @param string $submenu_file The current submenu file slug.
@@ -328,6 +341,9 @@ class AIPS_Admin_Menu {
         if ($this->is_automations_child_page($page)) {
             return 'aips-automations';
         }
+        if ($this->is_studio_child_page($page)) {
+            return 'aips-studio';
+        }
         return $submenu_file;
     }
 
@@ -338,18 +354,10 @@ class AIPS_Admin_Menu {
      * @return bool
      */
     private function is_diagnostics_child_page($page) {
-        return in_array(
-            $page,
-            array(
-                'aips-operations-insights',
-                'aips-status',
-                'aips-telemetry',
-                'aips-seeder',
-                'aips-dev-tools',
-                'aips-cache-monitor',
-            ),
-            true
-        );
+        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_DIAGNOSTICS)) {
+            return true;
+        }
+        return $page === AIPS_Stress_Test_Controller::PAGE_SLUG;
     }
 
     /**
@@ -359,22 +367,191 @@ class AIPS_Admin_Menu {
      * @return bool
      */
     private function is_automations_child_page($page) {
-        return in_array(
-            $page,
-            array(
-                'aips-schedule',
-                'aips-campaigns',
-                'aips-templates',
-                'aips-authors',
-                'aips-sources',
-                'aips-taxonomy',
-                'aips-internal-links',
-                'aips-author-topics',
-                AIPS_Campaigns_Controller::PAGE_SLUG,
-                AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
-            ),
-            true
-        );
+        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_AUTOMATIONS)) {
+            return true;
+        }
+        return in_array($page, array(AIPS_Campaigns_Controller::PAGE_SLUG, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG), true);
+    }
+
+    /**
+     * Determine whether a hidden page belongs under Studio.
+     *
+     * @param string $page Current admin page slug.
+     * @return bool
+     */
+    private function is_studio_child_page($page) {
+        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_STUDIO)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Setup screen options and column headers for Automations hub tabs.
+     *
+     * @return void
+     */
+    public function setup_automations_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'schedules';
+        if ('authors' === $tab) {
+            $table = new AIPS_Authors_List_Table();
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_columns(), array(
+                'label'   => __('Authors per page', 'ai-post-scheduler'),
+                'option'  => 'aips_authors_per_page',
+                'default' => 20,
+            ));
+        } elseif ('author-topics' === $tab) {
+            $table = new AIPS_Author_Topics_List_Table();
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_all_columns(), array(
+                'label'   => __('Topics per page', 'ai-post-scheduler'),
+                'option'  => 'aips_author_topics_per_page',
+                'default' => 20,
+            ));
+        } elseif ('internal-links' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'source'     => __('Source Post', 'ai-post-scheduler'),
+                'target'     => __('Target Post', 'ai-post-scheduler'),
+                'similarity' => __('Similarity', 'ai-post-scheduler'),
+                'anchor'     => __('Anchor Text', 'ai-post-scheduler'),
+                'status'     => __('Status', 'ai-post-scheduler'),
+                'actions'    => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Internal links per page', 'ai-post-scheduler'),
+                'option'  => 'aips_internal_links_per_page',
+                'default' => 20,
+            ));
+        } elseif ('sources' === $tab) {
+            $table = new AIPS_Sources_List_Table();
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_hideable_columns(), array(
+                'label'   => __('Sources per page', 'ai-post-scheduler'),
+                'option'  => AIPS_Sources_List_Table::PER_PAGE_OPTION,
+                'default' => AIPS_Sources_List_Table::PER_PAGE_DEFAULT,
+            ));
+        } elseif ('campaigns' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'name'            => __('Campaign', 'ai-post-scheduler'),
+                'templates'       => __('Templates', 'ai-post-scheduler'),
+                'schedules'       => __('Schedules', 'ai-post-scheduler'),
+                'generated_posts' => __('Generated Posts', 'ai-post-scheduler'),
+                'last_run'        => __('Last Run', 'ai-post-scheduler'),
+                'next_run'        => __('Next Run', 'ai-post-scheduler'),
+                'status'          => __('State', 'ai-post-scheduler'),
+                'actions'         => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Campaigns per page', 'ai-post-scheduler'),
+                'option'  => 'aips_campaigns_per_page',
+                'default' => 20,
+            ));
+        } elseif ('taxonomy' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'name'    => __('Term Name', 'ai-post-scheduler'),
+                'slug'    => __('Slug', 'ai-post-scheduler'),
+                'posts'   => __('Posts', 'ai-post-scheduler'),
+                'status'  => __('Status', 'ai-post-scheduler'),
+                'actions' => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Terms per page', 'ai-post-scheduler'),
+                'option'  => 'aips_taxonomy_per_page',
+                'default' => 20,
+            ));
+        } elseif ('monetization' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'name'        => __('Rule Name', 'ai-post-scheduler'),
+                'keyword'     => __('Keyword / Trigger', 'ai-post-scheduler'),
+                'destination' => __('Target URL', 'ai-post-scheduler'),
+                'status'      => __('Status', 'ai-post-scheduler'),
+                'actions'     => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Rules per page', 'ai-post-scheduler'),
+                'option'  => 'aips_monetization_per_page',
+                'default' => 20,
+            ));
+        } else {
+            $table = new AIPS_Schedules_List_Table();
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_columns(), array(
+                'label'   => __('Schedules per page', 'ai-post-scheduler'),
+                'option'  => 'aips_schedules_per_page',
+                'default' => 20,
+            ));
+        }
+    }
+
+    /**
+     * Setup screen options for the Manage Source Data page.
+     *
+     * @return void
+     */
+    public function setup_source_data_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        $source_id = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
+        $table     = new AIPS_Source_Data_List_Table(array('source_id' => $source_id));
+        AIPS_List_Table::register_screen_options($screen->id, $table->get_hideable_columns(), array(
+            'label'   => __('Snapshots per page', 'ai-post-scheduler'),
+            'option'  => AIPS_Source_Data_List_Table::PER_PAGE_OPTION,
+            'default' => AIPS_Source_Data_List_Table::PER_PAGE_DEFAULT,
+        ));
+    }
+
+    /**
+     * Setup screen options for the History page.
+     *
+     * @return void
+     */
+    public function setup_history_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        AIPS_List_Table::register_screen_options($screen->id, array(
+            'title'   => __('Generated Item / Title', 'ai-post-scheduler'),
+            'type'    => __('Type', 'ai-post-scheduler'),
+            'date'    => __('Date', 'ai-post-scheduler'),
+            'status'  => __('Status', 'ai-post-scheduler'),
+            'actions' => __('Actions', 'ai-post-scheduler'),
+        ), array(
+            'label'   => __('History items per page', 'ai-post-scheduler'),
+            'option'  => 'aips_history_per_page',
+            'default' => 50,
+        ));
+    }
+
+    /**
+     * Setup screen options for the Content page.
+     *
+     * Screen Options are per-screen, so they are scoped to the active tab. Only
+     * the Pending Review tab (a WP_List_Table) registers them: a free-form
+     * drafts-per-page control and show/hide toggles for its non-essential
+     * columns. Other Content tabs are custom panels with no Screen Options.
+     *
+     * @return void
+     */
+    public function setup_content_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'aips-generated-posts';
+        if ('aips-pending-review' !== $tab) {
+            return;
+        }
+
+        $table = new AIPS_Pending_Review_List_Table();
+        AIPS_List_Table::register_screen_options($screen->id, $table->get_hideable_columns(), array(
+            'label'   => __('Drafts per page', 'ai-post-scheduler'),
+            'option'  => AIPS_Pending_Review_List_Table::PER_PAGE_OPTION,
+            'default' => AIPS_Pending_Review_List_Table::PER_PAGE_DEFAULT,
+        ));
     }
 
     /**
@@ -386,8 +563,10 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_dashboard_page() {
-        $controller = new AIPS_Dashboard_Controller();
-        $controller->render_page();
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $controller = new AIPS_Dashboard_Controller();
+            $controller->render_page();
+        }, __('Dashboard', 'ai-post-scheduler'));
     }
 
     /**
@@ -396,8 +575,62 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_automations_page() {
-        $controller = new AIPS_Automations_Controller();
-        $controller->render_page();
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $controller = new AIPS_Automations_Controller();
+            $controller->render_page();
+        }, __('Automations', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the Studio page.
+     *
+     * @return void
+     */
+    public function render_studio_page() {
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $controller = new AIPS_Studio_Controller();
+            $controller->render_page();
+        }, __('Studio', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Safely redirect a legacy or consolidated subpage to its new hub and tab,
+     * preserving all existing query parameters (filters, search, pagination, etc.).
+     *
+     * @param string $hub_page   Target parent hub slug (e.g. 'aips-studio').
+     * @param string $tab        Optional target tab identifier within the hub.
+     * @param array  $extra_args Additional query parameters to include or override.
+     * @return void
+     */
+    public function redirect_to_hub($hub_page, $tab = '', $extra_args = array()) {
+        $query_args = array();
+
+        if (!empty($_GET) && is_array($_GET)) {
+            foreach ($_GET as $key => $val) {
+                $sanitized_key = sanitize_key(wp_unslash($key));
+                if ('page' === $sanitized_key) {
+                    continue;
+                }
+                if (is_array($val)) {
+                    $query_args[$sanitized_key] = array_map('sanitize_text_field', wp_unslash($val));
+                } else {
+                    $query_args[$sanitized_key] = sanitize_text_field(wp_unslash($val));
+                }
+            }
+        }
+
+        $query_args['page'] = $hub_page;
+        if (!empty($tab)) {
+            $query_args['tab'] = $tab;
+        }
+
+        if (!empty($extra_args)) {
+            $query_args = array_merge($query_args, $extra_args);
+        }
+
+        $target_url = add_query_arg($query_args, admin_url('admin.php'));
+        wp_safe_redirect($target_url);
+        exit;
     }
 
     /**
@@ -408,8 +641,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_voices_page() {
-        $voices_handler = new AIPS_Voices();
-        $voices_handler->render_page();
+        $this->redirect_to_hub('aips-studio', 'voices');
     }
 
     /**
@@ -420,8 +652,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_templates_page() {
-        $templates_handler = new AIPS_Templates();
-        $templates_handler->render_page();
+        $this->redirect_to_hub('aips-studio', 'templates');
     }
 
     /**
@@ -432,7 +663,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_schedule_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+        $this->redirect_to_hub('aips-automations', 'schedules');
     }
 
     /**
@@ -443,16 +674,20 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_campaigns_page() {
-        $controller = new AIPS_Campaigns_Controller();
-        $controller->render_page();
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $controller = new AIPS_Campaigns_Controller();
+            $controller->render_page();
+        }, __('Campaigns', 'ai-post-scheduler'));
     }
 
     /**
      * Render the campaign wizard page.
      */
     public function render_campaign_wizard_page() {
-        $controller = new AIPS_Campaigns_Controller();
-        $controller->render_wizard_page();
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $controller = new AIPS_Campaigns_Controller();
+            $controller->render_wizard_page();
+        }, __('Campaign Wizard', 'ai-post-scheduler'));
     }
 
 
@@ -460,19 +695,10 @@ class AIPS_Admin_Menu {
      * Render the campaign detail page.
      */
     public function render_campaign_detail_page() {
-        $controller = new AIPS_Campaigns_Controller();
-        $controller->render_detail_page();
-    }
-
-    /**
-     * Render the Schedule Calendar page.
-     *
-     * Includes the schedule calendar template file.
-     *
-     * @return void
-     */
-    public function render_schedule_calendar_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $controller = new AIPS_Campaigns_Controller();
+            $controller->render_detail_page();
+        }, __('Campaign Details', 'ai-post-scheduler'));
     }
 
     /**
@@ -483,7 +709,9 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_research_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+        }, __('Research', 'ai-post-scheduler'));
     }
 
     /**
@@ -494,7 +722,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_authors_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
+        $this->redirect_to_hub('aips-automations', 'authors');
     }
 
     /**
@@ -503,11 +731,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_post_slices_page() {
-        $post_slices_repo   = AIPS_Post_Slices_Repository::instance();
-        $post_slices        = $post_slices_repo->get_all(false);
-        $post_slice_counts  = $post_slices_repo->get_counts();
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/post-slices.php';
+        $this->redirect_to_hub('aips-studio', 'post-slices');
     }
 
     /**
@@ -519,7 +743,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_author_topics_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
+        $this->redirect_to_hub('aips-automations', 'author-topics');
     }
 
     /**
@@ -528,8 +752,10 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_generated_posts_page() {
-        $controller = new AIPS_Generated_Posts_Controller();
-        $controller->render_page();
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $controller = new AIPS_Generated_Posts_Controller();
+            $controller->render_page();
+        }, __('Content', 'ai-post-scheduler'));
     }
 
     /*
@@ -540,27 +766,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_structures_page() {
-        $structure_repo = new AIPS_Article_Structure_Repository();
-        $section_repo = new AIPS_Prompt_Section_Repository();
-
-        $structures = $structure_repo->get_all(false);
-        $sections = $section_repo->get_all(false);
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
-    }
-
-    /**
-     * Render the Prompt Sections page.
-     *
-     * Fetches prompt sections and passes them to the template.
-     *
-     * @return void
-     */
-    public function render_prompt_sections_page() {
-        $section_repo = new AIPS_Prompt_Section_Repository();
-        $sections = $section_repo->get_all(false);
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
+        $this->redirect_to_hub('aips-studio', 'structures');
     }
 
     /**
@@ -571,8 +777,10 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_history_page() {
-        $history_handler = new AIPS_History();
-        $history_handler->render_page();
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $history_handler = new AIPS_History();
+            $history_handler->render_page();
+        }, __('History', 'ai-post-scheduler'));
     }
 
     /**
@@ -581,13 +789,14 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_diagnostics_page() {
-        $controller = new AIPS_Diagnostics_Controller();
-        $controller->render_page();
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $controller = new AIPS_Diagnostics_Controller();
+            $controller->render_page();
+        }, __('Diagnostics', 'ai-post-scheduler'));
     }
 
     public function render_operations_insights_page() {
-        $controller = new AIPS_Operations_Insights_Controller();
-        $controller->render_page();
+        $this->redirect_to_hub('aips-diagnostics', 'insights');
     }
 
     /**
@@ -596,8 +805,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_telemetry_page() {
-        $controller = new AIPS_Telemetry_Controller();
-        $controller->render_page();
+        $this->redirect_to_hub('aips-diagnostics', 'telemetry');
     }
 
     /**
@@ -608,34 +816,30 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_sources_page() {
-        $repo    = new AIPS_Sources_Repository();
-        $sources = $repo->get_all(false);
+        $this->redirect_to_hub('aips-automations', 'sources');
+    }
 
-        // Build source group name map: term_id => name (avoid per-row get_term calls in the template).
-        $source_groups = get_terms(array(
-            'taxonomy'   => 'aips_source_group',
-            'hide_empty' => false,
-        ));
-        if (is_wp_error($source_groups)) {
-            $source_groups = array();
-        }
-        $source_group_name_map = array();
-        foreach ($source_groups as $group) {
-            $source_group_name_map[(int) $group->term_id] = $group->name;
-        }
+    /**
+     * Render the Source Data page.
+     *
+     * @return void
+     */
+    public function render_source_data_page() {
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            $source_id      = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
+            $is_global_view = $source_id <= 0;
 
-        // Build source → term IDs map: source_id => int[] (one query, not N queries).
-        $all_source_ids = array_map(function ($s) { return (int) $s->id; }, $sources);
-        $source_term_ids_map = $repo->get_term_ids_for_sources($all_source_ids);
+            $repo    = new AIPS_Sources_Repository();
+            $source  = $source_id ? $repo->get_by_id($source_id) : null;
+            $sources = $is_global_view ? $repo->get_all(false) : array();
 
-        // Build source → fetch-data map for the Content status column (latest row per source).
-        $data_repo             = new AIPS_Sources_Data_Repository();
-        $source_fetch_data_map = $data_repo->get_by_source_ids( $all_source_ids );
+            $source_data_table = new AIPS_Source_Data_List_Table(array('source_id' => $source_id));
+            if ($is_global_view || $source) {
+                $source_data_table->prepare_items();
+            }
 
-        // Build source → archived content count map for the Content column badge.
-        $source_content_count_map = $data_repo->get_counts_by_source_ids( $all_source_ids );
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
+            include AIPS_PLUGIN_DIR . 'templates/admin/source-data.php';
+        }, __('Source Data', 'ai-post-scheduler'));
     }
 
     /**
@@ -646,19 +850,9 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_settings_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
-    }
-
-    /**
-     * Render the Seeder page.
-     *
-     * Includes the seeder template file.
-     *
-     * @return void
-     */
-    public function render_seeder_page() {
-        $seeder_admin = new AIPS_Seeder_Admin();
-        $seeder_admin->render_page();
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
+        }, __('Settings', 'ai-post-scheduler'));
     }
 
     /**
@@ -667,8 +861,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_cache_monitor_page() {
-        $controller = new AIPS_Cache_Monitor_Controller();
-        $controller->render_page();
+        $this->redirect_to_hub('aips-diagnostics', 'cache-monitor');
     }
 
     /**
@@ -679,8 +872,18 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_status_page() {
-        $status_handler = new AIPS_System_Status();
-        $status_handler->render_page();
+        $this->redirect_to_hub('aips-diagnostics', 'status');
+    }
+
+    /**
+     * Render the Stress Test page.
+     *
+     * Delegates rendering to AIPS_Stress_Test_Controller.
+     *
+     * @return void
+     */
+    public function render_stress_test_page() {
+        $this->redirect_to_hub('aips-diagnostics', 'stress-test');
     }
 
     /**
@@ -691,11 +894,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_dev_tools_page() {
-        // AIPS_Dev_Tools is instantiated in init if admin, but we need to call render_page on an instance.
-        // Since we don't have a global instance registry accessible easily here, we'll instantiate it on demand.
-        // It's a lightweight class, mostly for AJAX and rendering.
-        $dev_tools = new AIPS_Dev_Tools();
-        $dev_tools->render_page();
+        $this->redirect_to_hub('aips-diagnostics', 'dev-tools');
     }
 
     /**
@@ -706,7 +905,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_taxonomy_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
+        $this->redirect_to_hub('aips-automations', 'taxonomy');
     }
 
     /**
@@ -717,23 +916,27 @@ class AIPS_Admin_Menu {
      *
      * @return void
      */
+    public function render_affiliate_links_page() {
+        $this->redirect_to_hub('aips-automations', 'affiliate-links');
+    }
+
     public function render_internal_links_page() {
-        global $aips_internal_links_controller;
+        $this->redirect_to_hub('aips-automations', 'internal-links');
+    }
 
-        if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
-            try {
-                $aips_internal_links_controller->render_page();
-                return;
-            } catch (Throwable $throwable) {
-                echo '<div class="notice notice-error"><p>' .
-                    esc_html__('The Internal Links page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
-                '</p></div>';
-                return;
-            }
-        }
+    public function render_content_intelligence_page() {
+        $this->redirect_to_hub('aips-content', 'content-indexer');
+    }
 
-        echo '<div class="notice notice-error"><p>' .
-            esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
-        '</p></div>';
+    public function render_post_clusters_page() {
+        $this->redirect_to_hub('aips-content', 'clusters');
+    }
+
+    public function render_cannibalization_page() {
+        $this->redirect_to_hub('aips-content', 'cannibalization');
+    }
+
+    public function render_content_indexer_page() {
+        $this->redirect_to_hub('aips-content', 'content-indexer');
     }
 }

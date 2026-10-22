@@ -65,6 +65,7 @@ class AIPS_Post_Review_Repository {
 			'page' => 1,
 			'search' => '',
 			'template_id' => 0,
+			'post_type' => '',
 			'orderby' => 'created_at',
 			'order' => 'DESC',
 		);
@@ -77,16 +78,24 @@ class AIPS_Post_Review_Repository {
 		$where_clauses = array("1=1");
 		$where_args = array();
 		
-		// Only get completed generations that have a post_id
-		$where_clauses[] = "h.status = 'completed'";
-		$where_clauses[] = "h.post_id IS NOT NULL";
-		
+		// One row per post: the newest completed/partial generation run (see
+		// AIPS_History_Repository::latest_generation_run_subquery()). Event and
+		// indexing rows that also carry the post_id are never listed. The template
+		// and search filters below therefore match that newest run, not older ones.
 		// Join with wp_posts to check post_status
 		$where_clauses[] = "p.post_status = 'draft'";
 		
 		if (!empty($args['template_id'])) {
 			$where_clauses[] = "h.template_id = %d";
 			$where_args[] = $args['template_id'];
+		}
+
+		if (!empty($args['post_type'])) {
+			// Filter on the joined wp_posts row rather than h.post_type: the
+			// post always exists here (INNER JOIN on post_status = 'draft'),
+			// so this is authoritative regardless of history backfill timing.
+			$where_clauses[] = "p.post_type = %s";
+			$where_args[] = sanitize_key($args['post_type']);
 		}
 
 		if (!empty($args['search'])) {
@@ -111,6 +120,7 @@ class AIPS_Post_Review_Repository {
 		
 		$templates_table = $this->wpdb->prefix . 'aips_templates';
 		$posts_table = $this->wpdb->posts;
+		$latest_run = AIPS_History_Repository::latest_generation_run_subquery(array('post_status' => 'draft'));
 		
 		// Query for items
 		$query_args = $where_args;
@@ -122,9 +132,12 @@ class AIPS_Post_Review_Repository {
 				h.*,
 				t.name as template_name,
 				p.post_title,
+				p.post_status,
 				p.post_modified,
+				p.post_type as wp_post_type,
 				p.post_author as wp_post_author
 			FROM {$this->table_name} h
+			INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
 			LEFT JOIN {$templates_table} t ON h.template_id = t.id
 			INNER JOIN {$posts_table} p ON h.post_id = p.ID
 			WHERE $where_sql
@@ -136,6 +149,7 @@ class AIPS_Post_Review_Repository {
 		if (!empty($where_args)) {
 			$total = $this->wpdb->get_var($this->wpdb->prepare(
 				"SELECT COUNT(*) FROM {$this->table_name} h 
+				INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
 				INNER JOIN {$posts_table} p ON h.post_id = p.ID
 				WHERE $where_sql",
 				$where_args
@@ -143,6 +157,7 @@ class AIPS_Post_Review_Repository {
 		} else {
 			$total = $this->wpdb->get_var(
 				"SELECT COUNT(*) FROM {$this->table_name} h 
+				INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
 				INNER JOIN {$posts_table} p ON h.post_id = p.ID
 				WHERE $where_sql"
 			);
@@ -159,18 +174,20 @@ class AIPS_Post_Review_Repository {
 	/**
 	 * Get count of draft posts.
 	 *
+	 * Counts posts, not history rows, so it always matches the Pending Review list total.
+	 *
 	 * @return int Number of draft posts.
 	 */
 	public function get_draft_count() {
 		$posts_table = $this->wpdb->posts;
+		$latest_run  = AIPS_History_Repository::latest_generation_run_subquery(array('post_status' => 'draft'));
 		
 		$count = $this->wpdb->get_var("
 			SELECT COUNT(*) 
 			FROM {$this->table_name} h
+			INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
 			INNER JOIN {$posts_table} p ON h.post_id = p.ID
-			WHERE h.status = 'completed' 
-			AND h.post_id IS NOT NULL 
-			AND p.post_status = 'draft'
+			WHERE p.post_status = 'draft'
 		");
 		
 		return (int) $count;

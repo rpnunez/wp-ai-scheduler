@@ -200,6 +200,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 			'AIPS_Image_Service',
 			'AIPS_Token_Budget',
 			'AIPS_System_Diagnostics_Service',
+			'AIPS_System_Status_Diagnostics_Service',
 			'AIPS_Notifications_Event_Handler',
 		);
 		

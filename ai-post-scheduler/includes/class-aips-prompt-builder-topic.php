@@ -25,6 +25,23 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Prompt_Builder_Topic {
 
+	private $sources_selection = array();
+
+	public function get_sources_selection() {
+		return $this->sources_selection;
+	}
+
+	/** Commit only the selection from this build, once per submitted request. */
+	public function record_sources_usage(?array $selection = null) {
+		$selection = $selection ?? $this->sources_selection;
+		$this->sources_selection = array();
+		$this->base_builder->record_sources_usage($selection['snapshots'] ?? array());
+		if (!empty($selection['snapshots'])) {
+			do_action('aips_source_snapshots_injected', $selection['snapshots'], $selection['group_ids'], $selection['sources']);
+		}
+	}
+
+
 	/**
 	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.
 	 */
@@ -59,6 +76,7 @@ class AIPS_Prompt_Builder_Topic {
 		array $rejected_topics = array(),
 		$feedback_guidance = ''
 	) {
+		$this->sources_selection = array();
 		$quantity = (int) $author->topic_generation_quantity;
 		if ($quantity < 1) {
 			/**
@@ -83,7 +101,8 @@ class AIPS_Prompt_Builder_Topic {
 				$decoded   = json_decode($author->source_group_ids, true);
 				$group_ids = is_array($decoded) ? array_map('intval', $decoded) : array();
 			}
-			$sources_block = $this->base_builder->build_sources_block($group_ids);
+			$this->sources_selection = $this->base_builder->build_sources_selection($group_ids);
+			$sources_block = $this->sources_selection['block'];
 			if (!empty($sources_block)) {
 				$prompt .= $sources_block;
 			}
@@ -188,19 +207,7 @@ class AIPS_Prompt_Builder_Topic {
 		$prompt .= "- Avoid duplicating previously approved or rejected topics\n";
 		$prompt .= "- Format each topic as a clear, engaging blog post title\n\n";
 
-		$prompt .= "Return a JSON array of objects. Each object must have:\n";
-		$prompt .= "- \"title\": The blog post topic/title (string)\n";
-		$prompt .= "- \"score\": Estimated engagement score 1-100 (integer)\n";
-		$prompt .= "- \"keywords\": 3-5 relevant keywords (array of strings)\n\n";
-
-		$prompt .= "Example format:\n";
-		$prompt .= "[\n";
-		$prompt .= "  {\n";
-		$prompt .= "    \"title\": \"10 Best Practices for WordPress SEO in 2025\",\n";
-		$prompt .= "    \"score\": 85,\n";
-		$prompt .= "    \"keywords\": [\"WordPress\", \"SEO\", \"best practices\", \"2025\", \"optimization\"]\n";
-		$prompt .= "  }\n";
-		$prompt .= "]";
+		$prompt .= "Return a JSON array where each item has: \"title\" (string), \"score\" (integer 1-100), \"keywords\" (array of strings).";
 
 		return $prompt;
 	}

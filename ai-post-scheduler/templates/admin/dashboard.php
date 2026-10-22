@@ -2,11 +2,13 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
+
+$page_context = AIPS_Admin_Page_Context::resolve('ai-post-scheduler');
 ?>
 <div class="wrap aips-wrap">
-	<?php if (!class_exists('Meow_MWAI_Core')): ?>
+	<?php if (empty($ai_provider_available)): ?>
 	<div class="notice notice-error">
-		<p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires AI Engine to function.', 'ai-post-scheduler'); ?></p>
+		<p><?php esc_html_e('No AI provider is available. Install the Meow Apps AI Engine plugin or configure a WordPress AI Client connector (WordPress 7.0+).', 'ai-post-scheduler'); ?></p>
 	</div>
 	<?php endif; ?>
 
@@ -16,8 +18,11 @@ if (!defined('ABSPATH')) {
 		<!-- Page Header -->
 		<div class="aips-page-header">
 			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Analytics Dashboard', 'ai-post-scheduler'); ?></h1>
+				<div class="aips-page-header-info">
+					<h1 class="aips-page-title">
+						<span class="dashicons dashicons-chart-pie aips-page-title-icon" aria-hidden="true"></span>
+						<span><?php esc_html_e('Analytics Dashboard', 'ai-post-scheduler'); ?></span>
+					</h1>
 					<p class="aips-page-description"><?php esc_html_e('Observe your AI content generation pipelines, success rates, and upcoming schedules.', 'ai-post-scheduler'); ?></p>
 				</div>
 				
@@ -60,7 +65,7 @@ if (!defined('ABSPATH')) {
 		<div class="aips-dashboard-section-title">
 			<span class="dashicons dashicons-chart-bar"></span>
 			<h2><?php esc_html_e('Overview Summary', 'ai-post-scheduler'); ?></h2>
-			<span class="aips-section-meta"><?php echo sprintf(__('Activity from %s to %s', 'ai-post-scheduler'), esc_html($date_from), esc_html($date_to)); ?></span>
+			<span class="aips-section-meta aips-summary-meta"><?php echo sprintf(__('Activity from %s to %s', 'ai-post-scheduler'), esc_html($date_from), esc_html($date_to)); ?></span>
 		</div>
 
 		<div class="aips-grid aips-grid-cols-4 aips-summary-grid">
@@ -101,7 +106,7 @@ if (!defined('ABSPATH')) {
 					<span class="aips-stat-label"><?php esc_html_e('AI Requests & Calls', 'ai-post-scheduler'); ?></span>
 					<strong class="aips-stat-value"><?php echo esc_html($ai_calls_in_period); ?></strong>
 					<span class="aips-stat-sub-meta">
-						<?php echo sprintf(__('Error Rate: %s%% (%d errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
+						<?php echo sprintf(__('Error Rate: %s%% (%d AI call errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
 					</span>
 				</div>
 			</div>
@@ -152,8 +157,8 @@ if (!defined('ABSPATH')) {
 				</div>
 
 				<!-- Tab Panels -->
-				<div class="aips-tab-content">
-					
+				<div class="aips-dashboard-tab-panels">
+
 					<!-- Panel 1: Generated Posts -->
 					<div class="aips-tab-panel active" id="tab-posts" role="tabpanel" aria-labelledby="btn-tab-posts">
 						<?php if (!empty($recent_posts)): ?>
@@ -206,7 +211,7 @@ if (!defined('ABSPATH')) {
 						</div>
 						<?php else: ?>
 						<div class="aips-empty-state">
-							<span class="dashicons dashicons-admin-post aips-empty-state-icon"></span>
+							<span class="dashicons dashicons-admin-post aips-empty-state-icon" aria-hidden="true"></span>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Generated Posts', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No content has been generated in the selected date range.', 'ai-post-scheduler'); ?></p>
 						</div>
@@ -262,7 +267,7 @@ if (!defined('ABSPATH')) {
 						</div>
 						<?php else: ?>
 						<div class="aips-empty-state">
-							<span class="dashicons dashicons-lightbulb aips-empty-state-icon"></span>
+							<span class="dashicons dashicons-lightbulb aips-empty-state-icon" aria-hidden="true"></span>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Topics Created', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No author topics were generated in the selected date range.', 'ai-post-scheduler'); ?></p>
 						</div>
@@ -308,7 +313,7 @@ if (!defined('ABSPATH')) {
 						</div>
 						<?php else: ?>
 						<div class="aips-empty-state">
-							<span class="dashicons dashicons-admin-links aips-empty-state-icon"></span>
+							<span class="dashicons dashicons-admin-links aips-empty-state-icon" aria-hidden="true"></span>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Topic-based Posts', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No posts were generated from approved author topics in the selected date range.', 'ai-post-scheduler'); ?></p>
 						</div>
@@ -373,7 +378,7 @@ if (!defined('ABSPATH')) {
 						</div>
 						<?php else: ?>
 						<div class="aips-empty-state">
-							<span class="dashicons dashicons-yes aips-empty-state-icon"></span>
+							<span class="dashicons dashicons-yes aips-empty-state-icon" aria-hidden="true"></span>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Executed', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No automated schedules have run in the selected date range.', 'ai-post-scheduler'); ?></p>
 						</div>
@@ -478,6 +483,8 @@ if (!defined('ABSPATH')) {
 										'template_schedule' => __('Template', 'ai-post-scheduler'),
 										'author_topic_gen'  => __('Topic Gen', 'ai-post-scheduler'),
 										'author_post_gen'   => __('Post Gen', 'ai-post-scheduler'),
+										'blueprint'         => __('Blueprint', 'ai-post-scheduler'),
+										'author_workflow'   => __('Blueprint', 'ai-post-scheduler'),
 									);
 									$type_label = isset($type_labels[$type_key]) ? $type_labels[$type_key] : esc_html__('Schedule', 'ai-post-scheduler');
 									?>
@@ -493,7 +500,7 @@ if (!defined('ABSPATH')) {
 				</div>
 				<?php else: ?>
 				<div class="aips-empty-state">
-					<span class="dashicons dashicons-calendar-alt aips-empty-state-icon"></span>
+					<span class="dashicons dashicons-calendar-alt aips-empty-state-icon" aria-hidden="true"></span>
 					<p class="aips-empty-state-description"><?php esc_html_e('No automated runs scheduled for the next 30 days. Check your schedule configurations.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<?php endif; ?>

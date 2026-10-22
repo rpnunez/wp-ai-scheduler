@@ -186,10 +186,16 @@ class AIPS_Image_Service {
      * @return int|WP_Error The attachment ID on success, WP_Error on failure.
      */
     public function upload_image_from_url($image_url, $post_title) {
+        // AI providers such as the WordPress AI Client return generated images as
+        // data URIs rather than remote URLs; those cannot be fetched over HTTP.
+        if (is_string($image_url) && strpos($image_url, 'data:') === 0) {
+            return $this->upload_image_from_data_uri($image_url, $post_title);
+        }
+
         require_once(ABSPATH . 'wp-admin/includes/image.php');
         require_once(ABSPATH . 'wp-admin/includes/file.php');
         require_once(ABSPATH . 'wp-admin/includes/media.php');
-        
+
         // SECURITY: Use wp_safe_remote_get to prevent SSRF attacks
         $response_object = wp_safe_remote_get($image_url);
 
@@ -235,8 +241,65 @@ class AIPS_Image_Service {
             return $error;
         }
 
+        return $this->save_image_bytes($image_data, $post_title, $content_type);
+    }
+
+    /**
+     * Save an image to the media library from a data URI.
+     *
+     * Handles the base64 data URIs returned by AI providers (e.g. the WordPress
+     * AI Client's getDataUri()) that cannot be fetched over HTTP. The decoded
+     * bytes go through the same finfo content validation as downloaded images.
+     *
+     * @param string $data_uri   The data URI (data:image/...;base64,...).
+     * @param string $post_title The post title to use for the image filename.
+     * @return int|WP_Error The attachment ID on success, WP_Error on failure.
+     */
+    public function upload_image_from_data_uri($data_uri, $post_title) {
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+        if (!is_string($data_uri) || !preg_match('#^data:(image/[a-z0-9.+-]+);base64,(.+)$#is', $data_uri, $matches)) {
+            $error = new WP_Error(
+                'invalid_data_uri',
+                __('The image data URI is malformed or not a base64-encoded image.', 'ai-post-scheduler')
+            );
+            $this->logger->log($error->get_error_message(), 'error');
+            return $error;
+        }
+
+        $declared_mime = strtolower($matches[1]);
+        $image_data    = base64_decode($matches[2], true);
+
+        if ($image_data === false || $image_data === '') {
+            $error = new WP_Error(
+                'invalid_data_uri',
+                __('The image data URI payload could not be base64-decoded.', 'ai-post-scheduler')
+            );
+            $this->logger->log($error->get_error_message(), 'error');
+            return $error;
+        }
+
+        return $this->save_image_bytes($image_data, $post_title, $declared_mime);
+    }
+
+    /**
+     * Validate raw image bytes and save them as a media library attachment.
+     *
+     * Shared tail of the URL and data-URI ingestion paths: finfo content
+     * verification, MIME-based extension selection, wp_upload_bits, and
+     * attachment creation with cleanup on failure.
+     *
+     * @param string $image_data    Raw image bytes.
+     * @param string $post_title    The post title to use for the image filename.
+     * @param string $fallback_mime MIME type to assume when finfo is unavailable.
+     * @return int|WP_Error The attachment ID on success, WP_Error on failure.
+     */
+    private function save_image_bytes($image_data, $post_title, $fallback_mime) {
         // SECURITY: Verify actual file content is an image using finfo if available
-        // This prevents saving non-image files (e.g. scripts) even if Content-Type header is spoofed
+        // This prevents saving non-image files (e.g. scripts) even if the declared
+        // content type (HTTP header or data URI prefix) is spoofed
         if (class_exists('finfo')) {
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $real_mime = $finfo->buffer($image_data);
@@ -250,11 +313,11 @@ class AIPS_Image_Service {
                 return $error;
             }
         }
-        
+
         $post_slug = sanitize_title($post_title);
 
         // Determine correct extension based on MIME type
-        $mime_type = isset($real_mime) ? $real_mime : $content_type;
+        $mime_type = isset($real_mime) ? $real_mime : $fallback_mime;
         $extension = 'jpg'; // Default
 
         $mime_map = array(
@@ -269,10 +332,10 @@ class AIPS_Image_Service {
         }
 
         $filename = $post_slug . '.' . $extension;
-        
+
         // Use wp_upload_bits to handle file creation and uniqueness
         $upload = wp_upload_bits($filename, null, $image_data);
-        
+
         if (!empty($upload['error'])) {
             $error = new WP_Error(
                 'image_save_failed',
@@ -281,13 +344,13 @@ class AIPS_Image_Service {
             $this->logger->log($error->get_error_message(), 'error');
             return $error;
         }
-        
+
         $file_path = $upload['file'];
         // Update filename to the actual saved filename (which might have -1, -2 suffix)
         $filename = basename($file_path);
 
         $attachment_id = $this->create_attachment($file_path, $filename);
-        
+
         if (is_wp_error($attachment_id)) {
             // Clean up the file if attachment creation failed
             if (file_exists($file_path)) {
@@ -297,15 +360,15 @@ class AIPS_Image_Service {
             }
             return $attachment_id;
         }
-        
+
         $this->logger->log('Featured image uploaded successfully', 'info', array(
             'attachment_id' => $attachment_id,
             'filename' => $filename
         ));
-        
+
         return $attachment_id;
     }
-    
+
     /**
      * Create a WordPress attachment from a file.
      *

@@ -324,7 +324,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		));
 
 		update_post_meta($post_id, '_thumbnail_id', $attachment_id);
-		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title' => true,
 			'post_excerpt' => true,
 			'featured_image' => true,
@@ -342,7 +342,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'post_title' => 'Post Without Image',
 		));
 
-		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title' => true,
 			'post_excerpt' => true,
 			'featured_image' => false,
@@ -360,7 +360,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'post_title' => 'No Image Context',
 		));
 
-		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title' => true,
 			'post_excerpt' => true,
 			'featured_image' => true,

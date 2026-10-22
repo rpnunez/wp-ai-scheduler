@@ -35,6 +35,11 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	private $creation_method;
 
 	/**
+	 * @var array<string,mixed> Details about what triggered this generation.
+	 */
+	private $trigger_context = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param object      $template Template object.
@@ -242,6 +247,26 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Attach details about what triggered this generation (e.g. schedule).
+	 *
+	 * @param array<string,mixed> $trigger_context Keys: schedule_id, schedule_name, frequency.
+	 * @return $this
+	 */
+	public function set_trigger_context(array $trigger_context) {
+		$this->trigger_context = $trigger_context;
+		return $this;
+	}
+
+	/**
+	 * Get details about what triggered this generation.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function get_trigger_context() {
+		return $this->trigger_context;
+	}
+
+	/**
 	 * Check whether sources should be injected into the content prompt.
 	 *
 	 * @return bool True if the template has include_sources enabled.
@@ -263,6 +288,10 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 		$decoded = json_decode($this->template->source_group_ids, true);
 
 		return is_array($decoded) ? array_map('intval', $decoded) : array();
+	}
+
+	public function get_affiliate_links_enabled() {
+		return !empty($this->template->affiliate_links_enabled);
 	}
 
 	/**

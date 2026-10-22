@@ -6,9 +6,17 @@ if (!defined('ABSPATH')) {
 class AIPS_Cache_Policy {
 
 	const SUBSYSTEM_ADMIN_BAR = 'admin_bar';
+
+	/** @deprecated since 2.6.0 Migrated to AIPS_Cacheable_Repository. */
 	const SUBSYSTEM_SCHEDULE_REPOSITORY = 'schedule_repository';
+
+	/** @deprecated since 2.6.0 Migrated to AIPS_Cacheable_Repository. */
 	const SUBSYSTEM_ARTICLE_STRUCTURE_REPOSITORY = 'article_structure_repository';
+
+	/** @deprecated since 2.6.0 Migrated to AIPS_Cacheable_Repository. */
 	const SUBSYSTEM_PROMPT_SECTION_REPOSITORY = 'prompt_section_repository';
+
+	/** @deprecated since 2.6.0 Migrated to AIPS_Cacheable_Repository. */
 	const SUBSYSTEM_POST_SLICES_REPOSITORY = 'post_slices_repository';
 
 	public static function get_subsystems() {

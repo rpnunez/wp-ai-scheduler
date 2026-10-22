@@ -16,6 +16,9 @@ class AIPS_Test_Stub_AI_Service_For_Fuzzy implements AIPS_AI_Service_Interface {
 	public function is_available() { return true; }
 	public function generate_text($prompt, $options = array()) { return ""; }
 	public function generate_image($prompt, $options = array()) { return ""; }
+	public function generate_embedding($text, $options = array()) { return array(); }
+	public function supports_embeddings() { return false; }
+	public function supports_conversation() { return false; }
 	public function get_call_log() { return array(); }
 }
 
@@ -133,6 +136,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$embeddings_service = new class( $embedding_a ) {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
+			public function is_enabled() { return true; }
 			public function is_embeddings_supported() { return true; }
 			public function generate_embedding( $text ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 1.0; }
@@ -207,6 +211,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$embeddings_service = new class( $embedding_a ) {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
+			public function is_enabled() { return true; }
 			public function is_embeddings_supported() { return true; }
 			public function generate_embedding( $text ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 0.3; }
@@ -261,6 +266,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	 */
 	public function test_fuzzy_flagging_skipped_when_embeddings_unsupported() {
 		$embeddings_service = new class {
+			public function is_enabled() { return false; }
 			public function is_embeddings_supported() { return false; }
 			public function generate_embedding( $text ) { return array(); }
 			public function calculate_similarity( $a, $b ) { return 1.0; }
@@ -332,6 +338,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$embeddings_service = new class( $embedding ) {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
+			public function is_enabled() { return true; }
 			public function is_embeddings_supported() { return true; }
 			public function generate_embedding( $text ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 0.75; }
@@ -398,6 +405,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$embeddings_service = new class( $embedding ) {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
+			public function is_enabled() { return true; }
 			public function is_embeddings_supported() { return true; }
 			public function generate_embedding( $text ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 0.75; }
@@ -460,6 +468,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$embeddings_service = new class( $embedding ) {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
+			public function is_enabled() { return true; }
 			public function is_embeddings_supported() { return true; }
 			public function generate_embedding( $text ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 0.95; }

@@ -403,6 +403,96 @@ class AIPS_Notification_Senders {
 	}
 
 	/**
+	 * Send a post-generated notification.
+	 *
+	 * Fires unconditionally for every successfully generated post, unlike
+	 * manual_generation_completed/post_ready_for_review which are conditional
+	 * on creation method / post status.
+	 *
+	 * @param array $payload Notification payload.
+	 * @return void
+	 */
+	public function post_generated( array $payload ) {
+		$post_id           = !empty($payload['post_id']) ? absint($payload['post_id']) : 0;
+		$post              = $post_id ? get_post($post_id) : null;
+		$post_title        = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
+		$source_label      = !empty($payload['source_label']) ? $payload['source_label'] : __('Unknown', 'ai-post-scheduler');
+		$post_status       = !empty($payload['post_status']) ? $payload['post_status'] : '';
+		$post_status_label = !empty($payload['post_status_label']) ? $payload['post_status_label'] : __('Unknown', 'ai-post-scheduler');
+
+		$title   = $post_title;
+		$message = sprintf(
+			/* translators: 1: source label (Template/Author) 2: post status label */
+			__('%1$s — %2$s', 'ai-post-scheduler'),
+			$source_label,
+			$post_status_label
+		);
+
+		$edit_url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
+
+		// Preview links carry a nonce tied to the current user/session at creation
+		// time. Post generation is frequently unauthenticated (cron/scheduled/bulk
+		// jobs), and even when it isn't, this URL is consumed later — by whoever
+		// opens the email — not synchronously by its creator. A baked-in preview
+		// nonce will not validate for that later viewer, so non-published posts
+		// route to the edit screen instead, where a fresh Preview button is
+		// generated for whoever is actually looking at it.
+		$view_url = $edit_url;
+		if ($post && 'publish' === $post_status) {
+			$permalink = get_permalink($post_id);
+			if ($permalink) {
+				$view_url = esc_url_raw($permalink);
+			}
+		}
+
+		$post_excerpt = $post && !empty($post->post_excerpt)
+			? $post->post_excerpt
+			: ($post ? wp_trim_words(wp_strip_all_tags($post->post_content), 55) : '');
+
+		$post_content_html = $post ? wp_kses_post($post->post_content) : '';
+
+		$featured_image_row = '';
+		if ($post_id) {
+			$thumbnail_id = get_post_thumbnail_id($post_id);
+			if ($thumbnail_id) {
+				$image_url = get_the_post_thumbnail_url($post_id, 'large');
+				if ($image_url) {
+					$featured_image_row = '<tr><td style="padding:0;">'
+						. '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($post_title) . '" style="width:100%;max-width:640px;height:auto;display:block;" />'
+						. '</td></tr>';
+				}
+			}
+		}
+
+		$vars = array(
+			'{{site_name}}'          => esc_html(get_bloginfo('name')),
+			'{{source_label}}'       => esc_html($source_label),
+			'{{post_status_label}}'  => esc_html($post_status_label),
+			'{{post_title}}'         => esc_html($post_title),
+			'{{post_excerpt}}'       => esc_html($post_excerpt),
+			'{{post_content}}'       => $post_content_html,
+			'{{featured_image_row}}' => $featured_image_row,
+			'{{edit_url}}'           => esc_url($edit_url),
+			'{{view_url}}'           => esc_url($view_url),
+		);
+
+		call_user_func(
+			$this->dispatcher,
+			'post_generated',
+			array(
+				'title'         => $title,
+				'message'       => $message,
+				'url'           => $edit_url,
+				'level'         => 'info',
+				'meta'          => $payload,
+				'dedupe_key'    => !empty($payload['dedupe_key'])    ? $payload['dedupe_key']          : ('post_generated_' . $post_id),
+				'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
+				'vars'          => $vars,
+			)
+		);
+	}
+
+	/**
 	 * Send a daily digest summary notification.
 	 *
 	 * @param array $payload Summary payload.
@@ -546,7 +636,7 @@ class AIPS_Notification_Senders {
 			array(
 				'title'   => sprintf(__('Seeder completed: %s', 'ai-post-scheduler'), $type),
 				'message' => $message_raw,
-				'url'     => AIPS_Admin_Menu_Helper::get_page_url('aips-seeder'),
+				'url'     => AIPS_Admin_Menu_Helper::get_page_url('dev_tools'),
 				'level'   => 'info',
 				'meta'    => $payload,
 			)
@@ -730,6 +820,74 @@ class AIPS_Notification_Senders {
 				),
 				'dedupe_key'    => 'research_topics_ready_' . sanitize_key($niche) . '_' . gmdate('YmdH'),
 				'dedupe_window' => 300,
+			)
+		);
+	}
+	/**
+	 * Send a posts-consolidated notification.
+	 *
+	 * @param array $payload Consolidation payload: consolidation_id, keep_id,
+	 *                       retire_id, keep_title, retire_title, retire_url,
+	 *                       links_repointed, redirect_provider, content_mode.
+	 * @return void
+	 */
+	public function post_consolidated( array $payload ) {
+		$keep_title   = !empty($payload['keep_title'])   ? sanitize_text_field($payload['keep_title'])   : __('(untitled)', 'ai-post-scheduler');
+		$retire_title = !empty($payload['retire_title']) ? sanitize_text_field($payload['retire_title']) : __('(untitled)', 'ai-post-scheduler');
+		$links        = isset($payload['links_repointed']) ? (int) $payload['links_repointed'] : 0;
+		$provider     = !empty($payload['redirect_provider']) ? sanitize_text_field($payload['redirect_provider']) : '';
+
+		$message = sprintf(
+			/* translators: 1: retired post title, 2: kept post title, 3: number of links re-pointed */
+			__('"%1$s" was moved to draft and consolidated into "%2$s". %3$d internal link(s) were re-pointed.', 'ai-post-scheduler'),
+			$retire_title,
+			$keep_title,
+			$links
+		);
+		if ($provider !== '') {
+			/* translators: %s: redirect provider name */
+			$message .= ' ' . sprintf(__('Its old URL redirects to the kept post (served by %s).', 'ai-post-scheduler'), $provider);
+		}
+
+		call_user_func(
+			$this->dispatcher,
+			'post_consolidated',
+			array(
+				'title'   => sprintf(__('Posts consolidated: %s', 'ai-post-scheduler'), $keep_title),
+				'message' => $message,
+				'url'     => admin_url('admin.php?page=aips-generated-posts&tab=cannibalization'),
+				'level'   => 'info',
+				'meta'    => $payload,
+			)
+		);
+	}
+
+	/**
+	 * Scheduled duplicate scan found new groups of near-duplicate posts.
+	 *
+	 * @param array $payload Keys: new_groups, group_count, post_count.
+	 * @return void
+	 */
+	public function duplicate_groups_found( array $payload ) {
+		$new    = isset($payload['new_groups']) ? (int) $payload['new_groups'] : 0;
+		$groups = isset($payload['group_count']) ? (int) $payload['group_count'] : 0;
+		$posts  = isset($payload['post_count']) ? (int) $payload['post_count'] : 0;
+
+		call_user_func(
+			$this->dispatcher,
+			'duplicate_groups_found',
+			array(
+				'title'   => __('New duplicate posts to review', 'ai-post-scheduler'),
+				'message' => sprintf(
+					/* translators: 1: new groups, 2: total groups awaiting review, 3: posts in those groups */
+					__('%1$d new group(s) of near-duplicate posts were found. %2$d group(s) (%3$d posts) are waiting for review.', 'ai-post-scheduler'),
+					$new,
+					$groups,
+					$posts
+				),
+				'url'     => admin_url('admin.php?page=aips-generated-posts&tab=cannibalization'),
+				'level'   => 'info',
+				'meta'    => $payload,
 			)
 		);
 	}

@@ -47,6 +47,8 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
         add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
+        add_action('wp_ajax_aips_reset_schedule_circuit', array($this, 'ajax_reset_schedule_circuit'));
+        add_action('wp_ajax_aips_resume_schedule_batch', array($this, 'ajax_resume_schedule_batch'));
     }
 
     public function ajax_get_schedule_status_read_model() {
@@ -113,7 +115,7 @@ class AIPS_Schedule_Controller {
         // Build schedule timeline from the same unified source the table uses,
         // so the strip matches "Next Run" values shown to operators.
         $unified_service = new AIPS_Unified_Schedule_Service();
-        $all_schedules = $unified_service->get_all('', false);
+        $all_schedules = $unified_service->get_all_grouped('', false);
         $timeline = array();
         $active_schedules = 0;
         $overdue_schedules = 0;
@@ -164,6 +166,19 @@ class AIPS_Schedule_Controller {
             $last_success[$family] = !empty($runs[0]->completed_at) ? (int) $runs[0]->completed_at : null;
         }
 
+        // Get rate limiter status
+        $rate_limiter_status = array(
+            'enabled' => false,
+            'remaining' => 0,
+            'max_requests' => 0,
+        );
+        if (class_exists('AIPS_Resilience_Service')) {
+            $resilience_service = new AIPS_Resilience_Service();
+            if (method_exists($resilience_service, 'get_rate_limiter_status')) {
+                $rate_limiter_status = $resilience_service->get_rate_limiter_status();
+            }
+        }
+
         $payload = array(
             'next_runs' => $next_runs,
             'timeline' => $timeline,
@@ -178,6 +193,7 @@ class AIPS_Schedule_Controller {
             'last_success' => $last_success,
             'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
             'last_error' => $bulk_counts['failed'] > 0,
+            'rate_limiter' => $rate_limiter_status,
             'quick_links' => array(
                 'history' => AIPS_Admin_Menu_Helper::get_page_url('history'),
                 'notifications' => AIPS_Admin_Menu_Helper::get_page_url('settings', array('tab' => 'notifications')),
@@ -198,6 +214,10 @@ class AIPS_Schedule_Controller {
      */
     private function get_generated_post_modal_data($post_ids) {
         $posts = array();
+
+        if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+            _prime_post_caches(array_unique(array_filter(array_map('intval', $post_ids))), false, true);
+        }
 
         foreach ($post_ids as $post_id) {
             $post_id = absint($post_id);
@@ -350,8 +370,10 @@ class AIPS_Schedule_Controller {
         }
 
         if ($this->schedule_repository->delete($id)) {
+            $this->record_schedule_event(AIPS_History_Event_Type::SCHEDULE_DELETED, $id, $schedule, true);
             AIPS_Ajax_Response::success(array(), __('Schedule deleted successfully.', 'ai-post-scheduler'));
         } else {
+            $this->record_schedule_event(AIPS_History_Event_Type::SCHEDULE_DELETED, $id, $schedule, false);
             AIPS_Ajax_Response::error(__('Failed to delete schedule.', 'ai-post-scheduler'));
         }
     }
@@ -443,7 +465,10 @@ class AIPS_Schedule_Controller {
         $topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
 
         for ($i = 0; $i < $quantity; $i++) {
-            $result = $generator->generate_post($template, $voice, $topic);
+            $result = $generator->generate_post($template, $voice, $topic, array(
+                'creation_method' => 'manual',
+                'trigger_context' => array('detail' => __('Run now from Schedules', 'ai-post-scheduler')),
+            ));
 
             if ($result instanceof WP_Error) {
                 $errors[] = $result->get_error_message();
@@ -496,6 +521,64 @@ class AIPS_Schedule_Controller {
         ));
     }
 
+    /**
+     * Record a schedule lifecycle change (delete, circuit reset) in History.
+     *
+     * @param string      $event_type  AIPS_History_Event_Type schedule constant.
+     * @param int         $schedule_id Schedule ID.
+     * @param object|null $schedule    Schedule row, if known (used for the label).
+     * @param bool        $success     Whether the operation succeeded.
+     * @return void
+     */
+    private function record_schedule_event($event_type, $schedule_id, $schedule, $success) {
+        $label = ($schedule && !empty($schedule->title)) ? (string) $schedule->title : '';
+        $verbs = array(
+            AIPS_History_Event_Type::SCHEDULE_DELETED       => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::SCHEDULE_CIRCUIT_RESET => array(__('circuit breaker reset', 'ai-post-scheduler'), __('reset the circuit breaker for', 'ai-post-scheduler')),
+        );
+        $verb = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
+
+        AIPS_History_Event_Recorder::instance()->record_entity_change(
+            $event_type,
+            'schedule_lifecycle',
+            AIPS_History_Subject::TYPE_SCHEDULE,
+            $schedule_id,
+            $label,
+            $success,
+            __('Schedule', 'ai-post-scheduler'),
+            $verb[0],
+            $verb[1]
+        );
+    }
+
+    /**
+     * Record a bulk schedule deletion in History.
+     *
+     * @param int[] $ids     Schedule IDs requested.
+     * @param int   $deleted Number actually deleted.
+     * @param bool  $success Whether the operation succeeded.
+     * @param array $items   Optional list of array(id, type) pairs, for mixed schedule types.
+     * @return void
+     */
+    private function record_schedule_bulk_delete(array $ids, $deleted, $success, array $items = array()) {
+        $message = $success
+            ? sprintf(_n('%d schedule deleted', '%d schedules deleted', $deleted, 'ai-post-scheduler'), $deleted)
+            : __('Failed to delete schedules', 'ai-post-scheduler');
+        $input   = array('schedule_ids' => array_values(array_map('intval', $ids)), 'deleted' => (int) $deleted);
+        if (!empty($items)) {
+            $input['items'] = array_values($items);
+        }
+        $event   = $success
+            ? AIPS_History_Event::success(AIPS_History_Event_Type::SCHEDULE_DELETED, $message, null, array(), $input)
+            : AIPS_History_Event::failure(AIPS_History_Event_Type::SCHEDULE_DELETED, $message, null, array(), $input);
+
+        AIPS_History_Event_Recorder::instance()->record_lifecycle(
+            $event,
+            'schedule_lifecycle',
+            array('event' => __('Bulk schedule delete', 'ai-post-scheduler'), 'detail' => sprintf(__('%d schedules selected', 'ai-post-scheduler'), count($ids)))
+        );
+    }
+
     public function ajax_bulk_delete_schedules() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -518,6 +601,7 @@ class AIPS_Schedule_Controller {
         }
 
         $deleted = $this->schedule_repository->delete_bulk($ids);
+        $this->record_schedule_bulk_delete($ids, ($deleted !== false) ? (int) $deleted : 0, $deleted !== false);
 
         if ($deleted !== false) {
             AIPS_Ajax_Response::success(array(
@@ -713,33 +797,9 @@ class AIPS_Schedule_Controller {
             array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
         );
 
-        $entries = array();
-        foreach ($logs as $log) {
-            $details = array();
-
-            if (!empty($log->details)) {
-                $decoded_details = json_decode($log->details, true);
-                if (is_array($decoded_details)) {
-                    $details = $decoded_details;
-                }
-            }
-
-            $input = array();
-            if (isset($details['input']) && is_array($details['input'])) {
-                $input = $details['input'];
-            }
-
-            $entries[] = array(
-                'id' => absint($log->id),
-                'timestamp' => esc_html($log->timestamp),
-                'log_type' => esc_html($log->log_type),
-                'history_type_id' => absint($log->history_type_id),
-                'message' => isset($details['message']) ? esc_html($details['message']) : '',
-                'event_type' => isset($input['event_type']) ? esc_html($input['event_type']) : '',
-                'event_status' => isset($input['event_status']) ? esc_html($input['event_status']) : '',
-                'context' => (isset($details['context']) && is_array($details['context'])) ? $details['context'] : array(),
-            );
-        }
+        // Normalize via the shared read model so event_type/event_status are
+        // canonicalized and the record shape matches every other consumer.
+        $entries = AIPS_History_Event_View::from_logs($logs);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
     }
@@ -761,13 +821,14 @@ class AIPS_Schedule_Controller {
         $id       = isset($_POST['id']) ? absint($_POST['id']) : 0;
         $type     = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
         $quantity = isset($_POST['quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['quantity']))) : null;
+        $advance_schedule = !isset($_POST['advance_schedule']) || rest_sanitize_boolean(wp_unslash($_POST['advance_schedule']));
 
         if (!$id || empty($type)) {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
-        $result  = $service->run_now($id, $type, $quantity);
+        $result  = $service->run_now($id, $type, $quantity, $advance_schedule);
 
         if (is_wp_error($result)) {
             AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
@@ -805,6 +866,26 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::success(array(
                 'message'  => sprintf(
                     _n('%d post generated successfully from author topics!', '%d posts generated successfully from author topics!', count($post_ids), 'ai-post-scheduler'),
+                    count($post_ids)
+                ),
+                'post_ids' => $post_ids,
+                'post_id'  => $post_id,
+                'edit_url' => $edit_url,
+            ));
+        } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_BLUEPRINT || $type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_WORKFLOW) {
+            $topics = isset($result[AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC]) ? $result[AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC] : array();
+            $posts  = isset($result[AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST]) ? $result[AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST] : array();
+
+            $topic_count = is_array($topics) ? count($topics) : 0;
+            $post_ids    = is_array($posts) ? array_values(array_filter(array_map('absint', $posts))) : array();
+            $post_id     = !empty($post_ids) ? $post_ids[0] : 0;
+            $edit_url    = 1 === count($post_ids) && $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
+
+            AIPS_Ajax_Response::success(array(
+                'message'  => sprintf(
+                    /* translators: 1: number of topics generated, 2: number of posts generated */
+                    __('Blueprint executed — %1$d topics and %2$d posts generated.', 'ai-post-scheduler'),
+                    $topic_count,
                     count($post_ids)
                 ),
                 'post_ids' => $post_ids,
@@ -1055,6 +1136,10 @@ class AIPS_Schedule_Controller {
             }
         }
 
+        if (!empty($deleted_items)) {
+            $this->record_schedule_bulk_delete(array_column($deleted_items, 'id'), $deleted_count, true, $deleted_items);
+        }
+
         if ($deleted_count === 0) {
             AIPS_Ajax_Response::error(array(
                 'message'      => __('No selected schedules could be deleted.', 'ai-post-scheduler'),
@@ -1110,5 +1195,110 @@ class AIPS_Schedule_Controller {
         $entries = $service->get_history($id, $type, $limit);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
+    }
+
+    /**
+     * AJAX: Reset circuit breaker for a specific schedule.
+     *
+     * Expects POST: id (int), type (string).
+     */
+    public function ajax_reset_schedule_circuit() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+
+        if (!$id || empty($type)) {
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
+        }
+
+        // Only template schedules have per-schedule circuit state
+        if ($type !== AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
+            AIPS_Ajax_Response::error(__('Circuit reset is only available for template schedules.', 'ai-post-scheduler'));
+        }
+
+        // Reset the circuit state to 'closed' for this schedule.
+        $result = $this->schedule_repository->update($id, array('circuit_state' => 'closed'));
+        $this->record_schedule_event(AIPS_History_Event_Type::SCHEDULE_CIRCUIT_RESET, $id, $this->schedule_repository->get_by_id($id), (bool) $result);
+
+        if ($result) {
+            AIPS_Ajax_Response::success(array(
+                'message' => __('Circuit breaker reset successfully. The schedule will attempt to run on its next trigger.', 'ai-post-scheduler'),
+                'circuit_state' => 'closed',
+            ));
+        } else {
+            AIPS_Ajax_Response::error(__('Failed to reset circuit breaker.', 'ai-post-scheduler'));
+        }
+    }
+
+    /**
+     * AJAX: Resume an incomplete batch for a specific schedule.
+     *
+     * Expects POST: id (int), type (string).
+     */
+    public function ajax_resume_schedule_batch() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+
+        if (!$id || empty($type)) {
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
+        }
+
+        // Only template schedules have batch progress
+        if ($type !== AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
+            AIPS_Ajax_Response::error(__('Batch resume is only available for template schedules.', 'ai-post-scheduler'));
+        }
+
+        // Get the schedule
+        $schedule = $this->schedule_repository->get_by_id($id);
+        if (!$schedule) {
+            AIPS_Ajax_Response::error(__('Schedule not found.', 'ai-post-scheduler'));
+        }
+
+        // Check if there's an incomplete batch
+        if (empty($schedule->batch_progress)) {
+            AIPS_Ajax_Response::error(__('No incomplete batch found for this schedule.', 'ai-post-scheduler'));
+        }
+
+        $batch_progress = json_decode($schedule->batch_progress, true);
+        if (!is_array($batch_progress) || !isset($batch_progress['completed'], $batch_progress['total'])) {
+            AIPS_Ajax_Response::error(__('Invalid batch progress data.', 'ai-post-scheduler'));
+        }
+
+        if ($batch_progress['completed'] >= $batch_progress['total']) {
+            AIPS_Ajax_Response::error(__('Batch is already complete.', 'ai-post-scheduler'));
+        }
+
+        // Run the schedule now to resume the batch
+        $result = $this->scheduler->run_schedule_now($id);
+
+        if (is_wp_error($result)) {
+            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+        }
+
+        $post_ids = is_array($result) ? $result : array($result);
+        $msg = sprintf(
+            _n('Batch resumed — %d post generated successfully!', 'Batch resumed — %d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
+            count($post_ids)
+        );
+
+        AIPS_Ajax_Response::success(array(
+            'message' => $msg,
+            'post_ids' => $post_ids,
+        ));
     }
 }

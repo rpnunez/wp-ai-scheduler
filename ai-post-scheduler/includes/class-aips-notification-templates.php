@@ -114,6 +114,7 @@ class AIPS_Notification_Templates {
 		$this->register($this->build_standard_event_template('post_ready_for_review', __('Post Ready For Review', 'ai-post-scheduler'), '#2271b1'));
 		$this->register($this->build_standard_event_template('post_rejected', __('Post Rejected', 'ai-post-scheduler'), '#dba617'));
 		$this->register($this->build_standard_event_template('partial_generation_completed', __('Partial Generation Completed', 'ai-post-scheduler'), '#dba617'));
+		$this->register($this->build_post_generated_template());
 		$this->register($this->build_standard_event_template('daily_digest', __('Daily Digest', 'ai-post-scheduler'), '#2271b1'));
 		$this->register($this->build_standard_event_template('weekly_summary', __('Weekly Summary', 'ai-post-scheduler'), '#2271b1'));
 		$this->register($this->build_standard_event_template('monthly_report', __('Monthly Report', 'ai-post-scheduler'), '#2271b1'));
@@ -178,6 +179,51 @@ class AIPS_Notification_Templates {
 
 		return new AIPS_Notification_Template(
 			$type,
+			$subject,
+			$body,
+			$header_title,
+			$header_color
+		);
+	}
+
+	/**
+	 * Build the "Post Generated" email template.
+	 *
+	 * Uses a bespoke body (not build_standard_event_template()'s generic alert
+	 * box) so it can present the full generated post as an email-safe HTML
+	 * table: title, featured image (if any), excerpt, content, source/status,
+	 * and edit/view links.
+	 *
+	 * @return AIPS_Notification_Template
+	 */
+	private function build_post_generated_template() {
+		$header_title = __('Post Generated', 'ai-post-scheduler');
+		$header_color = '#2271b1';
+		$subject      = '[{{site_name}}] ' . __('Post Generated', 'ai-post-scheduler') . ' — {{source_label}} — {{post_status_label}}';
+
+		$body_content =
+			'<p>' . esc_html__('AI Post Scheduler generated a new post:', 'ai-post-scheduler') . '</p>'
+			. '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #ddd;border-radius:4px;overflow:hidden;margin:20px 0;border-collapse:collapse;">'
+			. '<tr><td style="background:#2271b1;color:#ffffff;padding:14px 18px;font-size:18px;font-weight:bold;">{{post_title}}</td></tr>'
+			. '{{featured_image_row}}'
+			. '<tr><td style="padding:14px 18px;border-top:1px solid #eee;">'
+			. '<strong style="display:block;margin-bottom:6px;color:#1d2327;">' . esc_html__('Excerpt', 'ai-post-scheduler') . '</strong>'
+			. '<div style="color:#3c434a;">{{post_excerpt}}</div></td></tr>'
+			. '<tr><td style="padding:14px 18px;border-top:1px solid #eee;">'
+			. '<strong style="display:block;margin-bottom:6px;color:#1d2327;">' . esc_html__('Content', 'ai-post-scheduler') . '</strong>'
+			. '<div style="color:#3c434a;line-height:1.6;">{{post_content}}</div></td></tr>'
+			. '<tr><td style="padding:12px 18px;border-top:1px solid #eee;background:#f9f9f9;font-size:13px;color:#646970;">'
+			. '<strong>{{source_label}}</strong> &middot; <strong>{{post_status_label}}</strong></td></tr>'
+			. '</table>'
+			. '<p class="button-center">'
+			. '<a href="{{edit_url}}" class="button">' . esc_html__('Edit Post', 'ai-post-scheduler') . '</a>'
+			. '<a href="{{view_url}}" class="button button-secondary">' . esc_html__('View Post', 'ai-post-scheduler') . '</a>'
+			. '</p>';
+
+		$body = $this->render_layout($header_title, $header_color, $body_content);
+
+		return new AIPS_Notification_Template(
+			'post_generated',
 			$subject,
 			$body,
 			$header_title,

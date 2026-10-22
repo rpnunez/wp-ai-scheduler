@@ -45,6 +45,9 @@ class AIPS_Sources_Controller {
 		add_action('wp_ajax_aips_delete_source', array($this, 'ajax_delete_source'));
 		add_action('wp_ajax_aips_toggle_source_active', array($this, 'ajax_toggle_source_active'));
 		add_action('wp_ajax_aips_fetch_source_now', array($this, 'ajax_fetch_source_now'));
+		add_action('wp_ajax_aips_get_source_data', array($this, 'ajax_get_source_data'));
+		add_action('wp_ajax_aips_save_source_data', array($this, 'ajax_save_source_data'));
+		add_action('wp_ajax_aips_delete_source_data', array($this, 'ajax_delete_source_data'));
 		// Source Group (taxonomy) endpoints.
 		add_action('wp_ajax_aips_get_source_groups', array($this, 'ajax_get_source_groups'));
 		add_action('wp_ajax_aips_save_source_group', array($this, 'ajax_save_source_group'));
@@ -121,7 +124,7 @@ class AIPS_Sources_Controller {
 		$url            = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
 		$label          = isset($_POST['label']) ? sanitize_text_field(wp_unslash($_POST['label'])) : '';
 		$description    = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
-		$is_active      = isset($_POST['is_active']) ? 1 : 0;
+		$is_active      = isset($_POST['is_active']) && filter_var($_POST['is_active'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
 		$fetch_interval = isset($_POST['fetch_interval']) ? sanitize_text_field(wp_unslash($_POST['fetch_interval'])) : '';
 		$term_ids       = isset($_POST['term_ids']) && is_array($_POST['term_ids'])
 			? array_map('absint', $_POST['term_ids'])
@@ -165,13 +168,21 @@ class AIPS_Sources_Controller {
 			if ($fetch_interval) {
 				$schedule_result = $this->repo->set_fetch_schedule($id, $fetch_interval);
 				if (false === $schedule_result) {
+					AIPS_Sources_Cron::instance()->schedule();
 					AIPS_Ajax_Response::error(__('Source was updated, but saving the auto-fetch schedule failed. Please try again.', 'ai-post-scheduler'));
 				}
 			} else {
-				$this->repo->set_fetch_schedule($id, null);
+				if (false === $this->repo->set_fetch_schedule($id, null)) {
+					AIPS_Sources_Cron::instance()->schedule();
+					AIPS_Ajax_Response::error(__('Source was updated, but disabling auto-fetch failed. Please try again.', 'ai-post-scheduler'));
+				}
 			}
 
-			$this->repo->set_source_terms($id, $term_ids);
+			if (false === $this->repo->set_source_terms($id, $term_ids)) {
+				AIPS_Sources_Cron::instance()->schedule();
+				AIPS_Ajax_Response::error(__('Source was saved, but replacing its groups failed. Previous groups were kept; please try again.', 'ai-post-scheduler'));
+			}
+			AIPS_Sources_Cron::instance()->schedule();
 
 			$source           = $this->repo->get_by_id($id);
 			$source->term_ids = $this->repo->get_source_term_ids($id);
@@ -197,7 +208,11 @@ class AIPS_Sources_Controller {
 				}
 			}
 
-			$this->repo->set_source_terms($new_id, $term_ids);
+			if (false === $this->repo->set_source_terms($new_id, $term_ids)) {
+				AIPS_Sources_Cron::instance()->schedule();
+				AIPS_Ajax_Response::error(__('Source was saved, but replacing its groups failed. Previous groups were kept; please try again.', 'ai-post-scheduler'));
+			}
+			AIPS_Sources_Cron::instance()->schedule();
 
 			$source           = $this->repo->get_by_id($new_id);
 			$source->term_ids = $this->repo->get_source_term_ids($new_id);
@@ -239,6 +254,7 @@ class AIPS_Sources_Controller {
 			AIPS_Ajax_Response::error(__('Failed to delete source.', 'ai-post-scheduler'));
 		}
 
+		AIPS_Sources_Cron::instance()->schedule();
 		AIPS_Ajax_Response::success(array(), __('Source deleted.', 'ai-post-scheduler'));
 	}
 
@@ -259,7 +275,7 @@ class AIPS_Sources_Controller {
 		}
 
 		$id        = isset($_POST['source_id']) ? absint($_POST['source_id']) : 0;
-		$is_active = isset($_POST['is_active']) ? (int) $_POST['is_active'] : 0;
+		$is_active = isset($_POST['is_active']) && filter_var($_POST['is_active'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
 
 		if (!$id) {
 			AIPS_Ajax_Response::error(__('Invalid source ID.', 'ai-post-scheduler'));
@@ -270,6 +286,7 @@ class AIPS_Sources_Controller {
 			AIPS_Ajax_Response::error(__('Failed to update source status.', 'ai-post-scheduler'));
 		}
 
+		AIPS_Sources_Cron::instance()->schedule();
 		AIPS_Ajax_Response::success(array(), __('Source status updated.', 'ai-post-scheduler'));
 	}
 
@@ -382,6 +399,148 @@ class AIPS_Sources_Controller {
 	}
 
 	/**
+	 * Return one source data row for editing.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_get_source_data() {
+		if ( ! check_ajax_referer('aips_source_data_get', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+			return;
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+			return;
+		}
+
+		$id = isset($_POST['data_id']) ? absint($_POST['data_id']) : 0;
+		if (!$id) {
+			AIPS_Ajax_Response::error(__('Invalid source data ID.', 'ai-post-scheduler'));
+			return;
+		}
+
+		$row = $this->data_repo->get_by_id($id);
+		if (!$row) {
+			AIPS_Ajax_Response::error(__('Archived snapshot unavailable. It may have been removed manually or by archive retention.', 'ai-post-scheduler'));
+			return;
+		}
+
+		$datetime_format = get_option('date_format') . ' ' . get_option('time_format');
+		foreach (array('fetched_at', 'created_at', 'updated_at') as $field) {
+			$timestamp                   = isset($row->$field) ? (int) $row->$field : 0;
+			$row->{$field . '_display'} = $timestamp > 0 ? wp_date($datetime_format, $timestamp) : __('Not recorded', 'ai-post-scheduler');
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'source_data' => $row,
+			'usage'       => $this->data_repo->get_generation_usage($id, 10),
+		));
+	}
+
+	/**
+	 * Update one source data row.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_save_source_data() {
+		if ( ! check_ajax_referer('aips_source_data_save', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+			return;
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+			return;
+		}
+
+		$id = isset($_POST['data_id']) ? absint($_POST['data_id']) : 0;
+		if (!$id) {
+			AIPS_Ajax_Response::error(__('Invalid source data ID.', 'ai-post-scheduler'));
+			return;
+		}
+
+		$existing = $this->data_repo->get_by_id($id);
+		if (!$existing) {
+			AIPS_Ajax_Response::error(__('Archived snapshot unavailable. It may have been removed manually or by archive retention.', 'ai-post-scheduler'));
+			return;
+		}
+
+		$url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : (isset($existing->url) ? (string) $existing->url : '');
+		if ('' === $url || !filter_var($url, FILTER_VALIDATE_URL)) {
+			AIPS_Ajax_Response::error(__('Please enter a valid URL (e.g. https://example.com).', 'ai-post-scheduler'));
+			return;
+		}
+
+		$fetch_status = isset($_POST['fetch_status']) ? sanitize_key(wp_unslash($_POST['fetch_status'])) : (isset($existing->fetch_status) ? sanitize_key((string) $existing->fetch_status) : 'success');
+		if (!in_array($fetch_status, array('pending', 'success', 'failed'), true)) {
+			AIPS_Ajax_Response::error(__('Invalid fetch status.', 'ai-post-scheduler'));
+			return;
+		}
+
+		$fetched_at = isset($_POST['fetched_at']) ? absint($_POST['fetched_at']) : (int) $existing->fetched_at;
+
+		$raw_html = isset($_POST['raw_html']) && is_string($_POST['raw_html']) ? wp_unslash($_POST['raw_html']) : (isset($existing->raw_html) ? (string) $existing->raw_html : '');
+		if (!current_user_can('unfiltered_html')) {
+			$raw_html = wp_kses_post($raw_html);
+		}
+
+		$data = array(
+			'url'              => $url,
+			'page_title'       => isset($_POST['page_title']) ? sanitize_text_field(wp_unslash($_POST['page_title'])) : (isset($existing->page_title) ? (string) $existing->page_title : ''),
+			'meta_description' => isset($_POST['meta_description']) ? sanitize_textarea_field(wp_unslash($_POST['meta_description'])) : (isset($existing->meta_description) ? (string) $existing->meta_description : ''),
+			'extracted_text'   => isset($_POST['extracted_text']) ? sanitize_textarea_field(wp_unslash($_POST['extracted_text'])) : (isset($existing->extracted_text) ? (string) $existing->extracted_text : ''),
+			'raw_html'         => $raw_html,
+			'fetch_status'     => $fetch_status,
+			'http_status'      => isset($_POST['http_status']) ? absint($_POST['http_status']) : (isset($existing->http_status) ? absint($existing->http_status) : 0),
+			'error_message'    => isset($_POST['error_message']) ? sanitize_textarea_field(wp_unslash($_POST['error_message'])) : (isset($existing->error_message) ? (string) $existing->error_message : ''),
+			'fetched_at'       => $fetched_at,
+		);
+
+		$result = $this->data_repo->update_with_result($id, $data);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message(), 'code' => $result->get_error_code()));
+			return;
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'source_data' => $this->data_repo->get_by_id($id),
+			'message'     => __('Source data updated.', 'ai-post-scheduler'),
+		));
+	}
+
+	/**
+	 * Delete one source data row.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_delete_source_data() {
+		if ( ! check_ajax_referer('aips_source_data_delete', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+			return;
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+			return;
+		}
+
+		$id = isset($_POST['data_id']) ? absint($_POST['data_id']) : 0;
+		if (!$id) {
+			AIPS_Ajax_Response::error(__('Invalid source data ID.', 'ai-post-scheduler'));
+			return;
+		}
+
+		$result = $this->data_repo->delete($id);
+		if (!$result) {
+			AIPS_Ajax_Response::error(__('Failed to delete source data.', 'ai-post-scheduler'));
+			return;
+		}
+
+		AIPS_Ajax_Response::success(array(), __('Source data deleted.', 'ai-post-scheduler'));
+	}
+
+	/**
 	 * Manually trigger a fetch for a single source.
 	 *
 	 * Expected POST param: source_id.
@@ -412,7 +571,36 @@ class AIPS_Sources_Controller {
 			$this->repo
 		);
 
-		$result = $fetcher->fetch($source);
+		$lease = new AIPS_Sources_Fetch_Lease();
+		$owner = $lease->acquire();
+		if (false === $owner) {
+			AIPS_Ajax_Response::error(__('Another source fetch is running. Please retry in a minute.', 'ai-post-scheduler'));
+			return;
+		}
+		try {
+			$result = $fetcher->fetch($source);
+		} catch (Throwable $error) {
+			$this->repo->update_after_fetch($id, false, $error->getMessage());
+			$result = array('success' => false, 'char_count' => 0, 'error' => $error->getMessage());
+		} finally {
+			try {
+				AIPS_Sources_Cron::instance()->reconcile_owned(true);
+			} finally {
+				$lease->release($owner);
+			}
+		}
+
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::SOURCE_FETCHED,
+			!empty($result['success']),
+			!empty($result['success'])
+				? sprintf(__('Fetched source #%1$d (%2$d characters)', 'ai-post-scheduler'), $id, (int) ($result['char_count'] ?? 0))
+				: sprintf(__('Fetch failed for source #%1$d: %2$s', 'ai-post-scheduler'), $id, (string) ($result['error'] ?? '')),
+			'source_fetch',
+			array('event' => __('Source fetch', 'ai-post-scheduler'), 'detail' => sprintf(__('Source #%d', 'ai-post-scheduler'), $id)),
+			'manual',
+			array('source_id' => $id)
+		);
 
 		// Return updated source row + fetch result so the UI can refresh.
 		$updated_source           = $this->repo->get_by_id($id);

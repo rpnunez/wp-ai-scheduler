@@ -54,6 +54,37 @@ class AIPS_Settings {
 
 		add_action('update_option_aips_enable_cache_system', $reset_cache_flag);
 		add_action('add_option_aips_enable_cache_system', $reset_cache_flag);
+
+		// Turning AI generation back on queues a one-off sweep that resumes any
+		// large batch the setting stopped part-way through. The sweep runs on
+		// cron rather than inline so saving settings stays a cheap request.
+		add_action(
+			'update_option_aips_prevent_scheduled_ai_generation',
+			array(__CLASS__, 'maybe_queue_batch_resume'),
+			10,
+			2
+		);
+	}
+
+	/**
+	 * Queue a batch-resume sweep when AI generation is re-enabled.
+	 *
+	 * @param mixed $old_value Previous option value.
+	 * @param mixed $new_value New option value.
+	 * @return void
+	 */
+	public static function maybe_queue_batch_resume($old_value, $new_value) {
+		// Only on the on -> off transition. Saving settings without changing this
+		// option, or switching it on, must not queue anything.
+		if (!(bool) $old_value || (bool) $new_value) {
+			return;
+		}
+
+		if (wp_next_scheduled('aips_resume_terminated_batches')) {
+			return;
+		}
+
+		wp_schedule_single_event(AIPS_DateTime::now()->timestamp() + 60, 'aips_resume_terminated_batches');
 	}
 
 	/**
@@ -75,6 +106,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_default_category'],
 			),
+			'aips_bulk_publish_async_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_bulk_publish_async_threshold'),
+				'default'           => $defaults['aips_bulk_publish_async_threshold'],
+			),
 			'aips_enable_logging' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_logging'],
@@ -83,9 +118,17 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_developer_mode'],
 			),
+			'aips_persist_table_filters' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_persist_table_filters'],
+			),
 			'aips_enable_telemetry' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_telemetry'],
+			),
+			'aips_cache_monitor_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_cache_monitor_enabled'],
 			),
 			'aips_enable_retry' => array(
 				'sanitize_callback' => 'absint',
@@ -111,6 +154,18 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_rate_limit_period'],
 			),
+			'aips_generation_delay_seconds' => array(
+				'sanitize_callback' => static function ($value) {
+					return min(30, absint($value));
+				},
+				'default'           => $defaults['aips_generation_delay_seconds'],
+			),
+			'aips_batch_resume_cooldown_minutes' => array(
+				'sanitize_callback' => static function ($value) {
+					return min(1440, max(1, absint($value)));
+				},
+				'default'           => $defaults['aips_batch_resume_cooldown_minutes'],
+			),
 			'aips_enable_circuit_breaker' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_circuit_breaker'],
@@ -123,6 +178,22 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_circuit_breaker_timeout'],
 			),
+			'aips_ai_provider' => array(
+				'sanitize_callback' => array($ui, 'sanitize_ai_provider'),
+				'default'           => $defaults['aips_ai_provider'],
+			),
+			'aips_wp_ai_connector_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_wp_ai_connector_mode'),
+				'default'           => $defaults['aips_wp_ai_connector_mode'],
+			),
+			'aips_wp_ai_connector_ids' => array(
+				'sanitize_callback' => array($ui, 'sanitize_wp_ai_connector_ids'),
+				'default'           => $defaults['aips_wp_ai_connector_ids'],
+			),
+			'aips_wp_ai_connector_failover' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_wp_ai_connector_failover'],
+			),
 			'aips_ai_model' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_model'],
@@ -130,6 +201,10 @@ class AIPS_Settings {
 			'aips_ai_env_id' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_env_id'],
+			),
+			'aips_prevent_scheduled_ai_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_prevent_scheduled_ai_generation'],
 			),
 			'aips_max_tokens_limit' => array(
 				'sanitize_callback' => 'absint',
@@ -147,9 +222,29 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_token_budget'),
 				'default'           => $defaults['aips_max_tokens_content'],
 			),
+			'aips_conversational_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_conversational_generation'],
+			),
+			'aips_conversational_metadata_turn' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_conversational_metadata_turn'],
+			),
 			'aips_unsplash_access_key' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_unsplash_access_key'],
+			),
+			'aips_gsc_service_account' => array(
+				'sanitize_callback' => array('AIPS_GSC_Client', 'sanitize_credentials'),
+				'default'           => $defaults['aips_gsc_service_account'],
+			),
+			'aips_gsc_property' => array(
+				'sanitize_callback' => array('AIPS_GSC_Client', 'sanitize_property'),
+				'default'           => $defaults['aips_gsc_property'],
+			),
+			'aips_gsc_anchor_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_gsc_anchor_enabled'],
 			),
 			'aips_review_notifications_email' => array(
 				'sanitize_callback' => array($ui, 'sanitize_notification_emails'),
@@ -179,6 +274,350 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_default_ttl'],
 			),
+			'aips_embeddings_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_enabled'],
+			),
+			'aips_embeddings_persistent_cache_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_persistent_cache_enabled'],
+			),
+			'aips_embeddings_scope' => array(
+				'sanitize_callback' => array($ui, 'sanitize_embeddings_scope'),
+				'default'           => $defaults['aips_embeddings_scope'],
+			),
+			'aips_embeddings_date_days' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_date_days'],
+			),
+			'aips_embeddings_date_after' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_date_after'],
+			),
+			'aips_embeddings_rate_limits_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_rate_limits_enabled'],
+			),
+			'aips_embeddings_daily_limit' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_daily_limit'],
+			),
+			'aips_embeddings_weekly_limit' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_weekly_limit'],
+			),
+			'aips_embeddings_monthly_limit' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_monthly_limit'],
+			),
+			'aips_embeddings_provider' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_embeddings_provider'],
+			),
+			'aips_embeddings_model' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_model'],
+			),
+			'aips_indexer_verbose_history' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_verbose_history'],
+			),
+			'aips_link_index_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_link_index_enabled'],
+			),
+			'aips_link_index_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_link_index_post_types'],
+			),
+			'aips_link_index_batch_size' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_index_batch_size'),
+				'default'           => $defaults['aips_link_index_batch_size'],
+			),
+			'aips_link_index_batch_delay' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_index_batch_delay'),
+				'default'           => $defaults['aips_link_index_batch_delay'],
+			),
+			'aips_link_rules_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_link_rules_enabled'],
+			),
+			'aips_link_rules_max_per_post' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_rules_max_per_post'),
+				'default'           => $defaults['aips_link_rules_max_per_post'],
+			),
+			'aips_redirect_provider' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_redirect_provider'],
+			),
+			'aips_publish_linking_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_publish_linking_mode'),
+				'default'           => $defaults['aips_publish_linking_mode'],
+			),
+			'aips_publish_linking_outbound' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_publish_linking_outbound'],
+			),
+			'aips_link_click_tracking_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_link_click_tracking_enabled'],
+			),
+			'aips_source_archive_retention_days' => array(
+				'sanitize_callback' => array($ui, 'sanitize_source_archive_retention_days'),
+				'default' => $defaults['aips_source_archive_retention_days'],
+			),
+			'aips_link_click_retention_days' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_click_retention_days'),
+				'default'           => $defaults['aips_link_click_retention_days'],
+			),
+			'aips_silo_guide_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_silo_guide_enabled'],
+			),
+			'aips_silo_guide_position' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_position'),
+				'default'           => $defaults['aips_silo_guide_position'],
+			),
+			'aips_silo_guide_max' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_max'),
+				'default'           => $defaults['aips_silo_guide_max'],
+			),
+			'aips_silo_guide_style' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_style'),
+				'default'           => $defaults['aips_silo_guide_style'],
+			),
+			'aips_silo_guide_heading' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_silo_guide_heading'],
+			),
+			'aips_autolink_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_enabled'],
+			),
+			'aips_autolink_auto_apply_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_threshold'),
+				'default'           => $defaults['aips_autolink_auto_apply_threshold'],
+			),
+			'aips_autolink_review_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_threshold'),
+				'default'           => $defaults['aips_autolink_review_threshold'],
+			),
+			'aips_autolink_max_links_per_post' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_links_per_post'],
+			),
+			'aips_autolink_max_total_internal_per_post' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_total_internal_per_post'],
+			),
+			'aips_autolink_max_inbound_per_target' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_inbound_per_target'],
+			),
+			'aips_autolink_skip_first_paragraph' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_skip_first_paragraph'],
+			),
+			'aips_autolink_rel' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_rel'),
+				'default'           => $defaults['aips_autolink_rel'],
+			),
+			'aips_autolink_target_blank' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_target_blank'],
+			),
+			'aips_embeddings_env_id' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_env_id'],
+			),
+			'aips_embeddings_dimensions' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_dimensions'],
+			),
+			'aips_indexer_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_indexer_post_types'],
+			),
+			'aips_indexer_similarity_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_indexer_similarity_threshold'],
+			),
+			'aips_auto_index_on_publish' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_auto_index_on_publish'],
+			),
+			'aips_indexer_publish_execution_timing' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_indexer_publish_execution_timing'],
+			),
+			'aips_related_posts_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_related_posts_enabled'],
+			),
+			'aips_related_posts_auto_append' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_related_posts_auto_append'],
+			),
+			'aips_related_posts_heading' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_related_posts_heading'],
+			),
+			'aips_related_posts_count' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_related_posts_count'],
+			),
+			'aips_related_posts_layout' => array(
+				'sanitize_callback' => array($ui, 'sanitize_related_posts_layout'),
+				'default'           => $defaults['aips_related_posts_layout'],
+			),
+			'aips_deduplication_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_deduplication_mode'),
+				'default'           => $defaults['aips_deduplication_mode'],
+			),
+			'aips_deduplication_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_deduplication_threshold'],
+			),
+			'aips_cluster_detection_max_posts' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cluster_detection_max_posts'),
+				'default'           => $defaults['aips_cluster_detection_max_posts'],
+			),
+			'aips_cluster_detection_time_budget' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cluster_detection_time_budget'),
+				'default'           => $defaults['aips_cluster_detection_time_budget'],
+			),
+			'aips_duplicate_review_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_review_threshold'),
+				'default'           => $defaults['aips_duplicate_review_threshold'],
+			),
+			'aips_duplicate_review_max_group_size' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_review_max_group_size'),
+				'default'           => $defaults['aips_duplicate_review_max_group_size'],
+			),
+			'aips_duplicate_review_max_pairs' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_review_max_pairs'),
+				'default'           => $defaults['aips_duplicate_review_max_pairs'],
+			),
+			'aips_duplicate_keep_strategy' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_keep_strategy'),
+				'default'           => $defaults['aips_duplicate_keep_strategy'],
+			),
+			'aips_duplicate_excluded_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_excluded_post_types'),
+				'default'           => $defaults['aips_duplicate_excluded_post_types'],
+			),
+			'aips_duplicate_excluded_categories' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_excluded_categories'),
+				'default'           => $defaults['aips_duplicate_excluded_categories'],
+			),
+			'aips_duplicate_excluded_post_ids' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_excluded_post_ids'),
+				'default'           => $defaults['aips_duplicate_excluded_post_ids'],
+			),
+			'aips_duplicate_exclude_pillars' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_duplicate_exclude_pillars'],
+			),
+			'aips_duplicate_protect_inbound_links' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_protect_inbound_links'),
+				'default'           => $defaults['aips_duplicate_protect_inbound_links'],
+			),
+			'aips_duplicate_default_merge_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_default_merge_mode'),
+				'default'           => $defaults['aips_duplicate_default_merge_mode'],
+			),
+			'aips_duplicate_scan_schedule' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_scan_schedule'),
+				'default'           => $defaults['aips_duplicate_scan_schedule'],
+			),
+			'aips_cluster_default_min_size' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cluster_default_min_size'),
+				'default'           => $defaults['aips_cluster_default_min_size'],
+			),
+			'aips_cluster_tightness' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cluster_tightness'),
+				'default'           => $defaults['aips_cluster_tightness'],
+			),
+			'aips_pillar_spoke_similarity' => array(
+				'sanitize_callback' => array($ui, 'sanitize_pillar_spoke_similarity'),
+				'default'           => $defaults['aips_pillar_spoke_similarity'],
+			),
+			'aips_audit_result_limit' => array(
+				'sanitize_callback' => array($ui, 'sanitize_audit_result_limit'),
+				'default'           => $defaults['aips_audit_result_limit'],
+			),
+			'aips_indexer_publish_execution_timing' => array(
+				'sanitize_callback' => array($ui, 'sanitize_publish_execution_timing'),
+				'default'           => $defaults['aips_indexer_publish_execution_timing'],
+			),
+			'aips_indexer_batch_size' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_batch_size'],
+			),
+			'aips_indexer_queue_debounce_seconds' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_queue_debounce_seconds'],
+			),
+			'aips_indexer_quota_pause_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_quota_pause_enabled'],
+			),
+			'aips_indexer_queue_notifications_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_queue_notifications_enabled'],
+			),
+			'aips_indexer_error_pause_duration' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_error_pause_duration'],
+			),
+			'aips_indexer_error_pause_unit' => array(
+				'sanitize_callback' => array($ui, 'sanitize_error_pause_unit'),
+				'default'           => $defaults['aips_indexer_error_pause_unit'],
+			),
+			'aips_indexer_consecutive_error_threshold' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_consecutive_error_threshold'],
+			),
+			'aips_indexer_post_cluster_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_indexer_post_cluster_threshold'],
+			),
+			'aips_enable_post_insights_ui' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_post_insights_ui'],
+			),
+			'aips_indexer_topics_continuous_sync' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_topics_continuous_sync'],
+			),
+			'aips_indexer_topics_execution_timing' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_indexer_topics_execution_timing'],
+			),
+			'aips_indexer_scan_entity_scope' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_indexer_scan_entity_scope'],
+			),
+			'aips_author_topic_auto_approval_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_mode'),
+				'default'           => $defaults['aips_author_topic_auto_approval_mode'],
+			),
+			'aips_author_topic_auto_approval_min_score' => array(
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_percent'),
+				'default'           => $defaults['aips_author_topic_auto_approval_min_score'],
+			),
+			'aips_author_topic_auto_approval_min_relevance' => array(
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_percent'),
+				'default'           => $defaults['aips_author_topic_auto_approval_min_relevance'],
+			),
+			'aips_author_topic_auto_approval_max_similarity' => array(
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_max_similarity'),
+				'default'           => $defaults['aips_author_topic_auto_approval_max_similarity'],
+			),
+			'aips_author_topic_auto_approval_fallback' => array(
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_fallback'),
+				'default'           => $defaults['aips_author_topic_auto_approval_fallback'],
+			),
 		);
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {
@@ -186,6 +625,10 @@ class AIPS_Settings {
 				'sanitize_callback' => $meta['sanitize_callback'],
 				'default'           => $meta['default'],
 			);
+		}
+
+		foreach ( self::get_ai_assistance_options() as $option_key => $meta ) {
+			$settings[$option_key] = $meta;
 		}
 
 		return $settings;
@@ -226,6 +669,30 @@ class AIPS_Settings {
             'aips-settings'
         );
 
+		add_settings_section(
+			'aips_ai_assistance_section',
+			__('AI Assistance', 'ai-post-scheduler'),
+			array($this->ui, 'ai_assistance_section_callback'),
+			'aips-settings'
+		);
+		$ai_assistance_fields = array(
+			'enabled' => __('Enable AI Assistance', 'ai-post-scheduler'),
+			'contexts' => __('Workflows', 'ai-post-scheduler'),
+			'response_length' => __('Response length', 'ai-post-scheduler'),
+			'guidance' => __('AI Assistance guidance', 'ai-post-scheduler'),
+			'overwrite_mode' => __('Existing field values', 'ai-post-scheduler'),
+			'retention_days' => __('History retention', 'ai-post-scheduler'),
+		);
+		foreach ( $ai_assistance_fields as $field => $label ) {
+			add_settings_field(
+				'aips_ai_assistance_' . $field,
+				$label,
+				array( $this->ui, 'ai_assistance_' . $field . '_field_callback' ),
+				'aips-settings',
+				'aips_ai_assistance_section'
+			);
+		}
+
         add_settings_field(
             'aips_default_post_status',
             __('Default Post Status', 'ai-post-scheduler'),
@@ -242,22 +709,55 @@ class AIPS_Settings {
             'aips_general_section'
         );
 
+        add_settings_field(
+            'aips_bulk_publish_async_threshold',
+            __('Bulk Publish Background Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'bulk_publish_async_threshold_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
         // -----------------------------------------------------------------------
-        // AI section: AI Model, Environment ID
+		// Source archive retention is explicitly opt-in.
+		add_settings_field(
+			'aips_source_archive_retention_days',
+			__('Source Archive Retention', 'ai-post-scheduler'),
+			array($this->ui, 'source_archive_retention_field_callback'),
+			'aips-settings',
+			'aips_general_section'
+		);
+
+        // Card 1: Content Generation AI Provider
         // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_ai_section',
-            __('AI Settings', 'ai-post-scheduler'),
-            array($this->ui, 'ai_section_callback'),
+            'aips_ai_provider_section',
+            __('Content Generation AI Provider', 'ai-post-scheduler'),
+            array($this->ui, 'ai_provider_section_callback'),
             'aips-settings'
         );
+
+        add_settings_field(
+            'aips_ai_provider',
+            __('AI Provider', 'ai-post-scheduler'),
+            array($this->ui, 'ai_provider_field_callback'),
+            'aips-settings',
+            'aips_ai_provider_section'
+        );
+
+		add_settings_field(
+			'aips_wp_ai_connectors',
+			__('WordPress AI Connectors', 'ai-post-scheduler'),
+			array($this->ui, 'wp_ai_connectors_field_callback'),
+			'aips-settings',
+			'aips_ai_provider_section'
+		);
 
         add_settings_field(
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this->ui, 'ai_model_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_provider_section'
         );
 
         add_settings_field(
@@ -265,7 +765,25 @@ class AIPS_Settings {
             __('Environment ID', 'ai-post-scheduler'),
             array($this->ui, 'ai_env_id_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_provider_section'
+        );
+
+		add_settings_field(
+			'aips_prevent_scheduled_ai_generation',
+			AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
+			array($this->ui, 'prevent_scheduled_ai_generation_field_callback'),
+			'aips-settings',
+			'aips_ai_provider_section'
+		);
+
+        // -----------------------------------------------------------------------
+        // Card 2: Token Budgets & Prompt Optimization
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_tokens_section',
+            __('Token Budgets & Prompt Optimization', 'ai-post-scheduler'),
+            array($this->ui, 'ai_tokens_section_callback'),
+            'aips-settings'
         );
 
         add_settings_field(
@@ -273,7 +791,7 @@ class AIPS_Settings {
             __('Max Tokens Limit', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_limit_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         add_settings_field(
@@ -281,7 +799,7 @@ class AIPS_Settings {
             __('Max Tokens for Post Titles', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_title_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         add_settings_field(
@@ -289,7 +807,7 @@ class AIPS_Settings {
             __('Max Tokens for Post Excerpts', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_excerpt_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         add_settings_field(
@@ -297,7 +815,523 @@ class AIPS_Settings {
             __('Max Tokens for Post Content', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_content_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
+        );
+
+        add_settings_field(
+            'aips_conversational_generation',
+            __('Conversational Generation', 'ai-post-scheduler'),
+            array($this->ui, 'conversational_generation_field_callback'),
+            'aips-settings',
+            'aips_ai_tokens_section'
+        );
+
+        add_settings_field(
+            'aips_conversational_metadata_turn',
+            __('Combined Metadata Turn', 'ai-post-scheduler'),
+            array($this->ui, 'conversational_metadata_turn_field_callback'),
+            'aips-settings',
+            'aips_ai_tokens_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Card 3: Vector Embeddings Engine & Model
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_embeddings_section',
+            __('Vector Embeddings Engine & Model', 'ai-post-scheduler'),
+            array($this->ui, 'ai_embeddings_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_embeddings_enabled',
+            __('Enable Embeddings System', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_enabled_field_callback'),
+            'aips-settings',
+            'aips_ai_embeddings_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_provider',
+            __('Vector Embeddings Provider', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_provider_field_callback'),
+            'aips-settings',
+            'aips_ai_embeddings_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_model',
+            __('Embedding Model', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_model_field_callback'),
+            'aips-settings',
+            'aips_ai_embeddings_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_env_id',
+            __('Meow AI Engine Environment', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_env_id_field_callback'),
+            'aips-settings',
+            'aips_ai_embeddings_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_dimensions',
+            __('Vector Dimensions', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_dimensions_field_callback'),
+            'aips-settings',
+            'aips_ai_embeddings_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_persistent_cache_enabled',
+            __('Persistent Vector Caching', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_persistent_cache_field_callback'),
+            'aips-settings',
+            'aips_ai_embeddings_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Card 4: Indexing Scope, Continuous Sync & Rate Limits
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_scope_section',
+            __('Indexing Scope, Continuous Sync & Rate Limits', 'ai-post-scheduler'),
+            array($this->ui, 'ai_scope_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_embeddings_quota_meters',
+            __('Usage & Rate Limits Tracking', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_quota_meters_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_scope',
+            __('Content Ingestion Scope', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_scope_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_post_types',
+            __('Post Types to Index', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_post_types_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_auto_index_on_publish',
+            __('Auto-Sync on Publish', 'ai-post-scheduler'),
+            array($this->ui, 'auto_index_on_publish_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_publish_execution_timing',
+            __('Publish Indexing Mode', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_publish_execution_timing_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_batch_config',
+            __('Batch Queue & Quota Pause', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_batch_config_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_error_cooldown',
+            __('Rate Limit Error Auto-Cooldown', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_error_cooldown_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_verbose_history',
+            __('Activity Logging', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_verbose_history_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_rate_limits',
+            __('Rate Limits & Quota Protections', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_rate_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_similarity_threshold',
+            __('Related Posts Similarity Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_similarity_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_post_cluster_threshold',
+            __('Post Cluster Similarity Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_post_cluster_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_cluster_detection_limits',
+            __('Cluster Detection Limits', 'ai-post-scheduler'),
+            array($this->ui, 'cluster_detection_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_cluster_defaults',
+            __('Cluster Defaults', 'ai-post-scheduler'),
+            array($this->ui, 'cluster_defaults_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_enable_post_insights_ui',
+            __('Enable AI Insights in WP Post List & Editors', 'ai-post-scheduler'),
+            array($this->ui, 'enable_post_insights_ui_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_topics_continuous_sync',
+            __('Run Embeddings when Topics are Generated', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_topics_continuous_sync_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Card 5: Frontend Related Posts Engine
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_related_posts_section',
+            __('Frontend Related Posts Engine', 'ai-post-scheduler'),
+            array($this->ui, 'ai_related_posts_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_related_posts_enabled',
+            __('Enable Related Posts Engine', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_enabled_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        add_settings_field(
+            'aips_related_posts_auto_append',
+            __('Auto-Append to Post Content', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_auto_append_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        add_settings_field(
+            'aips_related_posts_heading',
+            __('Section Heading', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_heading_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        add_settings_field(
+            'aips_related_posts_count_layout',
+            __('Default Count & Layout', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_count_layout_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        add_settings_field(
+            'aips_related_posts_shortcode',
+            __('Shortcode & Block Integration', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_shortcode_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Card 6: Semantic Duplicate Detection & Gatekeeper Guard
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_deduplication_section',
+            __('Semantic Duplicate Detection & Gatekeeper Guard', 'ai-post-scheduler'),
+            array($this->ui, 'ai_deduplication_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_deduplication_mode',
+            __('Gatekeeper Action on Duplicate', 'ai-post-scheduler'),
+            array($this->ui, 'deduplication_mode_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_deduplication_threshold',
+            __('Duplicate Similarity Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'deduplication_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_review_threshold',
+            __('Duplicate Review Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_review_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_review_limits',
+            __('Duplicate Group Limits', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_review_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_keep_strategy',
+            __('Recommended "Keep" Post', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_keep_strategy_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_protection',
+            __('Protect Well-Linked Posts', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_protection_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_exclusions',
+            __('Exclude From Duplicate Review', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_exclusions_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_default_merge_mode',
+            __('Default Merge Handling', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_default_merge_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_scan_schedule',
+            __('Scheduled Duplicate Scan', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_scan_schedule_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Link Index card
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_link_index_section',
+            __('Link Index', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_link_index',
+            __('Link Index', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_field_callback'),
+            'aips-settings',
+            'aips_link_index_section'
+        );
+
+        add_settings_field(
+            'aips_link_index_throttle',
+            __('Rebuild Speed', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_throttle_field_callback'),
+            'aips-settings',
+            'aips_link_index_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Keyword Link Rules card
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_link_rules_section',
+            __('Keyword Link Rules', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_link_rules',
+            __('Keyword Link Rules', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_field_callback'),
+            'aips-settings',
+            'aips_link_rules_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Link Click Tracking card
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_link_clicks_section',
+            __('Link Click Tracking', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_link_click_tracking',
+            __('Link Click Tracking', 'ai-post-scheduler'),
+            array($this->ui, 'link_click_tracking_field_callback'),
+            'aips-settings',
+            'aips_link_clicks_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Topic Silos card ("In this guide" list on pillars)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_silo_section',
+            __('Topic Silos', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_silo_guide',
+            __('"In this guide" List', 'ai-post-scheduler'),
+            array($this->ui, 'silo_guide_field_callback'),
+            'aips-settings',
+            'aips_silo_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Internal Link Automation card (bulk auto-link guardrails)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_autolink_section',
+            __('Internal Link Automation', 'ai-post-scheduler'),
+            array($this->ui, 'ai_autolink_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_publish_linking',
+            __('Link New AIPS Posts on Publish', 'ai-post-scheduler'),
+            array($this->ui, 'publish_linking_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_enabled',
+            __('Bulk Auto-Linking', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_enabled_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_thresholds',
+            __('Confidence Thresholds', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_thresholds_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_limits',
+            __('Link Limits', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_placement',
+            __('Placement & Attributes', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_placement_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Authors Section: Global Topic Approval & Semantic Gate
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_authors_section',
+            __('Global Author Topic Policy & Semantic Gate', 'ai-post-scheduler'),
+            array($this->ui, 'authors_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_mode',
+            __('Default Auto-Approval Mode', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_mode_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_min_score',
+            __('Minimum Quality Score', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_min_score_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_min_relevance',
+            __('Minimum Niche Relevance %', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_min_relevance_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_max_similarity',
+            __('Maximum Duplicate Ceiling', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_max_similarity_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_fallback',
+            __('Sub-Threshold Handling', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_fallback_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
         );
 
         // -----------------------------------------------------------------------
@@ -319,12 +1353,12 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
-        // Notifications section: Email address + all per-type preferences
+        // Notifications sections: Email address + grouped notification preferences
         // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_notifications_section',
-            __('Notifications', 'ai-post-scheduler'),
-            array($this->ui, 'notifications_section_callback'),
+            'aips_notifications_delivery_section',
+            __('Email Routing & Delivery', 'ai-post-scheduler'),
+            '__return_empty_string',
             'aips-settings'
         );
 
@@ -333,16 +1367,110 @@ class AIPS_Settings {
             __('Notifications Email Address', 'ai-post-scheduler'),
             array($this->ui, 'review_notifications_email_field_callback'),
             'aips-settings',
-            'aips_notifications_section'
+            'aips_notifications_delivery_section'
         );
 
-        foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
+        add_settings_section(
+            'aips_notifications_system_section',
+            __('System Health & Resilience Alerts', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_content_section',
+            __('Content & Editorial Workflow Alerts', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_automation_section',
+            __('Automation & Operational Maintenance', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_notifications_digests_section',
+            __('Scheduled Activity Digests & Reports', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        $notification_groups = array(
+            'aips_notifications_system_section' => array(
+                'generation_failed',
+                'quota_alert',
+                'circuit_breaker_opened',
+                'rate_limit_reached',
+                'integration_error',
+                'scheduler_error',
+                'system_error',
+            ),
+            'aips_notifications_content_section' => array(
+                'post_ready_for_review',
+                'post_generated',
+                'partial_generation_completed',
+                'post_rejected',
+                'post_consolidated',
+                'duplicate_groups_found',
+                'author_topics_generated',
+                'author_suggestions',
+                'research_topics_ready',
+            ),
+            'aips_notifications_automation_section' => array(
+                'template_generated',
+                'manual_generation_completed',
+                'template_change',
+                'seeder_complete',
+                'history_cleanup',
+            ),
+            'aips_notifications_digests_section' => array(
+                'daily_digest',
+                'weekly_summary',
+                'monthly_report',
+            ),
+        );
+
+        $type_registry = AIPS_Notifications::get_notification_type_registry();
+        $registered_types = array();
+
+        foreach ($notification_groups as $section_id => $types) {
+            foreach ($types as $type) {
+                if (isset($type_registry[$type])) {
+                    $meta = $type_registry[$type];
+                    add_settings_field(
+                        'aips_notification_preferences_' . $type,
+                        $meta['label'],
+                        array($this->ui, 'notification_preference_field_callback'),
+                        'aips-settings',
+                        $section_id,
+                        array(
+                            'type'        => $type,
+                            'description' => $meta['description'],
+                        )
+                    );
+                    $registered_types[$type] = true;
+                }
+            }
+        }
+
+        // Register any newly added or remaining types not in explicit groups.
+        foreach ($type_registry as $type => $meta) {
+            if (isset($registered_types[$type])) {
+                continue;
+            }
+            $fallback_section = (isset($meta['level']) && 'error' === $meta['level'])
+                ? 'aips_notifications_system_section'
+                : 'aips_notifications_content_section';
+
             add_settings_field(
                 'aips_notification_preferences_' . $type,
                 $meta['label'],
                 array($this->ui, 'notification_preference_field_callback'),
                 'aips-settings',
-                'aips_notifications_section',
+                $fallback_section,
                 array(
                     'type'        => $type,
                     'description' => $meta['description'],
@@ -364,6 +1492,14 @@ class AIPS_Settings {
             'aips_unsplash_access_key',
             __('Unsplash Access Key', 'ai-post-scheduler'),
             array($this->ui, 'unsplash_access_key_field_callback'),
+            'aips-settings',
+            'aips_api_keys_section'
+        );
+
+        add_settings_field(
+            'aips_gsc',
+            __('Google Search Console', 'ai-post-scheduler'),
+            array($this->ui, 'gsc_field_callback'),
             'aips-settings',
             'aips_api_keys_section'
         );
@@ -395,6 +1531,14 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_persist_table_filters',
+            __('Persist Table Filters', 'ai-post-scheduler'),
+            array($this->ui, 'persist_table_filters_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
             'aips_enable_telemetry',
             __('Enable Telemetry', 'ai-post-scheduler'),
             array($this->ui, 'enable_telemetry_field_callback'),
@@ -402,10 +1546,21 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
+        add_settings_field(
+            'aips_cache_monitor_enabled',
+            __('Enable Cache Monitor', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_enabled_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Resilience sections: Retry, Rate Limiting, Batch Pacing, Circuit Breaker
+        // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_resilience_section',
-            __('Resilience & Limits', 'ai-post-scheduler'),
-            array($this->ui, 'resilience_section_callback'),
+            'aips_resilience_retry_section',
+            __('Retry & Backoff Policy', 'ai-post-scheduler'),
+            '__return_empty_string',
             'aips-settings'
         );
 
@@ -414,7 +1569,7 @@ class AIPS_Settings {
             __('Enable Retry', 'ai-post-scheduler'),
             array($this->ui, 'enable_retry_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
         );
 
         add_settings_field(
@@ -422,7 +1577,7 @@ class AIPS_Settings {
             __('Max Retries on Failure', 'ai-post-scheduler'),
             array($this->ui, 'max_retries_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
         );
 
         add_settings_field(
@@ -430,7 +1585,14 @@ class AIPS_Settings {
             __('Retry Initial Delay (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'retry_initial_delay_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_retry_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_rate_limit_section',
+            __('API Rate Limiting', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
         );
 
         add_settings_field(
@@ -438,7 +1600,7 @@ class AIPS_Settings {
             __('Enable Rate Limiting', 'ai-post-scheduler'),
             array($this->ui, 'enable_rate_limiting_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
         );
 
         add_settings_field(
@@ -446,7 +1608,7 @@ class AIPS_Settings {
             __('Rate Limit Max Requests', 'ai-post-scheduler'),
             array($this->ui, 'rate_limit_requests_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
         );
 
         add_settings_field(
@@ -454,7 +1616,37 @@ class AIPS_Settings {
             __('Rate Limit Period (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'rate_limit_period_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_rate_limit_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_batch_section',
+            __('Batch Pacing & Resume Cooldown', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_generation_delay_seconds',
+            __('Delay Between Generations (Seconds)', 'ai-post-scheduler'),
+            array($this->ui, 'generation_delay_seconds_field_callback'),
+            'aips-settings',
+            'aips_resilience_batch_section'
+        );
+
+        add_settings_field(
+            'aips_batch_resume_cooldown_minutes',
+            __('Batch Resume Cooldown (Minutes)', 'ai-post-scheduler'),
+            array($this->ui, 'batch_resume_cooldown_minutes_field_callback'),
+            'aips-settings',
+            'aips_resilience_batch_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_circuit_breaker_section',
+            __('Circuit Breaker Protection', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
         );
 
         add_settings_field(
@@ -462,7 +1654,7 @@ class AIPS_Settings {
             __('Enable Circuit Breaker', 'ai-post-scheduler'),
             array($this->ui, 'enable_circuit_breaker_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         add_settings_field(
@@ -470,7 +1662,7 @@ class AIPS_Settings {
             __('Circuit Breaker Failure Threshold', 'ai-post-scheduler'),
             array($this->ui, 'circuit_breaker_threshold_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         add_settings_field(
@@ -478,7 +1670,7 @@ class AIPS_Settings {
             __('Circuit Breaker Timeout (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'circuit_breaker_timeout_field_callback'),
             'aips-settings',
-            'aips_resilience_section'
+            'aips_resilience_circuit_breaker_section'
         );
 
         // -----------------------------------------------------------------------
@@ -670,5 +1862,85 @@ class AIPS_Settings {
             ),
         );
     }
+
+	/**
+	 * Return the canonical AI Assistance setting definitions.
+	 *
+	 * @return array<string, array{sanitize_callback: callable|string, default: mixed}>
+	 */
+	public static function get_ai_assistance_options() {
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+
+		return array(
+			'aips_ai_assistance_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_ai_assistance_enabled'],
+			),
+			'aips_ai_assistance_contexts' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_contexts' ),
+				'default'           => $defaults['aips_ai_assistance_contexts'],
+			),
+			'aips_ai_assistance_response_length' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_response_length' ),
+				'default'           => $defaults['aips_ai_assistance_response_length'],
+			),
+			'aips_ai_assistance_guidance' => array(
+				'sanitize_callback' => 'sanitize_textarea_field',
+				'default'           => $defaults['aips_ai_assistance_guidance'],
+			),
+			'aips_ai_assistance_overwrite_mode' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_overwrite_mode' ),
+				'default'           => $defaults['aips_ai_assistance_overwrite_mode'],
+			),
+			'aips_ai_assistance_retention_days' => array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_ai_assistance_retention_days' ),
+				'default'           => $defaults['aips_ai_assistance_retention_days'],
+			),
+		);
+	}
+
+	public static function get_ai_assistance_contexts() {
+		return array( 'authors', 'templates', 'sources', 'content_strategy' );
+	}
+
+	public static function sanitize_ai_assistance_contexts( $contexts ) {
+		$contexts = is_array( $contexts ) ? $contexts : array();
+		return array_values( array_intersect( self::get_ai_assistance_contexts(), array_map( 'sanitize_key', $contexts ) ) );
+	}
+
+	public static function sanitize_ai_assistance_response_length( $value ) {
+		return in_array( $value, array( 'concise', 'standard', 'detailed' ), true ) ? $value : 'standard';
+	}
+
+	public static function sanitize_ai_assistance_overwrite_mode( $value ) {
+		return in_array( $value, array( 'replace', 'preview' ), true ) ? $value : 'preview';
+	}
+
+	public static function sanitize_ai_assistance_retention_days( $value ) {
+		$value = absint( $value );
+		return in_array( $value, array( 0, 7, 30, 90, 365 ), true ) ? $value : 30;
+	}
+
+	public static function is_ai_assistance_enabled_for( $context ) {
+		return (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' )
+			&& in_array( $context, self::get_enabled_ai_assistance_contexts(), true );
+	}
+
+	public static function get_enabled_ai_assistance_contexts() {
+		return self::sanitize_ai_assistance_contexts( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_contexts' ) );
+	}
+
+	public static function get_ai_assistance_policy() {
+		return array(
+			'enabled'        => (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' ),
+			'contexts'       => self::get_enabled_ai_assistance_contexts(),
+			'overwriteMode'  => self::sanitize_ai_assistance_overwrite_mode( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_overwrite_mode' ) ),
+			'responseLength' => self::sanitize_ai_assistance_response_length( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_response_length' ) ),
+		);
+	}
+
+	public static function get_ai_assistance_retention_days() {
+		return self::sanitize_ai_assistance_retention_days( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_retention_days' ) );
+	}
         
 }

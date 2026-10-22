@@ -35,6 +35,11 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	private $creation_method;
 
 	/**
+	 * @var array<string,mixed> Details about what triggered this generation.
+	 */
+	private $trigger_context = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param object $author            Author object.
@@ -269,6 +274,26 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Attach details about what triggered this generation.
+	 *
+	 * @param array<string,mixed> $trigger_context Trigger details.
+	 * @return $this
+	 */
+	public function set_trigger_context(array $trigger_context) {
+		$this->trigger_context = $trigger_context;
+		return $this;
+	}
+
+	/**
+	 * Get details about what triggered this generation.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function get_trigger_context() {
+		return $this->trigger_context;
+	}
+
+	/**
 	 * Whether source injection is enabled for this topic's author.
 	 *
 	 * Reads the include_sources flag directly from the author row. When the
@@ -292,6 +317,10 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 		}
 		$decoded = json_decode($this->author->source_group_ids, true);
 		return is_array($decoded) ? array_map('intval', $decoded) : array();
+	}
+
+	public function get_affiliate_links_enabled() {
+		return !empty($this->author->affiliate_links_enabled);
 	}
 
 	/**

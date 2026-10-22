@@ -2,6 +2,22 @@
 
 This document lists all the actions and filters available in the AI Post Scheduler plugin. Developers can use these hooks to extend the plugin's functionality.
 
+## AI Provider Filters
+
+### `aips_wp_ai_client_prompt_builder`
+Filters an optional prebuilt WordPress AI Client prompt builder before AIPS calls `wp_ai_client_prompt()`.
+
+* **Arguments:**
+  * `object|WP_Error|null $builder`: Replacement builder, or `null` to use WordPress core.
+  * `string $prompt`: Prompt text for the request.
+  * `AIPS_WP_AI_Client_Provider $provider`: Current provider adapter.
+
+### `aips_wp_ai_client_connectors`
+Filters active WordPress AI connectors before AIPS applies its connector allowlist and failover policy.
+
+* **Arguments:**
+  * `array $connectors`: Active AI connector definitions keyed by connector ID.
+
 ## Action Hooks
 
 ### Post Generation
@@ -39,12 +55,12 @@ Fires after a post has been created but one or more requested components failed 
     *   `int $history_id`: The ID of the history record associated with this generation.
 
 #### `aips_post_components_updated`
-Fires after AI Edit saves updated post components.
+Fires after AI Assistance saves updated post components.
 
 *   **Arguments:**
     *   `int $post_id`: The updated post ID.
     *   `array $updated_components`: Updated component keys (`title`, `excerpt`, `content`, `featured_image`).
-    *   `array $components`: Raw component payload submitted by AI Edit.
+    *   `array $components`: Raw component payload submitted by AI Assistance.
 
 #### `aips_generation_failed`
 Fires when a non-scheduled/manual generation flow fails and should create a high-priority notification.
@@ -175,6 +191,37 @@ Fires immediately before the content prompt is constructed.
 
 ---
 
+### Integrations (Third-Party Plugin Bridge)
+
+Despite the name, this framework isn't limited to third-party plugins —
+`native_meta` (`AIPS_Integration_Native_Meta`) ships as a core adapter that
+generates into plain WordPress post meta ("custom fields") on any post
+type, no plugin required.
+
+#### `aips_before_build_integration_field_prompt`
+Fires immediately before the fallback single-field prompt for a mapped third-party field (e.g. an ACF field) is constructed. Only used when the batched prompt call fails and the manager falls back to one call per field — see `aips_before_build_integration_batch_prompt` for the normal (batched) path.
+
+*   **Arguments:**
+    *   `array $field_def`: Field definition (`key`, `label`, `native_type`, `instructions`).
+    *   `AIPS_Generation_Context $context`: The generation context driving this post.
+
+#### `aips_before_build_integration_batch_prompt`
+Fires immediately before the batched prompt covering every generatable mapped field for one integration is constructed. This is the normal generation path — all mapped fields are generated in a single AI call rather than one call per field.
+
+*   **Arguments:**
+    *   `array $items`: List of `{mapping, field_def}` pairs, one per field in the batch.
+    *   `AIPS_Generation_Context $context`: The generation context driving this post.
+
+#### `aips_integration_fields_applied`
+Fires after a batch of mapped fields has been generated and written for one integration on a post.
+
+*   **Arguments:**
+    *   `int $post_id`: The post the fields were written to.
+    *   `string $integration_id`: Integration identifier (e.g. `acf`).
+    *   `array $results`: `field_key => true|WP_Error` outcome map.
+
+---
+
 ## Filter Hooks
 
 ### Prompt Builder
@@ -186,6 +233,39 @@ Filters the final content prompt before it is sent to the AI service.
     *   `string $content_prompt`: The constructed prompt string.
     *   `object $template`: The template object.
     *   `string $topic`: The topic being processed.
+
+---
+
+### Integrations (Third-Party Plugin Bridge)
+
+#### `aips_integrations_registry`
+Registers a third-party plugin as an "AIPS-compatible plugin". Any plugin can add its own adapter here without modifying AIPS core — see `docs/AI_AGENT_REFERENCE.md` for the `AIPS_Integration_Interface` contract.
+
+*   **Arguments:**
+    *   `array $map`: `integration_id => class name implementing AIPS_Integration_Interface`.
+
+```php
+add_filter('aips_integrations_registry', function ($map) {
+    $map['my_plugin'] = 'My_Plugin_AIPS_Integration';
+    return $map;
+});
+```
+
+#### `aips_integration_field_prompt`
+Filters the fallback single-field prompt (used only when the batched call fails).
+
+*   **Arguments:**
+    *   `string $prompt`: The constructed prompt string.
+    *   `array $field_def`: Field definition (`key`, `label`, `native_type`, `instructions`).
+    *   `AIPS_Generation_Context $context`: The generation context driving this post.
+
+#### `aips_integration_batch_prompt`
+Filters the batched prompt covering every generatable mapped field for one integration — the normal generation path.
+
+*   **Arguments:**
+    *   `string $prompt`: The constructed prompt string.
+    *   `array $items`: List of `{mapping, field_def}` pairs, one per field in the batch.
+    *   `AIPS_Generation_Context $context`: The generation context driving this post.
 
 ---
 
@@ -307,3 +387,222 @@ Filters the maximum number of similar approved topics used as expanded context w
 *   **Arguments:**
     *   `int $limit` Maximum context topics.
 
+---
+
+## Semantic Embeddings & Related Posts Filters (added in 3.6.5)
+
+### `aips_related_posts_query_args`
+
+Filters query parameters before fetching related posts from `wp_aips_relationships`.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array $args`: Array containing `limit`, `min_similarity`, `post_types`.
+    *   `int $post_id`: The source post ID.
+
+---
+
+### `aips_related_posts_html`
+
+Filters the rendered HTML output for the Related Posts block, shortcode, or auto-append content.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $html`: The rendered HTML.
+    *   `int $post_id`: The source post ID.
+    *   `array $posts`: The list of related post arrays.
+
+
+---
+
+### Link Index
+
+#### `aips_link_resolver_url`
+Filters a link URL after it has been made absolute and its fragment removed, before it is classified as internal/external and resolved to a post ID. Useful for multilingual setups that map language domains or path prefixes onto the primary site URL.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $url`: Absolute `http(s)` URL without fragment.
+
+#### `aips_link_resolver_internal_hosts`
+Filters the host names treated as internal when classifying links. Hosts compare case-insensitively and ignore a leading `www.`.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string[] $hosts`: Defaults to the hosts of `home_url()` and `site_url()`.
+
+#### `aips_link_insertion_skip_blocks`
+Filters the Gutenberg blocks whose content never receives inserted internal links.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string[] $blocks`: Block names, e.g. `core/heading`, `core/code`, `core/html`, `core/buttons`, `core/navigation`.
+
+#### `aips_link_click_is_bot`
+Filters whether an internal link click comes from a bot and should not be counted (click tracking, 3.7.6).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `bool $is_bot`: Whether the user agent matched the built-in bot pattern (or was empty).
+    *   `string $user_agent`: The visitor's user agent.
+
+#### `aips_link_click_report_days`
+Filters how many days of internal link clicks the Link Report shows (default 30).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $days`: Report window in days.
+
+#### `aips_gsc_max_rows`
+Filters the maximum number of Google Search Console rows (page × query) read per keyword sync (3.7.6).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $max_rows`: Default `100000` (four API pages of 25,000 rows).
+
+#### `aips_publish_linking_qualifies`
+Filters whether a newly published post gets generation-time linking (3.7.6). By default a post qualifies when it was generated by AIPS, is published, is in the link index scope, and hasn't been linked yet.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `bool $qualifies`: Default decision.
+    *   `WP_Post $post`: The published post.
+
+#### `aips_publish_linking_user`
+Filters the user that generation-time linking acts as when it inserts links from cron. That user must be able to post unfiltered HTML, so embeds survive kses. Return `0` to only create suggestions.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $user_id`: Default: the post author if they can post unfiltered HTML and edit others' posts, otherwise the first administrator.
+    *   `int $post_id`: The published post.
+
+#### `aips_publish_linking_completed`
+Fires after a newly published AIPS post has been linked into the site.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `int $post_id`: The published post.
+    *   `array $run`: Inbound run summary (`job_id`, `applied`, `review`, `skipped`).
+    *   `int $outbound`: The number of outbound suggestions queued for review.
+
+#### `aips_redirect_providers`
+Filters the redirect providers AIPS can use (3.7.7). The order matters for "Automatic": the first available provider wins. The built-in provider is always added last if it's missing.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `AIPS_Redirect_Provider[] $providers`: The Redirection, Yoast SEO Premium, Rank Math and built-in providers.
+
+#### `aips_redirection_group_id`
+Filters the Redirection plugin group that AIPS adds redirects to.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $group_id`: Defaults to `0`, which means the first group of Redirection's WordPress module.
+
+#### `aips_redirect_created`
+Fires after AIPS creates a redirect.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `object $redirect`: The stored `aips_redirects` row (`source_path`, `target_url`, `status_code`, `provider`, `provider_ref`, `origin`, ...).
+
+#### `aips_posts_consolidated`
+Fires after two overlapping posts were consolidated (Cannibalization Shield → Consolidate).
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `array $record`: `id`, `keep_id`, `retire_id`, `retire_url`, `previous_status`, `redirect_id`, `content_mode` (`none`, `revision` or `rewrite`), `revision_id`, `fixes`, `links_repointed`, `link_failures`, `user_id`, `time`.
+
+#### `aips_posts_consolidation_undone`
+Fires after a consolidation was undone.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `array $record`: The consolidation record (see `aips_posts_consolidated`).
+    *   `string[] $warnings`: Steps that were skipped because a post was edited in the meantime.
+
+#### `aips_silo_guide_items`
+Filters the articles listed in a silo pillar's "In this guide" list.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array[] $items`: Items with `id`, `title`, `url` and `score` (closest to the pillar first, capped by the setting).
+    *   `int $pillar_id`: The pillar post.
+
+#### `aips_silo_guide_html`
+Filters the HTML of a silo pillar's "In this guide" list.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $html`: The `<nav class="aips-silo-guide">` markup.
+    *   `array[] $items`: The listed items.
+    *   `int $pillar_id`: The pillar post.
+
+#### `aips_link_index_render_html`
+Filters the HTML the link index reads for a post, after keyword link rules, so that links added when the post is displayed are counted. Silos use it for the "In this guide" list.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $html`: HTML to index.
+    *   `int $post_id`: The post.
+
+#### `aips_link_index_hash_salt`
+Filters extra state mixed into a post's link index hash. When the salt changes, the next scan re-indexes the post.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $salt`: Extra state (default empty).
+    *   `int $post_id`: The post.
+
+#### `aips_inbound_anchor_phrases`
+Filters the phrases used to place inbound links to a post (most specific first). Defaults to the post's top Google Search Console queries (when connected), the Yoast / Rank Math focus keyword(s), the full title when it has 2–8 words, and 2–4 word runs of the title that do not start or end with a stop word.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string[] $phrases`: Anchor phrases.
+    *   `WP_Post $target`: The post that should receive links.
+
+#### `aips_internal_link_inserted`
+Fires after a suggested internal link is inserted into its source post.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `int $suggestion_id`: Row ID in `aips_internal_links`.
+    *   `int $source_id`: Post that received the link.
+    *   `int $target_id`: Post being linked to.
+
+#### `aips_internal_link_reverted`
+Fires after an inserted internal link is undone and the original text restored.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `int $suggestion_id`: Row ID in `aips_internal_links`.
+    *   `int $source_id`: Post the link was removed from.
+
+#### `aips_inbound_suggest_below`
+Filters the inbound-link count below which the Link Report offers "Suggest Links" for a post.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $threshold`: Default `3` (posts linked from 0–2 other posts).
+
+#### `aips_content_indexer_skip_post_save`
+Skip semantic re-indexing (embeddings + relationships) for a post save. Auto-link runs return `true` while inserting links, because adding an `<a>` tag does not change a post's text.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `bool $skip`: Default `false`.
+    *   `int $post_id`: Post being saved.
+
+### Sources reliability hooks
+
+- `aips_fetch_sources`: earliest-due single-event fetch dispatcher. It replaces the legacy recurring event, preserving individual Source intervals. No event remains when no active Source has automatic fetching enabled.
+- `aips_fetch_sources_continue`: one single event after 60 seconds when overdue work remains or worker ownership is busy; every run rechecks due state. Default batch size is ten (`aips_sources_cron_max_per_run`), with a 20-second soft budget checked between Sources and an expiring 300-second owner lease shared with manual fetching.
+- `aips_sources_selection_diagnostic`: action with one associative payload: `reason` (`no_groups`, `no_active_sources`, `no_content`, `prompt_budget`), `group_ids`, `source_ids`, `omitted_source_ids`. Generation records diagnostics; previews return them without recording usage.
+- `aips_source_snapshots_injected`: compatible three-argument action (`snapshots`, `term_ids`, `sources`) at usage recording for a submitted AI request, including content regeneration. Render-only prompt previews emit no usage action. An AI-generated post preview submits a real request and counts usage. Usage records once at the first provider attempt, including failed calls and retries; unavailable providers, open circuits, and local rate-limit rejections do not count. Usage does not establish model reliance or publication.
+- `aips_sources_archive_maintenance`: daily cleanup only when `aips_source_archive_retention_days` is nonzero (default 0, maximum 3650).
+- `aips_sources_archive_maintenance_continue`: single 60-second continuation for remaining expired snapshots. Each run deletes at most 100 rows and protects the newest usable current-URL snapshot. Metadata in generation history is retained. Both maintenance hooks are cleared when retention is disabled or the plugin is deactivated.
+
+Response and prompt limits default through `AIPS_Config`: `aips_source_fetch_max_response_bytes` (2097152 bytes; responses reaching the limit are rejected) and `aips_source_prompt_total_max_chars` (16000 Unicode snippet characters). Per-Source limits remain in effect. Archive selection projects one least-used/FIFO snapshot per eligible Source without loading raw HTML.
+
+Injected `AIPS_AI_Service_Interface` implementations must support the internal `_aips_on_submission` option: invoke its callable immediately before the first provider attempt, after local guards, and strip it from provider parameters and logs. Preserve the same one-shot callback across retries and JSON fallbacks. The default service implements this boundary; rendering alone never invokes it.

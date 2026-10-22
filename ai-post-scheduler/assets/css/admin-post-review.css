@@ -95,7 +95,7 @@
 .aips-cell-source {
 	display: block;
 	font-size: 12px;
-	color: var(--aips-text-tertiary, #757575);
+	color: var(--aips-text-tertiary);
 	margin-top: 3px;
 	font-weight: 400;
 }
@@ -105,9 +105,9 @@
 	display: inline-flex;
 	align-items: stretch;
 	gap: 0;
-	border: 1px solid #dcdcde;
+	border: 1px solid var(--aips-gray-100);
 	border-radius: 6px;
-	background: #fff;
+	background: var(--aips-white);
 }
 
 .aips-row-action-group .aips-btn:first-child {
@@ -125,7 +125,7 @@
 }
 
 .aips-row-action-group .aips-btn + .aips-btn {
-	border-left: 1px solid #dcdcde;
+	border-left: 1px solid var(--aips-gray-100);
 }
 
 .aips-row-action-overflow-toggle .dashicons,
@@ -145,13 +145,53 @@
 .aips-row-action-menu {
 	min-width: 180px;
 	padding: 4px 0;
-	border: 1px solid #dcdcde;
+	border: 1px solid var(--aips-gray-100);
 	border-radius: 6px;
 	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-	background: #fff;
+	background: var(--aips-white);
 	margin-top: 6px;
 	position: absolute;
+	top: 100%;
+	right: 0;
 	z-index: 12;
+}
+
+.aips-list-table-wrap .aips-post-review-table .column-actions {
+	width: 1%;
+	white-space: nowrap;
+	text-align: right;
+}
+
+.aips-post-review-table .column-actions .cell-actions {
+	display: inline-block;
+	text-align: left;
+}
+
+.aips-post-review-table .column-created {
+	white-space: nowrap;
+}
+
+.aips-post-review-table .column-context {
+	color: var(--aips-text-tertiary);
+}
+
+.aips-post-review-table .aips-cell-source {
+	margin-top: 0;
+}
+
+/* Pagination lives in the bulk-actions toolbar, like the History table. */
+.aips-panel-toolbar .tablenav-pages {
+	float: none;
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.aips-panel-toolbar .tablenav-pages .pagination-links {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
 }
 
 .aips-row-action-menu[hidden] {
@@ -164,8 +204,8 @@
 	gap: 8px;
 	padding: 7px 10px;
 	text-decoration: none;
-	color: #1d2327;
-	border-top: 1px solid #f0f0f1;
+	color: var(--aips-gray-900);
+	border-top: 1px solid var(--aips-gray-50);
 	border-right: 0;
 	border-bottom: 0;
 	border-left: 0;
@@ -182,8 +222,8 @@
 
 .aips-row-action-menu .aips-row-action-item:hover,
 .aips-row-action-menu .aips-row-action-item:focus-visible {
-	background: #f6f7f7;
-	color: #1d2327;
+	background: var(--aips-gray-tint);
+	color: var(--aips-gray-900);
 }
 
 .cell-actions {
@@ -191,21 +231,13 @@
 }
 
 .aips-row-action-group .aips-publish-post {
-	background: #00a32a;
-	color: #fff;
+	background: var(--aips-success);
+	color: var(--aips-white);
 }
 
 .aips-row-action-group .aips-publish-post:hover,
 .aips-row-action-group .aips-publish-post:focus-visible {
 	background: #007c21;
-}
-
-.aips-row-action-menu .aips-ai-edit-btn {
-	color: #4a2ca3;
-}
-
-.aips-row-action-menu .aips-regenerate-post {
-	color: #8a4b00;
 }
 
 /* Compact responsive mode */
@@ -221,4 +253,25 @@
 	.aips-row-action-menu {
 		min-width: 150px;
 	}
+}
+
+/* View-post arrow next to the title */
+.aips-view-post-link {
+	display: inline-flex;
+	align-items: center;
+	margin-left: 4px;
+	color: var(--aips-gray-400);
+	text-decoration: none;
+	vertical-align: middle;
+}
+
+.aips-view-post-link .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.aips-view-post-link:hover,
+.aips-view-post-link:focus-visible {
+	color: var(--aips-primary);
 }

@@ -38,7 +38,6 @@ class AIPS_Settings_AJAX {
 
 		add_action('wp_ajax_aips_save_settings', array($this, 'ajax_save_settings'));
 		add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
-		add_action('wp_ajax_aips_notifications_data_hygiene', array($this, 'ajax_notifications_data_hygiene'));
 	}
 
 	/**
@@ -66,12 +65,20 @@ class AIPS_Settings_AJAX {
 				continue;
 			}
 
-			if (is_array($raw_value) && 'aips_notification_preferences' !== $option_name) {
+			$array_settings = array(
+				'aips_notification_preferences',
+				'aips_ai_assistance_contexts',
+				'aips_wp_ai_connector_ids',
+				'aips_indexer_post_types',
+				'aips_research_niches',
+			);
+
+			if (is_array($raw_value) && !in_array($option_name, $array_settings, true)) {
 				continue;
 			}
 
 			$sanitized_value = sanitize_option($option_name, $raw_value);
-			update_option($option_name, $sanitized_value);
+			AIPS_Config::get_instance()->set_option($option_name, $sanitized_value);
 			$updated[] = $option_name;
 		}
 
@@ -81,7 +88,7 @@ class AIPS_Settings_AJAX {
 
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Settings saved successfully.', 'ai-post-scheduler'),
-			'updated' => array_keys($updated),
+			'updated' => array_values($updated),
 		));
 	}
 
@@ -95,7 +102,7 @@ class AIPS_Settings_AJAX {
 
 		$prompt  = 'Say "Hello World" in 2 words.';
 		$options = array(
-			'maxTokens' => 20,
+			'max_tokens' => 20,
 		);
 		$history = $this->history_service->create(
 			'settings_connection_test',
@@ -146,107 +153,11 @@ class AIPS_Settings_AJAX {
 			null,
 			$result
 		);
-		$history->complete_success(array('status' => 'success'));
+		$history->complete_success();
 
 		// SECURITY: Escape the AI response before sending it to the browser to prevent XSS.
 		// Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.
 		AIPS_Ajax_Response::success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
-	}
-
-	/**
-	 * Run one-time notifications hygiene actions from System Status.
-	 *
-	 * @return void
-	 */
-	public function ajax_notifications_data_hygiene() {
-		$this->verify_request();
-
-		$history = $this->history_service->create(
-			'settings_notifications_hygiene',
-			array(
-				'user_id' => get_current_user_id(),
-			)
-		);
-		$history->record(
-			'activity',
-			__('Running notifications hygiene from the settings screen.', 'ai-post-scheduler'),
-			array(
-				'source' => 'settings_ui',
-			)
-		);
-
-		$removed_options = 0;
-		if (AIPS_Config::get_instance()->has_option('aips_review_notifications_enabled')) {
-			delete_option('aips_review_notifications_enabled');
-			$removed_options++;
-		}
-
-		$unscheduled_events = 0;
-		$legacy_hook = 'aips_send_review_notifications';
-		$next_run = wp_next_scheduled($legacy_hook);
-		while ($next_run) {
-			wp_unschedule_event($next_run, $legacy_hook);
-			$unscheduled_events++;
-			$next_run = wp_next_scheduled($legacy_hook);
-		}
-
-		$rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
-		if (!$rollup_scheduled) {
-			wp_schedule_event(AIPS_DateTime::now()->timestamp(), 'daily', 'aips_notification_rollups');
-			$rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
-
-			if (!$rollup_scheduled) {
-				$history->record(
-					'warning',
-					__('Notification rollup remained unscheduled after hygiene attempted to recreate it.', 'ai-post-scheduler'),
-					array(
-						'hook' => 'aips_notification_rollups',
-					)
-				);
-			}
-		}
-
-		$registry = AIPS_Notifications::get_notification_type_registry();
-		$allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
-		$current_preferences = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
-		$current_preferences = is_array($current_preferences) ? $current_preferences : array();
-		$config_defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
-		$config_defaults = is_array($config_defaults) ? $config_defaults : array();
-
-		$cleaned_preferences = array();
-		foreach ($registry as $type => $meta) {
-			$fallback = isset($config_defaults[$type]) ? $config_defaults[$type] : (isset($meta['default_mode']) ? $meta['default_mode'] : AIPS_Notifications::MODE_BOTH);
-			$mode = isset($current_preferences[$type]) ? sanitize_key($current_preferences[$type]) : $fallback;
-			if (!in_array($mode, $allowed_modes, true)) {
-				$mode = $fallback;
-			}
-			$cleaned_preferences[$type] = $mode;
-		}
-
-		$preferences_changed = ($cleaned_preferences !== $current_preferences);
-		if ($preferences_changed) {
-			update_option('aips_notification_preferences', $cleaned_preferences, false);
-		}
-
-		$details = array(
-			'removed_options'     => $removed_options,
-			'unscheduled_events'  => $unscheduled_events,
-			'rollup_scheduled'    => $rollup_scheduled ? 1 : 0,
-			'preferences_changed' => $preferences_changed ? 1 : 0,
-		);
-
-		$history->record(
-			'activity',
-			__('Notifications hygiene completed.', 'ai-post-scheduler'),
-			null,
-			$details
-		);
-		$history->complete_success($details);
-
-		AIPS_Ajax_Response::success(array(
-			'message' => __('Notifications hygiene completed successfully.', 'ai-post-scheduler'),
-			'details' => $details,
-		));
 	}
 
 	/**

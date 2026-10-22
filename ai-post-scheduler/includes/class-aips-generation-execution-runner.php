@@ -122,7 +122,14 @@ class AIPS_Generation_Execution_Runner {
 						'event_status' => 'failed',
 					),
 					null,
-					array_merge($history_meta, array('error' => $e->getMessage()))
+					array_merge($history_meta, array(
+						'error'           => $e->getMessage(),
+						'exception_class' => get_class($e),
+						'exception_trace' => $e->getTraceAsString(),
+						'exception_code'  => $e->getCode(),
+						'exception_file'  => $e->getFile(),
+						'exception_line'  => $e->getLine(),
+					))
 				);
 
 				$this->history_service->update_history_record(

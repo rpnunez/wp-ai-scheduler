@@ -30,6 +30,11 @@ class AIPS_AI_Edit_Controller {
 	 * @var AIPS_History_Repository_Interface
 	 */
 	private $history_repository;
+
+	/**
+	 * @var AIPS_Post_Manager
+	 */
+	private $post_manager;
 	
 	/**
 	 * Constructor
@@ -41,6 +46,7 @@ class AIPS_AI_Edit_Controller {
 		$container = AIPS_Container::get_instance();
 		$this->service            = $service ?: new AIPS_Component_Regeneration_Service();
 		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+		$this->post_manager       = new AIPS_Post_Manager();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
@@ -405,9 +411,9 @@ class AIPS_AI_Edit_Controller {
 		// Update featured image
 		if (isset($components['featured_image_id'])) {
 			$attachment_id = absint($components['featured_image_id']);
+			$updated_components[] = 'featured_image';
 			if ($attachment_id > 0) {
 				set_post_thumbnail($post_id, $attachment_id);
-				$updated_components[] = 'featured_image';
 			} else {
 				delete_post_thumbnail($post_id);
 			}
@@ -429,6 +435,7 @@ class AIPS_AI_Edit_Controller {
 		}
 
 		do_action('aips_post_components_updated', $post_id, $updated_components, $sanitized_components);
+		$this->reconcile_partial_generation_state($post_id);
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
@@ -553,7 +560,7 @@ class AIPS_AI_Edit_Controller {
 		// Restore the value to the post
 		$post_data = array('ID' => $post_id);
 		$restored_value = $revision_to_restore['value'];
-		
+
 		switch ($component) {
 			case 'title':
 				$post_data['post_title'] = sanitize_text_field($restored_value);
@@ -565,19 +572,22 @@ class AIPS_AI_Edit_Controller {
 				$post_data['post_content'] = wp_kses_post($restored_value);
 				break;
 			case 'featured_image':
-				// For featured image, the value is an array with attachment_id
-				if (is_array($restored_value) && isset($restored_value['attachment_id'])) {
-					$attachment_id = absint($restored_value['attachment_id']);
-					if ($attachment_id > 0) {
-						set_post_thumbnail($post_id, $attachment_id);
-					} else {
-						delete_post_thumbnail($post_id);
-					}
-					$restored_value = array(
-						'attachment_id' => $attachment_id,
-						'url' => $attachment_id ? wp_get_attachment_url($attachment_id) : '',
-					);
+				$restored_featured_image = $this->normalize_featured_image_revision_value($restored_value);
+				if (is_wp_error($restored_featured_image)) {
+					AIPS_Ajax_Response::error(__('Invalid featured image revision data.', 'ai-post-scheduler'));
 				}
+
+				$attachment_id = $restored_featured_image['attachment_id'];
+				if ($attachment_id > 0) {
+					$thumbnail_result = set_post_thumbnail($post_id, $attachment_id);
+					if (false === $thumbnail_result) {
+						AIPS_Ajax_Response::error(__('Failed to restore featured image revision.', 'ai-post-scheduler'));
+					}
+				} else {
+					delete_post_thumbnail($post_id);
+				}
+
+				$restored_value = $restored_featured_image;
 				break;
 		}
 		
@@ -590,6 +600,27 @@ class AIPS_AI_Edit_Controller {
 				AIPS_Ajax_Response::error(__('An error occurred while restoring component revision.', 'ai-post-scheduler'));
 			}
 		}
+
+		$sanitized_components = array();
+		switch ($component) {
+			case 'title':
+				$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
+				break;
+			case 'excerpt':
+				$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
+				break;
+			case 'content':
+				$sanitized_components['content'] = wp_kses_post((string) $restored_value);
+				break;
+			case 'featured_image':
+				$sanitized_components['featured_image_id'] = is_array($restored_value) && isset($restored_value['attachment_id'])
+					? absint($restored_value['attachment_id'])
+					: 0;
+				break;
+		}
+
+		do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
+		$this->reconcile_partial_generation_state($post_id);
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),
@@ -649,5 +680,47 @@ class AIPS_AI_Edit_Controller {
 			default:
 				return '';
 		}
+	}
+
+	/**
+	 * Validate and normalize a featured image revision payload before restore.
+	 *
+	 * Featured image revisions are stored as arrays with attachment_id/url. If
+	 * that shape is missing, the restore should fail instead of silently
+	 * pretending the component was restored.
+	 *
+	 * @param mixed $value Raw revision payload.
+	 * @return array|WP_Error
+	 */
+	private function normalize_featured_image_revision_value($value) {
+		if (!is_array($value) || !array_key_exists('attachment_id', $value)) {
+			return new WP_Error('invalid_featured_image_revision', __('Invalid featured image revision data.', 'ai-post-scheduler'));
+		}
+
+		$attachment_id = absint($value['attachment_id']);
+		if ($attachment_id > 0) {
+			$attachment = get_post($attachment_id);
+			if (!$attachment || 'attachment' !== $attachment->post_type) {
+				return new WP_Error('invalid_featured_image_revision', __('Invalid featured image revision data.', 'ai-post-scheduler'));
+			}
+		}
+
+		return array(
+			'attachment_id' => $attachment_id,
+			'url' => $attachment_id ? wp_get_attachment_url($attachment_id) : '',
+		);
+	}
+
+	/**
+	 * Reconcile partial-generation metadata against the post's current persisted state.
+	 *
+	 * This is used after AJAX save/restore requests because the AI Edit
+	 * controller is booted in AJAX mode without the admin save_post reconciler.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private function reconcile_partial_generation_state($post_id) {
+		$this->post_manager->reconcile_generation_status_meta_from_post($post_id);
 	}
 }

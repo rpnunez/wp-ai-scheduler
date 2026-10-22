@@ -1,0 +1,11 @@
+# Repository-scoped Codex settings. Codex applies this file only when the
+# project is trusted; personal and system configuration remain outside the repo.
+
+[features]
+multi_agent = true
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+default_subagent_reasoning_effort = "medium"
+interrupt_message = true

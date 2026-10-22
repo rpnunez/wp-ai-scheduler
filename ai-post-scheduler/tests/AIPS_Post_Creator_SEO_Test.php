@@ -48,6 +48,7 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
 
         $this->assertSame(array(), $aips_test_meta);
         $this->assertIsInt($post_id);
+        $this->assertSame('1', $this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATED_POST));
     }
 
     /**
@@ -73,6 +74,7 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
             'seo_title' => 'Custom SEO Title',
         ));
 
+        $this->assertSame('1', $this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATED_POST));
         $this->assertSame('Primary Keyword', $this->get_stored_post_meta($post_id, '_yoast_wpseo_focuskw'));
         $this->assertSame('Primary Keyword', $this->get_stored_post_meta($post_id, 'rank_math_focus_keyword'));
         $this->assertSame('Meta description value here.', $this->get_stored_post_meta($post_id, '_yoast_wpseo_metadesc'));
@@ -100,6 +102,7 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
             'template' => $template,
         ));
 
+        $this->assertSame('1', $this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATED_POST));
         $this->assertSame('Title Used As Keyword', $this->get_stored_post_meta($post_id, '_yoast_wpseo_focuskw'));
         $this->assertSame('Title Used As Keyword', $this->get_stored_post_meta($post_id, '_yoast_wpseo_title'));
         $this->assertSame('Another generated body with more details for description.', $this->get_stored_post_meta($post_id, '_yoast_wpseo_metadesc'));
@@ -132,9 +135,10 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
             ),
         ));
 
-        $this->assertSame('true', $this->get_stored_post_meta($post_id, 'aips_post_generation_incomplete'));
+        $this->assertSame('1', $this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATED_POST));
+        $this->assertSame('true', $this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE));
 
-        $decoded_statuses = json_decode($this->get_stored_post_meta($post_id, 'aips_post_generation_component_statuses'), true);
+        $decoded_statuses = json_decode($this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES), true);
         $this->assertSame(
             array(
                 'post_title' => true,
@@ -145,7 +149,7 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
             $decoded_statuses
         );
 
-        $this->assertSame('true', $this->get_stored_post_meta($post_id, 'aips_post_generation_had_partial'));
+        $this->assertSame('true', $this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL));
     }
 
     /**
@@ -177,8 +181,8 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
             false
         );
 
-        $this->assertSame('false', $this->get_stored_post_meta($post_id, 'aips_post_generation_incomplete'));
-        $this->assertSame('true', $this->get_stored_post_meta($post_id, 'aips_post_generation_had_partial'));
+        $this->assertSame('false', $this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE));
+        $this->assertSame('true', $this->get_stored_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL));
     }
 
     /**

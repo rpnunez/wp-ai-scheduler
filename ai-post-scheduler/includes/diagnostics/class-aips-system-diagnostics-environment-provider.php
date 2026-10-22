@@ -13,10 +13,11 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 	 */
 	public function get_diagnostics(): array {
 		return array(
-			'environment' => $this->check_environment(),
-			'plugin'      => $this->check_plugin(),
-			'database'    => $this->check_database(),
-			'filesystem'  => $this->check_filesystem(),
+			'environment'      => $this->check_environment(),
+			'plugin'           => $this->check_plugin(),
+			'database'         => $this->check_database(),
+			'embeddings cache' => $this->check_embeddings_cache(),
+			'filesystem'       => $this->check_filesystem(),
 		);
 	}
 
@@ -52,12 +53,14 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 	}
 
 	/**
-	 * Check plugin version, database version, and AI Engine presence.
+	 * Check plugin version, database version, and AI provider readiness.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function check_plugin() {
 		$ai_engine_active  = class_exists( 'Meow_MWAI_Core' );
+		$active_provider   = AIPS_AI_Provider_Factory::create();
+		$provider_ready    = $active_provider->is_available();
 		$db_version_raw    = AIPS_Config::get_instance()->get_option( 'aips_db_version' );
 		$db_version        = is_scalar( $db_version_raw ) ? trim( (string) $db_version_raw ) : 'Unknown';
 		$db_version_is_valid = (bool) preg_match( '/^\d+(?:\.\d+)*(?:[-+~._][0-9A-Za-z.-]+)?$/', $db_version );
@@ -94,7 +97,15 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 			'ai_engine' => array(
 				'label'  => __( 'AI Engine Plugin', 'ai-post-scheduler' ),
 				'value'  => $ai_engine_active ? __( 'Active', 'ai-post-scheduler' ) : __( 'Missing', 'ai-post-scheduler' ),
-				'status' => $ai_engine_active ? 'ok' : 'error',
+				// Meow is one of several possible backends now; its absence is only
+				// informational as long as another provider is available.
+				'status' => $ai_engine_active ? 'ok' : 'info',
+			),
+			'ai_provider' => array(
+				'label'   => __( 'Active AI Provider', 'ai-post-scheduler' ),
+				'value'   => $active_provider->get_label(),
+				'status'  => $provider_ready ? 'ok' : 'error',
+				'details' => $provider_ready ? array() : array( $active_provider->get_unavailable_reason() ),
 			),
 		);
 	}
@@ -107,12 +118,14 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 	private function check_database() {
 		global $wpdb;
 
-		$tables  = AIPS_DB_Manager::get_expected_columns();
-		$results = array();
+		$tables          = AIPS_DB_Manager::get_expected_columns();
+		$database_tables = $wpdb->get_col( 'SHOW TABLES' );
+		$table_lookup    = array_fill_keys( array_map( 'strtolower', $database_tables ), true );
+		$results         = array();
 
 		foreach ( $tables as $table_name => $columns ) {
 			$full_table_name = $wpdb->prefix . $table_name;
-			$table_exists    = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $full_table_name ) ) === $full_table_name;
+			$table_exists    = isset( $table_lookup[ strtolower( $full_table_name ) ] );
 
 			if ( ! $table_exists ) {
 				$results[ $table_name ] = array(
@@ -124,7 +137,8 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 			}
 
 			$missing_columns = array();
-			$db_columns      = $wpdb->get_results( "SHOW COLUMNS FROM $full_table_name", ARRAY_A );
+			$escaped_table   = str_replace( '`', '``', $full_table_name );
+			$db_columns      = $wpdb->get_results( "SHOW COLUMNS FROM `{$escaped_table}`", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$db_column_names = array_column( $db_columns, 'Field' );
 
 			foreach ( $columns as $col ) {
@@ -168,6 +182,46 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 				'label'  => __( 'Log Directory', 'ai-post-scheduler' ),
 				'value'  => $exists ? ( $writable ? __( 'Writable', 'ai-post-scheduler' ) : __( 'Not Writable', 'ai-post-scheduler' ) ) : __( 'Missing', 'ai-post-scheduler' ),
 				'status' => ( $exists && $writable ) ? 'ok' : 'error',
+			),
+		);
+	}
+
+	/**
+	 * Check embeddings vector cache status, driver, and size.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function check_embeddings_cache() {
+		$container = AIPS_Container::get_instance();
+		$repo      = $container->has(AIPS_Embeddings_Repository::class)
+			? $container->make(AIPS_Embeddings_Repository::class)
+			: new AIPS_Embeddings_Repository();
+
+		$stats = $repo->get_embeddings_cache_stats();
+
+		return array(
+			'cache_driver' => array(
+				'label'  => __('Active Cache Driver', 'ai-post-scheduler'),
+				'value'  => $stats['driver'],
+				'status' => 'ok',
+			),
+			'cached_vectors' => array(
+				'label'  => __('Persisted Vector Transients', 'ai-post-scheduler'),
+				'value'  => sprintf(
+					/* translators: %d: number of cached vectors */
+					_n('%d vector cached', '%d vectors cached', (int) $stats['cached_vectors'], 'ai-post-scheduler'),
+					(int) $stats['cached_vectors']
+				),
+				'status' => 'ok',
+			),
+			'cache_ttl' => array(
+				'label'  => __('Cache Expiration Window', 'ai-post-scheduler'),
+				'value'  => sprintf(
+					/* translators: %d: TTL days */
+					__('%d Days', 'ai-post-scheduler'),
+					(int) $stats['ttl_days']
+				),
+				'status' => 'info',
 			),
 		);
 	}
