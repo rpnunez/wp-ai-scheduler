@@ -9,6 +9,13 @@ class Test_AIPS_History_Collapsed_Pagination extends WP_UnitTestCase {
 
 	const POST_TYPE = 'aips_collapse_test';
 
+	public function tearDown(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history';
+		$wpdb->delete($table, array('post_type' => self::POST_TYPE), array('%s'));
+		parent::tearDown();
+	}
+
 	public function test_plan_entry_sizes_groups_runs_and_keeps_singles() {
 		$sizes = AIPS_History_Repository::plan_entry_sizes(array('a', 'a', 'a', 'b', 'a', 'c', 'c'), 50);
 
@@ -71,6 +78,7 @@ class Test_AIPS_History_Collapsed_Pagination extends WP_UnitTestCase {
 				'uuid'            => wp_generate_uuid4(),
 				'post_type'       => self::POST_TYPE,
 				'template_id'     => 1,
+				'record_kind'     => 'generation',
 				'status'          => 'completed',
 				'creation_method' => $method,
 				'created_at'      => $base - $n,
@@ -185,6 +193,7 @@ class Test_AIPS_History_Collapsed_Pagination extends WP_UnitTestCase {
 				'uuid'            => wp_generate_uuid4(),
 				'post_type'       => self::POST_TYPE,
 				'template_id'     => 1,
+				'record_kind'     => 'generation',
 				'status'          => 'completed',
 				'creation_method' => ($i % 2 === 0) ? 'a_method' : 'b_method',
 				'created_at'      => $ts,

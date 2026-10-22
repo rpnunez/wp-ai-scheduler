@@ -83,17 +83,20 @@ class AIPS_Bulk_Batch_Processor {
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_Bulk_Batch_Job_Store|null $job_store       Injectable for testing.
-	 * @param AIPS_History_Service|null      $history_service Injectable for testing.
-	 * @param AIPS_Logger|null               $logger          Injectable for testing.
+	 * @param AIPS_Bulk_Batch_Job_Store|null           $job_store       Injectable for testing.
+	 * @param AIPS_History_Service_Interface|null      $history_service Injectable for testing.
+	 * @param AIPS_Logger|null                         $logger          Injectable for testing.
 	 */
 	public function __construct(
 		?AIPS_Bulk_Batch_Job_Store $job_store       = null,
-		?AIPS_History_Service      $history_service = null,
+		?AIPS_History_Service_Interface $history_service = null,
 		?AIPS_Logger               $logger          = null
 	) {
+		$container = AIPS_Container::get_instance();
 		$this->job_store       = $job_store       ?: new AIPS_Bulk_Batch_Job_Store();
-		$this->history_service = $history_service ?: new AIPS_History_Service();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
+			? $container->make(AIPS_History_Service_Interface::class)
+			: AIPS_History_Service::instance());
 		$this->logger          = $logger          ?: new AIPS_Logger();
 	}
 

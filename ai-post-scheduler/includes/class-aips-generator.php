@@ -49,6 +49,11 @@ class AIPS_Generator {
     private $post_metadata_prompt_builder;
 
     /**
+     * @var AIPS_Content_Normalizer
+     */
+    private $content_normalizer;
+
+    /**
      * @var AIPS_AI_Conversation|null Transcript for the current generation run.
      *
      * Non-null only while a conversational run is in progress. When null, every
@@ -95,7 +100,8 @@ class AIPS_Generator {
         $post_manager = null,
         ?AIPS_History_Service_Interface $history_service = null,
         $prompt_builder = null,
-        $markdown_parser = null
+        $markdown_parser = null,
+        ?AIPS_Content_Normalizer $content_normalizer = null
     ) {
         $container = AIPS_Container::get_instance();
         $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -104,12 +110,13 @@ class AIPS_Generator {
         $this->image_service      = $image_service ?: new AIPS_Image_Service( $this->ai_service );
         $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
-        $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+        $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : AIPS_History_Service::instance());
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->content_normalizer = $content_normalizer ?: new AIPS_Content_Normalizer();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -118,6 +125,19 @@ class AIPS_Generator {
         } else {
             $this->markdown_parser = null;
         }
+    }
+
+    /**
+     * Get content normalizer instance.
+     *
+     * @return AIPS_Content_Normalizer
+     */
+    public function get_content_normalizer(): AIPS_Content_Normalizer {
+        if ($this->content_normalizer === null) {
+            $this->content_normalizer = new AIPS_Content_Normalizer();
+        }
+        return $this->content_normalizer;
+    }
 
     }
 
@@ -799,39 +819,11 @@ class AIPS_Generator {
     /**
      * Safety net for excerpt length.
      *
-     * The excerpt prompt asks for 40-60 words (roughly 250-350 characters) and
-     * that full text is what gets stored as post_excerpt. This is only a guard
-     * against a model that ignores the word limit entirely — it is NOT the SEO
-     * meta-description cap. AIPS_Post_Manager::sanitize_meta_description()
-     * independently trims the meta description to 160 characters, so capping
-     * here as well would truncate every excerpt to less than half the length the
-     * prompt asked for.
-     *
-     * Uses mb_substr because a byte-wise cut can land mid-character and produce
-     * invalid UTF-8, and backs off to the last word boundary so the excerpt does
-     * not end mid-word.
-     *
      * @param string $excerpt Excerpt text.
      * @return string
      */
     private static function truncate_excerpt($excerpt) {
-        $excerpt = (string) $excerpt;
-        $limit   = self::EXCERPT_MAX_CHARS;
-
-        if (mb_strlen($excerpt) <= $limit) {
-            return $excerpt;
-        }
-
-        $truncated = mb_substr($excerpt, 0, $limit);
-        $last_space = mb_strrpos($truncated, ' ');
-
-        // Only back off to a word boundary when doing so keeps most of the text;
-        // a very long single token should still be cut rather than emptied.
-        if ($last_space !== false && $last_space >= (int) ($limit * 0.6)) {
-            $truncated = mb_substr($truncated, 0, $last_space);
-        }
-
-        return rtrim($truncated);
+        return (new AIPS_Content_Normalizer())->truncate_excerpt($excerpt, self::EXCERPT_MAX_CHARS);
     }
 
     /**
@@ -1637,49 +1629,17 @@ class AIPS_Generator {
      * @return string Sanitized HTML content.
      */
     public function normalize_generated_content_for_wordpress($content) {
-        if (!is_string($content)) {
-            return '';
-        }
-
-        $normalized_content = trim($content);
-
-        if ($normalized_content === '') {
-            return '';
-        }
-
-        if ( $this->markdown_parser && $this->markdown_parser->is_markdown( $normalized_content ) && ! $this->markdown_parser->contains_html( $normalized_content ) ) {
-            $normalized_content = $this->markdown_parser->parse( $normalized_content );
-        }
-
-        return wp_kses_post($normalized_content);
+        return $this->get_content_normalizer()->normalize_content($content, $this->markdown_parser);
     }
 
     /**
      * Remove a prepended title block from generated content when present.
      *
-     * Some models occasionally emit an article title at the start of content
-     * (for example as <h1>Title</h1> or Markdown "# Title"). WordPress already
-     * renders the post title separately, so keeping this heading creates a
-     * duplicated "second title" in the article body.
-     *
      * @param string $content Generated content.
      * @return string Content without a leading title block.
      */
     private function strip_leading_title_block_from_content($content) {
-        if (!is_string($content)) {
-            return '';
-        }
-
-        $cleaned = ltrim($content);
-
-        // Remove a leading HTML <h1>...</h1> title block.
-        $cleaned = preg_replace('/^<h1\b[^>]*>[\s\S]*?<\/h1>\s*/i', '', $cleaned, 1);
-
-        // Remove a leading Markdown "# Title" block when Markdown slipped through.
-        $cleaned = preg_replace('/^#\\s+[^\\n]+\\s*/u', '', $cleaned, 1);
-        
-
-        return ltrim((string) $cleaned);
+        return $this->get_content_normalizer()->strip_leading_title_block($content);
     }
 
     /**

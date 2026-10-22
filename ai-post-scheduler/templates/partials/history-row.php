@@ -102,10 +102,10 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
             <span class="dashicons dashicons-<?php echo esc_attr($icon); ?>"></span>
             <?php echo esc_html(ucfirst($display_status)); ?>
         </span>
-        <?php if ($item->error_count > 0 || $item->warning_count > 0): ?>
+        <?php if (!empty($item->error_count) || !empty($item->warning_count)): ?>
             <span class="aips-history-issue-counts">
-                <?php if ($item->error_count > 0): ?><span class="aips-history-count-error"><?php echo esc_html(sprintf(_n('%d error', '%d errors', $item->error_count, 'ai-post-scheduler'), $item->error_count)); ?></span><?php endif; ?>
-                <?php if ($item->warning_count > 0): ?><span><?php echo esc_html(sprintf(_n('%d warning', '%d warnings', $item->warning_count, 'ai-post-scheduler'), $item->warning_count)); ?></span><?php endif; ?>
+                <?php if (!empty($item->error_count)): ?><span class="aips-history-count-error"><?php echo esc_html(sprintf(_n('%d error', '%d errors', (int) $item->error_count, 'ai-post-scheduler'), (int) $item->error_count)); ?></span><?php endif; ?>
+                <?php if (!empty($item->warning_count)): ?><span><?php echo esc_html(sprintf(_n('%d warning', '%d warnings', (int) $item->warning_count, 'ai-post-scheduler'), (int) $item->warning_count)); ?></span><?php endif; ?>
             </span>
         <?php endif; ?>
     </td>
@@ -117,11 +117,16 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
             <?php elseif (!empty($elapsed_label)): ?>
                 <span class="<?php echo $is_stalled ? 'aips-text-warning' : ''; ?>"><?php echo esc_html($elapsed_label); ?></span>
             <?php endif; ?>
-            <?php if ($item->ai_call_count > 0): ?><span><?php echo esc_html(sprintf(_n('%d AI call', '%d AI calls', $item->ai_call_count, 'ai-post-scheduler'), $item->ai_call_count)); ?></span><?php endif; ?>
+            <?php if (!empty($item->ai_call_count)): ?><span><?php echo esc_html(sprintf(_n('%d AI call', '%d AI calls', (int) $item->ai_call_count, 'ai-post-scheduler'), (int) $item->ai_call_count)); ?></span><?php endif; ?>
         </span>
     </td>
     <td class="column-date">
-        <time class="aips-meta-text" datetime="<?php echo esc_attr(wp_date('c', (int) $item->created_at)); ?>" title="<?php echo esc_attr($item->formatted_date); ?>"><?php echo esc_html($item->relative_date); ?></time>
+        <?php
+        $created_ts     = !empty($item->created_at) ? (int) $item->created_at : 0;
+        $formatted_date = !empty($item->formatted_date) ? $item->formatted_date : ($created_ts ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $created_ts) : '');
+        $relative_date  = !empty($item->relative_date) ? $item->relative_date : ($created_ts ? human_time_diff($created_ts, time()) . ' ' . __('ago', 'ai-post-scheduler') : '');
+        ?>
+        <time class="aips-meta-text" datetime="<?php echo esc_attr(wp_date('c', $created_ts)); ?>" title="<?php echo esc_attr($formatted_date); ?>"><?php echo esc_html($relative_date); ?></time>
         <div class="cell-actions">
             <div class="aips-row-action-group">
                 <button type="button"

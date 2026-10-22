@@ -58,13 +58,28 @@ class AIPS_Unified_Schedule_Service {
 
 	/**
 	 * Initialise the service and its dependencies.
+	 *
+	 * @param AIPS_Schedule_Repository|null          $schedule_repository          Optional schedule repository.
+	 * @param AIPS_Authors_Repository|null           $authors_repository           Optional authors repository.
+	 * @param AIPS_History_Repository_Interface|null $history_repository           Optional history repository.
+	 * @param AIPS_Author_Topics_Repository|null     $author_topics_repository     Optional author topics repository.
+	 * @param AIPS_Author_Topic_Logs_Repository|null $author_topic_logs_repository Optional author topic logs repository.
 	 */
-	public function __construct() {
-		$this->schedule_repository          = new AIPS_Schedule_Repository();
-		$this->authors_repository           = new AIPS_Authors_Repository();
-		$this->history_repository           = new AIPS_History_Repository();
-		$this->author_topics_repository     = new AIPS_Author_Topics_Repository();
-		$this->author_topic_logs_repository = new AIPS_Author_Topic_Logs_Repository();
+	public function __construct(
+		$schedule_repository = null,
+		$authors_repository = null,
+		?AIPS_History_Repository_Interface $history_repository = null,
+		$author_topics_repository = null,
+		$author_topic_logs_repository = null
+	) {
+		$container = AIPS_Container::get_instance();
+		$this->schedule_repository          = $schedule_repository ?: new AIPS_Schedule_Repository();
+		$this->authors_repository           = $authors_repository ?: new AIPS_Authors_Repository();
+		$this->history_repository           = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class)
+			? $container->make(AIPS_History_Repository_Interface::class)
+			: AIPS_History_Repository::instance());
+		$this->author_topics_repository     = $author_topics_repository ?: new AIPS_Author_Topics_Repository();
+		$this->author_topic_logs_repository = $author_topic_logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 	}
 
 	/**
