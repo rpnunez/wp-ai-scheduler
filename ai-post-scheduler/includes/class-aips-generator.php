@@ -63,6 +63,8 @@ class AIPS_Generator {
      */
     private $current_source_snapshots = array();
 
+    private $pending_sources_selection = array();
+
     /**
      * @var AIPS_Markdown_Parser Markdown parser
      */
@@ -140,10 +142,18 @@ class AIPS_Generator {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
+        $selection = $options['_aips_sources_selection'] ?? $this->pending_sources_selection;
+        unset($options['_aips_sources_selection']);
+        if (in_array($log_type, array('content', 'content_preview'), true)) {
+            $this->pending_sources_selection = array();
+        } else {
+            $selection = array();
+        }
         // Snapshot the caller's options for history records. The request options are
         // mutated below to carry the conversation transcript, which holds the whole
         // article and must never be serialized into a history row.
         $loggable_options = $options;
+        unset($loggable_options['_aips_on_submission']);
 
         // Log AI request before making the call
         if ($this->current_history) {
@@ -171,6 +181,17 @@ class AIPS_Generator {
             $options['conversation'] = $this->conversation;
         }
 
+        if ($selection) {
+            $submitted = false;
+            // Injected AI services must invoke this once transport is attempted,
+            // after their local availability, circuit-breaker and rate-limit guards.
+            $options['_aips_on_submission'] = function () use ($selection, &$submitted) {
+                if (!$submitted) {
+                    $submitted = true;
+                    $this->submit_sources_selection($selection);
+                }
+            };
+        }
         $result = $this->ai_service->generate_text($prompt, $options);
 
         // Record the exchange only on success; a failed call contributed no model
@@ -946,9 +967,8 @@ class AIPS_Generator {
         // Build the full content prompt from context and capture source snapshot usage.
         $this->current_source_snapshots = array();
       
-        add_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10, 3);
         $content_prompt = $this->post_content_prompt_builder->build($context);
-        remove_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10);
+        $this->pending_sources_selection = $this->post_content_prompt_builder->get_sources_selection();
 
         // Build contextual instructions
         $content_context = $this->prompt_builder->build_content_context($context);
@@ -1128,6 +1148,8 @@ class AIPS_Generator {
         // Get creation_method from context, default to 'manual' if not specified
         $creation_method = $context->get_creation_method() ?: 'manual';
         $history_metadata['creation_method'] = $creation_method;
+        // Every run is a generation whatever its creation_method (extensions may pass their own).
+        $history_metadata['record_kind'] = AIPS_History_Record_Kind::GENERATION;
 
         $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
 
@@ -1263,14 +1285,20 @@ class AIPS_Generator {
         }
 
         // Use new history API to complete with success
-        $this->current_history->complete_success(array(
+        $completion_data = array(
             'post_id' => $post_id,
             'post_type' => $context->get_post_type(),
             'generated_title' => $title,
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
-        ));
+        );
+        if ($generation_incomplete) {
+            // The post exists but some components failed: record that as partial, not completed.
+            $this->current_history->complete_partial('', $completion_data);
+        } else {
+            $this->current_history->complete_success($completion_data);
+        }
 
         if ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();
@@ -1365,6 +1393,21 @@ class AIPS_Generator {
      * @param array $sources   Source rows.
      * @return void
      */
+    private function submit_sources_selection(array $selection) {
+        foreach ($selection['diagnostics'] ?? array() as $diagnostic) {
+            $this->logger->log('Source selection warning: ' . $diagnostic['reason'], 'warning', $diagnostic);
+            if ($this->current_history) {
+                $this->current_history->record('warning', __('Source selection needs attention.', 'ai-post-scheduler'), $diagnostic, null, array('component' => 'content', 'source_selection_diagnostic' => $diagnostic));
+            }
+        }
+        $snapshots = $selection['snapshots'] ?? array();
+        $this->prompt_builder->record_sources_usage($snapshots);
+        if ($snapshots) {
+            $this->record_source_snapshots_injected($snapshots, $selection['group_ids'] ?? array(), $selection['sources'] ?? array());
+            do_action('aips_source_snapshots_injected', $snapshots, $selection['group_ids'] ?? array(), $selection['sources'] ?? array());
+        }
+    }
+
     public function record_source_snapshots_injected($snapshots, $term_ids = array(), $sources = array()) {
         if (empty($snapshots) || !is_array($snapshots)) {
             return;
@@ -1662,9 +1705,8 @@ class AIPS_Generator {
 	private function generate_and_normalize_content($context, $component_statuses, $generation_start) {
 		// Build the full content prompt from context and capture source snapshot usage.
 		$this->current_source_snapshots = array();
-		add_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10, 3);
 		$content_prompt = $this->post_content_prompt_builder->build($context);
-		remove_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10);
+		$this->pending_sources_selection = $this->post_content_prompt_builder->get_sources_selection();
 
 		if ($this->current_history) {
 			$this->current_history->record(

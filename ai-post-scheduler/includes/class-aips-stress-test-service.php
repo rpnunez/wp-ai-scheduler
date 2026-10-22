@@ -2222,7 +2222,14 @@ class AIPS_Stress_Test_Service {
 
         $container->record('session_metadata', 'Stress Test Suite Execution Results', null, $details_payload, $details_payload);
 
-        $container->complete_success(array('status' => $status));
+        $summary = sprintf(__('Stress Test Run: %1$d/%2$d Passed', 'ai-post-scheduler'), $passed, $total);
+        if ($status === 'completed') {
+            $container->complete_success();
+        } elseif ($status === 'partial') {
+            $container->complete_partial($summary);
+        } else {
+            $container->complete_failure($summary);
+        }
 
         return $container->get_id();
     }

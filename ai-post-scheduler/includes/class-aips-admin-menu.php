@@ -88,7 +88,7 @@ class AIPS_Admin_Menu {
         );
 
         // 5. Content
-        add_submenu_page(
+        $content_hook = add_submenu_page(
             'ai-post-scheduler',
             __('Content', 'ai-post-scheduler'),
             __('Content', 'ai-post-scheduler'),
@@ -96,6 +96,9 @@ class AIPS_Admin_Menu {
             'aips-generated-posts',
             array($this, 'render_generated_posts_page')
         );
+        if ($content_hook) {
+            add_action("load-{$content_hook}", array($this, 'setup_content_screen_options'));
+        }
 
         // 6. History
         $history_hook = add_submenu_page(
@@ -167,14 +170,17 @@ class AIPS_Admin_Menu {
             array($this, 'render_sources_page')
         );
 
-        add_submenu_page(
+        $source_data_hook = add_submenu_page(
             null,
-            __('View Source Data', 'ai-post-scheduler'),
-            __('View Source Data', 'ai-post-scheduler'),
+            __('Manage Source Data', 'ai-post-scheduler'),
+            __('Manage Source Data', 'ai-post-scheduler'),
             'manage_options',
             'aips-source-data',
             array($this, 'render_source_data_page')
         );
+        if ($source_data_hook) {
+            add_action("load-{$source_data_hook}", array($this, 'setup_source_data_screen_options'));
+        }
 
         add_submenu_page(
             null,
@@ -401,7 +407,7 @@ class AIPS_Admin_Menu {
             ));
         } elseif ('author-topics' === $tab) {
             $table = new AIPS_Author_Topics_List_Table();
-            AIPS_List_Table::register_screen_options($screen->id, $table->get_columns(), array(
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_all_columns(), array(
                 'label'   => __('Topics per page', 'ai-post-scheduler'),
                 'option'  => 'aips_author_topics_per_page',
                 'default' => 20,
@@ -420,17 +426,11 @@ class AIPS_Admin_Menu {
                 'default' => 20,
             ));
         } elseif ('sources' === $tab) {
-            AIPS_List_Table::register_screen_options($screen->id, array(
-                'label'        => __('Label', 'ai-post-scheduler'),
-                'url'          => __('URL', 'ai-post-scheduler'),
-                'groups'       => __('Groups', 'ai-post-scheduler'),
-                'fetch_status' => __('Content', 'ai-post-scheduler'),
-                'status'       => __('Status', 'ai-post-scheduler'),
-                'actions'      => __('Actions', 'ai-post-scheduler'),
-            ), array(
+            $table = new AIPS_Sources_List_Table();
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_hideable_columns(), array(
                 'label'   => __('Sources per page', 'ai-post-scheduler'),
-                'option'  => 'aips_sources_per_page',
-                'default' => 20,
+                'option'  => AIPS_Sources_List_Table::PER_PAGE_OPTION,
+                'default' => AIPS_Sources_List_Table::PER_PAGE_DEFAULT,
             ));
         } elseif ('campaigns' === $tab) {
             AIPS_List_Table::register_screen_options($screen->id, array(
@@ -482,6 +482,26 @@ class AIPS_Admin_Menu {
     }
 
     /**
+     * Setup screen options for the Manage Source Data page.
+     *
+     * @return void
+     */
+    public function setup_source_data_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        $source_id = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
+        $table     = new AIPS_Source_Data_List_Table(array('source_id' => $source_id));
+        AIPS_List_Table::register_screen_options($screen->id, $table->get_hideable_columns(), array(
+            'label'   => __('Snapshots per page', 'ai-post-scheduler'),
+            'option'  => AIPS_Source_Data_List_Table::PER_PAGE_OPTION,
+            'default' => AIPS_Source_Data_List_Table::PER_PAGE_DEFAULT,
+        ));
+    }
+
+    /**
      * Setup screen options for the History page.
      *
      * @return void
@@ -502,6 +522,35 @@ class AIPS_Admin_Menu {
             'label'   => __('History items per page', 'ai-post-scheduler'),
             'option'  => 'aips_history_per_page',
             'default' => 50,
+        ));
+    }
+
+    /**
+     * Setup screen options for the Content page.
+     *
+     * Screen Options are per-screen, so they are scoped to the active tab. Only
+     * the Pending Review tab (a WP_List_Table) registers them: a free-form
+     * drafts-per-page control and show/hide toggles for its non-essential
+     * columns. Other Content tabs are custom panels with no Screen Options.
+     *
+     * @return void
+     */
+    public function setup_content_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'aips-generated-posts';
+        if ('aips-pending-review' !== $tab) {
+            return;
+        }
+
+        $table = new AIPS_Pending_Review_List_Table();
+        AIPS_List_Table::register_screen_options($screen->id, $table->get_hideable_columns(), array(
+            'label'   => __('Drafts per page', 'ai-post-scheduler'),
+            'option'  => AIPS_Pending_Review_List_Table::PER_PAGE_OPTION,
+            'default' => AIPS_Pending_Review_List_Table::PER_PAGE_DEFAULT,
         ));
     }
 
@@ -778,39 +827,15 @@ class AIPS_Admin_Menu {
     public function render_source_data_page() {
         AIPS_Admin_Menu_Helper::safe_render(function() {
             $source_id      = isset($_GET['source_id']) ? absint(wp_unslash($_GET['source_id'])) : 0;
-            $paged          = isset($_GET['source_data_paged']) ? absint(wp_unslash($_GET['source_data_paged'])) : 1;
-            $search         = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
             $is_global_view = $source_id <= 0;
-            $per_page       = 20;
 
-            $repo      = new AIPS_Sources_Repository();
-            $data_repo = new AIPS_Sources_Data_Repository();
-            $source    = $source_id ? $repo->get_by_id($source_id) : null;
-            $sources   = $is_global_view ? $repo->get_all(false) : array();
+            $repo    = new AIPS_Sources_Repository();
+            $source  = $source_id ? $repo->get_by_id($source_id) : null;
+            $sources = $is_global_view ? $repo->get_all(false) : array();
 
-            $filters = array(
-                'fetch_status'      => isset($_GET['fetch_status']) ? sanitize_key(wp_unslash($_GET['fetch_status'])) : '',
-                'http_status_class' => isset($_GET['http_status_class']) ? absint(wp_unslash($_GET['http_status_class'])) : 0,
-                'fetched_after'     => isset($_GET['fetched_after']) ? sanitize_text_field(wp_unslash($_GET['fetched_after'])) : '',
-                'fetched_before'    => isset($_GET['fetched_before']) ? sanitize_text_field(wp_unslash($_GET['fetched_before'])) : '',
-                'min_char_count'    => isset($_GET['min_char_count']) ? absint(wp_unslash($_GET['min_char_count'])) : 0,
-                'max_char_count'    => isset($_GET['max_char_count']) ? absint(wp_unslash($_GET['max_char_count'])) : 0,
-                'search_body_text'  => !empty($_GET['search_body_text']),
-                'source_id'         => isset($_GET['filter_source_id']) ? absint(wp_unslash($_GET['filter_source_id'])) : 0,
-            );
-
-            if ($is_global_view) {
-                $source_data = $data_repo->get_paginated($search, $per_page, $paged, $filters);
-            } elseif (!$source) {
-                $source_data = array(
-                    'items'        => array(),
-                    'total'        => 0,
-                    'pages'        => 0,
-                    'current_page' => 1,
-                    'per_page'     => $per_page,
-                );
-            } else {
-                $source_data = $data_repo->get_paginated_by_source_id($source_id, $search, $per_page, $paged, $filters);
+            $source_data_table = new AIPS_Source_Data_List_Table(array('source_id' => $source_id));
+            if ($is_global_view || $source) {
+                $source_data_table->prepare_items();
             }
 
             include AIPS_PLUGIN_DIR . 'templates/admin/source-data.php';

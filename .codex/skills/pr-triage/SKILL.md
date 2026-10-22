@@ -28,4 +28,3 @@ Use this skill to evaluate overlap risk, readiness, and review posture for incom
 ## Useful references
 - `AGENTS.md`
 - `docs/DEVELOPMENT_GUIDELINES.md`
-- `.github/agents/PR Oracle v2.agent.md`

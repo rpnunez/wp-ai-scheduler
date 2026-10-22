@@ -120,7 +120,7 @@ make help        # list every target
 | `db-backup`, `db-restore` | Dump to / restore from `backup.sql`. |
 | `reload-php` | Reload Apache so `dev-php.ini` changes apply. |
 | `xdebug-on`, `xdebug-off`, `xdebug-status`, `xdebug-log`, `xdebug-log-follow` | Xdebug control (see Debugging). |
-| `test`, `test-verbose`, `test-coverage`, `test-ci` | PHPUnit (see [Testing](#testing)). |
+| `test`, `test-session`, `test-stop`, `test-verbose`, `test-coverage`, `test-ci` | PHPUnit (see [Testing](#testing)). |
 | `install`, `clean` | Reinstall / remove everything **including data volumes** (`clean` asks first). |
 | `prune` | Remove this project's dangling images only (other projects are untouched). |
 | `sync-wp-core` | Mirror WordPress files to `./.docker/wp-html` for IDE path mapping. |
@@ -189,7 +189,7 @@ All variables live in `.env` (created from `.env.example`, gitignored). `docker 
 | `MYSQL_PORT` | `3307` | Host port for the database (for external DB tools). |
 | `XDEBUG_PORT` | `9003` | Host port mapped to the container's Xdebug port. |
 
-**Instance identity** (written by `start-dev.sh`; delete `AIPS_INSTANCE_ID` to re-provision)
+**Instance identity** (auto-managed by `start-dev.sh`; use `--random-containers` or `--random-ports` to re-randomize)
 
 | Variable | Default | What it does |
 | :--- | :--- | :--- |
@@ -246,7 +246,7 @@ See [docs/SETUP.md](docs/SETUP.md#xdebug--vs-code-debugging) for the full env-va
 | Build fails with `auth.docker.io ... 500/504` | Docker Hub outage. `start-dev.sh` retries automatically; if it still fails, retry later or `docker login`. Images already cached locally are reused without contacting Docker Hub. |
 | `start-dev.sh` exits with "GOOGLE_API_KEY is not set" | Run it in a terminal to be prompted, set the key in `.env`, or use `AIPS_SKIP_API_KEY_CHECK=1`. |
 | Need to see what a run did | Open the newest `.artifacts/start-dev-*.log`. |
-| Ports already in use | Delete `AIPS_INSTANCE_ID` from `.env` and re-run `start-dev.sh` to re-provision. |
+| Ports already in use | `start-dev.sh` automatically detects occupied ports and assigns free random ports. Use `--random-ports` to force re-assignment. |
 
 ## Configuration & Settings Reference
 
@@ -288,10 +288,11 @@ The tables below document all canonical options registered and maintained by AI 
 
 | Option Key | Type | Default | UI Location | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `aips_author_topic_auto_approval_mode` | `string` | `'similarity'` | Settings > Authors | Default policy: `'similarity'` (Dual-Boundary Gate), `'manual'`, or `'all'`. |
-| `aips_author_topic_auto_approval_min_score` | `float` | `70.0` | Settings > Authors | Minimum niche relevance percentage against author baseline required for approval. |
-| `aips_author_topic_auto_approval_max_similarity` | `float` | `0.85` | Settings > Authors | Maximum duplicate similarity ceiling against existing topics/posts. |
-| `aips_author_topic_auto_approval_fallback` | `string` | `'reject'` | Settings > Authors | Sub-threshold handling: `'reject'` (auto-reject) or `'smart_split'` (hold in Pending). |
+| `aips_author_topic_auto_approval_mode` | `string` | `'manual'` | Settings > Authors | Global policy for authors set to "Use Global Settings": `'manual'`, `'all'`, `'score'`, or `'similarity'`. |
+| `aips_author_topic_auto_approval_min_score` | `int` | `70` | Settings > Authors | Minimum AI quality score (1-100) for `'score'` mode. |
+| `aips_author_topic_auto_approval_min_relevance` | `int` | `65` | Settings > Authors | Minimum niche relevance percentage (1-100) for `'similarity'` mode. |
+| `aips_author_topic_auto_approval_max_similarity` | `float` | `0.85` | Settings > Authors | Maximum duplicate similarity ceiling (0.50-0.99) for `'similarity'` mode. |
+| `aips_author_topic_auto_approval_fallback` | `string` | `'smart_split'` | Settings > Authors | Non-qualifying handling: `'pending'`, `'rejected'`, or `'smart_split'` (reject duplicates, hold the rest).
 
 ### 3. General & Editorial Workflow
 
@@ -378,16 +379,17 @@ The tables below document all canonical options registered and maintained by AI 
 
 ## Testing
 
-PHPUnit runs inside the `web` container of the dev stack, against a separate `wp_tests` database (never your development data). Start the stack first (`./start-dev.sh`), then:
+PHPUnit runs inside the `web` container of the dev stack, against a separate `wp_tests` database (never your development data). Run tests only as described in the [Agent test protocol](TESTING.md#agent-test-protocol-mandatory-for-ai-agents-and-humans-alike) (one `make` invocation, no direct script calls, stop what you started). The stack must be provisioned once with `./start-dev.sh`; the test runner starts `db`/`web` itself afterwards.
 
 ```bash
-make test                                            # whole suite
+make test-session ARGS="tests/Test_A.php tests/Test_B.php"   # preferred: runs, then stops what it started
+make test                                            # whole suite (leaves the stack up)
 make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # one file
 make test-verbose                                    # verbose output
 make test-coverage                                   # coverage: text summary + HTML report
 ```
 
-The coverage HTML report is written to `ai-post-scheduler/coverage/` (open `index.html`); generating it takes a while after the tests finish, so let it complete before opening it. Equivalent without `make`: `bash scripts/run-docker-test.sh [phpunit args]`.
+The coverage HTML report is written to `ai-post-scheduler/coverage/` (open `index.html`); generating it takes a while after the tests finish, so let it complete before opening it.
 
 `make test-ci` runs the host-side CI runner (`scripts/run-wp-tests-docker.sh`, needs host PHP and Composer). For the full guide, flags, a baseline run, and troubleshooting, see [TESTING.md](TESTING.md).
 

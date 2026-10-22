@@ -282,6 +282,11 @@ $site_ctx = AIPS_Site_Context::get();
                     <option value="manual"><?php esc_html_e('Manual Review (Disabled)', 'ai-post-scheduler'); ?></option>
                 </select>
                 <p class="description"><?php esc_html_e('Configure how generated topics for this author are evaluated for approval or rejection.', 'ai-post-scheduler'); ?></p>
+                <p class="description" id="aips-auto-approval-effective-policy" style="display: none;">
+                    <strong><?php esc_html_e('Effective policy:', 'ai-post-scheduler'); ?></strong>
+                    <?php echo esc_html(AIPS_Author_Topic_Approval_Policy::describe_global()); ?>
+                    (<a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings')); ?>"><?php esc_html_e('Settings > Authors', 'ai-post-scheduler'); ?></a>)
+                </p>
             </div>
 
             <div class="form-group" id="aips-auto-approval-score-group" style="display: none;">
@@ -291,13 +296,13 @@ $site_ctx = AIPS_Site_Context::get();
             </div>
 
             <div class="form-group" id="aips-auto-approval-similarity-group" style="display: none;">
-                <label for="topic_auto_approval_relevance_pct"><?php esc_html_e('Minimum Niche Relevance (%)', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="topic_auto_approval_min_score_rel" name="topic_auto_approval_min_score" value="65" min="1" max="100">
+                <label for="topic_auto_approval_min_relevance"><?php esc_html_e('Minimum Niche Relevance (%)', 'ai-post-scheduler'); ?></label>
+                <input type="number" id="topic_auto_approval_min_relevance" name="topic_auto_approval_min_relevance" value="65" min="1" max="100">
                 <p class="description"><?php esc_html_e('Topic must have at least this semantic relevance percentage to this author persona, bio, and published articles (1–100%).', 'ai-post-scheduler'); ?></p>
 
                 <label for="topic_auto_approval_max_similarity" style="margin-top: 12px; display: block;"><?php esc_html_e('Maximum Duplicate Similarity Threshold', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="topic_auto_approval_max_similarity" name="topic_auto_approval_max_similarity" value="0.80" min="0.10" max="0.99" step="0.01">
-                <p class="description"><?php esc_html_e('Topic duplicate similarity against existing published articles and topics must remain below this threshold (e.g. 0.80 = 80%). Topics meeting or exceeding this are auto-rejected.', 'ai-post-scheduler'); ?></p>
+                <input type="number" id="topic_auto_approval_max_similarity" name="topic_auto_approval_max_similarity" value="0.85" min="0.50" max="0.99" step="0.01">
+                <p class="description"><?php esc_html_e('Topic duplicate similarity against existing published articles and topics must remain below this threshold (e.g. 0.85 = 85%). Topics meeting or exceeding this are auto-rejected.', 'ai-post-scheduler'); ?></p>
             </div>
 
             <div class="form-group" id="aips-auto-approval-fallback-group" style="display: none;">
@@ -340,7 +345,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <input type="checkbox" id="author_include_sources" name="include_sources" value="1">
                     <?php esc_html_e('Include Sources?', 'ai-post-scheduler'); ?>
                 </label>
-                <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author.', 'ai-post-scheduler'); ?></p>
+                <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author. Select at least one group. Only successful snapshots matching each source URL are eligible. References do not guarantee that the AI will use or cite them.', 'ai-post-scheduler'); ?></p>
             </div>
 
             <div id="author-source-groups-selector" style="display:none;">
@@ -379,7 +384,7 @@ $site_ctx = AIPS_Site_Context::get();
                         sprintf(
                             /* translators: %s: link to Affiliate Links page */
                             __( 'When enabled, affiliate link mappings matching post tags will be injected into posts generated for this author. Manage mappings on the %s page.', 'ai-post-scheduler' ),
-                            '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                            '<a href="' . esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'affiliate_links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
                         ),
                         array(
                             'a' => array(

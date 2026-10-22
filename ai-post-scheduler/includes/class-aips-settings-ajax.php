@@ -67,6 +67,7 @@ class AIPS_Settings_AJAX {
 
 			$array_settings = array(
 				'aips_notification_preferences',
+				'aips_ai_assistance_contexts',
 				'aips_wp_ai_connector_ids',
 				'aips_indexer_post_types',
 				'aips_research_niches',
@@ -152,7 +153,7 @@ class AIPS_Settings_AJAX {
 			null,
 			$result
 		);
-		$history->complete_success(array('status' => 'success'));
+		$history->complete_success();
 
 		// SECURITY: Escape the AI response before sending it to the browser to prevent XSS.
 		// Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.

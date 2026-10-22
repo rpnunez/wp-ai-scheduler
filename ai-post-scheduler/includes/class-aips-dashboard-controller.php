@@ -141,7 +141,7 @@ class AIPS_Dashboard_Controller {
 				'template_name'        => esc_html( $item->template_name ?: __( 'Custom Author Workflow', 'ai-post-scheduler' ) ),
 				'creation_method'      => esc_html( ucfirst( str_replace( '_', ' ', $item->creation_method ) ) ),
 				'status'               => esc_html( $item->status ),
-				'status_badge'         => esc_attr( $item->status === 'completed' ? 'success' : ( $item->status === 'failed' ? 'error' : ( $item->status === 'pending' ? 'warning' : 'neutral' ) ) ),
+				'status_badge'         => esc_attr( $item->status === 'completed' ? 'success' : ( $item->status === 'failed' ? 'error' : ( in_array( $item->status, array( 'pending', 'partial' ), true ) ? 'warning' : 'neutral' ) ) ),
 				'created_at_formatted' => esc_html( AIPS_DateTime::formatRelativeOrAbsolute( $item->created_at, $date_format ) ),
 				'edit_url'             => $item->post_id ? esc_url( get_edit_post_link( $item->post_id ) ) : '',
 			);
@@ -190,7 +190,7 @@ class AIPS_Dashboard_Controller {
 				'display_title'        => esc_html( $display_title ),
 				'method_label'         => esc_html( $method_label ),
 				'status'               => esc_html( $item->status ),
-				'status_badge'         => esc_attr( $item->status === 'completed' ? 'success' : ( $item->status === 'failed' ? 'error' : ( $item->status === 'processing' ? 'warning' : 'neutral' ) ) ),
+				'status_badge'         => esc_attr( $item->status === 'completed' ? 'success' : ( $item->status === 'failed' ? 'error' : ( in_array( $item->status, array( 'processing', 'partial' ), true ) ? 'warning' : 'neutral' ) ) ),
 				'created_at_formatted' => esc_html( AIPS_DateTime::formatRelativeOrAbsolute( $item->created_at, $date_format ) ),
 			);
 		}

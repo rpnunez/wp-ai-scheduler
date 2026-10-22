@@ -54,6 +54,18 @@ class AIPS_Similarity_Evaluator {
 	private $logger;
 
 	/**
+	 * Metadata from the most recent cluster detection run.
+	 *
+	 * @var array{truncated: bool, total_candidates: int, analyzed_candidates: int, max_candidates: int}
+	 */
+	private array $last_cluster_meta = array(
+		'truncated'           => false,
+		'total_candidates'    => 0,
+		'analyzed_candidates' => 0,
+		'max_candidates'      => 0,
+	);
+
+	/**
 	 * Default minimum similarity score for internal links suggestions.
 	 *
 	 * @var float
@@ -499,6 +511,41 @@ class AIPS_Similarity_Evaluator {
 	}
 
 	/**
+	 * Measure a topic's relevance against the author baseline vector.
+	 *
+	 * Reuses $candidate_vec when supplied (e.g. computed during deduplication);
+	 * otherwise embeds the title and returns the generated vector via $candidate_vec.
+	 *
+	 * @param string     $topic_title         Topic title.
+	 * @param array|null $author_baseline_vec Composite author baseline vector.
+	 * @param array|null $candidate_vec       Precomputed candidate vector (by reference).
+	 * @return float|null Cosine similarity, or null when it cannot be measured.
+	 */
+	protected function measure_topic_relevance(string $topic_title, ?array $author_baseline_vec, ?array &$candidate_vec = null): ?float {
+		if (empty($author_baseline_vec)) {
+			return null;
+		}
+
+		if (empty($candidate_vec)) {
+			$embeddings_svc = $this->get_embeddings_service();
+			if ('' === $topic_title || !$embeddings_svc || !$embeddings_svc->is_enabled()) {
+				return null;
+			}
+			$generated = $embeddings_svc->generate_embedding($topic_title);
+			if (is_wp_error($generated) || !is_array($generated)) {
+				return null;
+			}
+			$candidate_vec = $generated;
+		}
+
+		if (count($candidate_vec) !== count($author_baseline_vec)) {
+			return null;
+		}
+
+		return $this->cosine_similarity($candidate_vec, $author_baseline_vec);
+	}
+
+	/**
 	 * Evaluate author topic auto-approval rules and return the decision and metadata.
 	 *
 	 * Decouples auto-approval logic from AIPS_Author_Topics_Generator and centralizes
@@ -510,19 +557,19 @@ class AIPS_Similarity_Evaluator {
 	 *    Unconditionally approves all topics generated for this author.
 	 * 2. 'score':
 	 *    Evaluates the topic's LLM-assigned quality score against the author's
-	 *    `auto_approval_min_score` threshold (default 70).
+	 *    `min_score` policy threshold (default 70).
 	 * 3. 'similarity' / 'embeddings':
 	 *    Applies Dual-Boundary Semantic Gating using vector embeddings:
 	 *    a) Upper Boundary (Cannibalization Guard):
 	 *       If duplicate similarity to published posts or existing topics meets or
-	 *       exceeds `auto_approval_max_similarity` (default 0.85 / 85%), the topic
+	 *       exceeds `max_similarity` (default 0.85 / 85%), the topic
 	 *       is marked as an auto-rejected duplicate.
 	 *    b) Lower Boundary (Niche Relevance Floor):
 	 *       If cosine similarity against the author's composite persona baseline
-	 *       vector falls below `auto_approval_min_relevance` (default 0.70 / 70%),
+	 *       vector falls below `min_relevance` (default 0.65 / 65%),
 	 *       the topic fails to qualify due to off-topic drifting.
 	 *    c) Acceptance Corridor:
-	 *       Topics falling inside the corridor (relevance >= 70% AND duplicate < 85%)
+	 *       Topics falling inside the corridor (relevance >= min AND duplicate < 85%)
 	 *       are automatically approved.
 	 * 4. Fallback Routing:
 	 *    When a topic does not qualify:
@@ -534,6 +581,9 @@ class AIPS_Similarity_Evaluator {
 	 * @param array      $topic               Topic data array.
 	 * @param object     $author              Author configuration object.
 	 * @param array|null $author_baseline_vec Optional composite author baseline vector.
+	 * @param array|null $policy              Optional resolved policy from
+	 *                                        AIPS_Author_Topic_Approval_Policy::resolve(); resolved from
+	 *                                        $author when null.
 	 * @return array{
 	 *     qualifies: bool,
 	 *     decision: string,
@@ -543,7 +593,7 @@ class AIPS_Similarity_Evaluator {
 	 *     meta: array<string, mixed>
 	 * } Evaluation result.
 	 */
-	public function evaluate_author_topic_auto_approval(array $topic, object $author, ?array $author_baseline_vec = null): array {
+	public function evaluate_author_topic_auto_approval(array $topic, object $author, ?array $author_baseline_vec = null, ?array $policy = null): array {
 		// Step 1: Decode existing topic metadata
 		$meta = isset($topic['metadata']) && is_string($topic['metadata'])
 			? json_decode($topic['metadata'], true)
@@ -552,19 +602,17 @@ class AIPS_Similarity_Evaluator {
 			$meta = array();
 		}
 
-		// Step 2: Extract author policy configuration with defensive defaults.
-		// Property names match the aips_authors columns / AIPS_Authors_Controller
-		// (topic_auto_approval_*), not the unprefixed auto_approval_* names this
-		// used to read — those never existed on a real author object, so this
-		// always fell through to the 'none' branch regardless of the author's
-		// configured mode.
-		$mode           = !empty($author->topic_auto_approval_mode) ? (string) $author->topic_auto_approval_mode : 'none';
-		$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
-		// No dedicated relevance column; similarity/embeddings mode derives it from
-		// the score field, the same way AIPS_Author_Topics_Generator::apply_auto_approval_rules() does.
-		$min_relevance  = isset($author->topic_auto_approval_min_score) ? max(0.01, min(1.0, (float) $author->topic_auto_approval_min_score / 100)) : 0.70;
-		$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.85;
-		$fallback       = !empty($author->topic_auto_approval_fallback) ? (string) $author->topic_auto_approval_fallback : 'pending';
+		// Step 2: Use the supplied policy, or resolve the effective one (author
+		// columns, or global options for 'inherit') so every caller agrees.
+		if ($policy === null) {
+			$policy = AIPS_Author_Topic_Approval_Policy::resolve($author);
+		}
+		$mode           = AIPS_Author_Topic_Approval_Policy::normalize_mode(isset($policy['mode']) ? $policy['mode'] : 'manual');
+		$min_score      = isset($policy['min_score']) ? (int) $policy['min_score'] : AIPS_Author_Topic_Approval_Policy::DEFAULT_MIN_SCORE;
+		$min_relevance  = isset($policy['min_relevance']) ? (float) $policy['min_relevance'] : AIPS_Author_Topic_Approval_Policy::DEFAULT_MIN_RELEVANCE / 100;
+		$max_similarity = isset($policy['max_similarity']) ? (float) $policy['max_similarity'] : AIPS_Author_Topic_Approval_Policy::DEFAULT_MAX_SIMILARITY;
+		$fallback       = AIPS_Author_Topic_Approval_Policy::normalize_fallback(isset($policy['fallback']) ? $policy['fallback'] : 'pending');
+		$source         = isset($policy['source']) ? (string) $policy['source'] : 'author';
 
 		$qualifies        = false;
 		$is_dup_rejection = false;
@@ -610,18 +658,22 @@ class AIPS_Similarity_Evaluator {
 					? (float) $meta['duplicate_similarity']
 					: (!empty($meta['potential_duplicate']) ? 1.0 : 0.0);
 
-				$rel_sim = 0.70;
 				$topic_title = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
-
-				$embeddings_svc = $this->get_embeddings_service();
-				if (!empty($author_baseline_vec) && !empty($topic_title) && $embeddings_svc && $embeddings_svc->is_enabled()) {
-					$tvec = $embeddings_svc->generate_embedding($topic_title);
-					if (!is_wp_error($tvec) && is_array($tvec) && count($tvec) === count($author_baseline_vec)) {
-						$rel_sim = $this->cosine_similarity($tvec, $author_baseline_vec);
-					}
+				// null when relevance cannot be measured (embeddings disabled, no
+				// baseline vector, or the embedding call failed).
+				// Reuse a candidate vector already computed by deduplication when present.
+				$candidate_vec = null;
+				if (!empty($topic['embedding']) && is_array($topic['embedding'])) {
+					$candidate_vec = $topic['embedding'];
+				} elseif (!empty($meta['embedding']) && is_array($meta['embedding'])) {
+					$candidate_vec = $meta['embedding'];
+				}
+				$rel_sim = $this->measure_topic_relevance($topic_title, $author_baseline_vec, $candidate_vec);
+				if (empty($meta['embedding']) && is_array($candidate_vec)) {
+					$meta['embedding'] = $candidate_vec;
 				}
 
-				$meta['auto_approval_relevance']      = round($rel_sim, 4);
+				$meta['auto_approval_relevance']      = null === $rel_sim ? null : round($rel_sim, 4);
 				$meta['auto_approval_duplicate_sim']  = round($dup_sim, 4);
 				$meta['auto_approval_min_relevance']  = round($min_relevance, 4);
 				$meta['auto_approval_max_similarity'] = round($max_similarity, 4);
@@ -638,6 +690,12 @@ class AIPS_Similarity_Evaluator {
 						$dup_sim * 100,
 						$max_similarity * 100
 					);
+				} elseif (null === $rel_sim) {
+					// Never auto-approve a topic whose niche relevance was not measured.
+					$qualifies        = false;
+					$is_dup_rejection = false;
+					$reason           = 'relevance_unavailable';
+					$note             = __('Did not qualify: Niche relevance could not be measured (embeddings unavailable).', 'ai-post-scheduler');
 				} elseif ($rel_sim < $min_relevance) {
 					// Lower boundary breached: Off-niche drift
 					$qualifies        = false;
@@ -674,6 +732,7 @@ class AIPS_Similarity_Evaluator {
 			$decision                     = 'approved';
 			$meta['auto_approved']        = true;
 			$meta['auto_approval_rule']   = $mode;
+			$meta['auto_approval_source'] = $source;
 			$meta['auto_approval_reason'] = $reason;
 			$meta['auto_approval_note']   = $note;
 		} else {
@@ -682,6 +741,7 @@ class AIPS_Similarity_Evaluator {
 
 			$meta['auto_approved']        = false;
 			$meta['auto_approval_rule']   = $mode;
+			$meta['auto_approval_source'] = $source;
 			$meta['auto_approval_reason'] = $reason;
 			$meta['auto_approval_note']   = $note;
 		}
@@ -800,13 +860,14 @@ class AIPS_Similarity_Evaluator {
 	/**
 	 * Find similar topics to a given topic.
 	 *
-	 * @param int    $topic_id  The topic ID to find similar topics for.
-	 * @param int    $author_id Author ID to limit search to.
-	 * @param int    $limit     Maximum number of similar topics to return.
-	 * @param string $status    Optional. Filter by status (pending, approved, rejected).
+	 * @param int         $topic_id        The topic ID to find similar topics for.
+	 * @param int         $author_id       Author ID to limit search to.
+	 * @param int         $limit           Maximum number of similar topics to return.
+	 * @param string|null $status          Optional. Filter by status (pending, approved, rejected).
+	 * @param bool        $compute_missing Optional. Opt-in to synchronously compute missing embeddings. Default false.
 	 * @return array Array of similar topics with similarity scores.
 	 */
-	public function find_similar_topics(int $topic_id, int $author_id, int $limit = 5, ?string $status = null): array {
+	public function find_similar_topics(int $topic_id, int $author_id, int $limit = 5, ?string $status = null, bool $compute_missing = false): array {
 		$emb_svc = $this->get_embeddings_service();
 		if (!$emb_svc) {
 			return array();
@@ -818,11 +879,17 @@ class AIPS_Similarity_Evaluator {
 			if (!$emb_svc->is_enabled()) {
 				return array();
 			}
-			$res = $emb_svc->compute_topic_embedding($topic_id);
-			if (is_wp_error($res)) {
+
+			if ($compute_missing) {
+				$res = $emb_svc->compute_topic_embedding($topic_id);
+				if (is_wp_error($res)) {
+					return array();
+				}
+				$target_embedding = $emb_svc->get_topic_embedding($topic_id);
+			} else {
+				$this->enqueue_missing_topic_embeddings($author_id);
 				return array();
 			}
-			$target_embedding = $emb_svc->get_topic_embedding($topic_id);
 		}
 
 		if (!$target_embedding) {
@@ -832,22 +899,48 @@ class AIPS_Similarity_Evaluator {
 		$topics_repo = new AIPS_Author_Topics_Repository();
 		$all_topics  = $topics_repo->get_by_author($author_id, $status);
 
-		$candidates = array();
+		$candidate_topics = array();
+		$candidate_ids    = array();
 		foreach ($all_topics as $candidate_topic) {
-			if ((int) $candidate_topic->id === $topic_id) {
+			$cid = (int) $candidate_topic->id;
+			if ($cid === $topic_id) {
 				continue;
 			}
+			$candidate_topics[$cid] = $candidate_topic;
+			$candidate_ids[]        = $cid;
+		}
 
-			$embedding = $emb_svc->get_topic_embedding((int) $candidate_topic->id);
-			if (!$embedding && $emb_svc->is_enabled()) {
-				$emb_svc->compute_topic_embedding((int) $candidate_topic->id);
-				$embedding = $emb_svc->get_topic_embedding((int) $candidate_topic->id);
+		if (empty($candidate_ids)) {
+			return array();
+		}
+
+		$embeddings  = $emb_svc->get_topic_embeddings($candidate_ids);
+		$has_missing = count($embeddings) < count($candidate_ids);
+
+		if ($has_missing) {
+			if ($compute_missing && $emb_svc->is_enabled()) {
+				foreach ($candidate_ids as $cid) {
+					if (!isset($embeddings[$cid])) {
+						$res = $emb_svc->compute_topic_embedding($cid);
+						if (!is_wp_error($res)) {
+							$emb = $emb_svc->get_topic_embedding($cid);
+							if ($emb) {
+								$embeddings[$cid] = $emb;
+							}
+						}
+					}
+				}
+			} elseif ($emb_svc->is_enabled()) {
+				$this->enqueue_missing_topic_embeddings($author_id);
 			}
+		}
 
-			if ($embedding) {
+		$candidates = array();
+		foreach ($candidate_topics as $cid => $candidate_topic) {
+			if (isset($embeddings[$cid])) {
 				$candidates[] = array(
-					'id'        => (int) $candidate_topic->id,
-					'embedding' => $embedding,
+					'id'        => $cid,
+					'embedding' => $embeddings[$cid],
 					'data'      => array(
 						'topic_title' => $candidate_topic->topic_title,
 						'status'      => $candidate_topic->status,
@@ -873,11 +966,12 @@ class AIPS_Similarity_Evaluator {
 	/**
 	 * Suggest related topics for an author based on approved topics.
 	 *
-	 * @param int $author_id Author ID.
-	 * @param int $limit     Number of suggestions to return.
+	 * @param int  $author_id       Author ID.
+	 * @param int  $limit           Number of suggestions to return.
+	 * @param bool $compute_missing Optional. Opt-in to synchronously compute missing embeddings. Default false.
 	 * @return array Array of suggested topics with scores.
 	 */
-	public function suggest_related_topics(int $author_id, int $limit = 10): array {
+	public function suggest_related_topics(int $author_id, int $limit = 10, bool $compute_missing = false): array {
 		$topics_repo     = new AIPS_Author_Topics_Repository();
 		$approved_topics = $topics_repo->get_by_author($author_id, 'approved');
 		$pending_topics  = $topics_repo->get_by_author($author_id, 'pending');
@@ -886,26 +980,70 @@ class AIPS_Similarity_Evaluator {
 			return array();
 		}
 
-		$emb_svc     = $this->get_embeddings_service();
+		$emb_svc = $this->get_embeddings_service();
+		if (!$emb_svc) {
+			return array();
+		}
+
+		$approved_ids = array_map(function($t) { return (int) $t->id; }, $approved_topics);
+		$pending_ids  = array_map(function($t) { return (int) $t->id; }, $pending_topics);
+
+		$approved_embeddings = $emb_svc->get_topic_embeddings($approved_ids);
+		$pending_embeddings  = $emb_svc->get_topic_embeddings($pending_ids);
+
+		$missing_approved = count($approved_embeddings) < count($approved_ids);
+		$missing_pending  = count($pending_embeddings) < count($pending_ids);
+
+		if (($missing_approved || $missing_pending) && $emb_svc->is_enabled()) {
+			if ($compute_missing) {
+				foreach ($pending_ids as $pid) {
+					if (!isset($pending_embeddings[$pid])) {
+						$res = $emb_svc->compute_topic_embedding($pid);
+						if (!is_wp_error($res)) {
+							$emb = $emb_svc->get_topic_embedding($pid);
+							if ($emb) {
+								$pending_embeddings[$pid] = $emb;
+							}
+						}
+					}
+				}
+				foreach ($approved_ids as $aid) {
+					if (!isset($approved_embeddings[$aid])) {
+						$res = $emb_svc->compute_topic_embedding($aid);
+						if (!is_wp_error($res)) {
+							$emb = $emb_svc->get_topic_embedding($aid);
+							if ($emb) {
+								$approved_embeddings[$aid] = $emb;
+							}
+						}
+					}
+				}
+			} else {
+				$this->enqueue_missing_topic_embeddings($author_id);
+			}
+		}
+
 		$suggestions = array();
 
 		foreach ($pending_topics as $pending_topic) {
-			$pending_embedding = $emb_svc ? $emb_svc->get_topic_embedding((int) $pending_topic->id) : null;
-			if (!$pending_embedding && $emb_svc && $emb_svc->is_enabled()) {
-				$emb_svc->compute_topic_embedding((int) $pending_topic->id);
-				$pending_embedding = $emb_svc->get_topic_embedding((int) $pending_topic->id);
-			}
-
-			if (!$pending_embedding) {
+			$pid = (int) $pending_topic->id;
+			if (!isset($pending_embeddings[$pid])) {
 				continue;
 			}
+			$pending_embedding = $pending_embeddings[$pid];
 
-			$max_similarity = $this->calculate_max_similarity_for_topic($pending_embedding, $approved_topics, $emb_svc);
+			$max_similarity = 0.0;
+			foreach ($approved_embeddings as $approved_embedding) {
+				$sim = $this->cosine_similarity($pending_embedding, $approved_embedding);
+				if ($sim > $max_similarity) {
+					$max_similarity = $sim;
+				}
+			}
 
 			if ($max_similarity > 0) {
 				$eval          = $this->evaluate_similarity($max_similarity, 'topic');
 				$suggestions[] = array(
-					'topic_id'         => (int) $pending_topic->id,
+					'topic_id'         => $pid,
 					'topic_title'      => $pending_topic->topic_title,
 					'similarity_score' => $max_similarity,
 					'similarity_pct'   => $eval['percentage'],
@@ -928,30 +1066,50 @@ class AIPS_Similarity_Evaluator {
 	/**
 	 * Calculate the maximum similarity score for a pending topic embedding against approved topics.
 	 *
-	 * Iterates over approved candidate topics, lazily computes/retrieves their vector embeddings,
-	 * and returns the highest pairwise cosine similarity score found.
+	 * Batches vector embedding retrieval for approved topics, avoiding N+1 queries.
+	 * Does not make external AI API calls unless compute_missing is explicitly enabled.
 	 *
 	 * @param array                        $pending_embedding Vector array for the pending topic.
 	 * @param array<int, object>           $approved_topics   Array of approved topic database objects.
 	 * @param AIPS_Embeddings_Service|null $emb_svc           Optional embeddings service instance.
+	 * @param bool                         $compute_missing   Optional. Opt-in to synchronously compute missing embeddings. Default false.
+	 * @param int                          $author_id         Optional author ID for background enqueuing.
 	 * @return float The highest cosine similarity score found (0.0 to 1.0).
 	 */
-	public function calculate_max_similarity_for_topic(array $pending_embedding, array $approved_topics, ?AIPS_Embeddings_Service $emb_svc = null): float {
+	public function calculate_max_similarity_for_topic(array $pending_embedding, array $approved_topics, ?AIPS_Embeddings_Service $emb_svc = null, bool $compute_missing = false, int $author_id = 0): float {
 		$emb_svc        = $emb_svc ?: $this->get_embeddings_service();
 		$max_similarity = 0.0;
 
-		foreach ($approved_topics as $approved_topic) {
-			$approved_embedding = $emb_svc ? $emb_svc->get_topic_embedding((int) $approved_topic->id) : null;
-			if (!$approved_embedding && $emb_svc && $emb_svc->is_enabled()) {
-				$emb_svc->compute_topic_embedding((int) $approved_topic->id);
-				$approved_embedding = $emb_svc->get_topic_embedding((int) $approved_topic->id);
-			}
+		if (empty($approved_topics) || !$emb_svc) {
+			return 0.0;
+		}
 
-			if ($approved_embedding) {
-				$sim = $this->cosine_similarity($pending_embedding, $approved_embedding);
-				if ($sim > $max_similarity) {
-					$max_similarity = $sim;
+		$approved_ids = array_map(function($t) { return (int) $t->id; }, $approved_topics);
+		$embeddings   = $emb_svc->get_topic_embeddings($approved_ids);
+
+		$has_missing = count($embeddings) < count($approved_ids);
+		if ($has_missing && $emb_svc->is_enabled()) {
+			if ($compute_missing) {
+				foreach ($approved_ids as $aid) {
+					if (!isset($embeddings[$aid])) {
+						$res = $emb_svc->compute_topic_embedding($aid);
+						if (!is_wp_error($res)) {
+							$emb = $emb_svc->get_topic_embedding($aid);
+							if ($emb) {
+								$embeddings[$aid] = $emb;
+							}
+						}
+					}
 				}
+			} elseif ($author_id > 0) {
+				$this->enqueue_missing_topic_embeddings($author_id);
+			}
+		}
+
+		foreach ($embeddings as $approved_embedding) {
+			$sim = $this->cosine_similarity($pending_embedding, $approved_embedding);
+			if ($sim > $max_similarity) {
+				$max_similarity = $sim;
 			}
 		}
 
@@ -1079,29 +1237,39 @@ class AIPS_Similarity_Evaluator {
 		}
 
 		// Cap candidate posts for cluster detection to preserve response time and avoid execution timeouts on large libraries
-		$max_candidates = $this->get_cluster_max_posts();
-		if (count($candidates) > $max_candidates) {
+		$total_candidates = count($candidates);
+		$max_candidates   = $this->get_cluster_max_posts();
+		$is_truncated     = $total_candidates > $max_candidates;
+		if ($is_truncated) {
 			$candidates = array_slice($candidates, -$max_candidates);
 		}
 
-		// Decode and unit-normalize post vectors for ultra-fast dot-product cosine similarity
-		$posts = array();
-		foreach ($candidates as $row) {
-			$vec = $this->get_embeddings_repository()->decode_embedding($row->embedding);
-			if (!empty($vec)) {
-				// Pre-normalize vector
-				$norm = 0.0;
-				foreach ($vec as $val) {
-					$norm += ((float) $val) * ((float) $val);
-				}
-				$norm = sqrt($norm);
-				if ($norm > 1e-9) {
-					foreach ($vec as $idx => $val) {
-						$vec[$idx] = ((float) $val) / $norm;
-					}
-				}
+		$this->last_cluster_meta = array(
+			'truncated'           => $is_truncated,
+			'total_candidates'    => $total_candidates,
+			'analyzed_candidates' => count($candidates),
+			'max_candidates'      => $max_candidates,
+		);
 
-				$pid = (int) $row->object_id;
+		// Prime post caches to prevent individual DB queries per post for title, permalink, edit link
+		$candidate_ids = array();
+		foreach ($candidates as $row) {
+			if (isset($row->object_id)) {
+				$candidate_ids[] = (int) $row->object_id;
+			}
+		}
+		if (!empty($candidate_ids)) {
+			_prime_post_caches($candidate_ids, false, false);
+		}
+
+		// Decode and unit-normalize post vectors with persistent multi-tier caching
+		$posts = array();
+		$repo  = $this->get_embeddings_repository();
+		foreach ($candidates as $row) {
+			$pid          = (int) $row->object_id;
+			$content_hash = !empty($row->content_hash) ? $row->content_hash : '';
+			$vec          = $repo->decode_and_normalize_embedding($row->embedding, 'post', $pid, $content_hash);
+			if (!empty($vec)) {
 				$posts[$pid] = array(
 					'id'        => $pid,
 					'title'     => get_the_title($pid),
@@ -1310,23 +1478,25 @@ class AIPS_Similarity_Evaluator {
 			$candidates = array_slice($candidates, -$max_candidates);
 		}
 
-		// Decode and unit-normalize post vectors
-		$posts = array();
+		// Prime post caches to avoid individual DB queries for title, permalink, edit link
+		$candidate_ids = array();
 		foreach ($candidates as $row) {
-			$vec = $this->get_embeddings_repository()->decode_embedding($row->embedding);
-			if (!empty($vec)) {
-				$norm = 0.0;
-				foreach ($vec as $val) {
-					$norm += ((float) $val) * ((float) $val);
-				}
-				$norm = sqrt($norm);
-				if ($norm > 1e-9) {
-					foreach ($vec as $idx => $val) {
-						$vec[$idx] = ((float) $val) / $norm;
-					}
-				}
+			if (isset($row->object_id)) {
+				$candidate_ids[] = (int) $row->object_id;
+			}
+		}
+		if (!empty($candidate_ids)) {
+			_prime_post_caches($candidate_ids, false, false);
+		}
 
-				$pid = (int) $row->object_id;
+		// Decode and unit-normalize post vectors with persistent caching
+		$posts = array();
+		$repo  = $this->get_embeddings_repository();
+		foreach ($candidates as $row) {
+			$pid          = (int) $row->object_id;
+			$content_hash = !empty($row->content_hash) ? $row->content_hash : '';
+			$vec          = $repo->decode_and_normalize_embedding($row->embedding, 'post', $pid, $content_hash);
+			if (!empty($vec)) {
 				$posts[$pid] = array(
 					'id'        => $pid,
 					'title'     => get_the_title($pid),
@@ -1490,6 +1660,35 @@ class AIPS_Similarity_Evaluator {
 	private function get_cluster_max_posts(): int {
 		$value = (int) $this->config->get_option('aips_cluster_detection_max_posts', 250);
 		return max(2, (int) apply_filters('aips_cluster_detection_max_posts', $value));
+	}
+
+	/**
+	 * Get metadata from the last cluster detection run.
+	 *
+	 * @return array{truncated: bool, total_candidates: int, analyzed_candidates: int, max_candidates: int}
+	 */
+	public function get_last_cluster_meta(): array {
+		return $this->last_cluster_meta;
+	}
+
+	/**
+	 * Enqueue author topics embedding background process if not already running.
+	 *
+	 * @param int $author_id Author ID (0 for all authors).
+	 * @return void
+	 */
+	private function enqueue_missing_topic_embeddings(int $author_id = 0): void {
+		if (class_exists('AIPS_Background_Process_Manager') && class_exists('AIPS_Author_Embeddings_Process')) {
+			$container = AIPS_Container::get_instance();
+			if ($container->has(AIPS_Background_Process_Manager::class)) {
+				$manager = $container->make(AIPS_Background_Process_Manager::class);
+				$manager->control(
+					AIPS_Author_Embeddings_Process::KEY,
+					AIPS_Background_Process_Manager::ACTION_START,
+					array('author_id' => $author_id)
+				);
+			}
+		}
 	}
 
 	/**

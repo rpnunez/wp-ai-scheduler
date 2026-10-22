@@ -65,7 +65,7 @@ $page_context = AIPS_Admin_Page_Context::resolve('ai-post-scheduler');
 		<div class="aips-dashboard-section-title">
 			<span class="dashicons dashicons-chart-bar"></span>
 			<h2><?php esc_html_e('Overview Summary', 'ai-post-scheduler'); ?></h2>
-			<span class="aips-section-meta"><?php echo sprintf(__('Activity from %s to %s', 'ai-post-scheduler'), esc_html($date_from), esc_html($date_to)); ?></span>
+			<span class="aips-section-meta aips-summary-meta"><?php echo sprintf(__('Activity from %s to %s', 'ai-post-scheduler'), esc_html($date_from), esc_html($date_to)); ?></span>
 		</div>
 
 		<div class="aips-grid aips-grid-cols-4 aips-summary-grid">
@@ -157,8 +157,8 @@ $page_context = AIPS_Admin_Page_Context::resolve('ai-post-scheduler');
 				</div>
 
 				<!-- Tab Panels -->
-				<div class="aips-tab-content">
-					
+				<div class="aips-dashboard-tab-panels">
+
 					<!-- Panel 1: Generated Posts -->
 					<div class="aips-tab-panel active" id="tab-posts" role="tabpanel" aria-labelledby="btn-tab-posts">
 						<?php if (!empty($recent_posts)): ?>
