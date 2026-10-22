@@ -318,3 +318,8 @@ Target Feature: Research Planner
 Improvement: Fixed bulk actions (copy, generate now, schedule) to operate only on visible checked topics when filtered, while keeping overall selection count accurate across all checked items.
 Files Modified: ai-post-scheduler/assets/js/admin-planner.js
 Outcome: Prevents accidental bulk operations on hidden/filtered topics while maintaining accurate selection counts.
+## 2026-10-11 - Template Wizard Flow Optimization
+- Target Feature: Template Wizard
+- Improvement: Optimized cloning by auto-opening the edit wizard on success, and fixed test generation validation to properly navigate to invalid steps.
+- Files Modified: ai-post-scheduler/assets/js/admin.js
+- Outcome: Reduces clicks required to configure cloned templates and ensures users aren't left stranded on the wrong wizard step when validation fails.

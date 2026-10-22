@@ -488,4 +488,32 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 			$this->assertContains( $index, $index_names, "Index {$index} should exist" );
 		}
 	}
+
+	/**
+	 * Test that aips_authors table contains post_generation_lock column and index.
+	 */
+	public function test_authors_table_has_post_generation_lock() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_authors';
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table_name}" );
+		$this->assertContains( 'post_generation_lock', $columns, 'Column post_generation_lock should exist on aips_authors' );
+
+		$index_names = array_unique( wp_list_pluck( $wpdb->get_results( "SHOW INDEX FROM {$table_name}" ), 'Key_name' ) );
+		$this->assertContains( 'post_generation_lock', $index_names, 'Index post_generation_lock should exist on aips_authors' );
+	}
+
+	/**
+	 * Test that aips_author_topics table contains claimed_at column and index.
+	 */
+	public function test_author_topics_table_has_claimed_at() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_author_topics';
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table_name}" );
+		$this->assertContains( 'claimed_at', $columns, 'Column claimed_at should exist on aips_author_topics' );
+
+		$index_names = array_unique( wp_list_pluck( $wpdb->get_results( "SHOW INDEX FROM {$table_name}" ), 'Key_name' ) );
+		$this->assertContains( 'claimed_at', $index_names, 'Index claimed_at should exist on aips_author_topics' );
+	}
 }

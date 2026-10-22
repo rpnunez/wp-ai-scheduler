@@ -269,21 +269,19 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	/**
 	 * Generate a post for a specific author from their approved topics.
 	 *
-	 * SCHEDULE-ADVANCEMENT STRATEGY — advance after execution:
-	 * `post_generation_next_run` is updated *after* the generation attempt
-	 * (success or failure) rather than before it.  This is intentional and
-	 * differs from the claim-first locking used by AIPS_Schedule_Processor.
+	 * CONCURRENCY PROTECTION — Two-Tier Locking:
+	 * 1. Per-author run lock: An atomic compare-and-swap update on
+	 *    `wp_aips_authors.post_generation_lock` prevents overlapping cron
+	 *    workers or manual runs for the same author.
+	 * 2. Topic-level claim-first lock: An atomic compare-and-swap update on
+	 *    `wp_aips_author_topics.claimed_at` claims each individual topic
+	 *    before generation begins. If generation fails, the claim is released
+	 *    for retry; if generation succeeds, the post log entry permanently
+	 *    completes the topic.
 	 *
-	 * Rationale: per-author post-generation frequency is coarser (typically
-	 * daily or weekly), so the risk of two cron workers overlapping is low.
-	 * Advancing after execution ensures the schedule timestamp reflects when
-	 * work actually completed, giving a more accurate "next run" window and
-	 * avoiding the edge case where a crashed pre-execution advance could
-	 * silently delay the author's next post by a full interval.
-	 *
-	 * If concurrent-worker safety ever becomes a concern (e.g. Action
-	 * Scheduler with multiple workers), consider adding a claim-first lock
-	 * here as well.
+	 * SCHEDULE-ADVANCEMENT:
+	 * `post_generation_next_run` is updated after the generation attempt
+	 * to preserve the configured schedule intervals and avoid clock drift.
 	 *
 	 * @param object $author Author object from database.
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
@@ -312,56 +310,74 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	public function generate_posts_for_author($author, ?int $count = null, string $creation_method = 'scheduled', bool $advance_schedule = true) {
 		$this->logger->log("Generating post for author: {$author->name} (ID: {$author->id})", 'info');
 
-		$post_count = $this->resolve_post_generation_quantity($author, $creation_method, $count);
-
-		// Get the next approved topics for this author.
-		$topics = $this->topics_repository->get_approved_for_generation($author->id, $post_count);
-		
-		if (empty($topics)) {
-			$this->logger->log("No approved topics available for author {$author->id}", 'warning');
-			
-			// Still update the schedule to avoid getting stuck
-			if ($advance_schedule) {
-				$this->update_author_schedule($author);
-			}
-			return new WP_Error('no_topics', __('No approved topics available', 'ai-post-scheduler'));
-		}
-
-		$post_ids = array();
-		$last_error = null;
-
-		$trigger_context = array();
-		if ('scheduled' === $creation_method) {
-			$frequency       = !empty($author->post_generation_frequency) ? (string) $author->post_generation_frequency : '';
-			$trigger_context = array(
-				'detail' => $frequency !== ''
-					? sprintf(__('Author post schedule (%s)', 'ai-post-scheduler'), $frequency)
-					: __('Author post schedule', 'ai-post-scheduler'),
+		// Acquire per-author post-generation lock to prevent overlapping runs.
+		$lock_ttl = (int) apply_filters( 'aips_author_post_generation_lock_ttl', 900, $author );
+		if ( ! $this->authors_repository->acquire_post_generation_lock( (int) $author->id, $lock_ttl ) ) {
+			$this->logger->log(
+				"Post generation for author {$author->name} (ID: {$author->id}) is already in progress; skipping duplicate run.",
+				'info',
+				array( 'author_id' => (int) $author->id )
+			);
+			return new WP_Error(
+				'author_run_locked',
+				sprintf( __( 'Post generation for author %s is already in progress.', 'ai-post-scheduler' ), $author->name )
 			);
 		}
 
-		foreach ($topics as $topic) {
-			$result = $this->generate_post_from_topic($topic, $author, $creation_method, $trigger_context);
+		try {
+			$post_count = $this->resolve_post_generation_quantity($author, $creation_method, $count);
 
-			if (is_wp_error($result)) {
-				$last_error = $result;
-				continue;
+			// Get the next approved topics for this author.
+			$topics = $this->topics_repository->get_approved_for_generation($author->id, $post_count);
+			
+			if (empty($topics)) {
+				$this->logger->log("No approved topics available for author {$author->id}", 'warning');
+				
+				// Still update the schedule to avoid getting stuck
+				if ($advance_schedule) {
+					$this->update_author_schedule($author);
+				}
+				return new WP_Error('no_topics', __('No approved topics available', 'ai-post-scheduler'));
 			}
 
-			$post_ids[] = (int) $result;
-		}
+			$post_ids = array();
+			$last_error = null;
 
-		if ($advance_schedule) {
-			$this->update_author_schedule($author);
-		}
+			$trigger_context = array();
+			if ('scheduled' === $creation_method) {
+				$frequency       = !empty($author->post_generation_frequency) ? (string) $author->post_generation_frequency : '';
+				$trigger_context = array(
+					'detail' => $frequency !== ''
+						? sprintf(__('Author post schedule (%s)', 'ai-post-scheduler'), $frequency)
+						: __('Author post schedule', 'ai-post-scheduler'),
+				);
+			}
 
-		if (!empty($post_ids)) {
-			return $post_ids;
-		}
+			foreach ($topics as $topic) {
+				$result = $this->generate_post_from_topic($topic, $author, $creation_method, $trigger_context);
 
-		return $last_error instanceof WP_Error
-			? $last_error
-			: new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
+				if (is_wp_error($result)) {
+					$last_error = $result;
+					continue;
+				}
+
+				$post_ids[] = (int) $result;
+			}
+
+			if ($advance_schedule) {
+				$this->update_author_schedule($author);
+			}
+
+			if (!empty($post_ids)) {
+				return $post_ids;
+			}
+
+			return $last_error instanceof WP_Error
+				? $last_error
+				: new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
+		} finally {
+			$this->authors_repository->release_post_generation_lock( (int) $author->id );
+		}
 	}
 
 	/**
@@ -443,6 +459,24 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 */
 	public function generate_post_from_topic($topic, $author, $creation_method = 'manual', $trigger_context = array()) {
 		$this->logger->log("Generating post from topic: {$topic->topic_title} (ID: {$topic->id})", 'info');
+
+		// Atomically claim the topic to prevent concurrent workers from generating duplicate posts.
+		$claim_timeout    = (int) apply_filters( 'aips_topic_claim_timeout_seconds', 900, $topic );
+		$allow_regenerate = ( 'regenerate' === $creation_method );
+		if ( ! $this->topics_repository->claim_topic_for_generation( (int) $topic->id, $claim_timeout, $allow_regenerate ) ) {
+			$this->logger->log(
+				"Topic {$topic->id} ('{$topic->topic_title}') was already claimed by another worker; skipping duplicate generation.",
+				'info',
+				array(
+					'topic_id'  => (int) $topic->id,
+					'author_id' => (int) $author->id,
+				)
+			);
+			return new WP_Error(
+				'topic_already_claimed',
+				sprintf( __( 'Topic %d is already claimed by another worker.', 'ai-post-scheduler' ), $topic->id )
+			);
+		}
 		
 		// Get expanded context from similar approved topics.
 		// The limit is filterable so installations with many related topics can
@@ -479,6 +513,9 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 			if (is_wp_error($post_id)) {
 				$this->logger->log("Failed to generate post for topic {$topic->id}: " . $post_id->get_error_message(), 'error');
 				
+				// Release topic claim so it can be retried on subsequent runs.
+				$this->topics_repository->release_topic_claim( (int) $topic->id );
+
 				// The Generator now handles all logging internally via History Container
 				// We can optionally log additional high-level activity here
 				$history = $this->history_service->create('topic_post_generation', array(
@@ -507,7 +544,8 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 						'error' => $post_id->get_error_message(),
 					)
 				);
-				
+				$history->complete_failure($post_id->get_error_message());
+
 				return $post_id;
 			}
 			
@@ -519,6 +557,8 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					'author_id' => $author->id
 				))
 			);
+			// The new log row moves the topic from the Approved to the Posts Generated bucket.
+			$this->topics_repository->invalidate_topic_cache($topic->id, $author->id);
 
 			// Always record author's last run timestamp on successful generation.
 			$this->authors_repository->update_post_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
@@ -560,13 +600,17 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					'author_name' => $author->name,
 				)
 			);
-			
+			$history->complete_success(array('post_id' => $post_id));
+
 			$this->logger->log("Successfully generated post {$post_id} from topic {$topic->id}", 'info');
 			
 			return $post_id;
 			
 		} catch (Exception $e) {
 			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
+
+			// Release topic claim so it can be retried on subsequent runs.
+			$this->topics_repository->release_topic_claim( (int) $topic->id );
 
 			$payload = array(
 				'resource_label'  => sprintf(__('author topic "%s"', 'ai-post-scheduler'), $topic->topic_title),
@@ -617,7 +661,8 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					'error' => $e->getMessage(),
 				)
 			);
-			
+			$history->complete_failure($e->getMessage());
+
 			return new WP_Error('generation_failed', $e->getMessage());
 		}
 	}
@@ -703,7 +748,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 			'post_status' => 'draft',
 		));
 		
-		// Generate a new post
-		return $this->generate_now($topic_id);
+		// Generate a new post with 'regenerate' creation method so topic claim permits re-generation.
+		return $this->generate_now($topic_id, 'regenerate');
 	}
 }

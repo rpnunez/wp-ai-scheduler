@@ -86,6 +86,7 @@ class AIPS_Internal_Links_Controller {
 		add_action('wp_ajax_aips_internal_links_update_status', array($this, 'ajax_update_status'));
 		add_action('wp_ajax_aips_internal_links_update_anchor', array($this, 'ajax_update_anchor'));
 		add_action('wp_ajax_aips_internal_links_delete', array($this, 'ajax_delete'));
+		add_action('wp_ajax_aips_internal_links_bulk_action', array($this, 'ajax_bulk_action'));
 		add_action('wp_ajax_aips_internal_links_start_indexing', array($this, 'ajax_start_indexing'));
 		add_action('wp_ajax_aips_internal_links_get_status', array($this, 'ajax_get_status'));
 		add_action('wp_ajax_aips_internal_links_reindex_post', array($this, 'ajax_reindex_post'));
@@ -143,6 +144,20 @@ class AIPS_Internal_Links_Controller {
 
 		$items = $this->links_repo->get_paginated($per_page, $page, $status, $search, $origin);
 		$total = $this->links_repo->get_paginated_count($status, $search, $origin);
+
+		$post_ids = array();
+		foreach ($items as $item) {
+			if (!empty($item->source_post_id)) {
+				$post_ids[] = (int) $item->source_post_id;
+			}
+			if (!empty($item->target_post_id)) {
+				$post_ids[] = (int) $item->target_post_id;
+			}
+		}
+
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
 
 		// Enrich items with edit URLs
 		foreach ($items as $item) {
@@ -303,6 +318,45 @@ class AIPS_Internal_Links_Controller {
 		}
 
 		AIPS_Ajax_Response::success(array('message' => __('Suggestion deleted.', 'ai-post-scheduler')));
+	}
+
+	/**
+	 * AJAX: Apply one action (accept / reject / delete) to several suggestions.
+	 *
+	 * @return void
+	 */
+	public function ajax_bulk_action() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$bulk_action = isset($_POST['bulk_action']) ? sanitize_key(wp_unslash($_POST['bulk_action'])) : '';
+		$raw_ids     = isset($_POST['ids']) ? (array) wp_unslash($_POST['ids']) : array();
+		$ids         = array_values(array_unique(array_filter(array_map('absint', $raw_ids))));
+
+		if (empty($ids) || count($ids) > 200 || !in_array($bulk_action, array('accept', 'reject', 'delete'), true)) {
+			AIPS_Ajax_Response::error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
+		}
+
+		if ($bulk_action === 'delete') {
+			$result = $this->links_repo->delete_bulk($ids);
+		} else {
+			$result = $this->links_repo->update_status_bulk($ids, $bulk_action === 'accept' ? 'accepted' : 'rejected', array('pending'));
+		}
+
+		if ($result === false) {
+			AIPS_Ajax_Response::error(array('message' => __('Bulk action failed.', 'ai-post-scheduler')));
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'ids'    => $ids,
+			'action' => $bulk_action,
+			'count'  => (int) $result,
+		));
 	}
 
 	/**

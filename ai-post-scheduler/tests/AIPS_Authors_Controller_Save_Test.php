@@ -350,4 +350,48 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 
 		$this->assertFalse($response['success']);
 	}
+
+	// =========================================================================
+	// Topic auto-approval thresholds
+	// =========================================================================
+
+	/**
+	 * Quality score and niche relevance are posted as separate fields and must
+	 * persist independently, with max similarity clamped to 0.50-0.99.
+	 */
+	public function test_save_persists_score_and_relevance_independently() {
+		wp_set_current_user($this->admin_user_id);
+
+		global $wpdb;
+		$original_wpdb = $wpdb;
+		$proxy         = $this->make_capturing_wpdb();
+		$wpdb          = $proxy;
+
+		try {
+			$controller = new AIPS_Authors_Controller();
+
+			$_POST = array(
+				'nonce'                              => wp_create_nonce('aips_ajax_nonce'),
+				'name'                               => 'Threshold Author',
+				'field_niche'                        => 'Technology',
+				'topic_generation_frequency'         => 'weekly',
+				'post_generation_frequency'          => 'daily',
+				'topic_auto_approval_mode'           => 'similarity',
+				'topic_auto_approval_min_score'      => '82',
+				'topic_auto_approval_min_relevance'  => '41',
+				'topic_auto_approval_max_similarity' => '0.1',
+				'topic_auto_approval_fallback'       => 'rejected',
+			);
+
+			$this->capture_ajax(array($controller, 'ajax_save_author'));
+		} finally {
+			$wpdb = $original_wpdb;
+		}
+
+		$this->assertNotNull($proxy->inserted);
+		$this->assertSame(82, $proxy->inserted['topic_auto_approval_min_score']);
+		$this->assertSame(41, $proxy->inserted['topic_auto_approval_min_relevance']);
+		$this->assertEqualsWithDelta(0.5, $proxy->inserted['topic_auto_approval_max_similarity'], 0.0001);
+		$this->assertSame('rejected', $proxy->inserted['topic_auto_approval_fallback']);
+	}
 }

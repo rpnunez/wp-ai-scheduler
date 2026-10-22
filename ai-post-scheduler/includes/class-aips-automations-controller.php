@@ -91,6 +91,16 @@ class AIPS_Automations_Controller {
 					array('label' => __('Active Feeds', 'ai-post-scheduler'), 'value' => $active_cnt, 'type' => 'success', 'icon' => 'dashicons-rss'),
 					array('label' => __('Total Sources', 'ai-post-scheduler'), 'value' => count($sources), 'type' => 'neutral'),
 				);
+			} elseif (('monetization' === $active_tab || 'affiliate-links' === $active_tab) && class_exists('AIPS_Affiliate_Links_Repository')) {
+				$repo       = new AIPS_Affiliate_Links_Repository();
+				$all_items  = $repo->get_all(false);
+				$active_cnt = count(array_filter($all_items, function($m) {
+					return !empty($m->enabled);
+				}));
+				$summary_items = array(
+					array('label' => __('Active Mappings', 'ai-post-scheduler'), 'value' => $active_cnt, 'type' => 'success', 'icon' => 'dashicons-yes-alt'),
+					array('label' => __('Total Mappings', 'ai-post-scheduler'), 'value' => count($all_items), 'type' => 'neutral', 'icon' => 'dashicons-money-alt'),
+				);
 			}
 		} catch (\Throwable $e) {
 			// Fail-safe: empty summary items
@@ -507,29 +517,9 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_sources_tab() {
-		$repo    = new AIPS_Sources_Repository();
-		$sources = $repo->get_all(false);
-
-		$source_groups = get_terms(array(
-			'taxonomy'   => 'aips_source_group',
-			'hide_empty' => false,
-		));
-		if (is_wp_error($source_groups)) {
-			$source_groups = array();
-		}
-		$source_group_name_map = array();
-		foreach ($source_groups as $group) {
-			$source_group_name_map[(int) $group->term_id] = $group->name;
-		}
-
-		$all_source_ids = array_map(function($s) {
-			return (int) $s->id;
-		}, $sources);
-		$source_term_ids_map = $repo->get_term_ids_for_sources($all_source_ids);
-
-		$data_repo             = new AIPS_Sources_Data_Repository();
-		$source_fetch_data_map = $data_repo->get_by_source_ids($all_source_ids);
-		$source_content_count_map = $data_repo->get_counts_by_source_ids($all_source_ids);
+		$sources_table = new AIPS_Sources_List_Table();
+		$sources_table->prepare_items();
+		$source_groups = $sources_table->get_source_groups();
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
 	}

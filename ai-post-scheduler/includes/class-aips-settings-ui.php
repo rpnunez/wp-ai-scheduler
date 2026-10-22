@@ -13,6 +13,33 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Settings_UI {
 
+	/** Retention is disabled at zero; never convert a negative value into deletion. */
+	public function sanitize_source_archive_retention_days( $value ) {
+		return max( 0, min( 3650, (int) $value ) );
+	}
+
+	public function source_archive_retention_field_callback() {
+		$days = $this->sanitize_source_archive_retention_days( AIPS_Config::get_instance()->get_option( 'aips_source_archive_retention_days' ) );
+		echo '<input type="number" min="0" max="3650" step="1" id="aips_source_archive_retention_days" name="aips_source_archive_retention_days" value="' . esc_attr( (string) $days ) . '" class="small-text">';
+		echo '<p class="description">' . esc_html__( 'Days to retain source snapshots. 0 disables deletion. Daily cleanup removes up to 100 expired snapshots per batch and always keeps the newest usable snapshot for each current source URL. Generation history keeps its metadata, but full archived content becomes unavailable after deletion.', 'ai-post-scheduler' ) . '</p>';
+		// The review is submitted through the existing settings form; no new AJAX action.
+		$review_days = isset( $_GET['aips_retention_review_days'] ) ? $this->sanitize_source_archive_retention_days( wp_unslash( $_GET['aips_retention_review_days'] ) ) : $days;
+		echo '<label for="aips-retention-review-days">' . esc_html__( 'Review cutoff (days):', 'ai-post-scheduler' ) . '</label> ';
+		echo '<input type="number" id="aips-retention-review-days" min="1" max="3650" value="' . esc_attr( (string) max( 1, $review_days ) ) . '" class="small-text" oninput="this.nextElementSibling.href=this.nextElementSibling.dataset.base+encodeURIComponent(this.value)"> ';
+		$base = admin_url( 'admin.php?page=aips-settings&tab=settings-general&aips_retention_review_days=' );
+		echo '<a class="button" data-base="' . esc_url( $base ) . '" href="' . esc_url( $base . max( 1, $review_days ) ) . '">' . esc_html__( 'Review eligible snapshots', 'ai-post-scheduler' ) . '</a>';
+		if ( $review_days > 0 ) {
+			try {
+				$count = ( new AIPS_Sources_Data_Repository() )->count_prunable_archive( AIPS_DateTime::now()->timestamp() - $review_days * DAY_IN_SECONDS );
+			} catch ( Throwable $error ) {
+				echo '<p class="description">' . esc_html__( 'The eligible snapshot count is unavailable. Check the database before enabling retention.', 'ai-post-scheduler' ) . '</p>';
+				return;
+			}
+			/* translators: 1: snapshot count, 2: retention days. */
+			echo '<p class="description">' . esc_html( sprintf( __( '%1$d snapshots are eligible for deletion with a %2$d-day cutoff. Review this count before saving a nonzero retention period.', 'ai-post-scheduler' ), $count, $review_days ) ) . '</p>';
+		}
+	}
+
     /**
      * Render the description for the general settings section.
      *
@@ -175,6 +202,36 @@ class AIPS_Settings_UI {
             'hide_empty' => false,
         ));
         echo '<p class="description">' . esc_html__('Default category for generated posts.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the bulk-publish background threshold field.
+     */
+    public function bulk_publish_async_threshold_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_bulk_publish_async_threshold');
+        ?>
+        <input type="number" name="aips_bulk_publish_async_threshold" value="<?php echo esc_attr($value); ?>" min="2" max="500" step="1" class="small-text">
+        <p class="description">
+            <?php esc_html_e('On the Content → Pending Review screen, when you bulk-publish this many drafts or more, they are published in the background (via WP-Cron) so the page responds instantly instead of waiting for every post. You can watch progress under Diagnostics → Background Processes. Smaller selections publish immediately. Raise this to keep more selections publishing instantly; lower it to offload medium-sized batches to the background sooner. Default: 30.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Sanitize the bulk-publish background threshold: a whole number, clamped to
+     * a sane range so the Pending Review publish path always behaves predictably.
+     *
+     * @param mixed $value Raw submitted value.
+     * @return int
+     */
+    public function sanitize_bulk_publish_async_threshold($value) {
+        $value = absint($value);
+        if ($value < 2) {
+            $value = 2;
+        } elseif ($value > 500) {
+            $value = 500;
+        }
+        return $value;
     }
 
     /**
@@ -1076,6 +1133,96 @@ class AIPS_Settings_UI {
     // Site Content Strategy field callbacks
     // -------------------------------------------------------------------------
 
+	public function ai_assistance_section_callback() {
+		echo '<p>' . esc_html__( 'Configure consistent, admin-only AI suggestions. Current field values and declared sibling fields are sent to your AI provider to produce a suggestion.', 'ai-post-scheduler' ) . '</p>';
+	}
+
+	public function ai_assistance_enabled_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' );
+		?>
+		<label>
+			<input type="checkbox" name="aips_ai_assistance_enabled" value="1" <?php checked( $value ); ?>>
+			<?php esc_html_e( 'Enable AI Assistance site-wide', 'ai-post-scheduler' ); ?>
+		</label>
+		<?php
+	}
+
+	public function ai_assistance_contexts_field_callback() {
+		$enabled = AIPS_Settings::get_enabled_ai_assistance_contexts();
+		$labels  = array(
+			'authors'          => __( 'Authors', 'ai-post-scheduler' ),
+			'templates'        => __( 'Templates', 'ai-post-scheduler' ),
+			'sources'          => __( 'Sources', 'ai-post-scheduler' ),
+			'content_strategy' => __( 'Site Content Strategy', 'ai-post-scheduler' ),
+		);
+		?>
+		<input type="hidden" name="aips_ai_assistance_contexts[]" value="">
+		<?php foreach ( $labels as $context => $label ) : ?>
+			<label style="display:block">
+				<input type="checkbox" name="aips_ai_assistance_contexts[]" value="<?php echo esc_attr( $context ); ?>" <?php checked( in_array( $context, $enabled, true ) ); ?>>
+				<?php echo esc_html( $label ); ?>
+			</label>
+		<?php endforeach; ?>
+		<?php
+	}
+
+	public function ai_assistance_response_length_field_callback() {
+		$value   = AIPS_Settings::sanitize_ai_assistance_response_length( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_response_length' ) );
+		$options = array(
+			'concise'  => __( 'Concise', 'ai-post-scheduler' ),
+			'standard' => __( 'Standard', 'ai-post-scheduler' ),
+			'detailed' => __( 'Detailed', 'ai-post-scheduler' ),
+		);
+		?>
+		<select name="aips_ai_assistance_response_length">
+			<?php foreach ( $options as $key => $label ) : ?>
+				<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $value, $key ); ?>><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	public function ai_assistance_guidance_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_guidance' );
+		?>
+		<textarea class="large-text" rows="3" name="aips_ai_assistance_guidance"><?php echo esc_textarea( $value ); ?></textarea>
+		<p class="description"><?php esc_html_e( 'Optional instructions that supplement the Site Content Strategy.', 'ai-post-scheduler' ); ?></p>
+		<?php
+	}
+
+	public function ai_assistance_overwrite_mode_field_callback() {
+		$value = AIPS_Settings::sanitize_ai_assistance_overwrite_mode( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_overwrite_mode' ) );
+		?>
+		<label>
+			<input type="radio" name="aips_ai_assistance_overwrite_mode" value="replace" <?php checked( $value, 'replace' ); ?>>
+			<?php esc_html_e( 'Replace automatically', 'ai-post-scheduler' ); ?>
+		</label>
+		<br>
+		<label>
+			<input type="radio" name="aips_ai_assistance_overwrite_mode" value="preview" <?php checked( $value, 'preview' ); ?>>
+			<?php esc_html_e( 'Show preview and apply choice', 'ai-post-scheduler' ); ?>
+		</label>
+		<?php
+	}
+
+	public function ai_assistance_retention_days_field_callback() {
+		$value   = AIPS_Settings::get_ai_assistance_retention_days();
+		$options = array(
+			0   => __( 'Do not retain', 'ai-post-scheduler' ),
+			7   => __( '7 days', 'ai-post-scheduler' ),
+			30  => __( '30 days', 'ai-post-scheduler' ),
+			90  => __( '90 days', 'ai-post-scheduler' ),
+			365 => __( '1 year', 'ai-post-scheduler' ),
+		);
+		?>
+		<select name="aips_ai_assistance_retention_days">
+			<?php foreach ( $options as $days => $label ) : ?>
+				<option value="<?php echo esc_attr( $days ); ?>" <?php selected( $value, $days ); ?>><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
     /**
      * Render the description for the site content strategy settings section.
      *
@@ -1093,7 +1240,7 @@ class AIPS_Settings_UI {
     public function site_niche_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_site_niche');
         ?>
-        <input type="text" name="aips_site_niche" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Personal Finance, WordPress Development, Fitness', 'ai-post-scheduler'); ?>">
+        <input type="text" id="aips_site_niche" name="aips_site_niche" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Personal Finance, WordPress Development, Fitness', 'ai-post-scheduler'); ?>">
         <p class="description"><?php esc_html_e('The main topic or industry your website covers. Used as context for Author Suggestions and AI generation.', 'ai-post-scheduler'); ?></p>
         <?php
     }
@@ -1106,7 +1253,7 @@ class AIPS_Settings_UI {
     public function site_target_audience_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_site_target_audience');
         ?>
-        <input type="text" name="aips_site_target_audience" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners, Parents', 'ai-post-scheduler'); ?>">
+        <input type="text" id="aips_site_target_audience" name="aips_site_target_audience" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners, Parents', 'ai-post-scheduler'); ?>">
         <p class="description"><?php esc_html_e('Who your content is written for. Helps the AI tailor the language and depth of generated topics and posts.', 'ai-post-scheduler'); ?></p>
         <?php
     }
@@ -1119,7 +1266,7 @@ class AIPS_Settings_UI {
     public function site_content_goals_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_site_content_goals');
         ?>
-        <textarea name="aips_site_content_goals" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive product sign-ups, Build a community, Rank on search engines', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <textarea id="aips_site_content_goals" name="aips_site_content_goals" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive product sign-ups, Build a community, Rank on search engines', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('What you want your content to achieve. Informs the angle and call-to-action emphasis in generated content.', 'ai-post-scheduler'); ?></p>
         <?php
     }
@@ -1167,7 +1314,7 @@ class AIPS_Settings_UI {
     public function site_brand_voice_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_site_brand_voice');
         ?>
-        <input type="text" name="aips_site_brand_voice" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Friendly and approachable, Authoritative, Conversational', 'ai-post-scheduler'); ?>">
+        <input type="text" id="aips_site_brand_voice" name="aips_site_brand_voice" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Friendly and approachable, Authoritative, Conversational', 'ai-post-scheduler'); ?>">
         <p class="description"><?php esc_html_e('The overall voice and tone of your brand. Applied as a default across all authors unless overridden per-author.', 'ai-post-scheduler'); ?></p>
         <?php
     }
@@ -1218,7 +1365,7 @@ class AIPS_Settings_UI {
     public function site_content_guidelines_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_site_content_guidelines');
         ?>
-        <textarea name="aips_site_content_guidelines" class="large-text" rows="4" placeholder="<?php esc_attr_e('e.g., Always include at least one actionable tip per post. Avoid profanity. Cite sources where possible.', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <textarea id="aips_site_content_guidelines" name="aips_site_content_guidelines" class="large-text" rows="4" placeholder="<?php esc_attr_e('e.g., Always include at least one actionable tip per post. Avoid profanity. Cite sources where possible.', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('General rules and guidelines for all generated content. Included in every generation prompt as hard constraints.', 'ai-post-scheduler'); ?></p>
         <?php
     }
@@ -1231,7 +1378,7 @@ class AIPS_Settings_UI {
     public function site_excluded_topics_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_site_excluded_topics');
         ?>
-        <textarea name="aips_site_excluded_topics" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., competitor brand names, controversial political topics, adult content', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <textarea id="aips_site_excluded_topics" name="aips_site_excluded_topics" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., competitor brand names, controversial political topics, adult content', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('Topics or subjects that should never appear in any generated post or topic suggestion. Applied globally.', 'ai-post-scheduler'); ?></p>
         <?php
     }
@@ -2288,14 +2435,38 @@ class AIPS_Settings_UI {
 	 * @return void
 	 */
 	public function author_topic_auto_approval_mode_field_callback() {
-		$value = (string) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_mode', 'similarity');
+		$value = AIPS_Author_Topic_Approval_Policy::normalize_mode(AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_mode', 'manual'));
 		?>
 		<select name="aips_author_topic_auto_approval_mode" id="aips_author_topic_auto_approval_mode">
-			<option value="similarity" <?php selected($value, 'similarity'); ?>><?php esc_html_e('Dual-Boundary Semantic Gate (Vector Similarity)', 'ai-post-scheduler'); ?></option>
 			<option value="manual" <?php selected($value, 'manual'); ?>><?php esc_html_e('Manual Review (Hold in Pending)', 'ai-post-scheduler'); ?></option>
 			<option value="all" <?php selected($value, 'all'); ?>><?php esc_html_e('Auto-Approve All (Unfiltered)', 'ai-post-scheduler'); ?></option>
+			<option value="score" <?php selected($value, 'score'); ?>><?php esc_html_e('Quality Score Threshold', 'ai-post-scheduler'); ?></option>
+			<option value="similarity" <?php selected($value, 'similarity'); ?>><?php esc_html_e('Dual-Boundary Semantic Gate (Vector Similarity)', 'ai-post-scheduler'); ?></option>
 		</select>
-		<p class="description"><?php esc_html_e('Default auto-approval behavior for generated topics across all authors inheriting global policy.', 'ai-post-scheduler'); ?></p>
+		<p class="description"><?php esc_html_e('Applies only to authors whose Topic Auto-Approval Policy is set to "Use Global Settings". Changing this affects every one of those authors. Authors with their own policy are not affected.', 'ai-post-scheduler'); ?></p>
+		<?php
+		$embeddings = AIPS_Container::get_instance()->has(AIPS_Embeddings_Service::class)
+			? AIPS_Container::get_instance()->make(AIPS_Embeddings_Service::class)
+			: null;
+		if (!$embeddings || !$embeddings->is_enabled()) :
+			?>
+			<p class="description aips-embeddings-warning" id="aips-auto-approval-embeddings-warning" style="color: #b32d2e;">
+				<?php esc_html_e('Embeddings are currently disabled. The semantic gate cannot measure niche relevance until embeddings are enabled.', 'ai-post-scheduler'); ?>
+			</p>
+			<?php
+		endif;
+	}
+
+	/**
+	 * Render Global Author Topic Minimum Quality Score.
+	 *
+	 * @return void
+	 */
+	public function author_topic_auto_approval_min_score_field_callback() {
+		$value = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_min_score', 70);
+		?>
+		<input type="number" min="1" max="100" step="1" name="aips_author_topic_auto_approval_min_score" id="aips_author_topic_auto_approval_min_score" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+		<p class="description"><?php esc_html_e('Quality Score Threshold mode: topics whose AI quality score is at least this value (1-100) are auto-approved.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 
@@ -2304,11 +2475,11 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function author_topic_auto_approval_min_score_field_callback() {
-		$value = (float) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_min_score', 70);
+	public function author_topic_auto_approval_min_relevance_field_callback() {
+		$value = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_min_relevance', 65);
 		?>
-		<input type="number" min="0" max="100" step="1" name="aips_author_topic_auto_approval_min_score" id="aips_author_topic_auto_approval_min_score" value="<?php echo esc_attr((string) $value); ?>" class="small-text"> %
-		<p class="description"><?php esc_html_e('Minimum cosine relevance percentage against the author persona and focus niche. Topics below this threshold fail approval.', 'ai-post-scheduler'); ?></p>
+		<input type="number" min="1" max="100" step="1" name="aips_author_topic_auto_approval_min_relevance" id="aips_author_topic_auto_approval_min_relevance" value="<?php echo esc_attr((string) $value); ?>" class="small-text"> %
+		<p class="description"><?php esc_html_e('Semantic Gate mode: minimum cosine relevance percentage against the author persona and focus niche. Topics below this threshold fail approval.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 
@@ -2321,7 +2492,7 @@ class AIPS_Settings_UI {
 		$value = (float) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_max_similarity', 0.85);
 		?>
 		<input type="number" min="0.50" max="0.99" step="0.01" name="aips_author_topic_auto_approval_max_similarity" id="aips_author_topic_auto_approval_max_similarity" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-		<p class="description"><?php esc_html_e('Maximum cosine similarity allowed against existing topics and published articles. Topics at or above this score are flagged as duplicates.', 'ai-post-scheduler'); ?></p>
+		<p class="description"><?php esc_html_e('Semantic Gate mode: maximum cosine similarity allowed against existing topics and published articles. Topics at or above this score are flagged as duplicates.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 
@@ -2331,13 +2502,14 @@ class AIPS_Settings_UI {
 	 * @return void
 	 */
 	public function author_topic_auto_approval_fallback_field_callback() {
-		$value = (string) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_fallback', 'reject');
+		$value = AIPS_Author_Topic_Approval_Policy::normalize_fallback(AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_fallback', 'smart_split'));
 		?>
 		<select name="aips_author_topic_auto_approval_fallback" id="aips_author_topic_auto_approval_fallback">
-			<option value="reject" <?php selected($value, 'reject'); ?>><?php esc_html_e('Immediate Rejection (Move to Rejected tab)', 'ai-post-scheduler'); ?></option>
-			<option value="smart_split" <?php selected($value, 'smart_split'); ?>><?php esc_html_e('Smart Split (Keep relevant near-duplicates in Pending for manual review)', 'ai-post-scheduler'); ?></option>
+			<option value="smart_split" <?php selected($value, 'smart_split'); ?>><?php esc_html_e('Smart Split (Reject duplicates, hold the rest in Pending)', 'ai-post-scheduler'); ?></option>
+			<option value="pending" <?php selected($value, 'pending'); ?>><?php esc_html_e('Leave All in Pending (Queue for Review)', 'ai-post-scheduler'); ?></option>
+			<option value="rejected" <?php selected($value, 'rejected'); ?>><?php esc_html_e('Immediate Rejection (Move to Rejected tab)', 'ai-post-scheduler'); ?></option>
 		</select>
-		<p class="description"><?php esc_html_e('Determines whether non-qualifying topics are rejected outright or held in Pending when they are on-niche but close to the duplicate threshold.', 'ai-post-scheduler'); ?></p>
+		<p class="description"><?php esc_html_e('Determines what happens to topics that do not qualify for auto-approval.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 
@@ -2857,22 +3029,40 @@ class AIPS_Settings_UI {
 	 * Sanitize author topic auto approval mode.
 	 *
 	 * @param mixed $value Submitted value.
-	 * @return string ('similarity', 'manual', 'all').
+	 * @return string ('manual', 'all', 'score', 'similarity').
 	 */
 	public function sanitize_author_topic_auto_approval_mode($value) {
-		$value = sanitize_key((string) $value);
-		return in_array($value, array('similarity', 'manual', 'all'), true) ? $value : 'similarity';
+		return AIPS_Author_Topic_Approval_Policy::normalize_mode($value);
 	}
 
 	/**
 	 * Sanitize author topic auto approval fallback.
 	 *
 	 * @param mixed $value Submitted value.
-	 * @return string ('reject', 'smart_split').
+	 * @return string ('pending', 'rejected', 'smart_split').
 	 */
 	public function sanitize_author_topic_auto_approval_fallback($value) {
-		$value = sanitize_key((string) $value);
-		return in_array($value, array('reject', 'smart_split'), true) ? $value : 'reject';
+		return AIPS_Author_Topic_Approval_Policy::normalize_fallback($value);
+	}
+
+	/**
+	 * Sanitize an auto-approval threshold expressed as an integer 1-100.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_author_topic_auto_approval_percent($value) {
+		return max(1, min(100, absint($value)));
+	}
+
+	/**
+	 * Sanitize the maximum duplicate similarity (0.50-0.99).
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return float
+	 */
+	public function sanitize_author_topic_auto_approval_max_similarity($value) {
+		return max(0.50, min(0.99, (float) $value));
 	}
 
 	public function sanitize_webhook_events($value) {

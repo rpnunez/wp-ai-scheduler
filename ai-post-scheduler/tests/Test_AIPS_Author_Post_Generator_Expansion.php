@@ -62,6 +62,12 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 					'status' => 'approved'
 				);
 			}
+			public function claim_topic_for_generation(int $topic_id, int $claim_timeout = 900, bool $allow_regenerate = false): bool {
+				return true;
+			}
+			public function release_topic_claim(int $topic_id): bool {
+				return true;
+			}
 		};
 
 		$logs_repository = new class {
@@ -74,6 +80,12 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 			public function create($type, $metadata = array()) {
 				return new class {
 					public function record($level, $message, $context = array(), $resource = null, $details = array()) {
+						return true;
+					}
+					public function complete_success($result_data = array()) {
+						return true;
+					}
+					public function complete_failure($error_message, $error_data = array()) {
 						return true;
 					}
 				};
@@ -202,6 +214,12 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 					'status' => 'approved'
 				);
 			}
+			public function claim_topic_for_generation(int $topic_id, int $claim_timeout = 900, bool $allow_regenerate = false): bool {
+				return true;
+			}
+			public function release_topic_claim(int $topic_id): bool {
+				return true;
+			}
 		};
 
 		$logs_repository = new class {
@@ -214,6 +232,12 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 			public function create($type, $metadata = array()) {
 				return new class {
 					public function record($level, $message, $context = array(), $resource = null, $details = array()) {
+						return true;
+					}
+					public function complete_success($result_data = array()) {
+						return true;
+					}
+					public function complete_failure($error_message, $error_data = array()) {
 						return true;
 					}
 				};

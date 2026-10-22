@@ -836,12 +836,15 @@ class AIPS_Content_Indexer_Controller {
 		}
 		$avg_cohesion = $total_clusters > 0 ? round($cohesion_sum / $total_clusters, 1) : 0;
 		$orphan_count = count($orphans);
+		$cluster_meta = $this->similarity_evaluator->get_last_cluster_meta();
 
 		AIPS_Ajax_Response::success(array(
-			'clusters' => array_values($clusters),
-			'orphans'  => $orphans,
-			'count'    => $total_clusters,
-			'stats'    => array(
+			'clusters'  => array_values($clusters),
+			'orphans'   => $orphans,
+			'count'     => $total_clusters,
+			'truncated' => !empty($cluster_meta['truncated']),
+			'meta'      => $cluster_meta,
+			'stats'     => array(
 				'total_clusters'  => $total_clusters,
 				'clustered_posts' => $clustered_posts,
 				'avg_cohesion'    => $avg_cohesion,

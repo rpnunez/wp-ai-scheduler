@@ -208,7 +208,63 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.8', '<' ) ) {
 			$this->migrate_to_3_7_8();
 		}
+
+		// migrate_to_3_7_12() closes History rows that one-shot event containers
+		// left in 'processing'. It reads the indexed event_status log column, so it
+		// runs after the Layer-1 schema apply.
+		if ( version_compare( $from_version, '3.7.12', '<' ) ) {
+			$this->migrate_to_3_7_12();
+		}
+
+		// migrate_to_3_7_13() reads post meta, so it also runs after the schema apply.
+		if ( version_compare( $from_version, '3.7.13', '<' ) ) {
+			$this->migrate_to_3_7_13();
+		}
+
+		// migrate_to_3_7_14() adds post_generation_lock to aips_authors and
+		// claimed_at to aips_author_topics for claim-first mutual exclusion.
+		if ( version_compare( $from_version, '3.7.14', '<' ) ) {
+			$this->migrate_to_3_7_14();
+		}
+
+		// migrate_to_3_7_15() fills aips_history.post_type for generation runs written
+		// before the write path populated it, so History filters and the Pending Review
+		// and Partial Generations tabs can rely on it.
+		if ( version_compare( $from_version, '3.7.15', '<' ) ) {
+			$this->migrate_to_3_7_15();
+		}
+
+		// migrate_to_3_7_16() repairs History statuses the sync wrote to the wrong row
+		// (a post's content_indexing row instead of its generation run). It reads post
+		// meta, so it runs after the schema apply.
+		if ( version_compare( $from_version, '3.7.16', '<' ) && ! $this->migrate_to_3_7_16() ) {
+			// Return without stamping the version so the next request retries the repair.
+			return;
+		}
+
+		// migrate_to_3_7_17() classifies existing History rows now that record_kind exists
+		// (added with the default 'event' by the schema apply above), then re-runs the
+		// post_type and status repairs, whose queries filter on record_kind.
+		if ( version_compare( $from_version, '3.7.17', '<' ) && ! $this->migrate_to_3_7_17() ) {
+			// Return without stamping the version so the next request retries.
+			return;
+		}
+
+		// migrate_to_3_7_18() backfills the topic_auto_approval_min_relevance
+		// column added by install_tables() above, so it runs after the
+		// Layer-1 schema apply.
+		if ( version_compare( $from_version, '3.7.18', '<' ) ) {
+			$this->migrate_to_3_7_18();
+		}
     
+		if ( version_compare( $from_version, '3.7.19', '<' ) && ! $this->migrate_to_3_7_19() ) {
+			// install_tables() has already stamped the schema version. Restore the
+			// previous gate so a failed structural ALTER is retried next request.
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Source attempt-state migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1213,6 +1269,63 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
+	 * Migration for version 3.7.18.
+	 *
+	 * Consolidates Author Topic Auto-Approval onto one option family:
+	 *  - Authors in `similarity` mode stored their relevance % in
+	 *    `topic_auto_approval_min_score`; copy it into the new dedicated
+	 *    `topic_auto_approval_min_relevance` column. Explicit modes and every
+	 *    other column are left unchanged.
+	 *  - Authors with mode `manual` (the old column default) are set to `inherit`.
+	 *  - The global fallback value `reject` becomes `rejected`.
+	 *  - The hidden, UI-less option family that nothing could configure is deleted.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_18() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_authors';
+
+		$column = $wpdb->get_var( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table}` LIKE %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'topic_auto_approval_min_relevance'
+		) );
+		if ( $column ) {
+			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"UPDATE `{$table}` SET topic_auto_approval_min_relevance = topic_auto_approval_min_score
+				WHERE topic_auto_approval_mode IN ('similarity', 'embeddings')
+				AND topic_auto_approval_min_score BETWEEN 1 AND 100"
+			);
+		}
+
+		// Existing authors on the old `manual` column default are switched to
+		// `inherit` so they follow the global Settings → Authors policy. Authors
+		// with an explicit non-manual mode are left alone.
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"UPDATE `{$table}` SET topic_auto_approval_mode = 'inherit'
+			WHERE topic_auto_approval_mode IS NULL
+			OR topic_auto_approval_mode IN ('', 'manual')"
+		);
+
+		if ( 'reject' === get_option( 'aips_author_topic_auto_approval_fallback' ) ) {
+			update_option( 'aips_author_topic_auto_approval_fallback', 'rejected' );
+		}
+
+		foreach ( array(
+			'aips_author_topic_auto_approval_enabled',
+			'aips_author_topic_approval_mode',
+			'aips_author_topic_min_relevance',
+			'aips_author_topic_max_duplicate',
+			'aips_author_topic_fallback_action',
+		) as $option_name ) {
+			delete_option( $option_name );
+		}
+
+		$this->logger->log( 'Migration 3.7.18: Consolidated author topic auto-approval options and backfilled min_relevance.', 'info' );
+	}
+
+	/**
 	 * Migration for version 3.7.8.
 	 *
 	 * Drops the `history_id` and `history_id_type` indexes on aips_history_log.
@@ -1249,6 +1362,213 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.8: Dropped redundant aips_history_log indexes covered by history_type_timestamp.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.12.
+	 *
+	 * Review-queue actions, topic-generation wrappers and notifications created a
+	 * History container (always opened as 'processing') and never closed it, so
+	 * they showed as in progress forever. Close them from their logged outcome,
+	 * then close any other row that has had no activity for a day. Persistent
+	 * lifecycle containers are never touched.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_12() {
+		$repository = AIPS_History_Repository::instance();
+
+		$orphans = $repository->close_orphaned_event_rows(
+			array( 'post_review_action', 'topic_post_generation', 'notification_sent' )
+		);
+
+		// 'post_review_action' is a lifecycle method but was handled above; the other
+		// lifecycle containers are intentionally long-lived.
+		$stale = $repository->close_stale_processing_rows(
+			DAY_IN_SECONDS,
+			array_diff( AIPS_History_Event_Recorder::lifecycle_creation_methods(), array( 'post_review_action' ) )
+		);
+
+		$this->logger->log(
+			sprintf( 'Migration 3.7.12: Closed %d orphaned event rows and %d abandoned in-progress rows in History.', $orphans, $stale ),
+			'info'
+		);
+	}
+
+	/**
+	 * Migration for version 3.7.13.
+	 *
+	 * Generations that finished with missing components used to be stored as
+	 * 'completed'. They are now 'partial', so mark each post's newest generation row
+	 * as partial when the post is flagged incomplete.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_13() {
+		$changed = AIPS_History_Repository::instance()->backfill_partial_generation_status();
+
+		$this->logger->log(
+			sprintf( 'Migration 3.7.13: Marked %d incomplete generations as partial in History.', $changed ),
+			'info'
+		);
+	}
+
+	/**
+	 * Migration for version 3.7.14.
+	 *
+	 * Adds `post_generation_lock` to `aips_authors` and `claimed_at` to `aips_author_topics`
+	 * for claim-first atomic locking and mutual exclusion during post generation.
+	 *
+	 * Both statements are guarded with SHOW COLUMNS checks so they are
+	 * safe no-ops on fresh installs where dbDelta already created the schema.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_14() {
+		global $wpdb;
+
+		$table_authors = $wpdb->prefix . 'aips_authors';
+		$table_topics  = $wpdb->prefix . 'aips_author_topics';
+
+		// 1. Author table: post_generation_lock
+		$authors_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_authors ) );
+		if ( $authors_table_exists === $table_authors ) {
+			$has_lock_col = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'post_generation_lock'
+			) );
+
+			if ( ! $has_lock_col ) {
+				$wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN post_generation_lock bigint(20) unsigned NOT NULL DEFAULT 0 AFTER post_generation_is_active, ADD KEY post_generation_lock (post_generation_lock)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		// 2. Author topics table: claimed_at
+		$topics_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_topics ) );
+		if ( $topics_table_exists === $table_topics ) {
+			$has_claimed_col = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_topics}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'claimed_at'
+			) );
+
+			if ( ! $has_claimed_col ) {
+				$wpdb->query( "ALTER TABLE `{$table_topics}` ADD COLUMN claimed_at bigint(20) unsigned NOT NULL DEFAULT 0 AFTER metadata, ADD KEY claimed_at (claimed_at)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.14: Added post_generation_lock to authors and claimed_at to author_topics.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.15.
+	 *
+	 * Backfills the NULL post_type on generation-run History rows created after the
+	 * column was introduced (3.4.0) but before the write path set it. Event rows and
+	 * rows whose post no longer exists are left alone; existing values are never
+	 * overwritten.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_15() {
+		$changed = AIPS_History_Repository::instance()->backfill_post_type();
+
+		$this->logger->log(
+			sprintf( 'Migration 3.7.15: Backfilled post_type on %d History rows.', $changed ),
+			'info'
+		);
+	}
+
+	/**
+	 * Migration for version 3.7.16.
+	 *
+	 * The status sync and the 3.7.13 backfill updated each post's newest non-event row,
+	 * which for an indexed post is its content_indexing row. Reset those rows and put
+	 * the status back on the generation run. Idempotent, so a failed attempt can simply
+	 * run again.
+	 *
+	 * @return bool True when every statement succeeded; false leaves the version unstamped.
+	 */
+	private function migrate_to_3_7_16() {
+		$repaired = AIPS_History_Repository::instance()->repair_generation_statuses();
+
+		if ( $repaired['errors'] > 0 ) {
+			$this->logger->log(
+				sprintf( 'Migration 3.7.16: %d History repair statement(s) failed; will retry on the next request.', $repaired['errors'] ),
+				'error'
+			);
+
+			return false;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Migration 3.7.16: Reset %d content-indexing rows from partial, marked %d runs partial and %d runs completed in History.',
+				$repaired['jobs_reset'],
+				$repaired['marked_partial'],
+				$repaired['marked_completed']
+			),
+			'info'
+		);
+
+		return true;
+	}
+
+	/**
+	 * Migration for version 3.7.17.
+	 *
+	 * Adds the record_kind column (via the schema apply) and classifies existing rows as
+	 * generation runs or background jobs; everything else stays an event. The 3.7.15
+	 * post_type backfill and the 3.7.16 status repair select rows by record_kind, so on a
+	 * site upgrading from an older version they ran before any row was classified and
+	 * did nothing; run both again here. All three steps are idempotent, so a failed
+	 * attempt can simply run again.
+	 *
+	 * @return bool True when every statement succeeded; false leaves the version unstamped.
+	 */
+	private function migrate_to_3_7_17() {
+		$history = AIPS_History_Repository::instance();
+
+		$classified = $history->backfill_record_kind();
+		$post_types = $history->backfill_post_type();
+		$repaired   = $history->repair_generation_statuses();
+
+		$errors = (int) $classified['errors'] + (int) $repaired['errors'];
+		if ( $errors > 0 ) {
+			$this->logger->log(
+				sprintf( 'Migration 3.7.17: %d History statement(s) failed; will retry on the next request.', $errors ),
+				'error'
+			);
+
+			return false;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Migration 3.7.17: Classified %d History rows as generation runs and %d as background jobs, backfilled post_type on %d rows, repaired %d run statuses.',
+				$classified['generation'],
+				$classified['job'],
+				$post_types,
+				$repaired['jobs_reset'] + $repaired['marked_partial'] + $repaired['marked_completed']
+			),
+			'info'
+		);
+
+		if ( ! empty( $classified['unclassified'] ) ) {
+			$listed = array();
+			foreach ( $classified['unclassified'] as $method => $count ) {
+				$listed[] = sprintf( '%s (%d)', $method, $count );
+			}
+
+			$this->logger->log(
+				sprintf(
+					'Migration 3.7.17: History rows that carry a post were left as events because their creation_method is not a known run, job or event type: %s. If any are generation runs, add them with the aips_generation_run_creation_methods filter and run AIPS_History_Repository::backfill_record_kind().',
+					implode( ', ', $listed )
+				),
+				'warning'
+			);
+		}
+
+		return true;
 	}
 
 	/**
@@ -1435,5 +1755,40 @@ class AIPS_DB_Migrations {
 			'info'
 		);
 	}
+	/** Guarded attempt-state addition; legacy attempt status remains unknown. @return bool */
+	private function migrate_to_3_7_19() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_sources';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return false;
+		}
+		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
+		if ( ! $schedule_column ) {
+			return false;
+		}
+		if ( 'YES' !== $schedule_column->Null ) {
+			if ( false === $wpdb->query( "ALTER TABLE `$table` MODIFY COLUMN `next_fetch_at` bigint(20) unsigned DEFAULT NULL" ) ) {
+				return false;
+			}
+		}
+		$columns = array(
+			'last_fetch_attempt_at' => 'bigint(20) unsigned DEFAULT NULL',
+			'last_fetch_status' => 'varchar(20) DEFAULT NULL',
+			'last_fetch_error' => 'text DEFAULT NULL',
+		);
+		foreach ( $columns as $column => $definition ) {
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `$table` LIKE %s", $column ) ) ) {
+				if ( false === $wpdb->query( "ALTER TABLE `$table` ADD COLUMN `$column` $definition" ) ) {
+					return false;
+				}
+			}
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `$table` LIKE %s", $column ) ) ) {
+				return false;
+			}
+		}
+		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
+		return $schedule_column && 'YES' === $schedule_column->Null;
+	}
+
 }
 
