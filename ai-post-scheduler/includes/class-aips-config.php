@@ -165,6 +165,9 @@ class AIPS_Config {
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            // Pending Review: selections of this many drafts or more are published
+            // in the background (cron) instead of synchronously in the request.
+            'aips_bulk_publish_async_threshold' => 30,
             // General
             'aips_unsplash_access_key' => '',
             'aips_gsc_service_account' => '',
@@ -280,6 +283,9 @@ class AIPS_Config {
             'aips_publish_linking_embed_inline'        => false,
             'aips_link_click_tracking_enabled'         => false,
             'aips_link_click_retention_days'           => 365,
+			'aips_source_archive_retention_days' => 0,
+			'aips_source_fetch_max_response_bytes' => 2097152,
+			'aips_source_prompt_total_max_chars' => 16000,
             'aips_silo_guide_enabled'                  => true,
             'aips_silo_guide_position'                 => 'end',
             'aips_silo_guide_max'                      => 10,

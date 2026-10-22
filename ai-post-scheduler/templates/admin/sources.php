@@ -106,7 +106,8 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 						$last_fetched_at       = isset($source->last_fetched_at)  ? $source->last_fetched_at  : '';
 						$next_fetch_at         = isset($source->next_fetch_at)    ? $source->next_fetch_at    : '';
 						$fetch_data            = isset($source_fetch_data_map[$src_id]) ? $source_fetch_data_map[$src_id] : null;
-						$fetch_status_val      = $fetch_data ? $fetch_data->fetch_status : '';
+						$fetch_status_val      = isset($source->last_fetch_status) ? $source->last_fetch_status : '';
+						$last_fetch_error      = isset($source->last_fetch_error) ? $source->last_fetch_error : '';
 						$content_count_val     = isset($source_content_count_map[$src_id]) ? (int) $source_content_count_map[$src_id] : 0;
 						?>
 						<tr data-source-id="<?php echo esc_attr($source->id); ?>"
@@ -134,10 +135,15 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 										<span class="aips-badge aips-badge-neutral" style="margin:2px 2px 2px 0;"><?php echo esc_html($gname); ?></span>
 									<?php endforeach; ?>
 								<?php else: ?>
-									<span class="cell-meta">—</span>
+									<span class="cell-meta"><?php esc_html_e('No groups: this source cannot be selected for generation.', 'ai-post-scheduler'); ?></span>
 								<?php endif; ?>
 							</td>
 							<td class="column-fetch-status">
+								<?php if ($fetch_status_val === 'failed'): ?>
+									<span class="aips-badge aips-badge-warning" title="<?php echo esc_attr($last_fetch_error); ?>"><?php esc_html_e('Last attempt failed', 'ai-post-scheduler'); ?></span>
+								<?php elseif ($fetch_status_val === 'success'): ?>
+									<span class="aips-badge aips-badge-success"><?php esc_html_e('Last attempt succeeded', 'ai-post-scheduler'); ?></span>
+								<?php endif; ?>
 								<?php if ($content_count_val > 0): ?>
 									<span class="aips-badge aips-badge-success" title="<?php echo esc_attr($last_fetched_at); ?>">
 										<span class="dashicons dashicons-archive"></span>
@@ -148,11 +154,6 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 											$content_count_val
 										);
 										?>
-									</span>
-								<?php elseif ($fetch_status_val === 'failed'): ?>
-									<span class="aips-badge aips-badge-warning">
-										<span class="dashicons dashicons-warning"></span>
-										<?php esc_html_e('Failed', 'ai-post-scheduler'); ?>
 									</span>
 								<?php elseif ($fetch_status_val === 'pending'): ?>
 									<span class="aips-badge aips-badge-neutral">
@@ -401,3 +402,5 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 		</div>
 	</div>
 </div>
+
+<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
