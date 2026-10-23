@@ -327,10 +327,43 @@
 		},
 
 		/**
+		 * Switch the active detail tab inside a history modal.
+		 *
+		 * @param {Event} e Click event from an `.aips-history-detail-tab`.
+		 */
+		switchDetailTab: function (e) {
+			var $tab = $(e.currentTarget);
+			var name = $tab.data('tab');
+			var $drawer = $tab.closest('.aips-history-log-renderer');
+			$drawer.find('.aips-history-detail-tab').removeClass('is-active').attr('aria-selected', 'false');
+			$tab.addClass('is-active').attr('aria-selected', 'true');
+			$drawer.find('.aips-history-detail-panel').removeClass('is-active').prop('hidden', true);
+			$drawer.find('[data-panel="' + name + '"]').addClass('is-active').prop('hidden', false);
+		},
+
+		/**
+		 * Arrow-key navigation between detail tabs.
+		 *
+		 * @param {Event} e Keydown event from an `.aips-history-detail-tab`.
+		 */
+		onDetailTabKeydown: function (e) {
+			if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') { return; }
+			e.preventDefault();
+			var $tabs = $(e.currentTarget).closest('[role="tablist"]').find('[role="tab"]');
+			var index = $tabs.index(e.currentTarget);
+			var next = e.key === 'ArrowRight' ? (index + 1) % $tabs.length : (index - 1 + $tabs.length) % $tabs.length;
+			$tabs.eq(next).focus().trigger('click');
+		},
+
+		/**
 		 * Initialize standalone history modal opener for use outside History page.
 		 */
 		initStandaloneOpener: function () {
 			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
+			// Detail tabs render in both the History page modal and the standalone
+			// modal on native post screens, so bind them wherever this script loads.
+			$(document).on('click', '.aips-history-detail-tab', this.switchDetailTab.bind(this));
+			$(document).on('keydown', '.aips-history-detail-tab', this.onDetailTabKeydown.bind(this));
 		},
 
 		/**
@@ -605,8 +638,6 @@
 			// Log type filter tabs inside the modal
 			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
 			$(document).on('change', '.aips-json-viewer-toggle', this.toggleJsonViewerMode.bind(this));
-			$(document).on('click', '.aips-history-detail-tab', this.switchDetailTab.bind(this));
-			$(document).on('keydown', '.aips-history-detail-tab', this.onDetailTabKeydown.bind(this));
 			$(document).on('click', '.aips-copy-diagnostic', this.copyDiagnostic.bind(this));
 
 			// Close modal via close button or backdrop click.
@@ -832,25 +863,6 @@
 			if (e.key === 'Enter' || e.key === ' ') {
 				this.openLogsModal(e);
 			}
-		},
-
-		switchDetailTab: function (e) {
-			var $tab = $(e.currentTarget);
-			var name = $tab.data('tab');
-			var $drawer = $tab.closest('.aips-history-log-renderer');
-			$drawer.find('.aips-history-detail-tab').removeClass('is-active').attr('aria-selected', 'false');
-			$tab.addClass('is-active').attr('aria-selected', 'true');
-			$drawer.find('.aips-history-detail-panel').removeClass('is-active').prop('hidden', true);
-			$drawer.find('[data-panel="' + name + '"]').addClass('is-active').prop('hidden', false);
-		},
-
-		onDetailTabKeydown: function (e) {
-			if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') { return; }
-			e.preventDefault();
-			var $tabs = $(e.currentTarget).closest('[role="tablist"]').find('[role="tab"]');
-			var index = $tabs.index(e.currentTarget);
-			var next = e.key === 'ArrowRight' ? (index + 1) % $tabs.length : (index - 1 + $tabs.length) % $tabs.length;
-			$tabs.eq(next).focus().trigger('click');
 		},
 
 		copyDiagnostic: function (e) {

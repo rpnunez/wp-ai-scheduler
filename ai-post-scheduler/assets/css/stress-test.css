@@ -717,6 +717,8 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding: 24px 16px;
+	box-sizing: border-box;
 }
 
 #aips-stress-diff-modal .aips-modal-backdrop {
@@ -729,12 +731,34 @@
 	z-index: 1;
 }
 
-#aips-stress-diff-modal .aips-modal-dialog {
+#aips-stress-diff-modal .aips-modal-dialog,
+.aips-stress-diff-dialog {
 	position: relative;
 	z-index: 2;
 	background: var(--aips-white);
 	border-radius: var(--aips-radius-md);
 	box-shadow: var(--aips-shadow-lg);
+	max-width: 980px;
+	width: 95vw;
+	max-height: calc(100vh - 48px);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+#aips-stress-diff-modal .aips-modal-header,
+#aips-stress-diff-modal .aips-modal-footer {
+	flex-shrink: 0;
+}
+
+#aips-stress-diff-modal .aips-modal-body,
+#aips-stress-diff-body,
+.aips-stress-diff-body {
+	overflow-y: auto;
+	flex: 1 1 auto;
+	min-height: 0;
+	padding: 20px;
+	box-sizing: border-box;
 }
 
 .aips-stress-diff-meta-grid {
@@ -749,6 +773,15 @@
 	border-radius: var(--aips-radius-sm);
 	background: var(--aips-gray-50);
 	border: 1px solid var(--aips-gray-200);
+	margin-bottom: 20px;
+}
+
+.aips-stress-diff-meta-grid .aips-stress-diff-card {
+	margin-bottom: 0;
+}
+
+.aips-mb-md {
+	margin-bottom: 20px !important;
 }
 
 .aips-stress-diff-card h4 {
@@ -831,4 +864,61 @@
 	word-break: break-word;
 	font-size: 11px;
 }
+
+/* -----------------------------------------------------------------------
+ * Stress Test History Toolbar & Badges
+ * -------------------------------------------------------------------- */
+
+.aips-stress-test-history .aips-panel-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.aips-stress-test-history .aips-panel-header-actions,
+.aips-stress-test-history .aips-btn-group {
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: 10px;
+	flex-shrink: 0;
+}
+
+.aips-stress-test-history .aips-btn-group .aips-btn {
+	white-space: nowrap;
+}
+
+#aips-stress-history-diff-btn:disabled,
+#aips-stress-history-diff-btn[disabled] {
+	opacity: 0.55 !important;
+	cursor: not-allowed !important;
+	pointer-events: none !important;
+	box-shadow: none !important;
+	background: var(--aips-gray-200) !important;
+	border-color: var(--aips-gray-300) !important;
+	color: var(--aips-gray-500) !important;
+}
+
+#aips-stress-diff-modal .aips-badge,
+.aips-stress-diff-card .aips-badge,
+.aips-stress-history-table .aips-badge {
+	text-transform: capitalize;
+}
+
+@media (max-width: 600px) {
+	.aips-stress-test-history .aips-panel-header-actions,
+	.aips-stress-test-history .aips-btn-group {
+		flex-wrap: wrap;
+		width: 100%;
+	}
+
+	.aips-stress-test-history .aips-btn-group .aips-btn {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
 
