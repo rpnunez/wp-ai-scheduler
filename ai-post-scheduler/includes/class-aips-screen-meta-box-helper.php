@@ -50,7 +50,10 @@ class AIPS_Screen_Meta_Box_Helper {
 
 		// Inject postbox toggle initialization script partial into admin footer.
 		add_action('admin_footer', function() use ($screen_id) {
-			include AIPS_PLUGIN_DIR . 'templates/admin/partials/metabox/postbox-toggles-script.php';
+			$partial_path = defined('AIPS_PLUGIN_DIR')
+				? AIPS_PLUGIN_DIR . 'templates/admin/partials/metabox/postbox-toggles-script.php'
+				: dirname(__DIR__) . '/templates/admin/partials/metabox/postbox-toggles-script.php';
+			include $partial_path;
 		}, 20);
 	}
 
@@ -100,7 +103,10 @@ class AIPS_Screen_Meta_Box_Helper {
 
 		$columns_class = 'columns-' . absint($columns);
 
-		include AIPS_PLUGIN_DIR . 'templates/admin/partials/metabox/poststuff-layout.php';
+		$partial_path = defined('AIPS_PLUGIN_DIR')
+			? AIPS_PLUGIN_DIR . 'templates/admin/partials/metabox/poststuff-layout.php'
+			: dirname(__DIR__) . '/templates/admin/partials/metabox/poststuff-layout.php';
+		include $partial_path;
 	}
 
 	/**

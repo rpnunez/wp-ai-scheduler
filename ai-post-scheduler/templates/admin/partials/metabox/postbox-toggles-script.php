@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 ?>
 <script type="text/javascript">
 	jQuery(document).ready(function($) {
-		if (typeof postboxes !== 'undefined' && typeof postboxes.add_postbox_toggles === 'function') {
+		if (window.postboxes) {
 			postboxes.add_postbox_toggles('<?php echo esc_js($screen_id); ?>');
 		}
 	});
