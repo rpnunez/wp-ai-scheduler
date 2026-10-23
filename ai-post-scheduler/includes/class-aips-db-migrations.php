@@ -265,6 +265,12 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.7.20', '<' ) && ! $this->migrate_to_3_7_20() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Article structure component migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1788,6 +1794,122 @@ class AIPS_DB_Migrations {
 		}
 		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
 		return $schedule_column && 'YES' === $schedule_column->Null;
+	}
+
+	/**
+	 * Migration for version 3.7.20.
+	 *
+	 * 1. Adds archetype, editor_mode, and enable_schema to aips_article_structures if missing.
+	 * 2. Seeds default components into aips_components if empty.
+	 * 3. Migrates legacy article structures' JSON sections to aips_structure_sections_rel.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_20() {
+		global $wpdb;
+		$structures_table = $wpdb->prefix . 'aips_article_structures';
+		$components_table = $wpdb->prefix . 'aips_components';
+		$rel_table        = $wpdb->prefix . 'aips_structure_sections_rel';
+		$sections_table   = $wpdb->prefix . 'aips_prompt_sections';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $structures_table ) ) !== $structures_table ) {
+			return true;
+		}
+
+		// 1. Structural ALTERs on aips_article_structures
+		$columns = array(
+			'archetype'     => "varchar(50) DEFAULT 'custom'",
+			'editor_mode'   => "varchar(20) DEFAULT 'auto'",
+			'enable_schema' => 'tinyint(1) DEFAULT 1',
+		);
+
+		foreach ( $columns as $col => $def ) {
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `$structures_table` LIKE %s", $col ) ) ) {
+				$wpdb->query( "ALTER TABLE `$structures_table` ADD COLUMN `$col` $def" );
+			}
+		}
+
+		// Ensure archetype index exists
+		$indexes = $wpdb->get_results( "SHOW INDEX FROM `$structures_table` WHERE Key_name = 'archetype'" );
+		if ( empty( $indexes ) ) {
+			$wpdb->query( "ALTER TABLE `$structures_table` ADD KEY archetype (archetype)" );
+		}
+
+		// 2. Backfill known archetypes
+		$wpdb->query( "UPDATE `$structures_table` SET archetype = 'how_to' WHERE name IN ('How-To Guide', 'Tutorial') AND (archetype IS NULL OR archetype = '' OR archetype = 'custom')" );
+		$wpdb->query( "UPDATE `$structures_table` SET archetype = 'listicle' WHERE name = 'Listicle' AND (archetype IS NULL OR archetype = '' OR archetype = 'custom')" );
+		$wpdb->query( "UPDATE `$structures_table` SET archetype = 'review' WHERE name = 'Product Review' AND (archetype IS NULL OR archetype = '' OR archetype = 'custom')" );
+		$wpdb->query( "UPDATE `$structures_table` SET archetype = 'faq' WHERE name = 'FAQ Guide' AND (archetype IS NULL OR archetype = '' OR archetype = 'custom')" );
+		$wpdb->query( "UPDATE `$structures_table` SET archetype = 'comparison' WHERE name = 'Comparison / Versus Guide' AND (archetype IS NULL OR archetype = '' OR archetype = 'custom')" );
+
+		// 3. Seed components if components table exists
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $components_table ) ) === $components_table ) {
+			if ( class_exists( 'AIPS_Component_Repository' ) ) {
+				AIPS_Component_Repository::instance()->restore_defaults();
+			}
+		}
+
+		// 4. Migrate existing structures into aips_structure_sections_rel if missing
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $rel_table ) ) === $rel_table ) {
+			$structures = $wpdb->get_results( "SELECT id, name, archetype, structure_data FROM `$structures_table`" );
+			$now = AIPS_DateTime::now()->timestamp();
+
+			foreach ( $structures as $st ) {
+				$existing_rel = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$rel_table` WHERE structure_id = %d", (int) $st->id ) );
+				if ( $existing_rel > 0 ) {
+					continue;
+				}
+
+				$data = json_decode( $st->structure_data, true );
+				if ( ! empty( $data['sections'] ) && is_array( $data['sections'] ) ) {
+					foreach ( $data['sections'] as $idx => $sec_key ) {
+						// Look up prompt content and component id
+						$sec_row = null;
+						if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $sections_table ) ) === $sections_table ) {
+							$sec_row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `$sections_table` WHERE section_key = %s", $sec_key ) );
+						}
+
+						// Check if a component matches
+						$comp_id = null;
+						if ( $sec_key === 'steps' ) {
+							$comp_id = $wpdb->get_var( "SELECT id FROM `$components_table` WHERE component_key = 'step_list'" );
+						} elseif ( $sec_key === 'tips' ) {
+							$comp_id = $wpdb->get_var( "SELECT id FROM `$components_table` WHERE component_key = 'callout_box'" );
+						} elseif ( $sec_key === 'pros_cons' ) {
+							$comp_id = $wpdb->get_var( "SELECT id FROM `$components_table` WHERE component_key = 'pros_cons'" );
+						} elseif ( $sec_key === 'faq' || $sec_key === 'faq_accordion' ) {
+							$comp_id = $wpdb->get_var( "SELECT id FROM `$components_table` WHERE component_key = 'faq_accordion'" );
+						} elseif ( $sec_key === 'rating' || $sec_key === 'rating_box' ) {
+							$comp_id = $wpdb->get_var( "SELECT id FROM `$components_table` WHERE component_key = 'rating_box'" );
+						}
+
+						$heading_text = $sec_row && ! empty( $sec_row->name ) ? $sec_row->name : ucwords( str_replace( '_', ' ', $sec_key ) );
+						$custom_prompt = $sec_row && ! empty( $sec_row->content ) ? $sec_row->content : '';
+
+						$wpdb->insert(
+							$rel_table,
+							array(
+								'structure_id'      => (int) $st->id,
+								'component_id'      => $comp_id ? (int) $comp_id : null,
+								'section_key'       => sanitize_key( $sec_key ),
+								'heading_text'      => sanitize_text_field( $heading_text ),
+								'heading_level'     => 'h2',
+								'target_word_count' => 0,
+								'is_required'       => 1,
+								'sort_order'        => (int) $idx,
+								'custom_prompt'     => $custom_prompt,
+								'component_config'  => '{}',
+								'created_at'        => $now,
+								'updated_at'        => $now,
+							),
+							array( '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d' )
+						);
+					}
+				}
+			}
+		}
+
+		return true;
 	}
 
 }

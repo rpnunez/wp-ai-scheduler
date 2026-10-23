@@ -14,6 +14,8 @@ class AIPS_DB_Manager {
         'aips_voices',
         'aips_article_structures',
         'aips_prompt_sections',
+        'aips_components',
+        'aips_structure_sections_rel',
         'aips_trending_topics',
         'aips_authors',
         'aips_post_slices',
@@ -83,6 +85,8 @@ class AIPS_DB_Manager {
         $table_voices = $tables['aips_voices'];
         $table_structures = $tables['aips_article_structures'];
         $table_sections = $tables['aips_prompt_sections'];
+        $table_components = $tables['aips_components'];
+        $table_structure_sections_rel = $tables['aips_structure_sections_rel'];
         $table_trending_topics = $tables['aips_trending_topics'];
         $table_authors = $tables['aips_authors'];
         $table_post_slices = $tables['aips_post_slices'];
@@ -171,6 +175,7 @@ class AIPS_DB_Manager {
             name varchar(255) NOT NULL,
             content_goal text,
             campaign_mode varchar(20) DEFAULT 'template',
+            article_structure_id bigint(20) DEFAULT NULL,
             is_active tinyint(1) NOT NULL DEFAULT 1,
             is_archived tinyint(1) NOT NULL DEFAULT 0,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -179,6 +184,7 @@ class AIPS_DB_Manager {
             KEY is_active (is_active),
             KEY is_archived (is_archived),
             KEY campaign_mode (campaign_mode),
+            KEY article_structure_id (article_structure_id),
             KEY active_archived (is_active, is_archived)
         ) $charset_collate;";
 
@@ -189,6 +195,7 @@ class AIPS_DB_Manager {
             prompt_template text NOT NULL,
             title_prompt text,
             voice_id bigint(20) DEFAULT NULL,
+            article_structure_id bigint(20) DEFAULT NULL,
             post_quantity int DEFAULT 1,
             image_prompt text,
             generate_featured_image tinyint(1) DEFAULT 0,
@@ -270,12 +277,16 @@ class AIPS_DB_Manager {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
             description text,
+            archetype varchar(50) DEFAULT 'custom',
+            editor_mode varchar(20) DEFAULT 'auto',
+            enable_schema tinyint(1) DEFAULT 1,
             structure_data longtext NOT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
-			KEY is_active (is_active)
+            KEY archetype (archetype),
+            KEY is_active (is_active)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_sections (
@@ -290,6 +301,46 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             UNIQUE KEY section_key (section_key),
             KEY is_active (is_active)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_components (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            component_key varchar(50) NOT NULL,
+            name varchar(255) NOT NULL,
+            description text,
+            prompt_tag varchar(100) NOT NULL,
+            prompt_instructions text NOT NULL,
+            gutenberg_template text,
+            shortcode_template text,
+            schema_template text,
+            is_system tinyint(1) DEFAULT 0,
+            is_active tinyint(1) DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY component_key (component_key),
+            KEY is_active (is_active),
+            KEY is_system (is_system)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_structure_sections_rel (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            structure_id bigint(20) NOT NULL,
+            component_id bigint(20) DEFAULT NULL,
+            section_key varchar(100) NOT NULL,
+            heading_text varchar(255) DEFAULT '',
+            heading_level varchar(10) DEFAULT 'h2',
+            target_word_count int(11) DEFAULT 0,
+            is_required tinyint(1) DEFAULT 1,
+            sort_order int(11) DEFAULT 0,
+            custom_prompt text,
+            component_config longtext,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY structure_id (structure_id),
+            KEY component_id (component_id),
+            KEY sort_order (sort_order)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_trending_topics (
@@ -938,6 +989,14 @@ class AIPS_DB_Manager {
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),
+            'aips_components' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_structure_sections_rel' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
             'aips_trending_topics' => array(
                 array( 'researched_at', false ),
             ),
@@ -1458,15 +1517,54 @@ class AIPS_DB_Manager {
         $default_structures = array(
             array(
                 'name' => 'How-To Guide',
-                'description' => 'Step-by-step guide for accomplishing a specific task',
+                'description' => 'Step-by-step guide for accomplishing a specific task with HowTo schema',
+                'archetype' => 'how_to',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
                 'structure_data' => wp_json_encode(array(
                     'sections' => array('introduction', 'prerequisites', 'steps', 'tips', 'troubleshooting', 'conclusion'),
                     'prompt_template' => "Write a comprehensive how-to guide about {{topic}}.\n\n{{section:introduction}}\n\n{{section:prerequisites}}\n\n{{section:steps}}\n\n{{section:tips}}\n\n{{section:troubleshooting}}\n\n{{section:conclusion}}",
                 )),
             ),
             array(
+                'name' => 'Product Review',
+                'description' => 'Comprehensive review with specs, pros & cons, rating card, and Review schema',
+                'archetype' => 'review',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'overview', 'pros_cons', 'rating_box', 'conclusion'),
+                    'prompt_template' => "Write an in-depth, honest product review about {{topic}}.\n\n{{section:introduction}}\n\nProvide an overview of key specifications and features.\n\n{{section:pros_cons}}\n\n{{section:rating_box}}\n\n{{section:conclusion}}",
+                )),
+            ),
+            array(
+                'name' => 'FAQ Guide',
+                'description' => 'Frequently asked questions with collapsible accordions and FAQPage schema',
+                'archetype' => 'faq',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'faq_accordion', 'conclusion'),
+                    'prompt_template' => "Write a comprehensive FAQ knowledge guide about {{topic}}.\n\n{{section:introduction}}\n\n{{section:faq_accordion}}\n\n{{section:conclusion}}",
+                )),
+            ),
+            array(
+                'name' => 'Comparison / Versus Guide',
+                'description' => 'Head-to-head comparison with criteria matrix and winner verdict',
+                'archetype' => 'comparison',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'comparison_table', 'pros_cons', 'conclusion'),
+                    'prompt_template' => "Write a detailed side-by-side comparison guide about {{topic}}.\n\n{{section:introduction}}\n\n{{section:comparison_table}}\n\n{{section:pros_cons}}\n\nSummarize the verdict on who should choose which option.\n\n{{section:conclusion}}",
+                )),
+            ),
+            array(
                 'name' => 'Tutorial',
                 'description' => 'In-depth educational content with practical examples',
+                'archetype' => 'how_to',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
                 'structure_data' => wp_json_encode(array(
                     'sections' => array('introduction', 'prerequisites', 'examples', 'steps', 'tips', 'resources', 'conclusion'),
                     'prompt_template' => "Create a detailed tutorial on {{topic}}.\n\n{{section:introduction}}\n\n{{section:prerequisites}}\n\n{{section:examples}}\n\n{{section:steps}}\n\n{{section:tips}}\n\n{{section:resources}}\n\n{{section:conclusion}}",
@@ -1475,6 +1573,9 @@ class AIPS_DB_Manager {
             array(
                 'name' => 'Library Reference',
                 'description' => 'Technical documentation for a library or API',
+                'archetype' => 'custom',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
                 'structure_data' => wp_json_encode(array(
                     'sections' => array('introduction', 'prerequisites', 'examples', 'resources'),
                     'prompt_template' => "Write technical reference documentation for {{topic}}.\n\n{{section:introduction}}\n\n{{section:prerequisites}}\n\n{{section:examples}}\n\nInclude comprehensive API documentation with parameter descriptions, return values, and usage examples.\n\n{{section:resources}}",
@@ -1483,6 +1584,9 @@ class AIPS_DB_Manager {
             array(
                 'name' => 'Listicle',
                 'description' => 'List-based article with multiple items or tips',
+                'archetype' => 'listicle',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
                 'structure_data' => wp_json_encode(array(
                     'sections' => array('introduction', 'conclusion'),
                     'prompt_template' => "Write a comprehensive listicle about {{topic}}.\n\n{{section:introduction}}\n\nPresent the main content as a numbered or bulleted list with detailed explanations for each item.\n\n{{section:conclusion}}",
@@ -1491,6 +1595,9 @@ class AIPS_DB_Manager {
             array(
                 'name' => 'Case Study',
                 'description' => 'Real-world example with analysis and insights',
+                'archetype' => 'custom',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
                 'structure_data' => wp_json_encode(array(
                     'sections' => array('introduction', 'examples', 'conclusion'),
                     'prompt_template' => "Write a detailed case study about {{topic}}.\n\n{{section:introduction}}\n\nProvide background context and the problem/challenge being addressed.\n\n{{section:examples}}\n\nAnalyze the results, lessons learned, and key takeaways.\n\n{{section:conclusion}}",
@@ -1499,6 +1606,9 @@ class AIPS_DB_Manager {
             array(
                 'name' => 'Opinion/Editorial',
                 'description' => 'Thought leadership or opinion piece',
+                'archetype' => 'custom',
+                'editor_mode' => 'auto',
+                'enable_schema' => 1,
                 'structure_data' => wp_json_encode(array(
                     'sections' => array('introduction', 'tips', 'conclusion'),
                     'prompt_template' => "Write an opinion piece or editorial about {{topic}}.\n\n{{section:introduction}}\n\nPresent your main arguments with supporting evidence and examples.\n\n{{section:tips}}\n\nAddress counterarguments or alternative perspectives.\n\n{{section:conclusion}}",
@@ -1520,6 +1630,11 @@ class AIPS_DB_Manager {
             if ($structure['name'] === 'How-To Guide' && false === get_option('aips_default_article_structure_id', null)) {
                 update_option('aips_default_article_structure_id', absint($exists));
             }
+        }
+
+        // Seed default components
+        if (class_exists('AIPS_Component_Repository')) {
+            AIPS_Component_Repository::instance()->restore_defaults();
         }
     }
 }

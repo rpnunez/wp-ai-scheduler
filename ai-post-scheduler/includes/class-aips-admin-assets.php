@@ -1066,12 +1066,16 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the structures page.
      */
     private function enqueue_structures_assets() {
+            wp_enqueue_script('jquery-ui-sortable');
             wp_localize_script('aips-admin-script', 'aipsStructuresL10n', array(
                 // Article structure CRUD
                 'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
+                'cloneStructureConfirm'  => __('Are you sure you want to duplicate this article structure?', 'ai-post-scheduler'),
                 'saveStructureFailed'    => __('Failed to save structure.', 'ai-post-scheduler'),
                 'loadStructureFailed'    => __('Failed to load structure.', 'ai-post-scheduler'),
                 'deleteStructureFailed'  => __('Failed to delete structure.', 'ai-post-scheduler'),
+                'cloneStructureFailed'   => __('Failed to clone structure.', 'ai-post-scheduler'),
+                'testStructureFailed'    => __('Failed to run structure live test.', 'ai-post-scheduler'),
                 // Prompt section CRUD
                 'deleteSectionConfirm'   => __('Are you sure you want to delete this prompt section?', 'ai-post-scheduler'),
                 'saveSectionFailed'      => __('Failed to save prompt section.', 'ai-post-scheduler'),
@@ -1780,10 +1784,11 @@ class AIPS_Admin_Assets {
             );
 
 			wp_localize_script('aips-admin-settings', 'aipsSettingsL10n', array(
-				'saving'        => __('Saving…', 'ai-post-scheduler'),
-				'saveSuccess'   => __('Settings saved successfully.', 'ai-post-scheduler'),
-				'saveError'     => __('Failed to save settings.', 'ai-post-scheduler'),
-				'payloadError'  => __('No settings were found to save.', 'ai-post-scheduler'),
+				'saving'                 => __('Saving…', 'ai-post-scheduler'),
+				'saveSuccess'            => __('Settings saved successfully.', 'ai-post-scheduler'),
+				'saveError'              => __('Failed to save settings.', 'ai-post-scheduler'),
+				'payloadError'           => __('No settings were found to save.', 'ai-post-scheduler'),
+				'confirmRestoreDefaults' => __('Are you sure you want to restore default article structures and components? Missing defaults will be re-created.', 'ai-post-scheduler'),
 			));
             wp_enqueue_script(
                 'aips-admin-gsc',

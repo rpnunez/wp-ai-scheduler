@@ -59,29 +59,76 @@ class AIPS_Template_Type_Selector {
 	 * @return int|null Structure ID or null if none selected.
 	 */
 	public function select_structure($schedule) {
-		// If specific structure is set, use it
+		// 1. Schedule / Topic structure override
 		if (!empty($schedule->article_structure_id)) {
 			$structure = $this->structure_repository->get_by_id($schedule->article_structure_id);
 			if ($this->is_structure_active($structure)) {
-				return $structure->id;
+				return (int) $structure->id;
+			}
+		}
+
+		// If rotation pattern is set, use pattern-based selection
+		if (!empty($schedule->rotation_pattern)) {
+			$pattern_res = $this->select_by_pattern($schedule);
+			if ($pattern_res) {
+				return (int) $pattern_res;
+			}
+		}
+
+		// 2. Author structure override
+		if (!empty($schedule->author_id)) {
+			$author_repo = new AIPS_Authors_Repository();
+			$author = $author_repo->get_by_id($schedule->author_id);
+			if ($author && !empty($author->article_structure_id)) {
+				$structure = $this->structure_repository->get_by_id($author->article_structure_id);
+				if ($this->is_structure_active($structure)) {
+					return (int) $structure->id;
+				}
+			}
+		}
+
+		// 3. Campaign structure override
+		$campaign_id = !empty($schedule->campaign_id) ? (int) $schedule->campaign_id : 0;
+		if (!$campaign_id && !empty($schedule->template_id)) {
+			$template_repo = new AIPS_Template_Repository();
+			$tmpl = $template_repo->get_by_id($schedule->template_id);
+			if ($tmpl && !empty($tmpl->campaign_id)) {
+				$campaign_id = (int) $tmpl->campaign_id;
+			}
+		}
+		if ($campaign_id > 0) {
+			$campaign_repo = new AIPS_Campaigns_Repository();
+			$campaign = $campaign_repo->get_by_id($campaign_id);
+			if ($campaign && !empty($campaign->article_structure_id)) {
+				$structure = $this->structure_repository->get_by_id($campaign->article_structure_id);
+				if ($this->is_structure_active($structure)) {
+					return (int) $structure->id;
+				}
+			}
+		}
+
+		// 4. Template structure
+		if (!empty($schedule->template_id)) {
+			$template_repo = isset($template_repo) ? $template_repo : new AIPS_Template_Repository();
+			$tmpl = $template_repo->get_by_id($schedule->template_id);
+			if ($tmpl && !empty($tmpl->article_structure_id)) {
+				$structure = $this->structure_repository->get_by_id($tmpl->article_structure_id);
+				if ($this->is_structure_active($structure)) {
+					return (int) $structure->id;
+				}
 			}
 		}
 		
-		// If rotation pattern is set, use pattern-based selection
-		if (!empty($schedule->rotation_pattern)) {
-			return $this->select_by_pattern($schedule);
-		}
-		
-		// Fall back to default structure
+		// 5. Global site default structure
 		$default = $this->structure_repository->get_default();
 		if ($default) {
-			return $default->id;
+			return (int) $default->id;
 		}
 
 		// Final fallback: use the first active structure when no default is configured
 		$active_structures = $this->structure_repository->get_all(true);
 		if (!empty($active_structures)) {
-			return $active_structures[0]->id;
+			return (int) $active_structures[0]->id;
 		}
 
 		return null;
