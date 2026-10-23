@@ -90,4 +90,36 @@ class AIPS_Onboarding_Wizard_Test extends WP_UnitTestCase {
 		$this->assertStringContainsString('admin.php?page=aips-diagnostics', $url);
 		$this->assertStringContainsString('tab=status', $url);
 	}
+
+	public function test_onboarding_install_preset_action() {
+		$admin_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($admin_id);
+
+		$_REQUEST['nonce']  = wp_create_nonce('aips_ajax_nonce');
+		$_POST['nonce']     = $_REQUEST['nonce'];
+		$_POST['preset_id'] = 'how_to_guides';
+
+		$wizard = new AIPS_Onboarding_Wizard();
+
+		try {
+			ob_start();
+			$wizard->ajax_install_preset();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected WP exit
+		} catch (WPAjaxDieStopException $e) {
+			// Expected WP exit
+		}
+		$output = ob_get_clean();
+		$json = json_decode($output, true);
+
+		$this->assertTrue($json['success']);
+		$this->assertNotEmpty($json['data']['author_id']);
+		$this->assertNotEmpty($json['data']['template_id']);
+
+		$state = get_option('aips_onboarding_state');
+		$this->assertEquals($json['data']['author_id'], $state['author_id']);
+		$this->assertEquals($json['data']['template_id'], $state['template_id']);
+
+		wp_set_current_user(0);
+	}
 }

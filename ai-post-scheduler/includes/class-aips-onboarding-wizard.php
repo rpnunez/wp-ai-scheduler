@@ -44,6 +44,7 @@ class AIPS_Onboarding_Wizard {
 		add_filter('submenu_file', array($this, 'fix_submenu_file'));
 
 		// AJAX endpoints.
+		add_action('wp_ajax_aips_onboarding_install_preset', array($this, 'ajax_install_preset'));
 		add_action('wp_ajax_aips_onboarding_save_strategy', array($this, 'ajax_save_strategy'));
 		add_action('wp_ajax_aips_onboarding_create_author', array($this, 'ajax_create_author'));
 		add_action('wp_ajax_aips_onboarding_create_template', array($this, 'ajax_create_template'));
@@ -223,6 +224,47 @@ class AIPS_Onboarding_Wizard {
 	// ---------------------------------------------------------------------
 	// AJAX: steps
 	// ---------------------------------------------------------------------
+
+	public function ajax_install_preset() {
+		$this->ajax_guard();
+
+		$preset_id = isset($_POST['preset_id']) ? sanitize_key($_POST['preset_id']) : '';
+		if (empty($preset_id)) {
+			AIPS_Ajax_Response::invalid_request(__('Preset ID is required.', 'ai-post-scheduler'));
+		}
+
+		$installer = new AIPS_Preset_Installer();
+		if ($installer->is_installed($preset_id)) {
+			$entities = $installer->get_preset_entities($preset_id);
+		} else {
+			$entities = $installer->install($preset_id, true);
+			if (is_wp_error($entities)) {
+				AIPS_Ajax_Response::error($entities->get_error_message());
+			}
+		}
+
+		$author_id   = !empty($entities['author_ids'][0]) ? (int) $entities['author_ids'][0] : 0;
+		$template_id = !empty($entities['template_ids'][0]) ? (int) $entities['template_ids'][0] : 0;
+		$topics_count= !empty($entities['topic_ids']) ? count($entities['topic_ids']) : 0;
+
+		$preset = AIPS_Preset_Registry::get_preset($preset_id);
+		$first_topic = !empty($preset['author']['starter_topics'][0]) ? $preset['author']['starter_topics'][0] : '';
+
+		$this->update_state(array(
+			'author_id'        => $author_id,
+			'template_id'      => $template_id,
+			'topics_generated' => $topics_count,
+			'first_topic'      => $first_topic,
+		));
+
+		AIPS_Ajax_Response::success(array(
+			'message'          => sprintf(__('Starter Preset "%s" installed and loaded successfully!', 'ai-post-scheduler'), $preset ? $preset['name'] : $preset_id),
+			'author_id'        => $author_id,
+			'template_id'      => $template_id,
+			'topics_generated' => $topics_count,
+			'first_topic'      => $first_topic,
+		));
+	}
 
 	public function ajax_save_strategy() {
 		$this->ajax_guard();

@@ -532,6 +532,350 @@
 		if (typeof AIPS.AIAssistance !== 'undefined') {
 			AIPS.AIAssistance.init({ formContext: 'content_strategy' });
 		}
+
+		initImportExport();
 	});
 
+
+	/**
+	 * Import & Export Presets and Data Studio handlers
+	 */
+	function initImportExport() {
+		var $grid = $('#aips-presets-grid');
+		if (!$grid.length) {
+			return;
+		}
+
+		var currentImportKey = '';
+
+		function loadPresetsStatus() {
+			$('#aips-presets-loading').show();
+			$grid.empty();
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_get_presets_status',
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					$('#aips-presets-loading').hide();
+					if (!res.success || !res.data || !res.data.presets) {
+						$grid.html('<p class="notice notice-error">' + (res.data && res.data.message ? res.data.message : 'Failed to load presets.') + '</p>');
+						return;
+					}
+
+					var presets = res.data.presets;
+					var html = '';
+					presets.forEach(function(p) {
+						var statusBadge = p.is_installed
+							? '<span class="aips-badge aips-badge-success" style="background:#10b981; color:#fff; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;">Installed</span>'
+							: '<span class="aips-badge aips-badge-neutral" style="background:#e2e8f0; color:#475569; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;">Available</span>';
+
+						var actionBtn = p.is_installed
+							? '<button type="button" class="button aips-btn aips-btn-danger aips-preset-remove-btn" data-preset-id="' + p.id + '" data-has-posts="' + (p.post_count > 0 ? '1' : '0') + '" data-posts="' + p.post_count + '" style="color:#b91c1c; border-color:#fca5a5;">Remove</button>'
+							: '<button type="button" class="button button-primary aips-btn aips-btn-primary aips-preset-install-btn" data-preset-id="' + p.id + '">Install Preset</button>';
+
+						var usageNotice = (p.is_installed && p.post_count > 0)
+							? '<p style="font-size:11px; color:#64748b; margin:6px 0 0;">' + p.post_count + ' post(s) generated</p>'
+							: '';
+
+						html += '<div class="aips-preset-card" style="border:1px solid #e2e8f0; border-radius:8px; padding:16px; background:#ffffff; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 1px 3px rgba(0,0,0,0.05);">'
+							+ '<div>'
+							+ '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">'
+							+ '<span class="dashicons ' + p.icon + '" style="font-size:24px; width:24px; height:24px; color:#2563eb;"></span>'
+							+ statusBadge
+							+ '</div>'
+							+ '<h4 style="margin:4px 0 6px; font-size:14px; font-weight:600;">' + p.name + '</h4>'
+							+ '<p style="font-size:12px; color:#475569; margin:0 0 10px; line-height:1.4;">' + p.tagline + '</p>'
+							+ '<ul style="font-size:11px; color:#64748b; margin:0 0 14px; padding-left:14px; line-height:1.5;">'
+							+ '<li><strong>Author:</strong> ' + p.author_name + '</li>'
+							+ '<li><strong>Template:</strong> ' + p.template_name + '</li>'
+							+ '<li><strong>Voice:</strong> ' + p.voice_name + '</li>'
+							+ '</ul>'
+							+ '</div>'
+							+ '<div style="margin-top:auto; padding-top:10px; border-top:1px solid #f1f5f9;">'
+							+ actionBtn
+							+ usageNotice
+							+ '</div>'
+							+ '</div>';
+					});
+
+					$grid.html(html);
+				},
+				error: function() {
+					$('#aips-presets-loading').hide();
+					$grid.html('<p class="notice notice-error">Could not connect to server to fetch presets.</p>');
+				}
+			});
+		}
+
+		// Initial load
+		loadPresetsStatus();
+
+		$('#aips-refresh-presets-btn').on('click', function(e) {
+			e.preventDefault();
+			loadPresetsStatus();
+		});
+
+		// Install preset
+		$(document).on('click', '.aips-preset-install-btn', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var presetId = $btn.data('preset-id');
+
+			$btn.prop('disabled', true).text('Installing…');
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_install_preset',
+					preset_id: presetId,
+					set_strategy: true,
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					if (res.success) {
+						if (typeof AIPS.showToast === 'function') {
+							AIPS.showToast(res.data.message || 'Preset installed successfully!', 'success');
+						} else {
+							alert(res.data.message || 'Preset installed successfully!');
+						}
+						loadPresetsStatus();
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error installing preset.');
+						$btn.prop('disabled', false).text('Install Preset');
+					}
+				},
+				error: function() {
+					alert('Connection error occurred while installing preset.');
+					$btn.prop('disabled', false).text('Install Preset');
+				}
+			});
+		});
+
+		// Remove preset
+		$(document).on('click', '.aips-preset-remove-btn', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var presetId = $btn.data('preset-id');
+			var hasPosts = $btn.data('has-posts') === '1' || $btn.data('has-posts') === 1;
+			var postCount = parseInt($btn.data('posts') || '0', 10);
+			var force = false;
+
+			if (hasPosts) {
+				var msg = 'Warning: This preset has ' + postCount + ' generated post(s) or history records linked to it.\n\nStrict Content Protection is active: deleting the preset will keep your WordPress posts, but remove the template and author definitions.\n\nType OK to force removal:';
+				var confirmInput = prompt(msg);
+				if (confirmInput !== 'OK' && confirmInput !== 'ok') {
+					return;
+				}
+				force = true;
+			} else {
+				if (!confirm('Are you sure you want to uninstall this preset? All associated templates, voices, and authors created by this preset will be cleanly removed.')) {
+					return;
+				}
+			}
+
+			$btn.prop('disabled', true).text('Removing…');
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_remove_preset',
+					preset_id: presetId,
+					force: force,
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					if (res.success) {
+						if (typeof AIPS.showToast === 'function') {
+							AIPS.showToast(res.data.message || 'Preset removed.', 'success');
+						} else {
+							alert(res.data.message || 'Preset removed.');
+						}
+						loadPresetsStatus();
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error removing preset.');
+						$btn.prop('disabled', false).text('Remove');
+					}
+				},
+				error: function() {
+					alert('Connection error occurred while removing preset.');
+					$btn.prop('disabled', false).text('Remove');
+				}
+			});
+		});
+
+		// Export selection helpers
+		$('#aips-export-select-all').on('click', function(e) {
+			e.preventDefault();
+			$('.aips-export-type-cb').prop('checked', true);
+		});
+
+		$('#aips-export-deselect-all').on('click', function(e) {
+			e.preventDefault();
+			$('.aips-export-type-cb').prop('checked', false);
+		});
+
+		// Export execution
+		$('#aips-btn-run-export').on('click', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var selected = [];
+			$('.aips-export-type-cb:checked').each(function() {
+				selected.push($(this).val());
+			});
+
+			if (!selected.length) {
+				alert('Please check at least one entity type to export.');
+				return;
+			}
+
+			$btn.prop('disabled', true).text('Exporting…');
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_export_data',
+					types: selected,
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					$btn.prop('disabled', false).html('<span class="dashicons dashicons-download" style="vertical-align:text-bottom;"></span> Export Selected (JSON)');
+					if (res.success && res.data && res.data.json) {
+						var blob = new Blob([res.data.json], { type: 'application/json' });
+						var link = document.createElement('a');
+						link.href = window.URL.createObjectURL(blob);
+						link.download = res.data.filename || 'aips-export.json';
+						document.body.appendChild(link);
+						link.click();
+						document.body.removeChild(link);
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Export failed.');
+					}
+				},
+				error: function() {
+					$btn.prop('disabled', false).html('<span class="dashicons dashicons-download" style="vertical-align:text-bottom;"></span> Export Selected (JSON)');
+					alert('Export request failed.');
+				}
+			});
+		});
+
+		// File Upload Analysis
+		$('#aips-import-file-input').on('change', function(e) {
+			var file = this.files && this.files[0];
+			if (!file) {
+				return;
+			}
+
+			var formData = new FormData();
+			formData.append('action', 'aips_analyze_import_file');
+			formData.append('nonce', aipsAjax.nonce);
+			formData.append('import_file', file);
+
+			var $status = $('#aips-import-status-box');
+			$status.show().html('<p><span class="spinner is-active" style="float:none;"></span> Analyzing backup file…</p>');
+			$('#aips-import-analysis-card').hide();
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				data: formData,
+				processData: false,
+				contentType: false,
+				dataType: 'json',
+				success: function(res) {
+					$status.hide();
+					if (res.success && res.data && res.data.counts) {
+						currentImportKey = res.data.import_key;
+						var counts = res.data.counts;
+						var countsHtml = '';
+						Object.keys(counts).forEach(function(k) {
+							var count = counts[k];
+							var label = k.replace(/_/g, ' ');
+							label = label.charAt(0).toUpperCase() + label.slice(1);
+							var checked = count > 0 ? 'checked' : '';
+							var disabled = count === 0 ? 'disabled' : '';
+							countsHtml += '<label style="display:flex; align-items:center; gap:6px; font-weight:500;">'
+								+ '<input type="checkbox" class="aips-import-type-cb" value="' + k + '" ' + checked + ' ' + disabled + '> '
+								+ label + ' (' + count + ')'
+								+ '</label>';
+						});
+						$('#aips-import-counts-container').html(countsHtml);
+						$('#aips-import-analysis-card').slideDown();
+					} else {
+						$status.show().html('<div class="notice notice-error inline"><p>' + (res.data && res.data.message ? res.data.message : 'Invalid backup file.') + '</p></div>');
+					}
+				},
+				error: function() {
+					$status.show().html('<div class="notice notice-error inline"><p>Failed to analyze file.</p></div>');
+				}
+			});
+		});
+
+		// Execute Import
+		$('#aips-btn-confirm-import').on('click', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var selected = [];
+			$('.aips-import-type-cb:checked').each(function() {
+				selected.push($(this).val());
+			});
+
+			if (!selected.length) {
+				alert('Please select at least one component type to import.');
+				return;
+			}
+
+			var policy = $('input[name="aips_import_conflict_policy"]:checked').val() || 'copy';
+
+			$btn.prop('disabled', true).text('Importing…');
+			var $status = $('#aips-import-status-box');
+			$status.show().html('<p><span class="spinner is-active" style="float:none;"></span> Executing selective import and remapping IDs…</p>');
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_execute_import',
+					import_key: currentImportKey,
+					types: selected,
+					conflict_policy: policy,
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					$btn.prop('disabled', false).html('<span class="dashicons dashicons-upload" style="vertical-align:text-bottom;"></span> Execute Import');
+					if (res.success && res.data && res.data.report) {
+						var rep = res.data.report;
+						var summaryHtml = '<div class="notice notice-success inline" style="padding:12px; margin-top:12px;">'
+							+ '<h4 style="margin:0 0 6px;">Import Complete!</h4>'
+							+ '<ul style="margin:0; padding-left:18px;">'
+							+ '<li>Imported: ' + (rep.imported ? rep.imported.length : 0) + ' items</li>'
+							+ '<li>Updated: ' + (rep.updated ? rep.updated.length : 0) + ' items</li>'
+							+ '<li>Skipped: ' + (rep.skipped ? rep.skipped.length : 0) + ' items</li>'
+							+ '</ul>'
+							+ '</div>';
+						$status.html(summaryHtml);
+						$('#aips-import-analysis-card').slideUp();
+						loadPresetsStatus();
+					} else {
+						$status.html('<div class="notice notice-error inline"><p>' + (res.data && res.data.message ? res.data.message : 'Import failed.') + '</p></div>');
+					}
+				},
+				error: function() {
+					$btn.prop('disabled', false).html('<span class="dashicons dashicons-upload" style="vertical-align:text-bottom;"></span> Execute Import');
+					$status.html('<div class="notice notice-error inline"><p>Connection error during import.</p></div>');
+				}
+			});
+		});
+	}
 })(jQuery);

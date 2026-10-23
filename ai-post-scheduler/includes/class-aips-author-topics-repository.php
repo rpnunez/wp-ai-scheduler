@@ -27,6 +27,23 @@ class AIPS_Author_Topics_Repository {
 	use AIPS_Cacheable_Repository;
 	
 	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get repository instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if (null === self::$instance) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
+	/**
 	 * @var string The author_topics table name (with prefix)
 	 */
 	private $table_name;
