@@ -510,7 +510,158 @@ class AIPS_Dashboard_Controller {
 
 		$ai_provider_available  = AIPS_AI_Provider_Factory::has_available_provider();
 
+		$dashboard_data = compact(
+			'ai_provider_available',
+			'date_from',
+			'date_to',
+			'summary_stats',
+			'total_in_period',
+			'completed_in_period',
+			'failed_in_period',
+			'partial_in_period',
+			'success_rate_in_period',
+			'schedules_run_in_period',
+			'topics_created_stats',
+			'topics_created_in_period',
+			'topics_pending_in_period',
+			'topics_approved_in_period',
+			'topics_rejected_in_period',
+			'ai_calls_stats',
+			'ai_calls_in_period',
+			'ai_errors_in_period',
+			'ai_error_rate_in_period',
+			'recent_posts',
+			'recent_topics',
+			'posts_by_topic',
+			'executed_schedules',
+			'chart_data',
+			'upcoming_runs_count',
+			'upcoming_5',
+			'topics_in_queue',
+			'partial_generations'
+		);
+
 		include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
+	}
+
+	/**
+	 * Register WordPress Core meta boxes for the Dashboard screen.
+	 *
+	 * @param string $screen_id WordPress screen ID.
+	 * @return void
+	 */
+	public static function register_meta_boxes($screen_id = 'toplevel_page_ai-post-scheduler') {
+		AIPS_Screen_Meta_Box_Helper::init_screen($screen_id);
+
+		add_meta_box(
+			'aips-dashboard-overview-box',
+			__('Overview Summary', 'ai-post-scheduler'),
+			array(__CLASS__, 'render_overview_meta_box'),
+			$screen_id,
+			'normal',
+			'high'
+		);
+
+		add_meta_box(
+			'aips-dashboard-activity-box',
+			__('Analytics Detail', 'ai-post-scheduler'),
+			array(__CLASS__, 'render_activity_meta_box'),
+			$screen_id,
+			'normal',
+			'default'
+		);
+
+		add_meta_box(
+			'aips-dashboard-charts-box',
+			__('Performance & Trend Charts', 'ai-post-scheduler'),
+			array(__CLASS__, 'render_charts_meta_box'),
+			$screen_id,
+			'normal',
+			'default'
+		);
+
+		add_meta_box(
+			'aips-dashboard-upcoming-box',
+			__('Next Month Outlook', 'ai-post-scheduler'),
+			array(__CLASS__, 'render_upcoming_meta_box'),
+			$screen_id,
+			'side',
+			'high'
+		);
+
+		add_meta_box(
+			'aips-dashboard-status-box',
+			__('System Status & Provider', 'ai-post-scheduler'),
+			array(__CLASS__, 'render_status_meta_box'),
+			$screen_id,
+			'side',
+			'default'
+		);
+	}
+
+	/**
+	 * Meta box callback for Overview Summary.
+	 *
+	 * @param mixed $data Dashboard data payload.
+	 * @return void
+	 */
+	public static function render_overview_meta_box($data = array()) {
+		$partial = AIPS_PLUGIN_DIR . 'templates/admin/dashboard/meta-box-overview.php';
+		if (file_exists($partial)) {
+			include $partial;
+		}
+	}
+
+	/**
+	 * Meta box callback for Analytics Activity Detail.
+	 *
+	 * @param mixed $data Dashboard data payload.
+	 * @return void
+	 */
+	public static function render_activity_meta_box($data = array()) {
+		$partial = AIPS_PLUGIN_DIR . 'templates/admin/dashboard/meta-box-activity.php';
+		if (file_exists($partial)) {
+			include $partial;
+		}
+	}
+
+	/**
+	 * Meta box callback for Analytics Trend Charts.
+	 *
+	 * @param mixed $data Dashboard data payload.
+	 * @return void
+	 */
+	public static function render_charts_meta_box($data = array()) {
+		$partial = AIPS_PLUGIN_DIR . 'templates/admin/dashboard/meta-box-charts.php';
+		if (file_exists($partial)) {
+			include $partial;
+		}
+	}
+
+	/**
+	 * Meta box callback for Upcoming Next Month Outlook.
+	 *
+	 * @param mixed $data Dashboard data payload.
+	 * @return void
+	 */
+	public static function render_upcoming_meta_box($data = array()) {
+		$partial = AIPS_PLUGIN_DIR . 'templates/admin/dashboard/meta-box-upcoming.php';
+		if (file_exists($partial)) {
+			include $partial;
+		}
+	}
+
+	/**
+	 * Meta box callback for System Status & Provider.
+	 *
+	 * @param mixed $data Dashboard data payload.
+	 * @return void
+	 */
+	public static function render_status_meta_box($data = array()) {
+		$partial = AIPS_PLUGIN_DIR . 'templates/admin/dashboard/meta-box-status.php';
+		if (file_exists($partial)) {
+			include $partial;
+		}
 	}
 
 	/**
