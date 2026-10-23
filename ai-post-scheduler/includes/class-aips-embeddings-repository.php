@@ -754,7 +754,9 @@ class AIPS_Embeddings_Repository {
 
 		// Flush AIPS_Cache group
 		if (class_exists('AIPS_Cache_Factory')) {
-			AIPS_Cache_Factory::make()->bump_tag_version('aips_embeddings');
+			$cache = AIPS_Cache_Factory::make();
+			$cache->delete_group('aips_embeddings');
+			$cache->bump_tag_version('aips_embeddings');
 		}
 
 		// Flush WordPress transients

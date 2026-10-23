@@ -29,7 +29,7 @@ class AIPS_Cache {
 	private $driver;
 
 	/**
-	 * Repository cache observer for tag invalidation telemetry.
+	 * Repository cache observer for tag invalidation observation and logging.
 	 *
 	 * @var AIPS_Repository_Cache_Observer|null
 	 */
@@ -378,6 +378,36 @@ class AIPS_Cache {
 		$this->l1_invalidate( $group . ':' . $key );
 
 		return $this->driver->delete( $key, $group );
+	}
+
+	/**
+	 * Invalidate all cached entries for a given group.
+	 *
+	 * Clears L1 store entries for the group, and forwards to the underlying driver
+	 * if the driver supports delete_group().
+	 *
+	 * @param string $group Cache group. Default 'default'.
+	 * @return bool True on success.
+	 */
+	public function delete_group( $group = 'default' ) {
+		if ( ! self::is_system_enabled() ) {
+			return true;
+		}
+
+		$group_str = (string) $group;
+		$prefix    = $group_str . ':';
+
+		foreach ( array_keys( $this->l1_store ) as $composite ) {
+			if ( 0 === strpos( $composite, $prefix ) ) {
+				unset( $this->l1_store[ $composite ] );
+			}
+		}
+
+		if ( method_exists( $this->driver, 'delete_group' ) ) {
+			return (bool) $this->driver->delete_group( $group_str );
+		}
+
+		return true;
 	}
 
 	/**

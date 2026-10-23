@@ -262,4 +262,21 @@ class Test_AIPS_Cache extends WP_UnitTestCase {
 		$this->assertInstanceOf( 'AIPS_Cache_Driver', $driver );
 	}
 
+	public function test_delete_group_clears_l1_and_driver_entries() {
+		$this->cache->set( 'key1', 'val1', 60, 'grp_a' );
+		$this->cache->set( 'key2', 'val2', 60, 'grp_a' );
+		$this->cache->set( 'key3', 'val3', 60, 'grp_b' );
+
+		$this->assertSame( 'val1', $this->cache->get( 'key1', 'grp_a' ) );
+		$this->assertSame( 'val2', $this->cache->get( 'key2', 'grp_a' ) );
+		$this->assertSame( 'val3', $this->cache->get( 'key3', 'grp_b' ) );
+
+		$result = $this->cache->delete_group( 'grp_a' );
+		$this->assertTrue( $result );
+
+		$this->assertNull( $this->cache->get( 'key1', 'grp_a' ) );
+		$this->assertNull( $this->cache->get( 'key2', 'grp_a' ) );
+		$this->assertSame( 'val3', $this->cache->get( 'key3', 'grp_b' ) );
+	}
+
 }

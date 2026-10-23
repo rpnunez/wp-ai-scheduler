@@ -827,12 +827,6 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the Cache Monitor page.
-     *
-     * @return void
-     */
-
-    /**
      * Render the System Status page.
      *
      * Delegates rendering to the AIPS_System_Status class.

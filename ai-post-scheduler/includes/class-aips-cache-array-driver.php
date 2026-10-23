@@ -100,6 +100,22 @@ class AIPS_Cache_Array_Driver implements AIPS_Cache_Driver {
 		return $this->get( $key, $group ) !== null;
 	}
 
+	/**
+	 * Delete all entries for a specific group from the in-memory store.
+	 *
+	 * @param string $group Cache group name.
+	 * @return bool True on success.
+	 */
+	public function delete_group( string $group ): bool {
+		$prefix = (string) $group . ':';
+		foreach ( array_keys( $this->store ) as $k ) {
+			if ( 0 === strpos( $k, $prefix ) ) {
+				unset( $this->store[ $k ], $this->expiries[ $k ] );
+			}
+		}
+		return true;
+	}
+
 	// -----------------------------------------------------------------------
 	// Internal helpers
 	// -----------------------------------------------------------------------

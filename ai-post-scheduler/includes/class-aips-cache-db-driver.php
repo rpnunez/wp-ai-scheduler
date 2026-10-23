@@ -238,6 +238,26 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	}
 
 	/**
+	 * Delete all entries for a specific group from the cache table.
+	 *
+	 * @param string $group Cache group name.
+	 * @return bool True on success, false on failure.
+	 */
+	public function delete_group( string $group ): bool {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_cache';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$result = $wpdb->delete(
+			$table,
+			array( 'cache_group' => (string) $group ),
+			array( '%s' )
+		);
+
+		return false !== $result;
+	}
+
+	/**
 	 * Delete all expired entries from the cache table.
 	 *
 	 * Intended to be called periodically (e.g., via a cron job) to keep the
@@ -272,10 +292,6 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver {
 	private function get_non_expired_predicate_sql() {
 		return '(expires_at = 0 OR expires_at >= %d)';
 	}
-
-	// -----------------------------------------------------------------------
-	// Internal helpers
-	// -----------------------------------------------------------------------
 
 	/**
 	 * Optionally prepend the configured prefix to a cache key.
