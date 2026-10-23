@@ -70,8 +70,12 @@ class AIPS_Article_Structure_Manager {
 			'id' => $structure->id,
 			'name' => $structure->name,
 			'description' => $structure->description,
+			'archetype' => isset($structure->archetype) ? $structure->archetype : 'custom',
+			'editor_mode' => isset($structure->editor_mode) ? $structure->editor_mode : 'auto',
+			'enable_schema' => isset($structure->enable_schema) ? (int) $structure->enable_schema : 1,
 			'sections' => isset($structure_data['sections']) ? $structure_data['sections'] : array(),
 			'prompt_template' => isset($structure_data['prompt_template']) ? $structure_data['prompt_template'] : '',
+			'relational_sections' => class_exists('AIPS_Structure_Section_Rel_Repository') ? AIPS_Structure_Section_Rel_Repository::instance()->get_by_structure_id($structure->id) : array(),
 			'is_active' => $structure->is_active,
 		);
 	}
@@ -107,19 +111,21 @@ class AIPS_Article_Structure_Manager {
 	 * @param bool   $is_active       Set structure as active.
 	 * @return int|WP_Error Structure ID on success or error.
 	 */
-	public function create_structure($name, $sections, $prompt_template, $description = '', $is_active = true) {
-		// Validate sections exist
-		$available_sections = $this->section_repository->get_by_keys($sections);
-		$missing_sections = array_diff($sections, array_keys($available_sections));
-		
-		if (!empty($missing_sections)) {
-			return new WP_Error(
-				'invalid_sections',
-				sprintf(
-					__('Invalid section keys: %s', 'ai-post-scheduler'),
-					implode(', ', $missing_sections)
-				)
-			);
+	public function create_structure($name, $sections, $prompt_template, $description = '', $is_active = true, $archetype = 'custom', $editor_mode = 'auto', $enable_schema = 1, $relational_sections = null) {
+		// Validate sections exist if sections provided
+		if (!empty($sections)) {
+			$available_sections = $this->section_repository->get_by_keys($sections);
+			$missing_sections = array_diff($sections, array_keys($available_sections));
+			
+			if (!empty($missing_sections)) {
+				return new WP_Error(
+					'invalid_sections',
+					sprintf(
+						__('Invalid section keys: %s', 'ai-post-scheduler'),
+						implode(', ', $missing_sections)
+					)
+				);
+			}
 		}
 		
 		$structure_data = array(
@@ -130,6 +136,9 @@ class AIPS_Article_Structure_Manager {
 		$data = array(
 			'name' => $name,
 			'description' => $description,
+			'archetype' => sanitize_key($archetype),
+			'editor_mode' => in_array($editor_mode, array('gutenberg', 'shortcode', 'auto'), true) ? $editor_mode : 'auto',
+			'enable_schema' => !empty($enable_schema) ? 1 : 0,
 			'structure_data' => wp_json_encode($structure_data),
 			'is_active' => $is_active ? 1 : 0,
 		);
@@ -138,6 +147,10 @@ class AIPS_Article_Structure_Manager {
 		
 		if (!$id) {
 			return new WP_Error('create_failed', __('Failed to create article structure.', 'ai-post-scheduler'));
+		}
+
+		if (is_array($relational_sections) && class_exists('AIPS_Structure_Section_Rel_Repository')) {
+			AIPS_Structure_Section_Rel_Repository::instance()->sync_structure_sections($id, $relational_sections);
 		}
 		
 		do_action('aips_structure_created', $id, $structure_data);
@@ -148,33 +161,39 @@ class AIPS_Article_Structure_Manager {
 	/**
 	 * Update an article structure.
 	 *
-	 * @param int    $structure_id    Structure ID.
-	 * @param string $name            Structure name.
-	 * @param array  $sections        Array of section keys.
-	 * @param string $prompt_template Prompt template with section placeholders.
-	 * @param string $description     Structure description.
-	 * @param bool   $is_active       Set structure as active.
+	 * @param int         $structure_id        Structure ID.
+	 * @param string      $name                Structure name.
+	 * @param array       $sections            Array of section keys.
+	 * @param string      $prompt_template     Prompt template with section placeholders.
+	 * @param string      $description         Structure description.
+	 * @param bool        $is_active           Set structure as active.
+	 * @param string      $archetype           Pattern archetype.
+	 * @param string      $editor_mode         Editor output mode ('gutenberg', 'shortcode', 'auto').
+	 * @param int         $enable_schema       Enable JSON-LD schema.
+	 * @param array|null  $relational_sections Relational section definitions.
 	 * @return bool|WP_Error True on success or error.
 	 */
-	public function update_structure($structure_id, $name, $sections, $prompt_template, $description = '', $is_active = null) {
+	public function update_structure($structure_id, $name, $sections, $prompt_template, $description = '', $is_active = null, $archetype = null, $editor_mode = null, $enable_schema = null, $relational_sections = null) {
 		$structure = $this->structure_repository->get_by_id($structure_id);
 		
 		if (!$structure) {
 			return new WP_Error('structure_not_found', __('Article structure not found.', 'ai-post-scheduler'));
 		}
 		
-		// Validate sections exist
-		$available_sections = $this->section_repository->get_by_keys($sections);
-		$missing_sections = array_diff($sections, array_keys($available_sections));
-		
-		if (!empty($missing_sections)) {
-			return new WP_Error(
-				'invalid_sections',
-				sprintf(
-					__('Invalid section keys: %s', 'ai-post-scheduler'),
-					implode(', ', $missing_sections)
-				)
-			);
+		if (!empty($sections)) {
+			// Validate sections exist
+			$available_sections = $this->section_repository->get_by_keys($sections);
+			$missing_sections = array_diff($sections, array_keys($available_sections));
+			
+			if (!empty($missing_sections)) {
+				return new WP_Error(
+					'invalid_sections',
+					sprintf(
+						__('Invalid section keys: %s', 'ai-post-scheduler'),
+						implode(', ', $missing_sections)
+					)
+				);
+			}
 		}
 		
 		$structure_data = array(
@@ -187,6 +206,18 @@ class AIPS_Article_Structure_Manager {
 			'description' => $description,
 			'structure_data' => wp_json_encode($structure_data),
 		);
+
+		if ($archetype !== null) {
+			$data['archetype'] = sanitize_key($archetype);
+		}
+
+		if ($editor_mode !== null) {
+			$data['editor_mode'] = in_array($editor_mode, array('gutenberg', 'shortcode', 'auto'), true) ? $editor_mode : 'auto';
+		}
+
+		if ($enable_schema !== null) {
+			$data['enable_schema'] = !empty($enable_schema) ? 1 : 0;
+		}
 		
 		// Add is_active if provided
 		if ($is_active !== null) {
@@ -197,6 +228,10 @@ class AIPS_Article_Structure_Manager {
 		
 		if (!$result) {
 			return new WP_Error('update_failed', __('Failed to update article structure.', 'ai-post-scheduler'));
+		}
+
+		if (is_array($relational_sections) && class_exists('AIPS_Structure_Section_Rel_Repository')) {
+			AIPS_Structure_Section_Rel_Repository::instance()->sync_structure_sections($structure_id, $relational_sections);
 		}
 		
 		do_action('aips_structure_updated', $structure_id, $structure_data);

@@ -379,6 +379,11 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-admin-network',
 						'description' => __('API credentials and external tokens', 'ai-post-scheduler'),
 					),
+					'settings-data' => array(
+						'label'       => __('Data', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-database',
+						'description' => __('Archetypes & component libraries', 'ai-post-scheduler'),
+					),
 				),
 				'child_pages' => array(),
 			),

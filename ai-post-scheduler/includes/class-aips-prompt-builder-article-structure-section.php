@@ -61,18 +61,76 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 			return $structure;
 		}
 
-		$section_contents = $this->get_section_contents($structure['sections']);
-		$prompt = $structure['prompt_template'];
-		$search = array();
-		$replace = array();
+		$relational_sections = !empty($structure['relational_sections']) ? $structure['relational_sections'] : array();
+		$prompt = !empty($structure['prompt_template']) ? $structure['prompt_template'] : '';
 
-		foreach ($section_contents as $section_key => $content) {
-			$search[] = "{{section:$section_key}}";
-			$replace[] = $content;
-		}
+		// If structure has relational sections, assemble section prompt blocks
+		if (!empty($relational_sections)) {
+			$section_instructions = array();
+			$search = array();
+			$replace = array();
 
-		if (!empty($search)) {
-			$prompt = str_replace($search, $replace, $prompt);
+			foreach ($relational_sections as $sec) {
+				$sec_key = $sec->section_key;
+				$sec_block = array();
+
+				if (!empty($sec->heading_text)) {
+					$h_prefix = ($sec->heading_level === 'h3') ? '### ' : '## ';
+
+					if ($sec->heading_level === 'none') {
+						$h_prefix = '';
+					}
+					
+					$sec_block[] = sprintf('Section Heading: %s%s', $h_prefix, $sec->heading_text);
+				}
+
+				if (!empty($sec->target_word_count)) {
+					$sec_block[] = sprintf('Target word count: ~%d words.', (int) $sec->target_word_count);
+				}
+
+				if (!empty($sec->component_prompt_instructions)) {
+					$sec_block[] = $sec->component_prompt_instructions;
+				}
+
+				if (!empty($sec->custom_prompt)) {
+					$sec_block[] = $sec->custom_prompt;
+				}
+
+				$assembled_sec = implode("\n", $sec_block);
+				$section_instructions[] = $assembled_sec;
+
+				$search[] = "{{section:$sec_key}}";
+				$replace[] = $assembled_sec;
+			}
+
+			// If prompt_template contains {{section:...}} placeholders, replace them
+			if (!empty($search) && !empty($prompt) && strpos($prompt, '{{section:') !== false) {
+				$prompt = str_replace($search, $replace, $prompt);
+			} elseif (empty($prompt)) {
+				// If no custom prompt_template, join section instructions
+				$prompt = sprintf(
+					"Write a comprehensive %s about {{topic}}.\n\n%s",
+					!empty($structure['name']) ? $structure['name'] : 'article',
+					implode("\n\n", $section_instructions)
+				);
+			} else {
+				// Append section instructions if not already substituted
+				$prompt .= "\n\n" . implode("\n\n", $section_instructions);
+			}
+		} else {
+			// Legacy fallback for structures without relational mappings
+			$section_contents = $this->get_section_contents($structure['sections']);
+			$search = array();
+			$replace = array();
+
+			foreach ($section_contents as $section_key => $content) {
+				$search[] = "{{section:$section_key}}";
+				$replace[] = $content;
+			}
+
+			if (!empty($search)) {
+				$prompt = str_replace($search, $replace, $prompt);
+			}
 		}
 
 		return $this->template_processor->process($prompt, $topic);

@@ -134,6 +134,10 @@ class AIPS_Ajax_Registry {
 		'aips_save_structure'             => 'AIPS_Structures_Controller',
 		'aips_delete_structure'           => 'AIPS_Structures_Controller',
 		'aips_toggle_structure_active'    => 'AIPS_Structures_Controller',
+		'aips_clone_structure'            => 'AIPS_Structures_Controller',
+		'aips_get_components'             => 'AIPS_Structures_Controller',
+		'aips_test_structure'             => 'AIPS_Structures_Controller',
+		'aips_restore_default_structures' => 'AIPS_Structures_Controller',
 
 		// Prompt Sections Controller
 		'aips_get_prompt_sections'        => 'AIPS_Prompt_Sections_Controller',

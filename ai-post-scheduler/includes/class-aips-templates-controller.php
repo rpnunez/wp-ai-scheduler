@@ -141,6 +141,7 @@ class AIPS_Templates_Controller {
             'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '',
             'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field(wp_unslash($_POST['title_prompt'])) : '',
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
+            'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
             'post_quantity' => isset($_POST['post_quantity']) ? absint($_POST['post_quantity']) : 1,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
@@ -165,7 +166,7 @@ class AIPS_Templates_Controller {
 
         // post_type is write-once: only honor it when creating a new template
         // (no template_id yet). Existing templates ignore any post_type sent
-        // with the request — see AIPS_Template_Repository::update().
+        // with the request â€” see AIPS_Template_Repository::update().
         if (!$data['id'] && isset($_POST['post_type'])) {
             $data['post_type'] = sanitize_key(wp_unslash($_POST['post_type']));
         }

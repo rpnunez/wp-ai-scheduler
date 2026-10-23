@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Article Structures & Pattern Archetypes (3.7.20)
+- **Modular Article Structures & Pattern Archetypes (#2292):**
+  - Enhanced Article Structures with 5 core archetypes (`how_to`, `review`, `faq`, `comparison`, `listicle`) and 6 modular components (`step_list`, `pros_cons`, `rating_box`, `faq_accordion`, `comparison_table`, `callout_box`).
+  - Added relational database tables `wp_aips_components` and `wp_aips_structure_sections_rel` with atomic group sync, cascade deletion, and full cloning support in `AIPS_Component_Repository` and `AIPS_Structure_Section_Rel_Repository`.
+  - Added dual-mode rendering in `AIPS_Structure_Delimiter_Parser` supporting WordPress native Gutenberg core blocks (Columns, Details, List, Table) and Classic Editor shortcodes (`[aips_step_list]`, `[aips_pros_cons]`, `[aips_rating]`, `[aips_faq]`, `[aips_table]`, `[aips_callout]`).
+  - Added SEO JSON-LD schema builder (`AIPS_Structure_Schema_Builder`) generating `HowTo`, `FAQPage`, `Product`, and `Review` structured data hooked to `wp_head` with Yoast and Rank Math graph integration.
+  - Implemented 5-tier inheritance precedence in `AIPS_Template_Type_Selector`: `Schedule override > Author override > Campaign override > Template structure > Site default`.
+  - Enhanced Admin Studio with a visual structure card builder, slide-out drawer for component parameters, and a 4-tab Live Test Modal (Assembled Prompt, Raw AI Output, Visual Preview, JSON-LD Schema).
+  - Added Settings "Data" tab with "Restore Default Archetypes & Components" functionality to repair missing or corrupted defaults safely.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.

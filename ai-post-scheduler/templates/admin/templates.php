@@ -127,10 +127,10 @@ if (!defined('ABSPATH')) {
                                     if (!empty($cat_names)) {
                                         echo implode(', ', $cat_names);
                                     } else {
-                                        echo '<span class="cell-meta">—</span>';
+                                        echo '<span class="cell-meta">â€”</span>';
                                     }
                                 } else {
-                                    echo '<span class="cell-meta">—</span>';
+                                    echo '<span class="cell-meta">â€”</span>';
                                 }
                                 ?>
                             </td>
@@ -392,9 +392,9 @@ if (!defined('ABSPATH')) {
                                     <p><?php esc_html_e('AI Variables allow you to create dynamic, context-aware titles. The AI will automatically fill in values based on the content it generates.', 'ai-post-scheduler'); ?></p>
                                     <h4><?php esc_html_e('Examples:', 'ai-post-scheduler'); ?></h4>
                                     <ul>
-                                        <li><code>{{Framework1}} vs {{Framework2}}</code> → <em>"Laravel vs Symfony"</em></li>
-                                        <li><code>Top {{Number}} {{Topic}} Tips</code> → <em>"Top 10 SEO Tips"</em></li>
-                                        <li><code>{{ProductName}} Review: Is it worth it?</code> → <em>"iPhone 15 Pro Review: Is it worth it?"</em></li>
+                                        <li><code>{{Framework1}} vs {{Framework2}}</code> â†’ <em>"Laravel vs Symfony"</em></li>
+                                        <li><code>Top {{Number}} {{Topic}} Tips</code> â†’ <em>"Top 10 SEO Tips"</em></li>
+                                        <li><code>{{ProductName}} Review: Is it worth it?</code> â†’ <em>"iPhone 15 Pro Review: Is it worth it?"</em></li>
                                     </ul>
                                     <h4><?php esc_html_e('Tips:', 'ai-post-scheduler'); ?></h4>
                                     <ul>
@@ -435,6 +435,23 @@ if (!defined('ABSPATH')) {
                                     <option value="0"><?php esc_html_e('No Voice (Use Default)', 'ai-post-scheduler'); ?></option>
                                 </select>
                                 <p class="description"><?php esc_html_e('Optional. A voice provides pre-configured title and content instructions.', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
+
+                        <div class="aips-form-row">
+                            <label for="template_article_structure_id"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></label>
+                            <div class="aips-structure-selector">
+                                <select id="template_article_structure_id" name="article_structure_id" class="regular-text">
+                                    <option value="0"><?php esc_html_e('Use Default / Inherit', 'ai-post-scheduler'); ?></option>
+                                    <?php
+                                    $struct_repo = new AIPS_Article_Structure_Repository();
+                                    $active_structures = $struct_repo->get_all(true);
+                                    foreach ($active_structures as $st) :
+                                    ?>
+                                        <option value="<?php echo esc_attr($st->id); ?>"><?php echo esc_html($st->name); ?><?php echo !empty($st->archetype) && $st->archetype !== 'custom' ? ' (' . esc_html(ucwords(str_replace('_', ' ', $st->archetype))) . ')' : ''; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="description"><?php esc_html_e('Optional. Choose an article structure or pattern archetype (How-To, Review, FAQ, etc.) for posts created from this template.', 'ai-post-scheduler'); ?></p>
                             </div>
                         </div>
                         
@@ -662,7 +679,7 @@ if (!defined('ABSPATH')) {
                                             <div class="aips-form-row">
                                                 <label for="aips-integration-select"><?php esc_html_e('Integration', 'ai-post-scheduler'); ?></label>
                                                 <select id="aips-integration-select">
-                                                    <option value=""><?php esc_html_e('Loading…', 'ai-post-scheduler'); ?></option>
+                                                    <option value=""><?php esc_html_e('Loadingâ€¦', 'ai-post-scheduler'); ?></option>
                                                 </select>
                                             </div>
                                             <div class="aips-form-row">
@@ -956,7 +973,7 @@ if (!defined('ABSPATH')) {
     <!-- Growable "field slot" row for integrations where supports_custom_field_keys
          is true (e.g. native WordPress custom fields): each row independently
          picks its own field via a dropdown (populated in JS), with a "Custom
-         meta key…" escape hatch for a field that isn't in the discovered list. -->
+         meta keyâ€¦" escape hatch for a field that isn't in the discovered list. -->
     <script type="text/html" id="aips-tmpl-integration-custom-field-row">
         <tr class="aips-integration-custom-field-row">
             <td class="aips-integration-field-key-cell">

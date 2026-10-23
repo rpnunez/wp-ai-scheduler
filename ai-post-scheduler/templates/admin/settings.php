@@ -31,6 +31,8 @@ if ('engine' === $active_settings_tab || 'settings-engine' === $active_settings_
 	$active_settings_tab = 'settings-api-keys';
 } elseif ('developers' === $active_settings_tab || 'dev' === $active_settings_tab || 'debug' === $active_settings_tab) {
 	$active_settings_tab = 'settings-developers';
+} elseif ('data' === $active_settings_tab || 'settings-data' === $active_settings_tab) {
+	$active_settings_tab = 'settings-data';
 }
 
 $settings_rail_items = array(
@@ -121,6 +123,14 @@ $settings_rail_items = array(
 		'description' => __('Debug & dev tools', 'ai-post-scheduler'),
 		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-developers'),
 		'active'      => ($active_settings_tab === 'settings-developers'),
+	),
+	array(
+		'key'         => 'settings-data',
+		'label'       => __('Data', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-database',
+		'description' => __('Archetypes & maintenance', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-data'),
+		'active'      => ($active_settings_tab === 'settings-data'),
 	),
 );
 
@@ -438,6 +448,23 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
+							</div>
+
+							<!-- Data Tab -->
+							<div id="settings-data-tab" class="aips-tab-content<?php echo 'settings-data' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-data' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-data' === $active_settings_tab ? '' : 'hidden'; ?>>
+								<p class="description"><?php esc_html_e('Manage plugin default structures, pattern archetypes, and component libraries.', 'ai-post-scheduler'); ?></p>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Article Structures & Pattern Archetypes', 'ai-post-scheduler'); ?></h3>
+									<p class="description"><?php esc_html_e('Restore missing or corrupted core pattern archetypes (How-To Guides, Product Reviews, FAQs, Comparison Guides, Listicles) and default components (Step List, Pros & Cons, Rating Box, FAQ Accordion, Comparison Table, Callout Box). Existing custom structures will be preserved.', 'ai-post-scheduler'); ?></p>
+									<p class="aips-restore-defaults-container">
+										<button type="button" class="button button-secondary aips-btn aips-btn-secondary" id="aips-restore-defaults-btn">
+											<span class="dashicons dashicons-update aips-btn-icon-inline"></span>
+											<?php esc_html_e('Restore Default Archetypes & Components', 'ai-post-scheduler'); ?>
+										</button>
+										<span id="aips-restore-defaults-spinner" class="spinner aips-inline-spinner"></span>
+										<span id="aips-restore-defaults-result" class="aips-inline-result"></span>
+									</p>
+								</div>
 							</div>
 
 						</form>
