@@ -669,10 +669,6 @@ class AIPS_Similarity_Evaluator {
 					$candidate_vec = $meta['embedding'];
 				}
 				$rel_sim = $this->measure_topic_relevance($topic_title, $author_baseline_vec, $candidate_vec);
-				if (empty($meta['embedding']) && is_array($candidate_vec)) {
-					$meta['embedding'] = $candidate_vec;
-				}
-
 				$meta['auto_approval_relevance']      = null === $rel_sim ? null : round($rel_sim, 4);
 				$meta['auto_approval_duplicate_sim']  = round($dup_sim, 4);
 				$meta['auto_approval_min_relevance']  = round($min_relevance, 4);

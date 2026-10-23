@@ -265,6 +265,10 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.7.20', '<' ) ) {
+			$this->migrate_to_3_7_20();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1788,6 +1792,77 @@ class AIPS_DB_Migrations {
 		}
 		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
 		return $schedule_column && 'YES' === $schedule_column->Null;
+	}
+
+	/**
+	 * Move embedding vectors out of aips_author_topics.metadata.
+	 *
+	 * Vectors were duplicated into topic metadata as JSON (tens of KB per row).
+	 * Each one is copied into aips_embeddings when the topic has no row there
+	 * yet, then removed from metadata. Processed in cursor-paged chunks.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_20() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_author_topics';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'admin' );
+		}
+
+		$embeddings_repo = class_exists( 'AIPS_Embeddings_Repository' ) ? new AIPS_Embeddings_Repository() : null;
+		$chunk_size      = (int) apply_filters( 'aips_migration_3_7_20_chunk_size', 100 );
+		$chunk_size      = max( 10, min( 500, $chunk_size ) );
+		$like            = '%' . $wpdb->esc_like( '"embedding"' ) . '%';
+		$last_id         = 0;
+		$stripped        = 0;
+
+		while ( true ) {
+			if ( function_exists( 'set_time_limit' ) ) {
+				@set_time_limit( 120 );
+			}
+
+			$rows = $wpdb->get_results( $wpdb->prepare(
+				"SELECT id, metadata FROM `{$table}` WHERE id > %d AND metadata LIKE %s ORDER BY id ASC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$last_id,
+				$like,
+				$chunk_size
+			) );
+
+			if ( empty( $rows ) ) {
+				break;
+			}
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row->id;
+				$meta    = json_decode( (string) $row->metadata, true );
+				if ( ! is_array( $meta ) || ! array_key_exists( 'embedding', $meta ) ) {
+					continue;
+				}
+
+				$vector = $meta['embedding'];
+				if ( $embeddings_repo && is_array( $vector ) && ! empty( $vector ) && ! $embeddings_repo->get_by_object( 'topic', (int) $row->id ) ) {
+					$embeddings_repo->upsert( 'topic', (int) $row->id, array_map( 'floatval', array_values( $vector ) ), '', count( $vector ), '' );
+				}
+
+				unset( $meta['embedding'] );
+				$wpdb->update(
+					$table,
+					array( 'metadata' => wp_json_encode( $meta ) ),
+					array( 'id' => (int) $row->id ),
+					array( '%s' ),
+					array( '%d' )
+				);
+				$stripped++;
+			}
+		}
+
+		$this->logger->log( sprintf( 'Migration 3.7.20: Removed embedding vectors from %d author topic metadata rows.', $stripped ), 'info' );
 	}
 
 }

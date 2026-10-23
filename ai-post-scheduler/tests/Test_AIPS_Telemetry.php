@@ -41,6 +41,18 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 		// Enable telemetry for the duration of each test.
 		update_option('aips_enable_telemetry', 1);
 		AIPS_Config::get_instance()->flush_option_cache();
+
+		// Sampling is on by default; record every request in tests.
+		add_filter('aips_telemetry_sample_rate', array($this, 'full_sample_rate'));
+	}
+
+	/**
+	 * Sample-rate filter callback that records every request.
+	 *
+	 * @return float
+	 */
+	public function full_sample_rate() {
+		return 1.0;
 	}
 
 	/**
@@ -49,6 +61,7 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function tearDown(): void {
+		remove_filter('aips_telemetry_sample_rate', array($this, 'full_sample_rate'));
 		delete_option('aips_enable_telemetry');
 		AIPS_Config::get_instance()->flush_option_cache();
 
@@ -178,15 +191,57 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 		$this->assertArrayHasKey('event_summary',  $payload);
 		$this->assertArrayHasKey('cache_summary',  $payload);
 		$this->assertArrayHasKey('query_summary',  $payload);
-		$this->assertArrayHasKey('num_queries',    $payload);
-		$this->assertArrayHasKey('peak_memory_mb', $payload);
-		$this->assertArrayHasKey('elapsed_ms',     $payload);
-		$this->assertArrayHasKey('request_type',   $payload);
+		$this->assertArrayHasKey('request_uri',    $payload);
+		$this->assertArrayNotHasKey('num_queries',    $payload, 'Scalars with their own columns are not duplicated in the payload.');
+		$this->assertArrayNotHasKey('peak_memory_mb', $payload);
+		$this->assertArrayNotHasKey('elapsed_ms',     $payload);
+		$this->assertArrayNotHasKey('request_type',   $payload);
 		$this->assertSame(2, $payload['event_summary']['total']);
 		$this->assertSame(1, $payload['cache_summary']['misses']);
 		$this->assertCount(2, $payload['events'], 'Events array must contain the two events that were added.');
-		$this->assertSame($payload['request_type'], $row['type']);
 		$this->assertStringContainsString('cache', $row['event_categories']);
+	}
+
+	/**
+	 * Raw events are capped but summary counts and cache tallies stay exact.
+	 *
+	 * @return void
+	 */
+	public function test_event_buffer_is_capped_but_counts_stay_exact() {
+		$telemetry = AIPS_Telemetry::instance();
+		$total     = (int) AIPS_TELEMETRY_EVENT_SAMPLE_LIMIT + 10;
+
+		for ($i = 0; $i < $total; $i++) {
+			$telemetry->add_event('cache', array('type' => 'cache_get', 'hit' => (0 === $i % 2)));
+		}
+		$telemetry->flush();
+
+		global $wpdb;
+		$row     = $wpdb->get_row("SELECT payload FROM {$wpdb->prefix}aips_telemetry ORDER BY id DESC LIMIT 1", ARRAY_A);
+		$payload = json_decode($row['payload'], true);
+
+		$this->assertCount((int) AIPS_TELEMETRY_EVENT_SAMPLE_LIMIT, $payload['events']);
+		$this->assertSame($total, $payload['event_summary']['total']);
+		$this->assertSame($total, $payload['cache_summary']['hits'] + $payload['cache_summary']['misses']);
+	}
+
+	/**
+	 * With the default sample rate of 0 for this request type, nothing is stored.
+	 *
+	 * @return void
+	 */
+	public function test_flush_skips_row_when_sampled_out() {
+		remove_filter('aips_telemetry_sample_rate', array($this, 'full_sample_rate'));
+		add_filter('aips_telemetry_sample_rate', '__return_zero');
+
+		$before    = $this->repo->count();
+		$telemetry = AIPS_Telemetry::instance();
+		$telemetry->add_event(array('type' => 'test_event'));
+		$telemetry->flush();
+
+		remove_filter('aips_telemetry_sample_rate', '__return_zero');
+
+		$this->assertSame($before, $this->repo->count());
 	}
 
 	// -----------------------------------------------------------------------
