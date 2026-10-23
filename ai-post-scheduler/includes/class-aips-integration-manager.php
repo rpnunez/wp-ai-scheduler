@@ -250,6 +250,19 @@ class AIPS_Integration_Manager {
 		$batch_response = $this->ai_service->generate_json($prompt);
 
 		if (is_wp_error($batch_response)) {
+			if (AIPS_AI_Service::is_unrecoverable_error($batch_response)) {
+				$this->logger->log(
+					sprintf('AIPS_Integration_Manager: batch generation failed with unrecoverable error (%s) — skipping individual field retries.', $batch_response->get_error_code()),
+					'warning',
+					array('post_id' => $post_id)
+				);
+				$results = array();
+				foreach ($generatable as $item) {
+					$results[$item['mapping']->field_key] = $batch_response;
+				}
+				return $results;
+			}
+
 			$this->logger->log(
 				sprintf(
 					'AIPS_Integration_Manager: batch generation failed — %s. Falling back to one call per field.',
@@ -311,6 +324,15 @@ class AIPS_Integration_Manager {
 					array('post_id' => $post_id)
 				);
 				$results[$mapping->field_key] = $value;
+				if (AIPS_AI_Service::is_unrecoverable_error($value)) {
+					foreach ($generatable as $remaining_item) {
+						$rk = $remaining_item['mapping']->field_key;
+						if (!isset($results[$rk])) {
+							$results[$rk] = $value;
+						}
+					}
+					break;
+				}
 				continue;
 			}
 
