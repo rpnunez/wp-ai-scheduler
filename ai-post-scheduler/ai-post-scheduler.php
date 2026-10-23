@@ -578,6 +578,46 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Post_Insights_Controller::class, function( $container ) {
             return new AIPS_Post_Insights_Controller();
         });
+
+        // Register Monetization & E-Commerce Suite
+        $container->singleton(AIPS_WooCommerce_Adapter::class, function( $container ) {
+            return new AIPS_WooCommerce_Adapter();
+        });
+
+        $container->singleton(AIPS_CPT_Affiliate_Adapter::class, function( $container ) {
+            return new AIPS_CPT_Affiliate_Adapter();
+        });
+
+        $container->singleton(AIPS_Monetization_Shortcodes::class, function( $container ) {
+            return new AIPS_Monetization_Shortcodes(
+                $container->make(AIPS_WooCommerce_Adapter::class),
+                $container->make(AIPS_CPT_Affiliate_Adapter::class)
+            );
+        });
+
+        $container->singleton(AIPS_Monetization_Processor::class, function( $container ) {
+            return new AIPS_Monetization_Processor(
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_Commercial_Autolink_Service::class, function( $container ) {
+            return new AIPS_Commercial_Autolink_Service(
+                $container->make(AIPS_WooCommerce_Adapter::class)
+            );
+        });
+
+        $container->singleton(AIPS_Prompt_Builder_Catalog_Enrichment::class, function( $container ) {
+            return new AIPS_Prompt_Builder_Catalog_Enrichment();
+        });
+
+        $container->singleton(AIPS_Catalog_Enrichment_Controller::class, function( $container ) {
+            return new AIPS_Catalog_Enrichment_Controller(
+                $container->make(AIPS_WooCommerce_Adapter::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Prompt_Builder_Catalog_Enrichment::class)
+            );
+        });
     }
 
     /**
@@ -784,6 +824,34 @@ final class AI_Post_Scheduler {
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
         );
+
+        // Monetization Suite Frontend Shortcodes & Tracking
+        AIPS_Container::get_instance()->make(AIPS_Monetization_Shortcodes::class);
+
+        // Post Generation Monetization Pipeline (Ad layout, CRO, Autolinking)
+        add_action('aips_post_generated', function ($post_id) {
+            if (!AIPS_Config::get_instance()->get_option('aips_monetization_enabled', true)) {
+                return;
+            }
+
+            $post = get_post($post_id);
+            if (!$post || empty($post->post_content)) {
+                return;
+            }
+
+            $processor  = AIPS_Container::get_instance()->make(AIPS_Monetization_Processor::class);
+            $autolinker = AIPS_Container::get_instance()->make(AIPS_Commercial_Autolink_Service::class);
+
+            $processed = $processor->process_content($post->post_content);
+            $processed = $autolinker->autolink_products($processed);
+
+            if ($processed !== $post->post_content) {
+                wp_update_post(array(
+                    'ID'           => $post_id,
+                    'post_content' => $processed,
+                ));
+            }
+        }, 25);
     }
 
     /**
