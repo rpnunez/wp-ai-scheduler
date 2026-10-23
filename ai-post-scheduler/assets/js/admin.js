@@ -56,9 +56,7 @@
          * @param {Object} [opts] Additional toast options.
          */
         showNotice: function(message, type, opts) {
-            if (AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
-                AIPS.Utilities.showToast(message, type, opts);
-            }
+            AIPS.Utilities.showToast(message, type, opts);
         },
 
         /**

@@ -115,7 +115,7 @@ class AIPS_Admin_Help_Registry {
 	 */
 	public static function setup_screen_help($screen = null) {
 		if (!$screen instanceof WP_Screen) {
-			$screen = function_exists('get_current_screen') ? get_current_screen() : null;
+			$screen = get_current_screen();
 		}
 
 		if (!self::is_aips_screen($screen)) {

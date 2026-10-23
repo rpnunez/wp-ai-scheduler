@@ -266,7 +266,7 @@
             $container.append($toast);
 
             // Announce to assistive technologies via WordPress native a11y engine.
-            if (window.wp && wp.a11y && typeof wp.a11y.speak === 'function') {
+            if (window.wp && wp.a11y) {
                 var priority = (type === 'error' || type === 'warning') ? 'assertive' : 'polite';
                 var speechText = isHtml ? $('<div>').html(message).text() : (message || '');
                 if (speechText) {

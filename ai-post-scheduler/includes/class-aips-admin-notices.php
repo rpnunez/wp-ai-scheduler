@@ -163,7 +163,7 @@ class AIPS_Admin_Notices {
 	 */
 	public static function render_notices() {
 		$user_id = get_current_user_id();
-		$screen  = function_exists('get_current_screen') ? get_current_screen() : null;
+		$screen  = get_current_screen();
 
 		// 1. Render and purge flash notices.
 		if ($user_id) {
@@ -224,26 +224,19 @@ class AIPS_Admin_Notices {
 			$attributes['data-aips-notice-id'] = esc_attr(sanitize_key($id));
 		}
 
-		if (function_exists('wp_admin_notice')) {
-			$notice_args = array(
-				'type'               => $type,
-				'dismissible'        => $dismissible,
-				'attributes'         => $attributes,
-				'additional_classes' => array('aips-notice'),
-				'paragraph_wrap'     => true,
-			);
-			wp_admin_notice($message, $notice_args);
-		} else {
-			$classes = 'notice notice-' . sanitize_html_class($type) . ' aips-notice';
-			if ($dismissible) {
-				$classes .= ' is-dismissible';
-			}
-			$attr_str = '';
-			foreach ($attributes as $attr_k => $attr_v) {
-				$attr_str .= ' ' . esc_attr($attr_k) . '="' . esc_attr($attr_v) . '"';
-			}
-			echo '<div class="' . esc_attr($classes) . '"' . $attr_str . '><p>' . wp_kses_post($message) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		$classes = 'notice notice-' . sanitize_html_class($type) . ' aips-notice';
+		if ($dismissible) {
+			$classes .= ' is-dismissible';
 		}
+		$attr_str = '';
+		foreach ($attributes as $attr_k => $attr_v) {
+			$attr_str .= ' ' . esc_attr($attr_k) . '="' . esc_attr($attr_v) . '"';
+		}
+
+		$partials_path = defined('AIPS_PLUGIN_DIR')
+			? AIPS_PLUGIN_DIR . 'templates/admin/partials/notices/admin-notice.php'
+			: dirname(__DIR__) . '/templates/admin/partials/notices/admin-notice.php';
+		include $partials_path;
 	}
 
 	/**
