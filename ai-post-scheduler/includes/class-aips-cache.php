@@ -877,15 +877,14 @@ class AIPS_Cache {
 			return;
 		}
 
-		$driver = get_class( $this->driver );
+		// Raw keys are omitted: they are long, repeat across events, and the
+		// group plus the hit/miss flags carry what the telemetry views need.
+		unset( $data['key'] );
+
 		AIPS_Telemetry::instance()->add_event(
 			'cache',
 			array_merge(
-				array(
-					'type'      => 'cache_' . sanitize_key( $operation ),
-					'operation' => sanitize_key( $operation ),
-					'driver'    => sanitize_text_field( $driver ),
-				),
+				array( 'type' => 'cache_' . sanitize_key( $operation ) ),
 				$data
 			)
 		);

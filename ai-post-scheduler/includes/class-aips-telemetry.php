@@ -50,6 +50,15 @@ class AIPS_Telemetry {
 	);
 
 	/**
+	 * @var array<string, int> Cache hit/miss counts tallied as events arrive,
+	 *                         so they stay exact when the raw event buffer is capped.
+	 */
+	private $cache_outcomes = array(
+		'hits'   => 0,
+		'misses' => 0,
+	);
+
+	/**
 	 * @var bool Whether the shutdown handler has been registered.
 	 */
 	private $shutdown_registered = false;
@@ -143,7 +152,11 @@ class AIPS_Telemetry {
 			$data['_bucket'] = $bucket;
 			$data['_ts'] = (int) round((microtime(true) - $this->start_time) * 1000000);
 			$this->update_event_summary($bucket, $data);
-			$this->events[] = $data;
+
+			// Counts above are exact; only a bounded sample of raw events is kept.
+			if (count($this->events) < max(0, (int) AIPS_TELEMETRY_EVENT_SAMPLE_LIMIT)) {
+				$this->events[] = $data;
+			}
 		}
 	}
 
@@ -204,16 +217,19 @@ class AIPS_Telemetry {
 			$categories    = $this->resolve_event_categories($event_summary, $query_summary, $elapsed_ms);
 		}
 
+		if (!$this->should_record($request_type, $elapsed_ms, $query_summary)) {
+			$this->flushed = true;
+			return;
+		}
+
+		// Scalars already stored in their own columns (num_queries, elapsed_ms,
+		// peak memory, request type) are not repeated in the payload.
 		$payload = array(
 			'events'         => $this->events,
 			'event_summary'  => $event_summary,
 			'cache_summary'  => $cache_summary,
 			'query_summary'  => $query_summary,
-			'num_queries'    => $num_queries,
-			'peak_memory_mb' => round($peak_memory / 1048576, 3),
-			'elapsed_ms'     => $elapsed_ms,
 			'request_uri'    => $request_uri,
-			'request_type'   => $request_type,
 		);
 
 		$inserted = $this->repository->insert(array(
@@ -239,6 +255,48 @@ class AIPS_Telemetry {
 			$this->events  = array();
 			$this->flushed = true;
 		}
+	}
+
+	/**
+	 * Decide whether this request's row should be persisted.
+	 *
+	 * Slow requests and requests with slow queries are always kept. Everything
+	 * else is sampled by request type; frontend requests default to 0 (never).
+	 *
+	 * @param string               $request_type  Request type.
+	 * @param float                $elapsed_ms    Elapsed time in milliseconds.
+	 * @param array<string, mixed> $query_summary Query summary.
+	 * @return bool
+	 */
+	private function should_record($request_type, $elapsed_ms, array $query_summary) {
+		if ($elapsed_ms >= (float) AIPS_TELEMETRY_SLOW_REQUEST_MS || !empty($query_summary['slow_query_count'])) {
+			return true;
+		}
+
+		$defaults = array(
+			'admin'    => 0.25,
+			'ajax'     => 0.25,
+			'cron'     => 0.25,
+			'frontend' => 0.0,
+		);
+		$default = isset($defaults[$request_type]) ? $defaults[$request_type] : 0.25;
+
+		/**
+		 * Filters the fraction (0.0–1.0) of ordinary requests that are recorded.
+		 *
+		 * @param float  $rate         Sample rate.
+		 * @param string $request_type Request type: admin, ajax, cron or frontend.
+		 */
+		$rate = (float) apply_filters('aips_telemetry_sample_rate', $default, $request_type);
+
+		if ($rate >= 1.0) {
+			return true;
+		}
+		if ($rate <= 0.0) {
+			return false;
+		}
+
+		return (mt_rand() / mt_getrandmax()) < $rate;
 	}
 
 	/**
@@ -374,6 +432,14 @@ class AIPS_Telemetry {
 			}
 			$this->event_summary['types'][$type]++;
 		}
+
+		if ('cache' === $bucket) {
+			foreach (array('hit', 'present') as $flag) {
+				if (array_key_exists($flag, $data)) {
+					$this->cache_outcomes[$data[$flag] ? 'hits' : 'misses']++;
+				}
+			}
+		}
 	}
 
 	/**
@@ -399,34 +465,12 @@ class AIPS_Telemetry {
 		$types   = isset($event_summary['types']) && is_array($event_summary['types']) ? $event_summary['types'] : array();
 		$summary = array(
 			'calls'   => (int) (isset($event_summary['buckets']['cache']) ? $event_summary['buckets']['cache'] : 0),
-			'hits'    => 0,
-			'misses'  => 0,
+			'hits'    => $this->cache_outcomes['hits'],
+			'misses'  => $this->cache_outcomes['misses'],
 			'sets'    => (int) (isset($types['cache_set']) ? $types['cache_set'] : 0),
 			'deletes' => (int) (isset($types['cache_delete']) ? $types['cache_delete'] : 0),
 			'flushes' => (int) (isset($types['cache_flush']) ? $types['cache_flush'] : 0),
 		);
-
-		foreach ($this->events as $event) {
-			if (!is_array($event) || !isset($event['_bucket']) || 'cache' !== $event['_bucket']) {
-				continue;
-			}
-
-			if (array_key_exists('hit', $event)) {
-				if ($event['hit']) {
-					$summary['hits']++;
-				} else {
-					$summary['misses']++;
-				}
-			}
-
-			if (array_key_exists('present', $event)) {
-				if ($event['present']) {
-					$summary['hits']++;
-				} else {
-					$summary['misses']++;
-				}
-			}
-		}
 
 		return $summary;
 	}
@@ -456,6 +500,7 @@ class AIPS_Telemetry {
 		$duplicates = array();
 		$slow_queries = array();
 		$sample_limit = max(1, (int) AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT);
+		$sql_max_chars = max(20, (int) AIPS_TELEMETRY_SQL_MAX_CHARS);
 
 		foreach ($wpdb->queries as $entry) {
 			if (!is_array($entry) || empty($entry[0])) {
@@ -463,6 +508,7 @@ class AIPS_Telemetry {
 			}
 
 			$sql      = trim((string) $entry[0]);
+			$sql      = strlen($sql) > $sql_max_chars ? substr($sql, 0, $sql_max_chars) . '…' : $sql;
 			$time_ms  = isset($entry[1]) ? round(((float) $entry[1]) * 1000, 2) : 0.0;
 			$caller   = isset($entry[2]) ? sanitize_text_field((string) $entry[2]) : '';
 			$fingerprint = preg_replace('/\s+/', ' ', $sql);

@@ -257,7 +257,7 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 		$this->assertSame( 'approved', $result['decision'] );
 		$this->assertTrue( $result['meta']['auto_approved'] );
 		$this->assertGreaterThan( 0.80, $result['meta']['auto_approval_relevance'] );
-		$this->assertSame( $candidate_vec, $result['meta']['embedding'] );
+		$this->assertArrayNotHasKey( 'embedding', $result['meta'], 'Vectors must not be persisted in topic metadata.' );
 	}
 
 	/**

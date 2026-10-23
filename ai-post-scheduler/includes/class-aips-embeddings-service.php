@@ -302,18 +302,8 @@ class AIPS_Embeddings_Service {
 			);
 		}
 
-		// Sync topic metadata for backwards compatibility
-		if ($topics_repo) {
-			$metadata = !empty($topic->metadata) ? (is_array($topic->metadata) ? $topic->metadata : json_decode($topic->metadata, true)) : array();
-			if (!is_array($metadata)) {
-				$metadata = array();
-			}
-			$metadata['embedding'] = $embedding;
-			$topics_repo->update($topic_id, array(
-				'metadata' => wp_json_encode($metadata),
-			));
-		}
-
+		// The vector lives only in aips_embeddings; topic metadata no longer
+		// carries a copy (it bloated aips_author_topics).
 		return $embedding;
 	}
 

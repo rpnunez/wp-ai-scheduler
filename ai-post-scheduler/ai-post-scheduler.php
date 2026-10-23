@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.19
+ * Version: 3.7.20
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -38,12 +38,22 @@ if (!defined('AIPS_TELEMETRY_SLOW_REQUEST_MS')) {
 }
 
 if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
-    define('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT', 10);
+    define('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT', 3);
+}
+
+// Max raw events stored per telemetry row; counts in event_summary stay exact.
+if (!defined('AIPS_TELEMETRY_EVENT_SAMPLE_LIMIT')) {
+    define('AIPS_TELEMETRY_EVENT_SAMPLE_LIMIT', 25);
+}
+
+// Max characters of SQL text stored per sampled slow/duplicate query.
+if (!defined('AIPS_TELEMETRY_SQL_MAX_CHARS')) {
+    define('AIPS_TELEMETRY_SQL_MAX_CHARS', 200);
 }
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.19');
+    define('AIPS_VERSION', '3.7.20');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {

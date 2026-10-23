@@ -98,7 +98,8 @@ class AIPS_Repository_Cache_Observer {
 		try {
 			$context = $this->normalize_event($event_type, $event);
 			
-			$this->record_telemetry($context);
+			// Not forwarded to AIPS_Telemetry: AIPS_Cache already records the
+				// underlying operation, so emitting here double-counted every hit.
 			
 			// Gated on debug level to avoid a log write on every cache op in
 			// production; filterable so tests can assert on logged entries.
@@ -144,24 +145,6 @@ class AIPS_Repository_Cache_Observer {
 		);
 
 		return $this->remove_empty_values($context);
-	}
-
-	/**
-	 * Emit the normalized event through AIPS_Telemetry when enabled.
-	 *
-	 * @param array $context Normalized event context.
-	 * @return void
-	 */
-	private function record_telemetry(array $context) {
-		try {
-			if (!class_exists('AIPS_Telemetry') || !AIPS_Telemetry::is_enabled()) {
-				return;
-			}
-
-			AIPS_Telemetry::instance()->add_event('cache', $context);
-		} catch (Throwable $e) {
-			// Telemetry failures should not affect repository cache behavior.
-		}
 	}
 
 	/**
