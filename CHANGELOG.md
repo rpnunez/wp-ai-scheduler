@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+### Monetization & AI E-Commerce Suite (#2287)
+- **WooCommerce Catalog AI Enrichment Hub:**
+  - Added dedicated Catalog Enrichment Hub (`aips-catalog-enrichment`) with status filtering (all products, missing short description/buy box, missing long description, low word count) and live search.
+  - Implemented side-by-side diff preview modal allowing store managers to review and edit AI-generated benefit bullets and short descriptions before applying them.
+  - Granular updates to `post_excerpt` and `post_content` preserving critical WooCommerce pricing, inventory, tax, and shipping data.
+- **Dynamic Conversion & Monetization Shortcodes:**
+  - Added `[aips_product_card]` rendering responsive product cards with live price, stock status, rating stars, and instant 1-click Add-to-Cart or affiliate CTA buttons.
+  - Added `[aips_comparison_table]` generating side-by-side product comparison tables with customizable badges ("Best Overall", "Best Budget", etc.).
+  - Added `[aips_pros_cons]` rendering high-contrast two-column pros & cons boxes.
+  - Added `[aips_faq]` accordion rendering with automatic `FAQPage` JSON-LD schema injection into footer for Google Rich Snippets and PAA capture.
+  - Added `[aips_toc]` dynamic Table of Contents builder and `[aips_cross_sells]` related products grid.
+  - Added `[aips_ftc_disclosure]` for FTC affiliate compliance.
+- **Monetization Post-Processor & Ad Layout Engine:**
+  - Enforced RPM-optimized 2–3 sentence paragraph spacing and automated ad slot injection (`[aips_ad_slot]`) at configurable paragraph intervals.
+  - Automatically prepends FTC affiliate disclosures when commercial elements are detected.
+  - Transforms raw AI markers (`<!-- aips:... -->` and `[COMPARISON_TABLE ...]`) into native dynamic shortcodes.
+- **Commercial Autolinking & Analytics:**
+  - Automatically scans content for product names and injects commercial hyperlinks with `rel="nofollow sponsored"`.
+  - Dispatches standardized GA4/GTM dataLayer ecommerce events (`add_to_cart`, `select_item`, `affiliate_outbound_click`) and tracks clicks to REST endpoint.
+- **Generic CPT Affiliate Adapter:**
+  - Added field mapping adapter allowing arbitrary custom post types to function as shoppable/affiliate items with custom fields for price, target URL, and merchant.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.

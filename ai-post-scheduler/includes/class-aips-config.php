@@ -348,6 +348,15 @@ class AIPS_Config {
             // Server load & generation pacing
             'aips_generation_delay_seconds'            => 2,
             'aips_batch_resume_cooldown_minutes'       => 5,
+            // Monetization & E-Commerce Suite
+            'aips_monetization_enabled'                => true,
+            'aips_ad_injection_enabled'                => false,
+            'aips_ad_slot_code'                        => '',
+            'aips_ad_paragraph_interval'               => 3,
+            'aips_ga4_tracking_enabled'                => true,
+            'aips_ftc_disclosure_enabled'              => true,
+            'aips_ftc_disclosure_text'                 => 'This post may contain affiliate links. If you make a purchase through these links, we may earn an affiliate commission at no extra cost to you.',
+            'aips_cpt_affiliate_mappings'              => array(),
         );
     }
     

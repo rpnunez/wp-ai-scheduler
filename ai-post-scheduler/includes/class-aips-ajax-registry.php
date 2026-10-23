@@ -427,6 +427,11 @@ class AIPS_Ajax_Registry {
 		'aips_get_post_ai_insights'            => 'AIPS_Post_Insights_Controller',
 		'aips_reindex_single_post'             => 'AIPS_Post_Insights_Controller',
 		'aips_toggle_single_pillar'            => 'AIPS_Post_Insights_Controller',
+
+		// Catalog Enrichment Controller
+		'aips_catalog_enrichment_list'         => 'AIPS_Catalog_Enrichment_Controller',
+		'aips_catalog_enrichment_preview'      => 'AIPS_Catalog_Enrichment_Controller',
+		'aips_catalog_enrichment_apply'        => 'AIPS_Catalog_Enrichment_Controller',
 	);
 
 	/**
