@@ -1158,6 +1158,9 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_ajax() {
+        AIPS_Site_Health_Integration::init();
+        AIPS_Admin_Heartbeat_Handler::init();
+
         $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';
 
         $controller_class = AIPS_Ajax_Registry::get_controller_for($action);
@@ -1192,6 +1195,9 @@ final class AI_Post_Scheduler {
         new AIPS_Admin_Assets();
         new AIPS_Settings();
         new AIPS_Onboarding_Wizard();
+        AIPS_Site_Health_Integration::init();
+        AIPS_Admin_Pointers::init();
+        AIPS_Admin_Heartbeat_Handler::init();
 
         // Toolbar node is visible on WP admin pages as well as the frontend.
         new AIPS_Admin_Bar();
