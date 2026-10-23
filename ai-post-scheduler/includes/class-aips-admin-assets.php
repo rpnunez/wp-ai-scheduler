@@ -314,6 +314,9 @@ class AIPS_Admin_Assets {
 				/* translators: %d: number of selected test cases */
 				'runSelectedCount'      => __('Run Selected (%d)', 'ai-post-scheduler'),
 				'selectAtLeastOne'      => __('Please select at least one test case to run.', 'ai-post-scheduler'),
+				'runDetails'            => __('Stress Test Run Details', 'ai-post-scheduler'),
+				'comparisonDiff'        => __('Stress Test Comparison & Diff', 'ai-post-scheduler'),
+				'selectTwoRunsToCompare'=> __('Please select exactly 2 runs to compare.', 'ai-post-scheduler'),
 			),
 		));
 	}
