@@ -607,10 +607,15 @@ final class AI_Post_Scheduler {
             );
         });
 
+        $container->singleton(AIPS_Prompt_Builder_Catalog_Enrichment::class, function( $container ) {
+            return new AIPS_Prompt_Builder_Catalog_Enrichment();
+        });
+
         $container->singleton(AIPS_Catalog_Enrichment_Controller::class, function( $container ) {
             return new AIPS_Catalog_Enrichment_Controller(
                 $container->make(AIPS_WooCommerce_Adapter::class),
-                $container->make(AIPS_AI_Service_Interface::class)
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Prompt_Builder_Catalog_Enrichment::class)
             );
         });
     }

@@ -110,6 +110,25 @@ class AIPS_Monetization_Shortcodes {
 	}
 
 	/**
+	 * Render a monetization template partial.
+	 *
+	 * @param string $slug Partial file slug inside templates/partials/monetization/.
+	 * @param array  $args Variables passed to the partial template.
+	 * @return string Rendered HTML.
+	 */
+	public function render_partial( $slug, $args = array() ) {
+		$file = AIPS_PLUGIN_DIR . 'templates/partials/monetization/' . sanitize_file_name( $slug ) . '.php';
+		if ( ! file_exists( $file ) ) {
+			return '';
+		}
+
+		extract( $args, EXTR_SKIP );
+		ob_start();
+		include $file;
+		return ob_get_clean();
+	}
+
+	/**
 	 * Resolve product data from either WooCommerce or CPT adapter.
 	 *
 	 * @param int $id
@@ -160,75 +179,15 @@ class AIPS_Monetization_Shortcodes {
 		$layout      = in_array( $atts['layout'], array( 'compact', 'horizontal', 'card' ), true ) ? $atts['layout'] : 'card';
 		$button_text = ! empty( $atts['button_text'] ) ? sanitize_text_field( $atts['button_text'] ) : $item['button_text'];
 
-		ob_start();
-		?>
-		<div class="aips-product-card aips-layout-<?php echo esc_attr( $layout ); ?>" data-product-id="<?php echo esc_attr( $item['id'] ); ?>">
-			<?php if ( ! empty( $badge ) ) : ?>
-				<div class="aips-product-badge"><?php echo esc_html( $badge ); ?></div>
-			<?php endif; ?>
-
-			<div class="aips-card-inner">
-				<?php if ( ! empty( $item['image_url'] ) ) : ?>
-					<div class="aips-product-image-wrap">
-						<a href="<?php echo esc_url( $item['permalink'] ); ?>" target="_blank" rel="noopener noreferrer">
-							<img src="<?php echo esc_url( $item['image_url'] ); ?>" alt="<?php echo esc_attr( $item['title'] ); ?>" loading="lazy" class="aips-product-img" />
-						</a>
-					</div>
-				<?php endif; ?>
-
-				<div class="aips-product-details">
-					<h3 class="aips-product-title">
-						<a href="<?php echo esc_url( $item['permalink'] ); ?>" class="aips-product-link">
-							<?php echo esc_html( $item['title'] ); ?>
-						</a>
-					</h3>
-
-					<?php if ( ! empty( $item['rating'] ) ) : ?>
-						<div class="aips-product-rating" aria-label="<?php echo esc_attr( sprintf( __( 'Rating: %s out of 5', 'ai-post-scheduler' ), $item['rating'] ) ); ?>">
-							<span class="aips-stars">
-								<?php
-								$rating = min( 5, max( 0, (float) $item['rating'] ) );
-								for ( $i = 1; $i <= 5; $i++ ) {
-									echo ( $rating >= $i ) ? '★' : ( ( $rating >= $i - 0.5 ) ? '⯨' : '☆' );
-								}
-								?>
-							</span>
-							<span class="aips-rating-val"><?php echo esc_html( number_format( $rating, 1 ) ); ?></span>
-						</div>
-					<?php endif; ?>
-
-					<?php if ( ! empty( $item['short_description'] ) ) : ?>
-						<div class="aips-product-desc">
-							<?php echo wp_kses_post( wpautop( $item['short_description'] ) ); ?>
-						</div>
-					<?php endif; ?>
-
-					<div class="aips-product-action-row">
-						<div class="aips-price-box">
-							<?php if ( ! empty( $item['formatted_price'] ) ) : ?>
-								<span class="aips-current-price"><?php echo esc_html( $item['formatted_price'] ); ?></span>
-							<?php endif; ?>
-							<?php if ( ! empty( $item['in_stock'] ) ) : ?>
-								<span class="aips-stock-badge in-stock"><?php esc_html_e( 'In Stock', 'ai-post-scheduler' ); ?></span>
-							<?php endif; ?>
-						</div>
-
-						<a href="<?php echo esc_url( $item['add_to_cart_url'] ); ?>"
-						   class="aips-btn aips-btn-primary aips-cta-button"
-						   target="_blank"
-						   rel="<?php echo $item['is_external'] ? 'nofollow sponsored noopener' : 'noopener'; ?>"
-						   data-product-id="<?php echo esc_attr( $item['id'] ); ?>"
-						   data-product-title="<?php echo esc_attr( $item['title'] ); ?>"
-						   data-product-price="<?php echo esc_attr( $item['price'] ); ?>"
-						   data-action-type="<?php echo $item['is_external'] ? 'affiliate' : 'add_to_cart'; ?>">
-							<?php echo esc_html( $button_text ); ?>
-						</a>
-					</div>
-				</div>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
+		return $this->render_partial(
+			'product-card',
+			array(
+				'item'        => $item,
+				'badge'       => $badge,
+				'layout'      => $layout,
+				'button_text' => $button_text,
+			)
+		);
 	}
 
 	/**
@@ -268,63 +227,13 @@ class AIPS_Monetization_Shortcodes {
 			return '';
 		}
 
-		ob_start();
-		?>
-		<div class="aips-comparison-wrapper">
-			<?php if ( ! empty( $atts['title'] ) ) : ?>
-				<h3 class="aips-comparison-title"><?php echo esc_html( $atts['title'] ); ?></h3>
-			<?php endif; ?>
-
-			<div class="aips-table-responsive">
-				<table class="aips-comparison-table">
-					<thead>
-						<tr>
-							<th class="aips-col-item"><?php esc_html_e( 'Product', 'ai-post-scheduler' ); ?></th>
-							<th class="aips-col-rating"><?php esc_html_e( 'Rating', 'ai-post-scheduler' ); ?></th>
-							<th class="aips-col-price"><?php esc_html_e( 'Price', 'ai-post-scheduler' ); ?></th>
-							<th class="aips-col-action"><?php esc_html_e( 'Details', 'ai-post-scheduler' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ( $items as $item ) : ?>
-							<tr class="aips-table-row <?php echo ! empty( $item['badge'] ) ? 'aips-has-badge' : ''; ?>" data-product-id="<?php echo esc_attr( $item['id'] ); ?>">
-								<td class="aips-product-cell">
-									<?php if ( ! empty( $item['badge'] ) ) : ?>
-										<span class="aips-table-badge"><?php echo esc_html( $item['badge'] ); ?></span>
-									<?php endif; ?>
-									<div class="aips-cell-content">
-										<?php if ( ! empty( $item['image_url'] ) ) : ?>
-											<img src="<?php echo esc_url( $item['image_url'] ); ?>" alt="<?php echo esc_attr( $item['title'] ); ?>" class="aips-thumb-sm" loading="lazy" />
-										<?php endif; ?>
-										<span class="aips-item-name"><?php echo esc_html( $item['title'] ); ?></span>
-									</div>
-								</td>
-								<td class="aips-rating-cell">
-									<span class="aips-stars-sm">★</span> <?php echo esc_html( number_format( (float) $item['rating'], 1 ) ); ?>
-								</td>
-								<td class="aips-price-cell">
-									<strong><?php echo esc_html( $item['formatted_price'] ); ?></strong>
-								</td>
-								<td class="aips-action-cell">
-									<a href="<?php echo esc_url( $item['add_to_cart_url'] ); ?>"
-									   class="aips-btn aips-btn-sm aips-cta-button"
-									   target="_blank"
-									   rel="<?php echo $item['is_external'] ? 'nofollow sponsored noopener' : 'noopener'; ?>"
-									   data-product-id="<?php echo esc_attr( $item['id'] ); ?>"
-									   data-product-title="<?php echo esc_attr( $item['title'] ); ?>"
-									   data-product-price="<?php echo esc_attr( $item['price'] ); ?>"
-									   data-action-type="<?php echo $item['is_external'] ? 'affiliate' : 'add_to_cart'; ?>">
-										<?php echo esc_html( $item['button_text'] ); ?>
-									</a>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
+		return $this->render_partial(
+			'comparison-table',
+			array(
+				'items' => $items,
+				'title' => sanitize_text_field( $atts['title'] ),
+			)
+		);
 	}
 
 	/**
@@ -351,42 +260,14 @@ class AIPS_Monetization_Shortcodes {
 			return '';
 		}
 
-		ob_start();
-		?>
-		<div class="aips-pros-cons-box">
-			<?php if ( ! empty( $atts['title'] ) ) : ?>
-				<h4 class="aips-pros-cons-title"><?php echo esc_html( $atts['title'] ); ?></h4>
-			<?php endif; ?>
-			<div class="aips-pros-cons-columns">
-				<?php if ( ! empty( $pros ) ) : ?>
-					<div class="aips-pros-col">
-						<h5 class="aips-col-header pros-header">
-							<span class="aips-icon">✓</span> <?php esc_html_e( 'The Good', 'ai-post-scheduler' ); ?>
-						</h5>
-						<ul class="aips-list pros-list">
-							<?php foreach ( $pros as $pro ) : ?>
-								<li><?php echo esc_html( $pro ); ?></li>
-							<?php endforeach; ?>
-						</ul>
-					</div>
-				<?php endif; ?>
-
-				<?php if ( ! empty( $cons ) ) : ?>
-					<div class="aips-cons-col">
-						<h5 class="aips-col-header cons-header">
-							<span class="aips-icon">✗</span> <?php esc_html_e( 'The Bad', 'ai-post-scheduler' ); ?>
-						</h5>
-						<ul class="aips-list cons-list">
-							<?php foreach ( $cons as $con ) : ?>
-								<li><?php echo esc_html( $con ); ?></li>
-							<?php endforeach; ?>
-						</ul>
-					</div>
-				<?php endif; ?>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
+		return $this->render_partial(
+			'pros-cons',
+			array(
+				'title' => sanitize_text_field( $atts['title'] ),
+				'pros'  => $pros,
+				'cons'  => $cons,
+			)
+		);
 	}
 
 	/**
@@ -451,27 +332,13 @@ class AIPS_Monetization_Shortcodes {
 			}
 		}
 
-		ob_start();
-		?>
-		<div class="aips-faq-container">
-			<?php if ( ! empty( $atts['title'] ) ) : ?>
-				<h3 class="aips-faq-main-title"><?php echo esc_html( $atts['title'] ); ?></h3>
-			<?php endif; ?>
-			<div class="aips-faq-accordion">
-				<?php foreach ( $faq_pairs as $idx => $pair ) : ?>
-					<details class="aips-faq-item" <?php echo 0 === $idx ? 'open' : ''; ?>>
-						<summary class="aips-faq-question">
-							<strong><?php echo esc_html( $pair['question'] ); ?></strong>
-						</summary>
-						<div class="aips-faq-answer">
-							<p><?php echo esc_html( $pair['answer'] ); ?></p>
-						</div>
-					</details>
-				<?php endforeach; ?>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
+		return $this->render_partial(
+			'faq',
+			array(
+				'title'     => sanitize_text_field( $atts['title'] ),
+				'faq_pairs' => $faq_pairs,
+			)
+		);
 	}
 
 	/**
@@ -489,7 +356,12 @@ class AIPS_Monetization_Shortcodes {
 			'aips_toc'
 		);
 
-		return '<div class="aips-toc-container" data-aips-toc="true"><div class="aips-toc-header">' . esc_html( $atts['title'] ) . '</div><nav class="aips-toc-list"></nav></div>';
+		return $this->render_partial(
+			'toc',
+			array(
+				'title' => sanitize_text_field( $atts['title'] ),
+			)
+		);
 	}
 
 	/**
@@ -533,36 +405,13 @@ class AIPS_Monetization_Shortcodes {
 			return '';
 		}
 
-		ob_start();
-		?>
-		<div class="aips-cross-sells-container">
-			<?php if ( ! empty( $atts['title'] ) ) : ?>
-				<h4 class="aips-cross-sells-title"><?php echo esc_html( $atts['title'] ); ?></h4>
-			<?php endif; ?>
-			<div class="aips-cross-sells-grid">
-				<?php foreach ( $items as $item ) : ?>
-					<div class="aips-cross-sell-item">
-						<?php if ( ! empty( $item['image_url'] ) ) : ?>
-							<img src="<?php echo esc_url( $item['image_url'] ); ?>" alt="<?php echo esc_attr( $item['title'] ); ?>" class="aips-thumb-md" loading="lazy" />
-						<?php endif; ?>
-						<h5 class="aips-item-heading"><?php echo esc_html( $item['title'] ); ?></h5>
-						<span class="aips-item-cost"><?php echo esc_html( $item['formatted_price'] ); ?></span>
-						<a href="<?php echo esc_url( $item['add_to_cart_url'] ); ?>"
-						   class="aips-btn aips-btn-sm aips-cta-button"
-						   target="_blank"
-						   rel="<?php echo $item['is_external'] ? 'nofollow sponsored noopener' : 'noopener'; ?>"
-						   data-product-id="<?php echo esc_attr( $item['id'] ); ?>"
-						   data-product-title="<?php echo esc_attr( $item['title'] ); ?>"
-						   data-product-price="<?php echo esc_attr( $item['price'] ); ?>"
-						   data-action-type="<?php echo $item['is_external'] ? 'affiliate' : 'add_to_cart'; ?>">
-							<?php echo esc_html( $item['button_text'] ); ?>
-						</a>
-					</div>
-				<?php endforeach; ?>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
+		return $this->render_partial(
+			'cross-sells',
+			array(
+				'title' => sanitize_text_field( $atts['title'] ),
+				'items' => $items,
+			)
+		);
 	}
 
 	/**
@@ -585,7 +434,12 @@ class AIPS_Monetization_Shortcodes {
 			'aips_ftc_disclosure'
 		);
 
-		return '<div class="aips-affiliate-disclosure"><span class="aips-disclosure-icon">ℹ</span> ' . esc_html( $atts['text'] ) . '</div>';
+		return $this->render_partial(
+			'ftc-disclosure',
+			array(
+				'text' => sanitize_text_field( $atts['text'] ),
+			)
+		);
 	}
 
 	/**

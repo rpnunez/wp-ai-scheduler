@@ -268,6 +268,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Prompt_Builder' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder.php',
         'AIPS_Prompt_Builder_Article_Structure_Section' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-article-structure-section.php',
         'AIPS_Prompt_Builder_Authors' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-authors.php',
+        'AIPS_Prompt_Builder_Catalog_Enrichment' => __DIR__ . '/../..' . '/includes/monetization/class-aips-prompt-builder-catalog-enrichment.php',
         'AIPS_Prompt_Builder_Consolidation' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-consolidation.php',
         'AIPS_Prompt_Builder_Diversity_Injector' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-diversity-injector.php',
         'AIPS_Prompt_Builder_Post_Content' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-post-content.php',

@@ -233,6 +233,7 @@ return array(
     'AIPS_Prompt_Builder' => $baseDir . '/includes/class-aips-prompt-builder.php',
     'AIPS_Prompt_Builder_Article_Structure_Section' => $baseDir . '/includes/class-aips-prompt-builder-article-structure-section.php',
     'AIPS_Prompt_Builder_Authors' => $baseDir . '/includes/class-aips-prompt-builder-authors.php',
+    'AIPS_Prompt_Builder_Catalog_Enrichment' => $baseDir . '/includes/monetization/class-aips-prompt-builder-catalog-enrichment.php',
     'AIPS_Prompt_Builder_Consolidation' => $baseDir . '/includes/class-aips-prompt-builder-consolidation.php',
     'AIPS_Prompt_Builder_Diversity_Injector' => $baseDir . '/includes/class-aips-prompt-builder-diversity-injector.php',
     'AIPS_Prompt_Builder_Post_Content' => $baseDir . '/includes/class-aips-prompt-builder-post-content.php',

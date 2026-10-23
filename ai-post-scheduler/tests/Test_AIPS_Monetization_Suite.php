@@ -291,4 +291,32 @@ class Test_AIPS_Monetization_Suite extends WP_UnitTestCase {
 		$this->assertSame( 10, has_action( 'wp_ajax_aips_catalog_enrichment_preview', array( $controller, 'ajax_preview_enrichment' ) ) );
 		$this->assertSame( 10, has_action( 'wp_ajax_aips_catalog_enrichment_apply', array( $controller, 'ajax_apply_enrichment' ) ) );
 	}
+
+	// -------------------------------------------------------------------------
+	// 7. AIPS_Prompt_Builder_Catalog_Enrichment
+	// -------------------------------------------------------------------------
+
+	public function test_prompt_builder_catalog_enrichment() {
+		$builder = new AIPS_Prompt_Builder_Catalog_Enrichment();
+		$product = array(
+			'title'      => 'AeroFit Running Shorts',
+			'attributes' => array(
+				'Material' => '100% Recycled Polyester',
+				'Color'    => 'Midnight Navy',
+			),
+		);
+
+		$prompts = $builder->build( $product, 'short_description', 'inspiring and active' );
+
+		$this->assertArrayHasKey( 'system_prompt', $prompts );
+		$this->assertArrayHasKey( 'user_prompt', $prompts );
+		$this->assertStringContainsString( 'expert e-commerce copywriter', $prompts['system_prompt'] );
+		$this->assertStringContainsString( 'Product Title: AeroFit Running Shorts', $prompts['user_prompt'] );
+		$this->assertStringContainsString( 'Material: 100% Recycled Polyester', $prompts['user_prompt'] );
+		$this->assertStringContainsString( 'Task: Write a high-converting short product description', $prompts['user_prompt'] );
+		$this->assertStringContainsString( 'inspiring and active', $prompts['user_prompt'] );
+
+		$full_prompt = $builder->build_user_prompt( $product, 'full_description' );
+		$this->assertStringContainsString( 'Write an engaging, detailed product description', $full_prompt );
+	}
 }

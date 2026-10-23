@@ -28,14 +28,21 @@ class AIPS_Catalog_Enrichment_Controller {
 	private $ai_service;
 
 	/**
+	 * @var AIPS_Prompt_Builder_Catalog_Enrichment
+	 */
+	private $prompt_builder;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_WooCommerce_Adapter  $wc_adapter
-	 * @param AIPS_AI_Service_Interface $ai_service
+	 * @param AIPS_WooCommerce_Adapter                    $wc_adapter
+	 * @param AIPS_AI_Service_Interface                   $ai_service
+	 * @param AIPS_Prompt_Builder_Catalog_Enrichment|null $prompt_builder
 	 */
-	public function __construct( $wc_adapter = null, $ai_service = null ) {
-		$this->wc_adapter = $wc_adapter ?: new AIPS_WooCommerce_Adapter();
-		$this->ai_service = $ai_service ?: ( class_exists( 'AIPS_Container' ) && AIPS_Container::get_instance()->has( AIPS_AI_Service_Interface::class ) ? AIPS_Container::get_instance()->make( AIPS_AI_Service_Interface::class ) : null );
+	public function __construct( $wc_adapter = null, $ai_service = null, $prompt_builder = null ) {
+		$this->wc_adapter     = $wc_adapter ?: new AIPS_WooCommerce_Adapter();
+		$this->ai_service     = $ai_service ?: ( class_exists( 'AIPS_Container' ) && AIPS_Container::get_instance()->has( AIPS_AI_Service_Interface::class ) ? AIPS_Container::get_instance()->make( AIPS_AI_Service_Interface::class ) : null );
+		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Catalog_Enrichment();
 
 		$this->register_ajax_hooks();
 	}
@@ -101,33 +108,14 @@ class AIPS_Catalog_Enrichment_Controller {
 		$target_field = isset( $_POST['target_field'] ) ? sanitize_key( $_POST['target_field'] ) : 'short_description';
 		$tone         = isset( $_POST['tone'] ) ? sanitize_text_field( wp_unslash( $_POST['tone'] ) ) : 'persuasive and benefits-focused';
 
-		// Construct high-converting prompt based on current product attributes and category
-		$attr_summary = '';
-		if ( ! empty( $product['attributes'] ) ) {
-			foreach ( $product['attributes'] as $name => $val ) {
-				$attr_summary .= "- {$name}: {$val}\n";
-			}
-		}
-
-		$system_prompt = "You are an expert e-commerce copywriter and conversion rate optimization specialist. Write compelling, concise, and benefit-driven e-commerce copy.";
-		$user_prompt   = "Product Title: {$product['title']}\n";
-		if ( $attr_summary ) {
-			$user_prompt .= "Specifications:\n{$attr_summary}\n";
-		}
-
-		if ( 'short_description' === $target_field ) {
-			$user_prompt .= "Task: Write a high-converting short product description (2 to 3 sentences, plus 3 to 4 bullet points highlighting key benefits) for the above-the-fold buy section. Tone: {$tone}.";
-		} elseif ( 'full_description' === $target_field ) {
-			$user_prompt .= "Task: Write an engaging, detailed product description formatted in clean HTML paragraphs and bullet points. Highlight problems this solves, key features, and ideal use cases. Tone: {$tone}.";
-		} else {
-			$user_prompt .= "Task: Write high-converting product copy for {$target_field}. Tone: {$tone}.";
-		}
+		// Construct prompt using specialized prompt builder
+		$prompts = $this->prompt_builder->build( $product, $target_field, $tone );
 
 		$generated_text = '';
 
 		if ( $this->ai_service ) {
 			try {
-				$ai_result      = $this->ai_service->generate_text( $user_prompt, array( 'system_prompt' => $system_prompt ) );
+				$ai_result      = $this->ai_service->generate_text( $prompts['user_prompt'], array( 'system_prompt' => $prompts['system_prompt'] ) );
 				$generated_text = is_string( $ai_result ) ? $ai_result : ( $ai_result['text'] ?? '' );
 			} catch ( Exception $e ) {
 				$generated_text = sprintf( __( 'AI generation error: %s', 'ai-post-scheduler' ), $e->getMessage() );

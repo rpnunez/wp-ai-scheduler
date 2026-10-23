@@ -138,6 +138,48 @@ $is_wc_active = $wc_adapter->is_active();
 			</div>
 		</div>
 	</div>
+
+	<!-- AIPS Client-Side Templates -->
+	<script type="text/html" id="aips-tmpl-ce-loading-row">
+		<tr>
+			<td colspan="6" style="text-align:center; padding:24px;">
+				<span class="spinner is-active" style="float:none; margin:0 auto 10px;"></span>
+				<div>{{message}}</div>
+			</td>
+		</tr>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-ce-empty-row">
+		<tr>
+			<td colspan="6" style="text-align:center; padding:20px;">{{message}}</td>
+		</tr>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-ce-product-img">
+		<img src="{{url}}" style="width:40px; height:40px; object-fit:cover; border-radius:4px;" />
+	</script>
+
+	<script type="text/html" id="aips-tmpl-ce-product-no-img">
+		<span class="dashicons dashicons-format-image" style="font-size:32px; color:#cbd5e1;"></span>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-ce-product-row">
+		<tr>
+			<td>{{image_html}}</td>
+			<td>
+				<strong>{{title}}</strong><br>
+				<small style="color:#64748b;">SKU: {{sku}}</small>
+			</td>
+			<td>{{formatted_price}}</td>
+			<td>{{short_desc_status}}</td>
+			<td>{{content_status}}</td>
+			<td style="text-align:right;">
+				<button type="button" class="button button-small button-primary aips-ce-enrich-btn" data-product-id="{{id}}" data-product-title="{{title}}">
+					<?php esc_html_e( 'AI Enrich', 'ai-post-scheduler' ); ?>
+				</button>
+			</td>
+		</tr>
+	</script>
 </div>
 
 <script>
@@ -174,11 +216,21 @@ $is_wc_active = $wc_adapter->is_active();
 		});
 	});
 
+	function renderTemplate(id, data) {
+		if (window.AIPS && AIPS.Templates && typeof AIPS.Templates.renderRaw === 'function') {
+			return AIPS.Templates.renderRaw(id, data);
+		}
+		return '';
+	}
+
 	function loadCatalogProducts() {
 		var filterBy = $('#aips-ce-filter-status').val();
 		var search = $('#aips-ce-search').val();
 
-		$('#aips-ce-tbody').html('<tr><td colspan="6" style="text-align:center; padding:24px;"><span class="spinner is-active" style="float:none; margin:0 auto 10px;"></span><div>Loading catalog items…</div></td></tr>');
+		var loadingHtml = renderTemplate('aips-tmpl-ce-loading-row', {
+			message: '<?php echo esc_js( __( 'Loading catalog items…', 'ai-post-scheduler' ) ); ?>'
+		});
+		$('#aips-ce-tbody').html(loadingHtml);
 
 		$.ajax({
 			url: ajaxurl,
@@ -194,12 +246,18 @@ $is_wc_active = $wc_adapter->is_active();
 				if (res.success && res.data && res.data.items) {
 					renderProductsTable(res.data.items, res.data.total);
 				} else {
-					$('#aips-ce-tbody').html('<tr><td colspan="6" style="text-align:center; padding:20px;">No products found matching criteria.</td></tr>');
+					var emptyHtml = renderTemplate('aips-tmpl-ce-empty-row', {
+						message: '<?php echo esc_js( __( 'No products found matching criteria.', 'ai-post-scheduler' ) ); ?>'
+					});
+					$('#aips-ce-tbody').html(emptyHtml);
 					$('#aips-ce-count').text('0 products');
 				}
 			},
 			error: function() {
-				$('#aips-ce-tbody').html('<tr><td colspan="6" style="text-align:center; padding:20px; color:#dc2626;">Failed to load products.</td></tr>');
+				var errHtml = renderTemplate('aips-tmpl-ce-empty-row', {
+					message: '<?php echo esc_js( __( 'Failed to load products.', 'ai-post-scheduler' ) ); ?>'
+				});
+				$('#aips-ce-tbody').html(errHtml);
 			}
 		});
 	}
@@ -207,30 +265,40 @@ $is_wc_active = $wc_adapter->is_active();
 	function renderProductsTable(items, total) {
 		$('#aips-ce-count').text(total + ' products found');
 		if (!items.length) {
-			$('#aips-ce-tbody').html('<tr><td colspan="6" style="text-align:center; padding:20px;">No products found matching criteria.</td></tr>');
+			var emptyHtml = renderTemplate('aips-tmpl-ce-empty-row', {
+				message: '<?php echo esc_js( __( 'No products found matching criteria.', 'ai-post-scheduler' ) ); ?>'
+			});
+			$('#aips-ce-tbody').html(emptyHtml);
 			return;
 		}
 
-		var html = '';
+		var fullHtml = '';
 		$.each(items, function(i, p) {
-			var imgHtml = p.image_url ? '<img src="' + p.image_url + '" style="width:40px; height:40px; object-fit:cover; border-radius:4px;" />' : '<span class="dashicons dashicons-format-image" style="font-size:32px; color:#cbd5e1;"></span>';
-			var shortDescStatus = p.short_description ? '<span style="color:#166534; font-weight:600;">✓ Present</span>' : '<span style="color:#dc2626; font-weight:600;">⚠ Missing</span>';
-			var wordCount = p.full_description ? p.full_description.split(/\s+/).length : 0;
-			var contentStatus = wordCount > 50 ? '<span style="color:#166534;">' + wordCount + ' words</span>' : '<span style="color:#dc2626; font-weight:600;">Thin (' + wordCount + ' words)</span>';
+			var imgHtml = p.image_url
+				? renderTemplate('aips-tmpl-ce-product-img', { url: p.image_url })
+				: renderTemplate('aips-tmpl-ce-product-no-img', {});
 
-			html += '<tr>' +
-				'<td>' + imgHtml + '</td>' +
-				'<td><strong>' + $('<div>').text(p.title).html() + '</strong><br><small style="color:#64748b;">SKU: ' + (p.sku || 'N/A') + '</small></td>' +
-				'<td>' + (p.formatted_price || '$' + p.price) + '</td>' +
-				'<td>' + shortDescStatus + '</td>' +
-				'<td>' + contentStatus + '</td>' +
-				'<td style="text-align:right;">' +
-					'<button type="button" class="button button-small button-primary aips-ce-enrich-btn" data-product-id="' + p.id + '" data-product-title="' + $('<div>').text(p.title).html() + '">AI Enrich</button>' +
-				'</td>' +
-			'</tr>';
+			var shortDescStatus = p.short_description
+				? '<span style="color:#166534; font-weight:600;">✓ Present</span>'
+				: '<span style="color:#dc2626; font-weight:600;">⚠ Missing</span>';
+
+			var wordCount = p.full_description ? p.full_description.split(/\s+/).length : 0;
+			var contentStatus = wordCount > 50
+				? '<span style="color:#166534;">' + wordCount + ' words</span>'
+				: '<span style="color:#dc2626; font-weight:600;">Thin (' + wordCount + ' words)</span>';
+
+			fullHtml += renderTemplate('aips-tmpl-ce-product-row', {
+				id: p.id,
+				title: p.title,
+				sku: p.sku || 'N/A',
+				formatted_price: p.formatted_price || ('$' + p.price),
+				image_html: imgHtml,
+				short_desc_status: shortDescStatus,
+				content_status: contentStatus
+			});
 		});
 
-		$('#aips-ce-tbody').html(html);
+		$('#aips-ce-tbody').html(fullHtml);
 	}
 
 	function loadPreview() {
