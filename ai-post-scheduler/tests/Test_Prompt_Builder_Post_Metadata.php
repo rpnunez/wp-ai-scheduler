@@ -42,6 +42,33 @@ class Test_Prompt_Builder_Post_Metadata extends WP_UnitTestCase {
 		$this->assertFalse($schema['properties']['ai_variables']['additionalProperties']);
 	}
 
+	public function test_schema_includes_slug_when_requested() {
+		$builder = new AIPS_Prompt_Builder_Post_Metadata();
+		$schema = $builder->get_schema(array(), false, true);
+
+		$this->assertContains('slug', $schema['required']);
+		$this->assertArrayHasKey('slug', $schema['properties']);
+		$this->assertSame('string', $schema['properties']['slug']['type']);
+	}
+
+	public function test_metadata_prompt_includes_slug_instructions_when_enabled() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Slug Template',
+			'generate_slug'   => 1,
+			'slug_prompt'     => 'SEO slug instructions for {{topic}}',
+			'prompt_template' => 'Write about {{topic}}.',
+		);
+		$context = new AIPS_Template_Context($template, null, 'WordPress Performance');
+		$builder = new AIPS_Prompt_Builder_Post_Metadata(new AIPS_Template_Processor());
+
+		$prompt = $builder->build($context);
+
+		$this->assertStringContainsString('SLUG INSTRUCTIONS:', $prompt);
+		$this->assertStringContainsString('SEO slug instructions for WordPress Performance', $prompt);
+		$this->assertStringContainsString('"slug": "the-recommended-post-slug"', $prompt);
+	}
+
 	public function test_metadata_with_topic_context_includes_author_tone_and_style() {
 		$author = (object) array(
 			'id' => 5,

@@ -405,6 +405,34 @@ if (!defined('ABSPATH')) {
                                 </div>
                             </details>
                         </div>
+
+                        <hr style="margin: 20px 0;">
+
+                        <h3>
+                            <?php esc_html_e('Slug Settings', 'ai-post-scheduler'); ?>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Configure whether AI generates an SEO-friendly post slug or lets WordPress auto-generate it from the title.', 'ai-post-scheduler'); ?>"></span>
+                        </h3>
+
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="generate_slug" name="generate_slug" value="1">
+                                <?php esc_html_e('Generate Post Slug?', 'ai-post-scheduler'); ?>
+                            </label>
+                            <p class="description"><?php esc_html_e('If checked, AI will generate a concise, SEO-friendly URL slug (3–6 words, no stop words). If unchecked, WordPress will generate the slug from the post title.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div class="aips-slug-settings" style="display: none;">
+                            <div class="aips-form-row">
+                                <label for="slug_prompt">
+                                    <?php esc_html_e('Slug Prompt', 'ai-post-scheduler'); ?>
+                                    <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional. Instruct the AI how to generate the URL slug. Leave empty to use standard SEO-optimized guidelines.', 'ai-post-scheduler'); ?>"></span>
+                                </label>
+                                <input type="text" id="slug_prompt" name="slug_prompt" class="regular-text aips-ai-var-input" placeholder="<?php esc_attr_e('Leave empty for standard SEO-optimized slug', 'ai-post-scheduler'); ?>">
+                                <p class="description">
+                                    <?php esc_html_e('Optional custom instructions for slug generation. Supports AI variables.', 'ai-post-scheduler'); ?>
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Step 2: Content -->
@@ -589,6 +617,10 @@ if (!defined('ABSPATH')) {
                                 <div class="aips-summary-item">
                                     <strong><?php esc_html_e('Post Quantity:', 'ai-post-scheduler'); ?></strong>
                                     <span id="summary_quantity">1</span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong><?php esc_html_e('Generate Post Slug:', 'ai-post-scheduler'); ?></strong>
+                                    <span id="summary_generate_slug"><?php esc_html_e('No', 'ai-post-scheduler'); ?></span>
                                 </div>
                                 <div class="aips-summary-item">
                                     <strong><?php esc_html_e('Featured Image:', 'ai-post-scheduler'); ?></strong>

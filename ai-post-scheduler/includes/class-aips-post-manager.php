@@ -127,6 +127,14 @@ class AIPS_Post_Manager {
             $post_data['post_category'] = array((int) $default_cat);
         }
 
+        $slug = isset($data['slug']) ? $data['slug'] : (isset($data['post_name']) ? $data['post_name'] : '');
+        if (is_string($slug) && trim($slug) !== '') {
+            $sanitized_slug = sanitize_title(trim($slug));
+            if ($sanitized_slug !== '') {
+                $post_data['post_name'] = $sanitized_slug;
+            }
+        }
+
         $post_id = wp_insert_post($post_data, true);
 
         if (is_wp_error($post_id)) {

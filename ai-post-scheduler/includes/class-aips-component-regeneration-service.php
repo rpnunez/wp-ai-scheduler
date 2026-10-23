@@ -199,6 +199,61 @@ class AIPS_Component_Regeneration_Service {
 		// Clean and return
 		return trim($result);
 	}
+
+	/**
+	 * Regenerate post slug
+	 *
+	 * @param array $context Generation context with 'generation_context' key
+	 * @return string|WP_Error Generated slug or error
+	 */
+	public function regenerate_slug($context) {
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
+		}
+
+		$generation_context = $context['generation_context'];
+		$post_id            = isset($context['post_id']) ? absint($context['post_id']) : 0;
+		$history_id         = isset($context['history_id']) ? absint($context['history_id']) : 0;
+		$title              = isset($context['current_title']) ? $context['current_title'] : '';
+		$content            = isset($context['current_content']) ? $context['current_content'] : '';
+
+		$history_container = $this->resolve_history_container($context, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
+		}
+		$this->record_regeneration_trigger($history_container, $context, __('Slug', 'ai-post-scheduler'), $post_id);
+
+		$this->generator->set_history_container($history_container);
+
+		if (empty($title) && $post_id) {
+			$title = get_the_title($post_id);
+		}
+		if (empty($content) && $post_id) {
+			$content = get_post_field('post_content', $post_id);
+		}
+
+		$conversation = $this->build_conversation($generation_context, $post_id, true);
+		if ($conversation !== null) {
+			$this->generator->set_conversation($conversation);
+			$success = false;
+			$result  = $this->generator->generate_slug_from_context($generation_context, '', $title, array(), $success);
+			$this->generator->set_conversation(null);
+		} else {
+			$success = false;
+			$result  = $this->generator->generate_slug_from_context($generation_context, $content, $title, array(), $success);
+		}
+
+		if (is_wp_error($result)) {
+			return $result;
+		}
+
+		$slug = trim($result);
+		if (empty($slug)) {
+			return new WP_Error('slug_generation_failed', __('Failed to generate a valid slug.', 'ai-post-scheduler'));
+		}
+
+		return $slug;
+	}
 	
 	/**
 	 * Regenerate post excerpt
@@ -398,6 +453,17 @@ class AIPS_Component_Regeneration_Service {
 		} else {
 			$result['regenerated']['content'] = $content;
 			$context['current_content'] = $content;
+		}
+
+		if (method_exists($generation_context, 'should_generate_slug') && $generation_context->should_generate_slug()) {
+			$slug = $this->regenerate_slug($context);
+			if (is_wp_error($slug)) {
+				$result['errors']['slug'] = $slug->get_error_message();
+			} else {
+				$result['regenerated']['slug'] = $slug;
+			}
+		} else {
+			$result['skipped']['slug'] = __('Slug generation skipped because it is not enabled for this context.', 'ai-post-scheduler');
 		}
 
 		$excerpt = $this->regenerate_excerpt($context);
