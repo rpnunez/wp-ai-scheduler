@@ -46,6 +46,13 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **Stress Test Modal & History UI Refinements:**
+  - Resolved unscrollable modal dialog by enforcing max-height, flex-column constraints, and scrollable body container.
+  - Positioned History tab header action buttons side-by-side and disabled "Compare 2 Selected Runs" with clear visual styling and ARIA attributes until exactly two runs are selected.
+  - Dynamically set modal title to "Stress Test Run Details" when viewing a single run versus "Stress Test Comparison & Diff" for comparative diffs.
+  - Capitalized all status badge labels across diff and run detail views.
+  - Added spacing between the summary card element and test case table.
+  - Standardized time formatting across stress test and history views (< 1s in ms, >= 1s in seconds with 1 decimal place).
 - **History: Move Remaining Name-Based Row Checks to `record_kind` (#2213):**
   - Migrated `AIPS_History_Repository::get_by_post_id()` to query `record_kind = 'generation'`, preventing background jobs (such as `content_indexing`) from masquerading as a post's generation history in AI Edit, History Container, and Post History UI quick links.
   - Migrated `AIPS_History_Repository::post_has_history_and_completed()` review-gate validation to require completed or partial generation runs, preventing review queue operations (publish, delete, regenerate) on posts that were merely indexed.
