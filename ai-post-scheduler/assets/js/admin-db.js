@@ -34,7 +34,7 @@
                                 AIPS.Utilities.showToast(response.data.message, 'success');
                                 setTimeout(function() { location.reload(); }, 1500);
                             } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                AIPS.Utilities.showAjaxError(response);
                             }
                         },
                         error: function() {
@@ -76,7 +76,7 @@
                                 AIPS.Utilities.showToast(response.data.message, 'success');
                                 setTimeout(function() { location.reload(); }, 1500);
                             } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                AIPS.Utilities.showAjaxError(response);
                             }
                         },
                         error: function() {
@@ -129,7 +129,7 @@
                                 AIPS.Utilities.showToast(response.data.message, 'success');
                                 setTimeout(function() { location.reload(); }, 1500);
                             } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                AIPS.Utilities.showAjaxError(response);
                             }
                         },
                         error: function() {
@@ -172,7 +172,7 @@
                                 AIPS.Utilities.showToast(response.data.message, 'success');
                                 setTimeout(function() { location.reload(); }, 1500);
                             } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                AIPS.Utilities.showAjaxError(response);
                             }
                         },
                         error: function() {

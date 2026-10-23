@@ -417,7 +417,7 @@ class AIPS_Schedule_Controller {
         if ($schedule_id) {
             $result = $this->scheduler->run_schedule_now($schedule_id);
             if (is_wp_error($result)) {
-                AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+                AIPS_Ajax_Response::wp_error($result);
             } else {
                 $post_ids = is_array($result) ? $result : array($result);
                 $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
@@ -831,7 +831,7 @@ class AIPS_Schedule_Controller {
         $result  = $service->run_now($id, $type, $quantity, $advance_schedule);
 
         if (is_wp_error($result)) {
-            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+            AIPS_Ajax_Response::wp_error($result);
         }
 
         // Format the success message based on type.
@@ -1287,7 +1287,7 @@ class AIPS_Schedule_Controller {
         $result = $this->scheduler->run_schedule_now($id);
 
         if (is_wp_error($result)) {
-            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+            AIPS_Ajax_Response::wp_error($result);
         }
 
         $post_ids = is_array($result) ? $result : array($result);

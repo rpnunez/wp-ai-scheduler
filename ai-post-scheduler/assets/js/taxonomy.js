@@ -460,7 +460,7 @@
 										self.updateStats(response.data.stats || null);
 										self.loadTaxonomyItems(self.currentTab);
 									} else {
-										AIPS.Utilities.showToast(response.data.message || aipsTaxonomyL10n.actionFailed, 'error');
+										AIPS.Utilities.showAjaxError(response, aipsTaxonomyL10n.actionFailed);
 									}
 								}
 							});
@@ -529,7 +529,7 @@
 										self.updateStats(response.data.stats || null);
 										self.loadTaxonomyItems(self.currentTab);
 									} else {
-										AIPS.Utilities.showToast(response.data.message || aipsTaxonomyL10n.deleteFailed, 'error');
+										AIPS.Utilities.showAjaxError(response, aipsTaxonomyL10n.deleteFailed);
 									}
 								}
 							});
@@ -576,7 +576,7 @@
 										self.updateStats(response.data.stats || null);
 										self.loadTaxonomyItems(self.currentTab);
 									} else {
-										AIPS.Utilities.showToast(response.data.message || aipsTaxonomyL10n.termCreationFailed, 'error');
+										AIPS.Utilities.showAjaxError(response, aipsTaxonomyL10n.termCreationFailed);
 									}
 								}
 							});

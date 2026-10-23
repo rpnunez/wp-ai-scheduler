@@ -48,7 +48,7 @@
 
 			$.post(ajaxurl, { action: 'aips_broken_links_get', nonce: l10n.nonce, paged: Math.max(1, page || 1) }).done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.brokenError);
 					return;
 				}
 				self.render(response.data);
@@ -183,7 +183,7 @@
 			}).done(function(response) {
 				if (!response || !response.success) {
 					$btn.prop('disabled', false);
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.brokenError);
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
@@ -203,7 +203,7 @@
 			$.post(ajaxurl, { action: 'aips_broken_links_undo_fix', nonce: l10n.nonce, fix_id: $btn.data('fix-id') }).done(function(response) {
 				if (!response || !response.success) {
 					$btn.prop('disabled', false);
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.brokenError);
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');

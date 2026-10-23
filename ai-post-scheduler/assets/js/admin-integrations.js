@@ -92,7 +92,7 @@
 				nonce: aipsAjax.nonce
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message, 'error');
+					AIPS.Utilities.showAjaxError(response);
 					return;
 				}
 
@@ -182,7 +182,7 @@
 				post_type: $('#template_post_type').val()
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message, 'error');
+					AIPS.Utilities.showAjaxError(response);
 					return;
 				}
 
@@ -233,7 +233,7 @@
 				include_protected: this._includeProtectedFields()
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message, 'error');
+					AIPS.Utilities.showAjaxError(response);
 					return;
 				}
 
@@ -459,7 +459,7 @@
 				mappings: JSON.stringify(mappings)
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message, 'error');
+					AIPS.Utilities.showAjaxError(response);
 					return;
 				}
 
