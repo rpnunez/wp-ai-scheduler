@@ -8737,3 +8737,80 @@ tr.aips-row-details > td {
 	flex-wrap: wrap;
 	justify-content: flex-end;
 }
+
+/* ==========================================================================
+   WordPress Native Meta Box Layout (#poststuff and .postbox enhancements)
+   ========================================================================== */
+.aips-poststuff {
+	margin-top: 16px;
+}
+
+.aips-poststuff #post-body.columns-2 {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 340px;
+	gap: 20px;
+	align-items: start;
+}
+
+.aips-poststuff #post-body.columns-2 #postbox-container-2 {
+	order: 1;
+	min-width: 0;
+}
+
+.aips-poststuff #post-body.columns-2 #postbox-container-1 {
+	order: 2;
+	min-width: 0;
+}
+
+.aips-poststuff #post-body.columns-1 {
+	display: block;
+}
+
+.aips-poststuff #post-body.columns-1 #postbox-container-2 {
+	width: 100%;
+}
+
+@media screen and (max-width: 1080px) {
+	.aips-poststuff #post-body.columns-2 {
+		grid-template-columns: 1fr;
+	}
+	.aips-poststuff #post-body.columns-2 #postbox-container-1 {
+		order: 2;
+	}
+}
+
+.aips-poststuff .postbox {
+	margin-bottom: 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.aips-poststuff .postbox .postbox-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.aips-poststuff .postbox .postbox-header h2 {
+	font-size: 14px;
+	font-weight: 600;
+	margin: 0;
+	padding: 0;
+	line-height: 1.4;
+}
+
+.aips-poststuff .postbox .inside {
+	padding: 16px;
+	margin: 0;
+}
+
+.aips-dashboard-charts-meta-wrap {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 16px;
+}
+

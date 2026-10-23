@@ -26,9 +26,11 @@ $authors = get_users(array(
 		</div>
 
 		<div id="aips-campaign-wizard-notice" style="margin:16px 0;"></div>
-		<div id="aips-ai-strategy-preview" class="aips-content-panel" style="display:none; margin:16px 0;">
-			<div class="aips-panel-body">
+		<div id="aips-ai-strategy-preview" class="aips-content-panel postbox" style="display:none; margin:16px 0;">
+			<div class="postbox-header">
 				<h2 id="aips-ai-strategy-preview-title"><?php esc_html_e('Campaign Strategy Preview', 'ai-post-scheduler'); ?></h2>
+			</div>
+			<div class="aips-panel-body inside">
 				<p id="aips-ai-strategy-preview-message" class="description"><?php esc_html_e('Review the proposed plan before applying it to your wizard fields.', 'ai-post-scheduler'); ?></p>
 				<dl class="aips-ai-preview-grid" aria-label="<?php esc_attr_e('AI-generated campaign strategy preview details', 'ai-post-scheduler'); ?>">
 					<dt><strong><?php esc_html_e('Campaign Name', 'ai-post-scheduler'); ?></strong></dt>
@@ -63,8 +65,8 @@ $authors = get_users(array(
 			</div>
 		</div>
 
-		<form id="aips-campaign-wizard-form" class="aips-content-panel">
-			<div class="aips-panel-body">
+		<form id="aips-campaign-wizard-form" class="aips-content-panel postbox">
+			<div class="aips-panel-body inside">
 				<div class="aips-wizard-steps" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;">
 					<?php
 					$steps = array(
