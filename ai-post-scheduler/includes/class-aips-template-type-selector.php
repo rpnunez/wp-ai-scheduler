@@ -53,6 +53,67 @@ class AIPS_Template_Type_Selector {
 	}
 	
 	/**
+	 * Get the effective article structure ID based on the 5-tier inheritance hierarchy:
+	 * Tier 1: Schedule override
+	 * Tier 2: Author override
+	 * Tier 3: Campaign override
+	 * Tier 4: Template override
+	 * Tier 5: Site default
+	 *
+	 * @param object|array|null $template Template entity or null.
+	 * @param object|array|null $schedule Schedule entity or null.
+	 * @param object|array|null $author   Author entity or null.
+	 * @param object|array|null $campaign Campaign entity or null.
+	 * @return int|null Structure ID or null if none resolved.
+	 */
+	public function get_effective_article_structure($template = null, $schedule = null, $author = null, $campaign = null) {
+		// Tier 1: Schedule override
+		if (!empty($schedule)) {
+			$sched_id = is_object($schedule) ? ($schedule->article_structure_id ?? null) : (is_array($schedule) ? ($schedule['article_structure_id'] ?? null) : null);
+			if (!empty($sched_id)) {
+				return (int) $sched_id;
+			}
+		}
+
+		// Tier 2: Author override
+		if (!empty($author)) {
+			$author_id = is_object($author) ? ($author->article_structure_id ?? null) : (is_array($author) ? ($author['article_structure_id'] ?? null) : null);
+			if (!empty($author_id)) {
+				return (int) $author_id;
+			}
+		}
+
+		// Tier 3: Campaign override
+		if (!empty($campaign)) {
+			$camp_id = is_object($campaign) ? ($campaign->article_structure_id ?? null) : (is_array($campaign) ? ($campaign['article_structure_id'] ?? null) : null);
+			if (!empty($camp_id)) {
+				return (int) $camp_id;
+			}
+		}
+
+		// Tier 4: Template override
+		if (!empty($template)) {
+			$tmpl_id = is_object($template) ? ($template->article_structure_id ?? null) : (is_array($template) ? ($template['article_structure_id'] ?? null) : null);
+			if (!empty($tmpl_id)) {
+				return (int) $tmpl_id;
+			}
+		}
+
+		// Tier 5: Site default
+		$site_default = $this->structure_repository->get_default();
+		if ($site_default && !empty($site_default->id)) {
+			return (int) $site_default->id;
+		}
+
+		$option_default = (int) AIPS_Config::get_instance()->get_option('aips_default_article_structure_id');
+		if ($option_default > 0) {
+			return $option_default;
+		}
+
+		return null;
+	}
+
+	/**
 	 * Select article structure for a schedule execution.
 	 *
 	 * @param object $schedule Schedule object.

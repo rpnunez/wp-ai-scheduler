@@ -129,23 +129,37 @@ class AIPS_Component_Repository {
 	}
 
 	/**
+	 * Alias for get_by_key() to support slug-based lookups.
+	 *
+	 * @param string $slug Component slug/key.
+	 * @return object|null Component object or null.
+	 */
+	public function get_by_slug($slug) {
+		return $this->get_by_key($slug);
+	}
+
+	/**
 	 * Create a new component.
 	 *
 	 * @param array $data Component fields.
 	 * @return int|false Inserted ID or false.
 	 */
 	public function create($data) {
-		if (empty($data['component_key']) || empty($data['name'])) {
+		$key = !empty($data['component_key']) ? $data['component_key'] : (!empty($data['slug']) ? $data['slug'] : '');
+		if (empty($key) || empty($data['name'])) {
 			return false;
 		}
 
 		$now = AIPS_DateTime::now()->timestamp();
+		$prompt_tag = isset($data['prompt_tag']) ? $data['prompt_tag'] : (!empty($data['tag']) ? $data['tag'] : '');
+		$prompt_instructions = isset($data['prompt_instructions']) ? $data['prompt_instructions'] : (!empty($data['prompt_blueprint']) ? $data['prompt_blueprint'] : '');
+
 		$insert_data = array(
-			'component_key'       => sanitize_key($data['component_key']),
+			'component_key'       => sanitize_key($key),
 			'name'                => sanitize_text_field($data['name']),
 			'description'         => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
-			'prompt_tag'          => isset($data['prompt_tag']) ? sanitize_text_field($data['prompt_tag']) : '',
-			'prompt_instructions' => isset($data['prompt_instructions']) ? wp_kses_post($data['prompt_instructions']) : '',
+			'prompt_tag'          => sanitize_text_field($prompt_tag),
+			'prompt_instructions' => wp_kses_post($prompt_instructions),
 			'gutenberg_template'  => isset($data['gutenberg_template']) ? wp_kses_post($data['gutenberg_template']) : '',
 			'shortcode_template'  => isset($data['shortcode_template']) ? wp_kses_post($data['shortcode_template']) : '',
 			'schema_template'     => isset($data['schema_template']) ? wp_kses_post($data['schema_template']) : '',

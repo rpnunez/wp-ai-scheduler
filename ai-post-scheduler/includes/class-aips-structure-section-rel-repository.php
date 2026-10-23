@@ -86,7 +86,7 @@ class AIPS_Structure_Section_Rel_Repository {
 			'structure_sections.get_by_structure_id',
 			array('structure_id' => $structure_id),
 			function() use ($structure_id) {
-				return $this->wpdb->get_results($this->wpdb->prepare(
+				$results = $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT rel.*, 
 							c.component_key, 
 							c.name AS component_name, 
@@ -100,7 +100,15 @@ class AIPS_Structure_Section_Rel_Repository {
 					 WHERE rel.structure_id = %d
 					 ORDER BY rel.sort_order ASC, rel.id ASC",
 					$structure_id
-				));
+				), ARRAY_A);
+
+				if (!is_array($results)) {
+					return array();
+				}
+
+				return array_map(function($r) {
+					return new ArrayObject($r, ArrayObject::ARRAY_AS_PROPS);
+				}, $results);
 			}
 		);
 	}

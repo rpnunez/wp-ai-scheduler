@@ -39,17 +39,21 @@ class AIPS_Structure_Schema_Builder {
 		$graph = array();
 
 		// 1. FAQPage Schema
-		if (!empty($extracted_components['faqs']) && is_array($extracted_components['faqs'])) {
+		$faqs = !empty($extracted_components['faqs']) ? $extracted_components['faqs'] : (!empty($extracted_components['faq']) ? $extracted_components['faq'] : array());
+		if (!empty($faqs) && is_array($faqs)) {
 			$faq_entities = array();
 
-			foreach ($extracted_components['faqs'] as $faq) {
-				if (!empty($faq['q']) && !empty($faq['a'])) {
+			foreach ($faqs as $faq) {
+				$q = !empty($faq['q']) ? $faq['q'] : (!empty($faq['question']) ? $faq['question'] : '');
+				$a = !empty($faq['a']) ? $faq['a'] : (!empty($faq['answer']) ? $faq['answer'] : '');
+
+				if (!empty($q) && !empty($a)) {
 					$faq_entities[] = array(
 						'@type'          => 'Question',
-						'name'           => wp_strip_all_tags($faq['q']),
+						'name'           => wp_strip_all_tags($q),
 						'acceptedAnswer' => array(
 							'@type' => 'Answer',
-							'text'  => wp_strip_all_tags($faq['a']),
+							'text'  => wp_strip_all_tags($a),
 						),
 					);
 				}
@@ -65,16 +69,18 @@ class AIPS_Structure_Schema_Builder {
 		}
 
 		// 2. HowTo Schema
-		if (!empty($extracted_components['steps']) && is_array($extracted_components['steps'])) {
+		$steps = !empty($extracted_components['steps']) ? $extracted_components['steps'] : (!empty($extracted_components['step_list']) ? $extracted_components['step_list'] : array());
+		if (!empty($steps) && is_array($steps)) {
 			$step_entities = array();
 
-			foreach ($extracted_components['steps'] as $idx => $step) {
+			foreach ($steps as $idx => $step) {
 				$step_title = !empty($step['title']) ? wp_strip_all_tags($step['title']) : sprintf(__('Step %d', 'ai-post-scheduler'), $idx + 1);
-				$step_text  = !empty($step['text']) ? wp_strip_all_tags($step['text']) : '';
+				$step_text  = !empty($step['text']) ? wp_strip_all_tags($step['text']) : (!empty($step['description']) ? wp_strip_all_tags($step['description']) : '');
+				$position   = !empty($step['step_number']) ? (int) $step['step_number'] : ($idx + 1);
 
 				$step_entities[] = array(
 					'@type'    => 'HowToStep',
-					'position' => $idx + 1,
+					'position' => $position,
 					'name'     => $step_title,
 					'text'     => $step_text,
 				);
@@ -96,7 +102,7 @@ class AIPS_Structure_Schema_Builder {
 		// 3. Product / Review Schema
 		if (!empty($extracted_components['rating'])) {
 			$rating = $extracted_components['rating'];
-			$rating_val = isset($rating['value']) ? (float) $rating['value'] : 0.0;
+			$rating_val = isset($rating['value']) ? (float) $rating['value'] : (isset($rating['score']) ? (float) $rating['score'] : 0.0);
 			$rating_max = isset($rating['max']) ? (float) $rating['max'] : 5.0;
 			$verdict    = isset($rating['verdict']) ? wp_strip_all_tags($rating['verdict']) : '';
 			$summary    = isset($rating['content']) ? wp_strip_all_tags($rating['content']) : $verdict;

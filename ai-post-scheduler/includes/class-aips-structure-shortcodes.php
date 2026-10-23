@@ -54,10 +54,10 @@ class AIPS_Structure_Shortcodes {
 			'cons' => '',
 		), $atts, 'aips_pros_cons');
 
-		$pros = array_filter(array_map('trim', explode('|', $atts['pros'])));
-		$cons = array_filter(array_map('trim', explode('|', $atts['cons'])));
+		$pros = array_filter(array_map('trim', preg_split('/[,|]/', (string) $atts['pros'])));
+		$cons = array_filter(array_map('trim', preg_split('/[,|]/', (string) $atts['cons'])));
 
-		$html = '<div class="aips-pros-cons-grid aips-pros-cons-shortcode">';
+		$html = '<div class="aips-pros-cons-grid aips-pros-cons-box aips-pros-cons-shortcode">';
 		$html .= '<div class="aips-pros-column"><h4 class="aips-column-title aips-pros-title">' . esc_html__('Pros', 'ai-post-scheduler') . '</h4><ul class="aips-pros-list">';
 
 		foreach ($pros as $p) {
@@ -78,17 +78,19 @@ class AIPS_Structure_Shortcodes {
 	}
 
 	/**
-	 * Render [aips_rating value="..." max="..." verdict="..."]...[/aips_rating].
+	 * Render [aips_rating value="..." score="..." max="..." verdict="..."]...[/aips_rating].
 	 */
 	public static function render_rating($atts, $content = ''): string {
 		$atts = shortcode_atts(array(
-			'value'   => '5',
+			'value'   => '',
+			'score'   => '',
 			'max'     => '5',
 			'verdict' => '',
 		), $atts, 'aips_rating');
 
-		$val     = esc_html($atts['value']);
-		$max     = esc_html($atts['max']);
+		$val_raw = !empty($atts['score']) ? $atts['score'] : (!empty($atts['value']) ? $atts['value'] : '5');
+		$val     = esc_html((string) $val_raw);
+		$max     = esc_html((string) $atts['max']);
 		$verdict = sanitize_text_field($atts['verdict']);
 		$body    = wp_kses_post($content);
 
@@ -155,6 +157,6 @@ class AIPS_Structure_Shortcodes {
 		$type = sanitize_key($atts['type']);
 		$body = wp_kses_post($content);
 
-		return '<div class="aips-callout aips-callout-' . esc_attr($type) . '"><p>' . $body . '</p></div>';
+		return '<div class="aips-callout aips-callout-box aips-callout-' . esc_attr($type) . '"><p>' . $body . '</p></div>';
 	}
 }

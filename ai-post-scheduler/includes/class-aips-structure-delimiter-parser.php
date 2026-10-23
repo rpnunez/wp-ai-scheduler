@@ -35,21 +35,69 @@ class AIPS_Structure_Delimiter_Parser {
 		}
 
 		$extracted_data = array(
-			'faqs'    => array(),
-			'steps'   => array(),
-			'pros'    => array(),
-			'cons'    => array(),
-			'rating'  => null,
-			'callout' => null,
+			'faqs'      => array(),
+			'faq'       => array(),
+			'steps'     => array(),
+			'step_list' => array(),
+			'pros'      => array(),
+			'cons'      => array(),
+			'rating'    => null,
+			'callout'   => null,
 		);
 
-		// 1. Parse FAQ tags: [FAQ q="..." a="..."] or [FAQ question="..." answer="..."]
+		// 1a. Parse FAQ blocks: [FAQ]...[/FAQ]
+		$content = preg_replace_callback(
+			'/\[FAQ\](.*?)\[\/FAQ\]/is',
+			function($matches) use (&$extracted_data, $mode) {
+				$inner = trim($matches[1]);
+				$items = array();
+
+				if (preg_match_all('/(?:Q|Question):\s*(.*?)\s*(?:A|Answer):\s*(.*?)(?=(?:Q|Question):|$)/is', $inner, $qa_matches, PREG_SET_ORDER)) {
+					foreach ($qa_matches as $qa) {
+						$q = trim($qa[1]);
+						$a = trim($qa[2]);
+						if (!empty($q)) {
+							$items[] = array('q' => $q, 'a' => $a, 'question' => $q, 'answer' => $a);
+						}
+					}
+				}
+
+				if (empty($items)) {
+					$lines = array_values(array_filter(array_map('trim', explode("\n", $inner))));
+					for ($i = 0; $i < count($lines); $i += 2) {
+						$q = preg_replace('/^(?:Q|Question)[\s:.-]+/i', '', $lines[$i]);
+						$a = isset($lines[$i + 1]) ? preg_replace('/^(?:A|Answer)[\s:.-]+/i', '', $lines[$i + 1]) : '';
+						if (!empty($q)) {
+							$items[] = array('q' => $q, 'a' => $a, 'question' => $q, 'answer' => $a);
+						}
+					}
+				}
+
+				$rendered = '';
+				foreach ($items as $item) {
+					$extracted_data['faqs'][] = $item;
+					$extracted_data['faq'][] = $item;
+					if ($mode === 'gutenberg') {
+						$rendered .= "\n<!-- wp:details {\"className\":\"aips-faq-item\"} -->\n<details class=\"wp-block-details aips-faq-item\"><summary><strong>" . esc_html($item['q']) . "</strong></summary><p>" . esc_html($item['a']) . "</p></details>\n<!-- /wp:details -->\n";
+					} else {
+						$rendered .= "\n[aips_faq question=\"" . esc_attr($item['q']) . "\"]" . esc_html($item['a']) . "[/aips_faq]\n";
+					}
+				}
+
+				return $rendered;
+			},
+			$content
+		);
+
+		// 1b. Parse inline FAQ tags: [FAQ q="..." a="..."] or [FAQ question="..." answer="..."]
 		$content = preg_replace_callback(
 			'/\[FAQ\s+(?:q|question)=["\'](.*?)["\']\s+(?:a|answer)=["\'](.*?)["\']\s*\]/is',
 			function($matches) use (&$extracted_data, $mode) {
 				$q = trim($matches[1]);
 				$a = trim($matches[2]);
-				$extracted_data['faqs'][] = array('q' => $q, 'a' => $a);
+				$pair = array('q' => $q, 'a' => $a, 'question' => $q, 'answer' => $a);
+				$extracted_data['faqs'][] = $pair;
+				$extracted_data['faq'][] = $pair;
 
 				if ($mode === 'gutenberg') {
 					return "\n<!-- wp:details {\"className\":\"aips-faq-item\"} -->\n<details class=\"wp-block-details aips-faq-item\"><summary><strong>" . esc_html($q) . "</strong></summary><p>" . esc_html($a) . "</p></details>\n<!-- /wp:details -->\n";
@@ -60,17 +108,18 @@ class AIPS_Structure_Delimiter_Parser {
 			$content
 		);
 
-		// 2. Parse Rating tags: [RATING value="X" max="Y" verdict="..."]...[/RATING]
+		// 2. Parse Rating tags: [RATING (?:value|score)="X" (?:max="Y")? (?:verdict="...")?]...[/RATING]
 		$content = preg_replace_callback(
-			'/\[RATING\s+value=["\']([0-9.]+)["\'](?:\s+max=["\']([0-9.]+)["\'])?(?:\s+verdict=["\'](.*?)["\'])?\s*\](.*?)\[\/RATING\]/is',
+			'/\[RATING\s+(?:value|score)=["\']([0-9.]+)["\'](?:\s+max=["\']([0-9.]+)["\'])?(?:\s+verdict=["\'](.*?)["\'])?\s*\](.*?)\[\/RATING\]/is',
 			function($matches) use (&$extracted_data, $mode) {
 				$val     = (float) $matches[1];
-				$max     = !empty($matches[2]) ? (float) $matches[2] : 5.0;
+				$max     = !empty($matches[2]) ? (float) $matches[2] : ($val > 5.0 ? 10.0 : 5.0);
 				$verdict = !empty($matches[3]) ? trim($matches[3]) : '';
 				$body    = trim($matches[4]);
 
 				$extracted_data['rating'] = array(
 					'value'   => $val,
+					'score'   => $val,
 					'max'     => $max,
 					'verdict' => $verdict,
 					'content' => $body,
@@ -197,35 +246,65 @@ class AIPS_Structure_Delimiter_Parser {
 
 				preg_match_all('/\[STEP(?:\s+title=["\'](.*?)["\'])?\s*\](.*?)\[\/STEP\]/is', $inner, $step_matches, PREG_SET_ORDER);
 
+				$step_num = 1;
 				foreach ($step_matches as $sm) {
 					$step_title = !empty($sm[1]) ? trim($sm[1]) : '';
 					$step_text  = trim($sm[2]);
 					$steps[] = array(
-						'title' => $step_title,
-						'text'  => $step_text,
+						'step_number' => $step_num++,
+						'title'       => $step_title,
+						'text'        => $step_text,
+						'description' => $step_text,
 					);
 				}
 
-				$extracted_data['steps'] = $steps;
+				if (empty($steps)) {
+					// Fallback: parse numbered lines like "1. First Step: Do this initial step." or "1. Description"
+					$lines = explode("\n", trim($inner));
 
-				if ($mode === 'gutenberg') {
-					$html = "\n<!-- wp:group {\"className\":\"aips-step-list-block\",\"layout\":{\"type\":\"constrained\"}} -->\n";
-					$html .= "<div class=\"wp-block-group aips-step-list-block\">\n";
-					$html .= "  <ol class=\"aips-step-list\">\n";
+					foreach ($lines as $line) {
+						$line = trim($line);
 
-					foreach ($steps as $idx => $s) {
-						$html .= "    <li class=\"aips-step-item\">\n";
-
-						if (!empty($s['title'])) {
-							$html .= "      <h4 class=\"aips-step-title\">" . esc_html($s['title']) . "</h4>\n";
+						if ($line === '') {
+							continue;
 						}
 
-						$html .= "      <div class=\"aips-step-content\"><p>" . nl2br(esc_html($s['text'])) . "</p></div>\n";
-						$html .= "    </li>\n";
+						if (preg_match('/^(?:Step\s+)?\d+[\.:\)]\s*(?:[*_]{2})?([^:\n]+?)(?:[*_]{2})?:\s*(.*)$/i', $line, $lm)) {
+							$steps[] = array(
+								'step_number' => $step_num++,
+								'title'       => trim($lm[1]),
+								'text'        => trim($lm[2]),
+								'description' => trim($lm[2]),
+							);
+						} elseif (preg_match('/^(?:Step\s+)?\d+[\.:\)]\s*(.*)$/i', $line, $lm)) {
+							$steps[] = array(
+								'step_number' => $step_num++,
+								'title'       => sprintf(__('Step %d', 'ai-post-scheduler'), $step_num - 1),
+								'text'        => trim($lm[1]),
+								'description' => trim($lm[1]),
+							);
+						}
+					}
+				}
+
+				$extracted_data['steps']     = $steps;
+				$extracted_data['step_list'] = $steps;
+
+				if ($mode === 'gutenberg') {
+					$html = "\n<!-- wp:list {\"ordered\":true,\"className\":\"aips-step-list-block\"} -->\n";
+					$html .= "<ol class=\"wp-block-list aips-step-list-block aips-step-list\">\n";
+
+					foreach ($steps as $idx => $s) {
+						$html .= "  <!-- wp:list-item -->\n";
+						$html .= "  <li class=\"aips-step-item\">";
+						if (!empty($s['title'])) {
+							$html .= "<strong>" . esc_html($s['title']) . "</strong>: ";
+						}
+						$html .= esc_html($s['text']) . "</li>\n";
+						$html .= "  <!-- /wp:list-item -->\n";
 					}
 
-					$html .= "  </ol>\n";
-					$html .= "</div>\n<!-- /wp:group -->\n";
+					$html .= "</ol>\n<!-- /wp:list -->\n";
 
 					return $html;
 				} else {
