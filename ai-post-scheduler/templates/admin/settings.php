@@ -149,7 +149,10 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 					<div class="aips-panel-body">
 						<form method="post" action="options.php" id="aips-settings-form" data-aips-async="true">
 							<input type="hidden" name="active_tab" id="aips_active_tab" value="<?php echo esc_attr($active_settings_tab); ?>">
-							<?php settings_fields('aips_settings'); ?>
+							<?php
+							settings_fields('aips_settings');
+							settings_errors('aips_settings');
+							?>
 
 							<!-- General Tab -->
 							<div id="settings-general-tab" class="aips-tab-content<?php echo 'settings-general' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-general' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-general' === $active_settings_tab ? '' : 'hidden'; ?>>
