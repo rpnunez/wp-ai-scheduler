@@ -60,10 +60,7 @@ class AIPS_Diagnostics_Controller {
 				$summary_items = array(
 					array('label' => __('System Status', 'ai-post-scheduler'), 'value' => __('Operational', 'ai-post-scheduler'), 'type' => 'success', 'icon' => 'dashicons-yes-alt'),
 				);
-			} elseif ('telemetry' === $active_tab) {
-				$summary_items = array(
-					array('label' => __('Telemetry Stream', 'ai-post-scheduler'), 'value' => __('Active', 'ai-post-scheduler'), 'type' => 'info', 'icon' => 'dashicons-performance'),
-				);
+
 			}
 		} catch (\Throwable $e) {
 			// Fail-safe: empty summary items
@@ -103,21 +100,6 @@ class AIPS_Diagnostics_Controller {
 			),
 		);
 
-		if (self::is_tab_available('telemetry')) {
-			$tabs['telemetry'] = array(
-				'label'       => __('Telemetry', 'ai-post-scheduler'),
-				'icon'        => 'dashicons-chart-area',
-				'description' => __('Performance metrics & queries', 'ai-post-scheduler'),
-			);
-		}
-
-		if (self::is_tab_available('cache-monitor')) {
-			$tabs['cache-monitor'] = array(
-				'label'       => __('Cache Monitor', 'ai-post-scheduler'),
-				'icon'        => 'dashicons-performance',
-				'description' => __('Object cache & transient stats', 'ai-post-scheduler'),
-			);
-		}
 
 		$tabs['background-processes'] = array(
 			'label'       => __('Background Processes', 'ai-post-scheduler'),
@@ -186,15 +168,6 @@ class AIPS_Diagnostics_Controller {
 			return true;
 		}
 
-		if ('telemetry' === $tab) {
-			// Use the runtime guard which prevents re-entrant option lookups.
-			return (bool) (class_exists('AIPS_Telemetry') && AIPS_Telemetry::is_enabled());
-		}
-
-		if ('cache-monitor' === $tab) {
-			$config = AIPS_Config::get_instance();
-			return (bool) $config->get_option('aips_cache_monitor_enabled') && $config->is_cache_system_enabled();
-		}
 
 		if ('dev-tools' === $tab) {
 			return (bool) AIPS_Config::get_instance()->get_option('aips_developer_mode');
@@ -248,11 +221,6 @@ class AIPS_Diagnostics_Controller {
 					$this->render_operations_insights_tab();
 				}, __('Operations Insights', 'ai-post-scheduler'), true);
 				break;
-			case 'cache-monitor':
-				AIPS_Admin_Menu_Helper::safe_render(function() {
-					$this->render_cache_monitor_tab();
-				}, __('Cache Monitor', 'ai-post-scheduler'), true);
-				break;
 			case 'background-processes':
 				AIPS_Admin_Menu_Helper::safe_render(function() {
 					$this->render_background_processes_tab();
@@ -262,11 +230,6 @@ class AIPS_Diagnostics_Controller {
 				AIPS_Admin_Menu_Helper::safe_render(function() {
 					$this->render_stress_test_tab();
 				}, __('Stress Test', 'ai-post-scheduler'), true);
-				break;
-			case 'telemetry':
-				AIPS_Admin_Menu_Helper::safe_render(function() {
-					$this->render_telemetry_tab();
-				}, __('Telemetry', 'ai-post-scheduler'), true);
 				break;
 			case 'dev-tools':
 				AIPS_Admin_Menu_Helper::safe_render(function() {
@@ -302,25 +265,6 @@ class AIPS_Diagnostics_Controller {
 		$controller->render_page();
 	}
 
-	/**
-	 * Render the Telemetry tab.
-	 *
-	 * @return void
-	 */
-	private function render_telemetry_tab() {
-		$controller = new AIPS_Telemetry_Controller();
-		$controller->render_page();
-	}
-
-	/**
-	 * Render the Cache Monitor tab.
-	 *
-	 * @return void
-	 */
-	private function render_cache_monitor_tab() {
-		$controller = new AIPS_Cache_Monitor_Controller();
-		$controller->render_page();
-	}
 
 	/**
 	 * Render the Background Processes tab.

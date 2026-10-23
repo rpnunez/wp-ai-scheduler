@@ -35,7 +35,7 @@ foreach ($tabs as $tab_key => $tab) {
 			AIPS_Admin_UI_Primitives::render_page_header(array(
 				'title'       => __('Diagnostics', 'ai-post-scheduler'),
 				'icon'        => 'dashicons-admin-tools',
-				'description' => __('Review system health, generation operations, telemetry, seeding utilities, and developer tools from one place.', 'ai-post-scheduler'),
+				'description' => __('Review system health, generation operations, seeding utilities, and developer tools from one place.', 'ai-post-scheduler'),
 			));
 		}
 		?>

@@ -114,7 +114,6 @@ class AIPS_System_Info_Provider {
 		$db_match        = version_compare($db_version, AIPS_VERSION, '==');
 
 		$dev_mode        = (bool) $config->get_option('aips_developer_mode');
-		$telemetry       = (bool) $config->get_option('aips_enable_telemetry');
 		$cache_enabled   = $config->is_cache_system_enabled();
 
 		return array(
@@ -135,11 +134,6 @@ class AIPS_System_Info_Provider {
 			'cache_system' => array(
 				'label'  => __('Cache Subsystem', 'ai-post-scheduler'),
 				'value'  => $cache_enabled ? __('Enabled', 'ai-post-scheduler') : __('Disabled', 'ai-post-scheduler'),
-				'status' => 'info',
-			),
-			'telemetry' => array(
-				'label'  => __('Telemetry Collection', 'ai-post-scheduler'),
-				'value'  => $telemetry ? __('Enabled', 'ai-post-scheduler') : __('Disabled', 'ai-post-scheduler'),
 				'status' => 'info',
 			),
 			'dev_mode' => array(

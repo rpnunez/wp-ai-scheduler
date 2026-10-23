@@ -34,9 +34,9 @@ class AIPS_System_Diagnostics_Service {
 	private $resilience_service;
 
 	/**
-	 * @var AIPS_Cache_Monitor_Service|null
+	 * @var AIPS_Cache_Driver|null
 	 */
-	private $cache_monitor_service;
+	private $cache_driver;
 
 	/**
 	 * @var AIPS_Notifications_Repository
@@ -52,7 +52,7 @@ class AIPS_System_Diagnostics_Service {
 		$history_repository = null,
 		$bulk_batch_job_store = null,
 		$resilience_service = null,
-		$cache_monitor_service = null,
+		$cache_driver = null,
 		$notifications_repository = null,
 		$date_time_db_repair = null
 	) {
@@ -70,13 +70,7 @@ class AIPS_System_Diagnostics_Service {
 			? $container->make(AIPS_Resilience_Service::class)
 			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null));
 
-		if ($cache_monitor_service) {
-			$this->cache_monitor_service = $cache_monitor_service;
-		} elseif (class_exists('AIPS_Cache_Monitor_Service') && class_exists('AIPS_Cache_Monitor_Repository') && class_exists('AIPS_Cache_Index')) {
-			$this->cache_monitor_service = new AIPS_Cache_Monitor_Service(new AIPS_Cache_Monitor_Repository(), new AIPS_Cache_Index());
-		} else {
-			$this->cache_monitor_service = null;
-		}
+		$this->cache_driver = $cache_driver ?: AIPS_Cache_Factory::make_driver();
 
 		$this->notifications_repository = $notifications_repository ?: ($container->has(AIPS_Notifications_Repository::class)
 			? $container->make(AIPS_Notifications_Repository::class)
@@ -462,24 +456,23 @@ class AIPS_System_Diagnostics_Service {
 	 * @return array
 	 */
 	public function run_cache_maintenance() {
-		if (!$this->cache_monitor_service) {
-			return array(
-				'success' => false,
-				'message' => __('Cache monitor service is unavailable.', 'ai-post-scheduler'),
-			);
-		}
+		$driver = $this->cache_driver ?: AIPS_Cache_Factory::make_driver();
+		$pruned = 0;
 
-		$result = $this->cache_monitor_service->run_maintenance();
+		if ($driver instanceof AIPS_Cache_Db_Driver) {
+			$pruned = (int) $driver->purge_expired();
+		}
 
 		return array(
 			'success' => true,
 			'message' => sprintf(
-				__('Cache maintenance complete: %1$d expired entries, %2$d orphaned index rows, %3$d old events pruned.', 'ai-post-scheduler'),
-				isset($result['pruned_index']) ? (int) $result['pruned_index'] : 0,
-				isset($result['pruned_orphans']) ? (int) $result['pruned_orphans'] : 0,
-				isset($result['pruned_events']) ? (int) $result['pruned_events'] : 0
+				/* translators: %d: number of expired cache entries pruned */
+				__('Cache maintenance complete: %d expired cache entries pruned.', 'ai-post-scheduler'),
+				$pruned
 			),
-			'pruned'  => $result,
+			'pruned'  => array(
+				'pruned_cache' => $pruned,
+			),
 		);
 	}
 

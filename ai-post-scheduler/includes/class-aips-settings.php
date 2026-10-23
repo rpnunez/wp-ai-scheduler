@@ -122,14 +122,6 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_persist_table_filters'],
 			),
-			'aips_enable_telemetry' => array(
-				'sanitize_callback' => 'absint',
-				'default'           => $defaults['aips_enable_telemetry'],
-			),
-			'aips_cache_monitor_enabled' => array(
-				'sanitize_callback' => 'absint',
-				'default'           => $defaults['aips_cache_monitor_enabled'],
-			),
 			'aips_enable_retry' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_retry'],
@@ -1538,21 +1530,6 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
-        add_settings_field(
-            'aips_enable_telemetry',
-            __('Enable Telemetry', 'ai-post-scheduler'),
-            array($this->ui, 'enable_telemetry_field_callback'),
-            'aips-settings',
-            'aips_developers_section'
-        );
-
-        add_settings_field(
-            'aips_cache_monitor_enabled',
-            __('Enable Cache Monitor', 'ai-post-scheduler'),
-            array($this->ui, 'cache_monitor_enabled_field_callback'),
-            'aips-settings',
-            'aips_developers_section'
-        );
 
         // -----------------------------------------------------------------------
         // Resilience sections: Retry, Rate Limiting, Batch Pacing, Circuit Breaker

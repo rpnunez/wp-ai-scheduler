@@ -13,8 +13,6 @@ class Test_AIPS_Repository_Insert_Id extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
-		// The cache index is one of the writers that clobbered insert_id.
-		update_option( 'aips_cache_monitor_index_enabled', '1' );
 	}
 
 	/**

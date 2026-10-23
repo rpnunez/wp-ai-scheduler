@@ -802,46 +802,6 @@ class AIPS_Settings_UI {
     }
 
     /**
-     * Render the enable telemetry setting field.
-     *
-     * Displays a checkbox to enable or disable request-level telemetry
-     * recording (staging/dev use only).
-     *
-     * @return void
-     */
-    public function enable_telemetry_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
-        ?>
-        <input type="hidden" name="aips_enable_telemetry" value="0">
-        <label>
-            <input type="checkbox" name="aips_enable_telemetry" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable request-level telemetry (staging/dev only)', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('Logs query counts, memory usage, elapsed time, and events for each request to the aips_telemetry table. Not recommended for production.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
-
-    /**
-     * Render the cache monitor setting field.
-     *
-     * Displays a checkbox to enable or disable the Cache Monitor
-     * admin page and its AJAX endpoints (internal cache introspection tool).
-     *
-     * @return void
-     */
-    public function cache_monitor_enabled_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled');
-        ?>
-        <input type="hidden" name="aips_cache_monitor_enabled" value="0">
-        <label>
-            <input type="checkbox" name="aips_cache_monitor_enabled" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable Cache Monitor (internal cache introspection tool)', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('Exposes an admin page and AJAX endpoints for inspecting and flushing internal cache entries. Not recommended for production.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
-
-    /**
      * Render the review notifications email setting field.
      *
      * Displays an email input field for the notifications recipient.
