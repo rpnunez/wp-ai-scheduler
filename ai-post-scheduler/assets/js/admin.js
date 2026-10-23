@@ -49,6 +49,26 @@
         generatedPostPreviewMap: {},
 
         /**
+         * Show an administrative notification / toast and announce via wp.a11y.
+         *
+         * @param {string} message Message text.
+         * @param {string} [type='info'] Notice type ('success', 'warning', 'error', 'info').
+         * @param {Object} [opts] Additional toast options.
+         */
+        showNotice: function(message, type, opts) {
+            if (AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
+                AIPS.Utilities.showToast(message, type, opts);
+            }
+        },
+
+        /**
+         * Alias for showNotice / unified notifier.
+         */
+        notify: function(message, type, opts) {
+            AIPS.showNotice(message, type, opts);
+        },
+
+        /**
          * Refresh a specific content panel dynamically to avoid a full page reload.
          *
          * @param {string} contentSelector - Selector for the main content to find and replace.

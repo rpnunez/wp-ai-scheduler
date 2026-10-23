@@ -34,6 +34,28 @@
          */
         init: function() {
             this.initActionLock();
+            this.initNoticeDismissal();
+        },
+
+        /**
+         * Initialize dismiss handlers for persistent WordPress notices.
+         */
+        initNoticeDismissal: function() {
+            $(document).on('click', '.notice[data-aips-notice-id] .notice-dismiss, .aips-notice[data-aips-notice-id] .notice-dismiss', function() {
+                var $notice = $(this).closest('[data-aips-notice-id]');
+                var noticeId = $notice.attr('data-aips-notice-id');
+                if (noticeId) {
+                    var ajaxUrl = (window.aiPostSchedulerAdmin && aiPostSchedulerAdmin.ajaxUrl) ? aiPostSchedulerAdmin.ajaxUrl : (window.ajaxurl || '');
+                    var nonce = (window.aiPostSchedulerAdmin && aiPostSchedulerAdmin.nonce) ? aiPostSchedulerAdmin.nonce : '';
+                    if (ajaxUrl) {
+                        $.post(ajaxUrl, {
+                            action: 'aips_dismiss_notice',
+                            notice_id: noticeId,
+                            nonce: nonce
+                        });
+                    }
+                }
+            });
         },
 
         /**
@@ -242,6 +264,15 @@
               .append($('<button class="aips-toast-close">&times;</button>').attr('aria-label', closeLabel));
 
             $container.append($toast);
+
+            // Announce to assistive technologies via WordPress native a11y engine.
+            if (window.wp && wp.a11y && typeof wp.a11y.speak === 'function') {
+                var priority = (type === 'error' || type === 'warning') ? 'assertive' : 'polite';
+                var speechText = isHtml ? $('<div>').html(message).text() : (message || '');
+                if (speechText) {
+                    wp.a11y.speak(speechText, priority);
+                }
+            }
 
             $toast.find('.aips-toast-close').on('click', function() {
                 $toast.addClass('closing');

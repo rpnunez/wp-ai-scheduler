@@ -25,28 +25,29 @@ $card_actions  = isset($args['actions']) && is_array($args['actions']) ? $args['
 $card_body     = isset($args['body']) ? $args['body'] : '';
 $card_body_cl  = isset($args['body_class']) ? ' ' . $args['body_class'] : '';
 $card_footer   = isset($args['footer']) ? $args['footer'] : '';
+$collapsible   = !empty($args['collapsible']);
 // include_partial() exposes the second render_card() argument as $content_callback.
 $callback      = isset($args['body_callback']) && is_callable($args['body_callback'])
 	? $args['body_callback']
 	: (isset($content_callback) ? $content_callback : null);
 
-$has_header = !empty($card_title) || !empty($card_actions) || !empty($card_badge);
+$has_header = !empty($card_title) || !empty($card_actions) || !empty($card_badge) || $collapsible;
 ?>
-<div class="aips-content-panel<?php echo esc_attr($card_class); ?>"<?php echo $card_id ? ' id="' . esc_attr($card_id) . '"' : ''; ?>>
+<div class="postbox aips-content-panel<?php echo esc_attr($card_class); ?><?php echo $collapsible ? ' if-js-closed' : ''; ?>"<?php echo $card_id ? ' id="' . esc_attr($card_id) . '"' : ''; ?>>
 	<?php if ($has_header) : ?>
-		<div class="aips-panel-header">
+		<div class="postbox-header aips-panel-header">
 			<div class="aips-panel-header-content">
 				<?php if (!empty($card_icon)) : ?>
 					<span class="dashicons <?php echo esc_attr($card_icon); ?> dashicons-icon-lg" aria-hidden="true"></span>
 				<?php endif; ?>
 				<div>
 					<?php if (!empty($card_title)) : ?>
-						<h3 class="aips-panel-title">
-							<?php echo esc_html($card_title); ?>
+						<h2 class="hndle aips-panel-title">
+							<span><?php echo esc_html($card_title); ?></span>
 							<?php if (!empty($card_badge)) : ?>
 								<?php echo AIPS_Admin_UI_Primitives::render_status_badge($card_badge); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 							<?php endif; ?>
-						</h3>
+						</h2>
 					<?php endif; ?>
 					<?php if (!empty($card_desc)) : ?>
 						<p class="aips-panel-description"><?php echo esc_html($card_desc); ?></p>
@@ -54,8 +55,8 @@ $has_header = !empty($card_title) || !empty($card_actions) || !empty($card_badge
 				</div>
 			</div>
 
-			<?php if (!empty($card_actions)) : ?>
-				<div class="aips-panel-header-actions">
+			<div class="handle-actions aips-panel-header-actions">
+				<?php if (!empty($card_actions)) : ?>
 					<?php foreach ($card_actions as $action) : ?>
 						<?php
 						$action_type  = isset($action['type']) ? $action['type'] : 'button';
@@ -86,12 +87,18 @@ $has_header = !empty($card_title) || !empty($card_actions) || !empty($card_badge
 							</button>
 						<?php endif; ?>
 					<?php endforeach; ?>
-				</div>
-			<?php endif; ?>
+				<?php endif; ?>
+				<?php if ($collapsible) : ?>
+					<button type="button" class="handlediv" aria-expanded="true">
+						<span class="screen-reader-text"><?php esc_html_e('Toggle panel:', 'ai-post-scheduler'); ?></span>
+						<span class="toggle-indicator" aria-hidden="true"></span>
+					</button>
+				<?php endif; ?>
+			</div>
 		</div>
 	<?php endif; ?>
 
-	<div class="aips-panel-body<?php echo esc_attr($card_body_cl); ?>">
+	<div class="inside aips-panel-body<?php echo esc_attr($card_body_cl); ?>">
 		<?php
 		if (is_callable($callback)) {
 			call_user_func($callback);

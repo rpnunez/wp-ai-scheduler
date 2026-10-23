@@ -224,6 +224,9 @@ class AIPS_Ajax_Registry {
 		'aips_save_settings'              => 'AIPS_Settings_Ajax',
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
 
+		// Admin Notices
+		'aips_dismiss_notice'             => 'AIPS_Admin_Notices',
+
 		// Sources Controller
 		'aips_get_sources'                => 'AIPS_Sources_Controller',
 		'aips_save_source'                => 'AIPS_Sources_Controller',

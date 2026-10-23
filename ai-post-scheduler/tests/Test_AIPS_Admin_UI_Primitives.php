@@ -164,11 +164,33 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString('test-card-id', $output);
+		$this->assertStringContainsString('postbox', $output);
+		$this->assertStringContainsString('postbox-header', $output);
+		$this->assertStringContainsString('hndle', $output);
+		$this->assertStringContainsString('inside', $output);
 		$this->assertStringContainsString('Test Card Panel', $output);
 		$this->assertStringContainsString('dashicons-info', $output);
 		$this->assertStringContainsString('aria-label="Edit this card"', $output);
 		$this->assertStringContainsString('data-target="modal"', $output);
 		$this->assertStringContainsString('Inside card body', $output);
+	}
+
+	/**
+	 * Test card rendering with collapsible option.
+	 */
+	public function test_render_card_collapsible() {
+		ob_start();
+		AIPS_Admin_UI_Primitives::render_card(array(
+			'title'       => 'Collapsible Card',
+			'collapsible' => true,
+		), function() {
+			echo 'Body';
+		});
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('if-js-closed', $output);
+		$this->assertStringContainsString('handlediv', $output);
+		$this->assertStringContainsString('toggle-indicator', $output);
 	}
 
 	/**
