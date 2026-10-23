@@ -14,7 +14,7 @@ if (is_array($data)) {
 }
 ?>
 <div class="aips-outlook-content">
-	<div class="aips-outlook-badge-wrap" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+	<div class="aips-outlook-badge-wrap aips-outlook-header-row">
 		<span class="aips-section-meta"><?php esc_html_e('Next 30 Days schedule pipeline', 'ai-post-scheduler'); ?></span>
 		<span class="aips-badge aips-badge-info">
 			<?php echo sprintf(esc_html(_n('%d Scheduled Run', '%d Scheduled Runs', (int) ($upcoming_runs_count ?? 0), 'ai-post-scheduler')), (int) ($upcoming_runs_count ?? 0)); ?>

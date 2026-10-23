@@ -13,7 +13,7 @@ if (is_array($data)) {
 	extract($data);
 }
 ?>
-<div class="aips-content-panel detail-tabs-panel" style="border:none; box-shadow:none; padding:0; background:transparent;">
+<div class="aips-content-panel detail-tabs-panel aips-dashboard-activity-panel">
 	<!-- Tab Headers -->
 	<div class="aips-tab-headers" role="tablist">
 		<button class="aips-tab-btn active" role="tab" aria-selected="true" aria-controls="tab-posts" id="btn-tab-posts">

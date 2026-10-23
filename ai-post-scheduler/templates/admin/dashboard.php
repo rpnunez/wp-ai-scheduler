@@ -9,9 +9,7 @@ if (empty($screen_id)) {
 	$screen_id = 'toplevel_page_ai-post-scheduler';
 }
 
-if (class_exists('AIPS_Dashboard_Controller')) {
-	AIPS_Dashboard_Controller::register_meta_boxes($screen_id);
-}
+AIPS_Dashboard_Controller::register_meta_boxes($screen_id);
 ?>
 <div class="wrap aips-wrap">
 	<?php if (empty($ai_provider_available)): ?>
@@ -70,11 +68,7 @@ if (class_exists('AIPS_Dashboard_Controller')) {
 		</div>
 
 		<!-- Render Native WordPress Meta Box 2-Column Layout -->
-		<?php
-		if (class_exists('AIPS_Screen_Meta_Box_Helper')) {
-			AIPS_Screen_Meta_Box_Helper::render_layout($screen_id, $dashboard_data ?? get_defined_vars());
-		}
-		?>
+		<?php AIPS_Screen_Meta_Box_Helper::render_layout($screen_id, $dashboard_data ?? get_defined_vars()); ?>
 
 	</div>
 </div>

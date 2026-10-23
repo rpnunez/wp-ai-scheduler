@@ -8781,8 +8781,8 @@ tr.aips-row-details > td {
 
 .aips-poststuff .postbox {
 	margin-bottom: 20px;
-	background: #fff;
-	border: 1px solid #c3c4c7;
+	background: var(--aips-white, #fff);
+	border: 1px solid var(--aips-gray-200, #c3c4c7);
 	border-radius: 4px;
 	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
@@ -8792,7 +8792,7 @@ tr.aips-row-details > td {
 	align-items: center;
 	justify-content: space-between;
 	padding: 10px 14px;
-	border-bottom: 1px solid #f0f0f1;
+	border-bottom: 1px solid var(--aips-gray-50, #f0f0f1);
 }
 
 .aips-poststuff .postbox .postbox-header h2 {
@@ -8812,5 +8812,156 @@ tr.aips-row-details > td {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 	gap: 16px;
+}
+
+/* ==========================================================================
+   Dashboard Meta Box Custom Layout Classes
+   ========================================================================== */
+.aips-dashboard-activity-panel {
+	border: none;
+	box-shadow: none;
+	padding: 0;
+	background: transparent;
+}
+
+.aips-outlook-header-row {
+	margin-bottom: 12px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.aips-status-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.aips-status-list-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 8px 0;
+	border-bottom: 1px solid var(--aips-gray-50, #f0f0f1);
+}
+
+.aips-status-action-buttons {
+	margin-top: 14px;
+	display: flex;
+	gap: 8px;
+}
+
+.aips-status-btn-full {
+	width: 100%;
+	text-align: center;
+}
+
+/* ==========================================================================
+   Campaign Wizard Layout & Structure Classes
+   ========================================================================== */
+.aips-page-header-top-flex {
+	align-items: center;
+	justify-content: space-between;
+}
+
+.aips-campaign-wizard-notice {
+	margin: 16px 0;
+}
+
+.aips-ai-strategy-preview-box {
+	display: none;
+	margin: 16px 0;
+}
+
+.aips-wizard-steps-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 18px;
+}
+
+.aips-wizard-section-hidden {
+	display: none;
+}
+
+.aips-wizard-heading-spaced {
+	margin-top: 24px;
+}
+
+.aips-post-type-rules-container {
+	margin-top: 12px;
+}
+
+.aips-post-type-rule {
+	background: var(--aips-gray-tint, #f6f7f7);
+	border: 1px solid var(--aips-gray-200, #c3c4c7);
+	border-radius: 4px;
+	padding: 12px;
+	margin-bottom: 10px;
+}
+
+.aips-post-type-rule-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr 80px 50px;
+	gap: 10px;
+	align-items: start;
+}
+
+.aips-post-type-rule-quantity {
+	width: 100%;
+}
+
+.aips-post-type-rule-actions {
+	padding-top: 20px;
+}
+
+.aips-post-type-rule-icon {
+	margin-top: 2px;
+}
+
+.aips-btn-spaced-top {
+	margin-top: 10px;
+}
+
+.aips-form-table-spaced-top {
+	margin-top: 12px;
+}
+
+.aips-wizard-time-window {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.aips-wizard-time-input {
+	width: 120px;
+}
+
+.aips-wizard-days-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.aips-wizard-day-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.aips-wizard-summary-panel {
+	margin-top: 12px;
+}
+
+.aips-wizard-summary-dl {
+	display: grid;
+	grid-template-columns: 180px 1fr;
+	gap: 10px 16px;
+	margin: 0;
+}
+
+.aips-wizard-submit-actions {
+	display: flex;
+	gap: 8px;
 }
 

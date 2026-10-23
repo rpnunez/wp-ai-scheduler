@@ -551,13 +551,7 @@ class AIPS_Dashboard_Controller {
 	 * @return void
 	 */
 	public static function register_meta_boxes($screen_id = 'toplevel_page_ai-post-scheduler') {
-		if (class_exists('AIPS_Screen_Meta_Box_Helper')) {
-			AIPS_Screen_Meta_Box_Helper::init_screen($screen_id);
-		}
-
-		if (!function_exists('add_meta_box')) {
-			return;
-		}
+		AIPS_Screen_Meta_Box_Helper::init_screen($screen_id);
 
 		add_meta_box(
 			'aips-dashboard-overview-box',

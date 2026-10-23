@@ -404,9 +404,7 @@ class AIPS_Admin_Menu {
             return;
         }
 
-        if (class_exists('AIPS_Dashboard_Controller')) {
-            AIPS_Dashboard_Controller::register_meta_boxes($screen->id);
-        }
+        AIPS_Dashboard_Controller::register_meta_boxes($screen->id);
     }
 
     /**

@@ -13,7 +13,7 @@ $authors = get_users(array(
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 		<div class="aips-page-header">
-			<div class="aips-page-header-top" style="align-items:center; justify-content:space-between;">
+			<div class="aips-page-header-top aips-page-header-top-flex">
 				<div>
 					<h1 class="aips-page-title"><?php esc_html_e('Campaign Wizard', 'ai-post-scheduler'); ?></h1>
 					<p class="aips-page-description"><?php esc_html_e('Build a campaign template, publishing defaults, review policy, and schedule in one flow.', 'ai-post-scheduler'); ?></p>
@@ -25,8 +25,8 @@ $authors = get_users(array(
 			</div>
 		</div>
 
-		<div id="aips-campaign-wizard-notice" style="margin:16px 0;"></div>
-		<div id="aips-ai-strategy-preview" class="aips-content-panel postbox" style="display:none; margin:16px 0;">
+		<div id="aips-campaign-wizard-notice" class="aips-campaign-wizard-notice"></div>
+		<div id="aips-ai-strategy-preview" class="aips-content-panel postbox aips-ai-strategy-preview-box">
 			<div class="postbox-header">
 				<h2 id="aips-ai-strategy-preview-title"><?php esc_html_e('Campaign Strategy Preview', 'ai-post-scheduler'); ?></h2>
 			</div>
@@ -67,7 +67,7 @@ $authors = get_users(array(
 
 		<form id="aips-campaign-wizard-form" class="aips-content-panel postbox">
 			<div class="aips-panel-body inside">
-				<div class="aips-wizard-steps" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;">
+				<div class="aips-wizard-steps aips-wizard-steps-nav">
 					<?php
 					$steps = array(
 						'goal' => __('Goal', 'ai-post-scheduler'),
@@ -107,7 +107,7 @@ $authors = get_users(array(
 					</tbody></table>
 				</section>
 
-				<section class="aips-wizard-step" data-step="template" style="display:none;">
+				<section class="aips-wizard-step aips-wizard-section-hidden" data-step="template">
 					<h2><?php esc_html_e('2) Prompt Template', 'ai-post-scheduler'); ?></h2>
 					<table class="form-table" role="presentation"><tbody>
 						<tr>
@@ -164,7 +164,7 @@ $authors = get_users(array(
 					</tbody></table>
 				</section>
 
-				<section class="aips-wizard-step" data-step="defaults" style="display:none;">
+				<section class="aips-wizard-step aips-wizard-section-hidden" data-step="defaults">
 					<h2><?php esc_html_e('3) Voice, Structure & Taxonomy Defaults', 'ai-post-scheduler'); ?></h2>
 					<table class="form-table" role="presentation"><tbody>
 						<tr>
@@ -189,17 +189,17 @@ $authors = get_users(array(
 						</tr>
 					</tbody></table>
 
-					<h3 style="margin-top: 24px;"><?php esc_html_e('Multi-Post-Type Rules (Optional)', 'ai-post-scheduler'); ?></h3>
+					<h3 class="aips-wizard-heading-spaced"><?php esc_html_e('Multi-Post-Type Rules (Optional)', 'ai-post-scheduler'); ?></h3>
 					<p class="description"><?php esc_html_e('Generate multiple post types per cycle with different quantities and prompt variations. Leave empty to use the single post type from Step 1.', 'ai-post-scheduler'); ?></p>
 
-					<div id="aips-post-type-rules-container" style="margin-top: 12px;">
+					<div id="aips-post-type-rules-container" class="aips-post-type-rules-container">
 						<?php
 						$saved_rules = isset($draft['post_type_rules']) ? json_decode($draft['post_type_rules'], true) : array();
 						if (!empty($saved_rules) && is_array($saved_rules)) :
 							foreach ($saved_rules as $index => $rule) :
 								?>
-								<div class="aips-post-type-rule" data-rule-index="<?php echo esc_attr($index); ?>" style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 10px;">
-									<div style="display: grid; grid-template-columns: 1fr 1fr 80px 50px; gap: 10px; align-items: start;">
+								<div class="aips-post-type-rule" data-rule-index="<?php echo esc_attr($index); ?>">
+									<div class="aips-post-type-rule-grid">
 										<div>
 											<label><?php esc_html_e('Post Type', 'ai-post-scheduler'); ?></label>
 											<select name="post_type_rules[<?php echo esc_attr($index); ?>][post_type]" class="regular-text">
@@ -214,11 +214,11 @@ $authors = get_users(array(
 										</div>
 										<div>
 											<label><?php esc_html_e('Quantity', 'ai-post-scheduler'); ?></label>
-											<input type="number" name="post_type_rules[<?php echo esc_attr($index); ?>][quantity]" min="1" max="100" value="<?php echo esc_attr($rule['quantity'] ?? 1); ?>" style="width: 100%;">
+											<input type="number" name="post_type_rules[<?php echo esc_attr($index); ?>][quantity]" min="1" max="100" value="<?php echo esc_attr($rule['quantity'] ?? 1); ?>" class="aips-post-type-rule-quantity">
 										</div>
-										<div style="padding-top: 20px;">
+										<div class="aips-post-type-rule-actions">
 											<button type="button" class="button button-small aips-remove-post-type-rule" title="<?php esc_attr_e('Remove', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-no-alt" style="margin-top: 2px;"></span>
+												<span class="dashicons dashicons-no-alt aips-post-type-rule-icon"></span>
 											</button>
 										</div>
 									</div>
@@ -228,12 +228,12 @@ $authors = get_users(array(
 						endif;
 						?>
 					</div>
-					<button type="button" id="aips-add-post-type-rule" class="button" style="margin-top: 10px;">
-						<span class="dashicons dashicons-plus-alt2" style="margin-top: 2px;"></span> <?php esc_html_e('Add Post Type Rule', 'ai-post-scheduler'); ?>
+					<button type="button" id="aips-add-post-type-rule" class="button aips-btn-spaced-top">
+						<span class="dashicons dashicons-plus-alt2 aips-post-type-rule-icon"></span> <?php esc_html_e('Add Post Type Rule', 'ai-post-scheduler'); ?>
 					</button>
 				</section>
 
-				<section class="aips-wizard-step" data-step="schedule" style="display:none;">
+				<section class="aips-wizard-step aips-wizard-section-hidden" data-step="schedule">
 					<h2><?php esc_html_e('4) Publish Cadence & Schedule', 'ai-post-scheduler'); ?></h2>
 					<table class="form-table" role="presentation"><tbody>
 						<tr>
@@ -250,17 +250,17 @@ $authors = get_users(array(
 						</tr>
 					</tbody></table>
 
-					<h3 style="margin-top: 24px;"><?php esc_html_e('Advanced Scheduling (Optional)', 'ai-post-scheduler'); ?></h3>
+					<h3 class="aips-wizard-heading-spaced"><?php esc_html_e('Advanced Scheduling (Optional)', 'ai-post-scheduler'); ?></h3>
 					<p class="description"><?php esc_html_e('Fine-tune when posts are generated with time windows, day preferences, blackout dates, and seasonal end dates.', 'ai-post-scheduler'); ?></p>
 
-					<table class="form-table" role="presentation" style="margin-top: 12px;"><tbody>
+					<table class="form-table aips-form-table-spaced-top" role="presentation"><tbody>
 						<tr>
 							<th scope="row"><label for="aips_time_window_start"><?php esc_html_e('Time Window', 'ai-post-scheduler'); ?></label></th>
 							<td>
-								<div style="display: flex; gap: 8px; align-items: center;">
-									<input type="time" id="aips_time_window_start" name="time_window_start" value="<?php echo esc_attr($draft['time_window_start'] ?? ''); ?>" placeholder="09:00" style="width: 120px;">
+								<div class="aips-wizard-time-window">
+									<input type="time" id="aips_time_window_start" name="time_window_start" value="<?php echo esc_attr($draft['time_window_start'] ?? ''); ?>" placeholder="09:00" class="aips-wizard-time-input">
 									<span><?php esc_html_e('to', 'ai-post-scheduler'); ?></span>
-									<input type="time" id="aips_time_window_end" name="time_window_end" value="<?php echo esc_attr($draft['time_window_end'] ?? ''); ?>" placeholder="17:00" style="width: 120px;">
+									<input type="time" id="aips_time_window_end" name="time_window_end" value="<?php echo esc_attr($draft['time_window_end'] ?? ''); ?>" placeholder="17:00" class="aips-wizard-time-input">
 								</div>
 								<p class="description"><?php esc_html_e('Only generate posts during this time range (24-hour format). Leave empty for no restriction.', 'ai-post-scheduler'); ?></p>
 							</td>
@@ -280,9 +280,9 @@ $authors = get_users(array(
 									'7' => __('Sunday', 'ai-post-scheduler'),
 								);
 								?>
-								<div style="display: flex; flex-wrap: wrap; gap: 12px;">
+								<div class="aips-wizard-days-grid">
 									<?php foreach ($days as $day_num => $day_name) : ?>
-										<label style="display: inline-flex; align-items: center; gap: 4px;">
+										<label class="aips-wizard-day-label">
 											<input type="checkbox" name="day_preferences[]" value="<?php echo esc_attr($day_num); ?>" <?php checked(in_array($day_num, $saved_days, true)); ?>>
 											<?php echo esc_html($day_name); ?>
 										</label>
@@ -308,26 +308,26 @@ $authors = get_users(array(
 					</tbody></table>
 				</section>
 
-				<section class="aips-wizard-step" data-step="review" style="display:none;">
+				<section class="aips-wizard-step aips-wizard-section-hidden" data-step="review">
 					<h2><?php esc_html_e('5) Review Policy', 'ai-post-scheduler'); ?></h2>
 					<p><label><input type="radio" name="review_policy" value="draft" <?php checked($draft['review_policy'] ?? 'draft', 'draft'); ?>> <?php esc_html_e('Save generated posts as drafts', 'ai-post-scheduler'); ?></label></p>
 					<p><label><input type="radio" name="review_policy" value="approval" <?php checked($draft['review_policy'] ?? '', 'approval'); ?>> <?php esc_html_e('Send generated posts to pending approval', 'ai-post-scheduler'); ?></label></p>
 					<p><label><input type="radio" name="review_policy" value="auto_publish" <?php checked($draft['review_policy'] ?? '', 'auto_publish'); ?>> <?php esc_html_e('Auto-publish generated posts', 'ai-post-scheduler'); ?></label></p>
 				</section>
 
-				<section class="aips-wizard-step" data-step="confirm" style="display:none;">
+				<section class="aips-wizard-step aips-wizard-section-hidden" data-step="confirm">
 					<h2><?php esc_html_e('6) Review & Confirm', 'ai-post-scheduler'); ?></h2>
-					<div id="aips-campaign-summary" class="aips-content-panel" style="margin-top:12px;">
+					<div id="aips-campaign-summary" class="aips-content-panel aips-wizard-summary-panel">
 						<div class="aips-panel-body">
-							<dl style="display:grid; grid-template-columns:180px 1fr; gap:10px 16px; margin:0;"></dl>
+							<dl class="aips-wizard-summary-dl"></dl>
 						</div>
 					</div>
 				</section>
 
-				<p class="submit" style="display:flex; gap:8px;">
+				<p class="submit aips-wizard-submit-actions">
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-wizard-prev"><?php esc_html_e('Back', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-btn aips-btn-primary" id="aips-wizard-next"><?php esc_html_e('Save & Continue', 'ai-post-scheduler'); ?></button>
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-wizard-finalize" style="display:none;"><?php esc_html_e('Create Campaign', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-btn aips-btn-primary aips-wizard-section-hidden" id="aips-wizard-finalize"><?php esc_html_e('Create Campaign', 'ai-post-scheduler'); ?></button>
 					<span class="spinner" id="aips-campaign-spinner"></span>
 				</p>
 			</div>

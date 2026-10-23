@@ -40,32 +40,18 @@ class AIPS_Screen_Meta_Box_Helper {
 		self::$registered_screens[$screen_id] = true;
 
 		// Enqueue WordPress core meta box dependencies.
-		if (function_exists('wp_enqueue_script')) {
-			wp_enqueue_script('postbox');
-		}
+		wp_enqueue_script('postbox');
 
-		// Enable column layout screen option (1 or 2 columns) if available.
-		if (function_exists('add_screen_option')) {
-			add_screen_option('layout_columns', array(
-				'max'     => 2,
-				'default' => 2,
-			));
-		}
+		// Enable column layout screen option (1 or 2 columns).
+		add_screen_option('layout_columns', array(
+			'max'     => 2,
+			'default' => 2,
+		));
 
-		// Inject postbox toggle initialization script into admin footer.
-		if (function_exists('add_action')) {
-			add_action('admin_footer', function() use ($screen_id) {
-				?>
-				<script type="text/javascript">
-					jQuery(document).ready(function($) {
-						if (typeof postboxes !== 'undefined' && typeof postboxes.add_postbox_toggles === 'function') {
-							postboxes.add_postbox_toggles('<?php echo esc_js($screen_id); ?>');
-						}
-					});
-				</script>
-				<?php
-			}, 20);
-		}
+		// Inject postbox toggle initialization script partial into admin footer.
+		add_action('admin_footer', function() use ($screen_id) {
+			include AIPS_PLUGIN_DIR . 'templates/admin/partials/metabox/postbox-toggles-script.php';
+		}, 20);
 	}
 
 	/**
@@ -81,10 +67,6 @@ class AIPS_Screen_Meta_Box_Helper {
 	 * @return void
 	 */
 	public static function register_box($id, $title, $callback, $screen_id, $context = 'normal', $priority = 'default', $callback_args = null) {
-		if (!function_exists('add_meta_box')) {
-			return;
-		}
-
 		add_meta_box(
 			$id,
 			$title,
@@ -105,17 +87,11 @@ class AIPS_Screen_Meta_Box_Helper {
 	 * @return void
 	 */
 	public static function render_layout($screen_id, $data = null, $columns = 2) {
-		if (!function_exists('do_meta_boxes')) {
-			return;
-		}
-
 		// Nonces required by WordPress core for drag-and-drop ordering and collapse toggles.
-		if (function_exists('wp_nonce_field')) {
-			wp_nonce_field('closedpostboxes', 'closedpostboxesnonce', false);
-			wp_nonce_field('meta-box-order', 'meta-box-order-nonce', false);
-		}
+		wp_nonce_field('closedpostboxes', 'closedpostboxesnonce', false);
+		wp_nonce_field('meta-box-order', 'meta-box-order-nonce', false);
 
-		if ((null === $columns || 2 === (int) $columns) && function_exists('get_user_option')) {
+		if (null === $columns || 2 === (int) $columns) {
 			$user_columns = get_user_option('screen_layout_' . $screen_id);
 			if (!empty($user_columns)) {
 				$columns = (int) $user_columns;
@@ -123,28 +99,8 @@ class AIPS_Screen_Meta_Box_Helper {
 		}
 
 		$columns_class = 'columns-' . absint($columns);
-		?>
-		<div id="poststuff" class="aips-poststuff">
-			<div id="post-body" class="metabox-holder <?php echo esc_attr($columns_class); ?>">
-				<?php if (2 === (int) $columns) : ?>
-					<div id="postbox-container-1" class="postbox-container aips-postbox-side">
-						<?php do_meta_boxes($screen_id, 'side', $data); ?>
-					</div>
-				<?php endif; ?>
 
-				<div id="postbox-container-2" class="postbox-container aips-postbox-main">
-					<?php
-					do_meta_boxes($screen_id, 'normal', $data);
-					do_meta_boxes($screen_id, 'advanced', $data);
-					if (1 === (int) $columns) {
-						do_meta_boxes($screen_id, 'side', $data);
-					}
-					?>
-				</div>
-			</div>
-			<br class="clear">
-		</div>
-		<?php
+		include AIPS_PLUGIN_DIR . 'templates/admin/partials/metabox/poststuff-layout.php';
 	}
 
 	/**
