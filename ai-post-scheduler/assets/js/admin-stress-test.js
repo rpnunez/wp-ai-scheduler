@@ -413,7 +413,7 @@
 				return;
 			}
 
-			var duration = result.duration_ms ? this.formatDuration(result.duration_ms) : '—';
+			var duration = result.duration_formatted || (result.duration_ms ? result.duration_ms + ' ms' : '—');
 
 			this.setRowState($row, result.status, result.summary || '', duration);
 			$row.data('result', result);
@@ -874,36 +874,22 @@
 					: t('someFailed', 'Some tests failed')
 			);
 
+			var totalTimeFormatted = totalMs < 1000 ? Math.round(totalMs) + ' ms' : (totalMs / 1000).toFixed(1) + ' s';
 			$summary.find('.aips-stress-summary-text p').text(
 				(results.length - failed.length) + ' / ' + results.length + ' ' +
-				t('passedIn', 'passed in') + ' ' + this.formatDuration(totalMs)
+				t('passedIn', 'passed in') + ' ' + totalTimeFormatted
 			);
 
 			var $list = $summary.find('.aips-stress-summary-list').empty();
 
 			results.forEach(function (result) {
-				var itemHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-summary-item'))
-					? AIPS.Templates.render('aips-tmpl-stress-summary-item', {
-						status: result.status,
-						label:  result.label,
-						detail: result.summary || '',
-						time:   this.formatDuration(result.duration_ms || 0)
-					})
-					: '';
-
-				if (itemHtml) {
-					$list.append(itemHtml);
-				} else {
-					$list.append(
-						$('<li></li>')
-							.attr('data-status', result.status)
-							.append($('<span class="aips-stress-summary-dot"></span>'))
-							.append($('<span class="aips-stress-summary-label"></span>').text(result.label))
-							.append($('<span class="aips-stress-summary-detail"></span>').text(result.summary || ''))
-							.append($('<span class="aips-stress-summary-time"></span>').text(this.formatDuration(result.duration_ms || 0)))
-					);
-				}
-			}.bind(this));
+				$list.append(AIPS.Templates.render('aips-tmpl-stress-summary-item', {
+					status: result.status,
+					label:  result.label,
+					detail: result.summary || '',
+					time:   result.duration_formatted || (result.duration_ms ? result.duration_ms + ' ms' : '—')
+				}));
+			});
 
 			// Restart the banner animation even when the previous run left the
 			// element in the same state.
@@ -1134,20 +1120,6 @@
 		},
 
 		// -------------------------------------------------------------------
-		// Helpers
-		// -------------------------------------------------------------------
-
-		/**
-		 * Human-readable elapsed time.
-		 *
-		 * @param {number} ms
-		 * @returns {string}
-		 */
-		formatDuration: function (ms) {
-			return this.formatTime(ms);
-		},
-
-		// -------------------------------------------------------------------
 		// History & Comparison / Diff Handling
 		// -------------------------------------------------------------------
 
@@ -1255,34 +1227,6 @@
 		},
 
 		/**
-		 * Capitalize the first letter of a string.
-		 *
-		 * @param {string} str
-		 * @returns {string}
-		 */
-		capitalize: function (str) {
-			if (!str || typeof str !== 'string') {
-				return '';
-			}
-			return str.charAt(0).toUpperCase() + str.slice(1);
-		},
-
-		/**
-		 * Format time value in milliseconds: shows "ms" if < 1s, otherwise seconds with "s" unit ("2.1 s").
-		 *
-		 * @param {number} ms
-		 * @returns {string}
-		 */
-		formatTime: function (ms) {
-			var num = parseFloat(ms) || 0;
-			var abs = Math.abs(num);
-			if (abs < 999.5) {
-				return (num < 0 ? '-' : '') + Math.round(abs) + ' ms';
-			}
-			return (num < 0 ? '-' : '') + (abs / 1000).toFixed(1) + ' s';
-		},
-
-		/**
 		 * Update disabled state of Compare 2 Selected Runs button based on checked count.
 		 */
 		updateHistoryDiffButtonState: function () {
@@ -1337,23 +1281,8 @@
 		setModalTitle: function (titleText, iconClass) {
 			iconClass = iconClass || 'dashicons-forms';
 			var $modal = $('#aips-stress-diff-modal');
-			var $titleText = $modal.find('.aips-modal-title-text');
-			var $titleIcon = $modal.find('.aips-modal-title-icon');
-
-			if ($titleText.length) {
-				$titleText.text(titleText);
-			} else {
-				var $title = $modal.find('.aips-modal-title');
-				if ($title.length) {
-					var safeText = (window.AIPS && AIPS.Templates && AIPS.Templates.escape) ? AIPS.Templates.escape(titleText) : $('<div>').text(titleText).html();
-					$title.html('<span class="dashicons ' + iconClass + ' aips-modal-title-icon"></span> <span class="aips-modal-title-text">' + safeText + '</span>');
-					return;
-				}
-			}
-
-			if ($titleIcon.length) {
-				$titleIcon.attr('class', 'dashicons ' + iconClass + ' aips-modal-title-icon');
-			}
+			$modal.find('.aips-modal-title-text').text(titleText);
+			$modal.find('.aips-modal-title-icon').attr('class', 'dashicons ' + iconClass + ' aips-modal-title-icon');
 		},
 
 		/**
@@ -1369,10 +1298,7 @@
 			var self = this;
 			this.setModalTitle(t('runDetails', 'Stress Test Run Details'), 'dashicons-visibility');
 			this.openDiffModal();
-			var spinnerHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-spinner'))
-				? AIPS.Templates.render('aips-tmpl-stress-spinner', {})
-				: '<div class="aips-spinner" style="text-align:center;padding:32px;"><span class="dashicons dashicons-update" style="animation:spin 1s infinite linear;font-size:28px;"></span></div>';
-			$('#aips-stress-diff-body').html(spinnerHtml);
+			$('#aips-stress-diff-body').html(AIPS.Templates.render('aips-tmpl-stress-spinner', {}));
 
 			$.ajax({
 				url: self.getAjaxUrl(),
@@ -1386,18 +1312,12 @@
 				if (res && res.success && res.data && res.data.run) {
 					self.renderSingleRunModal(res.data.run);
 				} else {
-					var msg = res.data ? res.data.message : 'Error loading run.';
-					var noticeHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-notice'))
-						? AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: msg })
-						: '<div class="aips-stress-notice aips-stress-notice-danger"><p>' + msg + '</p></div>';
-					$('#aips-stress-diff-body').html(noticeHtml);
+					var msg = (res && res.data && res.data.message) ? res.data.message : 'Error loading run.';
+					$('#aips-stress-diff-body').html(AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: msg }));
 				}
 			}).fail(function () {
 				var failMsg = t('requestFailed', 'Request failed.');
-				var noticeHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-notice'))
-					? AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: failMsg })
-					: '<div class="aips-stress-notice aips-stress-notice-danger"><p>' + failMsg + '</p></div>';
-				$('#aips-stress-diff-body').html(noticeHtml);
+				$('#aips-stress-diff-body').html(AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: failMsg }));
 			});
 		},
 
@@ -1408,10 +1328,7 @@
 			var self = this;
 			this.setModalTitle(t('comparisonDiff', 'Stress Test Comparison & Diff'), 'dashicons-forms');
 			this.openDiffModal();
-			var spinnerHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-spinner'))
-				? AIPS.Templates.render('aips-tmpl-stress-spinner', {})
-				: '<div class="aips-spinner" style="text-align:center;padding:32px;"><span class="dashicons dashicons-update" style="animation:spin 1s infinite linear;font-size:28px;"></span></div>';
-			$('#aips-stress-diff-body').html(spinnerHtml);
+			$('#aips-stress-diff-body').html(AIPS.Templates.render('aips-tmpl-stress-spinner', {}));
 
 			$.ajax({
 				url: self.getAjaxUrl(),
@@ -1426,18 +1343,12 @@
 				if (res && res.success && res.data && res.data.diff) {
 					self.renderDiffModal(res.data.diff);
 				} else {
-					var msg = res.data ? res.data.message : 'Error calculating diff.';
-					var noticeHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-notice'))
-						? AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: msg })
-						: '<div class="aips-stress-notice aips-stress-notice-danger"><p>' + msg + '</p></div>';
-					$('#aips-stress-diff-body').html(noticeHtml);
+					var msg = (res && res.data && res.data.message) ? res.data.message : 'Error calculating diff.';
+					$('#aips-stress-diff-body').html(AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: msg }));
 				}
 			}).fail(function () {
 				var failMsg = t('requestFailed', 'Request failed.');
-				var noticeHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-notice'))
-					? AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: failMsg })
-					: '<div class="aips-stress-notice aips-stress-notice-danger"><p>' + failMsg + '</p></div>';
-				$('#aips-stress-diff-body').html(noticeHtml);
+				$('#aips-stress-diff-body').html(AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: failMsg }));
 			});
 		},
 
@@ -1455,199 +1366,105 @@
 		 * Render comparative diff modal view using AIPS.Templates.
 		 */
 		renderDiffModal: function (diff) {
-			var self = this;
 			var runA = diff.run_a;
 			var runB = diff.run_b;
 			var caseDiffs = diff.case_diffs || [];
 			var totalsDiff = diff.totals_diff || {};
 
 			var durDiff = totalsDiff.duration_diff || 0;
-			var durBadge = durDiff < 0
-				? '<span class="aips-stress-diff-delta-faster">(' + self.formatTime(Math.abs(durDiff)) + ' faster)</span>'
-				: (durDiff > 0 ? '<span class="aips-stress-diff-delta-slower">(+' + self.formatTime(durDiff) + ' slower)</span>' : '');
+			var durBadgeClass = durDiff < 0 ? 'aips-stress-diff-delta-faster' : (durDiff > 0 ? 'aips-stress-diff-delta-slower' : '');
 
 			var rowsHtml = '';
 			caseDiffs.forEach(function (c) {
 				var changeClass = c.status_change === 'regressed' ? 'aips-stress-diff-change-regressed' : (c.status_change === 'improved' ? 'aips-stress-diff-change-improved' : '');
-				var deltaBadge = '';
-				if (c.duration_diff < 0) {
-					deltaBadge = '<span class="aips-stress-diff-delta-faster">-' + self.formatTime(Math.abs(c.duration_diff)) + '</span>';
-				} else if (c.duration_diff > 0) {
-					deltaBadge = '<span class="aips-stress-diff-delta-slower">+' + self.formatTime(c.duration_diff) + '</span>';
-				} else {
-					deltaBadge = '0 ms';
-				}
+				var deltaClass = c.duration_diff < 0 ? 'aips-stress-diff-delta-faster' : (c.duration_diff > 0 ? 'aips-stress-diff-delta-slower' : '');
+				var changeBadgeClass = c.status_change === 'regressed' ? 'aips-badge-error' : (c.status_change === 'improved' ? 'aips-badge-success' : 'aips-badge-neutral');
 
-				var changeLabel = c.status_change === 'regressed'
-					? '<span class="aips-badge aips-badge-error">Regressed</span>'
-					: (c.status_change === 'improved' ? '<span class="aips-badge aips-badge-success">Improved</span>' : '<span class="aips-badge aips-badge-neutral">Unchanged</span>');
+				var rawA = (c.raw_status_a || c.status_a || '').toLowerCase();
+				var rawB = (c.raw_status_b || c.status_b || '').toLowerCase();
 
-				var statusAText = self.capitalize(c.status_a);
-				var statusBText = self.capitalize(c.status_b);
-
-				if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-diff-row')) {
-					rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-stress-diff-row', {
-						changeClass: changeClass,
-						label: AIPS.Templates.escape(c.label || c.case),
-						summary: AIPS.Templates.escape(c.summary_b || c.summary_a || ''),
-						statusA: AIPS.Templates.escape(statusAText),
-						statusABadgeClass: c.status_a === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
-						durationA: self.formatTime(c.duration_a),
-						statusB: AIPS.Templates.escape(statusBText),
-						statusBBadgeClass: c.status_b === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
-						durationB: self.formatTime(c.duration_b),
-						deltaBadgeHtml: deltaBadge,
-						changeBadgeHtml: changeLabel
-					});
-				} else {
-					rowsHtml += '<tr class="' + changeClass + '">' +
-						'<td><strong>' + (c.label || c.case) + '</strong><div style="font-size:11px;color:#64748b;">' + (c.summary_b || c.summary_a) + '</div></td>' +
-						'<td><span class="aips-badge ' + (c.status_a === 'passed' ? 'aips-badge-success' : 'aips-badge-error') + '">' + statusAText + '</span> (' + self.formatTime(c.duration_a) + ')</td>' +
-						'<td><span class="aips-badge ' + (c.status_b === 'passed' ? 'aips-badge-success' : 'aips-badge-error') + '">' + statusBText + '</span> (' + self.formatTime(c.duration_b) + ')</td>' +
-						'<td>' + deltaBadge + '</td>' +
-						'<td>' + changeLabel + '</td>' +
-					'</tr>';
-				}
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-stress-diff-row', {
+					changeClass:       changeClass,
+					label:             c.label || c.case,
+					summary:           c.summary_b || c.summary_a || '',
+					statusA:           c.status_a,
+					statusABadgeClass: rawA === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
+					durationA:         c.duration_a_formatted,
+					statusB:           c.status_b,
+					statusBBadgeClass: rawB === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
+					durationB:         c.duration_b_formatted,
+					deltaClass:        deltaClass,
+					durationDiff:      c.duration_diff_formatted || '0 ms',
+					changeBadgeClass:  changeBadgeClass,
+					changeLabel:       c.status_change_label || 'Unchanged'
+				});
 			});
 
-			var runAStatusText = self.capitalize(runA.status);
-			var runBStatusText = self.capitalize(runB.status);
+			var rawRunA = (runA.raw_status || runA.status || '').toLowerCase();
+			var rawRunB = (runB.raw_status || runB.status || '').toLowerCase();
 
-			if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-diff-modal')) {
-				var modalHtml = AIPS.Templates.renderRaw('aips-tmpl-stress-diff-modal', {
-					runAId: runA.id,
-					runAStatus: AIPS.Templates.escape(runAStatusText),
-					runABadgeClass: runA.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
-					runADate: AIPS.Templates.escape(runA.formatted_date),
-					runAProvider: AIPS.Templates.escape(runA.environment.provider || 'Default'),
-					runAModel: AIPS.Templates.escape(runA.environment.model || 'Default Model'),
-					runAPassed: runA.totals.passed || 0,
-					runATotal: runA.totals.cases || 0,
-					runADuration: self.formatTime(runA.totals.duration_ms || 0),
+			var modalHtml = AIPS.Templates.renderRaw('aips-tmpl-stress-diff-modal', {
+				runAId:         runA.id,
+				runAStatus:     runA.status,
+				runABadgeClass: rawRunA === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
+				runADate:       runA.formatted_date,
+				runAProvider:   (runA.environment && runA.environment.provider) ? runA.environment.provider : 'Default',
+				runAModel:      (runA.environment && runA.environment.model) ? runA.environment.model : 'Default Model',
+				runAPassed:     (runA.totals && runA.totals.passed) || 0,
+				runATotal:      (runA.totals && runA.totals.cases) || 0,
+				runADuration:   (runA.totals && runA.totals.duration_formatted) || '0 ms',
 
-					runBId: runB.id,
-					runBStatus: AIPS.Templates.escape(runBStatusText),
-					runBBadgeClass: runB.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
-					runBDate: AIPS.Templates.escape(runB.formatted_date),
-					runBProvider: AIPS.Templates.escape(runB.environment.provider || 'Default'),
-					runBModel: AIPS.Templates.escape(runB.environment.model || 'Default Model'),
-					runBPassed: runB.totals.passed || 0,
-					runBTotal: runB.totals.cases || 0,
-					runBDuration: self.formatTime(runB.totals.duration_ms || 0),
-					durBadgeHtml: durBadge,
-					rowsHtml: rowsHtml
-				});
-				$('#aips-stress-diff-body').html(modalHtml);
-			} else {
-				var fallbackHtml = '<div class="aips-stress-diff-meta-grid">' +
-					'<div class="aips-stress-diff-card">' +
-						'<h4>Base Run (#' + runA.id + ') <span class="aips-badge ' + (runA.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning') + '">' + runAStatusText + '</span></h4>' +
-						'<div class="aips-stress-diff-meta-list">' +
-							'<div><strong>Date:</strong> ' + runA.formatted_date + '</div>' +
-							'<div><strong>Provider:</strong> ' + (runA.environment.provider || 'Default') + ' (' + (runA.environment.model || 'Default Model') + ')</div>' +
-							'<div><strong>Passed:</strong> ' + (runA.totals.passed || 0) + ' / ' + (runA.totals.cases || 0) + ' cases</div>' +
-							'<div><strong>Total Duration:</strong> ' + self.formatTime(runA.totals.duration_ms || 0) + '</div>' +
-						'</div>' +
-					'</div>' +
-					'<div class="aips-stress-diff-card">' +
-						'<h4>Target / Comparison Run (#' + runB.id + ') <span class="aips-badge ' + (runB.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning') + '">' + runBStatusText + '</span></h4>' +
-						'<div class="aips-stress-diff-meta-list">' +
-							'<div><strong>Date:</strong> ' + runB.formatted_date + '</div>' +
-							'<div><strong>Provider:</strong> ' + (runB.environment.provider || 'Default') + ' (' + (runB.environment.model || 'Default Model') + ')</div>' +
-							'<div><strong>Passed:</strong> ' + (runB.totals.passed || 0) + ' / ' + (runB.totals.cases || 0) + ' cases</div>' +
-							'<div><strong>Total Duration:</strong> ' + self.formatTime(runB.totals.duration_ms || 0) + ' ' + durBadge + '</div>' +
-						'</div>' +
-					'</div>' +
-				'</div>';
+				runBId:         runB.id,
+				runBStatus:     runB.status,
+				runBBadgeClass: rawRunB === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
+				runBDate:       runB.formatted_date,
+				runBProvider:   (runB.environment && runB.environment.provider) ? runB.environment.provider : 'Default',
+				runBModel:      (runB.environment && runB.environment.model) ? runB.environment.model : 'Default Model',
+				runBPassed:     (runB.totals && runB.totals.passed) || 0,
+				runBTotal:      (runB.totals && runB.totals.cases) || 0,
+				runBDuration:   (runB.totals && runB.totals.duration_formatted) || '0 ms',
+				durBadgeClass:  durBadgeClass,
+				durBadgeLabel:  totalsDiff.duration_diff_label || '',
+				rowsHtml:       rowsHtml
+			});
 
-				fallbackHtml += '<table class="aips-stress-diff-table">' +
-					'<thead>' +
-						'<tr>' +
-							'<th>Test Case</th>' +
-							'<th>Base Run Status</th>' +
-							'<th>Target Run Status</th>' +
-							'<th>Duration Diff</th>' +
-							'<th>Outcome Delta</th>' +
-						'</tr>' +
-					'</thead>' +
-					'<tbody>' + rowsHtml + '</tbody></table>';
-
-				$('#aips-stress-diff-body').html(fallbackHtml);
-			}
+			$('#aips-stress-diff-body').html(modalHtml);
 		},
 
 		/**
 		 * Render single run modal view using AIPS.Templates.
 		 */
 		renderSingleRunModal: function (run) {
-			var self = this;
 			var results = run.results || [];
 			var rowsHtml = '';
 
 			results.forEach(function (r) {
-				var statusText = self.capitalize(r.status);
-				var durationFormatted = self.formatTime(r.duration_ms || 0);
-
-				if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-single-run-row')) {
-					rowsHtml += AIPS.Templates.render('aips-tmpl-stress-single-run-row', {
-						label: r.label || r.case,
-						status: statusText,
-						badgeClass: r.status === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
-						duration: durationFormatted,
-						summary: r.summary || ''
-					});
-				} else {
-					rowsHtml += '<tr>' +
-						'<td><strong>' + (r.label || r.case) + '</strong></td>' +
-						'<td><span class="aips-badge ' + (r.status === 'passed' ? 'aips-badge-success' : 'aips-badge-error') + '">' + statusText + '</span></td>' +
-						'<td>' + durationFormatted + '</td>' +
-						'<td>' + (r.summary || '') + '</td>' +
-					'</tr>';
-				}
+				var rawStatus = (r.raw_status || r.status || '').toLowerCase();
+				rowsHtml += AIPS.Templates.render('aips-tmpl-stress-single-run-row', {
+					label:      r.label || r.case,
+					status:     r.status,
+					badgeClass: rawStatus === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
+					duration:   r.duration_formatted || (r.duration_ms + ' ms'),
+					summary:    r.summary || ''
+				});
 			});
 
-			var runStatusText = self.capitalize(run.status);
-			var totalDurationFormatted = self.formatTime(run.totals.duration_ms || 0);
+			var rawRunStatus = (run.raw_status || run.status || '').toLowerCase();
+			var modalHtml = AIPS.Templates.renderRaw('aips-tmpl-stress-single-run', {
+				id:         run.id,
+				status:     run.status,
+				badgeClass: rawRunStatus === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
+				date:       run.formatted_date,
+				provider:   (run.environment && run.environment.provider) ? run.environment.provider : 'Default',
+				model:      (run.environment && run.environment.model) ? run.environment.model : 'Default',
+				passed:     (run.totals && run.totals.passed) || 0,
+				failed:     (run.totals && run.totals.failed) || 0,
+				total:      (run.totals && run.totals.cases) || 0,
+				duration:   (run.totals && run.totals.duration_formatted) || '0 ms',
+				rowsHtml:   rowsHtml
+			});
 
-			if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-single-run')) {
-				var modalHtml = AIPS.Templates.renderRaw('aips-tmpl-stress-single-run', {
-					id: run.id,
-					status: AIPS.Templates.escape(runStatusText),
-					badgeClass: run.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
-					date: AIPS.Templates.escape(run.formatted_date),
-					provider: AIPS.Templates.escape(run.environment.provider || 'Default'),
-					model: AIPS.Templates.escape(run.environment.model || 'Default'),
-					passed: run.totals.passed || 0,
-					failed: run.totals.failed || 0,
-					total: run.totals.cases || 0,
-					duration: totalDurationFormatted,
-					rowsHtml: rowsHtml
-				});
-				$('#aips-stress-diff-body').html(modalHtml);
-			} else {
-				var fallbackHtml = '<div class="aips-stress-diff-card" style="margin-bottom:16px;">' +
-					'<h4>Stress Test Run #' + run.id + ' <span class="aips-badge ' + (run.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning') + '">' + runStatusText + '</span></h4>' +
-					'<div class="aips-stress-diff-meta-list">' +
-						'<div><strong>Timestamp:</strong> ' + run.formatted_date + '</div>' +
-						'<div><strong>Provider:</strong> ' + (run.environment.provider || 'Default') + ' | <strong>Model:</strong> ' + (run.environment.model || 'Default') + '</div>' +
-						'<div><strong>Results:</strong> ' + (run.totals.passed || 0) + ' passed, ' + (run.totals.failed || 0) + ' failed across ' + (run.totals.cases || 0) + ' cases</div>' +
-						'<div><strong>Total Execution Time:</strong> ' + totalDurationFormatted + '</div>' +
-					'</div>' +
-				'</div>';
-
-				fallbackHtml += '<table class="aips-table" style="width:100%;">' +
-					'<thead>' +
-						'<tr>' +
-							'<th>Case</th>' +
-							'<th>Status</th>' +
-							'<th>Duration</th>' +
-							'<th>Summary</th>' +
-						'</tr>' +
-					'</thead>' +
-					'<tbody>' + rowsHtml + '</tbody></table>';
-
-				$('#aips-stress-diff-body').html(fallbackHtml);
-			}
+			$('#aips-stress-diff-body').html(modalHtml);
 		}
 	};
 

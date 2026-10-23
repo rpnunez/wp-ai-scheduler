@@ -77,17 +77,11 @@ if (!defined('ABSPATH')) {
 							</span>
 						</td>
 						<td>
-							<?php
-							if (round($run['duration_ms']) < 1000) {
-								echo esc_html(round($run['duration_ms']) . ' ms');
-							} else {
-								echo esc_html(sprintf('%.1f s', $run['duration_ms'] / 1000));
-							}
-							?>
+							<?php echo esc_html($run['duration_formatted']); ?>
 						</td>
 						<td>
-							<span class="aips-badge <?php echo $run['status'] === 'completed' ? 'aips-badge-success' : ($run['status'] === 'partial' ? 'aips-badge-warning' : 'aips-badge-error'); ?>">
-								<?php echo esc_html(ucfirst($run['status'])); ?>
+							<span class="aips-badge <?php echo strtolower($run['status']) === 'completed' ? 'aips-badge-success' : (strtolower($run['status']) === 'partial' ? 'aips-badge-warning' : 'aips-badge-error'); ?>">
+								<?php echo esc_html($run['status']); ?>
 							</span>
 						</td>
 						<td class="aips-text-right">
@@ -124,8 +118,8 @@ if (!defined('ABSPATH')) {
 
 	<!-- Client-Side Templates for AIPS.Templates Engine -->
 	<script type="text/html" id="aips-tmpl-stress-spinner">
-		<div class="aips-spinner-wrap aips-text-center aips-p-lg">
-			<span class="dashicons dashicons-update aips-spin aips-text-xl"></span>
+		<div class="aips-spinner-wrap aips-stress-spinner-wrap aips-text-center aips-p-lg">
+			<span class="dashicons dashicons-update aips-spin aips-stress-spinner-icon aips-text-xl"></span>
 		</div>
 	</script>
 
@@ -152,7 +146,7 @@ if (!defined('ABSPATH')) {
 					<div><strong>Date:</strong> {{runBDate}}</div>
 					<div><strong>Provider:</strong> {{runBProvider}} ({{runBModel}})</div>
 					<div><strong>Passed:</strong> {{runBPassed}} / {{runBTotal}} cases</div>
-					<div><strong>Total Duration:</strong> {{runBDuration}} {{durBadgeHtml}}</div>
+					<div><strong>Total Duration:</strong> {{runBDuration}} <span class="{{durBadgeClass}}">{{durBadgeLabel}}</span></div>
 				</div>
 			</div>
 		</div>
@@ -177,8 +171,8 @@ if (!defined('ABSPATH')) {
 			<td><strong>{{label}}</strong><div class="aips-text-xs aips-text-muted">{{summary}}</div></td>
 			<td><span class="aips-badge {{statusABadgeClass}}">{{statusA}}</span> ({{durationA}})</td>
 			<td><span class="aips-badge {{statusBBadgeClass}}">{{statusB}}</span> ({{durationB}})</td>
-			<td>{{deltaBadgeHtml}}</td>
-			<td>{{changeBadgeHtml}}</td>
+			<td><span class="{{deltaClass}}">{{durationDiff}}</span></td>
+			<td><span class="aips-badge {{changeBadgeClass}}">{{changeLabel}}</span></td>
 		</tr>
 	</script>
 

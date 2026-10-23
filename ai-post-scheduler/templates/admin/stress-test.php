@@ -235,8 +235,8 @@ foreach ($cases as $case) {
 			</script>
 
 			<script type="text/html" id="aips-tmpl-stress-spinner">
-				<div class="aips-spinner aips-stress-spinner-wrap">
-					<span class="dashicons dashicons-update aips-stress-spinner-icon"></span>
+				<div class="aips-spinner-wrap aips-stress-spinner-wrap aips-text-center aips-p-lg">
+					<span class="dashicons dashicons-update aips-spin aips-stress-spinner-icon aips-text-xl"></span>
 				</div>
 			</script>
 
@@ -263,7 +263,7 @@ foreach ($cases as $case) {
 							<div><strong>Date:</strong> {{runBDate}}</div>
 							<div><strong>Provider:</strong> {{runBProvider}} ({{runBModel}})</div>
 							<div><strong>Passed:</strong> {{runBPassed}} / {{runBTotal}} cases</div>
-							<div><strong>Total Duration:</strong> {{runBDuration}} {{durBadgeHtml}}</div>
+							<div><strong>Total Duration:</strong> {{runBDuration}} <span class="{{durBadgeClass}}">{{durBadgeLabel}}</span></div>
 						</div>
 					</div>
 				</div>
@@ -288,8 +288,8 @@ foreach ($cases as $case) {
 					<td><strong>{{label}}</strong><div class="aips-stress-row-summary">{{summary}}</div></td>
 					<td><span class="aips-badge {{statusABadgeClass}}">{{statusA}}</span> ({{durationA}})</td>
 					<td><span class="aips-badge {{statusBBadgeClass}}">{{statusB}}</span> ({{durationB}})</td>
-					<td>{{deltaBadgeHtml}}</td>
-					<td>{{changeBadgeHtml}}</td>
+					<td><span class="{{deltaClass}}">{{durationDiff}}</span></td>
+					<td><span class="aips-badge {{changeBadgeClass}}">{{changeLabel}}</span></td>
 				</tr>
 			</script>
 
