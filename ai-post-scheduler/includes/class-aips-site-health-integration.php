@@ -106,10 +106,7 @@ class AIPS_Site_Health_Integration {
 	 * @return array<string, mixed>
 	 */
 	public static function test_ai_provider() {
-		$has_provider = false;
-		if (class_exists('AIPS_AI_Provider_Factory')) {
-			$has_provider = AIPS_AI_Provider_Factory::has_available_provider();
-		}
+		$has_provider = AIPS_AI_Provider_Factory::has_available_provider();
 
 		if ($has_provider) {
 			return array(
@@ -162,11 +159,8 @@ class AIPS_Site_Health_Integration {
 
 		if (!$next_run) {
 			// Check if there are active schedules in the database
-			$active_schedules_count = 0;
-			if (class_exists('AIPS_Schedule_Repository')) {
-				$repo = new AIPS_Schedule_Repository();
-				$active_schedules_count = $repo->count_active();
-			}
+			$repo = new AIPS_Schedule_Repository();
+			$active_schedules_count = $repo->count_active();
 
 			if ($active_schedules_count > 0) {
 				return array(
@@ -313,10 +307,7 @@ class AIPS_Site_Health_Integration {
 	 * @return array<string, mixed>
 	 */
 	public static function test_token_budget() {
-		$budget_limit = 0;
-		if (class_exists('AIPS_Config')) {
-			$budget_limit = (int) AIPS_Config::get_instance()->get_option('aips_monthly_token_budget', 0);
-		}
+		$budget_limit = (int) AIPS_Config::get_instance()->get_option('aips_monthly_token_budget', 0);
 
 		if ($budget_limit <= 0) {
 			return array(
@@ -336,14 +327,11 @@ class AIPS_Site_Health_Integration {
 		}
 
 		// Calculate current usage for the current month
-		$used_tokens = 0;
-		if (class_exists('AIPS_Dashboard_Repository')) {
-			$repo = new AIPS_Dashboard_Repository();
-			$month_start = strtotime('first day of this month 00:00:00');
-			$month_end   = strtotime('last day of this month 23:59:59');
-			$stats = $repo->get_summary_stats($month_start, $month_end);
-			$used_tokens = isset($stats['total_tokens']) ? (int) $stats['total_tokens'] : 0;
-		}
+		$repo = new AIPS_Dashboard_Repository();
+		$month_start = strtotime('first day of this month 00:00:00');
+		$month_end   = strtotime('last day of this month 23:59:59');
+		$stats = $repo->get_summary_stats($month_start, $month_end);
+		$used_tokens = isset($stats['total_tokens']) ? (int) $stats['total_tokens'] : 0;
 
 		$percent = $budget_limit > 0 ? ($used_tokens / $budget_limit) * 100 : 0;
 
@@ -403,12 +391,7 @@ class AIPS_Site_Health_Integration {
 	 */
 	public static function test_ai_connectivity_direct() {
 		$start_time = microtime(true);
-		$available  = false;
-
-		if (class_exists('AIPS_AI_Provider_Factory')) {
-			$available = AIPS_AI_Provider_Factory::has_available_provider();
-		}
-
+		$available  = AIPS_AI_Provider_Factory::has_available_provider();
 		$latency = round((microtime(true) - $start_time) * 1000, 2);
 
 		if ($available) {
@@ -487,43 +470,35 @@ class AIPS_Site_Health_Integration {
 		);
 
 		// Provider & Model Info
-		if (class_exists('AIPS_Config')) {
-			$config = AIPS_Config::get_instance();
-			$fields['default_model'] = array(
-				'label' => __('Default AI Model', 'ai-post-scheduler'),
-				'value' => $config->get_option('aips_default_model', 'Default'),
-			);
-			$fields['default_temperature'] = array(
-				'label' => __('Default Temperature', 'ai-post-scheduler'),
-				'value' => (string) $config->get_option('aips_default_temperature', '0.7'),
-			);
-		}
+		$config = AIPS_Config::get_instance();
+		$fields['default_model'] = array(
+			'label' => __('Default AI Model', 'ai-post-scheduler'),
+			'value' => $config->get_option('aips_default_model', 'Default'),
+		);
+		$fields['default_temperature'] = array(
+			'label' => __('Default Temperature', 'ai-post-scheduler'),
+			'value' => (string) $config->get_option('aips_default_temperature', '0.7'),
+		);
 
 		// Active counts
-		if (class_exists('AIPS_Schedule_Repository')) {
-			$schedule_repo = new AIPS_Schedule_Repository();
-			$fields['active_schedules'] = array(
-				'label' => __('Active Schedules', 'ai-post-scheduler'),
-				'value' => (string) $schedule_repo->count_active(),
-			);
-		}
+		$schedule_repo = new AIPS_Schedule_Repository();
+		$fields['active_schedules'] = array(
+			'label' => __('Active Schedules', 'ai-post-scheduler'),
+			'value' => (string) $schedule_repo->count_active(),
+		);
 
-		if (class_exists('AIPS_Template_Repository')) {
-			$template_repo = new AIPS_Template_Repository();
-			$fields['total_templates'] = array(
-				'label' => __('Configured Templates', 'ai-post-scheduler'),
-				'value' => (string) $template_repo->count_all(),
-			);
-		}
+		$template_repo = new AIPS_Template_Repository();
+		$fields['total_templates'] = array(
+			'label' => __('Configured Templates', 'ai-post-scheduler'),
+			'value' => (string) $template_repo->count_all(),
+		);
 
-		if (class_exists('AIPS_Author_Topics_Repository')) {
-			$topics_repo = new AIPS_Author_Topics_Repository();
-			$counts = $topics_repo->get_global_status_counts();
-			$fields['approved_topic_queue'] = array(
-				'label' => __('Approved Topics in Queue', 'ai-post-scheduler'),
-				'value' => (string) (isset($counts['approved']) ? $counts['approved'] : 0),
-			);
-		}
+		$topics_repo = new AIPS_Author_Topics_Repository();
+		$counts = $topics_repo->get_global_status_counts();
+		$fields['approved_topic_queue'] = array(
+			'label' => __('Approved Topics in Queue', 'ai-post-scheduler'),
+			'value' => (string) (isset($counts['approved']) ? $counts['approved'] : 0),
+		);
 
 		$fields['next_cron_event'] = array(
 			'label' => __('Next Scheduled Cron', 'ai-post-scheduler'),

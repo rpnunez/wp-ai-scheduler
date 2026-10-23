@@ -123,36 +123,7 @@ class AIPS_Admin_Pointers {
 
 		// Inject pointer initialization script
 		add_action('admin_footer', function() use ($active) {
-			?>
-			<script type="text/javascript">
-				jQuery(document).ready(function($) {
-					var activePointers = <?php echo wp_json_encode($active); ?>;
-					$.each(activePointers, function(pointerId, pointerData) {
-						var $target = $(pointerData.target);
-						if (!$target.length) {
-							return;
-						}
-
-						var contentHtml = '<h3>' + pointerData.title + '</h3><p>' + pointerData.content + '</p>';
-
-						$target.pointer({
-							content: contentHtml,
-							position: {
-								edge: pointerData.edge,
-								align: pointerData.align
-							},
-							close: function() {
-								$.post(ajaxurl, {
-									action: 'dismiss-wp-pointer',
-									pointer: pointerId,
-									_ajax_nonce: pointerData.nonce
-								});
-							}
-						}).pointer('open');
-					});
-				});
-			</script>
-			<?php
+			include AIPS_PLUGIN_DIR . 'templates/admin/partials/pointers/admin-pointers-script.php';
 		}, 30);
 	}
 }

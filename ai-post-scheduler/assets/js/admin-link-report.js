@@ -395,7 +395,7 @@
 			$('#aips-link-report-rebuild').prop('disabled', true);
 
 			// Accelerate native WordPress Heartbeat interval to 5s while backfill is running
-			if (typeof wp !== 'undefined' && wp.heartbeat && typeof wp.heartbeat.interval === 'function') {
+			if (window.wp && wp.heartbeat) {
 				wp.heartbeat.interval('fast');
 			}
 
@@ -418,7 +418,7 @@
 			this.pollTimer = null;
 
 			// Restore standard Heartbeat interval
-			if (typeof wp !== 'undefined' && wp.heartbeat && typeof wp.heartbeat.interval === 'function') {
+			if (window.wp && wp.heartbeat) {
 				wp.heartbeat.interval('standard');
 			}
 		},
@@ -438,9 +438,7 @@
 			if (!backfill || backfill.status !== 'processing') {
 				this.stopPolling();
 				if (backfill && backfill.status === 'completed') {
-					if (AIPS.Utilities && AIPS.Utilities.showToast) {
-						AIPS.Utilities.showToast(l10n.rebuildDone, 'success');
-					}
+					AIPS.Utilities.showToast(l10n.rebuildDone, 'success');
 				}
 				this.load();
 			}
@@ -465,9 +463,7 @@
 				if (!backfill || backfill.status !== 'processing') {
 					self.stopPolling();
 					if (backfill && backfill.status === 'completed') {
-						if (AIPS.Utilities && AIPS.Utilities.showToast) {
-							AIPS.Utilities.showToast(l10n.rebuildDone, 'success');
-						}
+						AIPS.Utilities.showToast(l10n.rebuildDone, 'success');
 					}
 					self.load();
 				}
