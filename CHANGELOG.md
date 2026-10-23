@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Presets & Selective Import/Export (#2290)
+- Added built-in Starter Presets (`AIPS_Preset_Registry` and `AIPS_Preset_Installer`) with 4 core niches: News & Industry Updates, Comprehensive How-To Guides, Product Reviews & Comparisons, and Thought Leadership & Deep Dives.
+- Added strict clean removal with safety verification preventing accidental deletion when generated posts or executed schedule runs exist.
+- Introduced Onboarding Wizard Fast-Track Choice step allowing instant blueprint provisioning and advancing directly to Topic Review and First Post generation.
+- Added "Import & Export" Settings rail tab with Starter Presets Gallery, selective entity export with automated dependency resolution, and smart JSON import with conflict resolution policies (Copy, Overwrite, Skip) and relational ID remapping.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
