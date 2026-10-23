@@ -17,6 +17,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Selective_Exporter {
 
 	/**
+	 * @var AIPS_Import_Export_Repository
+	 */
+	private $repository;
+
+	/**
 	 * Available exportable entity types and their human-readable labels.
 	 *
 	 * @var array<string, string>
@@ -37,14 +42,21 @@ class AIPS_Selective_Exporter {
 	);
 
 	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Import_Export_Repository|null $repository Optional repository.
+	 */
+	public function __construct(?AIPS_Import_Export_Repository $repository = null) {
+		$this->repository = $repository ?: AIPS_Import_Export_Repository::instance();
+	}
+
+	/**
 	 * Export selected entity types to an array structure.
 	 *
 	 * @param array $selected_types List of entity keys to export.
 	 * @return array Export package array.
 	 */
 	public function export_data(array $selected_types): array {
-		global $wpdb;
-
 		$package = array(
 			'generator'      => 'AI_Post_Scheduler',
 			'version'        => defined('AIPS_VERSION') ? AIPS_VERSION : '3.7.19',
@@ -57,79 +69,57 @@ class AIPS_Selective_Exporter {
 
 		// 1. Voices
 		if (isset($types['voices'])) {
-			$table = $wpdb->prefix . 'aips_voices';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['voices'] = $rows;
+			$package['entities']['voices'] = $this->repository->export_table_rows('voices');
 		}
 
 		// 2. Prompt Sections
 		if (isset($types['prompt_sections'])) {
-			$table = $wpdb->prefix . 'aips_prompt_sections';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['prompt_sections'] = $rows;
+			$package['entities']['prompt_sections'] = $this->repository->export_table_rows('prompt_sections');
 		}
 
 		// 3. Article Structures
 		if (isset($types['article_structures'])) {
-			$table = $wpdb->prefix . 'aips_article_structures';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['article_structures'] = $rows;
+			$package['entities']['article_structures'] = $this->repository->export_table_rows('article_structures');
 		}
 
 		// 4. Authors
 		if (isset($types['authors'])) {
-			$table = $wpdb->prefix . 'aips_authors';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['authors'] = $rows;
+			$package['entities']['authors'] = $this->repository->export_table_rows('authors');
 		}
 
 		// 5. Author Topics
 		if (isset($types['author_topics'])) {
-			$table = $wpdb->prefix . 'aips_author_topics';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['author_topics'] = $rows;
+			$package['entities']['author_topics'] = $this->repository->export_table_rows('author_topics');
 		}
 
 		// 6. Templates
 		if (isset($types['templates'])) {
-			$table = $wpdb->prefix . 'aips_templates';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['templates'] = $rows;
+			$package['entities']['templates'] = $this->repository->export_table_rows('templates');
 		}
 
 		// 7. Schedules
 		if (isset($types['schedules'])) {
-			$table = $wpdb->prefix . 'aips_schedule';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['schedules'] = $rows;
+			$package['entities']['schedules'] = $this->repository->export_table_rows('schedules');
 		}
 
 		// 8. Post Slices
 		if (isset($types['post_slices'])) {
-			$table = $wpdb->prefix . 'aips_post_slices';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['post_slices'] = $rows;
+			$package['entities']['post_slices'] = $this->repository->export_table_rows('post_slices');
 		}
 
 		// 9. Sources
 		if (isset($types['sources'])) {
-			$table = $wpdb->prefix . 'aips_sources';
-			$rows  = $wpdb->get_results("SELECT * FROM $table", ARRAY_A) ?: array();
-			$package['entities']['sources'] = $rows;
+			$package['entities']['sources'] = $this->repository->export_table_rows('sources');
 		}
 
 		// 10. Source Data
 		if (isset($types['sources_data'])) {
-			$table = $wpdb->prefix . 'aips_sources_data';
-			$rows  = $wpdb->get_results("SELECT * FROM $table LIMIT 5000", ARRAY_A) ?: array();
-			$package['entities']['sources_data'] = $rows;
+			$package['entities']['sources_data'] = $this->repository->export_table_rows('sources_data', 5000);
 		}
 
 		// 11. History
 		if (isset($types['history'])) {
-			$table = $wpdb->prefix . 'aips_history';
-			$rows  = $wpdb->get_results("SELECT * FROM $table ORDER BY id DESC LIMIT 1000", ARRAY_A) ?: array();
-			$package['entities']['history'] = $rows;
+			$package['entities']['history'] = $this->repository->export_table_rows('history', 1000, 'id DESC');
 		}
 
 		// 12. Settings
@@ -170,8 +160,6 @@ class AIPS_Selective_Exporter {
 	 * @param array &$package Export package.
 	 */
 	private function resolve_dependencies(array &$package): void {
-		global $wpdb;
-
 		for ($pass = 0; $pass < 3; $pass++) {
 			$added_any = false;
 
@@ -196,9 +184,7 @@ class AIPS_Selective_Exporter {
 					$existing_tpl = !empty($package['entities']['templates']) ? wp_list_pluck($package['entities']['templates'], 'id') : array();
 					$missing_tpl  = array_diff($tpl_ids, $existing_tpl);
 					if (!empty($missing_tpl)) {
-						$table = $wpdb->prefix . 'aips_templates';
-						$in    = implode(',', array_map('absint', $missing_tpl));
-						$rows  = $wpdb->get_results("SELECT * FROM $table WHERE id IN ($in)", ARRAY_A) ?: array();
+						$rows = $this->repository->export_rows_by_ids('templates', $missing_tpl);
 						$package['entities']['templates'] = array_merge($package['entities']['templates'] ?? array(), $rows);
 						$added_any = true;
 					}
@@ -208,9 +194,7 @@ class AIPS_Selective_Exporter {
 					$existing_author_ids = !empty($package['entities']['authors']) ? wp_list_pluck($package['entities']['authors'], 'id') : array();
 					$missing_authors     = array_diff($author_ids, $existing_author_ids);
 					if (!empty($missing_authors)) {
-						$table = $wpdb->prefix . 'aips_authors';
-						$in    = implode(',', array_map('absint', $missing_authors));
-						$rows  = $wpdb->get_results("SELECT * FROM $table WHERE id IN ($in)", ARRAY_A) ?: array();
+						$rows = $this->repository->export_rows_by_ids('authors', $missing_authors);
 						$package['entities']['authors'] = array_merge($package['entities']['authors'] ?? array(), $rows);
 						$added_any = true;
 					}
@@ -220,9 +204,7 @@ class AIPS_Selective_Exporter {
 					$existing_struct = !empty($package['entities']['article_structures']) ? wp_list_pluck($package['entities']['article_structures'], 'id') : array();
 					$missing_struct  = array_diff($struct_ids, $existing_struct);
 					if (!empty($missing_struct)) {
-						$table = $wpdb->prefix . 'aips_article_structures';
-						$in    = implode(',', array_map('absint', $missing_struct));
-						$rows  = $wpdb->get_results("SELECT * FROM $table WHERE id IN ($in)", ARRAY_A) ?: array();
+						$rows = $this->repository->export_rows_by_ids('article_structures', $missing_struct);
 						$package['entities']['article_structures'] = array_merge($package['entities']['article_structures'] ?? array(), $rows);
 						$added_any = true;
 					}
@@ -246,9 +228,7 @@ class AIPS_Selective_Exporter {
 					$existing_voice_ids = !empty($package['entities']['voices']) ? wp_list_pluck($package['entities']['voices'], 'id') : array();
 					$missing_voices     = array_diff($voice_ids, $existing_voice_ids);
 					if (!empty($missing_voices)) {
-						$table = $wpdb->prefix . 'aips_voices';
-						$in    = implode(',', array_map('absint', $missing_voices));
-						$rows  = $wpdb->get_results("SELECT * FROM $table WHERE id IN ($in)", ARRAY_A) ?: array();
+						$rows = $this->repository->export_rows_by_ids('voices', $missing_voices);
 						$package['entities']['voices'] = array_merge($package['entities']['voices'] ?? array(), $rows);
 						$added_any = true;
 					}
@@ -258,9 +238,7 @@ class AIPS_Selective_Exporter {
 					$existing_author_ids = !empty($package['entities']['authors']) ? wp_list_pluck($package['entities']['authors'], 'id') : array();
 					$missing_authors     = array_diff($author_ids, $existing_author_ids);
 					if (!empty($missing_authors)) {
-						$table = $wpdb->prefix . 'aips_authors';
-						$in    = implode(',', array_map('absint', $missing_authors));
-						$rows  = $wpdb->get_results("SELECT * FROM $table WHERE id IN ($in)", ARRAY_A) ?: array();
+						$rows = $this->repository->export_rows_by_ids('authors', $missing_authors);
 						$package['entities']['authors'] = array_merge($package['entities']['authors'] ?? array(), $rows);
 						$added_any = true;
 					}
@@ -283,12 +261,7 @@ class AIPS_Selective_Exporter {
 					$existing_keys = !empty($package['entities']['prompt_sections']) ? wp_list_pluck($package['entities']['prompt_sections'], 'section_key') : array();
 					$missing_keys  = array_unique(array_diff($needed_section_keys, $existing_keys));
 					if (!empty($missing_keys)) {
-						$table = $wpdb->prefix . 'aips_prompt_sections';
-						$escaped = array_map(function ($k) use ($wpdb) {
-							return "'" . esc_sql(sanitize_key($k)) . "'";
-						}, $missing_keys);
-						$in   = implode(',', $escaped);
-						$rows = $wpdb->get_results("SELECT * FROM $table WHERE section_key IN ($in)", ARRAY_A) ?: array();
+						$rows = $this->repository->export_sections_by_keys($missing_keys);
 						$package['entities']['prompt_sections'] = array_merge($package['entities']['prompt_sections'] ?? array(), $rows);
 						$added_any = true;
 					}

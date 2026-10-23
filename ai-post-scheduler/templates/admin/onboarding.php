@@ -72,38 +72,40 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 		</div>
 
 		<!-- Fast-Track Starter Presets Card -->
-		<div class="aips-content-panel" style="margin-top: 20px; border: 2px solid #3b82f6; background:#f8faff;">
-			<div class="aips-panel-header" style="background:#eff6ff;">
-				<h2 style="color:#1d4ed8;">
-					<span class="dashicons dashicons-superhero" style="margin-right:6px; font-size:20px;"></span>
+		<div class="aips-content-panel aips-onboarding-presets-panel">
+			<div class="aips-panel-header aips-onboarding-presets-header">
+				<h2 class="aips-onboarding-presets-title">
+					<span class="dashicons dashicons-superhero"></span>
 					<?php esc_html_e('Fast-Track: Pick a Starter Preset Blueprint', 'ai-post-scheduler'); ?>
-					<span class="aips-badge aips-badge-primary" style="margin-left: 10px; background:#2563eb; color:#fff;"><?php esc_html_e('Recommended', 'ai-post-scheduler'); ?></span>
+					<span class="aips-badge aips-badge-primary aips-onboarding-presets-badge"><?php esc_html_e('Recommended', 'ai-post-scheduler'); ?></span>
 				</h2>
 			</div>
 			<div class="aips-panel-body">
-				<p class="description" style="font-size:13px; color:#1e3a8a;">
+				<p class="description aips-onboarding-presets-desc">
 					<?php esc_html_e('Want to get up & running in seconds? Select a starter preset below to automatically provision an optimized Content Strategy, Voice, Article Structure, Author persona, and Template all in one click. You can also build from scratch below.', 'ai-post-scheduler'); ?>
 				</p>
-				<div class="aips-presets-onboarding-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-top:14px;">
+				<div class="aips-onboarding-presets-grid">
 					<?php
 					$starter_presets = AIPS_Preset_Registry::get_presets();
 					foreach ($starter_presets as $pid => $preset) :
 					?>
-						<div class="aips-onboarding-preset-card" style="background:#ffffff; border:1px solid #bfdbfe; border-radius:8px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 1px 3px rgba(37,99,235,0.06);">
+						<div class="aips-onboarding-preset-card">
 							<div>
-								<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-									<span class="dashicons <?php echo esc_attr($preset['icon']); ?>" style="color:#2563eb; font-size:22px; width:22px; height:22px;"></span>
-									<h4 style="margin:0; font-size:13px; font-weight:600; color:#1e293b;"><?php echo esc_html($preset['name']); ?></h4>
+								<div class="aips-preset-card-header">
+									<span class="dashicons <?php echo esc_attr($preset['icon']); ?> aips-preset-icon"></span>
+									<h4 class="aips-onboarding-preset-title"><?php echo esc_html($preset['name']); ?></h4>
 								</div>
-								<p style="font-size:11px; color:#475569; margin:0 0 10px; line-height:1.4;"><?php echo esc_html($preset['tagline']); ?></p>
-								<div style="font-size:10px; color:#64748b; background:#f1f5f9; padding:6px 8px; border-radius:4px; margin-bottom:10px;">
+								<p class="aips-onboarding-preset-tagline"><?php echo esc_html($preset['tagline']); ?></p>
+								<div class="aips-preset-usage-notice">
 									<div><strong><?php esc_html_e('Author:', 'ai-post-scheduler'); ?></strong> <?php echo esc_html($preset['author']['name']); ?></div>
 									<div><strong><?php esc_html_e('Cadence:', 'ai-post-scheduler'); ?></strong> <?php echo esc_html(ucfirst($preset['schedule']['frequency'])); ?></div>
 								</div>
 							</div>
-							<button type="button" class="button button-primary aips-btn aips-btn-primary aips-onboarding-preset-btn" data-preset-id="<?php echo esc_attr($pid); ?>" style="width:100%; justify-content:center;">
-								<?php esc_html_e('Select & Fast-Track', 'ai-post-scheduler'); ?>
-							</button>
+							<div class="aips-onboarding-preset-action">
+								<button type="button" class="button button-primary aips-btn aips-btn-primary aips-onboarding-preset-btn" data-preset-id="<?php echo esc_attr($pid); ?>">
+									<?php esc_html_e('Select & Fast-Track', 'ai-post-scheduler'); ?>
+								</button>
+							</div>
 						</div>
 					<?php endforeach; ?>
 				</div>

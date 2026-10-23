@@ -54,6 +54,11 @@ class AIPS_Preset_Installer {
 	private $schedule_repo;
 
 	/**
+	 * @var AIPS_Import_Export_Repository
+	 */
+	private $import_export_repo;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct(
@@ -63,15 +68,17 @@ class AIPS_Preset_Installer {
 		?AIPS_Authors_Repository $authors_repo = null,
 		?AIPS_Author_Topics_Repository $topics_repo = null,
 		?AIPS_Template_Repository $template_repo = null,
-		?AIPS_Schedule_Repository $schedule_repo = null
+		?AIPS_Schedule_Repository $schedule_repo = null,
+		?AIPS_Import_Export_Repository $import_export_repo = null
 	) {
-		$this->voices_repo    = $voices_repo ?: AIPS_Voices_Repository::instance();
-		$this->section_repo   = $section_repo ?: AIPS_Prompt_Section_Repository::instance();
-		$this->structure_repo = $structure_repo ?: AIPS_Article_Structure_Repository::instance();
-		$this->authors_repo   = $authors_repo ?: AIPS_Authors_Repository::instance();
-		$this->topics_repo    = $topics_repo ?: AIPS_Author_Topics_Repository::instance();
-		$this->template_repo  = $template_repo ?: AIPS_Template_Repository::instance();
-		$this->schedule_repo  = $schedule_repo ?: AIPS_Schedule_Repository::instance();
+		$this->voices_repo        = $voices_repo ?: AIPS_Voices_Repository::instance();
+		$this->section_repo       = $section_repo ?: AIPS_Prompt_Section_Repository::instance();
+		$this->structure_repo     = $structure_repo ?: AIPS_Article_Structure_Repository::instance();
+		$this->authors_repo       = $authors_repo ?: AIPS_Authors_Repository::instance();
+		$this->topics_repo        = $topics_repo ?: AIPS_Author_Topics_Repository::instance();
+		$this->template_repo      = $template_repo ?: AIPS_Template_Repository::instance();
+		$this->schedule_repo      = $schedule_repo ?: AIPS_Schedule_Repository::instance();
+		$this->import_export_repo = $import_export_repo ?: AIPS_Import_Export_Repository::instance();
 	}
 
 	/**
@@ -112,8 +119,6 @@ class AIPS_Preset_Installer {
 	 * @return array
 	 */
 	public function get_usage_stats(string $preset_id): array {
-		global $wpdb;
-
 		$entities = $this->get_preset_entities($preset_id);
 		$stats    = array(
 			'post_count'    => 0,
@@ -125,39 +130,13 @@ class AIPS_Preset_Installer {
 			return $stats;
 		}
 
-		$template_ids = !empty($entities['template_ids']) ? array_map('absint', $entities['template_ids']) : array();
-		$author_ids   = !empty($entities['author_ids']) ? array_map('absint', $entities['author_ids']) : array();
-		$schedule_ids = !empty($entities['schedule_ids']) ? array_map('absint', $entities['schedule_ids']) : array();
+		$template_ids = !empty($entities['template_ids']) ? (array) $entities['template_ids'] : array();
+		$author_ids   = !empty($entities['author_ids']) ? (array) $entities['author_ids'] : array();
+		$schedule_ids = !empty($entities['schedule_ids']) ? (array) $entities['schedule_ids'] : array();
 
-		// Check active run history or generated posts in aips_history.
-		$history_table = $wpdb->prefix . 'aips_history';
-		if ($wpdb->get_var("SHOW TABLES LIKE '$history_table'") === $history_table) {
-			$where_clauses = array();
-			if (!empty($template_ids)) {
-				$in_templates    = implode(',', $template_ids);
-				$where_clauses[] = "template_id IN ($in_templates)";
-			}
-			if (!empty($author_ids)) {
-				$in_authors      = implode(',', $author_ids);
-				$where_clauses[] = "author_id IN ($in_authors)";
-			}
-
-			if (!empty($where_clauses)) {
-				$where = implode(' OR ', $where_clauses);
-				$count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $history_table WHERE ($where) AND post_id IS NOT NULL AND post_id > 0");
-				$stats['post_count'] = $count;
-			}
-		}
-
-		// Check if any schedule has run (last_run > 0).
-		if (!empty($schedule_ids)) {
-			$schedule_table = $wpdb->prefix . 'aips_schedule';
-			if ($wpdb->get_var("SHOW TABLES LIKE '$schedule_table'") === $schedule_table) {
-				$in_schedules = implode(',', $schedule_ids);
-				$runs = (int) $wpdb->get_var("SELECT COUNT(*) FROM $schedule_table WHERE id IN ($in_schedules) AND last_run > 0");
-				$stats['schedules_run'] = $runs;
-			}
-		}
+		$usage = $this->import_export_repo->get_preset_usage_stats($template_ids, $author_ids, $schedule_ids);
+		$stats['post_count']    = $usage['post_count'];
+		$stats['schedules_run'] = $usage['schedules_run'];
 
 		return $stats;
 	}

@@ -563,7 +563,11 @@
 				success: function(res) {
 					$('#aips-presets-loading').hide();
 					if (!res.success || !res.data || !res.data.presets) {
-						$grid.html('<p class="notice notice-error">' + (res.data && res.data.message ? res.data.message : 'Failed to load presets.') + '</p>');
+						var errMsg = (res.data && res.data.message) ? res.data.message : 'Failed to load presets.';
+						$grid.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+							notice_class: 'notice-error',
+							message: errMsg
+						}));
 						return;
 					}
 
@@ -571,43 +575,45 @@
 					var html = '';
 					presets.forEach(function(p) {
 						var statusBadge = p.is_installed
-							? '<span class="aips-badge aips-badge-success" style="background:#10b981; color:#fff; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;">Installed</span>'
-							: '<span class="aips-badge aips-badge-neutral" style="background:#e2e8f0; color:#475569; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;">Available</span>';
+							? AIPS.Templates.render('aips-tmpl-preset-badge-installed')
+							: AIPS.Templates.render('aips-tmpl-preset-badge-available');
 
 						var actionBtn = p.is_installed
-							? '<button type="button" class="button aips-btn aips-btn-danger aips-preset-remove-btn" data-preset-id="' + p.id + '" data-has-posts="' + (p.post_count > 0 ? '1' : '0') + '" data-posts="' + p.post_count + '" style="color:#b91c1c; border-color:#fca5a5;">Remove</button>'
-							: '<button type="button" class="button button-primary aips-btn aips-btn-primary aips-preset-install-btn" data-preset-id="' + p.id + '">Install Preset</button>';
+							? AIPS.Templates.render('aips-tmpl-preset-btn-remove', {
+								id: p.id,
+								has_posts: p.post_count > 0 ? '1' : '0',
+								post_count: p.post_count
+							})
+							: AIPS.Templates.render('aips-tmpl-preset-btn-install', {
+								id: p.id
+							});
 
 						var usageNotice = (p.is_installed && p.post_count > 0)
-							? '<p style="font-size:11px; color:#64748b; margin:6px 0 0;">' + p.post_count + ' post(s) generated</p>'
+							? AIPS.Templates.render('aips-tmpl-preset-usage-notice', { post_count: p.post_count })
 							: '';
 
-						html += '<div class="aips-preset-card" style="border:1px solid #e2e8f0; border-radius:8px; padding:16px; background:#ffffff; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 1px 3px rgba(0,0,0,0.05);">'
-							+ '<div>'
-							+ '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">'
-							+ '<span class="dashicons ' + p.icon + '" style="font-size:24px; width:24px; height:24px; color:#2563eb;"></span>'
-							+ statusBadge
-							+ '</div>'
-							+ '<h4 style="margin:4px 0 6px; font-size:14px; font-weight:600;">' + p.name + '</h4>'
-							+ '<p style="font-size:12px; color:#475569; margin:0 0 10px; line-height:1.4;">' + p.tagline + '</p>'
-							+ '<ul style="font-size:11px; color:#64748b; margin:0 0 14px; padding-left:14px; line-height:1.5;">'
-							+ '<li><strong>Author:</strong> ' + p.author_name + '</li>'
-							+ '<li><strong>Template:</strong> ' + p.template_name + '</li>'
-							+ '<li><strong>Voice:</strong> ' + p.voice_name + '</li>'
-							+ '</ul>'
-							+ '</div>'
-							+ '<div style="margin-top:auto; padding-top:10px; border-top:1px solid #f1f5f9;">'
-							+ actionBtn
-							+ usageNotice
-							+ '</div>'
-							+ '</div>';
+						html += AIPS.Templates.renderRaw('aips-tmpl-preset-card', {
+							icon: p.icon,
+							name: p.name,
+							tagline: p.tagline,
+							author_name: p.author_name,
+							template_name: p.template_name,
+							voice_name: p.voice_name,
+							structure_name: p.structure_name,
+							status_badge: statusBadge,
+							action_button: actionBtn,
+							usage_notice: usageNotice
+						});
 					});
 
 					$grid.html(html);
 				},
 				error: function() {
 					$('#aips-presets-loading').hide();
-					$grid.html('<p class="notice notice-error">Could not connect to server to fetch presets.</p>');
+					$grid.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+						notice_class: 'notice-error',
+						message: 'Could not connect to server to fetch presets.'
+					}));
 				}
 			});
 		}
@@ -640,46 +646,34 @@
 				},
 				success: function(res) {
 					if (res.success) {
-						if (typeof AIPS.showToast === 'function') {
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('success', res.data.message || 'Preset installed successfully!');
+						} else if (typeof AIPS.showToast === 'function') {
 							AIPS.showToast(res.data.message || 'Preset installed successfully!', 'success');
-						} else {
-							alert(res.data.message || 'Preset installed successfully!');
 						}
 						loadPresetsStatus();
 					} else {
-						alert(res.data && res.data.message ? res.data.message : 'Error installing preset.');
+						var err = (res.data && res.data.message) ? res.data.message : 'Error installing preset.';
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('error', err);
+						} else {
+							AIPS.Utilities.confirm(err, 'Error');
+						}
 						$btn.prop('disabled', false).text('Install Preset');
 					}
 				},
 				error: function() {
-					alert('Connection error occurred while installing preset.');
+					if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+						AIPS.Utilities.showNotice('error', 'Connection error occurred while installing preset.');
+					} else {
+						AIPS.Utilities.confirm('Connection error occurred while installing preset.', 'Error');
+					}
 					$btn.prop('disabled', false).text('Install Preset');
 				}
 			});
 		});
 
-		// Remove preset
-		$(document).on('click', '.aips-preset-remove-btn', function(e) {
-			e.preventDefault();
-			var $btn = $(this);
-			var presetId = $btn.data('preset-id');
-			var hasPosts = $btn.data('has-posts') === '1' || $btn.data('has-posts') === 1;
-			var postCount = parseInt($btn.data('posts') || '0', 10);
-			var force = false;
-
-			if (hasPosts) {
-				var msg = 'Warning: This preset has ' + postCount + ' generated post(s) or history records linked to it.\n\nStrict Content Protection is active: deleting the preset will keep your WordPress posts, but remove the template and author definitions.\n\nType OK to force removal:';
-				var confirmInput = prompt(msg);
-				if (confirmInput !== 'OK' && confirmInput !== 'ok') {
-					return;
-				}
-				force = true;
-			} else {
-				if (!confirm('Are you sure you want to uninstall this preset? All associated templates, voices, and authors created by this preset will be cleanly removed.')) {
-					return;
-				}
-			}
-
+		function executeUninstall(presetId, force, $btn) {
 			$btn.prop('disabled', true).text('Removing…');
 
 			$.ajax({
@@ -694,22 +688,112 @@
 				},
 				success: function(res) {
 					if (res.success) {
-						if (typeof AIPS.showToast === 'function') {
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('success', res.data.message || 'Preset removed.');
+						} else if (typeof AIPS.showToast === 'function') {
 							AIPS.showToast(res.data.message || 'Preset removed.', 'success');
-						} else {
-							alert(res.data.message || 'Preset removed.');
 						}
 						loadPresetsStatus();
 					} else {
-						alert(res.data && res.data.message ? res.data.message : 'Error removing preset.');
+						var err = (res.data && res.data.message) ? res.data.message : 'Error removing preset.';
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('error', err);
+						} else {
+							AIPS.Utilities.confirm(err, 'Error');
+						}
 						$btn.prop('disabled', false).text('Remove');
 					}
 				},
-				error: function() {
-					alert('Connection error occurred while removing preset.');
+				error: function(xhr) {
+					var res = xhr.responseJSON;
+					if (res && res.data && res.data.has_usage) {
+						AIPS.Utilities.confirm(
+							(res.data.message || 'This preset has generated content.') + '\n\nDo you want to FORCE remove this preset and its configuration entities?',
+							'Force Removal Confirmation',
+							[
+								{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+								{
+									label: 'Force Remove',
+									className: 'aips-btn aips-btn-danger-solid',
+									action: function() {
+										executeUninstall(presetId, true, $btn);
+									}
+								}
+							]
+						);
+					} else {
+						var err = (res && res.data && res.data.message) ? res.data.message : 'Connection error occurred while removing preset.';
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('error', err);
+						} else {
+							AIPS.Utilities.confirm(err, 'Error');
+						}
+					}
 					$btn.prop('disabled', false).text('Remove');
 				}
 			});
+		}
+
+		// Remove preset
+		$(document).on('click', '.aips-preset-remove-btn', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var presetId = $btn.data('preset-id');
+			var hasPosts = $btn.data('has-posts') === '1' || $btn.data('has-posts') === 1;
+			var postCount = parseInt($btn.data('posts') || '0', 10);
+
+			if (hasPosts) {
+				if (AIPS.Utilities && typeof AIPS.Utilities.showModal === 'function') {
+					AIPS.Utilities.showModal({
+						heading: 'Strict Content Protection',
+						message: 'Warning: This preset has ' + postCount + ' generated post(s) or history records linked to it.\n\nStrict Content Protection is active: deleting the preset will keep your WordPress posts, but remove the template and author definitions.\n\nType OK to force removal:',
+						fields: [
+							{
+								type: 'text',
+								name: 'confirm_text',
+								label: 'Type OK to confirm',
+								placeholder: 'OK',
+								required: true,
+								validate: function(val) {
+									return (val && val.trim().toUpperCase() === 'OK') ? null : 'Please type OK to confirm removal.';
+								}
+							}
+						],
+						buttons: [
+							{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+							{
+								label: 'Force Uninstall',
+								className: 'aips-btn aips-btn-danger-solid',
+								submit: true,
+								action: function() {
+									executeUninstall(presetId, true, $btn);
+								}
+							}
+						]
+					});
+				} else {
+					executeUninstall(presetId, true, $btn);
+				}
+			} else {
+				if (AIPS.Utilities && typeof AIPS.Utilities.confirm === 'function') {
+					AIPS.Utilities.confirm(
+						'Are you sure you want to uninstall this preset? All associated templates, voices, and authors created by this preset will be cleanly removed.',
+						'Uninstall Preset',
+						[
+							{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+							{
+								label: 'Uninstall',
+								className: 'aips-btn aips-btn-danger-solid',
+								action: function() {
+									executeUninstall(presetId, false, $btn);
+								}
+							}
+						]
+					);
+				} else {
+					executeUninstall(presetId, false, $btn);
+				}
+			}
 		});
 
 		// Export selection helpers
@@ -733,7 +817,11 @@
 			});
 
 			if (!selected.length) {
-				alert('Please check at least one entity type to export.');
+				if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+					AIPS.Utilities.showNotice('warning', 'Please check at least one entity type to export.');
+				} else {
+					AIPS.Utilities.confirm('Please check at least one entity type to export.', 'Notice');
+				}
 				return;
 			}
 
@@ -749,7 +837,7 @@
 					nonce: aipsAjax.nonce
 				},
 				success: function(res) {
-					$btn.prop('disabled', false).html('<span class="dashicons dashicons-download" style="vertical-align:text-bottom;"></span> Export Selected (JSON)');
+					$btn.prop('disabled', false).html('<span class="dashicons dashicons-download aips-btn-download-icon"></span> Export Selected (JSON)');
 					if (res.success && res.data && res.data.json) {
 						var blob = new Blob([res.data.json], { type: 'application/json' });
 						var link = document.createElement('a');
@@ -758,19 +846,32 @@
 						document.body.appendChild(link);
 						link.click();
 						document.body.removeChild(link);
+
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('success', 'Export package generated and downloaded successfully.');
+						}
 					} else {
-						alert(res.data && res.data.message ? res.data.message : 'Export failed.');
+						var err = (res.data && res.data.message) ? res.data.message : 'Export failed.';
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('error', err);
+						} else {
+							AIPS.Utilities.confirm(err, 'Export Error');
+						}
 					}
 				},
 				error: function() {
-					$btn.prop('disabled', false).html('<span class="dashicons dashicons-download" style="vertical-align:text-bottom;"></span> Export Selected (JSON)');
-					alert('Export request failed.');
+					$btn.prop('disabled', false).html('<span class="dashicons dashicons-download aips-btn-download-icon"></span> Export Selected (JSON)');
+					if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+						AIPS.Utilities.showNotice('error', 'Export request failed due to connection error.');
+					} else {
+						AIPS.Utilities.confirm('Export request failed due to connection error.', 'Export Error');
+					}
 				}
 			});
 		});
 
 		// File Upload Analysis
-		$('#aips-import-file-input').on('change', function(e) {
+		$('#aips-import-file-input').on('change', function() {
 			var file = this.files && this.files[0];
 			if (!file) {
 				return;
@@ -782,7 +883,7 @@
 			formData.append('import_file', file);
 
 			var $status = $('#aips-import-status-box');
-			$status.show().html('<p><span class="spinner is-active" style="float:none;"></span> Analyzing backup file…</p>');
+			$status.show().html('<p><span class="spinner is-active"></span> Analyzing backup file…</p>');
 			$('#aips-import-analysis-card').hide();
 
 			$.ajax({
@@ -802,21 +903,27 @@
 							var count = counts[k];
 							var label = k.replace(/_/g, ' ');
 							label = label.charAt(0).toUpperCase() + label.slice(1);
-							var checked = count > 0 ? 'checked' : '';
-							var disabled = count === 0 ? 'disabled' : '';
-							countsHtml += '<label style="display:flex; align-items:center; gap:6px; font-weight:500;">'
-								+ '<input type="checkbox" class="aips-import-type-cb" value="' + k + '" ' + checked + ' ' + disabled + '> '
-								+ label + ' (' + count + ')'
-								+ '</label>';
+							countsHtml += AIPS.Templates.render('aips-tmpl-import-count-item', {
+								type_key: k,
+								label: label,
+								count: count
+							});
 						});
 						$('#aips-import-counts-container').html(countsHtml);
 						$('#aips-import-analysis-card').slideDown();
 					} else {
-						$status.show().html('<div class="notice notice-error inline"><p>' + (res.data && res.data.message ? res.data.message : 'Invalid backup file.') + '</p></div>');
+						var err = (res.data && res.data.message) ? res.data.message : 'Invalid backup file.';
+						$status.show().html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+							notice_class: 'notice-error',
+							message: err
+						}));
 					}
 				},
 				error: function() {
-					$status.show().html('<div class="notice notice-error inline"><p>Failed to analyze file.</p></div>');
+					$status.show().html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+						notice_class: 'notice-error',
+						message: 'Failed to analyze backup file due to connection error.'
+					}));
 				}
 			});
 		});
@@ -831,7 +938,11 @@
 			});
 
 			if (!selected.length) {
-				alert('Please select at least one component type to import.');
+				if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+					AIPS.Utilities.showNotice('warning', 'Please select at least one component type to import.');
+				} else {
+					AIPS.Utilities.confirm('Please select at least one component type to import.', 'Notice');
+				}
 				return;
 			}
 
@@ -839,7 +950,7 @@
 
 			$btn.prop('disabled', true).text('Importing…');
 			var $status = $('#aips-import-status-box');
-			$status.show().html('<p><span class="spinner is-active" style="float:none;"></span> Executing selective import and remapping IDs…</p>');
+			$status.show().html('<p><span class="spinner is-active"></span> Executing selective import and remapping IDs…</p>');
 
 			$.ajax({
 				url: aipsAjax.ajaxurl,
@@ -853,27 +964,33 @@
 					nonce: aipsAjax.nonce
 				},
 				success: function(res) {
-					$btn.prop('disabled', false).html('<span class="dashicons dashicons-upload" style="vertical-align:text-bottom;"></span> Execute Import');
+					$btn.prop('disabled', false).html('<span class="dashicons dashicons-upload aips-btn-download-icon"></span> Execute Import');
 					if (res.success && res.data && res.data.report) {
 						var rep = res.data.report;
-						var summaryHtml = '<div class="notice notice-success inline" style="padding:12px; margin-top:12px;">'
-							+ '<h4 style="margin:0 0 6px;">Import Complete!</h4>'
-							+ '<ul style="margin:0; padding-left:18px;">'
-							+ '<li>Imported: ' + (rep.imported ? rep.imported.length : 0) + ' items</li>'
-							+ '<li>Updated: ' + (rep.updated ? rep.updated.length : 0) + ' items</li>'
-							+ '<li>Skipped: ' + (rep.skipped ? rep.skipped.length : 0) + ' items</li>'
-							+ '</ul>'
-							+ '</div>';
-						$status.html(summaryHtml);
+						var summaryMsg = 'Import complete: ' + (rep.imported ? rep.imported.length : 0) + ' imported, ' + (rep.updated ? rep.updated.length : 0) + ' updated, ' + (rep.skipped ? rep.skipped.length : 0) + ' skipped.';
+						$status.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+							notice_class: 'notice-success',
+							message: summaryMsg
+						}));
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('success', summaryMsg);
+						}
 						$('#aips-import-analysis-card').slideUp();
 						loadPresetsStatus();
 					} else {
-						$status.html('<div class="notice notice-error inline"><p>' + (res.data && res.data.message ? res.data.message : 'Import failed.') + '</p></div>');
+						var err = (res.data && res.data.message) ? res.data.message : 'Import failed.';
+						$status.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+							notice_class: 'notice-error',
+							message: err
+						}));
 					}
 				},
 				error: function() {
-					$btn.prop('disabled', false).html('<span class="dashicons dashicons-upload" style="vertical-align:text-bottom;"></span> Execute Import');
-					$status.html('<div class="notice notice-error inline"><p>Connection error during import.</p></div>');
+					$btn.prop('disabled', false).html('<span class="dashicons dashicons-upload aips-btn-download-icon"></span> Execute Import');
+					$status.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+						notice_class: 'notice-error',
+						message: 'Connection error occurred during import execution.'
+					}));
 				}
 			});
 		});

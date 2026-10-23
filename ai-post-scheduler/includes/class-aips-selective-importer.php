@@ -16,6 +16,20 @@ if (!defined('ABSPATH')) {
 class AIPS_Selective_Importer {
 
 	/**
+	 * @var AIPS_Import_Export_Repository
+	 */
+	private $repository;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Import_Export_Repository|null $repository Optional repository.
+	 */
+	public function __construct(?AIPS_Import_Export_Repository $repository = null) {
+		$this->repository = $repository ?: AIPS_Import_Export_Repository::instance();
+	}
+
+	/**
 	 * Parse and validate an uploaded backup file.
 	 *
 	 * @param string $file_path Absolute path to the uploaded JSON file.
@@ -88,8 +102,6 @@ class AIPS_Selective_Importer {
 	 * @return array Summary of import execution.
 	 */
 	public function import(array $entities, array $selected_types, string $conflict_policy = 'copy'): array {
-		global $wpdb;
-
 		$types  = array_flip($selected_types);
 		$id_map = array(
 			'voices'     => array(),
@@ -110,13 +122,12 @@ class AIPS_Selective_Importer {
 		// 1. VOICES
 		if (isset($types['voices']) && !empty($entities['voices'])) {
 			$voices_repo = AIPS_Voices_Repository::instance();
-			$table       = $wpdb->prefix . 'aips_voices';
 
 			foreach ($entities['voices'] as $voice) {
 				$old_id = !empty($voice['id']) ? (int) $voice['id'] : 0;
 				$name   = sanitize_text_field($voice['name']);
 
-				$existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM $table WHERE name = %s", $name));
+				$existing = $this->repository->find_existing('voices', 'name', $name);
 
 				if ($existing) {
 					if ('skip' === $conflict_policy) {
@@ -145,13 +156,12 @@ class AIPS_Selective_Importer {
 		// 2. PROMPT SECTIONS
 		if (isset($types['prompt_sections']) && !empty($entities['prompt_sections'])) {
 			$sec_repo = AIPS_Prompt_Section_Repository::instance();
-			$table    = $wpdb->prefix . 'aips_prompt_sections';
 
 			foreach ($entities['prompt_sections'] as $sec) {
 				$old_id = !empty($sec['id']) ? (int) $sec['id'] : 0;
 				$key    = sanitize_key($sec['section_key']);
 
-				$existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM $table WHERE section_key = %s", $key));
+				$existing = $this->repository->find_existing('prompt_sections', 'section_key', $key);
 
 				if ($existing) {
 					if ('skip' === $conflict_policy) {
@@ -181,13 +191,12 @@ class AIPS_Selective_Importer {
 		// 3. ARTICLE STRUCTURES
 		if (isset($types['article_structures']) && !empty($entities['article_structures'])) {
 			$str_repo = AIPS_Article_Structure_Repository::instance();
-			$table    = $wpdb->prefix . 'aips_article_structures';
 
 			foreach ($entities['article_structures'] as $str) {
 				$old_id = !empty($str['id']) ? (int) $str['id'] : 0;
 				$name   = sanitize_text_field($str['name']);
 
-				$existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM $table WHERE name = %s", $name));
+				$existing = $this->repository->find_existing('article_structures', 'name', $name);
 
 				if ($existing) {
 					if ('skip' === $conflict_policy) {
@@ -216,7 +225,6 @@ class AIPS_Selective_Importer {
 		// 4. AUTHORS
 		if (isset($types['authors']) && !empty($entities['authors'])) {
 			$auth_repo = AIPS_Authors_Repository::instance();
-			$table     = $wpdb->prefix . 'aips_authors';
 
 			foreach ($entities['authors'] as $author) {
 				$old_id = !empty($author['id']) ? (int) $author['id'] : 0;
@@ -227,7 +235,7 @@ class AIPS_Selective_Importer {
 					$author['article_structure_id'] = $id_map['structures'][(int) $author['article_structure_id']];
 				}
 
-				$existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM $table WHERE name = %s", $name));
+				$existing = $this->repository->find_existing('authors', 'name', $name);
 
 				if ($existing) {
 					if ('skip' === $conflict_policy) {
@@ -275,7 +283,6 @@ class AIPS_Selective_Importer {
 		// 6. TEMPLATES
 		if (isset($types['templates']) && !empty($entities['templates'])) {
 			$tpl_repo = AIPS_Template_Repository::instance();
-			$table    = $wpdb->prefix . 'aips_templates';
 
 			foreach ($entities['templates'] as $tpl) {
 				$old_id = !empty($tpl['id']) ? (int) $tpl['id'] : 0;
@@ -289,7 +296,7 @@ class AIPS_Selective_Importer {
 					$tpl['post_author'] = $id_map['authors'][(int) $tpl['post_author']];
 				}
 
-				$existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM $table WHERE name = %s", $name));
+				$existing = $this->repository->find_existing('templates', 'name', $name);
 
 				if ($existing) {
 					if ('skip' === $conflict_policy) {
@@ -319,7 +326,6 @@ class AIPS_Selective_Importer {
 		// 7. SCHEDULES
 		if (isset($types['schedules']) && !empty($entities['schedules'])) {
 			$sch_repo = AIPS_Schedule_Repository::instance();
-			$table    = $wpdb->prefix . 'aips_schedule';
 
 			foreach ($entities['schedules'] as $sch) {
 				$title = !empty($sch['title']) ? sanitize_text_field($sch['title']) : __('Scheduled Job', 'ai-post-scheduler');
@@ -350,16 +356,14 @@ class AIPS_Selective_Importer {
 
 		// 8. POST SLICES
 		if (isset($types['post_slices']) && !empty($entities['post_slices'])) {
-			$table = $wpdb->prefix . 'aips_post_slices';
-
 			foreach ($entities['post_slices'] as $slice) {
 				$name     = sanitize_text_field($slice['name']);
-				$existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM $table WHERE name = %s", $name));
+				$existing = $this->repository->find_existing('post_slices', 'name', $name);
 				if (!$existing) {
 					unset($slice['id']);
 					$slice['created_at'] = AIPS_DateTime::now()->timestamp();
 					$slice['updated_at'] = $slice['created_at'];
-					$wpdb->insert($table, $slice);
+					$this->repository->insert_row('post_slices', $slice);
 					$report['imported'][] = sprintf(__('Post Slice: %s', 'ai-post-scheduler'), $name);
 				} else {
 					$report['skipped'][] = sprintf(__('Post Slice: %s', 'ai-post-scheduler'), $name);
@@ -369,12 +373,10 @@ class AIPS_Selective_Importer {
 
 		// 9. SOURCES
 		if (isset($types['sources']) && !empty($entities['sources'])) {
-			$table = $wpdb->prefix . 'aips_sources';
-
 			foreach ($entities['sources'] as $src) {
 				$old_id   = !empty($src['id']) ? (int) $src['id'] : 0;
 				$url      = esc_url_raw($src['url']);
-				$existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM $table WHERE url = %s", $url));
+				$existing = $this->repository->find_existing('sources', 'url', $url);
 
 				if ($existing) {
 					$id_map['sources'][$old_id] = (int) $existing->id;
@@ -385,10 +387,9 @@ class AIPS_Selective_Importer {
 				unset($src['id']);
 				$src['created_at'] = AIPS_DateTime::now()->timestamp();
 				$src['updated_at'] = $src['created_at'];
-				$wpdb->insert($table, $src);
-				$new_id = (int) $wpdb->insert_id;
+				$new_id            = $this->repository->insert_row('sources', $src);
 				if ($new_id) {
-					$id_map['sources'][$old_id] = $new_id;
+					$id_map['sources'][$old_id] = (int) $new_id;
 					$report['imported'][] = sprintf(__('Source: %s', 'ai-post-scheduler'), $url);
 				}
 			}
@@ -396,15 +397,13 @@ class AIPS_Selective_Importer {
 
 		// 10. SOURCES DATA
 		if (isset($types['sources_data']) && !empty($entities['sources_data'])) {
-			$table = $wpdb->prefix . 'aips_sources_data';
-
 			foreach ($entities['sources_data'] as $data_row) {
 				$old_src_id = !empty($data_row['source_id']) ? (int) $data_row['source_id'] : 0;
 				$new_src_id = isset($id_map['sources'][$old_src_id]) ? $id_map['sources'][$old_src_id] : $old_src_id;
 
 				$data_row['source_id'] = $new_src_id;
 				unset($data_row['id']);
-				$wpdb->insert($table, $data_row);
+				$this->repository->insert_row('sources_data', $data_row);
 			}
 			$report['imported'][] = sprintf(__('Source data records (%d)', 'ai-post-scheduler'), count($entities['sources_data']));
 		}
