@@ -123,7 +123,10 @@ class AIPS_Admin_Pointers {
 
 		// Inject pointer initialization script
 		add_action('admin_footer', function() use ($active) {
-			include AIPS_PLUGIN_DIR . 'templates/admin/partials/pointers/admin-pointers-script.php';
+			$partial_path = defined('AIPS_PLUGIN_DIR')
+				? AIPS_PLUGIN_DIR . 'templates/admin/partials/pointers/admin-pointers-script.php'
+				: dirname(__DIR__) . '/templates/admin/partials/pointers/admin-pointers-script.php';
+			include $partial_path;
 		}, 30);
 	}
 }
