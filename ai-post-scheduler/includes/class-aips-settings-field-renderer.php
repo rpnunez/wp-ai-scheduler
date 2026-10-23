@@ -148,10 +148,11 @@ class AIPS_Settings_Field_Renderer {
 	 */
 	private static function render_password($id, $name, $value, $args, $class) {
 		$class_str = 'regular-text aips-password-input ' . esc_attr($class);
-		echo '<div class="aips-password-field-wrapper">';
-		echo '<input type="password" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="' . esc_attr((string) $value) . '" class="' . esc_attr(trim($class_str)) . '" autocomplete="new-password" />';
-		echo ' <button type="button" class="button button-secondary aips-toggle-password" data-target="' . esc_attr($id) . '"><span class="dashicons dashicons-visibility" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__('Toggle visibility', 'ai-post-scheduler') . '</span></button>';
-		echo '</div>';
+
+		$partials_path = defined('AIPS_PLUGIN_DIR')
+			? AIPS_PLUGIN_DIR . 'templates/admin/partials/settings/field-password.php'
+			: dirname(__DIR__) . '/templates/admin/partials/settings/field-password.php';
+		include $partials_path;
 	}
 
 	/**
@@ -347,14 +348,12 @@ class AIPS_Settings_Field_Renderer {
 		$mime_type = isset($args['mime_type']) ? $args['mime_type'] : 'text/html';
 		$rows      = isset($args['rows']) ? absint($args['rows']) : 8;
 
-		if (function_exists('wp_enqueue_code_editor')) {
-			$settings = wp_enqueue_code_editor(array('type' => $mime_type));
-			if (false !== $settings) {
-				wp_add_inline_script(
-					'code-editor',
-					sprintf('jQuery(function($){ if(wp.codeEditor){ wp.codeEditor.initialize("%s", %s); } });', esc_js($id), wp_json_encode($settings))
-				);
-			}
+		$settings = wp_enqueue_code_editor(array('type' => $mime_type));
+		if (false !== $settings) {
+			wp_add_inline_script(
+				'code-editor',
+				sprintf('jQuery(function($){ if(wp.codeEditor){ wp.codeEditor.initialize("%s", %s); } });', esc_js($id), wp_json_encode($settings))
+			);
 		}
 
 		echo '<textarea id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" rows="' . esc_attr((string) $rows) . '" class="large-text code ' . esc_attr($class) . '">' . esc_textarea((string) $value) . '</textarea>';
@@ -377,14 +376,10 @@ class AIPS_Settings_Field_Renderer {
 			$image_url = $value;
 		}
 
-		echo '<div class="aips-media-field" id="' . esc_attr($id) . '_wrap">';
-		echo '<input type="hidden" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="' . esc_attr((string) $value) . '" />';
-		echo '<div class="aips-media-preview" style="margin-bottom:8px;' . (empty($image_url) ? 'display:none;' : '') . '">';
-		echo '<img src="' . esc_url($image_url) . '" alt="" style="max-height:80px;border-radius:4px;border:1px solid #c3c4c7;" />';
-		echo '</div>';
-		echo '<button type="button" class="button button-secondary aips-choose-media" data-target="' . esc_attr($id) . '">' . esc_html__('Select Image', 'ai-post-scheduler') . '</button> ';
-		echo '<button type="button" class="button button-link-delete aips-remove-media" data-target="' . esc_attr($id) . '" style="' . (empty($image_url) ? 'display:none;' : '') . '">' . esc_html__('Remove', 'ai-post-scheduler') . '</button>';
-		echo '</div>';
+		$partials_path = defined('AIPS_PLUGIN_DIR')
+			? AIPS_PLUGIN_DIR . 'templates/admin/partials/settings/field-media.php'
+			: dirname(__DIR__) . '/templates/admin/partials/settings/field-media.php';
+		include $partials_path;
 	}
 
 	/**
