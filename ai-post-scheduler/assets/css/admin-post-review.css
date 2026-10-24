@@ -167,7 +167,23 @@
 	text-align: left;
 }
 
-.aips-post-review-table .column-created {
+/*
+ * WP_List_Table's `.fixed` layout splits the width evenly across columns and
+ * ignores content, which pushes the table outside its container. Use auto
+ * layout so Type/Created/Actions shrink to fit and Post/Context share the rest.
+ */
+.aips-list-table-wrap .aips-post-review-table {
+	table-layout: auto;
+	max-width: 100%;
+}
+
+.aips-list-table-wrap .aips-post-review-table .column-title {
+	width: 40%;
+}
+
+.aips-list-table-wrap .aips-post-review-table .column-type,
+.aips-list-table-wrap .aips-post-review-table .column-created {
+	width: 1%;
 	white-space: nowrap;
 }
 
