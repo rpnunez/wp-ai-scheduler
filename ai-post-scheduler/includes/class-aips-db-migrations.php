@@ -1823,6 +1823,8 @@ class AIPS_DB_Migrations {
 		// 3. Remove obsolete options.
 		$options_to_delete = array(
 			'aips_enable_telemetry',
+			'aips_telemetry_retention_value',
+			'aips_telemetry_retention_unit',
 			'aips_cache_monitor_enabled',
 			'aips_cache_monitor_index_enabled',
 			'aips_cache_monitor_metrics_enabled',

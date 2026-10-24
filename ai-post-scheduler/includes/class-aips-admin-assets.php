@@ -272,7 +272,8 @@ class AIPS_Admin_Assets {
 		);
 
 		wp_localize_script('aips-admin-stress-test', 'aipsStressTest', array(
-			'nonce' => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'nonce'                    => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'nonceCleanStressTestData' => wp_create_nonce('aips_status_clean_stress_test_data'),
 			'i18n'  => array(
 				'running'               => __('Running…', 'ai-post-scheduler'),
 				'notRun'                => __('Not run', 'ai-post-scheduler'),
@@ -306,6 +307,9 @@ class AIPS_Admin_Assets {
 				/* translators: %d: number of selected test cases */
 				'runSelectedCount'      => __('Run Selected (%d)', 'ai-post-scheduler'),
 				'selectAtLeastOne'      => __('Please select at least one test case to run.', 'ai-post-scheduler'),
+				'runDetails'            => __('Stress Test Run Details', 'ai-post-scheduler'),
+				'comparisonDiff'        => __('Stress Test Comparison & Diff', 'ai-post-scheduler'),
+				'selectTwoRunsToCompare'=> __('Please select exactly 2 runs to compare.', 'ai-post-scheduler'),
 			),
 		));
 	}
@@ -452,9 +456,17 @@ class AIPS_Admin_Assets {
 		);
 
 		wp_enqueue_script(
+			'aips-templates-script',
+			AIPS_PLUGIN_URL . 'assets/js/templates.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'aips-utilities-script',
 			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-			array('jquery', 'aips-datetime-script'),
+			array('jquery', 'aips-datetime-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);
@@ -471,14 +483,6 @@ class AIPS_Admin_Assets {
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
             'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
         ));
-
-        wp_enqueue_script(
-            'aips-templates-script',
-            AIPS_PLUGIN_URL . 'assets/js/templates.js',
-            array('jquery'),
-            AIPS_VERSION,
-            true
-        );
 
         wp_enqueue_script(
             'aips-admin-script',
@@ -552,9 +556,17 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-utilities-script',
             AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-            array('jquery', 'aips-datetime-script'),
+            array('jquery', 'aips-datetime-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
         );
@@ -1803,7 +1815,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-system-status',
                 AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1821,6 +1833,16 @@ class AIPS_Admin_Assets {
                 'nonceCleanupNotifications'             => wp_create_nonce('aips_status_cleanup_notifications'),
                 'nonceResetResilience'                  => wp_create_nonce('aips_status_reset_resilience'),
                 'nonceRepairDatetime'                   => wp_create_nonce('aips_status_repair_datetime'),
+                'noncePruneHistoryLogs'                 => wp_create_nonce('aips_status_prune_history_logs'),
+                'nonceCleanEmbeddings'                  => wp_create_nonce('aips_status_clean_orphaned_embeddings'),
+                'nonceOptimizeTable'                    => wp_create_nonce('aips_status_optimize_table'),
+                'nonceGetTables'                        => wp_create_nonce('aips_status_get_tables'),
+                'confirmPruneHistoryLogs'               => __('Prune generation logs older than configured retention period?', 'ai-post-scheduler'),
+                'confirmCleanEmbeddings'                => __('Clean orphaned embeddings for posts that no longer exist?', 'ai-post-scheduler'),
+                'confirmOptimizeTable'                  => __('Run OPTIMIZE TABLE on this table? This can briefly lock the table on large sites.', 'ai-post-scheduler'),
+                'confirmRefreshSystemDestructive'       => __('This includes one or more tasks that permanently delete data (e.g. history pruning, orphaned embeddings cleanup). Continue?', 'ai-post-scheduler'),
+                'tableOptimized'                        => __('Table optimized successfully.', 'ai-post-scheduler'),
+                'tablesRefreshed'                       => __('Table sizes refreshed.', 'ai-post-scheduler'),
                 'refreshRunning'                        => __('Refreshing system…', 'ai-post-scheduler'),
                 'refreshDone'                           => __('System refresh complete.', 'ai-post-scheduler'),
                 'refreshPartial'                        => __('System refresh finished with some failures.', 'ai-post-scheduler'),

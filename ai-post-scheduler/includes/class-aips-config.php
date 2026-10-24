@@ -237,6 +237,13 @@ class AIPS_Config {
             'aips_cache_default_ttl'    => 3600,
             // Research
             'aips_research_niches' => array(),
+            // Database & Retention
+            'aips_auto_prune_enabled'                  => false,
+            'aips_telemetry_prune_interval'            => 'daily',
+            'aips_history_log_retention_value'         => 60,
+            'aips_history_log_retention_unit'          => 'days',
+            'aips_clean_orphaned_embeddings'           => true,
+            'aips_clean_expired_topics'                => true,
             // Content Indexer & Embeddings
             'aips_embeddings_enabled'                  => true,
             'aips_embeddings_persistent_cache_enabled' => true,

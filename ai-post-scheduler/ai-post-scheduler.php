@@ -62,7 +62,7 @@ final class AI_Post_Scheduler {
      * @return array<string,array<string,string>>
      */
     public static function get_cron_events() {
-        return array(
+        $events = array(
             'aips_generate_scheduled_posts' => array(
                 'schedule' => 'hourly',
                 'label'   => __( 'Post Generation', 'ai-post-scheduler' ),
@@ -92,6 +92,19 @@ final class AI_Post_Scheduler {
                 'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
             ),
         );
+
+        // Only include the prune cleanup cron while the feature is actually
+        // enabled, so every consumer of get_cron_events() (activation,
+        // reschedule_missed_cron, diagnostics) naturally skips scheduling a
+        // cron that would otherwise just no-op every time it fires.
+        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_auto_prune_enabled' ) ) {
+            $events['aips_database_prune_cleanup'] = array(
+                'schedule' => sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_telemetry_prune_interval', 'daily' ) ),
+                'label'   => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
+            );
+        }
+
+        return $events;
     }
 
     /**
@@ -399,6 +412,15 @@ final class AI_Post_Scheduler {
 
         $container->singleton(AIPS_Schedule_Repository_Interface::class, function( $container ) {
             return $container->make(AIPS_Schedule_Repository::class);
+        });
+
+        // Register AIPS_DB_Prune_Repository and AIPS_DB_Prune_Service
+        $container->singleton(AIPS_DB_Prune_Repository::class, function( $container ) {
+            return AIPS_DB_Prune_Repository::instance();
+        });
+
+        $container->singleton(AIPS_DB_Prune_Service::class, function( $container ) {
+            return AIPS_DB_Prune_Service::instance();
         });
 
         // Register AIPS_Template_Repository
@@ -1029,6 +1051,16 @@ final class AI_Post_Scheduler {
                     'info'
                 );
             }
+        });
+
+        // Database retention & prune maintenance.
+        add_action('aips_database_prune_cleanup', function() {
+            $service = AIPS_Container::get_instance()->make(AIPS_DB_Prune_Service::class);
+            $result  = $service->run_automated_prune();
+            ( new AIPS_Logger() )->log(
+                sprintf( 'Database prune cleanup complete: %s', wp_json_encode( $result ) ),
+                'info'
+            );
         });
 
         // Lazy-resolve the embeddings worker only when its hook fires.
