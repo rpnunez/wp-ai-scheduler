@@ -383,31 +383,25 @@ class AIPS_Cache {
 	/**
 	 * Invalidate all cached entries for a given group.
 	 *
-	 * Clears L1 store entries for the group, and forwards to the underlying driver
-	 * if the driver supports delete_group().
+	 * Forwards to the underlying driver's delete_group() and discards the L1
+	 * request cache on every instance, since other instances may hold copies
+	 * of the group's keys that per-key invalidation cannot enumerate.
 	 *
 	 * @param string $group Cache group. Default 'default'.
-	 * @return bool True on success.
+	 * @return bool True on success, false when the driver cannot delete groups.
 	 */
 	public function delete_group( $group = 'default' ) {
 		if ( ! self::is_system_enabled() ) {
 			return true;
 		}
 
-		$group_str = (string) $group;
-		$prefix    = $group_str . ':';
+		self::reset_request_cache();
 
-		foreach ( array_keys( $this->l1_store ) as $composite ) {
-			if ( 0 === strpos( $composite, $prefix ) ) {
-				unset( $this->l1_store[ $composite ] );
-			}
+		if ( ! method_exists( $this->driver, 'delete_group' ) ) {
+			return false;
 		}
 
-		if ( method_exists( $this->driver, 'delete_group' ) ) {
-			return (bool) $this->driver->delete_group( $group_str );
-		}
-
-		return true;
+		return (bool) $this->driver->delete_group( (string) $group );
 	}
 
 	/**

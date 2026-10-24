@@ -60,7 +60,6 @@ class AIPS_Diagnostics_Controller {
 				$summary_items = array(
 					array('label' => __('System Status', 'ai-post-scheduler'), 'value' => __('Operational', 'ai-post-scheduler'), 'type' => 'success', 'icon' => 'dashicons-yes-alt'),
 				);
-
 			}
 		} catch (\Throwable $e) {
 			// Fail-safe: empty summary items
@@ -99,7 +98,6 @@ class AIPS_Diagnostics_Controller {
 				'description' => __('Scheduler, queue & pipeline metrics', 'ai-post-scheduler'),
 			),
 		);
-
 
 		$tabs['background-processes'] = array(
 			'label'       => __('Background Processes', 'ai-post-scheduler'),
@@ -162,13 +160,11 @@ class AIPS_Diagnostics_Controller {
 	 * @return bool
 	 */
 	public static function is_tab_available($tab) {
-
 		// Keep in step with get_tabs(): a tab listed there but missing here is
 		// rejected by get_active_tab_key() and silently falls back to the default.
 		if (in_array($tab, array('system-info', 'health', 'operations', 'status', 'insights', 'stress-test', 'background-processes'), true)) {
 			return true;
 		}
-
 
 		if ('dev-tools' === $tab) {
 			return (bool) AIPS_Config::get_instance()->get_option('aips_developer_mode');
@@ -265,7 +261,6 @@ class AIPS_Diagnostics_Controller {
 		$controller = new AIPS_Operations_Insights_Controller();
 		$controller->render_page();
 	}
-
 
 	/**
 	 * Render the Background Processes tab.

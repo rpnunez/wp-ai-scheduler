@@ -279,4 +279,18 @@ class Test_AIPS_Cache extends WP_UnitTestCase {
 		$this->assertSame( 'val3', $this->cache->get( 'key3', 'grp_b' ) );
 	}
 
+	public function test_delete_group_invalidates_l1_copies_on_other_instances() {
+		// A non-Array driver so both instances keep L1 copies over one shared store.
+		$driver = new AIPS_Cache_Wp_Object_Cache_Driver( 'aips_l1_test' );
+		$reader = new AIPS_Cache( $driver );
+		$writer = new AIPS_Cache( $driver );
+
+		$reader->set( 'vec', 'old', 60, 'grp_l1' );
+		$this->assertSame( 'old', $reader->get( 'vec', 'grp_l1' ) );
+
+		$this->assertTrue( $writer->delete_group( 'grp_l1' ) );
+
+		$this->assertNull( $reader->get( 'vec', 'grp_l1' ) );
+	}
+
 }

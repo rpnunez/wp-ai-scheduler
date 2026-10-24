@@ -58,6 +58,16 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 	private $meta_group = 'aips__flush_meta';
 
 	/**
+	 * Per-group generation counters, memoized from the object cache.
+	 *
+	 * Bumped by delete_group() so a single group's entries become unreachable
+	 * the same way flush() shadows every group.
+	 *
+	 * @var array<string, int>
+	 */
+	private $group_generations = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string $base_group Base group name. Default 'aips'.
@@ -164,6 +174,23 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 		return $found;
 	}
 
+	/**
+	 * Delete all entries for a specific group.
+	 *
+	 * The object cache API cannot enumerate a group's keys, so this bumps a
+	 * per-group generation counter (persisted in the meta group) that is part
+	 * of the resolved group name, making the old entries unreachable.
+	 *
+	 * @param string $group Cache group name.
+	 * @return bool True on success.
+	 */
+	public function delete_group( string $group ): bool {
+		$generation = $this->get_group_generation( $group ) + 1;
+		$this->group_generations[ $group ] = $generation;
+		wp_cache_set( $this->group_generation_key( $group ), $generation, $this->meta_group );
+		return true;
+	}
+
 	// -----------------------------------------------------------------------
 	// Internal helpers
 	// -----------------------------------------------------------------------
@@ -185,7 +212,37 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 			? $this->base_group
 			: $this->base_group . '_' . $group;
 
+		$group_generation = $this->get_group_generation( (string) $group );
+		if ( $group_generation > 0 ) {
+			$base .= '_v' . $group_generation;
+		}
+
 		return $this->generation > 0 ? $base . '_g' . $this->generation : $base;
+	}
+
+	/**
+	 * Current delete_group() generation for a group, loaded once per instance.
+	 *
+	 * @param string $group Logical group name.
+	 * @return int
+	 */
+	private function get_group_generation( $group ) {
+		if ( ! isset( $this->group_generations[ $group ] ) ) {
+			$stored = wp_cache_get( $this->group_generation_key( $group ), $this->meta_group );
+			$this->group_generations[ $group ] = ( false !== $stored && is_int( $stored ) ) ? $stored : 0;
+		}
+
+		return $this->group_generations[ $group ];
+	}
+
+	/**
+	 * Meta-group key holding a group's delete_group() generation.
+	 *
+	 * @param string $group Logical group name.
+	 * @return string
+	 */
+	private function group_generation_key( $group ) {
+		return $this->base_group . ':group:' . $group;
 	}
 
 }

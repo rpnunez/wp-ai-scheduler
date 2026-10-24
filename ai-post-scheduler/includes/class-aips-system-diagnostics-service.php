@@ -82,7 +82,8 @@ class AIPS_System_Diagnostics_Service {
 			? $container->make(AIPS_Resilience_Service::class)
 			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null));
 
-		$this->cache_driver = $cache_driver ?: AIPS_Cache_Factory::make_driver();
+		// Resolved lazily in run_cache_maintenance(); only that task needs a driver.
+		$this->cache_driver = $cache_driver;
 
 		$this->notifications_repository = $notifications_repository ?: ($container->has(AIPS_Notifications_Repository::class)
 			? $container->make(AIPS_Notifications_Repository::class)
@@ -530,7 +531,7 @@ class AIPS_System_Diagnostics_Service {
 	}
 
 	/**
-	 * Prune expired cache entries, orphaned index rows, and old cache events.
+	 * Prune expired entries from the DB cache driver (no-op for other drivers).
 	 *
 	 * @return array
 	 */

@@ -97,8 +97,7 @@ class AIPS_Repository_Cache_Observer {
 	private function record($event_type, array $event) {
 		try {
 			$context = $this->normalize_event($event_type, $event);
-			
-			
+
 			// Gated on debug level to avoid a log write on every cache op in
 			// production; filterable so tests can assert on logged entries.
 			if (apply_filters('aips_repository_cache_log_enabled', AIPS_DEBUG_LEVEL > 0)) {

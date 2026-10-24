@@ -263,7 +263,6 @@ class AIPS_Admin_Menu {
             array($this, 'render_operations_insights_page')
         );
 
-
         add_submenu_page(
             null,
             __('Stress Test', 'ai-post-scheduler'),
@@ -273,7 +272,6 @@ class AIPS_Admin_Menu {
             array($this, 'render_stress_test_page')
         );
 
-      
         if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
                 null,
