@@ -1834,29 +1834,36 @@ class AIPS_DB_Migrations {
 
 		foreach ( $campaign_cols as $col => $definition ) {
 			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$campaigns_table}` LIKE %s", $col ) );
-			if ( ! $exists ) {
-				$wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD COLUMN `{$col}` {$definition}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD COLUMN `{$col}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return false;
 			}
 		}
 
 		// Backfill existing template links and drop campaign_id from templates table.
 		$has_template_campaign_col = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$templates_table}` LIKE %s", 'campaign_id' ) );
 		if ( $has_template_campaign_col ) {
-			$wpdb->query( "
+			$backfilled = $wpdb->query( "
 				INSERT IGNORE INTO `{$campaign_templates_table}` (campaign_id, template_id, created_at)
 				SELECT campaign_id, id, created_at
 				FROM `{$templates_table}`
 				WHERE campaign_id IS NOT NULL AND campaign_id > 0
 			" );
+			if ( false === $backfilled ) {
+				return false;
+			}
 
 			// Drop index if exists.
 			$index_exists = $wpdb->get_row( "SHOW INDEX FROM `{$templates_table}` WHERE Key_name = 'campaign_id'" );
 			if ( $index_exists ) {
-				$wpdb->query( "ALTER TABLE `{$templates_table}` DROP INDEX `campaign_id`" );
+				if ( false === $wpdb->query( "ALTER TABLE `{$templates_table}` DROP INDEX `campaign_id`" ) ) {
+					return false;
+				}
 			}
 
 			// Drop column.
-			$wpdb->query( "ALTER TABLE `{$templates_table}` DROP COLUMN `campaign_id`" );
+			if ( false === $wpdb->query( "ALTER TABLE `{$templates_table}` DROP COLUMN `campaign_id`" ) ) {
+				return false;
+			}
 		}
 
 		$this->logger->log( 'migrate_to_3_8_0: campaign container schema migration complete', 'info' );

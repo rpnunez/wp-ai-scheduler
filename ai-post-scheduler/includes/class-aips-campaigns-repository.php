@@ -513,14 +513,33 @@ class AIPS_Campaigns_Repository {
 			);
 		}
 
+		$template_map = array();
 		foreach ($templates as $template) {
-			$overrides = !empty($template->campaign_overrides) ? json_decode($template->campaign_overrides, true) : array();
-			$this->link_template($new_campaign_id, (int) $template->id, is_array($overrides) ? $overrides : array(), isset($template->sort_order) ? (int) $template->sort_order : 0);
+			$overrides     = !empty($template->campaign_overrides) ? json_decode($template->campaign_overrides, true) : array();
+			$template_data = get_object_vars($template);
+			unset($template_data['id'], $template_data['created_at'], $template_data['updated_at'], $template_data['campaign_overrides'], $template_data['sort_order'], $template_data['linked_at']);
+			$template_data['name'] = $template->name . ' ' . __('(Copy)', 'ai-post-scheduler');
+			$new_template_id = $this->template_repository->create($template_data);
+
+			if (!$new_template_id) {
+				return $this->rollback_with_error(
+					$started_transaction,
+					$this->build_campaign_error('campaign_template_duplicate_failed', __('Campaign template could not be duplicated.', 'ai-post-scheduler'))
+				);
+			}
+
+			$link_result = $this->link_template($new_campaign_id, (int) $new_template_id, is_array($overrides) ? $overrides : array(), isset($template->sort_order) ? (int) $template->sort_order : 0);
+			if (is_wp_error($link_result)) {
+				return $this->rollback_with_error($started_transaction, $link_result);
+			}
+
+			$template_map[(int) $template->id] = (int) $new_template_id;
 		}
 
 		foreach ($schedules as $schedule) {
 			$schedule_data = get_object_vars($schedule);
 			unset($schedule_data['id'], $schedule_data['schedule_history_id'], $schedule_data['last_run'], $schedule_data['created_at']);
+			$schedule_data['template_id'] = isset($template_map[(int) $schedule->template_id]) ? $template_map[(int) $schedule->template_id] : (int) $schedule->template_id;
 			$schedule_data['campaign_id'] = $new_campaign_id;
 			$schedule_data['title'] = $schedule->title . ' ' . __('(Copy)', 'ai-post-scheduler');
 			$schedule_data['is_active'] = 0;
@@ -1008,6 +1027,29 @@ class AIPS_Campaigns_Repository {
 		return true;
 	}
 
+	/**
+	 * Get the per-template overrides stored on a campaign link.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $template_id Template ID.
+	 * @return array
+	 */
+	public function get_template_overrides($campaign_id, $template_id) {
+		$campaign_id = absint($campaign_id);
+		$template_id = absint($template_id);
+		if (!$campaign_id || !$template_id) {
+			return array();
+		}
+
+		$json = $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT overrides FROM {$this->campaign_templates_table} WHERE campaign_id = %d AND template_id = %d",
+			$campaign_id,
+			$template_id
+		));
+		$decoded = $json ? json_decode($json, true) : array();
+
+		return is_array($decoded) ? $decoded : array();
+	}
 	/**
 	 * Get campaign IDs linked to a template.
 	 *

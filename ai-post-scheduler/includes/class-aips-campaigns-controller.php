@@ -171,25 +171,14 @@ class AIPS_Campaigns_Controller {
 			if ('save' === $detail_action) {
 				$name                         = isset($_POST['campaign_name']) ? sanitize_text_field(wp_unslash($_POST['campaign_name'])) : '';
 				$content_goal                 = isset($_POST['content_goal']) ? sanitize_textarea_field(wp_unslash($_POST['content_goal'])) : '';
-				$prompt_directives            = isset($_POST['prompt_directives']) ? wp_kses_post(wp_unslash($_POST['prompt_directives'])) : '';
-				$default_article_structure_id = !empty($_POST['default_article_structure_id']) ? absint($_POST['default_article_structure_id']) : null;
-				$default_post_status          = !empty($_POST['default_post_status']) ? sanitize_key(wp_unslash($_POST['default_post_status'])) : null;
-				$default_voice_id             = !empty($_POST['default_voice_id']) ? absint($_POST['default_voice_id']) : null;
-				$default_author_id            = !empty($_POST['default_author_id']) ? absint($_POST['default_author_id']) : null;
-				$default_categories           = !empty($_POST['default_categories']) ? sanitize_text_field(wp_unslash($_POST['default_categories'])) : null;
-				$default_tags                 = !empty($_POST['default_tags']) ? sanitize_text_field(wp_unslash($_POST['default_tags'])) : null;
 
 				if ('' !== $name) {
-					$result = $this->campaigns_repository->update_campaign($campaign_id, array(
-						'name'                         => $name,
-						'content_goal'                 => $content_goal,
-						'prompt_directives'            => $prompt_directives,
-						'default_article_structure_id' => $default_article_structure_id,
-						'default_post_status'          => $default_post_status,
-						'default_voice_id'             => $default_voice_id,
-						'default_author_id'            => $default_author_id,
-						'default_categories'           => $default_categories,
-						'default_tags'                 => $default_tags,
+					$result = $this->campaigns_repository->update_campaign($campaign_id, array_merge(
+						array(
+							'name'         => $name,
+							'content_goal' => $content_goal,
+						),
+						$this->read_campaign_defaults_from_request(true)
 					));
 					if (!is_wp_error($result) && $result) {
 						$this->record_campaign_lifecycle_activity($campaign_id, AIPS_History_Event_Type::CAMPAIGN_UPDATED, __('updated', 'ai-post-scheduler'));
@@ -532,6 +521,65 @@ class AIPS_Campaigns_Controller {
 	}
 
 	/**
+	 * Read and sanitize the prompt directives and default_* campaign fields from $_POST.
+	 *
+	 * @param bool $include_missing When true, absent fields are returned as cleared values.
+	 * @return array
+	 */
+	private function read_campaign_defaults_from_request($include_missing) {
+		$data = array();
+
+		if ($include_missing || isset($_POST['prompt_directives'])) {
+			$data['prompt_directives'] = isset($_POST['prompt_directives']) ? wp_kses_post(wp_unslash($_POST['prompt_directives'])) : '';
+		}
+
+		foreach (array('default_article_structure_id', 'default_voice_id', 'default_author_id') as $key) {
+			if ($include_missing || isset($_POST[$key])) {
+				$data[$key] = !empty($_POST[$key]) ? absint($_POST[$key]) : null;
+			}
+		}
+
+		if ($include_missing || isset($_POST['default_post_status'])) {
+			$status = !empty($_POST['default_post_status']) ? sanitize_key(wp_unslash($_POST['default_post_status'])) : '';
+			$data['default_post_status'] = ('' !== $status && in_array($status, get_post_stati(), true)) ? $status : null;
+		}
+
+		foreach (array('default_categories', 'default_tags') as $key) {
+			if ($include_missing || isset($_POST[$key])) {
+				$data[$key] = !empty($_POST[$key]) ? sanitize_text_field(wp_unslash($_POST[$key])) : null;
+			}
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Read per-template overrides from $_POST, keeping only supported keys.
+	 *
+	 * @return array
+	 */
+	private function read_template_overrides_from_request() {
+		if (!isset($_POST['overrides']) || !is_array($_POST['overrides'])) {
+			return array();
+		}
+
+		$allowed = array('post_status', 'post_type', 'post_category', 'post_tags', 'post_author', 'article_structure_id', 'voice_id');
+		$raw     = wp_unslash($_POST['overrides']);
+		$clean   = array();
+
+		foreach ($allowed as $key) {
+			if (!isset($raw[$key]) || '' === $raw[$key]) {
+				continue;
+			}
+			$clean[$key] = is_array($raw[$key])
+				? array_map('sanitize_text_field', array_filter($raw[$key], 'is_scalar'))
+				: sanitize_text_field((string) $raw[$key]);
+		}
+
+		return $clean;
+	}
+
+	/**
 	 * AJAX: Quick create a campaign with basic information.
 	 */
 	public function ajax_quick_create_campaign() {
@@ -576,7 +624,7 @@ class AIPS_Campaigns_Controller {
 
 		$campaign_id = $this->get_campaign_id_from_request();
 		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-		$overrides   = isset($_POST['overrides']) && is_array($_POST['overrides']) ? array_map('sanitize_text_field', wp_unslash($_POST['overrides'])) : array();
+		$overrides   = $this->read_template_overrides_from_request();
 
 		if (!$campaign_id || !$template_id) {
 			AIPS_Ajax_Response::error(__('Invalid campaign or template ID.', 'ai-post-scheduler'), 'invalid_id', 400);
@@ -621,7 +669,7 @@ class AIPS_Campaigns_Controller {
 
 		$campaign_id = $this->get_campaign_id_from_request();
 		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-		$overrides   = isset($_POST['overrides']) && is_array($_POST['overrides']) ? array_map('sanitize_text_field', wp_unslash($_POST['overrides'])) : array();
+		$overrides   = $this->read_template_overrides_from_request();
 
 		if (!$campaign_id || !$template_id) {
 			AIPS_Ajax_Response::error(__('Invalid campaign or template ID.', 'ai-post-scheduler'), 'invalid_id', 400);
@@ -653,27 +701,7 @@ class AIPS_Campaigns_Controller {
 		if (isset($_POST['content_goal'])) {
 			$data['content_goal'] = sanitize_textarea_field(wp_unslash($_POST['content_goal']));
 		}
-		if (isset($_POST['prompt_directives'])) {
-			$data['prompt_directives'] = wp_kses_post(wp_unslash($_POST['prompt_directives']));
-		}
-		if (isset($_POST['default_article_structure_id'])) {
-			$data['default_article_structure_id'] = !empty($_POST['default_article_structure_id']) ? absint($_POST['default_article_structure_id']) : null;
-		}
-		if (isset($_POST['default_post_status'])) {
-			$data['default_post_status'] = !empty($_POST['default_post_status']) ? sanitize_key(wp_unslash($_POST['default_post_status'])) : null;
-		}
-		if (isset($_POST['default_voice_id'])) {
-			$data['default_voice_id'] = !empty($_POST['default_voice_id']) ? absint($_POST['default_voice_id']) : null;
-		}
-		if (isset($_POST['default_author_id'])) {
-			$data['default_author_id'] = !empty($_POST['default_author_id']) ? absint($_POST['default_author_id']) : null;
-		}
-		if (isset($_POST['default_categories'])) {
-			$data['default_categories'] = !empty($_POST['default_categories']) ? sanitize_text_field(wp_unslash($_POST['default_categories'])) : null;
-		}
-		if (isset($_POST['default_tags'])) {
-			$data['default_tags'] = !empty($_POST['default_tags']) ? sanitize_text_field(wp_unslash($_POST['default_tags'])) : null;
-		}
+		$data = array_merge($data, $this->read_campaign_defaults_from_request(false));
 
 		$result = $this->campaigns_repository->update_campaign($campaign_id, $data);
 		if (is_wp_error($result)) {
@@ -700,9 +728,18 @@ class AIPS_Campaigns_Controller {
 			AIPS_Ajax_Response::error(__('Campaign not found.', 'ai-post-scheduler'), 'campaign_not_found', 404);
 		}
 
+		if (!empty($campaign->is_archived) || (isset($campaign->is_active) && !(int) $campaign->is_active)) {
+			AIPS_Ajax_Response::error(__('Only active, unarchived campaigns can be run.', 'ai-post-scheduler'), 'campaign_not_runnable', 400);
+		}
+
 		$templates = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
 		if (empty($templates)) {
 			AIPS_Ajax_Response::error(__('No templates are linked to this campaign.', 'ai-post-scheduler'), 'no_templates', 400);
+		}
+
+		// Generation runs one LLM call per template; avoid the request dying mid-batch.
+		if (function_exists('set_time_limit')) {
+			@set_time_limit(0);
 		}
 
 		$generator = new AIPS_Generator();

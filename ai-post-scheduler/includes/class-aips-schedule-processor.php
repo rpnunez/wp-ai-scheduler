@@ -983,6 +983,7 @@ class AIPS_Schedule_Processor {
             $campaign_templates = AIPS_Campaigns_Repository::instance()->get_templates_by_campaign((int) $schedule->campaign_id);
             if (!empty($campaign_templates)) {
                 $generated_ids = array();
+                $campaign_errors = array();
                 foreach ($campaign_templates as $camp_tmpl) {
                     if (isset($camp_tmpl->is_active) && !(bool) $camp_tmpl->is_active) {
                         continue;
@@ -996,7 +997,16 @@ class AIPS_Schedule_Processor {
                     $sub_context = new AIPS_Template_Context($tmpl_entry, null, $topic, $creation_method);
                     $sub_context->set_trigger_context($this->build_schedule_trigger_context($schedule));
                     $sub_context = $this->resolve_campaign_context($sub_context, $schedule, $camp_tmpl);
-                    list($sub_result, $sub_finished) = $this->execute_batch_progress($schedule, $sub_context, $post_quantity, $is_manual);
+                    // Each template runs its own batch: never resume another template's cursor.
+                    $sub_schedule = clone $schedule;
+                    $sub_schedule->batch_progress = null;
+                    $this->repository->clear_batch_progress($schedule->schedule_id);
+                    list($sub_result, $sub_finished) = $this->execute_batch_progress($sub_schedule, $sub_context, $post_quantity, $is_manual);
+                    $this->repository->clear_batch_progress($schedule->schedule_id);
+                    if (is_wp_error($sub_result) || !$sub_finished) {
+                        $sub_error = is_wp_error($sub_result) ? $sub_result->get_error_message() : __('Batch did not finish.', 'ai-post-scheduler');
+                        $campaign_errors[] = sprintf('%s: %s', $camp_tmpl->name, $sub_error);
+                    }
                     if (!is_wp_error($sub_result)) {
                         if (is_array($sub_result)) {
                             $generated_ids = array_merge($generated_ids, $sub_result);
@@ -1005,7 +1015,15 @@ class AIPS_Schedule_Processor {
                         }
                     }
                 }
-                $overall_result = !empty($generated_ids) ? $generated_ids : new WP_Error('no_posts_generated', __('No posts generated for campaign templates.', 'ai-post-scheduler'));
+                if (!empty($campaign_errors)) {
+                    $overall_result = new WP_Error(
+                        empty($generated_ids) ? 'no_posts_generated' : 'campaign_partial_failure',
+                        implode('; ', $campaign_errors),
+                        array('post_ids' => $generated_ids)
+                    );
+                } else {
+                    $overall_result = !empty($generated_ids) ? $generated_ids : new WP_Error('no_posts_generated', __('No posts generated for campaign templates.', 'ai-post-scheduler'));
+                }
                 $batch_finished = true;
             } else {
                 list($overall_result, $batch_finished) = $this->execute_batch_progress($schedule, $context, $post_quantity, $is_manual);
@@ -1577,10 +1595,14 @@ class AIPS_Schedule_Processor {
         }
 
         $overrides = array();
-        if (is_object($template_model) && !empty($template_model->campaign_overrides)) {
-            $decoded = json_decode($template_model->campaign_overrides, true);
-            if (is_array($decoded)) {
-                $overrides = $decoded;
+        if (is_object($template_model)) {
+            if (isset($template_model->campaign_overrides)) {
+                $decoded = json_decode((string) $template_model->campaign_overrides, true);
+                $overrides = is_array($decoded) ? $decoded : array();
+            } else {
+                // Plain template/schedule rows do not carry the link-table overrides.
+                $template_id = !empty($template_model->template_id) ? (int) $template_model->template_id : (!empty($template_model->id) ? (int) $template_model->id : 0);
+                $overrides = AIPS_Campaigns_Repository::instance()->get_template_overrides($campaign_id, $template_id);
             }
         }
 
