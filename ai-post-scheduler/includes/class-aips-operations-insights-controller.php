@@ -30,9 +30,8 @@ class AIPS_Operations_Insights_Controller {
 		$history_trend = $this->history_repository->get_daily_success_failure_trend($days);
 		$duration_by_flow = $this->history_repository->get_average_duration_by_flow($days);
 		$failure_reasons = $this->history_repository->get_top_failure_reasons($days, 8);
-		$retry_counts = AIPS_Telemetry::is_enabled() ? $this->history_repository->get_retry_counts_by_service($days) : array();
+		$retry_counts = $this->history_repository->get_retry_counts_by_service($days);
 		$recommended_actions = $this->build_recommended_actions($failure_reasons, $retry_counts);
-		$telemetry_enabled = AIPS_Telemetry::is_enabled();
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/operations-insights.php';
 	}
@@ -49,10 +48,9 @@ class AIPS_Operations_Insights_Controller {
 		$data = array(
 			'generated_at'      => AIPS_DateTime::now()->toIso8601(),
 			'days'              => $days,
-			'telemetry_enabled' => AIPS_Telemetry::is_enabled(),
 			'history_trend'     => $this->history_repository->get_daily_success_failure_trend($days),
 			'duration_by_flow'  => $this->history_repository->get_average_duration_by_flow($days),
-			'retry_counts'      => AIPS_Telemetry::is_enabled() ? $this->history_repository->get_retry_counts_by_service($days) : array(),
+			'retry_counts'      => $this->history_repository->get_retry_counts_by_service($days),
 			'failure_reasons'   => $this->history_repository->get_top_failure_reasons($days, 25),
 		);
 

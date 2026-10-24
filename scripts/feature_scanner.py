@@ -252,7 +252,6 @@ class FeatureScanner:
             'uses_cache': bool(re.search(r'AIPS_Cache(?:_Factory)?(?:::|->)', content)),
             'uses_ajax_response': 'AIPS_Ajax_Response' in content,
             'uses_logger': 'AIPS_Logger' in content,
-            'uses_telemetry': 'AIPS_Telemetry' in content,
             'uses_correlation_id': 'AIPS_Correlation_ID' in content,
             'uses_error_handler': 'AIPS_Error_Handler' in content,
             'uses_history_service': bool(re.search(r'AIPS_History_Service|history_service', content)),
@@ -327,7 +326,7 @@ class FeatureScanner:
     # (e.g. bootstrap timing, circular-dependency avoidance).
     CONFIG_EXEMPT_CLASSES = frozenset([
         'AIPS_Config', 'AIPS_Upgrades', 'AIPS_DB_Manager',
-        'AIPS_Cache_Factory', 'AIPS_Telemetry',
+        'AIPS_Cache_Factory',
     ])
 
     def _check_raw_get_option(self, class_name: str, content: str, feature: Dict):
@@ -428,7 +427,7 @@ class FeatureScanner:
             'AI Integration': [],
             'Infrastructure & DI': [],
             'Caching': [],
-            'Telemetry & Observability': [],
+            'Observability & Logging': [],
             'Notifications': [],
             'Sources & Research': [],
             'Internal Links & Embeddings': [],
@@ -457,8 +456,8 @@ class FeatureScanner:
                                                 'ajax_response', 'error_handler',
                                                 'correlation_id']):
                 categories['Infrastructure & DI'].append(class_name)
-            elif any(x in base_name for x in ['telemetry', 'logger', 'generation_logger']):
-                categories['Telemetry & Observability'].append(class_name)
+            elif any(x in base_name for x in ['logger', 'generation_logger']):
+                categories['Observability & Logging'].append(class_name)
             elif any(x in base_name for x in ['notification', 'partial_generation']):
                 categories['Notifications'].append(class_name)
             elif any(x in base_name for x in ['source', 'research', 'trending_topic']):
@@ -710,7 +709,6 @@ class FeatureScanner:
         chart += "    CACHE[AIPS_Cache]\n"
         chart += "    REG[AIPS_Ajax_Registry]\n"
         chart += "    LOG[AIPS_Logger]\n"
-        chart += "    TEL[AIPS_Telemetry]\n"
         chart += "    RES[AIPS_Resilience_Service]\n\n"
 
         # Define connections
@@ -729,7 +727,6 @@ class FeatureScanner:
         chart += "    CFG -.-> SVC\n"
         chart += "    CACHE -.-> REPO\n"
         chart += "    LOG -.-> SVC\n"
-        chart += "    TEL -.-> SVC\n"
         chart += "    RES -.-> AI\n\n"
 
         # Add subgraphs for each layer
@@ -1150,7 +1147,6 @@ class FeatureScanner:
             ('uses_cache', 'AIPS_Cache'),
             ('uses_ajax_response', 'AIPS_Ajax_Response'),
             ('uses_logger', 'AIPS_Logger'),
-            ('uses_telemetry', 'AIPS_Telemetry'),
             ('uses_correlation_id', 'AIPS_Correlation_ID'),
             ('uses_error_handler', 'AIPS_Error_Handler'),
             ('uses_history_service', 'AIPS_History_Service'),

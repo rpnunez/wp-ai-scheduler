@@ -265,6 +265,10 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.7.20', '<' ) ) {
+			$this->migrate_to_3_7_20();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1788,6 +1792,55 @@ class AIPS_DB_Migrations {
 		}
 		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
 		return $schedule_column && 'YES' === $schedule_column->Null;
+	}
+
+	/**
+	 * Migration for version 3.7.20.
+	 *
+	 * Drops obsolete Cache Monitor and Telemetry database tables, clears scheduled
+	 * maintenance hooks, and deletes obsolete options.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_20() {
+		global $wpdb;
+
+		// 1. Drop obsolete tables if they exist.
+		$tables_to_drop = array(
+			$wpdb->prefix . 'aips_cache_index',
+			$wpdb->prefix . 'aips_cache_events',
+			$wpdb->prefix . 'aips_telemetry',
+		);
+
+		foreach ( $tables_to_drop as $table ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+		}
+
+		// 2. Clear scheduled cron hook.
+		wp_clear_scheduled_hook( 'aips_cache_monitor_maintenance' );
+
+		// 3. Remove obsolete options.
+		$options_to_delete = array(
+			'aips_enable_telemetry',
+			'aips_telemetry_retention_value',
+			'aips_telemetry_retention_unit',
+			'aips_cache_monitor_enabled',
+			'aips_cache_monitor_index_enabled',
+			'aips_cache_monitor_metrics_enabled',
+			'aips_cache_monitor_event_retention_days',
+			'aips_cache_monitor_max_index_entries',
+			'aips_cache_monitor_preview_length',
+			'aips_cache_monitor_full_value_debug_only',
+			'aips_cache_monitor_live_refresh_enabled',
+			'aips_cache_monitor_live_refresh_interval',
+		);
+
+		foreach ( $options_to_delete as $option ) {
+			delete_option( $option );
+		}
+
+		$this->logger->log( 'Migration 3.7.20: Dropped obsolete Cache Monitor and Telemetry tables and options.', 'info' );
 	}
 
 }

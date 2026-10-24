@@ -73,6 +73,30 @@ class Test_AIPS_Cache_Wp_Object_Cache_Driver extends WP_UnitTestCase {
 		$this->assertTrue( $this->driver->flush() );
 	}
 
+	public function test_delete_group_only_clears_that_group() {
+		$this->driver->set( 'a', 1, 0, 'grp_one' );
+		$this->driver->set( 'b', 2, 0, 'grp_two' );
+
+		$this->assertTrue( $this->driver->delete_group( 'grp_one' ) );
+
+		$this->assertNull( $this->driver->get( 'a', 'grp_one' ) );
+		$this->assertSame( 2, $this->driver->get( 'b', 'grp_two' ) );
+
+		// New writes to the deleted group are readable again.
+		$this->driver->set( 'a', 3, 0, 'grp_one' );
+		$this->assertSame( 3, $this->driver->get( 'a', 'grp_one' ) );
+	}
+
+	public function test_delete_group_is_visible_to_other_driver_instances() {
+		$this->driver->set( 'shared', 'v', 0, 'grp_shared' );
+
+		$other = new AIPS_Cache_Wp_Object_Cache_Driver( 'aips' );
+		$other->delete_group( 'grp_shared' );
+
+		$fresh = new AIPS_Cache_Wp_Object_Cache_Driver( 'aips' );
+		$this->assertNull( $fresh->get( 'shared', 'grp_shared' ) );
+	}
+
 	/**
 	 * Object-cache group suffix for the driver's current flush generation.
 	 *

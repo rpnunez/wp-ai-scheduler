@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
  *
  * Captures repository-level cache reads, writes, invalidations, and bypasses
  * without coupling repositories to a concrete cache backend. Events are routed
- * through the existing logger and telemetry collector, and all failures are
+ * through the existing logger, and all failures are
  * swallowed so observability can never block cache operations.
  */
 class AIPS_Repository_Cache_Observer {
@@ -97,9 +97,7 @@ class AIPS_Repository_Cache_Observer {
 	private function record($event_type, array $event) {
 		try {
 			$context = $this->normalize_event($event_type, $event);
-			
-			$this->record_telemetry($context);
-			
+
 			// Gated on debug level to avoid a log write on every cache op in
 			// production; filterable so tests can assert on logged entries.
 			if (apply_filters('aips_repository_cache_log_enabled', AIPS_DEBUG_LEVEL > 0)) {
@@ -144,24 +142,6 @@ class AIPS_Repository_Cache_Observer {
 		);
 
 		return $this->remove_empty_values($context);
-	}
-
-	/**
-	 * Emit the normalized event through AIPS_Telemetry when enabled.
-	 *
-	 * @param array $context Normalized event context.
-	 * @return void
-	 */
-	private function record_telemetry(array $context) {
-		try {
-			if (!class_exists('AIPS_Telemetry') || !AIPS_Telemetry::is_enabled()) {
-				return;
-			}
-
-			AIPS_Telemetry::instance()->add_event('cache', $context);
-		} catch (Throwable $e) {
-			// Telemetry failures should not affect repository cache behavior.
-		}
 	}
 
 	/**

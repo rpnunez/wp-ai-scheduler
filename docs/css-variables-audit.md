@@ -9,7 +9,7 @@
 
 A reasonably well-designed shared variable system **already exists** in `admin.css`'s `:root` block — colors, a type scale, a spacing scale, radius tokens, shadow tokens, control sizing. The problem isn't missing design tokens, it's **adoption and drift**:
 
-- Most files never consume the shared system at all (`authors.css`, `admin-ai-edit.css`, `telemetry.css`, `background-processes.css`, `related-posts.css`, `ai-assistance.css`, `admin-internal-links-panel.css`, `post-slices.css` — zero `var()` usage).
+- Most files never consume the shared system at all (`authors.css`, `admin-ai-edit.css`, `background-processes.css`, `related-posts.css`, `ai-assistance.css`, `admin-internal-links-panel.css`, `post-slices.css` — zero `var()` usage).
 - Some files built **their own separate `:root` palette** instead of reusing the shared one (`admin-content-indexer.css`, `admin-bar.css`), duplicating concepts like success/warning/error/info with independently-chosen literal values.
 - `admin-content-auditor.css` and parts of `stress-test.css` use an entirely different **Tailwind-slate** palette (`#e2e8f0`, `#2563eb`, `#64748b`, `#0f172a`) that doesn't visually match the WP-admin-derived palette used everywhere else.
 - `authors.css` contains an unrelated **8-triad Bootstrap-style alert palette** (`#d4edda/#155724/#c3e6cb`, `#f8d7da/#721c24/#f5c6cb`, etc.) bolted on separately from its WP-admin-colored majority — 8 near-duplicates of the same 4 semantic colors.
@@ -74,7 +74,6 @@ So this is not a pure find-and-replace job — it requires a few **palette recon
 |---|---|---|---|
 | `admin-ai-edit.css` | 525 | 0 | Full WP grey/blue palette hardcoded (11× `#2271b1`, 8× `#dcdcde`, 8× `#646970`, 5× `#c3c4c7`) |
 | `admin-content-auditor.css` | 487 | 0 | **Different palette entirely** — Tailwind slate/blue, visually inconsistent with the rest of the plugin |
-| `telemetry.css` | 606 | 0 | Hand-rolls the same WP grey/blue/status colors |
 | `stress-test.css` | 810 | 179 (partial) | Proves the shared system is reachable from here; also carries its own slate palette alongside it — mixed systems in one file |
 | `admin-link-report.css` | 354 | low (partial) | Started migrating, incomplete |
 | `admin-post-insights.css` | 319 | low (partial) | Started migrating, incomplete |
@@ -149,7 +148,7 @@ Resolve the 6 open questions in §4. This gates everything else; doing the mecha
 `admin-content-auditor.css`, `stress-test.css` — these need the slate-vs-WP-admin mapping decided before any substitution, otherwise the fix is just swapping one hardcoded palette for hardcoded Tailwind-named variables with the same mismatch.
 
 **Phase 5 — Remaining zero-adoption small files**
-`telemetry.css`, `background-processes.css`, `related-posts.css`, `ai-assistance.css`, `admin-internal-links-panel.css`, `post-slices.css` — mechanical, low risk, can be batched together or done opportunistically whenever one of these files is touched for a feature change (no need to force a dedicated pass).
+`background-processes.css`, `related-posts.css`, `ai-assistance.css`, `admin-internal-links-panel.css`, `post-slices.css` — mechanical, low risk, can be batched together or done opportunistically whenever one of these files is touched for a feature change (no need to force a dedicated pass).
 
 **Phase 6 — Finish the partial migrations**
 `admin-link-report.css`, `admin-post-insights.css`, `research.css`, `planner.css` — these already use `var()` in places; just complete the remaining literals.
