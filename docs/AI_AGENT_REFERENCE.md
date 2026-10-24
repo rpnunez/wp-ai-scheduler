@@ -6,7 +6,7 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 
 `AI_Post_Scheduler::init()` boots only the request context needed:
 
-- `boot_common()`: text domain, DI bindings, optional telemetry, and `aips_source_group` taxonomy.
+- `boot_common()`: text domain, DI bindings, and `aips_source_group` taxonomy.
 - `boot_cron()`: lazy WP-Cron closures for schedulers, batch processors, embeddings, sources, notifications, reconciler, and cleanup.
 - `boot_ajax()`: resolves `AIPS_Ajax_Registry` and instantiates one mapped controller; legacy lazy hooks may remain for unmapped plugin actions.
 - `boot_admin()`: admin menu, assets, settings, onboarding, admin bar, notifications, reconciler, history, and internal links.
@@ -24,7 +24,7 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Content Indexer: `AIPS_Content_Indexer_Controller` (`aips-content-indexer`), interactive semantic graph visualizer, continuous sync on publish, and cannibalization audit.
 - Internal links: `AIPS_Internal_Links_Controller`, services/repository, and the `aips_index_posts_batch` cron.
 - Notifications: registry, senders, templates, event handler, plus `AIPS_Notifications_Repository`.
-- Campaigns, post slices, AI assistance, operations insights, telemetry, taxonomy, onboarding, and diagnostics each have dedicated controllers, repositories, and services.
+- Campaigns, post slices, AI assistance, operations insights, taxonomy, onboarding, and diagnostics each have dedicated controllers, repositories, and services.
 
 ## Admin/UI reference
 
@@ -39,7 +39,7 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Schema changes go through `AIPS_DB_Manager::get_schema()` and `AIPS_DB_Manager::install_tables()` using `dbDelta`.
 - `AIPS_DB_Migrations::check_and_run()` is the migration entry point; `class-aips-upgrades.php` is a compatibility alias.
 - There is no standalone migrations directory.
-- Plugin tables include history/logs, templates, schedules, voices, structures, prompt sections, trending topics, authors/topics/logs/feedback, campaigns, post slices, notifications, sources/data/groups, taxonomy, embeddings, internal links, cache, telemetry, AI assistance, and bulk batch jobs.
+- Plugin tables include history/logs, templates, schedules, voices, structures, prompt sections, trending topics, authors/topics/logs/feedback, campaigns, post slices, notifications, sources/data/groups, taxonomy, embeddings, internal links, cache, AI assistance, and bulk batch jobs.
 
 ## Cron hooks
 
@@ -53,7 +53,6 @@ Recurring hooks:
 - `aips_cleanup_export_files`
 - `aips_fetch_sources`
 - `aips_cleanup_bulk_batch_jobs`
-- `aips_cache_monitor_maintenance`
 
 Single-event hooks:
 

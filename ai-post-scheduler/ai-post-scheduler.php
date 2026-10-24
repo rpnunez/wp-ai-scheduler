@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.19
+ * Version: 3.7.20
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -17,33 +17,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Capture the request start time as early as possible so AIPS_Telemetry
-// can compute an accurate elapsed-time measurement.
-if (!defined('AIPS_REQUEST_START')) {
-    define('AIPS_REQUEST_START', microtime(true));
-}
-
-// Enable SAVEQUERIES as early as possible for telemetry-enabled requests so
-// slow/duplicate query analysis can inspect the collected query log.
-if (!defined('SAVEQUERIES') && function_exists('get_option') && get_option('aips_enable_telemetry', false)) {
-    define('SAVEQUERIES', true);
-}
-
-if (!defined('AIPS_TELEMETRY_SLOW_QUERY_MS')) {
-    define('AIPS_TELEMETRY_SLOW_QUERY_MS', 100);
-}
-
-if (!defined('AIPS_TELEMETRY_SLOW_REQUEST_MS')) {
-    define('AIPS_TELEMETRY_SLOW_REQUEST_MS', 1500);
-}
-
-if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
-    define('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT', 10);
-}
-
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.19');
+    define('AIPS_VERSION', '3.7.20');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -114,10 +90,6 @@ final class AI_Post_Scheduler {
             'aips_cleanup_bulk_batch_jobs' => array(
                 'schedule' => 'daily',
                 'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
-            ),
-            'aips_cache_monitor_maintenance' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
         );
 
@@ -442,10 +414,6 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Schedule_Repository::class);
         });
 
-        $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
-            return AIPS_Telemetry_Repository::instance();
-        });
-
         // Register AIPS_DB_Prune_Repository and AIPS_DB_Prune_Service
         $container->singleton(AIPS_DB_Prune_Repository::class, function( $container ) {
             return AIPS_DB_Prune_Repository::instance();
@@ -683,11 +651,6 @@ final class AI_Post_Scheduler {
         // Reconcile source scheduling in every request, including upgrades without activation.
         AIPS_Sources_Cron::instance();
         AIPS_Sources_Maintenance::instance();
-
-        // Boot request-level telemetry if the option is enabled.
-        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
-            AIPS_Telemetry::instance()->boot();
-        }
 
         // Register the Source Group taxonomy (not attached to any post type).
         register_taxonomy(
@@ -1088,18 +1051,6 @@ final class AI_Post_Scheduler {
                     'info'
                 );
             }
-        });
-
-        // Daily Cache Monitor maintenance (prune expired/orphan index rows + prune old events).
-        add_action('aips_cache_monitor_maintenance', function() {
-            $repository  = new AIPS_Cache_Monitor_Repository();
-            $cache_index = new AIPS_Cache_Index();
-            $service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
-            $result      = $service->run_maintenance();
-            ( new AIPS_Logger() )->log(
-                sprintf( 'Cache Monitor maintenance complete: %s', wp_json_encode( $result ) ),
-                'info'
-            );
         });
 
         // Database retention & prune maintenance.

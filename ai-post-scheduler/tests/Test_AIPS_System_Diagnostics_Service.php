@@ -20,9 +20,9 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			? $overrides['resilience_service']
 			: $this->mock_resilience_service();
 
-		$cache_monitor_service = isset($overrides['cache_monitor_service'])
-			? $overrides['cache_monitor_service']
-			: $this->mock_cache_monitor_service();
+		$cache_driver = isset($overrides['cache_driver'])
+			? $overrides['cache_driver']
+			: $this->mock_cache_driver();
 
 		$notifications_repository = isset($overrides['notifications_repository'])
 			? $overrides['notifications_repository']
@@ -36,7 +36,7 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			$history_repository,
 			$bulk_batch_job_store,
 			$resilience_service,
-			$cache_monitor_service,
+			$cache_driver,
 			$notifications_repository,
 			$date_time_db_repair
 		);
@@ -67,16 +67,12 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			->getMock();
 	}
 
-	private function mock_cache_monitor_service() {
-		$mock = $this->getMockBuilder('AIPS_Cache_Monitor_Service')
+	private function mock_cache_driver() {
+		$mock = $this->getMockBuilder('AIPS_Cache_Db_Driver')
 			->disableOriginalConstructor()
-			->onlyMethods(array('run_maintenance'))
+			->onlyMethods(array('purge_expired'))
 			->getMock();
-		$mock->method('run_maintenance')->willReturn(array(
-			'pruned_index'   => 0,
-			'pruned_orphans' => 0,
-			'pruned_events'  => 0,
-		));
+		$mock->method('purge_expired')->willReturn(0);
 		return $mock;
 	}
 
@@ -163,13 +159,13 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 	}
 
 	public function test_refresh_system_continues_after_a_throwing_step() {
-		$cache_monitor = $this->getMockBuilder('AIPS_Cache_Monitor_Service')
+		$cache_driver = $this->getMockBuilder('AIPS_Cache_Db_Driver')
 			->disableOriginalConstructor()
-			->onlyMethods(array('run_maintenance'))
+			->onlyMethods(array('purge_expired'))
 			->getMock();
-		$cache_monitor->method('run_maintenance')->willThrowException(new RuntimeException('boom'));
+		$cache_driver->method('purge_expired')->willThrowException(new RuntimeException('boom'));
 
-		$service = $this->make_service(array('cache_monitor_service' => $cache_monitor));
+		$service = $this->make_service(array('cache_driver' => $cache_driver));
 
 		$result = $service->refresh_system();
 
@@ -217,23 +213,17 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 	}
 
 	public function test_run_cache_maintenance_reports_pruned_counts() {
-		$cache_monitor = $this->getMockBuilder('AIPS_Cache_Monitor_Service')
+		$cache_driver = $this->getMockBuilder('AIPS_Cache_Db_Driver')
 			->disableOriginalConstructor()
-			->onlyMethods(array('run_maintenance'))
+			->onlyMethods(array('purge_expired'))
 			->getMock();
-		$cache_monitor->method('run_maintenance')->willReturn(array(
-			'pruned_index'   => 3,
-			'pruned_orphans' => 2,
-			'pruned_events'  => 11,
-		));
+		$cache_driver->method('purge_expired')->willReturn(5);
 
-		$service = $this->make_service(array('cache_monitor_service' => $cache_monitor));
+		$service = $this->make_service(array('cache_driver' => $cache_driver));
 
 		$result = $service->run_cache_maintenance();
 
 		$this->assertTrue($result['success']);
-		$this->assertStringContainsString('3 expired entries', $result['message']);
-		$this->assertStringContainsString('2 orphaned index rows', $result['message']);
-		$this->assertStringContainsString('11 old events', $result['message']);
+		$this->assertStringContainsString('5 expired cache entries pruned', $result['message']);
 	}
 }

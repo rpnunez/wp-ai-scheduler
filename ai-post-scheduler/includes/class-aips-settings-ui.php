@@ -802,46 +802,6 @@ class AIPS_Settings_UI {
     }
 
     /**
-     * Render the enable telemetry setting field.
-     *
-     * Displays a checkbox to enable or disable request-level telemetry
-     * recording (staging/dev use only).
-     *
-     * @return void
-     */
-    public function enable_telemetry_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
-        ?>
-        <input type="hidden" name="aips_enable_telemetry" value="0">
-        <label>
-            <input type="checkbox" name="aips_enable_telemetry" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable request-level telemetry (staging/dev only)', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('Logs query counts, memory usage, elapsed time, and events for each request to the aips_telemetry table. Not recommended for production.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
-
-    /**
-     * Render the cache monitor setting field.
-     *
-     * Displays a checkbox to enable or disable the Cache Monitor
-     * admin page and its AJAX endpoints (internal cache introspection tool).
-     *
-     * @return void
-     */
-    public function cache_monitor_enabled_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled');
-        ?>
-        <input type="hidden" name="aips_cache_monitor_enabled" value="0">
-        <label>
-            <input type="checkbox" name="aips_cache_monitor_enabled" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable Cache Monitor (internal cache introspection tool)', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('Exposes an admin page and AJAX endpoints for inspecting and flushing internal cache entries. Not recommended for production.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
-
-    /**
      * Render the review notifications email setting field.
      *
      * Displays an email input field for the notifications recipient.
@@ -3058,7 +3018,7 @@ class AIPS_Settings_UI {
 	 * @return void
 	 */
 	public function database_retention_section_callback() {
-		echo '<p>' . esc_html__('Configure automatic database pruning policies to keep high-growth tables (telemetry, execution logs, orphaned embeddings) lean and performant.', 'ai-post-scheduler') . '</p>';
+		echo '<p>' . esc_html__('Configure automatic database pruning policies to keep high-growth tables (execution logs, orphaned embeddings) lean and performant.', 'ai-post-scheduler') . '</p>';
 	}
 
 	/**
@@ -3075,28 +3035,6 @@ class AIPS_Settings_UI {
 			<?php esc_html_e('Enable scheduled automatic database pruning', 'ai-post-scheduler'); ?>
 		</label>
 		<p class="description"><?php esc_html_e('When enabled, background cleanups run via WP-Cron according to the schedule configured below.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
-
-	/**
-	 * Render the telemetry retention period field (number + unit).
-	 *
-	 * @return void
-	 */
-	public function telemetry_retention_field_callback() {
-		$config = AIPS_Config::get_instance();
-		$value  = (int) $config->get_option('aips_telemetry_retention_value', 30);
-		$unit   = (string) $config->get_option('aips_telemetry_retention_unit', 'days');
-		?>
-		<div style="display: flex; align-items: center; gap: 8px;">
-			<input type="number" name="aips_telemetry_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="365" style="width: 80px;">
-			<select name="aips_telemetry_retention_unit">
-				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
-				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
-				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
-			</select>
-		</div>
-		<p class="description"><?php esc_html_e('Telemetry records older than this period will be pruned during scheduled and manual cleanups.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 

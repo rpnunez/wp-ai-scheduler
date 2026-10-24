@@ -115,7 +115,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
 		$this->assertEquals('aips-diagnostics', $result);
 
-		$_GET['page'] = 'aips-telemetry';
+		$_GET['page'] = 'aips-dev-tools';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
 		$this->assertEquals('aips-diagnostics', $result);
 
@@ -215,51 +215,6 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		);
 
 		update_option('aips_developer_mode', false);
-		AIPS_Config::get_instance()->flush_option_cache();
-	}
-
-	/**
-	 * Cache Monitor is an internal introspection tool and must be disabled by default.
-	 */
-	public function test_cache_monitor_page_is_not_registered_by_default() {
-		global $submenu, $_registered_pages;
-
-		$submenu           = array();
-		$_registered_pages = array();
-
-		update_option('aips_cache_monitor_enabled', false);
-		AIPS_Config::get_instance()->flush_option_cache();
-
-		$this->admin_menu->add_menu_pages();
-
-		$this->assertArrayNotHasKey(
-			'admin_page_aips-cache-monitor',
-			$_registered_pages,
-			'Cache Monitor should not be registered when aips_cache_monitor_enabled is disabled.'
-		);
-	}
-
-	/**
-	 * Cache Monitor becomes reachable once explicitly enabled.
-	 */
-	public function test_cache_monitor_page_is_registered_when_enabled() {
-		global $submenu, $_registered_pages;
-
-		$submenu           = array();
-		$_registered_pages = array();
-
-		update_option('aips_cache_monitor_enabled', true);
-		AIPS_Config::get_instance()->flush_option_cache();
-
-		$this->admin_menu->add_menu_pages();
-
-		$this->assertArrayHasKey(
-			'admin_page_aips-cache-monitor',
-			$_registered_pages,
-			'Cache Monitor should be registered for direct admin.php?page= access when enabled.'
-		);
-
-		update_option('aips_cache_monitor_enabled', false);
 		AIPS_Config::get_instance()->flush_option_cache();
 	}
 

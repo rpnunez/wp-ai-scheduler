@@ -60,8 +60,6 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_status_cleanup_notifications', array($this, 'ajax_cleanup_notifications'));
 		add_action('wp_ajax_aips_status_reset_resilience', array($this, 'ajax_reset_resilience'));
 		add_action('wp_ajax_aips_status_repair_datetime', array($this, 'ajax_repair_datetime'));
-		add_action('wp_ajax_aips_status_prune_telemetry', array($this, 'ajax_prune_telemetry'));
-		add_action('wp_ajax_aips_status_purge_telemetry', array($this, 'ajax_purge_telemetry'));
 		add_action('wp_ajax_aips_status_prune_history_logs', array($this, 'ajax_prune_history_logs'));
 		add_action('wp_ajax_aips_status_clean_orphaned_embeddings', array($this, 'ajax_clean_orphaned_embeddings'));
 		add_action('wp_ajax_aips_status_optimize_table', array($this, 'ajax_optimize_table'));
@@ -266,24 +264,6 @@ class AIPS_System_Status_Controller {
 		$this->verify_request('aips_status_repair_datetime');
 
 		AIPS_Ajax_Response::success($this->diagnostics_service->repair_datetime());
-	}
-
-	public function ajax_prune_telemetry() {
-		$this->verify_request('aips_status_prune_telemetry');
-
-		$result = $this->diagnostics_service->prune_telemetry();
-		AIPS_Ajax_Response::success($result);
-	}
-
-	public function ajax_purge_telemetry() {
-		$this->verify_request('aips_status_purge_telemetry');
-
-		$result = $this->diagnostics_service->purge_all_telemetry();
-		if (!empty($result['success'])) {
-			AIPS_Ajax_Response::success($result);
-		} else {
-			AIPS_Ajax_Response::error(isset($result['message']) ? $result['message'] : __('Failed to purge telemetry.', 'ai-post-scheduler'));
-		}
 	}
 
 	public function ajax_prune_history_logs() {

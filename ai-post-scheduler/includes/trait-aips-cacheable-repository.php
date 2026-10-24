@@ -307,7 +307,7 @@ trait AIPS_Cacheable_Repository {
 	}
 
 	/**
-	 * Resolve the observer used for repository cache telemetry and logging.
+	 * Resolve the observer used for repository cache observation and logging.
 	 *
 	 * Repositories may override this to inject a shared observer. The default
 	 * implementation is memoized per instance — override only when a fresh

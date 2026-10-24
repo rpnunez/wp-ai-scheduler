@@ -52,13 +52,11 @@ class AIPS_Admin_Assets {
 	private const PAGE_SOURCES = 'aips-sources';
 	private const PAGE_SOURCE_DATA = 'aips-source-data';
 	private const PAGE_SETTINGS = 'aips-settings';
-	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
 	private const PAGE_CONTENT_INTELLIGENCE = 'aips-content-intelligence';
 	private const PAGE_POST_CLUSTERS = 'aips-post-clusters';
 	private const PAGE_CANNIBALIZATION = 'aips-cannibalization';
 	private const PAGE_CONTENT_INDEXER = 'aips-content-indexer';
-	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
 	private const PAGE_STRESS_TEST    = 'aips-stress-test';
 
     /**
@@ -224,9 +222,6 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-		if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) {
-			$this->enqueue_telemetry_assets();
-		}
 
         if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links')) {
 			AIPS_Background_Process_Assets::enqueue();
@@ -248,9 +243,6 @@ class AIPS_Admin_Assets {
 			$this->enqueue_consolidation_assets();
 		}
 
-        if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
-			$this->enqueue_cache_monitor_assets();
-		}
 
 		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test')) {
 			$this->enqueue_stress_test_assets();
@@ -1186,7 +1178,6 @@ class AIPS_Admin_Assets {
                 'viewHistory'                    => __('View history', 'ai-post-scheduler'),
                 'systemStatus'                   => __('System status', 'ai-post-scheduler'),
                 'notifications'                  => __('Notifications', 'ai-post-scheduler'),
-                'telemetry'                      => __('Telemetry', 'ai-post-scheduler'),
             ));
     }
 
@@ -1842,19 +1833,14 @@ class AIPS_Admin_Assets {
                 'nonceCleanupNotifications'             => wp_create_nonce('aips_status_cleanup_notifications'),
                 'nonceResetResilience'                  => wp_create_nonce('aips_status_reset_resilience'),
                 'nonceRepairDatetime'                   => wp_create_nonce('aips_status_repair_datetime'),
-                'noncePruneTelemetry'                   => wp_create_nonce('aips_status_prune_telemetry'),
-                'noncePurgeTelemetry'                   => wp_create_nonce('aips_status_purge_telemetry'),
                 'noncePruneHistoryLogs'                 => wp_create_nonce('aips_status_prune_history_logs'),
                 'nonceCleanEmbeddings'                  => wp_create_nonce('aips_status_clean_orphaned_embeddings'),
                 'nonceOptimizeTable'                    => wp_create_nonce('aips_status_optimize_table'),
                 'nonceGetTables'                        => wp_create_nonce('aips_status_get_tables'),
-                'confirmPruneTelemetry'                 => __('Prune telemetry records older than configured retention period? Batched deletion will defragment table if needed.', 'ai-post-scheduler'),
-                'confirmPurgeTelemetryTitle'            => __('Purge All Telemetry Data', 'ai-post-scheduler'),
-                'confirmPurgeTelemetry'                 => __('Are you sure you want to PURGE ALL telemetry records? This will truncate the table and instantly reclaim all disk space (reset to 0 bytes). This action cannot be undone.', 'ai-post-scheduler'),
                 'confirmPruneHistoryLogs'               => __('Prune generation logs older than configured retention period?', 'ai-post-scheduler'),
                 'confirmCleanEmbeddings'                => __('Clean orphaned embeddings for posts that no longer exist?', 'ai-post-scheduler'),
                 'confirmOptimizeTable'                  => __('Run OPTIMIZE TABLE on this table? This can briefly lock the table on large sites.', 'ai-post-scheduler'),
-                'confirmRefreshSystemDestructive'       => __('This includes one or more tasks that permanently delete data (e.g. telemetry/history pruning, orphaned embeddings cleanup). Continue?', 'ai-post-scheduler'),
+                'confirmRefreshSystemDestructive'       => __('This includes one or more tasks that permanently delete data (e.g. history pruning, orphaned embeddings cleanup). Continue?', 'ai-post-scheduler'),
                 'tableOptimized'                        => __('Table optimized successfully.', 'ai-post-scheduler'),
                 'tablesRefreshed'                       => __('Table sizes refreshed.', 'ai-post-scheduler'),
                 'refreshRunning'                        => __('Refreshing system…', 'ai-post-scheduler'),
@@ -1907,106 +1893,6 @@ class AIPS_Admin_Assets {
 			'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
 		));
 	}
-
-    /**
-     * Enqueue assets for the telemetry page.
-     */
-    private function enqueue_telemetry_assets() {
-            wp_enqueue_style(
-                'aips-telemetry-style',
-                AIPS_PLUGIN_URL . 'assets/css/telemetry.css',
-                array('aips-admin-style'),
-                AIPS_VERSION
-            );
-
-            wp_enqueue_script(
-                'aips-chartjs',
-                apply_filters(
-                    'aips_chartjs_src',
-                    AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
-                ),
-                array(),
-                '4.4.2',
-                true
-            );
-
-            wp_enqueue_script(
-                'aips-telemetry-script',
-                AIPS_PLUGIN_URL . 'assets/js/telemetry.js',
-				array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs', 'aips-datetime-script'),
-                AIPS_VERSION,
-                true
-            );
-
-            wp_localize_script('aips-telemetry-script', 'aipsTelemetryL10n', array(
-                'nonce'                => wp_create_nonce('aips_get_telemetry'),
-                'detailsNonce'         => wp_create_nonce('aips_get_telemetry_details'),
-                'loading'              => __('Loading…', 'ai-post-scheduler'),
-                'loadingDetails'       => __('Loading telemetry details…', 'ai-post-scheduler'),
-                'filterLabel'          => __('Filter', 'ai-post-scheduler'),
-                'resetFiltersLabel'    => __('Reset Filters', 'ai-post-scheduler'),
-                'requestFailed'        => __('Request failed. Please try again.', 'ai-post-scheduler'),
-                'detailsRequestFailed' => __('Failed to load telemetry details. Please try again.', 'ai-post-scheduler'),
-                'telemetryPage'        => __('Page %1$s of %2$s', 'ai-post-scheduler'),
-                'telemetryTotal'       => __('%s records', 'ai-post-scheduler'),
-                'telemetryNoRecords'   => __('No telemetry records found for the selected range.', 'ai-post-scheduler'),
-                'chartQueriesTitle'    => __('Queries Executed per Day', 'ai-post-scheduler'),
-                'chartMemoryTitle'     => __('Peak Memory per Day', 'ai-post-scheduler'),
-                'chartElapsedTitle'    => __('Average Elapsed Time per Day', 'ai-post-scheduler'),
-                'chartRequestsTitle'   => __('Requests Logged per Day', 'ai-post-scheduler'),
-                'chartQueriesLabel'    => __('Queries', 'ai-post-scheduler'),
-                'chartMemoryLabel'     => __('Peak Memory (MB)', 'ai-post-scheduler'),
-                'chartElapsedLabel'    => __('Average Elapsed (ms)', 'ai-post-scheduler'),
-                'chartRequestsLabel'   => __('Requests', 'ai-post-scheduler'),
-                'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
-                'rangeSummary'         => __('Showing telemetry from %1$s to %2$s.', 'ai-post-scheduler'),
-                'refreshLabel'         => __('Refresh', 'ai-post-scheduler'),
-                'refreshing'           => __('Refreshing…', 'ai-post-scheduler'),
-                'viewDetails'          => __('View Details', 'ai-post-scheduler'),
-                'detailsTitle'         => __('Telemetry Details #%s', 'ai-post-scheduler'),
-                'detailsIdLabel'       => __('ID', 'ai-post-scheduler'),
-                'detailsTypeLabel'     => __('Type', 'ai-post-scheduler'),
-                'detailsPageLabel'     => __('Page', 'ai-post-scheduler'),
-                'detailsCategoriesLabel' => __('Categories', 'ai-post-scheduler'),
-                'detailsMethodLabel'   => __('Method', 'ai-post-scheduler'),
-                'detailsUserIdLabel'   => __('User ID', 'ai-post-scheduler'),
-                'detailsEventsLabel'   => __('Events', 'ai-post-scheduler'),
-                'detailsCacheCallsLabel' => __('Cache Calls', 'ai-post-scheduler'),
-                'detailsCacheHitsLabel' => __('Cache Hits', 'ai-post-scheduler'),
-                'detailsCacheMissesLabel' => __('Cache Misses', 'ai-post-scheduler'),
-                'detailsQueriesLabel'  => __('Queries', 'ai-post-scheduler'),
-                'detailsSlowQueriesLabel' => __('Slow Queries', 'ai-post-scheduler'),
-                'detailsDuplicateQueriesLabel' => __('Duplicate Queries', 'ai-post-scheduler'),
-                'detailsPeakMemoryLabel' => __('Peak Memory', 'ai-post-scheduler'),
-                'detailsElapsedLabel'  => __('Elapsed', 'ai-post-scheduler'),
-                'detailsInsertedLabel' => __('Inserted At', 'ai-post-scheduler'),
-                'detailsEventsSection' => __('Events', 'ai-post-scheduler'),
-                'detailsEventSummarySection' => __('Event Summary', 'ai-post-scheduler'),
-                'detailsCacheSummarySection' => __('Cache Summary', 'ai-post-scheduler'),
-                'detailsQuerySummarySection' => __('Query Summary', 'ai-post-scheduler'),
-                'detailsEventsHelp'    => __('The full event list can be long. Expand to inspect each nested event object.', 'ai-post-scheduler'),
-                'detailsEventSummaryHelp' => __('High-level telemetry counts grouped by bucket and event type.', 'ai-post-scheduler'),
-                'detailsCacheSummaryHelp' => __('Cache activity grouped by operation and result.', 'ai-post-scheduler'),
-                'detailsQuerySummaryHelp' => __('Query totals, slow queries, and duplicate query counts.', 'ai-post-scheduler'),
-                'detailsRawPayloadLabel' => __('Raw Payload JSON', 'ai-post-scheduler'),
-                'detailsRawPayloadHelp' => __('Review the structured payload summaries above, or expand the raw JSON below for the original object.', 'ai-post-scheduler'),
-                'detailsEventItemLabel' => __('Event %s', 'ai-post-scheduler'),
-                'detailsItemLabel'      => __('Item %s', 'ai-post-scheduler'),
-                'locale'               => get_locale(),
-                'expandLabel'          => __('Expand', 'ai-post-scheduler'),
-                'collapseLabel'        => __('Collapse', 'ai-post-scheduler'),
-                'insertedJustNow'      => __('just now', 'ai-post-scheduler'),
-                'insertedMinutesAgo'   => __('%s minutes ago', 'ai-post-scheduler'),
-                'insertedMinuteAgo'    => __('1 minute ago', 'ai-post-scheduler'),
-                'insertedHoursAgo'     => __('%s hours ago', 'ai-post-scheduler'),
-                'insertedHourAgo'      => __('1 hour ago', 'ai-post-scheduler'),
-                'insertedHoursMinutesAgo' => __('%1$s hours and %2$s minutes ago', 'ai-post-scheduler'),
-                'insertedYesterdayAt'  => __('yesterday at %s', 'ai-post-scheduler'),
-                'insertedAbsoluteDate'  => __('%1$s %2$s', 'ai-post-scheduler'),
-                'payloadEmpty'         => __('No payload was stored for this telemetry row.', 'ai-post-scheduler'),
-                'eventsEmpty'          => __('[]', 'ai-post-scheduler'),
-            ));
-    }
 
     /**
      * Enqueue assets for the internal-links page.
@@ -2485,45 +2371,6 @@ class AIPS_Admin_Assets {
                 'confirmDelete'      => __('Delete this rule? Its links disappear from your posts right away.', 'ai-post-scheduler'),
             )
         );
-    }
-
-    /**
-     * Enqueue assets for the Cache Monitor page.
-     *
-     * @return void
-     */
-    private function enqueue_cache_monitor_assets() {
-        wp_enqueue_script(
-            'aips-cache-monitor',
-            AIPS_PLUGIN_URL . 'assets/js/cache-monitor.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
-            AIPS_VERSION,
-            true
-        );
-        wp_localize_script('aips-cache-monitor', 'aipsCacheMonitor', array(
-            'nonce'       => wp_create_nonce('aips_cache_monitor'),
-            'actionNonce' => wp_create_nonce('aips_cache_monitor_action'),
-            'i18n'        => array(
-                'loading'          => __('Loading…', 'ai-post-scheduler'),
-                'never'            => __('Never', 'ai-post-scheduler'),
-                'noEntries'        => __('No entries found.', 'ai-post-scheduler'),
-                'noOps'            => __('No operations found.', 'ai-post-scheduler'),
-                'selectEntry'      => __('Select cache entry', 'ai-post-scheduler'),
-                'noEvents'         => __('No events found.', 'ai-post-scheduler'),
-                'noneSelected'     => __('No entries selected.', 'ai-post-scheduler'),
-                'requestFailed'    => __('Request failed. Please try again.', 'ai-post-scheduler'),
-                'inspect'          => __('Inspect', 'ai-post-scheduler'),
-                'delete'           => __('Delete', 'ai-post-scheduler'),
-                'preview'          => __('Preview', 'ai-post-scheduler'),
-                'prev'             => __('Prev', 'ai-post-scheduler'),
-                'next'             => __('Next', 'ai-post-scheduler'),
-                'confirmFlushAll'  => __('This will flush ALL plugin-owned cache. Are you absolutely sure?', 'ai-post-scheduler'),
-                'flushAllTitle'    => __('Flush All Plugin Cache', 'ai-post-scheduler'),
-                'confirmBtn'       => __('Confirm Flush', 'ai-post-scheduler'),
-                'flushGroupTitle'  => __('Flush Cache Group', 'ai-post-scheduler'),
-                'flushGroupBtn'    => __('Flush Group', 'ai-post-scheduler'),
-            ),
-        ));
     }
 
 }

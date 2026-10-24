@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Removed (3.7.20)
+- **Cache Monitor & Telemetry Subsystems:**
+  - Removed Telemetry system, including `AIPS_Telemetry`, `AIPS_Telemetry_Controller`, `AIPS_Telemetry_Repository`, database table `wp_aips_telemetry`, option `aips_enable_telemetry`, telemetry admin views, and CSS/JS assets.
+  - Removed Cache Monitor system, including `AIPS_Cache_Index`, `AIPS_Cache_Monitor_Service`, `AIPS_Cache_Monitor_Repository`, `AIPS_Cache_Monitor_Controller`, `AIPS_Cache_Monitorable_Driver` interface, database tables `wp_aips_cache_index` and `wp_aips_cache_events`, maintenance cron hook `aips_cache_monitor_maintenance`, related options, admin templates, and assets.
+  - Preserved `AIPS_Cache_Db_Driver::purge_expired()` for database cache cleanup, wired directly into `AIPS_System_Diagnostics_Service::run_cache_maintenance()`.
+  - Added database migration `3.7.20` (`migrate_to_3_7_20()`) to drop obsolete tables, unschedule the maintenance cron, and delete deprecated options.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
