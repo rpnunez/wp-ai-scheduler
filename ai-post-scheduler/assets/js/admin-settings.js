@@ -532,6 +532,467 @@
 		if (typeof AIPS.AIAssistance !== 'undefined') {
 			AIPS.AIAssistance.init({ formContext: 'content_strategy' });
 		}
+
+		initImportExport();
 	});
 
+
+	/**
+	 * Import & Export Presets and Data Studio handlers
+	 */
+	function initImportExport() {
+		var $grid = $('#aips-presets-grid');
+		if (!$grid.length) {
+			return;
+		}
+
+		var currentImportKey = '';
+
+		function loadPresetsStatus() {
+			$('#aips-presets-loading').show();
+			$grid.empty();
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_get_presets_status',
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					$('#aips-presets-loading').hide();
+					if (!res.success || !res.data || !res.data.presets) {
+						var errMsg = (res.data && res.data.message) ? res.data.message : 'Failed to load presets.';
+						$grid.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+							notice_class: 'notice-error',
+							message: errMsg
+						}));
+						return;
+					}
+
+					var presets = res.data.presets;
+					var html = '';
+					presets.forEach(function(p) {
+						var statusBadge = p.is_installed
+							? AIPS.Templates.render('aips-tmpl-preset-badge-installed')
+							: AIPS.Templates.render('aips-tmpl-preset-badge-available');
+
+						var actionBtn = p.is_installed
+							? AIPS.Templates.render('aips-tmpl-preset-btn-remove', {
+								id: p.id,
+								has_posts: p.post_count > 0 ? '1' : '0',
+								post_count: p.post_count
+							})
+							: AIPS.Templates.render('aips-tmpl-preset-btn-install', {
+								id: p.id
+							});
+
+						var usageNotice = (p.is_installed && p.post_count > 0)
+							? AIPS.Templates.render('aips-tmpl-preset-usage-notice', { post_count: p.post_count })
+							: '';
+
+						html += AIPS.Templates.renderRaw('aips-tmpl-preset-card', {
+							icon: p.icon,
+							name: p.name,
+							tagline: p.tagline,
+							author_name: p.author_name,
+							template_name: p.template_name,
+							voice_name: p.voice_name,
+							structure_name: p.structure_name,
+							status_badge: statusBadge,
+							action_button: actionBtn,
+							usage_notice: usageNotice
+						});
+					});
+
+					$grid.html(html);
+				},
+				error: function() {
+					$('#aips-presets-loading').hide();
+					$grid.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+						notice_class: 'notice-error',
+						message: 'Could not connect to server to fetch presets.'
+					}));
+				}
+			});
+		}
+
+		// Initial load
+		loadPresetsStatus();
+
+		$('#aips-refresh-presets-btn').on('click', function(e) {
+			e.preventDefault();
+			loadPresetsStatus();
+		});
+
+		// Install preset
+		$(document).on('click', '.aips-preset-install-btn', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var presetId = $btn.data('preset-id');
+
+			$btn.prop('disabled', true).text('Installing…');
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_install_preset',
+					preset_id: presetId,
+					set_strategy: true,
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					if (res.success) {
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('success', res.data.message || 'Preset installed successfully!');
+						} else if (typeof AIPS.showToast === 'function') {
+							AIPS.showToast(res.data.message || 'Preset installed successfully!', 'success');
+						}
+						loadPresetsStatus();
+					} else {
+						var err = (res.data && res.data.message) ? res.data.message : 'Error installing preset.';
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('error', err);
+						} else {
+							AIPS.Utilities.confirm(err, 'Error');
+						}
+						$btn.prop('disabled', false).text('Install Preset');
+					}
+				},
+				error: function() {
+					if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+						AIPS.Utilities.showNotice('error', 'Connection error occurred while installing preset.');
+					} else {
+						AIPS.Utilities.confirm('Connection error occurred while installing preset.', 'Error');
+					}
+					$btn.prop('disabled', false).text('Install Preset');
+				}
+			});
+		});
+
+		function executeUninstall(presetId, force, $btn) {
+			$btn.prop('disabled', true).text('Removing…');
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_remove_preset',
+					preset_id: presetId,
+					force: force,
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					if (res.success) {
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('success', res.data.message || 'Preset removed.');
+						} else if (typeof AIPS.showToast === 'function') {
+							AIPS.showToast(res.data.message || 'Preset removed.', 'success');
+						}
+						loadPresetsStatus();
+					} else {
+						var err = (res.data && res.data.message) ? res.data.message : 'Error removing preset.';
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('error', err);
+						} else {
+							AIPS.Utilities.confirm(err, 'Error');
+						}
+						$btn.prop('disabled', false).text('Remove');
+					}
+				},
+				error: function(xhr) {
+					var res = xhr.responseJSON;
+					if (res && res.data && res.data.has_usage) {
+						AIPS.Utilities.confirm(
+							(res.data.message || 'This preset has generated content.') + '\n\nDo you want to FORCE remove this preset and its configuration entities?',
+							'Force Removal Confirmation',
+							[
+								{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+								{
+									label: 'Force Remove',
+									className: 'aips-btn aips-btn-danger-solid',
+									action: function() {
+										executeUninstall(presetId, true, $btn);
+									}
+								}
+							]
+						);
+					} else {
+						var err = (res && res.data && res.data.message) ? res.data.message : 'Connection error occurred while removing preset.';
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('error', err);
+						} else {
+							AIPS.Utilities.confirm(err, 'Error');
+						}
+					}
+					$btn.prop('disabled', false).text('Remove');
+				}
+			});
+		}
+
+		// Remove preset
+		$(document).on('click', '.aips-preset-remove-btn', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var presetId = $btn.data('preset-id');
+			var hasPosts = $btn.data('has-posts') === '1' || $btn.data('has-posts') === 1;
+			var postCount = parseInt($btn.data('posts') || '0', 10);
+
+			if (hasPosts) {
+				if (AIPS.Utilities && typeof AIPS.Utilities.showModal === 'function') {
+					AIPS.Utilities.showModal({
+						heading: 'Strict Content Protection',
+						message: 'Warning: This preset has ' + postCount + ' generated post(s) or history records linked to it.\n\nStrict Content Protection is active: deleting the preset will keep your WordPress posts, but remove the template and author definitions.\n\nType OK to force removal:',
+						fields: [
+							{
+								type: 'text',
+								name: 'confirm_text',
+								label: 'Type OK to confirm',
+								placeholder: 'OK',
+								required: true,
+								validate: function(val) {
+									return (val && val.trim().toUpperCase() === 'OK') ? null : 'Please type OK to confirm removal.';
+								}
+							}
+						],
+						buttons: [
+							{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+							{
+								label: 'Force Uninstall',
+								className: 'aips-btn aips-btn-danger-solid',
+								submit: true,
+								action: function() {
+									executeUninstall(presetId, true, $btn);
+								}
+							}
+						]
+					});
+				} else {
+					executeUninstall(presetId, true, $btn);
+				}
+			} else {
+				if (AIPS.Utilities && typeof AIPS.Utilities.confirm === 'function') {
+					AIPS.Utilities.confirm(
+						'Are you sure you want to uninstall this preset? All associated templates, voices, and authors created by this preset will be cleanly removed.',
+						'Uninstall Preset',
+						[
+							{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+							{
+								label: 'Uninstall',
+								className: 'aips-btn aips-btn-danger-solid',
+								action: function() {
+									executeUninstall(presetId, false, $btn);
+								}
+							}
+						]
+					);
+				} else {
+					executeUninstall(presetId, false, $btn);
+				}
+			}
+		});
+
+		// Export selection helpers
+		$('#aips-export-select-all').on('click', function(e) {
+			e.preventDefault();
+			$('.aips-export-type-cb').prop('checked', true);
+		});
+
+		$('#aips-export-deselect-all').on('click', function(e) {
+			e.preventDefault();
+			$('.aips-export-type-cb').prop('checked', false);
+		});
+
+		// Export execution
+		$('#aips-btn-run-export').on('click', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var selected = [];
+			$('.aips-export-type-cb:checked').each(function() {
+				selected.push($(this).val());
+			});
+
+			if (!selected.length) {
+				if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+					AIPS.Utilities.showNotice('warning', 'Please check at least one entity type to export.');
+				} else {
+					AIPS.Utilities.confirm('Please check at least one entity type to export.', 'Notice');
+				}
+				return;
+			}
+
+			$btn.prop('disabled', true).text('Exporting…');
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_export_data',
+					types: selected,
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-export-btn-label'));
+					if (res.success && res.data && res.data.json) {
+						var blob = new Blob([res.data.json], { type: 'application/json' });
+						var link = document.createElement('a');
+						link.href = window.URL.createObjectURL(blob);
+						link.download = res.data.filename || 'aips-export.json';
+						document.body.appendChild(link);
+						link.click();
+						document.body.removeChild(link);
+
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('success', 'Export package generated and downloaded successfully.');
+						}
+					} else {
+						var err = (res.data && res.data.message) ? res.data.message : 'Export failed.';
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('error', err);
+						} else {
+							AIPS.Utilities.confirm(err, 'Export Error');
+						}
+					}
+				},
+				error: function() {
+					$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-export-btn-label'));
+					if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+						AIPS.Utilities.showNotice('error', 'Export request failed due to connection error.');
+					} else {
+						AIPS.Utilities.confirm('Export request failed due to connection error.', 'Export Error');
+					}
+				}
+			});
+		});
+
+		// File Upload Analysis
+		$('#aips-import-file-input').on('change', function() {
+			var file = this.files && this.files[0];
+			if (!file) {
+				return;
+			}
+
+			var formData = new FormData();
+			formData.append('action', 'aips_analyze_import_file');
+			formData.append('nonce', aipsAjax.nonce);
+			formData.append('import_file', file);
+
+			var $status = $('#aips-import-status-box');
+			$status.show().html(AIPS.Templates.render('aips-tmpl-import-analyzing'));
+			$('#aips-import-analysis-card').hide();
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				data: formData,
+				processData: false,
+				contentType: false,
+				dataType: 'json',
+				success: function(res) {
+					$status.hide();
+					if (res.success && res.data && res.data.counts) {
+						currentImportKey = res.data.import_key;
+						var counts = res.data.counts;
+						var countsHtml = '';
+						Object.keys(counts).forEach(function(k) {
+							var count = counts[k];
+							var label = k.replace(/_/g, ' ');
+							label = label.charAt(0).toUpperCase() + label.slice(1);
+							countsHtml += AIPS.Templates.render('aips-tmpl-import-count-item', {
+								type_key: k,
+								label: label,
+								count: count
+							});
+						});
+						$('#aips-import-counts-container').html(countsHtml);
+						$('#aips-import-analysis-card').slideDown();
+					} else {
+						var err = (res.data && res.data.message) ? res.data.message : 'Invalid backup file.';
+						$status.show().html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+							notice_class: 'notice-error',
+							message: err
+						}));
+					}
+				},
+				error: function() {
+					$status.show().html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+						notice_class: 'notice-error',
+						message: 'Failed to analyze backup file due to connection error.'
+					}));
+				}
+			});
+		});
+
+		// Execute Import
+		$('#aips-btn-confirm-import').on('click', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var selected = [];
+			$('.aips-import-type-cb:checked').each(function() {
+				selected.push($(this).val());
+			});
+
+			if (!selected.length) {
+				if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+					AIPS.Utilities.showNotice('warning', 'Please select at least one component type to import.');
+				} else {
+					AIPS.Utilities.confirm('Please select at least one component type to import.', 'Notice');
+				}
+				return;
+			}
+
+			var policy = $('input[name="aips_import_conflict_policy"]:checked').val() || 'copy';
+
+			$btn.prop('disabled', true).text('Importing…');
+			var $status = $('#aips-import-status-box');
+			$status.show().html(AIPS.Templates.render('aips-tmpl-import-executing'));
+
+			$.ajax({
+				url: aipsAjax.ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_execute_import',
+					import_key: currentImportKey,
+					types: selected,
+					conflict_policy: policy,
+					nonce: aipsAjax.nonce
+				},
+				success: function(res) {
+					$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-import-btn-label'));
+					if (res.success && res.data && res.data.report) {
+						var rep = res.data.report;
+						var summaryMsg = 'Import complete: ' + (rep.imported ? rep.imported.length : 0) + ' imported, ' + (rep.updated ? rep.updated.length : 0) + ' updated, ' + (rep.skipped ? rep.skipped.length : 0) + ' skipped.';
+						$status.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+							notice_class: 'notice-success',
+							message: summaryMsg
+						}));
+						if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
+							AIPS.Utilities.showNotice('success', summaryMsg);
+						}
+						$('#aips-import-analysis-card').slideUp();
+						loadPresetsStatus();
+					} else {
+						var err = (res.data && res.data.message) ? res.data.message : 'Import failed.';
+						$status.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+							notice_class: 'notice-error',
+							message: err
+						}));
+					}
+				},
+				error: function() {
+					$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-import-btn-label'));
+					$status.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
+						notice_class: 'notice-error',
+						message: 'Connection error occurred during import execution.'
+					}));
+				}
+			});
+		});
+	}
 })(jQuery);

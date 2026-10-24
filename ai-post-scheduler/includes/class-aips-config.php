@@ -144,6 +144,7 @@ class AIPS_Config {
             // Plugin state / versioning
             'aips_db_version' => '0',
             'aips_onboarding_completed' => false,
+            'aips_installed_presets' => array(),
             'aips_log_secret' => '',
             // AI provider & model
             'aips_ai_provider' => '', // '' = auto-detect (Meow preferred)

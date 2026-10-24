@@ -240,6 +240,7 @@ class AIPS_Ajax_Registry {
 
 		// Onboarding Wizard
 		'aips_onboarding_save_strategy'   => 'AIPS_Onboarding_Wizard',
+		'aips_onboarding_install_preset'  => 'AIPS_Onboarding_Wizard',
 		'aips_onboarding_create_author'   => 'AIPS_Onboarding_Wizard',
 		'aips_onboarding_create_template' => 'AIPS_Onboarding_Wizard',
 		'aips_onboarding_generate_topics' => 'AIPS_Onboarding_Wizard',
@@ -433,6 +434,14 @@ class AIPS_Ajax_Registry {
 		'aips_get_post_ai_insights'            => 'AIPS_Post_Insights_Controller',
 		'aips_reindex_single_post'             => 'AIPS_Post_Insights_Controller',
 		'aips_toggle_single_pillar'            => 'AIPS_Post_Insights_Controller',
+
+		// Import & Export / Presets Controller
+		'aips_get_presets_status'              => 'AIPS_Import_Export_Controller',
+		'aips_install_preset'                  => 'AIPS_Import_Export_Controller',
+		'aips_remove_preset'                   => 'AIPS_Import_Export_Controller',
+		'aips_export_data'                     => 'AIPS_Import_Export_Controller',
+		'aips_analyze_import_file'             => 'AIPS_Import_Export_Controller',
+		'aips_execute_import'                  => 'AIPS_Import_Export_Controller',
 	);
 
 	/**

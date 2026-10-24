@@ -38,6 +38,27 @@ jQuery(document).ready(function ($) {
 			});
 	}
 
+	$('.aips-onboarding-preset-btn').on('click', function (e) {
+		e.preventDefault();
+		var $btn = $(this);
+		var presetId = $btn.data('preset-id');
+
+		$btn.prop('disabled', true).text('Installing preset…');
+		showNotice('warning', 'Installing blueprint components and preparing your site…');
+
+		ajax('aips_onboarding_install_preset', { preset_id: presetId }, function (err, out) {
+			if (err) {
+				showNotice('error', err.message);
+				$btn.prop('disabled', false).text('Select & Fast-Track');
+				return;
+			}
+			showNotice('success', out.message || 'Starter preset installed! Reloading to review topics…');
+			setTimeout(function () {
+				window.location.reload();
+			}, 800);
+		});
+	});
+
 	$('#aips-onboarding-strategy-form').on('submit', function (e) {
 		e.preventDefault();
 		var data = $(this).serialize();

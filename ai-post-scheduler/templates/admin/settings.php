@@ -31,6 +31,8 @@ if ('engine' === $active_settings_tab || 'settings-engine' === $active_settings_
 	$active_settings_tab = 'settings-api-keys';
 } elseif ('developers' === $active_settings_tab || 'dev' === $active_settings_tab || 'debug' === $active_settings_tab) {
 	$active_settings_tab = 'settings-developers';
+} elseif ('import-export' === $active_settings_tab || 'settings-import-export' === $active_settings_tab || 'presets' === $active_settings_tab || 'backup' === $active_settings_tab) {
+	$active_settings_tab = 'settings-import-export';
 }
 
 $settings_rail_items = array(
@@ -121,6 +123,14 @@ $settings_rail_items = array(
 		'description' => __('Debug & dev tools', 'ai-post-scheduler'),
 		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-developers'),
 		'active'      => ($active_settings_tab === 'settings-developers'),
+	),
+	array(
+		'key'         => 'settings-import-export',
+		'label'       => __('Import & Export', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-database-import',
+		'description' => __('Presets, backup & transfer', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-import-export'),
+		'active'      => ($active_settings_tab === 'settings-import-export'),
 	),
 );
 
@@ -446,6 +456,103 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 								</p>
 							</div>
 
+							<!-- Import & Export Tab -->
+							<div id="settings-import-export-tab" class="aips-tab-content<?php echo 'settings-import-export' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-import-export' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-import-export' === $active_settings_tab ? '' : 'hidden'; ?>>
+								<p class="description"><?php esc_html_e('Quickly seed your system with predefined niche blueprints, or create and restore selective data backups.', 'ai-post-scheduler'); ?></p>
+
+								<!-- Starter Presets Gallery -->
+								<div class="aips-settings-section-card">
+									<div class="aips-card-header aips-card-header-flex">
+										<div>
+											<h3 class="aips-settings-card-title"><?php esc_html_e('Starter Presets', 'ai-post-scheduler'); ?></h3>
+											<p class="description"><?php esc_html_e('Curated turn-key configurations bundling Voice, Structure, Author, Topics, Template, and Schedule.', 'ai-post-scheduler'); ?></p>
+										</div>
+										<button type="button" class="button aips-btn aips-btn-secondary" id="aips-refresh-presets-btn">
+											<span class="dashicons dashicons-update"></span> <?php esc_html_e('Refresh', 'ai-post-scheduler'); ?>
+										</button>
+									</div>
+
+									<div id="aips-presets-loading" class="aips-presets-loading">
+										<span class="spinner is-active"></span>
+										<p><?php esc_html_e('Loading presets...', 'ai-post-scheduler'); ?></p>
+									</div>
+									<div id="aips-presets-grid" class="aips-presets-cards-grid"></div>
+								</div>
+
+								<!-- Selective Export Studio -->
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Selective Data Export', 'ai-post-scheduler'); ?></h3>
+									<p class="description"><?php esc_html_e('Select which entities to export. Relational dependencies will be resolved automatically to ensure full portability.', 'ai-post-scheduler'); ?></p>
+
+									<div class="aips-export-actions-row">
+										<button type="button" class="button button-small" id="aips-export-select-all"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></button>
+										<button type="button" class="button button-small" id="aips-export-deselect-all"><?php esc_html_e('Deselect All', 'ai-post-scheduler'); ?></button>
+									</div>
+
+									<div class="aips-export-types-grid">
+										<?php
+										$export_types = AIPS_Selective_Exporter::$available_types;
+										foreach ($export_types as $k => $label) :
+										?>
+											<label class="aips-export-type-label">
+												<input type="checkbox" class="aips-export-type-cb" name="export_types[]" value="<?php echo esc_attr($k); ?>" <?php checked(in_array($k, array('templates', 'schedules', 'authors', 'voices', 'article_structures', 'prompt_sections', 'settings'), true)); ?>>
+												<?php echo esc_html($label); ?>
+											</label>
+										<?php endforeach; ?>
+									</div>
+
+									<p class="submit">
+										<button type="button" class="button button-primary aips-btn aips-btn-primary" id="aips-btn-run-export">
+											<span class="dashicons dashicons-download aips-btn-download-icon"></span>
+											<?php esc_html_e('Export Selected (JSON)', 'ai-post-scheduler'); ?>
+										</button>
+									</p>
+								</div>
+
+								<!-- Selective Import & Restore Studio -->
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Restore & Selective Import', 'ai-post-scheduler'); ?></h3>
+									<p class="description"><?php esc_html_e('Upload an AIPS backup (.json) file to preview contents, choose conflict handling, and selectively restore.', 'ai-post-scheduler'); ?></p>
+
+									<div class="aips-import-upload-zone">
+										<input type="file" id="aips-import-file-input" class="aips-import-file-input" accept=".json,application/json">
+										<p class="description"><?php esc_html_e('Accepts standard JSON backup files up to 50MB.', 'ai-post-scheduler'); ?></p>
+									</div>
+
+									<!-- Import Analysis Preview Box -->
+									<div id="aips-import-analysis-card" class="aips-import-analysis-card" style="display:none;">
+										<h4><?php esc_html_e('File Analysis & Component Selection', 'ai-post-scheduler'); ?></h4>
+										<p class="description"><?php esc_html_e('We found the following components in your backup file. Check which ones you want to import:', 'ai-post-scheduler'); ?></p>
+										<div id="aips-import-counts-container" class="aips-import-counts-container"></div>
+
+										<h4><?php esc_html_e('Conflict Resolution Policy', 'ai-post-scheduler'); ?></h4>
+										<div class="aips-import-policy-group">
+											<label>
+												<input type="radio" name="aips_import_conflict_policy" value="copy" checked>
+												<strong><?php esc_html_e('Create copies (Recommended)', 'ai-post-scheduler'); ?></strong> — <?php esc_html_e('Never overwrites existing records; appends unique copy suffix if name already exists.', 'ai-post-scheduler'); ?>
+											</label>
+											<label>
+												<input type="radio" name="aips_import_conflict_policy" value="overwrite">
+												<strong><?php esc_html_e('Update / Overwrite', 'ai-post-scheduler'); ?></strong> — <?php esc_html_e('Matches by name/slug and updates existing records with imported definitions.', 'ai-post-scheduler'); ?>
+											</label>
+											<label>
+												<input type="radio" name="aips_import_conflict_policy" value="skip">
+												<strong><?php esc_html_e('Skip existing', 'ai-post-scheduler'); ?></strong> — <?php esc_html_e('Ignores any item that already exists locally.', 'ai-post-scheduler'); ?>
+											</label>
+										</div>
+
+										<div class="aips-import-actions-row">
+											<button type="button" class="button button-primary aips-btn aips-btn-primary" id="aips-btn-confirm-import">
+												<span class="dashicons dashicons-upload aips-btn-download-icon"></span>
+												<?php esc_html_e('Execute Import', 'ai-post-scheduler'); ?>
+											</button>
+										</div>
+									</div>
+
+									<div id="aips-import-status-box" class="aips-import-status-box" style="display:none;"></div>
+								</div>
+							</div>
+
 						</form>
 					</div>
 				</div>
@@ -454,5 +561,82 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 
 	</div>
 </div>
+
+<!-- Templates for Starter Presets and Import/Export Studio -->
+<script type="text/html" id="aips-tmpl-preset-card">
+	<div class="aips-preset-card">
+		<div class="aips-preset-card-body">
+			<div class="aips-preset-card-header">
+				<span class="dashicons {{icon}} aips-preset-icon"></span>
+				{{status_badge}}
+			</div>
+			<h4 class="aips-preset-title">{{name}}</h4>
+			<p class="aips-preset-tagline">{{tagline}}</p>
+			<ul class="aips-preset-meta-list">
+				<li><strong><?php esc_html_e('Voice:', 'ai-post-scheduler'); ?></strong> {{voice_name}}</li>
+				<li><strong><?php esc_html_e('Structure:', 'ai-post-scheduler'); ?></strong> {{structure_name}}</li>
+				<li><strong><?php esc_html_e('Author:', 'ai-post-scheduler'); ?></strong> {{author_name}}</li>
+				<li><strong><?php esc_html_e('Template:', 'ai-post-scheduler'); ?></strong> {{template_name}}</li>
+			</ul>
+		</div>
+		<div class="aips-preset-card-footer">
+			{{action_button}}
+			{{usage_notice}}
+		</div>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-preset-badge-installed">
+	<span class="aips-preset-badge-installed"><?php esc_html_e('Installed', 'ai-post-scheduler'); ?></span>
+</script>
+
+<script type="text/html" id="aips-tmpl-preset-badge-available">
+	<span class="aips-preset-badge-available"><?php esc_html_e('Available', 'ai-post-scheduler'); ?></span>
+</script>
+
+<script type="text/html" id="aips-tmpl-preset-btn-install">
+	<button type="button" class="button button-primary aips-btn aips-btn-primary aips-preset-install-btn" data-preset-id="{{id}}">
+		<?php esc_html_e('Install Preset', 'ai-post-scheduler'); ?>
+	</button>
+</script>
+
+<script type="text/html" id="aips-tmpl-preset-btn-remove">
+	<button type="button" class="button aips-btn aips-btn-danger aips-preset-remove-btn" data-preset-id="{{id}}" data-has-posts="{{has_posts}}" data-posts="{{post_count}}">
+		<?php esc_html_e('Remove', 'ai-post-scheduler'); ?>
+	</button>
+</script>
+
+<script type="text/html" id="aips-tmpl-preset-usage-notice">
+	<p class="aips-preset-usage-notice">{{post_count}} <?php esc_html_e('post(s) generated', 'ai-post-scheduler'); ?></p>
+</script>
+
+<script type="text/html" id="aips-tmpl-import-count-item">
+	<label class="aips-import-count-item">
+		<input type="checkbox" class="aips-import-type-cb" name="import_types[]" value="{{type_key}}" checked>
+		<span>{{label}} (<strong>{{count}}</strong>)</span>
+	</label>
+</script>
+
+<script type="text/html" id="aips-tmpl-import-status-notice">
+	<div class="notice {{notice_class}} inline">
+		<p>{{message}}</p>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-import-analyzing">
+	<p><span class="spinner is-active"></span> <?php esc_html_e('Analyzing backup file…', 'ai-post-scheduler'); ?></p>
+</script>
+
+<script type="text/html" id="aips-tmpl-import-executing">
+	<p><span class="spinner is-active"></span> <?php esc_html_e('Executing selective import and remapping IDs…', 'ai-post-scheduler'); ?></p>
+</script>
+
+<script type="text/html" id="aips-tmpl-export-btn-label">
+	<span class="dashicons dashicons-download aips-btn-download-icon"></span> <?php esc_html_e('Export Selected (JSON)', 'ai-post-scheduler'); ?>
+</script>
+
+<script type="text/html" id="aips-tmpl-import-btn-label">
+	<span class="dashicons dashicons-upload aips-btn-download-icon"></span> <?php esc_html_e('Execute Import', 'ai-post-scheduler'); ?>
+</script>
 
 <?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>

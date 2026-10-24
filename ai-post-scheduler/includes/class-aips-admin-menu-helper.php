@@ -37,6 +37,7 @@ class AIPS_Admin_Menu_Helper {
 		'campaign_wizard'      => 'aips-campaign-wizard',
 		'campaign_detail'      => 'aips-campaign-detail',
 		'author_topics'        => 'aips-author-topics',
+		'system_status'        => 'aips-status',
 		'onboarding'           => 'aips-onboarding',
 		'dev_tools'            => 'aips-dev-tools',
 	);
