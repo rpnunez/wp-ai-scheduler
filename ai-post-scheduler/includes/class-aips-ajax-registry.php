@@ -64,13 +64,19 @@ class AIPS_Ajax_Registry {
 		'aips_campaign_wizard_ai_generate'   => 'AIPS_Campaigns_Controller',
 
 		// Campaigns Controller
-		'aips_get_campaigns'                 => 'AIPS_Campaigns_Controller',
-		'aips_get_campaign_metrics'          => 'AIPS_Campaigns_Controller',
-		'aips_toggle_campaign'               => 'AIPS_Campaigns_Controller',
-		'aips_duplicate_campaign'            => 'AIPS_Campaigns_Controller',
-		'aips_archive_campaign'              => 'AIPS_Campaigns_Controller',
-		'aips_restore_campaign'              => 'AIPS_Campaigns_Controller',
-		'aips_delete_campaign'               => 'AIPS_Campaigns_Controller',
+		'aips_get_campaigns'                     => 'AIPS_Campaigns_Controller',
+		'aips_get_campaign_metrics'              => 'AIPS_Campaigns_Controller',
+		'aips_toggle_campaign'                   => 'AIPS_Campaigns_Controller',
+		'aips_duplicate_campaign'                => 'AIPS_Campaigns_Controller',
+		'aips_archive_campaign'                  => 'AIPS_Campaigns_Controller',
+		'aips_restore_campaign'                  => 'AIPS_Campaigns_Controller',
+		'aips_delete_campaign'                   => 'AIPS_Campaigns_Controller',
+		'aips_quick_create_campaign'             => 'AIPS_Campaigns_Controller',
+		'aips_link_campaign_template'            => 'AIPS_Campaigns_Controller',
+		'aips_unlink_campaign_template'          => 'AIPS_Campaigns_Controller',
+		'aips_update_campaign_template_overrides' => 'AIPS_Campaigns_Controller',
+		'aips_run_campaign_all_templates'        => 'AIPS_Campaigns_Controller',
+		'aips_save_campaign_directives'          => 'AIPS_Campaigns_Controller',
 
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',

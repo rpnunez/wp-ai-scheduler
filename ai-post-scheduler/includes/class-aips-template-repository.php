@@ -188,13 +188,12 @@ class AIPS_Template_Repository {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
-            'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'created_at' => $now,
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         // Read insert_id before cache invalidation: invalidation can write
@@ -306,11 +305,6 @@ class AIPS_Template_Repository {
             $format[] = '%s';
         }
 
-        if (array_key_exists('campaign_id', $data)) {
-            $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
-            $format[] = '%d';
-        }
-
         if (isset($data['is_active'])) {
             $update_data['is_active'] = $data['is_active'] ? 1 : 0;
             $format[] = '%d';
@@ -345,6 +339,10 @@ class AIPS_Template_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
+        $id = absint($id);
+        $campaign_templates_table = $this->wpdb->prefix . 'aips_campaign_templates';
+        $this->wpdb->delete($campaign_templates_table, array('template_id' => $id), array('%d'));
+
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
         if ( $result ) {
             $this->invalidate_cache_domain( 'template', array( 'template_id' => absint( $id ) ), 'template_deleted' );
@@ -359,8 +357,9 @@ class AIPS_Template_Repository {
      * @return int
      */
     public function count_by_campaign($campaign_id) {
+        $campaign_templates_table = $this->wpdb->prefix . 'aips_campaign_templates';
         return (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE campaign_id = %d",
+            "SELECT COUNT(*) FROM {$campaign_templates_table} WHERE campaign_id = %d",
             absint($campaign_id)
         ));
     }

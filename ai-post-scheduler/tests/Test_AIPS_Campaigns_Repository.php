@@ -276,6 +276,49 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_link_template_inserts_or_updates_pivot_record() {
+		$repository = $this->new_repository();
+		$result = $repository->link_template(10, 25, array('post_status' => 'draft'));
+		$this->assertTrue($result);
+		$this->assertNotEmpty($this->wpdb_stub->queries);
+		$this->assertStringContainsString('aips_campaign_templates', end($this->wpdb_stub->queries));
+	}
+
+	public function test_unlink_template_deletes_pivot_record() {
+		$repository = $this->new_repository();
+		$result = $repository->unlink_template(10, 25);
+		$this->assertTrue($result);
+	}
+
+	public function test_update_template_overrides_updates_record() {
+		$repository = $this->new_repository();
+		$result = $repository->update_template_overrides(10, 25, array('voice_id' => 3));
+		$this->assertTrue($result);
+		$this->assertNotNull($this->wpdb_stub->last_update_call);
+		$this->assertSame('wp_aips_campaign_templates', $this->wpdb_stub->last_update_call['table']);
+	}
+
+	public function test_get_templates_by_campaign_queries_pivot_table() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('id' => 25, 'name' => 'Tech Article', 'overrides' => null),
+		);
+		$repository = $this->new_repository();
+		$templates = $repository->get_templates_by_campaign(10);
+		$this->assertCount(1, $templates);
+		$this->assertSame('Tech Article', $templates[0]->name);
+		$this->assertStringContainsString('aips_campaign_templates', $this->wpdb_stub->last_get_results_query);
+	}
+
+	public function test_get_campaign_ids_by_template_returns_array_of_ids() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('campaign_id' => '10'),
+			(object) array('campaign_id' => '12'),
+		);
+		$repository = $this->new_repository();
+		$campaign_ids = $repository->get_campaign_ids_by_template(25);
+		$this->assertSame(array(10, 12), $campaign_ids);
+	}
+
 	private function define_test_dependency_classes() {
 		if (!class_exists('AIPS_Scheduler', false)) {
 			eval('class AIPS_Scheduler { public function save_schedule($data) { return 101; } }');

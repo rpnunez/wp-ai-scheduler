@@ -1,6 +1,6 @@
 <?php
 /**
- * Campaign Detail Admin Template
+ * Campaign Detail Admin Template - 6-Tab Container Workspace
  *
  * @package AI_Post_Scheduler
  */
@@ -10,8 +10,6 @@ if (!defined('ABSPATH')) {
 }
 
 $campaigns_url       = admin_url('admin.php?page=aips-campaigns');
-$schedule_url        = add_query_arg(array('page' => 'aips-schedule', 'campaign_id' => absint($campaign->id)), admin_url('admin.php'));
-$generated_posts_url = add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($campaign->id)), admin_url('admin.php'));
 $primary_schedule_id = !empty($campaign->primary_schedule_id) ? absint($campaign->primary_schedule_id) : 0;
 $status_label        = __('Paused', 'ai-post-scheduler');
 $status_class        = 'aips-badge-warning';
@@ -46,190 +44,722 @@ $activity_summary = static function($details) {
 	$details = wp_strip_all_tags($details);
 	return $details ? wp_html_excerpt($details, 160, '&hellip;') : __('No details recorded.', 'ai-post-scheduler');
 };
+
+$active_tab = isset($active_tab) ? $active_tab : 'overview';
+
+$tabs = array(
+	'overview'   => array('label' => __('Overview', 'ai-post-scheduler'), 'icon' => 'dashicons-dashboard'),
+	'templates'  => array('label' => __('Templates', 'ai-post-scheduler') . ' (' . count($templates) . ')', 'icon' => 'dashicons-media-document'),
+	'schedules'  => array('label' => __('Schedules', 'ai-post-scheduler') . ' (' . count($schedules) . ')', 'icon' => 'dashicons-calendar-alt'),
+	'directives' => array('label' => __('Directives & Defaults', 'ai-post-scheduler'), 'icon' => 'dashicons-admin-generic'),
+	'posts'      => array('label' => __('Generated Posts', 'ai-post-scheduler') . ' (' . count($recent_generated_posts) . ')', 'icon' => 'dashicons-admin-post'),
+	'history'    => array('label' => __('History', 'ai-post-scheduler'), 'icon' => 'dashicons-backup'),
+);
+
+$linked_template_ids = array_map(function($t) { return (int) $t->id; }, $templates);
+$unlinked_templates = array_filter($all_templates, function($t) use ($linked_template_ids) {
+	return !in_array((int) $t->id, $linked_template_ids, true);
+});
 ?>
-<div class="wrap aips-wrap aips-admin-page">
+<div class="wrap aips-wrap aips-admin-page aips-campaign-detail-workspace">
 	<div class="aips-page-container aips-campaigns-page">
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
+		<!-- Top Navigation Header -->
+		<div class="aips-page-header" style="margin-bottom:16px;">
+			<div class="aips-page-header-top" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
 				<div>
-					<h1 class="aips-page-title"><?php echo esc_html($campaign->name); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Campaign overview, health, activity, and settings.', 'ai-post-scheduler'); ?></p>
+					<div style="display:flex; align-items:center; gap:10px;">
+						<h1 class="aips-page-title" style="margin:0;"><?php echo esc_html($campaign->name); ?></h1>
+						<span class="aips-badge <?php echo esc_attr($status_class); ?>" style="font-size:12px; padding:2px 8px;"><?php echo esc_html($status_label); ?></span>
+					</div>
+					<?php if (!empty($campaign->content_goal)) : ?>
+						<p class="aips-page-description" style="margin:4px 0 0; color:#50575e;"><?php echo esc_html($campaign->content_goal); ?></p>
+					<?php endif; ?>
 				</div>
-				<div class="aips-page-actions">
+				<div class="aips-page-actions" style="display:flex; gap:8px;">
+					<button type="button" class="aips-btn aips-btn-primary aips-run-campaign-all-btn" data-campaign-id="<?php echo esc_attr($campaign->id); ?>">
+						<span class="dashicons dashicons-controls-play" style="font-size:15px; vertical-align:middle; margin-right:2px;"></span>
+						<?php esc_html_e('Run All Templates Now', 'ai-post-scheduler'); ?>
+					</button>
 					<a href="<?php echo esc_url($campaigns_url); ?>" class="aips-btn aips-btn-secondary"><?php esc_html_e('Back to Campaigns', 'ai-post-scheduler'); ?></a>
 				</div>
 			</div>
 		</div>
 
 		<?php if (!empty($detail_notice) && !empty($detail_notice['message'])) : ?>
-			<div class="notice notice-<?php echo 'error' === $detail_notice['type'] ? 'error' : 'success'; ?> is-dismissible"><p><?php echo esc_html($detail_notice['message']); ?></p></div>
+			<div class="notice notice-<?php echo 'error' === $detail_notice['type'] ? 'error' : 'success'; ?> is-dismissible" style="margin-bottom:16px;"><p><?php echo esc_html($detail_notice['message']); ?></p></div>
 		<?php endif; ?>
 
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Campaign Health', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body">
-				<div class="aips-stats-grid">
-					<div class="aips-stat-card">
-						<span class="aips-stat-label"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></span>
-						<span class="aips-badge <?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></span>
-					</div>
-					<div class="aips-stat-card">
-						<span class="aips-stat-label"><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></span>
-						<strong><?php echo esc_html($format_campaign_datetime($campaign->next_run, __('Not scheduled', 'ai-post-scheduler'))); ?></strong>
-					</div>
-					<div class="aips-stat-card">
-						<span class="aips-stat-label"><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></span>
-						<strong><?php echo esc_html($format_campaign_datetime($campaign->last_run, __('Never', 'ai-post-scheduler'))); ?></strong>
-					</div>
-					<div class="aips-stat-card">
-						<span class="aips-stat-label"><?php esc_html_e('Schedules', 'ai-post-scheduler'); ?></span>
-						<strong><?php echo esc_html((int) $campaign->linked_schedule_count); ?></strong>
-					</div>
-					<div class="aips-stat-card">
-						<span class="aips-stat-label"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
-						<strong><?php echo esc_html((int) $campaign_health['failed_generation_count']); ?></strong>
-					</div>
-					<div class="aips-stat-card">
-						<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
-						<strong><?php echo esc_html((int) $campaign_health['pending_review_count']); ?></strong>
-					</div>
-				</div>
-			</div>
+		<!-- 6-Tab Container Rail Navigation -->
+		<div class="aips-tab-nav aips-panel-tab-nav aips-campaign-tabs" style="display:flex; gap:4px; border-bottom:2px solid #dcdcde; margin-bottom:20px;">
+			<?php foreach ($tabs as $tab_slug => $tab_data) : ?>
+				<?php
+				$tab_url = add_query_arg(array(
+					'page'        => AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
+					'campaign_id' => absint($campaign->id),
+					'tab'         => $tab_slug,
+				), admin_url('admin.php'));
+				?>
+				<a href="<?php echo esc_url($tab_url); ?>" class="aips-tab-link<?php echo $active_tab === $tab_slug ? ' active' : ''; ?>" style="text-decoration:none; padding:10px 16px; display:inline-flex; align-items:center; gap:6px;">
+					<span class="dashicons <?php echo esc_attr($tab_data['icon']); ?>" style="font-size:16px;"></span>
+					<span><?php echo esc_html($tab_data['label']); ?></span>
+				</a>
+			<?php endforeach; ?>
 		</div>
 
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Quick Actions', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body">
-				<div class="aips-page-actions">
-					<button type="button" class="aips-btn aips-btn-primary aips-campaign-run-now" data-schedule-id="<?php echo esc_attr($primary_schedule_id); ?>" <?php disabled(!$primary_schedule_id || (int) $campaign->is_archived === 1); ?>><?php esc_html_e('Run Now', 'ai-post-scheduler'); ?></button>
-					<?php if ((int) $campaign->is_archived === 1) : ?>
-						<button type="button" class="aips-btn aips-btn-secondary aips-restore-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>"><?php esc_html_e('Restore', 'ai-post-scheduler'); ?></button>
-					<?php else : ?>
-						<button type="button" class="aips-btn aips-btn-secondary aips-toggle-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>" data-is-active="<?php echo esc_attr((int) $campaign->is_active); ?>"><?php echo (int) $campaign->is_active === 1 ? esc_html__('Pause', 'ai-post-scheduler') : esc_html__('Resume', 'ai-post-scheduler'); ?></button>
-						<button type="button" class="aips-btn aips-btn-secondary aips-duplicate-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>"><?php esc_html_e('Duplicate', 'ai-post-scheduler'); ?></button>
-						<button type="button" class="aips-btn aips-btn-danger aips-archive-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>"><?php esc_html_e('Archive', 'ai-post-scheduler'); ?></button>
-					<?php endif; ?>
-					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url($schedule_url); ?>"><?php esc_html_e('View Schedule', 'ai-post-scheduler'); ?></a>
-					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url($generated_posts_url); ?>"><?php esc_html_e('View Generated Posts', 'ai-post-scheduler'); ?></a>
+		<!-- ========================================== -->
+		<!-- TAB 1: OVERVIEW                            -->
+		<!-- ========================================== -->
+		<?php if ('overview' === $active_tab) : ?>
+			<div class="aips-tab-pane">
+				<!-- Health & Metric Cards -->
+				<div class="aips-content-panel">
+					<div class="aips-filter-bar"><strong><?php esc_html_e('Campaign Health & Statistics', 'ai-post-scheduler'); ?></strong></div>
+					<div class="aips-panel-body">
+						<div class="aips-stats-grid">
+							<div class="aips-stat-card">
+								<span class="aips-stat-label"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></span>
+								<span class="aips-badge <?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></span>
+							</div>
+							<div class="aips-stat-card">
+								<span class="aips-stat-label"><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></span>
+								<strong><?php echo esc_html($format_campaign_datetime($campaign->next_run, __('Not scheduled', 'ai-post-scheduler'))); ?></strong>
+							</div>
+							<div class="aips-stat-card">
+								<span class="aips-stat-label"><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></span>
+								<strong><?php echo esc_html($format_campaign_datetime($campaign->last_run, __('Never', 'ai-post-scheduler'))); ?></strong>
+							</div>
+							<div class="aips-stat-card">
+								<span class="aips-stat-label"><?php esc_html_e('Linked Templates', 'ai-post-scheduler'); ?></span>
+								<strong><?php echo esc_html(count($templates)); ?></strong>
+							</div>
+							<div class="aips-stat-card">
+								<span class="aips-stat-label"><?php esc_html_e('Active Schedules', 'ai-post-scheduler'); ?></span>
+								<strong><?php echo esc_html((int) $campaign->linked_schedule_count); ?></strong>
+							</div>
+							<div class="aips-stat-card">
+								<span class="aips-stat-label"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
+								<strong><?php echo esc_html((int) ($campaign_health['failed_generation_count'] ?? 0)); ?></strong>
+							</div>
+							<div class="aips-stat-card">
+								<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
+								<strong><?php echo esc_html((int) ($campaign_health['pending_review_count'] ?? 0)); ?></strong>
+							</div>
+						</div>
+					</div>
 				</div>
-			</div>
-		</div>
 
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Generated Content', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body">
-				<?php if (empty($recent_generated_posts)) : ?>
-					<p class="aips-muted"><?php esc_html_e('No posts have been generated by this campaign yet.', 'ai-post-scheduler'); ?></p>
-				<?php else : ?>
-					<table class="widefat striped">
-						<thead>
-							<tr>
-								<th><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-							</tr>
-						</thead>
-						<tbody>
-							<?php foreach ($recent_generated_posts as $post_item) : ?>
-								<?php
-								$post_title = $post_item->post_title ? $post_item->post_title : $post_item->generated_title;
-								$edit_link  = get_edit_post_link((int) $post_item->post_id, 'raw');
-								$view_link  = get_permalink((int) $post_item->post_id);
-								?>
-								<tr>
-									<td><strong><?php echo esc_html($post_title ? $post_title : __('Untitled', 'ai-post-scheduler')); ?></strong></td>
-									<td><?php echo esc_html(get_post_status_object($post_item->post_status) ? get_post_status_object($post_item->post_status)->label : $post_item->post_status); ?></td>
-									<td><?php echo esc_html($format_campaign_datetime(!empty($post_item->completed_at) ? $post_item->completed_at : $post_item->created_at, __('Unknown', 'ai-post-scheduler'))); ?></td>
-									<td><?php echo esc_html($post_item->template_name ? $post_item->template_name : __('Unknown template', 'ai-post-scheduler')); ?></td>
-									<td>
-										<?php if ($edit_link) : ?><a href="<?php echo esc_url($edit_link); ?>"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></a><?php endif; ?>
-										<?php if ($edit_link && $view_link) : ?> | <?php endif; ?>
-										<?php if ($view_link) : ?><a href="<?php echo esc_url($view_link); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e('View', 'ai-post-scheduler'); ?></a><?php endif; ?>
-									</td>
-								</tr>
-							<?php endforeach; ?>
-						</tbody>
-					</table>
+				<!-- Quick Actions Bar -->
+				<div class="aips-content-panel">
+					<div class="aips-filter-bar"><strong><?php esc_html_e('Quick Actions', 'ai-post-scheduler'); ?></strong></div>
+					<div class="aips-panel-body">
+						<div class="aips-campaign-detail-lifecycle-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+							<button type="button" class="aips-btn aips-btn-primary aips-run-campaign-all-btn" data-campaign-id="<?php echo esc_attr($campaign->id); ?>">
+								<span class="dashicons dashicons-controls-play" style="margin-right:4px;vertical-align:middle;"></span>
+								<?php esc_html_e('Run All Templates Now', 'ai-post-scheduler'); ?>
+							</button>
+
+							<?php if ((int) $campaign->is_archived === 1) : ?>
+								<button type="button" class="aips-btn aips-btn-secondary aips-restore-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>"><?php esc_html_e('Restore Campaign', 'ai-post-scheduler'); ?></button>
+							<?php else : ?>
+								<button type="button" class="aips-btn aips-btn-secondary aips-toggle-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>" data-is-active="<?php echo esc_attr((int) $campaign->is_active); ?>"><?php echo (int) $campaign->is_active === 1 ? esc_html__('Pause Campaign', 'ai-post-scheduler') : esc_html__('Resume Campaign', 'ai-post-scheduler'); ?></button>
+								<button type="button" class="aips-btn aips-btn-secondary aips-duplicate-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>"><?php esc_html_e('Duplicate Campaign', 'ai-post-scheduler'); ?></button>
+								<button type="button" class="aips-btn aips-btn-secondary aips-archive-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>"><?php esc_html_e('Archive Campaign', 'ai-post-scheduler'); ?></button>
+							<?php endif; ?>
+
+							<?php if (!empty($campaign->can_delete)) : ?>
+								<button type="button" class="aips-btn aips-btn-danger aips-delete-campaign" data-campaign-id="<?php echo esc_attr(absint($campaign->id)); ?>"><?php esc_html_e('Delete Campaign', 'ai-post-scheduler'); ?></button>
+							<?php endif; ?>
+						</div>
+					</div>
+				</div>
+
+				<?php if (!empty($campaign_warnings)) : ?>
+					<div class="aips-content-panel">
+						<div class="aips-filter-bar"><strong><?php esc_html_e('Campaign Warnings', 'ai-post-scheduler'); ?></strong></div>
+						<div class="aips-panel-body">
+							<ul class="aips-warning-list" style="margin:0; padding-left:16px;">
+								<?php foreach ($campaign_warnings as $warning) : ?>
+									<li class="notice notice-warning inline" style="margin:4px 0;"><p><?php echo esc_html($warning['message']); ?></p></li>
+								<?php endforeach; ?>
+							</ul>
+						</div>
+					</div>
 				<?php endif; ?>
-			</div>
-		</div>
 
-		<?php if (!empty($campaign_warnings)) : ?>
-			<div class="aips-content-panel">
-				<div class="aips-filter-bar"><strong><?php esc_html_e('Campaign Warnings', 'ai-post-scheduler'); ?></strong></div>
-				<div class="aips-panel-body">
-					<ul class="aips-warning-list">
-						<?php foreach ($campaign_warnings as $warning) : ?>
-							<li class="notice notice-warning inline"><p><?php echo esc_html($warning['message']); ?></p></li>
-						<?php endforeach; ?>
-					</ul>
+				<!-- Recent Activity -->
+				<div class="aips-content-panel">
+					<div class="aips-filter-bar"><strong><?php esc_html_e('Recent Campaign Activity', 'ai-post-scheduler'); ?></strong></div>
+					<div class="aips-panel-body no-padding">
+						<?php if (empty($recent_activity)) : ?>
+							<div class="aips-empty-state"><p class="aips-muted"><?php esc_html_e('No campaign activity has been recorded yet.', 'ai-post-scheduler'); ?></p></div>
+						<?php else : ?>
+							<table class="aips-table">
+								<thead>
+									<tr>
+										<th><?php esc_html_e('When', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Details', 'ai-post-scheduler'); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ($recent_activity as $activity) : ?>
+										<tr>
+											<td><?php echo esc_html($format_campaign_datetime($activity->activity_timestamp, __('Unknown', 'ai-post-scheduler'))); ?></td>
+											<td><?php echo 'history_log' === $activity->activity_source ? esc_html__('History Log', 'ai-post-scheduler') : esc_html__('History', 'ai-post-scheduler'); ?></td>
+											<td><code><?php echo esc_html($activity->activity_type); ?></code></td>
+											<td><?php echo esc_html($activity_summary($activity->activity_details)); ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						<?php endif; ?>
+					</div>
 				</div>
 			</div>
 		<?php endif; ?>
 
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Settings', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body">
-				<form method="post">
-					<?php wp_nonce_field('aips_campaign_detail_save_' . absint($campaign->id), 'aips_campaign_detail_nonce'); ?>
-					<p>
-						<label for="campaign_name"><strong><?php esc_html_e('Campaign Name', 'ai-post-scheduler'); ?></strong></label><br />
-						<input type="text" id="campaign_name" name="campaign_name" class="regular-text" value="<?php echo esc_attr($campaign->name); ?>" required />
-					</p>
-					<p>
-						<label for="content_goal"><strong><?php esc_html_e('Content Goal', 'ai-post-scheduler'); ?></strong></label><br />
-						<textarea id="content_goal" name="content_goal" rows="3" class="large-text"><?php echo esc_textarea($campaign->content_goal); ?></textarea>
-					</p>
-					<p><button type="submit" class="aips-btn aips-btn-primary"><?php esc_html_e('Save Campaign', 'ai-post-scheduler'); ?></button></p>
-				</form>
+		<!-- ========================================== -->
+		<!-- TAB 2: TEMPLATES                           -->
+		<!-- ========================================== -->
+		<?php if ('templates' === $active_tab) : ?>
+			<div class="aips-tab-pane">
+				<div class="aips-content-panel">
+					<div class="aips-filter-bar" style="display:flex; justify-content:space-between; align-items:center;">
+						<strong><?php esc_html_e('Linked Templates in this Campaign', 'ai-post-scheduler'); ?></strong>
+						<div style="display:flex; gap:8px;">
+							<button type="button" class="aips-btn aips-btn-primary" id="aips-open-link-template-modal">
+								<span class="dashicons dashicons-plus-alt2" style="margin-right:2px;vertical-align:middle;"></span>
+								<?php esc_html_e('Link Existing Template', 'ai-post-scheduler'); ?>
+							</button>
+							<a href="<?php echo esc_url(admin_url('admin.php?page=aips-studio&tab=templates&action=new')); ?>" class="aips-btn aips-btn-secondary" target="_blank" rel="noopener noreferrer">
+								<span class="dashicons dashicons-external" style="margin-right:2px;vertical-align:middle;"></span>
+								<?php esc_html_e('Create New Template', 'ai-post-scheduler'); ?>
+							</a>
+						</div>
+					</div>
+					<div class="aips-panel-body no-padding">
+						<?php if (empty($templates)) : ?>
+							<div class="aips-empty-state" style="padding:40px 20px; text-align:center;">
+								<div class="dashicons dashicons-media-document aips-empty-state-icon" aria-hidden="true" style="font-size:40px;height:40px;width:40px;color:#8c8f94;"></div>
+								<h3 class="aips-empty-state-title" style="margin-top:12px;"><?php esc_html_e('No Templates Linked', 'ai-post-scheduler'); ?></h3>
+								<p class="aips-empty-state-description" style="color:#646970; max-width:480px; margin:0 auto 16px;">
+									<?php esc_html_e('Link existing prompt templates to this campaign. Templates can be shared across multiple campaigns and customize execution with optional overrides.', 'ai-post-scheduler'); ?>
+								</p>
+								<button type="button" class="aips-btn aips-btn-primary" id="aips-open-link-template-modal-empty">
+									<?php esc_html_e('Link Your First Template', 'ai-post-scheduler'); ?>
+								</button>
+							</div>
+						<?php else : ?>
+							<table class="aips-table">
+								<thead>
+									<tr>
+										<th><?php esc_html_e('Template Name', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Post Type', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Structure', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Overrides', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ($templates as $t) : ?>
+										<?php
+										$overrides = !empty($t->overrides) ? (is_array($t->overrides) ? $t->overrides : json_decode($t->overrides, true)) : array();
+										$override_keys = is_array($overrides) ? array_keys(array_filter($overrides)) : array();
+										$has_overrides = !empty($override_keys);
+										$edit_template_url = admin_url('admin.php?page=aips-studio&tab=templates&action=edit&template_id=' . absint($t->id));
+										?>
+										<tr data-template-id="<?php echo esc_attr($t->id); ?>">
+											<td>
+												<div class="cell-primary">
+													<a href="<?php echo esc_url($edit_template_url); ?>" target="_blank" rel="noopener noreferrer">
+														<strong><?php echo esc_html($t->name); ?></strong>
+													</a>
+												</div>
+												<?php if (!empty($t->description)) : ?>
+													<div class="cell-meta"><?php echo esc_html($t->description); ?></div>
+												<?php endif; ?>
+											</td>
+											<td><code><?php echo esc_html($t->post_type ?? 'post'); ?></code></td>
+											<td>
+												<?php
+												$struct_id = !empty($overrides['article_structure_id']) ? $overrides['article_structure_id'] : ($campaign->default_article_structure_id ?: ($t->article_structure_id ?? null));
+												$struct_label = __('Default', 'ai-post-scheduler');
+												if (!empty($struct_id)) {
+													foreach ($article_structures as $as) {
+														if ((int) $as->id === (int) $struct_id) {
+															$struct_label = $as->name;
+															break;
+														}
+													}
+												}
+												echo esc_html($struct_label);
+												?>
+											</td>
+											<td>
+												<?php if ($has_overrides) : ?>
+													<span class="aips-badge aips-badge-info" title="<?php echo esc_attr(implode(', ', $override_keys)); ?>">
+														<?php echo esc_html(sprintf(_n('%d override', '%d overrides', count($override_keys), 'ai-post-scheduler'), count($override_keys))); ?>
+													</span>
+												<?php else : ?>
+													<span class="aips-badge aips-badge-secondary"><?php esc_html_e('None (Inherits Campaign)', 'ai-post-scheduler'); ?></span>
+												<?php endif; ?>
+											</td>
+											<td>
+												<div style="display:flex; gap:6px;">
+													<button type="button"
+															class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-overrides-btn"
+															data-template-id="<?php echo esc_attr($t->id); ?>"
+															data-template-name="<?php echo esc_attr($t->name); ?>"
+															data-overrides="<?php echo esc_attr(wp_json_encode($overrides ?: new stdClass())); ?>"
+															title="<?php esc_attr_e('Configure per-template overrides for this campaign', 'ai-post-scheduler'); ?>">
+														<?php esc_html_e('Overrides', 'ai-post-scheduler'); ?>
+													</button>
+													<button type="button"
+															class="aips-btn aips-btn-sm aips-btn-danger aips-unlink-template-btn"
+															data-template-id="<?php echo esc_attr($t->id); ?>"
+															data-template-name="<?php echo esc_attr($t->name); ?>"
+															title="<?php esc_attr_e('Unlink template from this campaign (preserves template)', 'ai-post-scheduler'); ?>">
+														<?php esc_html_e('Unlink', 'ai-post-scheduler'); ?>
+													</button>
+												</div>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						<?php endif; ?>
+					</div>
+				</div>
 			</div>
-		</div>
+		<?php endif; ?>
 
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Owned Resources', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body">
-				<p><strong><?php esc_html_e('Templates:', 'ai-post-scheduler'); ?></strong> <?php echo esc_html((int) count($templates)); ?></p>
-				<p><strong><?php esc_html_e('Schedules:', 'ai-post-scheduler'); ?></strong> <?php echo esc_html((int) count($schedules)); ?></p>
-				<?php if (!empty($templates)) : ?>
-					<ul>
-						<?php foreach ($templates as $template) : ?>
-							<li><a href="<?php echo esc_url(add_query_arg(array('page' => 'aips-studio', 'tab' => 'templates', 'edit' => absint($template->id)), admin_url('admin.php'))); ?>"><?php echo esc_html($template->name); ?></a></li>
+		<!-- ========================================== -->
+		<!-- TAB 3: SCHEDULES                           -->
+		<!-- ========================================== -->
+		<?php if ('schedules' === $active_tab) : ?>
+			<div class="aips-tab-pane">
+				<div class="aips-content-panel">
+					<div class="aips-filter-bar" style="display:flex; justify-content:space-between; align-items:center;">
+						<strong><?php esc_html_e('Campaign Schedules', 'ai-post-scheduler'); ?></strong>
+						<div style="display:flex; gap:8px;">
+							<button type="button" class="aips-btn aips-btn-primary aips-run-campaign-all-btn" data-campaign-id="<?php echo esc_attr($campaign->id); ?>">
+								<span class="dashicons dashicons-controls-play" style="margin-right:2px;vertical-align:middle;"></span>
+								<?php esc_html_e('Run All Templates Now', 'ai-post-scheduler'); ?>
+							</button>
+							<a href="<?php echo esc_url(admin_url('admin.php?page=aips-automations&tab=schedules&campaign_id=' . absint($campaign->id))); ?>" class="aips-btn aips-btn-secondary">
+								<span class="dashicons dashicons-plus-alt2" style="margin-right:2px;vertical-align:middle;"></span>
+								<?php esc_html_e('Add Schedule', 'ai-post-scheduler'); ?>
+							</a>
+						</div>
+					</div>
+					<div class="aips-panel-body no-padding">
+						<?php if (empty($schedules)) : ?>
+							<div class="aips-empty-state" style="padding:40px 20px; text-align:center;">
+								<div class="dashicons dashicons-calendar-alt aips-empty-state-icon" aria-hidden="true" style="font-size:40px;height:40px;width:40px;color:#8c8f94;"></div>
+								<h3 class="aips-empty-state-title" style="margin-top:12px;"><?php esc_html_e('No Schedules Configured', 'ai-post-scheduler'); ?></h3>
+								<p class="aips-empty-state-description" style="color:#646970; max-width:480px; margin:0 auto 16px;">
+									<?php esc_html_e('Automate content creation for this campaign by creating a schedule. A schedule can run all linked templates in a batch, rotate through them, or trigger an individual template.', 'ai-post-scheduler'); ?>
+								</p>
+								<a href="<?php echo esc_url(admin_url('admin.php?page=aips-automations&tab=schedules&campaign_id=' . absint($campaign->id))); ?>" class="aips-btn aips-btn-primary">
+									<?php esc_html_e('Create Schedule for Campaign', 'ai-post-scheduler'); ?>
+								</a>
+							</div>
+						<?php else : ?>
+							<table class="aips-table">
+								<thead>
+									<tr>
+										<th><?php esc_html_e('Schedule Title', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Execution Mode', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Interval', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ($schedules as $sched) : ?>
+										<?php
+										$sched_is_active = (int) ($sched->is_active ?? 0) === 1;
+										$sched_mode_label = __('Single Template', 'ai-post-scheduler');
+										if (($sched->rotation_pattern ?? '') === 'campaign_all') {
+											$sched_mode_label = __('All Templates (Batch)', 'ai-post-scheduler');
+										} elseif (($sched->rotation_pattern ?? '') === 'campaign_rotate') {
+											$sched_mode_label = __('Rotate Templates', 'ai-post-scheduler');
+										}
+										?>
+										<tr data-schedule-id="<?php echo esc_attr($sched->id); ?>">
+											<td>
+												<strong><?php echo esc_html($sched->title ?: __('Untitled Schedule', 'ai-post-scheduler')); ?></strong>
+											</td>
+											<td>
+												<span class="aips-badge <?php echo ($sched->rotation_pattern ?? '') === 'campaign_all' ? 'aips-badge-primary' : 'aips-badge-info'; ?>">
+													<?php echo esc_html($sched_mode_label); ?>
+												</span>
+											</td>
+											<td><code><?php echo esc_html($sched->interval_setting ?? 'daily'); ?></code></td>
+											<td><?php echo esc_html($format_campaign_datetime($sched->next_run ?? null, __('Not scheduled', 'ai-post-scheduler'))); ?></td>
+											<td><?php echo esc_html($format_campaign_datetime($sched->last_run ?? null, __('Never', 'ai-post-scheduler'))); ?></td>
+											<td>
+												<span class="aips-status-badge <?php echo $sched_is_active ? 'success' : 'neutral'; ?>">
+													<?php echo $sched_is_active ? esc_html__('Active', 'ai-post-scheduler') : esc_html__('Paused', 'ai-post-scheduler'); ?>
+												</span>
+											</td>
+											<td>
+												<div style="display:flex; gap:6px;">
+													<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-campaign-run-now" data-schedule-id="<?php echo esc_attr($sched->id); ?>">
+														<?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
+													</button>
+													<a href="<?php echo esc_url(admin_url('admin.php?page=aips-automations&tab=schedules&edit=' . absint($sched->id))); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+														<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+													</a>
+												</div>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						<?php endif; ?>
+					</div>
+				</div>
+			</div>
+		<?php endif; ?>
+
+		<!-- ========================================== -->
+		<!-- TAB 4: DIRECTIVES & DEFAULTS               -->
+		<!-- ========================================== -->
+		<?php if ('directives' === $active_tab) : ?>
+			<div class="aips-tab-pane">
+				<div class="aips-content-panel">
+					<div class="aips-filter-bar"><strong><?php esc_html_e('Campaign Strategy Directives & Defaults', 'ai-post-scheduler'); ?></strong></div>
+					<div class="aips-panel-body" style="padding:24px;">
+						<form method="post" id="aips-campaign-directives-form">
+							<?php wp_nonce_field('aips_campaign_detail_save_' . absint($campaign->id), 'aips_campaign_detail_nonce'); ?>
+							<input type="hidden" name="detail_action" value="save">
+
+							<div class="aips-form-row" style="margin-bottom:20px;">
+								<label for="campaign_name"><strong><?php esc_html_e('Campaign Name', 'ai-post-scheduler'); ?></strong> <span style="color:#d63638;">*</span></label>
+								<input type="text" id="campaign_name" name="campaign_name" class="regular-text" value="<?php echo esc_attr($campaign->name); ?>" required style="width:100%; max-width:600px; margin-top:4px;" />
+							</div>
+
+							<div class="aips-form-row" style="margin-bottom:20px;">
+								<label for="content_goal"><strong><?php esc_html_e('Content Goal / High-Level Strategy', 'ai-post-scheduler'); ?></strong></label>
+								<p class="description" style="margin-top:2px; margin-bottom:6px;">
+									<?php esc_html_e('The primary business objective or theme. Injected into prompts as the campaign content goal.', 'ai-post-scheduler'); ?>
+								</p>
+								<textarea id="content_goal" name="content_goal" rows="3" class="large-text" style="width:100%; max-width:700px;"><?php echo esc_textarea($campaign->content_goal); ?></textarea>
+							</div>
+
+							<div class="aips-form-row" style="margin-bottom:24px;">
+								<label for="prompt_directives"><strong><?php esc_html_e('Prompt Directives', 'ai-post-scheduler'); ?></strong></label>
+								<p class="description" style="margin-top:2px; margin-bottom:6px;">
+									<?php esc_html_e('Custom instructions or constraints injected into AI prompts for all templates in this campaign (e.g., editorial guidelines, key product mentions, tone notes).', 'ai-post-scheduler'); ?>
+								</p>
+								<textarea id="prompt_directives" name="prompt_directives" rows="5" class="large-text" style="width:100%; max-width:700px;"><?php echo esc_textarea($campaign->prompt_directives ?? ''); ?></textarea>
+							</div>
+
+							<h3 style="border-top:1px solid #dcdcde; padding-top:20px; margin-bottom:16px;">
+								<?php esc_html_e('Campaign Defaults (Inherited by Templates unless Overridden)', 'ai-post-scheduler'); ?>
+							</h3>
+
+							<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px; max-width:850px; margin-bottom:24px;">
+								<!-- Default Article Structure -->
+								<div class="aips-form-row">
+									<label for="default_article_structure_id"><strong><?php esc_html_e('Default Article Structure', 'ai-post-scheduler'); ?></strong></label>
+									<select id="default_article_structure_id" name="default_article_structure_id" style="width:100%; margin-top:4px;">
+										<option value=""><?php esc_html_e('None (Use Template Default)', 'ai-post-scheduler'); ?></option>
+										<?php foreach ($article_structures as $as) : ?>
+											<option value="<?php echo esc_attr($as->id); ?>" <?php selected((int) ($campaign->default_article_structure_id ?? 0), (int) $as->id); ?>>
+												<?php echo esc_html($as->name); ?>
+											</option>
+										<?php endforeach; ?>
+									</select>
+								</div>
+
+								<!-- Default Post Status -->
+								<div class="aips-form-row">
+									<label for="default_post_status"><strong><?php esc_html_e('Default Post Status', 'ai-post-scheduler'); ?></strong></label>
+									<select id="default_post_status" name="default_post_status" style="width:100%; margin-top:4px;">
+										<option value=""><?php esc_html_e('Inherit (Use Template Default)', 'ai-post-scheduler'); ?></option>
+										<option value="draft" <?php selected($campaign->default_post_status ?? '', 'draft'); ?>><?php esc_html_e('Draft', 'ai-post-scheduler'); ?></option>
+										<option value="publish" <?php selected($campaign->default_post_status ?? '', 'publish'); ?>><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
+										<option value="pending" <?php selected($campaign->default_post_status ?? '', 'pending'); ?>><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></option>
+										<option value="private" <?php selected($campaign->default_post_status ?? '', 'private'); ?>><?php esc_html_e('Private', 'ai-post-scheduler'); ?></option>
+									</select>
+								</div>
+
+								<!-- Default Voice -->
+								<div class="aips-form-row">
+									<label for="default_voice_id"><strong><?php esc_html_e('Default Voice', 'ai-post-scheduler'); ?></strong></label>
+									<select id="default_voice_id" name="default_voice_id" style="width:100%; margin-top:4px;">
+										<option value=""><?php esc_html_e('Inherit (Use Template Default)', 'ai-post-scheduler'); ?></option>
+										<?php foreach ($voices as $voice) : ?>
+											<option value="<?php echo esc_attr($voice->id); ?>" <?php selected((int) ($campaign->default_voice_id ?? 0), (int) $voice->id); ?>>
+												<?php echo esc_html($voice->name); ?>
+											</option>
+										<?php endforeach; ?>
+									</select>
+								</div>
+
+								<!-- Default Author -->
+								<div class="aips-form-row">
+									<label for="default_author_id"><strong><?php esc_html_e('Default Author', 'ai-post-scheduler'); ?></strong></label>
+									<select id="default_author_id" name="default_author_id" style="width:100%; margin-top:4px;">
+										<option value=""><?php esc_html_e('Inherit (Use Template Default)', 'ai-post-scheduler'); ?></option>
+										<?php foreach ($authors as $author) : ?>
+											<option value="<?php echo esc_attr($author->ID); ?>" <?php selected((int) ($campaign->default_author_id ?? 0), (int) $author->ID); ?>>
+												<?php echo esc_html($author->display_name); ?>
+											</option>
+										<?php endforeach; ?>
+									</select>
+								</div>
+
+								<!-- Default Categories -->
+								<div class="aips-form-row">
+									<label for="default_categories"><strong><?php esc_html_e('Default Categories', 'ai-post-scheduler'); ?></strong></label>
+									<input type="text" id="default_categories" name="default_categories" class="regular-text" style="width:100%; margin-top:4px;" value="<?php echo esc_attr($campaign->default_categories ?? ''); ?>" placeholder="<?php esc_attr_e('e.g., Technology, Reviews', 'ai-post-scheduler'); ?>">
+								</div>
+
+								<!-- Default Tags -->
+								<div class="aips-form-row">
+									<label for="default_tags"><strong><?php esc_html_e('Default Tags', 'ai-post-scheduler'); ?></strong></label>
+									<input type="text" id="default_tags" name="default_tags" class="regular-text" style="width:100%; margin-top:4px;" value="<?php echo esc_attr($campaign->default_tags ?? ''); ?>" placeholder="<?php esc_attr_e('e.g., ai, automation, 2026', 'ai-post-scheduler'); ?>">
+								</div>
+							</div>
+
+							<p style="margin-top:20px;">
+								<button type="submit" class="aips-btn aips-btn-primary">
+									<span class="dashicons dashicons-saved" style="margin-right:4px;vertical-align:middle;"></span>
+									<?php esc_html_e('Save Directives & Defaults', 'ai-post-scheduler'); ?>
+								</button>
+							</p>
+						</form>
+					</div>
+				</div>
+			</div>
+		<?php endif; ?>
+
+		<!-- ========================================== -->
+		<!-- TAB 5: GENERATED POSTS                     -->
+		<!-- ========================================== -->
+		<?php if ('posts' === $active_tab) : ?>
+			<div class="aips-tab-pane">
+				<div class="aips-content-panel">
+					<div class="aips-filter-bar"><strong><?php esc_html_e('Posts Generated under this Campaign', 'ai-post-scheduler'); ?></strong></div>
+					<div class="aips-panel-body no-padding">
+						<?php if (empty($recent_generated_posts)) : ?>
+							<div class="aips-empty-state" style="padding:40px 20px; text-align:center;">
+								<div class="dashicons dashicons-admin-post aips-empty-state-icon" aria-hidden="true" style="font-size:40px;height:40px;width:40px;color:#8c8f94;"></div>
+								<h3 class="aips-empty-state-title" style="margin-top:12px;"><?php esc_html_e('No Posts Generated Yet', 'ai-post-scheduler'); ?></h3>
+								<p class="aips-empty-state-description" style="color:#646970; max-width:480px; margin:0 auto 16px;">
+									<?php esc_html_e('Posts generated by schedules or manual runs tied to this campaign will appear here.', 'ai-post-scheduler'); ?>
+								</p>
+								<button type="button" class="aips-btn aips-btn-primary aips-run-campaign-all-btn" data-campaign-id="<?php echo esc_attr($campaign->id); ?>">
+									<?php esc_html_e('Run All Templates Now', 'ai-post-scheduler'); ?>
+								</button>
+							</div>
+						<?php else : ?>
+							<table class="aips-table">
+								<thead>
+									<tr>
+										<th><?php esc_html_e('Post Title', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Template Used', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Generated Date', 'ai-post-scheduler'); ?></th>
+										<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ($recent_generated_posts as $post_item) : ?>
+										<?php
+										$post_title = $post_item->post_title ? $post_item->post_title : $post_item->generated_title;
+										$edit_link  = get_edit_post_link((int) $post_item->post_id, 'raw');
+										$view_link  = get_permalink((int) $post_item->post_id);
+										$status_obj = get_post_status_object($post_item->post_status);
+										$status_str = $status_obj ? $status_obj->label : $post_item->post_status;
+										?>
+										<tr>
+											<td><strong><?php echo esc_html($post_title ? $post_title : __('Untitled', 'ai-post-scheduler')); ?></strong></td>
+											<td><span class="aips-status-badge neutral"><?php echo esc_html($status_str); ?></span></td>
+											<td><?php echo esc_html($post_item->template_name ? $post_item->template_name : __('Unknown template', 'ai-post-scheduler')); ?></td>
+											<td><?php echo esc_html($format_campaign_datetime(!empty($post_item->completed_at) ? $post_item->completed_at : $post_item->created_at, __('Unknown', 'ai-post-scheduler'))); ?></td>
+											<td>
+												<div style="display:flex; gap:6px;">
+													<?php if ($edit_link) : ?>
+														<a href="<?php echo esc_url($edit_link); ?>" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer"><?php esc_html_e('Edit in WP', 'ai-post-scheduler'); ?></a>
+													<?php endif; ?>
+													<?php if ($view_link) : ?>
+														<a href="<?php echo esc_url($view_link); ?>" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" rel="noopener noreferrer"><?php esc_html_e('View', 'ai-post-scheduler'); ?></a>
+													<?php endif; ?>
+												</div>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						<?php endif; ?>
+					</div>
+				</div>
+			</div>
+		<?php endif; ?>
+
+		<!-- ========================================== -->
+		<!-- TAB 6: HISTORY (SCOPED EMBEDDED)           -->
+		<!-- ========================================== -->
+		<?php if ('history' === $active_tab) : ?>
+			<div class="aips-tab-pane">
+				<div class="aips-campaign-scoped-history" style="margin-top:10px;">
+					<?php
+					$history_handler = new AIPS_History();
+					$history_handler->render_page(array(
+						'campaign_id' => $campaign->id,
+						'is_embedded' => true,
+					));
+					?>
+				</div>
+			</div>
+		<?php endif; ?>
+
+	</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Link Template Modal                                          -->
+<!-- ============================================================ -->
+<div id="aips-link-template-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-link-template-title">
+	<div class="aips-modal-backdrop"></div>
+	<div class="aips-modal-content" style="max-width:580px;">
+		<div class="aips-modal-header">
+			<h2 id="aips-link-template-title" class="aips-modal-title"><?php esc_html_e('Link Template to Campaign', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<form id="aips-link-template-form">
+			<input type="hidden" name="campaign_id" value="<?php echo esc_attr($campaign->id); ?>">
+			<div class="aips-modal-body">
+				<p class="description" style="margin-top:0;margin-bottom:14px;">
+					<?php esc_html_e('Select an existing template to add into this campaign container. It will inherit campaign directives and strategy goals.', 'ai-post-scheduler'); ?>
+				</p>
+				<div class="aips-form-row">
+					<label for="aips-select-template-to-link"><strong><?php esc_html_e('Choose Template', 'ai-post-scheduler'); ?></strong> <span style="color:#d63638;">*</span></label>
+					<select id="aips-select-template-to-link" name="template_id" required style="width:100%; margin-top:4px;">
+						<option value=""><?php esc_html_e('-- Select a Template --', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($unlinked_templates as $ut) : ?>
+							<option value="<?php echo esc_attr($ut->id); ?>"><?php echo esc_html($ut->name); ?> (<?php echo esc_html($ut->post_type ?? 'post'); ?>)</option>
 						<?php endforeach; ?>
-					</ul>
-				<?php endif; ?>
-			</div>
-		</div>
+					</select>
+				</div>
 
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Recent Activity', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body">
-				<?php if (empty($recent_activity)) : ?>
-					<p class="aips-muted"><?php esc_html_e('No campaign activity has been recorded yet.', 'ai-post-scheduler'); ?></p>
-				<?php else : ?>
-					<table class="widefat striped">
-						<thead>
-							<tr>
-								<th><?php esc_html_e('When', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Details', 'ai-post-scheduler'); ?></th>
-							</tr>
-						</thead>
-						<tbody>
-							<?php foreach ($recent_activity as $activity) : ?>
-								<tr>
-									<td><?php echo esc_html($format_campaign_datetime($activity->activity_timestamp, __('Unknown', 'ai-post-scheduler'))); ?></td>
-									<td><?php echo 'history_log' === $activity->activity_source ? esc_html__('History Log', 'ai-post-scheduler') : esc_html__('History', 'ai-post-scheduler'); ?></td>
-									<td><code><?php echo esc_html($activity->activity_type); ?></code></td>
-									<td><?php echo esc_html($activity_summary($activity->activity_details)); ?></td>
-								</tr>
-							<?php endforeach; ?>
-						</tbody>
-					</table>
-				<?php endif; ?>
+				<div style="margin-top:20px; border-top:1px solid #eee; padding-top:14px;">
+					<details>
+						<summary style="cursor:pointer; font-weight:600; color:#2271b1; outline:none;">
+							<?php esc_html_e('+ Configure Per-Template Overrides (Optional)', 'ai-post-scheduler'); ?>
+						</summary>
+						<div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px;">
+							<div>
+								<label style="font-size:12px; font-weight:600;"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></label>
+								<select name="override_structure_id" style="width:100%; font-size:12px; margin-top:2px;">
+									<option value=""><?php esc_html_e('Inherit Campaign Default', 'ai-post-scheduler'); ?></option>
+									<?php foreach ($article_structures as $as) : ?>
+										<option value="<?php echo esc_attr($as->id); ?>"><?php echo esc_html($as->name); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</div>
+							<div>
+								<label style="font-size:12px; font-weight:600;"><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></label>
+								<select name="override_post_status" style="width:100%; font-size:12px; margin-top:2px;">
+									<option value=""><?php esc_html_e('Inherit Campaign Default', 'ai-post-scheduler'); ?></option>
+									<option value="draft"><?php esc_html_e('Draft', 'ai-post-scheduler'); ?></option>
+									<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
+									<option value="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></option>
+								</select>
+							</div>
+						</div>
+					</details>
+				</div>
 			</div>
+			<div class="aips-modal-footer" style="display:flex; justify-content:flex-end; gap:8px; padding:16px 20px; border-top:1px solid #ddd; background:#f9f9f9;">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-cancel"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="submit" class="aips-btn aips-btn-primary" id="aips-link-template-submit-btn">
+					<?php esc_html_e('Link Template', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Edit Overrides Modal                                         -->
+<!-- ============================================================ -->
+<div id="aips-template-overrides-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-overrides-title">
+	<div class="aips-modal-backdrop"></div>
+	<div class="aips-modal-content" style="max-width:580px;">
+		<div class="aips-modal-header">
+			<h2 id="aips-overrides-title" class="aips-modal-title"><?php esc_html_e('Configure Template Overrides', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
+		<form id="aips-template-overrides-form">
+			<input type="hidden" name="campaign_id" value="<?php echo esc_attr($campaign->id); ?>">
+			<input type="hidden" name="template_id" id="aips-override-template-id" value="">
+			<div class="aips-modal-body">
+				<p class="description" style="margin-top:0;margin-bottom:14px;">
+					<?php esc_html_e('Override campaign-level defaults specifically for template: ', 'ai-post-scheduler'); ?><strong id="aips-override-template-name-label"></strong>.
+					<?php esc_html_e('Leave options unselected or blank to inherit the Campaign default.', 'ai-post-scheduler'); ?>
+				</p>
+				<div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+					<div class="aips-form-row">
+						<label for="aips-override-structure-id"><strong><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></strong></label>
+						<select id="aips-override-structure-id" name="article_structure_id" style="width:100%; margin-top:4px;">
+							<option value=""><?php esc_html_e('Inherit Campaign Default', 'ai-post-scheduler'); ?></option>
+							<?php foreach ($article_structures as $as) : ?>
+								<option value="<?php echo esc_attr($as->id); ?>"><?php echo esc_html($as->name); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<div class="aips-form-row">
+						<label for="aips-override-post-status"><strong><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></strong></label>
+						<select id="aips-override-post-status" name="post_status" style="width:100%; margin-top:4px;">
+							<option value=""><?php esc_html_e('Inherit Campaign Default', 'ai-post-scheduler'); ?></option>
+							<option value="draft"><?php esc_html_e('Draft', 'ai-post-scheduler'); ?></option>
+							<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
+							<option value="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></option>
+							<option value="private"><?php esc_html_e('Private', 'ai-post-scheduler'); ?></option>
+						</select>
+					</div>
+					<div class="aips-form-row">
+						<label for="aips-override-voice-id"><strong><?php esc_html_e('Voice', 'ai-post-scheduler'); ?></strong></label>
+						<select id="aips-override-voice-id" name="voice_id" style="width:100%; margin-top:4px;">
+							<option value=""><?php esc_html_e('Inherit Campaign Default', 'ai-post-scheduler'); ?></option>
+							<?php foreach ($voices as $voice) : ?>
+								<option value="<?php echo esc_attr($voice->id); ?>"><?php echo esc_html($voice->name); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<div class="aips-form-row">
+						<label for="aips-override-author-id"><strong><?php esc_html_e('Author', 'ai-post-scheduler'); ?></strong></label>
+						<select id="aips-override-author-id" name="author_id" style="width:100%; margin-top:4px;">
+							<option value=""><?php esc_html_e('Inherit Campaign Default', 'ai-post-scheduler'); ?></option>
+							<?php foreach ($authors as $author) : ?>
+								<option value="<?php echo esc_attr($author->ID); ?>"><?php echo esc_html($author->display_name); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+				</div>
+				<div class="aips-form-row" style="margin-top:16px;">
+					<label for="aips-override-categories"><strong><?php esc_html_e('Custom Categories (Optional)', 'ai-post-scheduler'); ?></strong></label>
+					<input type="text" id="aips-override-categories" name="categories" class="regular-text" style="width:100%; margin-top:4px;" placeholder="<?php esc_attr_e('Leave blank to inherit campaign categories', 'ai-post-scheduler'); ?>">
+				</div>
+				<div class="aips-form-row" style="margin-top:12px;">
+					<label for="aips-override-tags"><strong><?php esc_html_e('Custom Tags (Optional)', 'ai-post-scheduler'); ?></strong></label>
+					<input type="text" id="aips-override-tags" name="tags" class="regular-text" style="width:100%; margin-top:4px;" placeholder="<?php esc_attr_e('Leave blank to inherit campaign tags', 'ai-post-scheduler'); ?>">
+				</div>
+			</div>
+			<div class="aips-modal-footer" style="display:flex; justify-content:flex-end; gap:8px; padding:16px 20px; border-top:1px solid #ddd; background:#f9f9f9;">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-cancel"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="submit" class="aips-btn aips-btn-primary" id="aips-save-overrides-submit-btn">
+					<?php esc_html_e('Save Overrides', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</form>
 	</div>
 </div>

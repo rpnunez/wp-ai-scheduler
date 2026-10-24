@@ -71,10 +71,6 @@ class AIPS_Templates {
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
-        
-        if (array_key_exists('campaign_id', $data)) {
-            $template_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
-        }
 
         // post_type is write-once: only forwarded when the caller supplied it
         // (the controller only does so when creating a new template).

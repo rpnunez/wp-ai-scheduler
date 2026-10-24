@@ -27,6 +27,7 @@ class AIPS_Admin_Menu_Helper {
 	private static $page_slugs = array(
 		'dashboard'            => 'ai-post-scheduler',
 		'automations'          => 'aips-automations',
+		'campaigns'            => 'aips-campaigns',
 		'studio'               => 'aips-studio',
 		'research'             => 'aips-research',
 		'generated_posts'      => 'aips-generated-posts',
@@ -62,7 +63,6 @@ class AIPS_Admin_Menu_Helper {
 	private static $automations_tabs = array(
 		'schedule'        => 'schedules',
 		'schedules'       => 'schedules',
-		'campaigns'       => 'campaigns',
 		'authors'         => 'authors',
 		'author_topics'   => 'author-topics',
 		'sources'         => 'sources',

@@ -45,6 +45,7 @@ if ($total_items > 0) {
 	$summary_items[] = array('label' => __('Logged Sessions', 'ai-post-scheduler'), 'value' => $total_items, 'type' => 'neutral', 'icon' => 'dashicons-backup');
 }
 
+$is_embedded = !empty($is_embedded) || !empty($is_campaign_detail);
 $page_context = AIPS_Admin_Page_Context::resolve(
 	'aips-history',
 	null,
@@ -52,10 +53,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 	array('summary_items' => $summary_items)
 );
 ?>
-<div class="wrap aips-wrap aips-history-page">
+<div class="<?php echo $is_embedded ? 'aips-history-page aips-history-embedded' : 'wrap aips-wrap aips-history-page'; ?>">
     <div class="aips-page-container">
+        <?php if (!$is_embedded): ?>
         <!-- Page Header -->
         <?php AIPS_Admin_UI_Primitives::render_page_header($page_context); ?>
+        <?php endif; ?>
 
         <?php
         $has_active_filter = !empty($status_filter) || !empty($search_query) || !empty($domain_filter) || !empty($actor_filter) || !empty($post_type_filter) || !empty($correlation_filter) || !empty($date_from) || !empty($date_to);

@@ -1983,10 +1983,11 @@ class AIPS_History {
     /**
      * Get aggregate history statistics.
      *
+     * @param array $filters Optional filter arguments.
      * @return array
      */
-    public function get_stats() {
-        return $this->repository->get_stats();
+    public function get_stats($filters = array()) {
+        return $this->repository->get_stats($filters);
     }
 
     /**
@@ -2049,9 +2050,10 @@ class AIPS_History {
     /**
      * Render the history admin page.
      *
+     * @param array $extra_args Optional extra query arguments (e.g. campaign_id, is_embedded).
      * @return void
      */
-    public function render_page() {
+    public function render_page($extra_args = array()) {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '';
         $search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
@@ -2061,8 +2063,10 @@ class AIPS_History {
         $correlation_id = isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '';
         $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '';
         $date_to = isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '';
+        $campaign_id = isset($extra_args['campaign_id']) ? absint($extra_args['campaign_id']) : (isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0);
+        $is_embedded = !empty($extra_args['is_embedded']);
 
-        $history = $this->get_history(array(
+        $query_args = array(
             'page'   => $current_page,
             'status' => $status_filter,
             'search' => $search_query,
@@ -2075,10 +2079,16 @@ class AIPS_History {
             'fields' => 'list',
             'per_page' => $this->get_per_page(),
             'collapse' => $this->should_collapse($status_filter),
-        ));
+        );
+
+        if ($campaign_id > 0) {
+            $query_args['campaign_id'] = $campaign_id;
+        }
+
+        $history = $this->get_history($query_args);
 
         $this->prepare_items_for_display($history['items']);
-        $stats = $this->get_stats();
+        $stats = $this->get_stats($campaign_id > 0 ? array('campaign_id' => $campaign_id) : array());
 
         // Pass handler to template for helper methods
         $history_handler = $this;
