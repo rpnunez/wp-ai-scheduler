@@ -98,6 +98,47 @@
 			});
 			$(document).on('click', '#aips-fetch-meow-envs-btn', AIPS.onFetchMeowEnvironments);
 			$(document).on('click', '#aips-copy-shortcode-btn', AIPS.onCopyShortcode);
+			$(document).on('click', '#aips-restore-defaults-btn', function(e) {
+				e.preventDefault();
+				if (!confirm((typeof aipsSettingsL10n !== 'undefined' && aipsSettingsL10n.confirmRestoreDefaults) ? aipsSettingsL10n.confirmRestoreDefaults : 'Are you sure you want to restore default article structures and components? Missing defaults will be re-created.')) {
+					return;
+				}
+				var $btn = $(this);
+				var $spinner = $('#aips-restore-defaults-spinner');
+				var $result = $('#aips-restore-defaults-result');
+
+				$btn.prop('disabled', true);
+				$spinner.addClass('is-active').show();
+				$result.text('').removeClass('aips-text-success aips-text-danger');
+
+				var ajaxUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.ajaxUrl) ? aipsAjax.ajaxUrl : ajaxurl;
+				var nonce = (typeof aipsAjax !== 'undefined' && aipsAjax.nonce) ? aipsAjax.nonce : '';
+
+				$.ajax({
+					url: ajaxUrl,
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						action: 'aips_restore_default_structures',
+						nonce: nonce
+					},
+					success: function(resp) {
+						$spinner.removeClass('is-active').hide();
+						$btn.prop('disabled', false);
+						if (resp && resp.success) {
+							$result.removeClass('aips-text-danger').addClass('aips-text-success').text(resp.data && resp.data.message ? resp.data.message : 'Defaults restored successfully!');
+						} else {
+							var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Failed to restore defaults.';
+							$result.removeClass('aips-text-success').addClass('aips-text-danger').text(msg);
+						}
+					},
+					error: function(xhr, status, error) {
+						$spinner.removeClass('is-active').hide();
+						$btn.prop('disabled', false);
+						$result.removeClass('aips-text-success').addClass('aips-text-danger').text('An error occurred: ' + error);
+					}
+				});
+			});
 			$(document).on('change', '#aips-meow-envs-select', function() {
 				var selected = $(this).find(':selected');
 				if (!selected.val()) {

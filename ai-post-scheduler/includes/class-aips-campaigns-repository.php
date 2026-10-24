@@ -755,6 +755,7 @@ class AIPS_Campaigns_Repository {
 				'name'          => sanitize_text_field($data['name']),
 				'content_goal'  => isset($data['content_goal']) ? sanitize_textarea_field($data['content_goal']) : '',
 				'campaign_mode' => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
+				'article_structure_id' => !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
 				'is_active'     => isset($data['is_active']) ? absint($data['is_active']) : 1,
 				'is_archived'   => isset($data['is_archived']) ? absint($data['is_archived']) : 0,
 				'created_at'    => $now,
@@ -802,6 +803,11 @@ class AIPS_Campaigns_Repository {
 		if (isset($data['campaign_mode'])) {
 			$update_data['campaign_mode'] = sanitize_key($data['campaign_mode']);
 			$format[] = '%s';
+		}
+
+		if (array_key_exists('article_structure_id', $data)) {
+			$update_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
+			$format[] = '%d';
 		}
 
 		if (array_key_exists('is_active', $data)) {
