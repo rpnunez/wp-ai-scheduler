@@ -219,7 +219,8 @@ class AIPS_Import_Export_Controller {
 		}
 
 		// Store parsed payload in a temporary user transient for 1 hour to allow review & selective execution
-		$transient_key = 'aips_import_' . get_current_user_id() . '_' . wp_generate_password(8, false);
+		// Lowercase so the key survives sanitize_key() in ajax_execute_import().
+		$transient_key = 'aips_import_' . get_current_user_id() . '_' . strtolower(wp_generate_password(8, false));
 		set_transient($transient_key, $parsed['entities'], HOUR_IN_SECONDS);
 
 		AIPS_Ajax_Response::success(array(

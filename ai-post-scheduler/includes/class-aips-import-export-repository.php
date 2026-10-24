@@ -122,9 +122,7 @@ class AIPS_Import_Export_Repository {
 			if (!empty($clean_authors)) {
 				$where_clauses[] = 'author_id IN (' . implode(',', $clean_authors) . ')';
 			}
-			if (!empty($clean_schedules)) {
-				$where_clauses[] = 'schedule_id IN (' . implode(',', $clean_schedules) . ')';
-			}
+			// aips_history has no schedule column; schedule runs are covered by template_id.
 
 			if (!empty($where_clauses)) {
 				$where = implode(' OR ', $where_clauses);

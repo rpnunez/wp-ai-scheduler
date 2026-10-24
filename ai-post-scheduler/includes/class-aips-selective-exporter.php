@@ -211,16 +211,12 @@ class AIPS_Selective_Exporter {
 				}
 			}
 
-			// 2. Templates -> Voices & Authors
+			// 2. Templates -> Voices (post_author is a WordPress user ID, not an AIPS author).
 			if (!empty($package['entities']['templates'])) {
-				$voice_ids  = array();
-				$author_ids = array();
+				$voice_ids = array();
 				foreach ($package['entities']['templates'] as $tpl) {
 					if (!empty($tpl['voice_id'])) {
 						$voice_ids[] = (int) $tpl['voice_id'];
-					}
-					if (!empty($tpl['post_author'])) {
-						$author_ids[] = (int) $tpl['post_author'];
 					}
 				}
 
@@ -230,16 +226,6 @@ class AIPS_Selective_Exporter {
 					if (!empty($missing_voices)) {
 						$rows = $this->repository->export_rows_by_ids('voices', $missing_voices);
 						$package['entities']['voices'] = array_merge($package['entities']['voices'] ?? array(), $rows);
-						$added_any = true;
-					}
-				}
-
-				if (!empty($author_ids)) {
-					$existing_author_ids = !empty($package['entities']['authors']) ? wp_list_pluck($package['entities']['authors'], 'id') : array();
-					$missing_authors     = array_diff($author_ids, $existing_author_ids);
-					if (!empty($missing_authors)) {
-						$rows = $this->repository->export_rows_by_ids('authors', $missing_authors);
-						$package['entities']['authors'] = array_merge($package['entities']['authors'] ?? array(), $rows);
 						$added_any = true;
 					}
 				}

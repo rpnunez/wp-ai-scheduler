@@ -837,7 +837,7 @@
 					nonce: aipsAjax.nonce
 				},
 				success: function(res) {
-					$btn.prop('disabled', false).html('<span class="dashicons dashicons-download aips-btn-download-icon"></span> Export Selected (JSON)');
+					$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-export-btn-label'));
 					if (res.success && res.data && res.data.json) {
 						var blob = new Blob([res.data.json], { type: 'application/json' });
 						var link = document.createElement('a');
@@ -860,7 +860,7 @@
 					}
 				},
 				error: function() {
-					$btn.prop('disabled', false).html('<span class="dashicons dashicons-download aips-btn-download-icon"></span> Export Selected (JSON)');
+					$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-export-btn-label'));
 					if (AIPS.Utilities && typeof AIPS.Utilities.showNotice === 'function') {
 						AIPS.Utilities.showNotice('error', 'Export request failed due to connection error.');
 					} else {
@@ -883,7 +883,7 @@
 			formData.append('import_file', file);
 
 			var $status = $('#aips-import-status-box');
-			$status.show().html('<p><span class="spinner is-active"></span> Analyzing backup file…</p>');
+			$status.show().html(AIPS.Templates.render('aips-tmpl-import-analyzing'));
 			$('#aips-import-analysis-card').hide();
 
 			$.ajax({
@@ -950,7 +950,7 @@
 
 			$btn.prop('disabled', true).text('Importing…');
 			var $status = $('#aips-import-status-box');
-			$status.show().html('<p><span class="spinner is-active"></span> Executing selective import and remapping IDs…</p>');
+			$status.show().html(AIPS.Templates.render('aips-tmpl-import-executing'));
 
 			$.ajax({
 				url: aipsAjax.ajaxurl,
@@ -964,7 +964,7 @@
 					nonce: aipsAjax.nonce
 				},
 				success: function(res) {
-					$btn.prop('disabled', false).html('<span class="dashicons dashicons-upload aips-btn-download-icon"></span> Execute Import');
+					$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-import-btn-label'));
 					if (res.success && res.data && res.data.report) {
 						var rep = res.data.report;
 						var summaryMsg = 'Import complete: ' + (rep.imported ? rep.imported.length : 0) + ' imported, ' + (rep.updated ? rep.updated.length : 0) + ' updated, ' + (rep.skipped ? rep.skipped.length : 0) + ' skipped.';
@@ -986,7 +986,7 @@
 					}
 				},
 				error: function() {
-					$btn.prop('disabled', false).html('<span class="dashicons dashicons-upload aips-btn-download-icon"></span> Execute Import');
+					$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-import-btn-label'));
 					$status.html(AIPS.Templates.render('aips-tmpl-import-status-notice', {
 						notice_class: 'notice-error',
 						message: 'Connection error occurred during import execution.'

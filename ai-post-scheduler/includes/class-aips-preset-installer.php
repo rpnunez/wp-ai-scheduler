@@ -181,15 +181,16 @@ class AIPS_Preset_Installer {
 			'is_active'            => 1,
 		);
 		$voice_id = $this->voices_repo->create($voice_data);
-		if ($voice_id) {
-			$created['voice_ids'][] = (int) $voice_id;
+		if (!$voice_id) {
+			return $this->abort_install($created, 'voice');
 		}
+		$created['voice_ids'][] = (int) $voice_id;
 
 		// 2. Create Prompt Sections.
 		foreach ($preset['sections'] as $sec) {
 			$existing_sec = $this->section_repo->get_by_key($sec['section_key']);
 			if ($existing_sec && !empty($existing_sec->id)) {
-				$created['section_ids'][]  = (int) $existing_sec->id;
+				// Reuse the existing section but do not track its ID, so removal never deletes it.
 				$created['section_keys'][] = $sec['section_key'];
 			} else {
 				$sec_id = $this->section_repo->create(array(
@@ -217,9 +218,10 @@ class AIPS_Preset_Installer {
 			'is_active'      => 1,
 		);
 		$structure_id = $this->structure_repo->create($structure_data);
-		if ($structure_id) {
-			$created['structure_ids'][] = (int) $structure_id;
+		if (!$structure_id) {
+			return $this->abort_install($created, 'article structure');
 		}
+		$created['structure_ids'][] = (int) $structure_id;
 
 		// 4. Create Author.
 		$author_data = array(
@@ -240,12 +242,13 @@ class AIPS_Preset_Installer {
 			'is_active'                  => 1,
 		);
 		$author_id = $this->authors_repo->create($author_data);
-		if ($author_id) {
-			$created['author_ids'][] = (int) $author_id;
+		if (!$author_id) {
+			return $this->abort_install($created, 'author');
 		}
+		$created['author_ids'][] = (int) $author_id;
 
 		// 5. Create Starter Author Topics.
-		if ($author_id && !empty($preset['author']['starter_topics'])) {
+		if (!empty($preset['author']['starter_topics'])) {
 			foreach ($preset['author']['starter_topics'] as $topic_title) {
 				$topic_id = $this->topics_repo->create(array(
 					'author_id'   => $author_id,
@@ -264,23 +267,25 @@ class AIPS_Preset_Installer {
 			'name'            => $preset['template']['name'],
 			'prompt_template' => $preset['template']['prompt_template'],
 			'title_prompt'    => $preset['template']['title_prompt'],
-			'voice_id'        => $voice_id ?: null,
+			'voice_id'        => $voice_id,
 			'post_status'     => $preset['template']['post_status'],
 			'post_type'       => $preset['template']['post_type'],
-			'post_author'     => $author_id ?: null,
+			// post_author is a WordPress user ID, not an AIPS author row ID.
+			'post_author'     => get_current_user_id(),
 			'is_active'       => 1,
 		);
 		$template_id = $this->template_repo->create($template_data);
-		if ($template_id) {
-			$created['template_ids'][] = (int) $template_id;
+		if (!$template_id) {
+			return $this->abort_install($created, 'template');
 		}
+		$created['template_ids'][] = (int) $template_id;
 
 		// 7. Create Schedule.
 		$schedule_data = array(
 			'title'                => $preset['schedule']['title'],
-			'template_id'          => $template_id ?: 0,
-			'author_id'            => $author_id ?: null,
-			'article_structure_id' => $structure_id ?: null,
+			'template_id'          => $template_id,
+			'author_id'            => $author_id,
+			'article_structure_id' => $structure_id,
 			'frequency'            => $preset['schedule']['frequency'],
 			'schedule_type'        => $preset['schedule']['schedule_type'],
 			'is_active'            => $preset['schedule']['is_active'],
@@ -288,9 +293,10 @@ class AIPS_Preset_Installer {
 			'next_run'             => AIPS_DateTime::now()->timestamp() + 86400,
 		);
 		$schedule_id = $this->schedule_repo->create($schedule_data);
-		if ($schedule_id) {
-			$created['schedule_ids'][] = (int) $schedule_id;
+		if (!$schedule_id) {
+			return $this->abort_install($created, 'schedule');
 		}
+		$created['schedule_ids'][] = (int) $schedule_id;
 
 		// 8. Optionally set strategy defaults if empty or requested.
 		if ($set_strategy && !empty($preset['strategy'])) {
@@ -352,8 +358,40 @@ class AIPS_Preset_Installer {
 			);
 		}
 
-		$entities = $this->get_preset_entities($preset_id);
+		$this->delete_entities($this->get_preset_entities($preset_id));
 
+		// Cleanup options.
+		delete_option(self::ENTITIES_OPTION_PREFIX . $preset_id);
+
+		$installed = $this->get_installed_presets();
+		$installed = array_values(array_diff($installed, array($preset_id)));
+		update_option(self::INSTALLED_PRESETS_OPTION, $installed);
+
+		return true;
+	}
+
+	/**
+	 * Roll back a partially completed install and report which step failed.
+	 *
+	 * @param array  $created Entities created so far.
+	 * @param string $step    Name of the step that failed.
+	 * @return WP_Error
+	 */
+	private function abort_install(array $created, string $step): WP_Error {
+		$this->delete_entities($created);
+
+		return new WP_Error(
+			'preset_install_failed',
+			sprintf(__('Preset installation failed while creating the %s. No changes were kept.', 'ai-post-scheduler'), $step)
+		);
+	}
+
+	/**
+	 * Delete every tracked entity in dependency order.
+	 *
+	 * @param array $entities Tracked entity IDs keyed by type.
+	 */
+	private function delete_entities(array $entities): void {
 		// Delete schedules.
 		if (!empty($entities['schedule_ids'])) {
 			foreach ($entities['schedule_ids'] as $id) {
@@ -402,14 +440,5 @@ class AIPS_Preset_Installer {
 				$this->voices_repo->delete(absint($id));
 			}
 		}
-
-		// Cleanup options.
-		delete_option(self::ENTITIES_OPTION_PREFIX . $preset_id);
-
-		$installed = $this->get_installed_presets();
-		$installed = array_values(array_diff($installed, array($preset_id)));
-		update_option(self::INSTALLED_PRESETS_OPTION, $installed);
-
-		return true;
 	}
 }

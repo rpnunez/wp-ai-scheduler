@@ -43,7 +43,6 @@ class Test_AIPS_Import_Export_Repository extends WP_UnitTestCase {
 			'excerpt_instructions' => 'Test Excerpt Instructions',
 			'is_active'            => 1,
 			'created_at'           => time(),
-			'updated_at'           => time(),
 		);
 
 		// 1. Insert

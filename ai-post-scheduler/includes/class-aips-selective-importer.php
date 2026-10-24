@@ -140,7 +140,7 @@ class AIPS_Selective_Importer {
 						$report['updated'][] = sprintf(__('Voice: %s', 'ai-post-scheduler'), $name);
 						continue;
 					} else { // 'copy'
-						$name .= ' (' . __('Imported', 'ai-post-scheduler') . ' ' . wp_rand(10, 99) . ')';
+						$name          = $this->unique_copy_name('voices', $name);
 						$voice['name'] = $name;
 					}
 				}
@@ -149,6 +149,8 @@ class AIPS_Selective_Importer {
 				if ($new_id) {
 					$id_map['voices'][$old_id] = (int) $new_id;
 					$report['imported'][] = sprintf(__('Voice: %s', 'ai-post-scheduler'), $name);
+				} else {
+					$report['errors'][] = sprintf(__('Voice: %s', 'ai-post-scheduler'), $name);
 				}
 			}
 		}
@@ -174,7 +176,7 @@ class AIPS_Selective_Importer {
 						$report['updated'][] = sprintf(__('Section: %s', 'ai-post-scheduler'), $sec['name']);
 						continue;
 					} else { // 'copy'
-						$key .= '_imp_' . wp_rand(10, 99);
+						$key                = $this->unique_copy_key($key);
 						$sec['section_key'] = $key;
 						$sec['name']       .= ' (' . __('Imported', 'ai-post-scheduler') . ')';
 					}
@@ -184,6 +186,8 @@ class AIPS_Selective_Importer {
 				if ($new_id) {
 					$id_map['sections'][$old_id] = (int) $new_id;
 					$report['imported'][] = sprintf(__('Section: %s', 'ai-post-scheduler'), $sec['name']);
+				} else {
+					$report['errors'][] = sprintf(__('Section: %s', 'ai-post-scheduler'), $sec['name']);
 				}
 			}
 		}
@@ -209,7 +213,7 @@ class AIPS_Selective_Importer {
 						$report['updated'][] = sprintf(__('Structure: %s', 'ai-post-scheduler'), $name);
 						continue;
 					} else { // 'copy'
-						$name .= ' (' . __('Imported', 'ai-post-scheduler') . ' ' . wp_rand(10, 99) . ')';
+						$name        = $this->unique_copy_name('article_structures', $name);
 						$str['name'] = $name;
 					}
 				}
@@ -218,6 +222,8 @@ class AIPS_Selective_Importer {
 				if ($new_id) {
 					$id_map['structures'][$old_id] = (int) $new_id;
 					$report['imported'][] = sprintf(__('Structure: %s', 'ai-post-scheduler'), $name);
+				} else {
+					$report['errors'][] = sprintf(__('Structure: %s', 'ai-post-scheduler'), $name);
 				}
 			}
 		}
@@ -230,10 +236,8 @@ class AIPS_Selective_Importer {
 				$old_id = !empty($author['id']) ? (int) $author['id'] : 0;
 				$name   = sanitize_text_field($author['name']);
 
-				// Remap article_structure_id if present
-				if (!empty($author['article_structure_id']) && isset($id_map['structures'][(int) $author['article_structure_id']])) {
-					$author['article_structure_id'] = $id_map['structures'][(int) $author['article_structure_id']];
-				}
+				// Remap article_structure_id; drop references to structures not present on this site.
+				$author['article_structure_id'] = $this->map_id($id_map['structures'], $author['article_structure_id'] ?? 0);
 
 				$existing = $this->repository->find_existing('authors', 'name', $name);
 
@@ -248,7 +252,7 @@ class AIPS_Selective_Importer {
 						$report['updated'][] = sprintf(__('Author: %s', 'ai-post-scheduler'), $name);
 						continue;
 					} else { // 'copy'
-						$name .= ' (' . __('Imported', 'ai-post-scheduler') . ' ' . wp_rand(10, 99) . ')';
+						$name           = $this->unique_copy_name('authors', $name);
 						$author['name'] = $name;
 					}
 				}
@@ -258,6 +262,8 @@ class AIPS_Selective_Importer {
 				if ($new_id) {
 					$id_map['authors'][$old_id] = (int) $new_id;
 					$report['imported'][] = sprintf(__('Author: %s', 'ai-post-scheduler'), $name);
+				} else {
+					$report['errors'][] = sprintf(__('Author: %s', 'ai-post-scheduler'), $name);
 				}
 			}
 		}
@@ -267,15 +273,23 @@ class AIPS_Selective_Importer {
 			$topics_repo = AIPS_Author_Topics_Repository::instance();
 
 			foreach ($entities['author_topics'] as $topic) {
-				$old_author_id = !empty($topic['author_id']) ? (int) $topic['author_id'] : 0;
-				$new_author_id = isset($id_map['authors'][$old_author_id]) ? $id_map['authors'][$old_author_id] : $old_author_id;
+				$topic_title   = isset($topic['topic_title']) ? $topic['topic_title'] : '';
+				$new_author_id = $this->map_id($id_map['authors'], $topic['author_id'] ?? 0);
+
+				// Never attach a topic to an unrelated local author with the same numeric ID.
+				if (!$new_author_id) {
+					$report['errors'][] = sprintf(__('Topic: %s (author not imported)', 'ai-post-scheduler'), $topic_title);
+					continue;
+				}
 
 				$topic['author_id'] = $new_author_id;
 				unset($topic['id']);
 
 				$new_id = $topics_repo->create($topic);
 				if ($new_id) {
-					$report['imported'][] = sprintf(__('Topic: %s', 'ai-post-scheduler'), $topic['topic_title']);
+					$report['imported'][] = sprintf(__('Topic: %s', 'ai-post-scheduler'), $topic_title);
+				} else {
+					$report['errors'][] = sprintf(__('Topic: %s', 'ai-post-scheduler'), $topic_title);
 				}
 			}
 		}
@@ -288,12 +302,10 @@ class AIPS_Selective_Importer {
 				$old_id = !empty($tpl['id']) ? (int) $tpl['id'] : 0;
 				$name   = sanitize_text_field($tpl['name']);
 
-				// Remap foreign keys
-				if (!empty($tpl['voice_id']) && isset($id_map['voices'][(int) $tpl['voice_id']])) {
-					$tpl['voice_id'] = $id_map['voices'][(int) $tpl['voice_id']];
-				}
-				if (!empty($tpl['post_author']) && isset($id_map['authors'][(int) $tpl['post_author']])) {
-					$tpl['post_author'] = $id_map['authors'][(int) $tpl['post_author']];
+				// Remap voice; post_author is a WordPress user ID, so keep it only if that user exists here.
+				$tpl['voice_id'] = $this->map_id($id_map['voices'], $tpl['voice_id'] ?? 0);
+				if (empty($tpl['post_author']) || !get_userdata((int) $tpl['post_author'])) {
+					$tpl['post_author'] = get_current_user_id();
 				}
 
 				$existing = $this->repository->find_existing('templates', 'name', $name);
@@ -309,7 +321,7 @@ class AIPS_Selective_Importer {
 						$report['updated'][] = sprintf(__('Template: %s', 'ai-post-scheduler'), $name);
 						continue;
 					} else { // 'copy'
-						$name .= ' (' . __('Imported', 'ai-post-scheduler') . ' ' . wp_rand(10, 99) . ')';
+						$name        = $this->unique_copy_name('templates', $name);
 						$tpl['name'] = $name;
 					}
 				}
@@ -319,6 +331,8 @@ class AIPS_Selective_Importer {
 				if ($new_id) {
 					$id_map['templates'][$old_id] = (int) $new_id;
 					$report['imported'][] = sprintf(__('Template: %s', 'ai-post-scheduler'), $name);
+				} else {
+					$report['errors'][] = sprintf(__('Template: %s', 'ai-post-scheduler'), $name);
 				}
 			}
 		}
@@ -330,16 +344,14 @@ class AIPS_Selective_Importer {
 			foreach ($entities['schedules'] as $sch) {
 				$title = !empty($sch['title']) ? sanitize_text_field($sch['title']) : __('Scheduled Job', 'ai-post-scheduler');
 
-				// Remap foreign keys
-				if (!empty($sch['template_id']) && isset($id_map['templates'][(int) $sch['template_id']])) {
-					$sch['template_id'] = $id_map['templates'][(int) $sch['template_id']];
+				// Remap foreign keys; a schedule cannot exist without its template.
+				$sch['template_id'] = $this->map_id($id_map['templates'], $sch['template_id'] ?? 0);
+				if (!$sch['template_id']) {
+					$report['errors'][] = sprintf(__('Schedule: %s (template not imported)', 'ai-post-scheduler'), $title);
+					continue;
 				}
-				if (!empty($sch['author_id']) && isset($id_map['authors'][(int) $sch['author_id']])) {
-					$sch['author_id'] = $id_map['authors'][(int) $sch['author_id']];
-				}
-				if (!empty($sch['article_structure_id']) && isset($id_map['structures'][(int) $sch['article_structure_id']])) {
-					$sch['article_structure_id'] = $id_map['structures'][(int) $sch['article_structure_id']];
-				}
+				$sch['author_id']            = $this->map_id($id_map['authors'], $sch['author_id'] ?? 0);
+				$sch['article_structure_id'] = $this->map_id($id_map['structures'], $sch['article_structure_id'] ?? 0);
 
 				// Reset runtime states for newly imported schedules
 				$sch['last_run']            = 0;
@@ -350,6 +362,8 @@ class AIPS_Selective_Importer {
 				$new_id = $sch_repo->create($sch);
 				if ($new_id) {
 					$report['imported'][] = sprintf(__('Schedule: %s', 'ai-post-scheduler'), $title);
+				} else {
+					$report['errors'][] = sprintf(__('Schedule: %s', 'ai-post-scheduler'), $title);
 				}
 			}
 		}
@@ -360,11 +374,16 @@ class AIPS_Selective_Importer {
 				$name     = sanitize_text_field($slice['name']);
 				$existing = $this->repository->find_existing('post_slices', 'name', $name);
 				if (!$existing) {
-					unset($slice['id']);
+					// Only insert known columns so exports from other versions don't break the insert.
+					$slice               = $this->pick_columns($slice, array('description', 'sort_order', 'is_active'));
+					$slice['name']       = $name;
 					$slice['created_at'] = AIPS_DateTime::now()->timestamp();
 					$slice['updated_at'] = $slice['created_at'];
-					$this->repository->insert_row('post_slices', $slice);
-					$report['imported'][] = sprintf(__('Post Slice: %s', 'ai-post-scheduler'), $name);
+					if ($this->repository->insert_row('post_slices', $slice)) {
+						$report['imported'][] = sprintf(__('Post Slice: %s', 'ai-post-scheduler'), $name);
+					} else {
+						$report['errors'][] = sprintf(__('Post Slice: %s', 'ai-post-scheduler'), $name);
+					}
 				} else {
 					$report['skipped'][] = sprintf(__('Post Slice: %s', 'ai-post-scheduler'), $name);
 				}
@@ -384,28 +403,52 @@ class AIPS_Selective_Importer {
 					continue;
 				}
 
-				unset($src['id']);
+				$src               = $this->pick_columns($src, array('label', 'description', 'is_active', 'fetch_interval'));
+				$src['url']        = $url;
 				$src['created_at'] = AIPS_DateTime::now()->timestamp();
 				$src['updated_at'] = $src['created_at'];
 				$new_id            = $this->repository->insert_row('sources', $src);
 				if ($new_id) {
 					$id_map['sources'][$old_id] = (int) $new_id;
 					$report['imported'][] = sprintf(__('Source: %s', 'ai-post-scheduler'), $url);
+				} else {
+					$report['errors'][] = sprintf(__('Source: %s', 'ai-post-scheduler'), $url);
 				}
 			}
 		}
 
 		// 10. SOURCES DATA
 		if (isset($types['sources_data']) && !empty($entities['sources_data'])) {
-			foreach ($entities['sources_data'] as $data_row) {
-				$old_src_id = !empty($data_row['source_id']) ? (int) $data_row['source_id'] : 0;
-				$new_src_id = isset($id_map['sources'][$old_src_id]) ? $id_map['sources'][$old_src_id] : $old_src_id;
+			$data_imported = 0;
+			$data_failed   = 0;
+			$data_columns  = array(
+				'url', 'page_title', 'meta_description', 'extracted_text', 'raw_html', 'char_count',
+				'content_hash', 'num_used', 'fetch_status', 'http_status', 'error_message',
+				'fetched_at', 'created_at', 'updated_at',
+			);
 
+			foreach ($entities['sources_data'] as $data_row) {
+				$new_src_id = $this->map_id($id_map['sources'], $data_row['source_id'] ?? 0);
+				if (!$new_src_id) {
+					$data_failed++;
+					continue;
+				}
+
+				$data_row              = $this->pick_columns($data_row, $data_columns);
 				$data_row['source_id'] = $new_src_id;
-				unset($data_row['id']);
-				$this->repository->insert_row('sources_data', $data_row);
+				if ($this->repository->insert_row('sources_data', $data_row)) {
+					$data_imported++;
+				} else {
+					$data_failed++;
+				}
 			}
-			$report['imported'][] = sprintf(__('Source data records (%d)', 'ai-post-scheduler'), count($entities['sources_data']));
+
+			if ($data_imported > 0) {
+				$report['imported'][] = sprintf(__('Source data records (%d)', 'ai-post-scheduler'), $data_imported);
+			}
+			if ($data_failed > 0) {
+				$report['errors'][] = sprintf(__('Source data records (%d)', 'ai-post-scheduler'), $data_failed);
+			}
 		}
 
 		// 11. SETTINGS
@@ -420,16 +463,82 @@ class AIPS_Selective_Importer {
 				'aips_ai_model',
 				'aips_default_post_status',
 				'aips_default_post_type',
+				'aips_default_article_structure_id',
 			);
 
 			foreach ($entities['settings'] as $key => $val) {
-				if (in_array($key, $allowed, true)) {
-					update_option($key, sanitize_text_field((string) $val));
+				if (!in_array($key, $allowed, true)) {
+					continue;
 				}
+
+				if ('aips_default_article_structure_id' === $key) {
+					// Only keep the default when its structure was imported or matched on this site.
+					$mapped = $this->map_id($id_map['structures'], $val);
+					if ($mapped) {
+						update_option($key, $mapped);
+					}
+					continue;
+				}
+
+				update_option($key, is_array($val) ? map_deep($val, 'sanitize_text_field') : sanitize_textarea_field((string) $val));
 			}
 			$report['imported'][] = __('Content Strategy & General Settings', 'ai-post-scheduler');
 		}
 
 		return $report;
+	}
+
+	/**
+	 * Resolve a source-site ID through an import ID map.
+	 *
+	 * @param array<int, int> $map    Old ID => new ID.
+	 * @param mixed           $old_id Source-site ID.
+	 * @return int|null New local ID, or null when the referenced row was not imported.
+	 */
+	private function map_id(array $map, $old_id): ?int {
+		$old_id = (int) $old_id;
+		return ($old_id > 0 && isset($map[$old_id])) ? (int) $map[$old_id] : null;
+	}
+
+	/**
+	 * Build a "Name (Imported N)" copy name that is not already taken.
+	 *
+	 * @param string $type Entity type key.
+	 * @param string $name Original name.
+	 * @return string
+	 */
+	private function unique_copy_name(string $type, string $name): string {
+		$n = 1;
+		do {
+			$candidate = sprintf('%s (%s %d)', $name, __('Imported', 'ai-post-scheduler'), $n++);
+		} while ($this->repository->find_existing($type, 'name', $candidate));
+
+		return $candidate;
+	}
+
+	/**
+	 * Build a "key_imp_N" prompt section key that is not already taken.
+	 *
+	 * @param string $key Original section key.
+	 * @return string
+	 */
+	private function unique_copy_key(string $key): string {
+		$n = 1;
+		do {
+			$candidate = $key . '_imp_' . $n++;
+		} while ($this->repository->find_existing('prompt_sections', 'section_key', $candidate));
+
+		return $candidate;
+	}
+
+	/**
+	 * Keep only the given columns from an imported row.
+	 *
+	 * @param array         $row     Imported row.
+	 * @param array<string> $columns Allowed column names.
+	 * @return array
+	 */
+	private function pick_columns(array $row, array $columns): array {
+		return array_intersect_key($row, array_flip($columns));
 	}
 }

@@ -617,4 +617,20 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 	</div>
 </script>
 
+<script type="text/html" id="aips-tmpl-import-analyzing">
+	<p><span class="spinner is-active"></span> <?php esc_html_e('Analyzing backup file…', 'ai-post-scheduler'); ?></p>
+</script>
+
+<script type="text/html" id="aips-tmpl-import-executing">
+	<p><span class="spinner is-active"></span> <?php esc_html_e('Executing selective import and remapping IDs…', 'ai-post-scheduler'); ?></p>
+</script>
+
+<script type="text/html" id="aips-tmpl-export-btn-label">
+	<span class="dashicons dashicons-download aips-btn-download-icon"></span> <?php esc_html_e('Export Selected (JSON)', 'ai-post-scheduler'); ?>
+</script>
+
+<script type="text/html" id="aips-tmpl-import-btn-label">
+	<span class="dashicons dashicons-upload aips-btn-download-icon"></span> <?php esc_html_e('Execute Import', 'ai-post-scheduler'); ?>
+</script>
+
 <?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>
