@@ -131,6 +131,15 @@ class AIPS_Generation_Context_Factory {
 			return new WP_Error('invalid_context', __('Unable to determine generation context type.', 'ai-post-scheduler'));
 		}
 
+		if (!empty($history->campaign_id) && $context['generation_context'] instanceof AIPS_Generation_Context) {
+			if (class_exists('AIPS_Campaigns_Repository')) {
+				$campaign = AIPS_Campaigns_Repository::instance()->get_campaign_by_id((int) $history->campaign_id);
+				if ($campaign) {
+					$context['generation_context'] = new AIPS_Campaign_Context($context['generation_context'], $campaign);
+				}
+			}
+		}
+
 		return $context;
 	}
 }

@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [3.8.0] - 2026-10-23
+
+### Added
+- **Campaigns Container Architecture & 6-Tab Workspace:**
+  - Elevated Campaigns into a first-class container model supporting shared templates (M:N via `aips_campaign_templates`) and dedicated schedules.
+  - Added Campaign Context Engine (`AIPS_Campaign_Context`) injecting `content_goal` and `prompt_directives` into AI prompt generation with hierarchical override precedence (Template Overrides > Template Config > Campaign Defaults > Global Settings).
+  - Added Campaign-level defaults for Article Structure, Post Status, Voice, Author, Categories, and Tags with per-template overrides stored in `aips_campaign_templates`.
+  - Added `campaign_all` execution mode to `AIPS_Schedule_Processor`, allowing schedules to batch generate posts for all linked templates in a single execution cycle.
+  - Added "Run All Templates Now" one-click action to the Schedules table, Campaigns list, and Campaign workspace.
+  - Visual hierarchy grouping in Schedules list table (`AIPS_Schedules_List_Table`) displaying Campaign Group Headers and indented (`↳`) child schedules with mode badges (`All Templates (Batch)`, `Rotate Templates`).
+  - Redesigned `campaign-detail.php` into a complete 6-tab container workspace: Overview, Templates, Schedules, Directives & Defaults, Generated Posts, and an embedded scoped History tab.
+  - Added Quick Create Campaign modal flow alongside the Campaign Wizard.
+  - Added migration `migrate_to_3_8_0()` to backfill `aips_templates.campaign_id` into the new pivot table and safely drop the column.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.

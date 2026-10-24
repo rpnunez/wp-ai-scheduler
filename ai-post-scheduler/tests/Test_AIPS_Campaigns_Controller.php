@@ -260,6 +260,118 @@ class Test_AIPS_Campaigns_Controller extends WP_UnitTestCase {
 		$this->assertStringContainsString('detail_notice=save', $redirect_location);
 	}
 
+	public function test_ajax_quick_create_campaign_success() {
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('create_campaign'))
+			->getMock();
+		$repository->method('create_campaign')->willReturn(88);
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'        => wp_create_nonce('aips_ajax_nonce'),
+			'name'         => 'Quick Campaign',
+			'content_goal' => 'Reach tech audience',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_quick_create_campaign'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame(88, $response['data']['campaign_id']);
+		$this->assertStringContainsString('campaign_id=88', $response['data']['redirect_url']);
+	}
+
+	public function test_ajax_link_campaign_template_success() {
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('link_template'))
+			->getMock();
+		$repository->method('link_template')->willReturn(true);
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+			'campaign_id' => 14,
+			'template_id' => 5,
+			'overrides'   => array('post_status' => 'draft'),
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_link_campaign_template'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('Template linked to campaign successfully.', $response['data']['message']);
+	}
+
+	public function test_ajax_unlink_campaign_template_success() {
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('unlink_template'))
+			->getMock();
+		$repository->method('unlink_template')->willReturn(true);
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+			'campaign_id' => 14,
+			'template_id' => 5,
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_unlink_campaign_template'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('Template unlinked from campaign.', $response['data']['message']);
+	}
+
+	public function test_ajax_update_campaign_template_overrides_success() {
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('update_template_overrides'))
+			->getMock();
+		$repository->method('update_template_overrides')->willReturn(true);
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+			'campaign_id' => 14,
+			'template_id' => 5,
+			'overrides'   => array('post_status' => 'publish', 'voice_id' => 3),
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_update_campaign_template_overrides'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('Template overrides updated.', $response['data']['message']);
+	}
+
+	public function test_ajax_run_campaign_all_templates_without_templates_returns_error() {
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_templates_by_campaign'))
+			->getMock();
+		$repository->method('get_templates_by_campaign')->willReturn(array());
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+			'campaign_id' => 14,
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_run_campaign_all_templates'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('no_templates', $response['data']['code']);
+	}
+
 	private function capture_ajax(callable $callable) {
 		ob_start();
 

@@ -1,7 +1,7 @@
 /**
  * Campaigns Page JavaScript
  *
- * Handles AJAX interactions for the Campaigns admin page.
+ * Handles AJAX interactions for the Campaigns admin page and Campaign Detail workspace.
  *
  * @package AI_Post_Scheduler
  */
@@ -33,6 +33,253 @@
 			$(document).on('click', '.aips-restore-campaign', this.handleRestoreCampaign.bind(this));
 			$(document).on('click', '.aips-delete-campaign', this.handleDeleteCampaign.bind(this));
 			$(document).on('click', '.aips-campaign-run-now', this.handleRunNow.bind(this));
+
+			// Quick Create modal handlers
+			$(document).on('click', '#aips-open-quick-create-modal, #aips-open-quick-create-modal-empty', this.handleOpenQuickCreateModal.bind(this));
+			$(document).on('submit', '#aips-quick-create-campaign-form', this.handleSubmitQuickCreate.bind(this));
+
+			// Template linking handlers
+			$(document).on('click', '#aips-open-link-template-modal, #aips-open-link-template-modal-empty', this.handleOpenLinkTemplateModal.bind(this));
+			$(document).on('submit', '#aips-link-template-form', this.handleSubmitLinkTemplate.bind(this));
+			$(document).on('click', '.aips-unlink-template-btn', this.handleUnlinkTemplate.bind(this));
+
+			// Template overrides handlers
+			$(document).on('click', '.aips-edit-overrides-btn', this.handleOpenOverridesModal.bind(this));
+			$(document).on('submit', '#aips-template-overrides-form', this.handleSubmitOverrides.bind(this));
+
+			// Generic modal close
+			$(document).on('click', '.aips-modal-close, .aips-modal-cancel, .aips-modal-backdrop', this.handleCloseModals.bind(this));
+		},
+
+		/**
+		 * Open Quick Create modal.
+		 */
+		handleOpenQuickCreateModal: function(e) {
+			e.preventDefault();
+			$('#aips-quick-create-campaign-modal').fadeIn(150);
+			$('#aips-quick-campaign-name').focus();
+		},
+
+		/**
+		 * Open Link Template modal.
+		 */
+		handleOpenLinkTemplateModal: function(e) {
+			e.preventDefault();
+			$('#aips-link-template-modal').fadeIn(150);
+		},
+
+		/**
+		 * Close open modals.
+		 */
+		handleCloseModals: function(e) {
+			if ($(e.target).closest('.aips-modal-content').length && !$(e.target).is('.aips-modal-close, .aips-modal-cancel')) {
+				return;
+			}
+			$('.aips-modal').fadeOut(150);
+		},
+
+		/**
+		 * Submit quick campaign creation.
+		 */
+		handleSubmitQuickCreate: function(e) {
+			e.preventDefault();
+			var $form = $(e.currentTarget);
+			var $btn = $form.find('#aips-quick-create-submit-btn');
+			var name = $.trim($('#aips-quick-campaign-name').val());
+			var goal = $.trim($('#aips-quick-campaign-goal').val());
+
+			if (!name) {
+				return;
+			}
+
+			$btn.prop('disabled', true);
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_quick_create_campaign',
+					nonce: aipsAjax.nonce,
+					name: name,
+					content_goal: goal
+				},
+				success: function(response) {
+					if (response.success && response.data && response.data.redirect_url) {
+						window.location.href = response.data.redirect_url;
+					} else {
+						alert(response.data?.message || 'Failed to create campaign.');
+						$btn.prop('disabled', false);
+					}
+				},
+				error: function() {
+					alert('Network error while creating campaign.');
+					$btn.prop('disabled', false);
+				}
+			});
+		},
+
+		/**
+		 * Submit linking an existing template to the campaign.
+		 */
+		handleSubmitLinkTemplate: function(e) {
+			e.preventDefault();
+			var $form = $(e.currentTarget);
+			var $btn = $form.find('#aips-link-template-submit-btn');
+			var campaignId = $form.find('input[name="campaign_id"]').val();
+			var templateId = $form.find('select[name="template_id"]').val();
+			var structId = $form.find('select[name="override_structure_id"]').val();
+			var postStatus = $form.find('select[name="override_post_status"]').val();
+
+			if (!templateId) {
+				alert('Please select a template to link.');
+				return;
+			}
+
+			var overrides = {};
+			if (structId) {
+				overrides.article_structure_id = parseInt(structId, 10);
+			}
+			if (postStatus) {
+				overrides.post_status = postStatus;
+			}
+
+			$btn.prop('disabled', true);
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_link_campaign_template',
+					nonce: aipsAjax.nonce,
+					campaign_id: campaignId,
+					template_id: templateId,
+					overrides: overrides
+				},
+				success: function(response) {
+					if (response.success) {
+						location.reload();
+					} else {
+						alert(response.data?.message || 'Failed to link template.');
+						$btn.prop('disabled', false);
+					}
+				},
+				error: function() {
+					alert('Network error while linking template.');
+					$btn.prop('disabled', false);
+				}
+			});
+		},
+
+		/**
+		 * Handle unlinking a template from the campaign.
+		 */
+		handleUnlinkTemplate: function(e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var campaignId = $('input[name="campaign_id"]').val() || (new URLSearchParams(window.location.search)).get('campaign_id');
+			var templateId = $btn.data('template-id');
+			var templateName = $btn.data('template-name') || 'this template';
+
+			if (!confirm('Unlink "' + templateName + '" from this campaign? The template itself will not be deleted.')) {
+				return;
+			}
+
+			$btn.prop('disabled', true);
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_unlink_campaign_template',
+					nonce: aipsAjax.nonce,
+					campaign_id: campaignId,
+					template_id: templateId
+				},
+				success: function(response) {
+					if (response.success) {
+						location.reload();
+					} else {
+						alert(response.data?.message || 'Failed to unlink template.');
+						$btn.prop('disabled', false);
+					}
+				},
+				error: function() {
+					alert('Network error while unlinking template.');
+					$btn.prop('disabled', false);
+				}
+			});
+		},
+
+		/**
+		 * Open Template Overrides Modal.
+		 */
+		handleOpenOverridesModal: function(e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var templateId = $btn.data('template-id');
+			var templateName = $btn.data('template-name');
+			var overrides = $btn.data('overrides') || {};
+
+			if (typeof overrides === 'string') {
+				try {
+					overrides = JSON.parse(overrides);
+				} catch (err) {
+					overrides = {};
+				}
+			}
+
+			$('#aips-override-template-id').val(templateId);
+			$('#aips-override-template-name-label').text(templateName);
+			$('#aips-override-structure-id').val(overrides.article_structure_id || '');
+			$('#aips-override-post-status').val(overrides.post_status || '');
+			$('#aips-override-voice-id').val(overrides.voice_id || '');
+			$('#aips-override-author-id').val(overrides.author_id || '');
+			$('#aips-override-categories').val(overrides.categories || '');
+			$('#aips-override-tags').val(overrides.tags || '');
+
+			$('#aips-template-overrides-modal').fadeIn(150);
+		},
+
+		/**
+		 * Submit template overrides form.
+		 */
+		handleSubmitOverrides: function(e) {
+			e.preventDefault();
+			var $form = $(e.currentTarget);
+			var $btn = $form.find('#aips-save-overrides-submit-btn');
+			var campaignId = $form.find('input[name="campaign_id"]').val();
+			var templateId = $form.find('#aips-override-template-id').val();
+
+			var overrides = {
+				article_structure_id: $('#aips-override-structure-id').val() || null,
+				post_status: $('#aips-override-post-status').val() || null,
+				voice_id: $('#aips-override-voice-id').val() || null,
+				author_id: $('#aips-override-author-id').val() || null,
+				categories: $('#aips-override-categories').val() || null,
+				tags: $('#aips-override-tags').val() || null
+			};
+
+			$btn.prop('disabled', true);
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_update_campaign_template_overrides',
+					nonce: aipsAjax.nonce,
+					campaign_id: campaignId,
+					template_id: templateId,
+					overrides: overrides
+				},
+				success: function(response) {
+					if (response.success) {
+						location.reload();
+					} else {
+						alert(response.data?.message || 'Failed to update overrides.');
+						$btn.prop('disabled', false);
+					}
+				},
+				error: function() {
+					alert('Network error while updating overrides.');
+					$btn.prop('disabled', false);
+				}
+			});
 		},
 
 		/**
@@ -202,7 +449,7 @@
 		},
 
 		/**
-		 * Handle immediate generation for the primary campaign schedule.
+		 * Handle immediate generation for a single campaign schedule.
 		 *
 		 * @param {Event} e Click event.
 		 */
@@ -302,7 +549,7 @@
 
 	// Initialize on document ready
 	$(document).ready(function() {
-		if ($('.aips-admin-page').length && (window.location.href.indexOf('aips-campaigns') > -1 || window.location.href.indexOf('aips-campaign-detail') > -1)) {
+		if ($('.aips-admin-page').length || $('.aips-campaign-detail-workspace').length || $('#aips-quick-create-campaign-modal').length) {
 			AIPS.Campaigns.init();
 		}
 	});

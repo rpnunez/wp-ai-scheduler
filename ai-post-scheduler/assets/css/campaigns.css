@@ -1,5 +1,29 @@
+/* Campaign Management & Detail Workspace Styles */
 .aips-campaign-detail-lifecycle-actions {
 	display: flex;
 	gap: 8px;
 	flex-wrap: wrap;
+}
+
+.aips-campaign-tabs .aips-tab-link {
+	color: #50575e;
+	border-bottom: 3px solid transparent;
+	font-size: 13px;
+	font-weight: 500;
+	transition: all 0.15s ease-in-out;
+}
+
+.aips-campaign-tabs .aips-tab-link:hover {
+	color: #2271b1;
+	border-bottom-color: #72aee6;
+}
+
+.aips-campaign-tabs .aips-tab-link.active {
+	color: #1d2327;
+	border-bottom-color: #2271b1;
+	font-weight: 600;
+}
+
+.aips-campaign-scoped-history .aips-history-embedded .aips-page-header {
+	display: none;
 }

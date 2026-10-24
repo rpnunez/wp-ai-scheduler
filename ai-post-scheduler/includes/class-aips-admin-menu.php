@@ -54,7 +54,17 @@ class AIPS_Admin_Menu {
             array($this, 'render_dashboard_page')
         );
 
-        // 2. Automations
+        // 2. Campaigns (Center Stage Container)
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Campaigns', 'ai-post-scheduler'),
+            __('Campaigns', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-campaigns',
+            array($this, 'render_campaigns_page')
+        );
+
+        // 3. Automations
         $automations_hook = add_submenu_page(
             'ai-post-scheduler',
             __('Automations', 'ai-post-scheduler'),
@@ -335,6 +345,9 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_submenu_file($submenu_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ($page === AIPS_Campaigns_Controller::PAGE_SLUG || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $page === 'aips-campaigns') {
+            return 'aips-campaigns';
+        }
         if ($this->is_diagnostics_child_page($page)) {
             return 'aips-diagnostics';
         }
@@ -370,7 +383,7 @@ class AIPS_Admin_Menu {
         if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_AUTOMATIONS)) {
             return true;
         }
-        return in_array($page, array(AIPS_Campaigns_Controller::PAGE_SLUG, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG), true);
+        return false;
     }
 
     /**
