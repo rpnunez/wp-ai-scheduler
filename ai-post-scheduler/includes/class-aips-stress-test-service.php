@@ -563,8 +563,9 @@ class AIPS_Stress_Test_Service {
             ),
             $result,
             array(
-                'duration_ms' => (int) round($duration_ms),
-                'ai_calls'    => $this->collect_ai_calls(),
+                'duration_ms'        => (int) round($duration_ms),
+                'duration_formatted' => self::format_duration_ms($duration_ms),
+                'ai_calls'           => $this->collect_ai_calls(),
             )
         );
     }
@@ -581,18 +582,19 @@ class AIPS_Stress_Test_Service {
         $case = $this->get_case($case_id);
 
         return array(
-            'case'         => $case_id,
-            'label'        => $case ? $case['label'] : $case_id,
-            'description'  => $case ? $case['description'] : '',
-            'group'        => $case ? $case['group'] : '',
-            'status'       => 'failed',
-            'summary'      => $error,
-            'ai_value'     => null,
-            'plugin_value' => null,
-            'error'        => $error,
-            'artifacts'    => array(),
-            'duration_ms'  => (int) round($duration_ms),
-            'ai_calls'     => array(),
+            'case'               => $case_id,
+            'label'              => $case ? $case['label'] : $case_id,
+            'description'        => $case ? $case['description'] : '',
+            'group'              => $case ? $case['group'] : '',
+            'status'             => 'failed',
+            'summary'            => $error,
+            'ai_value'           => null,
+            'plugin_value'       => null,
+            'error'              => $error,
+            'artifacts'          => array(),
+            'duration_ms'        => (int) round($duration_ms),
+            'duration_formatted' => self::format_duration_ms($duration_ms),
+            'ai_calls'           => array(),
         );
     }
 
@@ -2223,6 +2225,39 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
+     * Format a duration in milliseconds for display.
+     *
+     * Values < 1000 ms render as integer ms (e.g. "405 ms").
+     * Values >= 1000 ms render in seconds with 1 decimal place (e.g. "2.1 s").
+     *
+     * @param int|float $ms Duration in milliseconds.
+     * @param bool      $signed Whether to prepend "+" for positive values.
+     * @return string
+     */
+    public static function format_duration_ms($ms, $signed = false) {
+        $num = (float) $ms;
+        $is_negative = $num < 0;
+        $abs = abs($num);
+
+        if (round($abs) < 1000) {
+            $formatted = round($abs) . ' ms';
+        } else {
+            $formatted = sprintf('%.1f s', $abs / 1000);
+        }
+
+        if ($signed) {
+            if ($num > 0) {
+                return '+' . $formatted;
+            } elseif ($num < 0) {
+                return '-' . $formatted;
+            }
+            return '0 ms';
+        }
+
+        return $is_negative ? '-' . $formatted : $formatted;
+    }
+
+    /**
      * Compute comparative diff between two runs.
      *
      * @param int $run_id_a Base run ID (Run A / Previous).
@@ -2254,38 +2289,46 @@ class AIPS_Stress_Test_Service {
             $item_a = isset($cases_a[$case_id]) ? $cases_a[$case_id] : null;
             $item_b = isset($cases_b[$case_id]) ? $cases_b[$case_id] : null;
 
-            $status_a = $item_a ? $item_a['status'] : 'missing';
-            $status_b = $item_b ? $item_b['status'] : 'missing';
+            $raw_status_a = $item_a ? (string) $item_a['status'] : 'missing';
+            $raw_status_b = $item_b ? (string) $item_b['status'] : 'missing';
 
             $dur_a = $item_a && isset($item_a['duration_ms']) ? (int) $item_a['duration_ms'] : 0;
             $dur_b = $item_b && isset($item_b['duration_ms']) ? (int) $item_b['duration_ms'] : 0;
 
             $status_change = 'unchanged';
-            if ($status_a !== $status_b) {
-                if ($status_a === 'passed' && $status_b !== 'passed') {
+            if (strtolower($raw_status_a) !== strtolower($raw_status_b)) {
+                if (strtolower($raw_status_a) === 'passed' && strtolower($raw_status_b) !== 'passed') {
                     $status_change = 'regressed';
-                } elseif ($status_a !== 'passed' && $status_b === 'passed') {
+                } elseif (strtolower($raw_status_a) !== 'passed' && strtolower($raw_status_b) === 'passed') {
                     $status_change = 'improved';
                 } else {
                     $status_change = 'changed';
                 }
             }
 
+            $dur_diff = $dur_b - $dur_a;
+
             $case_diffs[] = array(
-                'case'           => $case_id,
-                'label'          => $item_b && isset($item_b['label']) ? $item_b['label'] : ($item_a && isset($item_a['label']) ? $item_a['label'] : $case_id),
-                'status_a'       => $status_a,
-                'status_b'       => $status_b,
-                'status_change'  => $status_change,
-                'duration_a'     => $dur_a,
-                'duration_b'     => $dur_b,
-                'duration_diff'  => $dur_b - $dur_a,
-                'ai_value_a'     => $item_a && isset($item_a['ai_value']) ? $item_a['ai_value'] : null,
-                'ai_value_b'     => $item_b && isset($item_b['ai_value']) ? $item_b['ai_value'] : null,
-                'plugin_value_a' => $item_a && isset($item_a['plugin_value']) ? $item_a['plugin_value'] : null,
-                'plugin_value_b' => $item_b && isset($item_b['plugin_value']) ? $item_b['plugin_value'] : null,
-                'summary_a'      => $item_a && isset($item_a['summary']) ? $item_a['summary'] : '',
-                'summary_b'      => $item_b && isset($item_b['summary']) ? $item_b['summary'] : '',
+                'case'                    => $case_id,
+                'label'                   => $item_b && isset($item_b['label']) ? $item_b['label'] : ($item_a && isset($item_a['label']) ? $item_a['label'] : $case_id),
+                'status_a'                => ucfirst($raw_status_a),
+                'raw_status_a'            => strtolower($raw_status_a),
+                'status_b'                => ucfirst($raw_status_b),
+                'raw_status_b'            => strtolower($raw_status_b),
+                'status_change'           => $status_change,
+                'status_change_label'     => ucfirst($status_change),
+                'duration_a'              => $dur_a,
+                'duration_a_formatted'    => self::format_duration_ms($dur_a),
+                'duration_b'              => $dur_b,
+                'duration_b_formatted'    => self::format_duration_ms($dur_b),
+                'duration_diff'           => $dur_diff,
+                'duration_diff_formatted' => self::format_duration_ms($dur_diff, true),
+                'ai_value_a'              => $item_a && isset($item_a['ai_value']) ? $item_a['ai_value'] : null,
+                'ai_value_b'              => $item_b && isset($item_b['ai_value']) ? $item_b['ai_value'] : null,
+                'plugin_value_a'          => $item_a && isset($item_a['plugin_value']) ? $item_a['plugin_value'] : null,
+                'plugin_value_b'          => $item_b && isset($item_b['plugin_value']) ? $item_b['plugin_value'] : null,
+                'summary_a'               => $item_a && isset($item_a['summary']) ? $item_a['summary'] : '',
+                'summary_b'               => $item_b && isset($item_b['summary']) ? $item_b['summary'] : '',
             );
         }
 
@@ -2293,14 +2336,24 @@ class AIPS_Stress_Test_Service {
         $passed_b = isset($run_b['totals']['passed']) ? (int) $run_b['totals']['passed'] : 0;
         $dur_total_a = isset($run_a['totals']['duration_ms']) ? (int) $run_a['totals']['duration_ms'] : 0;
         $dur_total_b = isset($run_b['totals']['duration_ms']) ? (int) $run_b['totals']['duration_ms'] : 0;
+        $total_dur_diff = $dur_total_b - $dur_total_a;
+
+        $dur_delta_label = '';
+        if ($total_dur_diff < 0) {
+            $dur_delta_label = sprintf('(%s faster)', self::format_duration_ms(abs($total_dur_diff)));
+        } elseif ($total_dur_diff > 0) {
+            $dur_delta_label = sprintf('(+%s slower)', self::format_duration_ms($total_dur_diff));
+        }
 
         return array(
             'run_a'       => $run_a,
             'run_b'       => $run_b,
             'case_diffs'  => $case_diffs,
             'totals_diff' => array(
-                'passed_diff'   => $passed_b - $passed_a,
-                'duration_diff' => $dur_total_b - $dur_total_a,
+                'passed_diff'             => $passed_b - $passed_a,
+                'duration_diff'           => $total_dur_diff,
+                'duration_diff_formatted' => self::format_duration_ms($total_dur_diff, true),
+                'duration_diff_label'     => $dur_delta_label,
             ),
         );
     }

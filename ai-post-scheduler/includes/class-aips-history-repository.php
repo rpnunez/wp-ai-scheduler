@@ -517,17 +517,19 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             }
 
             $runs[] = array(
-                'id'             => (int) $row->id,
-                'uuid'           => $row->uuid,
-                'status'         => $row->status,
-                'created_at'     => $row->created_at,
-                'formatted_date' => $formatted_date,
-                'provider'       => isset($env['provider']) ? $env['provider'] : 'Unknown',
-                'model'          => isset($env['model']) ? $env['model'] : '',
-                'total_cases'    => isset($totals['cases']) ? (int) $totals['cases'] : 0,
-                'passed'         => isset($totals['passed']) ? (int) $totals['passed'] : 0,
-                'failed'         => isset($totals['failed']) ? (int) $totals['failed'] : 0,
-                'duration_ms'    => isset($totals['duration_ms']) ? (int) $totals['duration_ms'] : 0,
+                'id'                 => (int) $row->id,
+                'uuid'               => $row->uuid,
+                'status'             => ucfirst((string) $row->status),
+                'raw_status'         => (string) $row->status,
+                'created_at'         => $row->created_at,
+                'formatted_date'     => $formatted_date,
+                'provider'           => isset($env['provider']) ? $env['provider'] : 'Unknown',
+                'model'              => isset($env['model']) ? $env['model'] : '',
+                'total_cases'        => isset($totals['cases']) ? (int) $totals['cases'] : 0,
+                'passed'             => isset($totals['passed']) ? (int) $totals['passed'] : 0,
+                'failed'             => isset($totals['failed']) ? (int) $totals['failed'] : 0,
+                'duration_ms'        => isset($totals['duration_ms']) ? (int) $totals['duration_ms'] : 0,
+                'duration_formatted' => isset($totals['duration_ms']) ? AIPS_Stress_Test_Service::format_duration_ms($totals['duration_ms']) : '0 ms',
             );
         }
 
@@ -570,15 +572,33 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             }
         }
 
+        $totals = isset($payload['totals']) ? $payload['totals'] : array();
+        if (isset($totals['duration_ms'])) {
+            $totals['duration_formatted'] = AIPS_Stress_Test_Service::format_duration_ms($totals['duration_ms']);
+        }
+
+        $results = isset($payload['results']) ? $payload['results'] : array();
+        foreach ($results as &$r) {
+            if (isset($r['status'])) {
+                $r['raw_status'] = (string) $r['status'];
+                $r['status']     = ucfirst((string) $r['status']);
+            }
+            if (isset($r['duration_ms'])) {
+                $r['duration_formatted'] = AIPS_Stress_Test_Service::format_duration_ms($r['duration_ms']);
+            }
+        }
+        unset($r);
+
         return array(
             'id'             => (int) $row->id,
             'uuid'           => $row->uuid,
-            'status'         => $row->status,
+            'status'         => ucfirst((string) $row->status),
+            'raw_status'     => (string) $row->status,
             'created_at'     => $row->created_at,
             'formatted_date' => $formatted_date,
             'environment'    => isset($payload['environment']) ? $payload['environment'] : array(),
-            'totals'         => isset($payload['totals']) ? $payload['totals'] : array(),
-            'results'        => isset($payload['results']) ? $payload['results'] : array(),
+            'totals'         => $totals,
+            'results'        => $results,
         );
     }
     
