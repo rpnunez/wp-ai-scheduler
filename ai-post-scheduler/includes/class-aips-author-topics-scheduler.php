@@ -77,15 +77,34 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 
 	/**
 	 * Initialize the scheduler.
+	 *
+	 * @param AIPS_Authors_Repository|null        $authors_repository  Optional authors repo.
+	 * @param AIPS_Author_Topics_Generator|null   $topics_generator    Optional generator.
+	 * @param AIPS_Logger|null                    $logger              Optional logger.
+	 * @param AIPS_Interval_Calculator|null       $interval_calculator Optional calculator.
+	 * @param AIPS_History_Service_Interface|null $history_service     Optional history service.
+	 * @param AIPS_Notifications|null             $notifications       Optional notifications.
+	 * @param AIPS_Job_Scheduler|null             $job_scheduler       Optional job scheduler.
 	 */
-	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_generator = new AIPS_Author_Topics_Generator();
-		$this->logger = new AIPS_Logger();
-		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->history_service = new AIPS_History_Service();
-		$this->notifications = new AIPS_Notifications();
-		$this->job_scheduler = new AIPS_Job_Scheduler();
+	public function __construct(
+		$authors_repository = null,
+		$topics_generator = null,
+		$logger = null,
+		$interval_calculator = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		$notifications = null,
+		$job_scheduler = null
+	) {
+		$container = AIPS_Container::get_instance();
+		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
+		$this->topics_generator = $topics_generator ?: new AIPS_Author_Topics_Generator();
+		$this->logger = $logger ?: new AIPS_Logger();
+		$this->interval_calculator = $interval_calculator ?: new AIPS_Interval_Calculator();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
+			? $container->make(AIPS_History_Service_Interface::class)
+			: AIPS_History_Service::instance());
+		$this->notifications = $notifications ?: new AIPS_Notifications();
+		$this->job_scheduler = $job_scheduler ?: new AIPS_Job_Scheduler();
 	}
 
 	/**

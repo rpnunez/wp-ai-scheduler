@@ -26,7 +26,7 @@ class AIPS_Schedule_Controller {
             return new AIPS_Schedule_Repository();
         });
         $this->history_repository  = $history_repository ?: $container->makeIfExists(AIPS_History_Repository_Interface::class, function() {
-            return new AIPS_History_Repository();
+            return AIPS_History_Repository::instance();
         });
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
@@ -283,7 +283,10 @@ class AIPS_Schedule_Controller {
      * @return void
      */
     private function log_bulk_slicing_notice($history_type, $message, $context = array()) {
-        $history_service = new AIPS_History_Service($this->history_repository);
+        $container = AIPS_Container::get_instance();
+        $history_service = $container->has(AIPS_History_Service_Interface::class)
+            ? $container->make(AIPS_History_Service_Interface::class)
+            : AIPS_History_Service::instance();
         $history = $history_service->create($history_type, array(
             'creation_method' => $history_type,
             'user_id'         => get_current_user_id(),

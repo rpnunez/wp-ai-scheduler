@@ -33,10 +33,16 @@ class AIPS_Session_To_JSON {
 
 	/**
 	 * Initialize the converter
+	 *
+	 * @param AIPS_History_Repository_Interface|null $history_repository Optional history repository.
+	 * @param AIPS_Logger|null                       $logger             Optional logger.
 	 */
-	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->logger = new AIPS_Logger();
+	public function __construct(?AIPS_History_Repository_Interface $history_repository = null, $logger = null) {
+		$container = AIPS_Container::get_instance();
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class)
+			? $container->make(AIPS_History_Repository_Interface::class)
+			: AIPS_History_Repository::instance());
+		$this->logger = $logger ?: new AIPS_Logger();
 	}
 	
 	/**

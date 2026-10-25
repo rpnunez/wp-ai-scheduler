@@ -54,11 +54,18 @@ class AIPS_Post_Review {
 	
 	/**
 	 * Initialize the post review handler.
+	 *
+	 * @param AIPS_Post_Review_Repository|null    $repository             Optional repository.
+	 * @param AIPS_History_Service_Interface|null $history_service        Optional history service.
+	 * @param AIPS_Bulk_Generator_Service|null    $bulk_generator_service Optional bulk generator service.
 	 */
-	public function __construct() {
-		$this->repository             = new AIPS_Post_Review_Repository();
-		$this->history_service        = new AIPS_History_Service();
-		$this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
+	public function __construct($repository = null, ?AIPS_History_Service_Interface $history_service = null, $bulk_generator_service = null) {
+		$container = AIPS_Container::get_instance();
+		$this->repository             = $repository ?: new AIPS_Post_Review_Repository();
+		$this->history_service        = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
+			? $container->make(AIPS_History_Service_Interface::class)
+			: AIPS_History_Service::instance());
+		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));

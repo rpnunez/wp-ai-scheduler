@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+### Technical Debt & Architecture (Phase 3 - #2265)
+- **Modularized History Architecture:**
+  - Decomposed legacy 2,340-line `AIPS_History` class into single-responsibility layers:
+    - `AIPS_History_Controller` (`class-aips-history-controller.php`): Owns all 8 History AJAX endpoints (`aips_bulk_delete_history`, `aips_clear_history`, `aips_export_history`, `aips_get_history_details`, `aips_get_history_logs`, `aips_get_history_modal_html`, `aips_reload_history`, `aips_retry_generation`), parameter validation, capability checks, and response formatting.
+    - `AIPS_History_UI` (`class-aips-history-ui.php`): Owns admin page rendering, timeline sidebar HTML, contiguous entry grouping, table rows, and pagination HTML.
+    - `AIPS_History_Modal_Presenter` (`class-aips-history-modal-presenter.php`): Formats detail modal payloads, AI prompt/response pairing, log trees, and diagnostic cards.
+    - `AIPS_History` (`class-aips-history.php`): Retained as a thin backward-compatible facade (reduced from 2,340 lines to ~365 lines).
+- **Completed History Dependency Injection:**
+  - Audited and eliminated direct `new AIPS_History_Repository()` and `new AIPS_History_Service()` across `includes/`.
+  - Migrated callers to container resolution via `AIPS_History_Repository_Interface` and `AIPS_History_Service_Interface` with singleton fallbacks (`AIPS_History_Repository::instance()` / `AIPS_History_Service::instance()`).
+- **Extracted Opportunistic Seams from Monolithic Classes:**
+  - `AIPS_History_Stalled_Detector` (`class-aips-history-stalled-detector.php`): Encapsulates stalled run detection, idle threshold calculation, SQL condition generation, summary counting, and automatic cleanup of abandoned processing rows.
+  - `AIPS_Content_Normalizer` (`class-aips-content-normalizer.php`): Extracts pure content transformation from `AIPS_Generator` (Markdown-to-HTML conversion, KSES sanitization, stripping redundant prepended titles, and word-boundary-safe excerpt truncation).
+  - `AIPS_DB_Datetime_Migrator` (`class-aips-db-datetime-migrator.php`): Modularized datetime column mapping and safe MySQL BIGINT conversion logic from `AIPS_DB_Manager`.
+  - `AIPS_Stress_Test_Data_Cleaner` (`class-aips-stress-test-data-cleaner.php`): Extracts diagnostic fixture tracking, counting, and permanent deletion from `AIPS_Stress_Test_Service`.
+- **Long-Term Code Health Tracking & Automated CI Guards:**
+  - Added `docs/CODE_HEALTH_METRICS.md` documenting direct history construction count, deprecated compatibility adapters, controller endpoint counts, and request-boundary test coverage.
+  - Added automated guard test suite `tests/Test_AIPS_Code_Health_Metrics.php` ensuring zero direct history instantiations in `includes/`, complete AJAX registry parity, and file size limits.
+  - Added unit test suites for all extracted seams and full request-boundary test coverage in `tests/Test_AIPS_History_Controller.php`.
+
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
@@ -237,6 +258,26 @@
 - **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
 
 ## [Unreleased]
+
+### Technical Debt & Architecture (Phase 3 - #2265)
+- **Modularized History Architecture:**
+  - Decomposed legacy 2,340-line `AIPS_History` class into single-responsibility layers:
+    - `AIPS_History_Controller` (`class-aips-history-controller.php`): Owns all 8 History AJAX endpoints (`aips_bulk_delete_history`, `aips_clear_history`, `aips_export_history`, `aips_get_history_details`, `aips_get_history_logs`, `aips_get_history_modal_html`, `aips_reload_history`, `aips_retry_generation`), parameter validation, capability checks, and response formatting.
+    - `AIPS_History_UI` (`class-aips-history-ui.php`): Owns admin page rendering, timeline sidebar HTML, contiguous entry grouping, table rows, and pagination HTML.
+    - `AIPS_History_Modal_Presenter` (`class-aips-history-modal-presenter.php`): Formats detail modal payloads, AI prompt/response pairing, log trees, and diagnostic cards.
+    - `AIPS_History` (`class-aips-history.php`): Retained as a thin backward-compatible facade (reduced from 2,340 lines to ~365 lines).
+- **Completed History Dependency Injection:**
+  - Audited and eliminated direct `new AIPS_History_Repository()` and `new AIPS_History_Service()` across `includes/`.
+  - Migrated callers to container resolution via `AIPS_History_Repository_Interface` and `AIPS_History_Service_Interface` with singleton fallbacks (`AIPS_History_Repository::instance()` / `AIPS_History_Service::instance()`).
+- **Extracted Opportunistic Seams from Monolithic Classes:**
+  - `AIPS_History_Stalled_Detector` (`class-aips-history-stalled-detector.php`): Encapsulates stalled run detection, idle threshold calculation, SQL condition generation, summary counting, and automatic cleanup of abandoned processing rows.
+  - `AIPS_Content_Normalizer` (`class-aips-content-normalizer.php`): Extracts pure content transformation from `AIPS_Generator` (Markdown-to-HTML conversion, KSES sanitization, stripping redundant prepended titles, and word-boundary-safe excerpt truncation).
+  - `AIPS_DB_Datetime_Migrator` (`class-aips-db-datetime-migrator.php`): Modularized datetime column mapping and safe MySQL BIGINT conversion logic from `AIPS_DB_Manager`.
+  - `AIPS_Stress_Test_Data_Cleaner` (`class-aips-stress-test-data-cleaner.php`): Extracts diagnostic fixture tracking, counting, and permanent deletion from `AIPS_Stress_Test_Service`.
+- **Long-Term Code Health Tracking & Automated CI Guards:**
+  - Added `docs/CODE_HEALTH_METRICS.md` documenting direct history construction count, deprecated compatibility adapters, controller endpoint counts, and request-boundary test coverage.
+  - Added automated guard test suite `tests/Test_AIPS_Code_Health_Metrics.php` ensuring zero direct history instantiations in `includes/`, complete AJAX registry parity, and file size limits.
+  - Added unit test suites for all extracted seams and full request-boundary test coverage in `tests/Test_AIPS_History_Controller.php`.
 
 ### Added
 - **System Status / Diagnostics maintenance improvements:**

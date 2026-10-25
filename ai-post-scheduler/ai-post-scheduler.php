@@ -403,6 +403,35 @@ final class AI_Post_Scheduler {
 			return $container->make(AIPS_History_Service::class);
 		});
 
+        // Register History presentation and controller layers
+        $container->singleton(AIPS_History_Modal_Presenter::class, function( $container ) {
+            return new AIPS_History_Modal_Presenter();
+        });
+
+        $container->singleton(AIPS_History_UI::class, function( $container ) {
+            return new AIPS_History_UI(
+                $container->make(AIPS_History_Repository_Interface::class),
+                $container->make(AIPS_History_Modal_Presenter::class)
+            );
+        });
+
+        $container->singleton(AIPS_History_Controller::class, function( $container ) {
+            return new AIPS_History_Controller(
+                $container->make(AIPS_History_Repository_Interface::class),
+                $container->make(AIPS_History_Modal_Presenter::class),
+                $container->make(AIPS_History_UI::class)
+            );
+        });
+
+        $container->singleton(AIPS_History::class, function( $container ) {
+            return new AIPS_History(
+                $container->make(AIPS_History_Repository_Interface::class),
+                $container->make(AIPS_History_Modal_Presenter::class),
+                $container->make(AIPS_History_UI::class),
+                $container->make(AIPS_History_Controller::class)
+            );
+        });
+
         // Register AIPS_Notifications_Repository
         $container->singleton(AIPS_Notifications_Repository::class, function( $container ) {
             return AIPS_Notifications_Repository::instance();

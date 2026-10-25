@@ -1162,7 +1162,7 @@ class AIPS_Similarity_Evaluator {
 
 		$history_service = AIPS_Container::get_instance()->has(AIPS_History_Service_Interface::class)
 			? AIPS_Container::get_instance()->make(AIPS_History_Service_Interface::class)
-			: new AIPS_History_Service();
+			: AIPS_History_Service::instance();
 
 		$history = $history_service->find_incomplete('author_embeddings', array('author_id' => $author_id))
 			?: $history_service->create('author_embeddings', array('author_id' => $author_id, 'creation_method' => 'author_embeddings'));

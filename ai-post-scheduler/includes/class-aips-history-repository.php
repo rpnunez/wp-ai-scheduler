@@ -244,16 +244,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return int
      */
     public static function stalled_threshold_seconds($creation_method = '') {
-        $default = self::is_chain_method($creation_method) ? self::STALLED_AFTER_CHAIN_SECONDS : self::STALLED_AFTER_SECONDS;
-
-        /**
-         * Filters how long (seconds) an in-progress History run may go without
-         * logged activity before it is shown as Stalled.
-         *
-         * @param int    $seconds         Threshold in seconds.
-         * @param string $creation_method Run creation method.
-         */
-        return max(60, (int) apply_filters('aips_history_stalled_after_seconds', $default, (string) $creation_method));
+        return AIPS_History_Stalled_Detector::stalled_threshold_seconds($creation_method);
     }
 
     /**
@@ -267,13 +258,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string
      */
     public static function resolve_effective_status($status, $creation_method, $last_activity, $now = null) {
-        if ((string) $status !== 'processing') {
-            return (string) $status;
-        }
-
-        $now = $now === null ? AIPS_DateTime::now()->timestamp() : (int) $now;
-
-        return ($now - (int) $last_activity) >= self::stalled_threshold_seconds($creation_method) ? 'stalled' : 'processing';
+        return AIPS_History_Stalled_Detector::resolve_effective_status($status, $creation_method, $last_activity, $now);
     }
 
     /**
@@ -304,16 +289,36 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @var wpdb WordPress database abstraction object
      */
     private $wpdb;
+
+    /**
+     * @var AIPS_History_Stalled_Detector
+     */
+    private $stalled_detector;
     
     /**
      * Initialize the repository.
+     *
+     * @param AIPS_History_Stalled_Detector|null $stalled_detector Optional stalled detector.
      */
-    public function __construct() {
+    public function __construct(?AIPS_History_Stalled_Detector $stalled_detector = null) {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_history';
         $this->table_name_log = $wpdb->prefix . 'aips_history_log';
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
+        $this->stalled_detector = $stalled_detector ?: new AIPS_History_Stalled_Detector($this->wpdb, $this->table_name, $this->table_name_log);
+    }
+
+    /**
+     * Get the stalled detector instance.
+     *
+     * @return AIPS_History_Stalled_Detector
+     */
+    public function get_stalled_detector(): AIPS_History_Stalled_Detector {
+        if ($this->stalled_detector === null) {
+            $this->stalled_detector = new AIPS_History_Stalled_Detector($this->wpdb, $this->table_name, $this->table_name_log);
+        }
+        return $this->stalled_detector;
     }
 
     /**
@@ -630,43 +635,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * SQL condition that is true for a processing run that has gone idle.
      *
-     * Idle means no log entry (falling back to created_at) within the run's
-     * threshold. The threshold comes from stalled_threshold_seconds() for each
-     * creation method currently in progress, so the SQL (filter, stats, queue
-     * health) and the per-row badge share one definition, including any
-     * aips_history_stalled_after_seconds override. Placeholders and args are
-     * returned together so callers can splice the condition into any clause.
-     *
      * @param string $alias History table alias.
      * @return array{0:string,1:array} Tuple of [sql, args].
      */
     private function stalled_condition($alias = 'h') {
-        $now           = AIPS_DateTime::now()->timestamp();
-        $last_activity = "GREATEST({$alias}.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = {$alias}.id), 0))";
-
-        $methods = $this->wpdb->get_col("SELECT DISTINCT COALESCE(creation_method, '') FROM {$this->table_name} WHERE status = 'processing'");
-
-        $cases = '';
-        $args  = array();
-        foreach ((array) $methods as $method) {
-            if ($method === '') {
-                continue;
-            }
-            $cases .= ' WHEN %s THEN %d';
-            $args[] = (string) $method;
-            $args[] = $now - self::stalled_threshold_seconds($method);
-        }
-        $args[] = $now - self::stalled_threshold_seconds('');
-
-        // With no in-progress method to special-case, a CASE without any WHEN is a SQL
-        // syntax error, so fall back to the default threshold alone.
-        $threshold = $cases === ''
-            ? '%d'
-            : "CASE COALESCE({$alias}.creation_method, ''){$cases} ELSE %d END";
-
-        $sql = "({$alias}.status = 'processing' AND {$last_activity} < {$threshold})";
-
-        return array($sql, $args);
+        return $this->get_stalled_detector()->stalled_condition($alias);
     }
 
     /**
@@ -1700,17 +1673,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return int
      */
     private function count_stalled_rows($row_condition) {
-        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
-
-        return (int) $this->wpdb->get_var(
-            $this->wpdb->prepare(
-                "SELECT COUNT(*)
-                 FROM {$this->table_name} h
-                 WHERE {$stalled_sql}
-                   AND {$row_condition}",
-                $stalled_args
-            )
-        );
+        return $this->get_stalled_detector()->count_stalled_rows($row_condition, 'h');
     }
 
     /**
@@ -2284,26 +2247,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array{count:int,oldest_idle_seconds:int|null}
      */
     public function get_stalled_summary($kinds = AIPS_History_Record_Kind::GENERATION) {
-        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
-        $kind_sql                          = self::kind_condition($kinds, 'h');
-
-        $row = $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT COUNT(*) AS total,
-                    MIN(GREATEST(h.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = h.id), 0))) AS oldest_activity
-             FROM {$this->table_name} h
-             WHERE {$stalled_sql}
-               AND {$kind_sql}",
-            $stalled_args
-        ));
-
-        $count = $row ? (int) $row->total : 0;
-
-        return array(
-            'count'               => $count,
-            'oldest_idle_seconds' => ($count > 0 && $row->oldest_activity !== null)
-                ? max(0, AIPS_DateTime::now()->timestamp() - (int) $row->oldest_activity)
-                : null,
-        );
+        return $this->get_stalled_detector()->get_stalled_summary($kinds);
     }
 
     /**
@@ -2674,35 +2618,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return int Number of rows closed.
      */
     public function close_stalled_processing_rows($kinds = AIPS_History_Record_Kind::GENERATION, array $exclude_methods = array()) {
-        // If an array of exclude_methods was passed into first parameter (legacy callers), adapt gracefully.
-        if (is_array($kinds) && !empty($kinds) && !AIPS_History_Record_Kind::is_valid(reset($kinds))) {
-            $exclude_methods = $kinds;
-            $kinds           = AIPS_History_Record_Kind::GENERATION;
+        $closed = $this->get_stalled_detector()->close_stalled_processing_rows($kinds, $exclude_methods);
+        if ($closed > 0) {
+            $this->invalidate_cache_domain('history', array(), 'history_mutated');
         }
-
-        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
-        $kind_sql                          = self::kind_condition($kinds, 'h');
-
-        $args            = array(__('Closed automatically: no activity was recorded and the run did not finish.', 'ai-post-scheduler'));
-        $args            = array_merge($args, $stalled_args);
-        $where_exclude   = '';
-        $exclude_methods = array_values(array_filter(array_map('strval', $exclude_methods)));
-        if (!empty($exclude_methods)) {
-            $where_exclude = " AND COALESCE(h.creation_method, '') NOT IN (" . implode(', ', array_fill(0, count($exclude_methods), '%s')) . ')';
-            $args          = array_merge($args, $exclude_methods);
-        }
-
-        $updated = $this->wpdb->query($this->wpdb->prepare(
-            "UPDATE {$this->table_name} h
-             SET h.completed_at = GREATEST(h.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = h.id), 0)),
-                 h.error_message = CASE WHEN h.error_message IS NULL OR h.error_message = '' THEN %s ELSE h.error_message END,
-                 h.status = 'terminated'
-             WHERE {$stalled_sql}
-               AND {$kind_sql}{$where_exclude}",
-            $args
-        ));
-
-        return $this->finish_bulk_status_update($updated);
+        return $closed;
     }
 
     /**

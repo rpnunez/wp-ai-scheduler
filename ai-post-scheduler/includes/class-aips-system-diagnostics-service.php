@@ -70,9 +70,9 @@ class AIPS_System_Diagnostics_Service {
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository::class)
-			? $container->make(AIPS_History_Repository::class)
-			: new AIPS_History_Repository());
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class)
+			? $container->make(AIPS_History_Repository_Interface::class)
+			: AIPS_History_Repository::instance());
 
 		$this->bulk_batch_job_store = $bulk_batch_job_store ?: ($container->has(AIPS_Bulk_Batch_Job_Store::class)
 			? $container->make(AIPS_Bulk_Batch_Job_Store::class)
