@@ -203,7 +203,7 @@
 									AIPS.PostReview.checkEmptyState();
 								});
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+								AIPS.Utilities.showAjaxError(response, aipsPostReviewL10n.publishError);
 								AIPS.Utilities.resetButton($btn);
 							}
 						},
@@ -252,7 +252,7 @@
 									AIPS.PostReview.checkEmptyState();
 								});
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+								AIPS.Utilities.showAjaxError(response, aipsPostReviewL10n.deleteError);
 								AIPS.Utilities.resetButton($btn);
 							}
 						},
@@ -300,7 +300,7 @@
 									AIPS.PostReview.checkEmptyState();
 								});
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
+								AIPS.Utilities.showAjaxError(response, aipsPostReviewL10n.regenerateError);
 								AIPS.Utilities.resetButton($btn);
 							}
 						},
@@ -449,7 +449,7 @@
 								AIPS.Utilities.showToast(msg, 'success');
 								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+								AIPS.Utilities.showAjaxError(response, aipsPostReviewL10n.publishError);
 							}
 						},
 						error: function () {
@@ -500,7 +500,7 @@
 								AIPS.Utilities.showToast(msg, 'success');
 								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+								AIPS.Utilities.showAjaxError(response, aipsPostReviewL10n.deleteError);
 							}
 						},
 						error: function () {
@@ -579,7 +579,7 @@
 									AIPS.Utilities.showToast(failMsg, 'warning');
 								}
 							} else {
-								AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.regenerateError, 'error');
+								AIPS.Utilities.showAjaxError(response, aipsPostReviewL10n.regenerateError);
 							}
 						},
 						error: function () {

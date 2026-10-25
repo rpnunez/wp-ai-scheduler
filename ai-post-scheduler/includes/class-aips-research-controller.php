@@ -170,9 +170,9 @@ class AIPS_Research_Controller {
         
         if (is_wp_error($topics)) {
             $this->record_research_run(__('Research trending topics', 'ai-post-scheduler'), $niche, $topics);
-            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
+            AIPS_Ajax_Response::wp_error($topics);
         }
-        
+
         // Save to database
         $saved_count = $this->repository->save_research_batch($topics, $niche);
         
@@ -857,7 +857,7 @@ class AIPS_Research_Controller {
 
         if (is_wp_error($gaps)) {
             $this->record_research_run(__('Content gap analysis', 'ai-post-scheduler'), $niche, $gaps);
-            AIPS_Ajax_Response::error(array('message' => $gaps->get_error_message()));
+            AIPS_Ajax_Response::wp_error($gaps);
         }
         $this->record_research_run(__('Content gap analysis', 'ai-post-scheduler'), $niche, is_array($gaps) ? count($gaps) : 0);
 
@@ -893,7 +893,7 @@ class AIPS_Research_Controller {
 
         if (is_wp_error($topics)) {
             $this->record_research_run(__('Topics from content gap', 'ai-post-scheduler'), $niche, $topics, 'manual', array('gap_topic' => $gap_topic));
-            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
+            AIPS_Ajax_Response::wp_error($topics);
         }
 
         // Save to database
@@ -949,7 +949,7 @@ class AIPS_Research_Controller {
 
         if (is_wp_error($topics)) {
             $this->record_research_run(__('Research from sources', 'ai-post-scheduler'), $niche, $topics, 'manual', array('term_ids' => $term_ids));
-            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
+            AIPS_Ajax_Response::wp_error($topics);
         }
 
         $saved_count = $this->repository->save_research_batch($topics, $niche);

@@ -1484,7 +1484,7 @@
 						AIPS.Utilities.showToast(response.data.message, 'success');
 						self.reload();
 					} else {
-						AIPS.Utilities.showToast(response.data.message, 'error');
+						AIPS.Utilities.showAjaxError(response);
 					}
 				},
 				error: function () {

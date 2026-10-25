@@ -148,7 +148,7 @@
 				is_active:   $('#aips-post-slice-is-active').is(':checked') ? 1 : 0,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.saveFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, aipsPostSlicesL10n.saveFailed);
 					return;
 				}
 
@@ -187,7 +187,7 @@
 						slice_id: id,
 					}, function (response) {
 						if (!response.success) {
-							AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.deleteFailed, 'error');
+							AIPS.Utilities.showAjaxError(response, aipsPostSlicesL10n.deleteFailed);
 							return;
 						}
 
@@ -224,7 +224,7 @@
 				is_active: newStatus,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.toggleFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, aipsPostSlicesL10n.toggleFailed);
 					return;
 				}
 

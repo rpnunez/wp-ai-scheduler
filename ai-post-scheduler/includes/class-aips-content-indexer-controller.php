@@ -917,7 +917,7 @@ class AIPS_Content_Indexer_Controller {
 		$suggestions = $this->similarity_evaluator->generate_gap_suggestions($post_id, $cluster_id);
 
 		if (is_wp_error($suggestions)) {
-			AIPS_Ajax_Response::error($suggestions->get_error_message());
+			AIPS_Ajax_Response::wp_error($suggestions);
 		}
 
 		AIPS_Ajax_Response::success(array(

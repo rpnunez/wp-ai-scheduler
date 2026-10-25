@@ -395,7 +395,7 @@ class AIPS_Templates_Controller {
         $result = $generator->generate_preview($context);
 
         if (is_wp_error($result)) {
-            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+            AIPS_Ajax_Response::wp_error($result);
         }
 
         AIPS_Ajax_Response::success(array(
