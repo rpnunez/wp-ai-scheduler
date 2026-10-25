@@ -572,6 +572,7 @@ class AIPS_Admin_Assets {
             'noneOption'          => __('None', 'ai-post-scheduler'),
             // Table filter persistence
             'persistTableFilters' => (bool) AIPS_Config::get_instance()->get_option('aips_persist_table_filters'),
+            'hasUnsplashAccessKey' => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
         ));
     }
 
@@ -1100,6 +1101,7 @@ class AIPS_Admin_Assets {
                 // Per-post-type category/tag taxonomy support, used to hide the
                 // Categories/Tags fields for post types that don't support them.
                 'postTypeTaxonomySupport' => AIPS_Utilities::get_selectable_post_types(),
+                'hasUnsplashAccessKey'    => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
             ));
     }
 
