@@ -123,6 +123,10 @@ class AIPS_Telemetry {
 	 * @return void
 	 */
 	public function add_event($bucket_or_data, array $data = array()) {
+		if (!self::is_enabled()) {
+			return;
+		}
+
 		$bucket = 'general';
 
 		if (is_array($bucket_or_data)) {
@@ -155,7 +159,7 @@ class AIPS_Telemetry {
 	 * @return void
 	 */
 	public function boot() {
-		if ($this->shutdown_registered) {
+		if (!self::is_enabled() || $this->shutdown_registered) {
 			return;
 		}
 		$this->shutdown_registered = true;

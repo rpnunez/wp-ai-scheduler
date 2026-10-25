@@ -322,8 +322,24 @@ class AIPS_Link_Click_Tracking_Service {
 	 * @return array[] source_id, source_title, target_id, target_title, clicks.
 	 */
 	public function get_top_links(int $limit = 10): array {
+		$rows = $this->clicks->get_top_links($this->get_report_since(), $limit);
+		if (!empty($rows)) {
+			$post_ids = array();
+			foreach ($rows as $row) {
+				if (!empty($row->source_post_id)) {
+					$post_ids[] = (int) $row->source_post_id;
+				}
+				if (!empty($row->target_post_id)) {
+					$post_ids[] = (int) $row->target_post_id;
+				}
+			}
+			if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+				_prime_post_caches(array_unique($post_ids), false, true);
+			}
+		}
+
 		$links = array();
-		foreach ($this->clicks->get_top_links($this->get_report_since(), $limit) as $row) {
+		foreach ($rows as $row) {
 			$links[] = array(
 				'source_id'    => (int) $row->source_post_id,
 				'source_title' => get_the_title((int) $row->source_post_id),
