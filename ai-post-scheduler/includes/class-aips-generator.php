@@ -139,8 +139,6 @@ class AIPS_Generator {
         return $this->content_normalizer;
     }
 
-    }
-
     /**
      * Check if AI is available in the configured AI service.
      *
