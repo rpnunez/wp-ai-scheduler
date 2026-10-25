@@ -82,6 +82,16 @@ class AIPS_Prompt_Builder_Post_Title {
 				}
 			}
 
+			if (method_exists($context, 'get_campaign_goal')) {
+				$campaign_goal = $context->get_campaign_goal();
+				if (!empty($campaign_goal)) {
+					$goal_instruction = "Campaign Goal: {$campaign_goal}";
+					$title_instructions = !empty($title_instructions)
+						? $goal_instruction . "\n" . $title_instructions
+						: $goal_instruction;
+				}
+			}
+
 			$prompt = $this->build_base_prompt($title_instructions, $content, $context);
 
 			return apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, $content);
@@ -130,6 +140,16 @@ class AIPS_Prompt_Builder_Post_Title {
 			$title_prompt = $context->get_title_prompt();
 			if (!empty($title_prompt)) {
 				$title_instructions = $this->template_processor->process($title_prompt, $topic_str);
+			}
+		}
+
+		if (method_exists($context, 'get_campaign_goal')) {
+			$campaign_goal = $context->get_campaign_goal();
+			if (!empty($campaign_goal)) {
+				$goal_instruction = "Campaign Goal: {$campaign_goal}";
+				$title_instructions = !empty($title_instructions)
+					? $goal_instruction . "\n" . $title_instructions
+					: $goal_instruction;
 			}
 		}
 

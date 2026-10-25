@@ -54,6 +54,9 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 );
 ?>
 <div class="<?php echo $is_embedded ? 'aips-history-page aips-history-embedded' : 'wrap aips-wrap aips-history-page'; ?>">
+    <?php if ($is_embedded && !empty($campaign_id)) : ?>
+        <input type="hidden" id="aips-history-campaign-id" value="<?php echo esc_attr((int) $campaign_id); ?>">
+    <?php endif; ?>
     <div class="aips-page-container">
         <?php if (!$is_embedded): ?>
         <!-- Page Header -->

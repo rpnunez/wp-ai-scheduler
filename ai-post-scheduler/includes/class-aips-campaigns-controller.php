@@ -214,14 +214,15 @@ class AIPS_Campaigns_Controller {
 					'message' => $result->get_error_message(),
 				);
 			} else {
-				$redirect_url = add_query_arg(
-					array(
-						'page' => 'aips-campaign-detail',
-						'campaign_id' => $campaign_id,
-						'detail_notice' => isset($detail_notice_map[$detail_action]) ? $detail_action : 'save',
-					),
-					admin_url('admin.php')
+				$redirect_args = array(
+					'page'          => 'aips-campaign-detail',
+					'campaign_id'   => $campaign_id,
+					'detail_notice' => isset($detail_notice_map[$detail_action]) ? $detail_action : 'save',
 				);
+				if (!empty($_POST['current_tab'])) {
+					$redirect_args['tab'] = sanitize_key(wp_unslash($_POST['current_tab']));
+				}
+				$redirect_url = add_query_arg($redirect_args, admin_url('admin.php'));
 
 				wp_safe_redirect($redirect_url);
 				return;
@@ -556,6 +557,9 @@ class AIPS_Campaigns_Controller {
 	/**
 	 * Read per-template overrides from $_POST, keeping only supported keys.
 	 *
+	 * Maps form field aliases (categories -> post_category, tags -> post_tags, author_id -> post_author)
+	 * and sanitizes/casts values to appropriate types.
+	 *
 	 * @return array
 	 */
 	private function read_template_overrides_from_request() {
@@ -563,17 +567,51 @@ class AIPS_Campaigns_Controller {
 			return array();
 		}
 
-		$allowed = array('post_status', 'post_type', 'post_category', 'post_tags', 'post_author', 'article_structure_id', 'voice_id');
-		$raw     = wp_unslash($_POST['overrides']);
-		$clean   = array();
+		$raw   = wp_unslash($_POST['overrides']);
+		$clean = array();
 
-		foreach ($allowed as $key) {
-			if (!isset($raw[$key]) || '' === $raw[$key]) {
-				continue;
+		// Field mapping aliases: input field name => canonical context key
+		$alias_map = array(
+			'categories' => 'post_category',
+			'tags'       => 'post_tags',
+			'author_id'  => 'post_author',
+		);
+		foreach ($alias_map as $alias => $canonical) {
+			if (isset($raw[$alias]) && !isset($raw[$canonical])) {
+				$raw[$canonical] = $raw[$alias];
 			}
-			$clean[$key] = is_array($raw[$key])
-				? array_map('sanitize_text_field', array_filter($raw[$key], 'is_scalar'))
-				: sanitize_text_field((string) $raw[$key]);
+		}
+
+		if (!empty($raw['post_status'])) {
+			$clean['post_status'] = sanitize_key($raw['post_status']);
+		}
+
+		if (!empty($raw['post_type'])) {
+			$clean['post_type'] = sanitize_key($raw['post_type']);
+		}
+
+		if (!empty($raw['post_category'])) {
+			$clean['post_category'] = is_array($raw['post_category'])
+				? array_map('sanitize_text_field', array_filter($raw['post_category'], 'is_scalar'))
+				: sanitize_text_field((string) $raw['post_category']);
+		}
+
+		if (!empty($raw['post_tags'])) {
+			$clean['post_tags'] = is_array($raw['post_tags'])
+				? array_map('sanitize_text_field', array_filter($raw['post_tags'], 'is_scalar'))
+				: sanitize_text_field((string) $raw['post_tags']);
+		}
+
+		if (!empty($raw['post_author'])) {
+			$clean['post_author'] = absint($raw['post_author']);
+		}
+
+		if (!empty($raw['article_structure_id'])) {
+			$clean['article_structure_id'] = absint($raw['article_structure_id']);
+		}
+
+		if (!empty($raw['voice_id'])) {
+			$clean['voice_id'] = absint($raw['voice_id']);
 		}
 
 		return $clean;
@@ -611,8 +649,9 @@ class AIPS_Campaigns_Controller {
 		);
 
 		AIPS_Ajax_Response::success(array(
-			'campaign_id' => $campaign_id,
-			'detail_url'  => $detail_url,
+			'campaign_id'  => $campaign_id,
+			'redirect_url' => $detail_url,
+			'detail_url'   => $detail_url,
 		), __('Campaign created successfully.', 'ai-post-scheduler'));
 	}
 
@@ -752,10 +791,19 @@ class AIPS_Campaigns_Controller {
 				continue;
 			}
 
-			$article_structure_id = !empty($campaign->default_article_structure_id) ? (int) $campaign->default_article_structure_id : null;
-			if (!empty($template->article_structure_id)) {
-				$article_structure_id = (int) $template->article_structure_id;
+			$overrides = array();
+			if (!empty($template->campaign_overrides)) {
+				$decoded = json_decode($template->campaign_overrides, true);
+				if (is_array($decoded)) {
+					$overrides = $decoded;
+				}
 			}
+
+			$article_structure_id = !empty($overrides['article_structure_id'])
+				? absint($overrides['article_structure_id'])
+				: (!empty($campaign->default_article_structure_id)
+					? absint($campaign->default_article_structure_id)
+					: (!empty($template->article_structure_id) ? absint($template->article_structure_id) : null));
 
 			$template_entry = AIPS_Template_Entry::from_template_and_overrides(
 				(int) $template->id,
@@ -765,15 +813,7 @@ class AIPS_Campaigns_Controller {
 			);
 
 			$base_context = new AIPS_Template_Context($template_entry, null, null, 'manual');
-			$overrides = array();
-			if (!empty($template->campaign_overrides)) {
-				$decoded = json_decode($template->campaign_overrides, true);
-				if (is_array($decoded)) {
-					$overrides = $decoded;
-				}
-			}
-
-			$context = new AIPS_Campaign_Context($base_context, $campaign, $overrides);
+			$context      = new AIPS_Campaign_Context($base_context, $campaign, $overrides);
 
 			$result = $generator->generate_from_context($context);
 			if (is_wp_error($result)) {

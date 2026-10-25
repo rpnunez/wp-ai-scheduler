@@ -1888,9 +1888,10 @@ class AIPS_History {
         $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
         $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
         $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
+        $campaign_id = isset($_POST['campaign_id']) ? absint(wp_unslash($_POST['campaign_id'])) : 0;
         $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
 
-        $history = $this->get_history(array(
+        $query_args = array(
             'page'   => $paged,
             'status' => $status_filter,
             'search' => $search_query,
@@ -1903,7 +1904,13 @@ class AIPS_History {
             'fields' => 'list',
             'per_page' => $this->get_per_page(),
             'collapse' => $this->should_collapse($status_filter),
-        ));
+        );
+
+        if ($campaign_id > 0) {
+            $query_args['campaign_id'] = $campaign_id;
+        }
+
+        $history = $this->get_history($query_args);
 
         $this->prepare_items_for_display($history['items']);
 
@@ -1917,7 +1924,7 @@ class AIPS_History {
             'items_html'      => $items_html,
             'pagination_html' => $pagination_html,
             'paged'           => $paged,
-            'stats'           => $this->get_stats(),
+            'stats'           => $this->get_stats($campaign_id > 0 ? array('campaign_id' => $campaign_id) : array()),
         ));
     }
 

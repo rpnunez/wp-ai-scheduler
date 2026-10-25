@@ -286,7 +286,7 @@ class AIPS_Campaign_Context implements AIPS_Generation_Context {
 
 	/**
 	 * Get effective article structure ID.
-	 * Precedence: Per-template override > Inner context structure > Campaign default structure.
+	 * Precedence: Per-template override > Campaign default structure > Inner context structure.
 	 *
 	 * @return int|null
 	 */
@@ -295,15 +295,15 @@ class AIPS_Campaign_Context implements AIPS_Generation_Context {
 			return absint($this->overrides['article_structure_id']);
 		}
 
+		if (!empty($this->campaign->default_article_structure_id)) {
+			return absint($this->campaign->default_article_structure_id);
+		}
+
 		if (method_exists($this->inner_context, 'get_article_structure_id')) {
 			$structure_id = $this->inner_context->get_article_structure_id();
 			if (!empty($structure_id)) {
 				return absint($structure_id);
 			}
-		}
-
-		if (!empty($this->campaign->default_article_structure_id)) {
-			return absint($this->campaign->default_article_structure_id);
 		}
 
 		return null;

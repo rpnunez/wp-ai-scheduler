@@ -988,11 +988,20 @@ class AIPS_Schedule_Processor {
                     if (isset($camp_tmpl->is_active) && !(bool) $camp_tmpl->is_active) {
                         continue;
                     }
+                    $camp_overrides = array();
+                    if (!empty($camp_tmpl->campaign_overrides)) {
+                        $decoded = json_decode((string) $camp_tmpl->campaign_overrides, true);
+                        $camp_overrides = is_array($decoded) ? $decoded : array();
+                    }
+                    $camp_structure_id = !empty($camp_overrides['article_structure_id'])
+                        ? absint($camp_overrides['article_structure_id'])
+                        : (!empty($schedule->article_structure_id) ? absint($schedule->article_structure_id) : null);
+
                     $tmpl_entry = AIPS_Template_Entry::from_template_and_overrides(
                         (int) $camp_tmpl->id,
                         $camp_tmpl,
                         $post_quantity,
-                        $this->template_type_selector->select_structure($camp_tmpl)
+                        $camp_structure_id
                     );
                     $sub_context = new AIPS_Template_Context($tmpl_entry, null, $topic, $creation_method);
                     $sub_context->set_trigger_context($this->build_schedule_trigger_context($schedule));

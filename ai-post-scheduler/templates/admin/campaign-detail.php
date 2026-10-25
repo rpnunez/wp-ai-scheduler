@@ -264,7 +264,8 @@ $unlinked_templates = array_filter($all_templates, function($t) use ($linked_tem
 								<tbody>
 									<?php foreach ($templates as $t) : ?>
 										<?php
-										$overrides = !empty($t->overrides) ? (is_array($t->overrides) ? $t->overrides : json_decode($t->overrides, true)) : array();
+										$raw_ovr = !empty($t->campaign_overrides) ? $t->campaign_overrides : (!empty($t->overrides) ? $t->overrides : array());
+										$overrides = !empty($raw_ovr) ? (is_array($raw_ovr) ? $raw_ovr : json_decode($raw_ovr, true)) : array();
 										$override_keys = is_array($overrides) ? array_keys(array_filter($overrides)) : array();
 										$has_overrides = !empty($override_keys);
 										$edit_template_url = admin_url('admin.php?page=aips-studio&tab=templates&action=edit&template_id=' . absint($t->id));
@@ -437,6 +438,7 @@ $unlinked_templates = array_filter($all_templates, function($t) use ($linked_tem
 						<form method="post" id="aips-campaign-directives-form">
 							<?php wp_nonce_field('aips_campaign_detail_save_' . absint($campaign->id), 'aips_campaign_detail_nonce'); ?>
 							<input type="hidden" name="detail_action" value="save">
+							<input type="hidden" name="current_tab" value="directives">
 
 							<div class="aips-form-row" style="margin-bottom:20px;">
 								<label for="campaign_name"><strong><?php esc_html_e('Campaign Name', 'ai-post-scheduler'); ?></strong> <span style="color:#d63638;">*</span></label>

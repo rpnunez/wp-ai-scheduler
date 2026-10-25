@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+### Fixed & Improved
+- **Campaigns Container Hardening & Query Optimizations:**
+  - Pushed single-campaign ID filtering directly into derived metric subqueries (`build_campaign_metrics_query`) to eliminate full table scans across history, schedule, and template tables.
+  - Eliminated N+1 queries in `AIPS_Schedules_List_Table` by batch prefetching template counts via `get_template_counts_by_campaign_ids()`.
+  - Added cached `get_template_campaign_mappings()` in `AIPS_Campaigns_Repository` to eliminate repeated `SHOW TABLES` on Templates page loads.
+  - Fixed Quick Create redirect by supporting both `redirect_url` and `detail_url` in controller and JavaScript handlers.
+  - Fixed template overrides field mapping between modal form (`categories`, `tags`, `author_id`) and controller whitelist, ensuring overrides are persisted and rendered accurately.
+  - Fixed campaign deletion check (`can_delete_campaign`) to only count generated posts rather than non-post lifecycle event rows, allowing empty campaigns to be cleanly deleted.
+  - Scoped embedded History tab AJAX reloads to the active campaign ID and enqueued history assets on the Campaign Detail workspace.
+  - Corrected article structure precedence (`Per-template override > Campaign default > Inner context / system default`) in batch schedule generation and context resolution.
+  - Injected campaign content goals into post title generation prompts.
+  - Preserved active tab state on Campaign Directives & Defaults form saves.
+
 ## [3.8.0] - 2026-10-23
 
 ### Added

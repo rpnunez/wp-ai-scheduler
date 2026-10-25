@@ -18,17 +18,7 @@ if (!defined('ABSPATH')) {
             foreach ($campaign_options as $campaign_option) {
                 $campaign_map[(int) $campaign_option->id] = $campaign_option;
             }
-            $template_campaign_map = array();
-            global $wpdb;
-            $t_c_table = $wpdb->prefix . 'aips_campaign_templates';
-            if ($wpdb->get_var("SHOW TABLES LIKE '{$t_c_table}'") === $t_c_table) {
-                $c_links = $wpdb->get_results("SELECT campaign_id, template_id FROM {$t_c_table}");
-                if (!empty($c_links)) {
-                    foreach ($c_links as $link) {
-                        $template_campaign_map[(int) $link->template_id][] = (int) $link->campaign_id;
-                    }
-                }
-            }
+            $template_campaign_map = $campaigns_repo->get_template_campaign_mappings();
             $category_name_map = array();
             if (!empty($categories) && is_array($categories)) {
                 foreach ($categories as $category) {

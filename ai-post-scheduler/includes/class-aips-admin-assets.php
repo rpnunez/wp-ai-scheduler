@@ -191,7 +191,12 @@ class AIPS_Admin_Assets {
 			$this->enqueue_silos_assets();
 		}
 
-        if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
+        if (
+            self::PAGE_HISTORY === $page
+            || $this->hook_contains($hook, self::PAGE_HISTORY)
+            || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
+            || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+        ) {
 			$this->enqueue_history_assets();
 		}
 

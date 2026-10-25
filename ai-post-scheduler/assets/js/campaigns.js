@@ -103,8 +103,9 @@
 					content_goal: goal
 				},
 				success: function(response) {
-					if (response.success && response.data && response.data.redirect_url) {
-						window.location.href = response.data.redirect_url;
+					var redirectUrl = (response.data && (response.data.redirect_url || response.data.detail_url)) || null;
+					if (response.success && redirectUrl) {
+						window.location.href = redirectUrl;
 					} else {
 						alert(response.data?.message || 'Failed to create campaign.');
 						$btn.prop('disabled', false);
@@ -230,9 +231,9 @@
 			$('#aips-override-structure-id').val(overrides.article_structure_id || '');
 			$('#aips-override-post-status').val(overrides.post_status || '');
 			$('#aips-override-voice-id').val(overrides.voice_id || '');
-			$('#aips-override-author-id').val(overrides.author_id || '');
-			$('#aips-override-categories').val(overrides.categories || '');
-			$('#aips-override-tags').val(overrides.tags || '');
+			$('#aips-override-author-id').val(overrides.post_author || overrides.author_id || '');
+			$('#aips-override-categories').val(overrides.post_category || overrides.categories || '');
+			$('#aips-override-tags').val(overrides.post_tags || overrides.tags || '');
 
 			$('#aips-template-overrides-modal').fadeIn(150);
 		},

@@ -240,6 +240,7 @@ class Test_AIPS_Campaigns_Controller extends WP_UnitTestCase {
 			'detail_action' => 'save',
 			'campaign_name' => 'Renamed Campaign',
 			'content_goal' => 'Updated goal',
+			'current_tab'  => 'directives',
 		);
 
 		$redirect_location = '';
@@ -258,6 +259,7 @@ class Test_AIPS_Campaigns_Controller extends WP_UnitTestCase {
 		$this->assertStringContainsString('page=aips-campaign-detail', $redirect_location);
 		$this->assertStringContainsString('campaign_id=14', $redirect_location);
 		$this->assertStringContainsString('detail_notice=save', $redirect_location);
+		$this->assertStringContainsString('tab=directives', $redirect_location);
 	}
 
 	public function test_ajax_quick_create_campaign_success() {
@@ -281,6 +283,47 @@ class Test_AIPS_Campaigns_Controller extends WP_UnitTestCase {
 		$this->assertTrue($response['success']);
 		$this->assertSame(88, $response['data']['campaign_id']);
 		$this->assertStringContainsString('campaign_id=88', $response['data']['redirect_url']);
+		$this->assertStringContainsString('campaign_id=88', $response['data']['detail_url']);
+	}
+
+	public function test_ajax_update_campaign_template_overrides_maps_aliases_and_casts() {
+		$captured_overrides = null;
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('update_template_overrides'))
+			->getMock();
+		$repository->method('update_template_overrides')
+			->willReturnCallback(function($campaign_id, $template_id, $overrides) use (&$captured_overrides) {
+				$captured_overrides = $overrides;
+				return true;
+			});
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+			'campaign_id' => 14,
+			'template_id' => 5,
+			'overrides'   => array(
+				'author_id'            => '7',
+				'categories'           => 'News, Tech',
+				'tags'                 => 'ai, auto',
+				'article_structure_id' => '12',
+				'voice_id'             => '3',
+				'post_status'          => 'publish',
+			),
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_update_campaign_template_overrides'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame(7, $captured_overrides['post_author']);
+		$this->assertSame('News, Tech', $captured_overrides['post_category']);
+		$this->assertSame('ai, auto', $captured_overrides['post_tags']);
+		$this->assertSame(12, $captured_overrides['article_structure_id']);
+		$this->assertSame(3, $captured_overrides['voice_id']);
+		$this->assertSame('publish', $captured_overrides['post_status']);
 	}
 
 	public function test_ajax_link_campaign_template_success() {

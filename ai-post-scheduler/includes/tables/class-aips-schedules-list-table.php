@@ -298,6 +298,11 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 
 		$total_cols = count($this->get_columns());
 
+		$campaign_ids    = array_keys($groups['campaigns']);
+		$template_counts = (!empty($campaign_ids) && class_exists('AIPS_Campaigns_Repository'))
+			? AIPS_Campaigns_Repository::instance()->get_template_counts_by_campaign_ids($campaign_ids)
+			: array();
+
 		// 1. Render Campaign Groups
 		foreach ($groups['campaigns'] as $camp_id => $group) {
 			$campaign            = $group['campaign'];
@@ -306,9 +311,7 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 				admin_url('admin.php')
 			);
 			$schedule_count      = count($group['schedules']);
-			$template_count      = class_exists('AIPS_Campaigns_Repository')
-				? count(AIPS_Campaigns_Repository::instance()->get_templates_by_campaign($camp_id))
-				: 0;
+			$template_count      = isset($template_counts[$camp_id]) ? (int) $template_counts[$camp_id] : 0;
 
 			$status_badge = !empty($campaign->is_archived)
 				? '<span class="aips-badge aips-badge-secondary">' . esc_html__('Archived', 'ai-post-scheduler') . '</span>'

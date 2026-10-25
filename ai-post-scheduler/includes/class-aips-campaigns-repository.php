@@ -128,7 +128,7 @@ class AIPS_Campaigns_Repository {
 		$where_sql = empty($where_clauses) ? '' : 'WHERE ' . implode(' AND ', $where_clauses);
 		$order_sql = null === $campaign_id ? 'ORDER BY c.is_archived ASC, c.created_at DESC' : '';
 
-		$sql = $this->build_campaign_metrics_query($where_sql, $order_sql);
+		$sql = $this->build_campaign_metrics_query($where_sql, $order_sql, $campaign_id ? (int) $campaign_id : 0);
 
 		$rows = empty($where_args)
 			? $this->wpdb->get_results($sql)
@@ -164,7 +164,7 @@ class AIPS_Campaigns_Repository {
 			'campaigns.get_campaign_by_id',
 			array( 'campaign_id' => $campaign_id ),
 			function() use ( $campaign_id ) {
-				$sql  = $this->build_campaign_metrics_query('WHERE c.id = %d');
+				$sql  = $this->build_campaign_metrics_query('WHERE c.id = %d', '', $campaign_id);
 				$rows = $this->wpdb->get_results($this->wpdb->prepare($sql, $campaign_id));
 				if (empty($rows)) {
 					return null;
@@ -275,7 +275,7 @@ class AIPS_Campaigns_Repository {
 		));
 
 		$last_history_status = $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT status FROM {$this->history_table} WHERE campaign_id = %d ORDER BY created_at DESC, id DESC LIMIT 1",
+			"SELECT status FROM {$this->history_table} WHERE campaign_id = %d ORDER BY id DESC LIMIT 1",
 			$campaign_id
 		));
 
@@ -716,6 +716,13 @@ class AIPS_Campaigns_Repository {
 			);
 		}
 
+		// Clean up any remaining non-post lifecycle entries in history for this campaign.
+		$this->wpdb->delete(
+			$this->history_table,
+			array('campaign_id' => $campaign_id),
+			array('%d')
+		);
+
 		if ($started_transaction) {
 			$this->wpdb->query('COMMIT');
 		}
@@ -736,14 +743,17 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
-	 * Count historical attribution rows attached to a campaign.
+	 * Count historical generated post rows attached to a campaign.
+	 *
+	 * Lifecycle events and logs that did not generate a post are excluded
+	 * so empty campaigns can be safely deleted.
 	 *
 	 * @param int $campaign_id Campaign ID.
 	 * @return int
 	 */
 	public function get_generated_post_count($campaign_id) {
 		return (int) $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d",
+			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d AND (post_id IS NOT NULL OR status IN ('completed', 'partial'))",
 			absint($campaign_id)
 		));
 	}
@@ -915,7 +925,7 @@ class AIPS_Campaigns_Repository {
 		}
 
 		$sql = "
-			SELECT t.*, ct.overrides AS campaign_overrides, ct.sort_order, ct.created_at AS linked_at
+			SELECT t.*, ct.overrides AS campaign_overrides, ct.overrides, ct.sort_order, ct.created_at AS linked_at
 			FROM {$this->templates_table} t
 			INNER JOIN {$this->campaign_templates_table} ct ON ct.template_id = t.id
 			WHERE ct.campaign_id = %d
@@ -1071,6 +1081,66 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
+	 * Get count of linked templates grouped by campaign ID.
+	 *
+	 * Pre-fetches counts in a single query to eliminate N+1 overhead in lists.
+	 *
+	 * @param int[] $campaign_ids List of campaign IDs.
+	 * @return array<int, int> Map of campaign_id => template_count.
+	 */
+	public function get_template_counts_by_campaign_ids($campaign_ids) {
+		$campaign_ids = array_filter(array_map('absint', (array) $campaign_ids));
+		if (empty($campaign_ids)) {
+			return array();
+		}
+
+		$in_placeholders = implode(',', array_fill(0, count($campaign_ids), '%d'));
+		$sql = $this->wpdb->prepare(
+			"SELECT campaign_id, COUNT(*) AS count
+			FROM {$this->campaign_templates_table}
+			WHERE campaign_id IN ({$in_placeholders})
+			GROUP BY campaign_id",
+			$campaign_ids
+		);
+
+		$rows = $this->wpdb->get_results($sql);
+		$counts = array();
+		if (!empty($rows)) {
+			foreach ($rows as $row) {
+				$counts[(int) $row->campaign_id] = (int) $row->count;
+			}
+		}
+
+		return $counts;
+	}
+
+	/**
+	 * Get mapping of template_id to array of campaign_ids.
+	 *
+	 * Uses persistent tier caching to avoid SHOW TABLES and repeated queries on Templates page.
+	 *
+	 * @return array<int, int[]> Map of template_id => array of campaign_ids.
+	 */
+	public function get_template_campaign_mappings() {
+		return $this->cache_read(
+			'campaigns.template_campaign_mappings',
+			array(),
+			function() {
+				$rows = $this->wpdb->get_results(
+					"SELECT campaign_id, template_id FROM {$this->campaign_templates_table}"
+				);
+				$map = array();
+				if (!empty($rows)) {
+					foreach ($rows as $row) {
+						$map[(int) $row->template_id][] = (int) $row->campaign_id;
+					}
+				}
+				return $map;
+			}
+		);
+	}
+
+	/**
 	 * Get child schedules by campaign.
 	 *
 	 * @param int $campaign_id Campaign ID.
@@ -1190,17 +1260,27 @@ class AIPS_Campaigns_Repository {
 		$row->active_schedule_count = (int) $row->active_schedule_count;
 		$row->primary_template_id = !empty($row->primary_template_id) ? (int) $row->primary_template_id : null;
 		$row->primary_schedule_id = !empty($row->primary_schedule_id) ? (int) $row->primary_schedule_id : null;
-		$row->can_delete = 0 === $row->total_history_count;
+		$row->can_delete = 0 === $row->generated_posts_count;
 	}
 
 	/**
 	 * Build the aggregate campaign query.
 	 *
-	 * @param string $where_sql WHERE clause.
-	 * @param string $order_sql ORDER clause.
+	 * When $single_campaign_id > 0, subqueries are filtered directly by campaign_id
+	 * to prevent full table scans on history, schedule, and template link tables.
+	 *
+	 * @param string $where_sql           WHERE clause for the outer query.
+	 * @param string $order_sql           ORDER clause for the outer query.
+	 * @param int    $single_campaign_id  Optional single campaign ID to push into subqueries.
 	 * @return string
 	 */
-	private function build_campaign_metrics_query($where_sql = '', $order_sql = '') {
+	private function build_campaign_metrics_query($where_sql = '', $order_sql = '', $single_campaign_id = 0) {
+		$single_campaign_id = absint($single_campaign_id);
+
+		$t_where = $single_campaign_id > 0 ? "WHERE campaign_id = {$single_campaign_id}" : '';
+		$s_where = $single_campaign_id > 0 ? "WHERE campaign_id = {$single_campaign_id}" : 'WHERE campaign_id IS NOT NULL';
+		$h_where = $single_campaign_id > 0 ? "WHERE campaign_id = {$single_campaign_id}" : 'WHERE campaign_id IS NOT NULL';
+
 		return "
 			SELECT
 				c.*,
@@ -1217,6 +1297,7 @@ class AIPS_Campaigns_Repository {
 			LEFT JOIN (
 				SELECT campaign_id, COUNT(*) AS linked_template_count, MIN(template_id) AS primary_template_id
 				FROM {$this->campaign_templates_table}
+				{$t_where}
 				GROUP BY campaign_id
 			) t ON t.campaign_id = c.id
 			LEFT JOIN (
@@ -1228,7 +1309,7 @@ class AIPS_Campaigns_Repository {
 					MIN(CASE WHEN is_active = 1 AND next_run > 0 THEN next_run END) AS next_run,
 					MIN(id) AS primary_schedule_id
 				FROM {$this->schedule_table}
-				WHERE campaign_id IS NOT NULL
+				{$s_where}
 				GROUP BY campaign_id
 			) s ON s.campaign_id = c.id
 			LEFT JOIN (
@@ -1237,7 +1318,7 @@ class AIPS_Campaigns_Repository {
 					SUM(CASE WHEN status IN ('completed', 'partial') THEN 1 ELSE 0 END) AS generated_posts_count,
 					COUNT(*) AS total_history_count
 				FROM {$this->history_table}
-				WHERE campaign_id IS NOT NULL
+				{$h_where}
 				GROUP BY campaign_id
 			) h ON h.campaign_id = c.id
 			{$where_sql}
