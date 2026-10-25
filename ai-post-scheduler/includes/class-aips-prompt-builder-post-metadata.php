@@ -19,6 +19,14 @@ if (!defined('ABSPATH')) {
 }
 
 class AIPS_Prompt_Builder_Post_Metadata {
+	/**
+	 * Get the core default prompt template for SEO metadata generation.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "Generate search-optimized metadata for the article.";
+	}
 
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
@@ -31,12 +39,19 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	private $diversity_injector;
 
 	/**
+	 * @var AIPS_Prompt_Profile_Resolver
+	 */
+	private $profile_resolver;
+
+	/**
 	 * @param AIPS_Template_Processor|null                $template_processor Optional template processor.
 	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
+	 * @param AIPS_Prompt_Profile_Resolver|null           $profile_resolver Optional prompt profile resolver.
 	 */
-	public function __construct($template_processor = null, $diversity_injector = null) {
+	public function __construct($template_processor = null, $diversity_injector = null, $profile_resolver = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
+		$this->profile_resolver   = $profile_resolver ?: AIPS_Prompt_Profile_Resolver::instance();
 	}
 
 	/**
@@ -53,7 +68,13 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		$topic_str = $context->get_topic();
 		$sections  = array();
 
-		$sections[] = 'Based on the article you just wrote, produce its metadata. Respond with a single JSON object and nothing else.';
+		$stage_template = $this->profile_resolver->get_stage_prompt('metadata_prompt', $context);
+		$initial_line = $this->profile_resolver->interpolate($stage_template, array('topic' => (string) $topic_str));
+		if (empty($initial_line)) {
+			$initial_line = 'Based on the article you just wrote, produce its metadata. Respond with a single JSON object and nothing else.';
+		}
+
+		$sections[] = $initial_line;
 
 		$title_instructions = $this->resolve_title_instructions($context, $topic_str);
 

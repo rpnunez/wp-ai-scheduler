@@ -97,6 +97,40 @@ foreach ($tabs as $tab_key => $tab) {
 									</div>
 								</div>
 							<?php endforeach; ?>
+
+							<?php
+							$pp_stats = isset($stats['prompt-profiles']) ? $stats['prompt-profiles'] : array('total' => 0, 'active' => 0);
+							$pp_url   = admin_url('admin.php?page=aips-prompt-profiles');
+							?>
+							<div class="aips-launchpad-card aips-card-prompt-profiles">
+								<div class="aips-card-header">
+									<div class="aips-card-icon-wrap">
+										<span class="dashicons dashicons-admin-settings" aria-hidden="true"></span>
+									</div>
+									<div class="aips-card-title-group">
+										<h2 class="aips-card-title"><?php esc_html_e('Prompt Profiles', 'ai-post-scheduler'); ?></h2>
+										<div class="aips-card-badges">
+											<span class="aips-badge aips-badge-primary">
+												<?php echo sprintf(esc_html__('%d Total', 'ai-post-scheduler'), (int) $pp_stats['total']); ?>
+											</span>
+											<?php if ($pp_stats['active'] > 0) : ?>
+												<span class="aips-badge aips-badge-success">
+													<?php echo sprintf(esc_html__('%d Active', 'ai-post-scheduler'), (int) $pp_stats['active']); ?>
+												</span>
+											<?php endif; ?>
+										</div>
+									</div>
+								</div>
+
+								<p class="aips-card-desc"><?php esc_html_e('Customize prompts for every generation stage, preview assembled prompts, and track or restore version history.', 'ai-post-scheduler'); ?></p>
+
+								<div class="aips-card-footer">
+									<a href="<?php echo esc_url($pp_url); ?>" class="aips-btn aips-btn-primary aips-card-btn-open">
+										<span><?php esc_html_e('Manage Prompt Profiles', 'ai-post-scheduler'); ?></span>
+										<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
+									</a>
+								</div>
+							</div>
 						</div>
 					<?php else : ?>
 						<!-- FOCUSED SECTION WORKSPACE VIEW -->

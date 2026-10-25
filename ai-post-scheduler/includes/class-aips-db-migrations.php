@@ -265,6 +265,15 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		// migrate_to_3_8_0() is a data-backfill migration that requires the
+		// wp_aips_prompt_profile_versions table introduced in this release to
+		// already exist (created above by install_tables()). It must therefore
+		// run after install_tables() rather than before it.
+		if ( version_compare( $from_version, '3.8.0', '<' ) ) {
+			$this->migrate_to_3_7_0();
+			$this->migrate_to_3_8_0();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1790,5 +1799,112 @@ class AIPS_DB_Migrations {
 		return $schedule_column && 'YES' === $schedule_column->Null;
 	}
 
+	/**
+	 * Migration for version 3.7.0.
+	 *
+	 * Seeds default Prompt Profile archetypes if the table is empty and
+	 * ensures relational columns are initialized.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_0() {
+		if ( class_exists( 'AIPS_Prompt_Profile_Seeder' ) ) {
+			$seeded = AIPS_Prompt_Profile_Seeder::seed_defaults();
+			if ( $seeded > 0 ) {
+				$this->logger->log( "Migration 3.7.0: Seeded {$seeded} default Prompt Profiles.", 'info' );
+			}
+		}
+	}
+
+	/**
+	 * Migration for version 3.8.0.
+	 *
+	 * Seeds an initial version_number = 1 snapshot into
+	 * wp_aips_prompt_profile_versions for every existing row in
+	 * aips_prompt_profiles, so that pre-existing profiles have a version
+	 * history baseline once Prompt Profile Version History ships.
+	 *
+	 * Guarded with a SHOW TABLES check (defensive — the table should already
+	 * exist since this runs after install_tables()) and is idempotent: a
+	 * profile that already has at least one version row is skipped, so
+	 * re-running this migration never duplicates snapshots.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_8_0() {
+		global $wpdb;
+
+		$versions_table = $wpdb->prefix . 'aips_prompt_profile_versions';
+		$profiles_table = $wpdb->prefix . 'aips_prompt_profiles';
+
+		$versions_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $versions_table ) );
+		$profiles_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $profiles_table ) );
+
+		if ( $versions_table_exists !== $versions_table || $profiles_table_exists !== $profiles_table ) {
+			return;
+		}
+
+		$stage_fields = array(
+			'title_prompt',
+			'title_followup_prompt',
+			'content_prompt',
+			'excerpt_prompt',
+			'excerpt_followup_prompt',
+			'featured_image_prompt',
+			'topic_ideas_prompt',
+			'metadata_prompt',
+			'taxonomy_prompt',
+		);
+
+		$profiles = $wpdb->get_results( "SELECT * FROM `{$profiles_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( empty( $profiles ) ) {
+			return;
+		}
+
+		$seeded_count = 0;
+
+		foreach ( $profiles as $profile ) {
+			$profile_id = (int) $profile->id;
+
+			// Idempotency guard: skip profiles that already have a version row.
+			$existing_count = (int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM `{$versions_table}` WHERE profile_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$profile_id
+			) );
+
+			if ( $existing_count > 0 ) {
+				continue;
+			}
+
+			$stages = array();
+			foreach ( $stage_fields as $field ) {
+				$stages[ $field ] = isset( $profile->$field ) ? $profile->$field : null;
+			}
+
+			$created_at = isset( $profile->created_at ) && $profile->created_at ? (int) $profile->created_at : AIPS_DateTime::now()->timestamp();
+
+			$inserted = $wpdb->insert(
+				$versions_table,
+				array(
+					'profile_id'      => $profile_id,
+					'version_number'  => 1,
+					'stages'          => wp_json_encode( $stages ),
+					'parameters'      => null,
+					'change_summary'  => __( 'Initial snapshot (backfilled by migration 3.8.0).', 'ai-post-scheduler' ),
+					'created_by'      => null,
+					'created_at'      => $created_at,
+				)
+			);
+
+			if ( $inserted ) {
+				$seeded_count++;
+			}
+		}
+
+		if ( $seeded_count > 0 ) {
+			$this->logger->log( "Migration 3.8.0: Backfilled {$seeded_count} initial Prompt Profile version snapshot(s).", 'info' );
+		}
+	}
 }
 

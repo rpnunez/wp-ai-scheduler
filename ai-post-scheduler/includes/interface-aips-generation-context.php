@@ -180,6 +180,13 @@ interface AIPS_Generation_Context {
 	public function get_affiliate_links_enabled();
 
 	/**
+	 * Get the Prompt Profile ID (if applicable).
+	 *
+	 * @return int|null Prompt Profile ID or null if not applicable.
+	 */
+	public function get_prompt_profile_id();
+
+	/**
 	 * Get all context data as an array for serialization/storage.
 	 *
 	 * @return array Context data array.

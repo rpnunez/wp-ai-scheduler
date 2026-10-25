@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.19
+ * Version: 3.8.0
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.19');
+    define('AIPS_VERSION', '3.8.0');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -458,6 +458,35 @@ final class AI_Post_Scheduler {
         // Register AIPS_Template_Repository
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
+        });
+
+        // Register AIPS_Prompt_Profiles_Repository
+        $container->singleton(AIPS_Prompt_Profiles_Repository::class, function( $container ) {
+            return AIPS_Prompt_Profiles_Repository::instance();
+        });
+
+        // Register AIPS_Prompt_Profile_Resolver
+        $container->singleton(AIPS_Prompt_Profile_Resolver::class, function( $container ) {
+            return AIPS_Prompt_Profile_Resolver::instance($container->make(AIPS_Prompt_Profiles_Repository::class));
+        });
+
+        // Register AIPS_Prompt_Profile_Versions_Repository
+        $container->singleton(AIPS_Prompt_Profile_Versions_Repository::class, function( $container ) {
+            return AIPS_Prompt_Profile_Versions_Repository::instance();
+        });
+
+        // Register AIPS_Prompt_Profile_Diff_Engine
+        $container->singleton(AIPS_Prompt_Profile_Diff_Engine::class, function( $container ) {
+            return new AIPS_Prompt_Profile_Diff_Engine();
+        });
+
+        // Register AIPS_Prompt_Profile_Version_Service
+        $container->singleton(AIPS_Prompt_Profile_Version_Service::class, function( $container ) {
+            return new AIPS_Prompt_Profile_Version_Service(
+                $container->make(AIPS_Prompt_Profiles_Repository::class),
+                $container->make(AIPS_Prompt_Profile_Versions_Repository::class),
+                $container->make(AIPS_Prompt_Profile_Diff_Engine::class)
+            );
         });
 
         // Register AIPS_System_Diagnostics_Service

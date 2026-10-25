@@ -118,6 +118,7 @@ class AIPS_Authors_Controller {
 			'keywords' => isset($_POST['keywords']) ? sanitize_text_field(wp_unslash($_POST['keywords'])) : '',
 			'details' => isset($_POST['details']) ? sanitize_textarea_field(wp_unslash($_POST['details'])) : '',
 			'article_structure_id' => !empty($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : null,
+			'prompt_profile_id' => !empty($_POST['prompt_profile_id']) ? absint($_POST['prompt_profile_id']) : null,
 			'topic_generation_prompt' => isset($_POST['topic_generation_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['topic_generation_prompt'])) : '',
 			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field(wp_unslash($_POST['topic_generation_frequency'])) : 'weekly',
 			'topic_generation_quantity' => isset($_POST['topic_generation_quantity']) ? absint($_POST['topic_generation_quantity']) : 5,
