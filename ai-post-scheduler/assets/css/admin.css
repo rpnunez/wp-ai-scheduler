@@ -2878,6 +2878,33 @@ button.aips-btn-secondary:active {
     margin-right: 8px;
 }
 
+.aips-unsplash-missing-key-notice {
+    display: none;
+    margin: var(--aips-space-3) var(--aips-space-0) var(--aips-space-0);
+    padding: var(--aips-space-2) var(--aips-space-3);
+    border-left: 4px solid var(--aips-warning);
+    background: var(--aips-warning-bg);
+    border-radius: var(--aips-radius-sm);
+}
+
+.aips-unsplash-missing-key-notice p {
+    margin: var(--aips-space-0);
+    padding: var(--aips-space-0);
+    color: var(--aips-gray-800);
+    font-size: var(--aips-text-sm);
+    line-height: var(--aips-leading-normal);
+}
+
+.aips-unsplash-missing-key-notice a {
+    color: var(--aips-primary);
+    font-weight: var(--aips-font-medium);
+    text-decoration: underline;
+}
+
+.aips-unsplash-missing-key-notice a:hover {
+    color: var(--aips-primary-hover);
+}
+
 .aips-search-wrapper {
     margin-left: auto;
     display: flex;
