@@ -257,16 +257,16 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_7_18();
 		}
 
-		if ( version_compare( $from_version, '3.7.19', '<' ) ) {
-			$this->migrate_to_3_7_19();
-		}
-    
 		if ( version_compare( $from_version, '3.7.19', '<' ) && ! $this->migrate_to_3_7_19() ) {
 			// install_tables() has already stamped the schema version. Restore the
 			// previous gate so a failed structural ALTER is retried next request.
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
 			$this->logger->log( 'Source attempt-state migration failed; database upgrade will retry.', 'error' );
 			return;
+		}
+
+		if ( version_compare( $from_version, '3.7.20', '<' ) ) {
+			$this->migrate_to_3_7_20();
 		}
 
 		// Use AIPS_Config::set_option() so the per-request option cache is
@@ -1325,16 +1325,18 @@ class AIPS_DB_Migrations {
 		) as $option_name ) {
 			delete_option( $option_name );
 		}
+
+		$this->logger->log( 'Migration 3.7.18: Consolidated author topic auto-approval options and backfilled min_relevance.', 'info' );
 	}
 
 	/**
-	 * Migration for version 3.7.19.
+	 * Migration for version 3.7.20.
 	 *
 	 * Adds generate_slug and slug_prompt to aips_templates and aips_authors.
 	 *
 	 * @return void
 	 */
-	private function migrate_to_3_7_19() {
+	private function migrate_to_3_7_20() {
 		global $wpdb;
 
 		$table_templates = $wpdb->prefix . 'aips_templates';
@@ -1380,7 +1382,7 @@ class AIPS_DB_Migrations {
 			}
 		}
 
-		$this->logger->log( 'Migration 3.7.18: Consolidated author topic auto-approval options and backfilled min_relevance.', 'info' );
+		$this->logger->log( 'Migration 3.7.20: Added generate_slug and slug_prompt to templates and authors.', 'info' );
 	}
 
 	/**
