@@ -2838,6 +2838,279 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         return $revisions;
     }
 
+	/**
+	 * Retrieve AI error records and associated history metadata.
+	 *
+	 * @param array $args Filter and pagination arguments.
+	 * @return array{items:array,total:int,total_pages:int,page:int,per_page:int}
+	 */
+	public function get_ai_errors($args = array()) {
+		$defaults = array(
+			'date_from'   => 0,
+			'date_to'     => 0,
+			'component'   => '',
+			'error_scope' => 'ai_only', // 'ai_only' or 'all'
+			'search'      => '',
+			'page'        => 1,
+			'per_page'    => 20,
+		);
+		$args = wp_parse_args($args, $defaults);
+
+		$page     = max(1, (int) $args['page']);
+		$per_page = min(100, max(1, (int) $args['per_page']));
+		$offset   = ($page - 1) * $per_page;
+
+		$where_clauses = array('1=1');
+		$where_args    = array();
+
+		// Error scope: AI only or all errors.
+		if ('all' === $args['error_scope']) {
+			$where_clauses[] = 'hl.history_type_id = %d';
+			$where_args[]    = AIPS_History_Type::ERROR;
+		} else {
+			$where_clauses[] = 'hl.history_type_id = %d';
+			$where_args[]    = AIPS_History_Type::ERROR;
+			$where_clauses[] = 'hl.details LIKE %s';
+			$where_args[]    = '%AI generation failed%';
+		}
+
+		// Date filtering on hl.timestamp.
+		if (!empty($args['date_from'])) {
+			$where_clauses[] = 'hl.timestamp >= %d';
+			$where_args[]    = (int) $args['date_from'];
+		}
+		if (!empty($args['date_to'])) {
+			$where_clauses[] = 'hl.timestamp <= %d';
+			$where_args[]    = (int) $args['date_to'];
+		}
+
+		// Component filtering: e.g. "content", "title", "excerpt", "featured_image", "topics".
+		if (!empty($args['component'])) {
+			$where_clauses[] = 'hl.details LIKE %s';
+			$where_args[]    = '%"component":"' . $this->wpdb->esc_like(sanitize_key($args['component'])) . '"%';
+		}
+
+		// Search term across hl.details or h.generated_title.
+		if (!empty($args['search'])) {
+			$search_like     = '%' . $this->wpdb->esc_like(sanitize_text_field($args['search'])) . '%';
+			$where_clauses[] = '(hl.details LIKE %s OR h.generated_title LIKE %s)';
+			$where_args[]    = $search_like;
+			$where_args[]    = $search_like;
+		}
+
+		$where_sql = implode(' AND ', $where_clauses);
+
+		$has_search  = !empty($args['search']);
+		$phase1_join = $has_search ? "INNER JOIN {$this->table_name} h ON hl.history_id = h.id" : '';
+
+		// Count query avoids joining the parent table unless search targets container title.
+		$count_sql = "SELECT COUNT(*) FROM {$this->table_name_log} hl {$phase1_join} WHERE {$where_sql}";
+
+		$total = !empty($where_args)
+			? (int) $this->wpdb->get_var($this->wpdb->prepare($count_sql, $where_args))
+			: (int) $this->wpdb->get_var($count_sql);
+
+		$total_pages = $total > 0 ? (int) ceil($total / $per_page) : 1;
+
+		if ($total === 0) {
+			return array(
+				'items'       => array(),
+				'total'       => 0,
+				'total_pages' => 1,
+				'page'        => $page,
+				'per_page'    => $per_page,
+			);
+		}
+
+		// Phase 1 (Deferred Join): Retrieve only the IDs of the paginated rows.
+		// This avoids dragging large `details` longtext blobs into the sort buffer / temp tables.
+		$id_select_sql = "SELECT hl.id
+			FROM {$this->table_name_log} hl
+			{$phase1_join}
+			WHERE {$where_sql}
+			ORDER BY hl.timestamp DESC, hl.id DESC
+			LIMIT %d OFFSET %d";
+
+		$query_args  = array_merge($where_args, array($per_page, $offset));
+		$matched_ids = $this->wpdb->get_col($this->wpdb->prepare($id_select_sql, $query_args));
+
+		if (empty($matched_ids)) {
+			return array(
+				'items'       => array(),
+				'total'       => $total,
+				'total_pages' => $total_pages,
+				'page'        => $page,
+				'per_page'    => $per_page,
+			);
+		}
+
+		// Phase 2: Fetch full details and container fields ONLY for the matched page of IDs.
+		// Uses primary key lookup (hl.id IN (...)) for maximum speed and minimal memory.
+		$placeholders = implode(', ', array_fill(0, count($matched_ids), '%d'));
+		$fetch_sql    = "SELECT
+				hl.id,
+				hl.history_id,
+				hl.history_type_id,
+				hl.event_type,
+				hl.event_status,
+				hl.timestamp,
+				hl.details,
+				h.uuid as container_uuid,
+				h.post_id,
+				h.post_type,
+				h.creation_method,
+				h.status as container_status,
+				h.generated_title,
+				h.template_id,
+				h.author_id,
+				h.topic_id,
+				h.created_at as container_created_at
+			FROM {$this->table_name_log} hl
+			LEFT JOIN {$this->table_name} h ON hl.history_id = h.id
+			WHERE hl.id IN ({$placeholders})
+			ORDER BY hl.timestamp DESC, hl.id DESC";
+
+		$rows = $this->wpdb->get_results($this->wpdb->prepare($fetch_sql, $matched_ids));
+
+		$items = array();
+		if (!empty($rows)) {
+			foreach ($rows as $row) {
+				$items[] = $this->format_ai_error_row($row, false);
+			}
+		}
+
+		return array(
+			'items'       => $items,
+			'total'       => $total,
+			'total_pages' => $total_pages,
+			'page'        => $page,
+			'per_page'    => $per_page,
+		);
+	}
+
+	/**
+	 * Retrieve a single AI error record with full details by history log ID.
+	 *
+	 * @param int $log_id History log row ID.
+	 * @return array|null
+	 */
+	public function get_ai_error_by_id($log_id) {
+		$sql = "SELECT
+				hl.id,
+				hl.history_id,
+				hl.history_type_id,
+				hl.event_type,
+				hl.event_status,
+				hl.timestamp,
+				hl.details,
+				h.uuid as container_uuid,
+				h.post_id,
+				h.post_type,
+				h.creation_method,
+				h.status as container_status,
+				h.generated_title,
+				h.template_id,
+				h.author_id,
+				h.topic_id,
+				h.created_at as container_created_at
+			FROM {$this->table_name_log} hl
+			INNER JOIN {$this->table_name} h ON hl.history_id = h.id
+			WHERE hl.id = %d";
+
+		$row = $this->wpdb->get_row($this->wpdb->prepare($sql, (int) $log_id));
+		if (!$row) {
+			return null;
+		}
+
+		return $this->format_ai_error_row($row, true);
+	}
+
+	/**
+	 * Format an AI error log row into a structured array.
+	 *
+	 * @param object $row Database row object.
+	 * @param bool   $include_full_details Whether to include full prompt/raw payload.
+	 * @return array
+	 */
+	private function format_ai_error_row($row, $include_full_details = false) {
+		$details = !empty($row->details) ? json_decode($row->details, true) : array();
+		if (!is_array($details)) {
+			$details = array();
+		}
+
+		$component = '';
+		if (isset($details['context']['component']) && is_string($details['context']['component'])) {
+			$component = $details['context']['component'];
+		} elseif (isset($details['input']['component']) && is_string($details['input']['component'])) {
+			$component = $details['input']['component'];
+		} elseif (isset($details['message']) && preg_match('/AI generation failed for ([^:]+):/i', $details['message'], $m)) {
+			$component = trim($m[1]);
+		}
+
+		$raw_error = '';
+		if (isset($details['context']['error']) && is_string($details['context']['error'])) {
+			$raw_error = $details['context']['error'];
+		} elseif (isset($details['message']) && is_string($details['message'])) {
+			$raw_error = preg_replace('/^AI generation failed for [^:]+:\s*/i', '', $details['message']);
+		}
+
+		$message = isset($details['message']) && is_string($details['message'])
+			? $details['message']
+			: $raw_error;
+
+		$formatted_date = '';
+		$relative_date  = '';
+		if (!empty($row->timestamp)) {
+			$dt             = AIPS_DateTime::fromTimestamp((int) $row->timestamp);
+			$formatted_date = $dt->format('M j, Y H:i:s');
+			$relative_date  = AIPS_DateTime::formatRelativeOrAbsolute((int) $row->timestamp, 'M j, Y H:i:s');
+		}
+
+		$post_title = !empty($row->generated_title)
+			? $row->generated_title
+			: (!empty($row->creation_method) ? ucfirst(str_replace('_', ' ', $row->creation_method)) : sprintf(__('Run #%d', 'ai-post-scheduler'), (int) $row->history_id));
+
+		$formatted = array(
+			'id'               => (int) $row->id,
+			'history_id'       => (int) $row->history_id,
+			'history_type_id'  => (int) $row->history_type_id,
+			'timestamp'        => (int) $row->timestamp,
+			'formatted_date'   => $formatted_date,
+			'relative_date'    => $relative_date,
+			'component'        => $component,
+			'component_label'  => $component ? ucfirst(str_replace('_', ' ', $component)) : __('General', 'ai-post-scheduler'),
+			'error_message'    => $raw_error ?: $message,
+			'message'          => $message,
+			'post_id'          => !empty($row->post_id) ? (int) $row->post_id : 0,
+			'post_title'       => $post_title,
+			'creation_method'  => !empty($row->creation_method) ? $row->creation_method : '',
+			'container_status' => !empty($row->container_status) ? $row->container_status : '',
+		);
+
+		if ($include_full_details) {
+			$prompt = '';
+			if (isset($details['input']['prompt']) && is_string($details['input']['prompt'])) {
+				$prompt = $details['input']['prompt'];
+			} elseif (isset($details['input']['value']) && is_string($details['input']['value'])) {
+				$prompt = $details['input']['value'];
+			}
+
+			$options = isset($details['input']['options']) && is_array($details['input']['options'])
+				? $details['input']['options']
+				: array();
+
+			$formatted['prompt']            = $prompt;
+			$formatted['options']           = $options;
+			$formatted['context']           = isset($details['context']) ? $details['context'] : array();
+			$formatted['raw_details']       = $details;
+			$formatted['container_uuid']    = !empty($row->container_uuid) ? $row->container_uuid : '';
+			$formatted['container_created'] = !empty($row->container_created_at) ? (int) $row->container_created_at : 0;
+			$formatted['post_edit_url']     = !empty($row->post_id) ? get_edit_post_link((int) $row->post_id) : '';
+		}
+
+		return $formatted;
+	}
+
     /**
      * Return the repository cache group for history reads.
      *

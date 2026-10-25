@@ -200,6 +200,7 @@ class AIPS_Dashboard_Controller {
 		$daily_ai_map = $dashboard_repo->get_daily_ai_stats( $from_ts, $to_ts );
 
 		$chart_labels     = array();
+		$chart_days       = array();
 		$chart_completed  = array();
 		$chart_failed     = array();
 		$chart_error_rate = array();
@@ -217,6 +218,7 @@ class AIPS_Dashboard_Controller {
 			$day_label = $date->format( 'M j' );
 
 			$chart_labels[] = $day_label;
+			$chart_days[]   = $day_key;
 
 			$gen = isset( $daily_gens_map[ $day_key ] ) ? $daily_gens_map[ $day_key ] : array( 'completed' => 0, 'failed' => 0, 'total' => 0 );
 			$completed = $gen['completed'];
@@ -239,6 +241,7 @@ class AIPS_Dashboard_Controller {
 
 		$chart_data = array(
 			'labels'    => $chart_labels,
+			'days'      => $chart_days,
 			'completed' => $chart_completed,
 			'failed'    => $chart_failed,
 			'errorRate' => $chart_error_rate,
@@ -452,6 +455,7 @@ class AIPS_Dashboard_Controller {
 
 		// Build sorted, complete daily entries with no gaps
 		$chart_labels     = array();
+		$chart_days       = array();
 		$chart_completed  = array();
 		$chart_failed     = array();
 		$chart_error_rate = array();
@@ -469,6 +473,7 @@ class AIPS_Dashboard_Controller {
 			$day_label = $date->format('M j');
 
 			$chart_labels[] = $day_label;
+			$chart_days[]   = $day_key;
 
 			$gen = isset($daily_gens_map[$day_key]) ? $daily_gens_map[$day_key] : array('completed' => 0, 'failed' => 0, 'total' => 0);
 			$completed = $gen['completed'];
@@ -491,6 +496,7 @@ class AIPS_Dashboard_Controller {
 
 		$chart_data = array(
 			'labels'    => $chart_labels,
+			'days'      => $chart_days,
 			'completed' => $chart_completed,
 			'failed'    => $chart_failed,
 			'errorRate' => $chart_error_rate,
