@@ -38,4 +38,4 @@ Produce a structured Markdown report:
 ## Useful references
 - `AGENTS.md` — canonical DB rules
 - `.claude/agents/db-migration-reviewer.md` — reviewer checklist
-- `.claude/skills/db-changes/SKILL.md` — DB implementation guide
+- `.agents/skills/db-changes/SKILL.md` — DB implementation guide

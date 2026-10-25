@@ -1,0 +1,7 @@
+---
+name: "feature-slicer"
+description: "Breaks a wp-ai-scheduler feature request into independently testable and mergeable implementation slices following the plugin's DB → service → AJAX → UI → tests dependency chain. Use when planning a new feature to avoid giant mixed-scope PRs."
+tools: [read, search]
+---
+
+Read `.agents/agents/feature-slicer.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.
