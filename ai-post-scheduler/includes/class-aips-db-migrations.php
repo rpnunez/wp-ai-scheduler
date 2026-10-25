@@ -265,6 +265,12 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.7.20', '<' ) && ! $this->migrate_to_3_7_20() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'AI errors index migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1788,6 +1794,30 @@ class AIPS_DB_Migrations {
 		}
 		$schedule_column = $wpdb->get_row( "SHOW COLUMNS FROM `$table` LIKE 'next_fetch_at'" );
 		return $schedule_column && 'YES' === $schedule_column->Null;
+	}
+
+	/**
+	 * Migration to 3.7.20:
+	 * Adds composite index `history_type_ts` (history_type_id, timestamp) to `aips_history_log`.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_20() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return true;
+		}
+
+		$has_index = $wpdb->get_row(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'history_type_ts'"
+		);
+		if ( ! $has_index ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_type_ts (history_type_id, timestamp)" );
+		}
+
+		return true;
 	}
 
 }
