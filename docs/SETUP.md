@@ -188,11 +188,11 @@ After hand-editing `.env`, apply with `docker compose up -d --force-recreate web
 7. When done: `make xdebug-off` to remove the overhead.
 
 - **Port:** `XDEBUG_CLIENT_PORT` (default `9003`)
-- **Path mappings:** pre-configured in `.vscode/launch.json`
+- **Path mappings:** map `/var/www/html/wp-content/plugins/ai-post-scheduler` to your local `ai-post-scheduler/` directory in your IDE debugger.
 
 ### PHP-only settings
 
-`dev-php.ini` still holds the general PHP settings (`memory_limit`, `upload_max_filesize`, `display_errors`, …). Edit it and apply with:
+`docker/dev-php.ini` still holds the general PHP settings (`memory_limit`, `upload_max_filesize`, `display_errors`, …). Edit it and apply with:
 
 ```bash
 make reload-php
@@ -321,7 +321,7 @@ Under **Settings → General → Source Archive Retention**, zero days keeps all
 | No space left on device | `docker system prune -a --volumes` |
 | Database connection error | `docker compose down && docker compose up -d` |
 | Plugin activation fails | `docker compose exec web wp plugin activate ai-post-scheduler --allow-root` |
-| "healthcheck.sh: not found" | Run `./start-dev.sh` from repo root, not a subdirectory |
+| "docker/healthcheck.sh: not found" | Run `./start-dev.sh` from repo root, not a subdirectory |
 
 **Linux: "Cannot connect to Docker daemon"**
 

@@ -59,8 +59,7 @@ data/
 wordpress/
 
 # IDE path-mapping mirror — populated by `make sync-wp-core`, never committed
-.docker/wp-html/*
-!.docker/wp-html/.gitkeep
+.docker/
 
 # Agent temporary files/artifacts
 .artifacts/

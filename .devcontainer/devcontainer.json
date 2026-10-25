@@ -12,7 +12,7 @@
           "**/vendor": true,
           "**/node_modules": true,
           "**/.git": true,
-          "**/.aips-agent": true
+          "**/.agents/findings": true
         },
         "editor.formatOnSave": true,
         "[php]": {
@@ -47,6 +47,6 @@
     }
   },
   "postCreateCommand": "composer install && (wp core is-installed --allow-root || echo 'Waiting for WP installation...')",
-  "postStartCommand": "until wp core is-installed --allow-root >/dev/null 2>&1; do sleep 2; echo 'Waiting for DB...'; done && if [ ! -f .vscode/.seeded ]; then wp eval-file scripts/setup-devstacktips-content.php --allow-root && touch .vscode/.seeded; fi",
+  "postStartCommand": "until wp core is-installed --allow-root >/dev/null 2>&1; do sleep 2; echo 'Waiting for DB...'; done && if [ ! -f /tmp/.seeded ]; then wp eval-file scripts/setup-devstacktips-content.php --allow-root && touch /tmp/.seeded; fi",
   "remoteUser": "root"
 }
