@@ -47,7 +47,8 @@
 			$(document).on('click', '#aips-date-popover-cancel', this.handlePopoverCancel.bind(this));
 			$(document).on('click', this.handleDocumentClick.bind(this));
 			$(document).on('submit', '#aips-dashboard-date-form', this.handleDateFormSubmit.bind(this));
-			$(document).on('click', '.aips-tab-btn', this.handleTabSwitch.bind(this));
+			$(document).on('click', '.detail-tabs-panel .aips-tab-btn', this.handleTabSwitch.bind(this));
+			$(document).on('keydown', '.detail-tabs-panel .aips-tab-btn', this.handleTabKeydown.bind(this));
 			$(document).on('click', '.aips-dashboard-publish-post', this.handlePublishPost.bind(this));
 			$(document).on('click', '.aips-dashboard-approve-topic', this.handleApproveTopic.bind(this));
 			$(document).on('click', '.aips-dashboard-reject-topic', this.handleRejectTopic.bind(this));
@@ -157,16 +158,53 @@
 		 */
 		handleTabSwitch: function(e) {
 			e.preventDefault();
-			var $btn = $(e.currentTarget);
+			this.activateTab($(e.currentTarget));
+		},
+
+		/**
+		 * Activate a detail tab button and show its panel, scoped to the detail tabs panel.
+		 *
+		 * @param {jQuery} $btn The tab button to activate.
+		 * @return {void}
+		 */
+		activateTab: function($btn) {
+			var $root = $btn.closest('.detail-tabs-panel');
 			var targetId = $btn.attr('aria-controls');
 
-			// Toggle active classes on buttons
-			$('.aips-tab-btn').removeClass('active').attr('aria-selected', 'false');
-			$btn.addClass('active').attr('aria-selected', 'true');
+			$root.find('.aips-tab-btn')
+				.removeClass('active')
+				.attr({ 'aria-selected': 'false', tabindex: '-1' });
+			$btn.addClass('active').attr({ 'aria-selected': 'true', tabindex: '0' });
 
-			// Show the target tab panel and hide the rest
-			$('.aips-tab-panel').hide().removeClass('active');
-			$('#' + targetId).show().addClass('active');
+			$root.find('.aips-tab-panel').hide().removeClass('active').attr('aria-hidden', 'true');
+			$root.find('#' + targetId).show().addClass('active').attr('aria-hidden', 'false');
+		},
+
+		/**
+		 * Arrow/Home/End keyboard navigation for the detail tablist.
+		 *
+		 * @param {Event} e The keydown event.
+		 * @return {void}
+		 */
+		handleTabKeydown: function(e) {
+			var keys = { 37: -1, 39: 1, 36: 'first', 35: 'last' };
+			if (!(e.which in keys)) {
+				return;
+			}
+			var $tabs = $(e.currentTarget).closest('[role="tablist"]').find('.aips-tab-btn');
+			var idx = $tabs.index(e.currentTarget);
+			var move = keys[e.which];
+			if (move === 'first') {
+				idx = 0;
+			} else if (move === 'last') {
+				idx = $tabs.length - 1;
+			} else {
+				idx = (idx + move + $tabs.length) % $tabs.length;
+			}
+			e.preventDefault();
+			var $next = $tabs.eq(idx);
+			this.activateTab($next);
+			$next.trigger('focus');
 		},
 
 		/**
@@ -551,7 +589,7 @@
 			$('#aips-input-date-to').attr('min', data.date_from).val(data.date_to);
 
 			// 2. Update Section Headers Meta Title date descriptions
-			$('.aips-section-meta').text('Activity from ' + data.date_from_formatted + ' to ' + data.date_to_formatted);
+			$('.aips-summary-meta').text('Activity from ' + data.date_from_formatted + ' to ' + data.date_to_formatted);
 
 			// 3. Update top-level metrics counters
 			// Card 1: Completed Posts

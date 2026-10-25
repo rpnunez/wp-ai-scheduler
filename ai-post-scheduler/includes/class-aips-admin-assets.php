@@ -224,7 +224,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-		if ((self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+		if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) {
 			$this->enqueue_telemetry_assets();
 		}
 
@@ -280,7 +280,8 @@ class AIPS_Admin_Assets {
 		);
 
 		wp_localize_script('aips-admin-stress-test', 'aipsStressTest', array(
-			'nonce' => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'nonce'                    => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'nonceCleanStressTestData' => wp_create_nonce('aips_status_clean_stress_test_data'),
 			'i18n'  => array(
 				'running'               => __('Running…', 'ai-post-scheduler'),
 				'notRun'                => __('Not run', 'ai-post-scheduler'),
@@ -314,6 +315,9 @@ class AIPS_Admin_Assets {
 				/* translators: %d: number of selected test cases */
 				'runSelectedCount'      => __('Run Selected (%d)', 'ai-post-scheduler'),
 				'selectAtLeastOne'      => __('Please select at least one test case to run.', 'ai-post-scheduler'),
+				'runDetails'            => __('Stress Test Run Details', 'ai-post-scheduler'),
+				'comparisonDiff'        => __('Stress Test Comparison & Diff', 'ai-post-scheduler'),
+				'selectTwoRunsToCompare'=> __('Please select exactly 2 runs to compare.', 'ai-post-scheduler'),
 			),
 		));
 	}
@@ -438,9 +442,16 @@ class AIPS_Admin_Assets {
         // Global Admin Styles and Scripts
 
         wp_enqueue_style(
+            'aips-design-tokens',
+            AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_style(
             'aips-admin-style',
             AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            array(),
+            array('aips-design-tokens'),
             AIPS_VERSION
         );
 
@@ -453,9 +464,17 @@ class AIPS_Admin_Assets {
 		);
 
 		wp_enqueue_script(
+			'aips-templates-script',
+			AIPS_PLUGIN_URL . 'assets/js/templates.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'aips-utilities-script',
 			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-			array('jquery', 'aips-datetime-script'),
+			array('jquery', 'aips-datetime-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);
@@ -472,14 +491,6 @@ class AIPS_Admin_Assets {
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
             'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
         ));
-
-        wp_enqueue_script(
-            'aips-templates-script',
-            AIPS_PLUGIN_URL . 'assets/js/templates.js',
-            array('jquery'),
-            AIPS_VERSION,
-            true
-        );
 
         wp_enqueue_script(
             'aips-admin-script',
@@ -531,9 +542,16 @@ class AIPS_Admin_Assets {
      */
     private function enqueue_history_modal_opener_assets() {
         wp_enqueue_style(
+            'aips-design-tokens',
+            AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
+            array(),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_style(
             'aips-admin-style',
             AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            array(),
+            array('aips-design-tokens'),
             AIPS_VERSION
         );
 
@@ -546,9 +564,17 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-utilities-script',
             AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-            array('jquery', 'aips-datetime-script'),
+            array('jquery', 'aips-datetime-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
         );
@@ -596,6 +622,7 @@ class AIPS_Admin_Assets {
             'hideDetails'         => __('Hide details', 'ai-post-scheduler'),
             'copyDetails'         => __('Copy', 'ai-post-scheduler'),
             'copiedDetails'       => __('Copied!', 'ai-post-scheduler'),
+            'copyDiagnostic'       => __('Copy diagnostic', 'ai-post-scheduler'),
             'invalidHistoryId'    => __('Invalid history ID.', 'ai-post-scheduler'),
             'loadingFailed'       => __('Failed to load history modal.', 'ai-post-scheduler'),
             'loadingError'        => __('Error loading history modal.', 'ai-post-scheduler'),
@@ -628,8 +655,11 @@ class AIPS_Admin_Assets {
                         <div id="aips-history-modal-actions" class="aips-history-modal-header-links"></div>
                     </div>
                     <div class="aips-history-modal-header-side">
-                        <div id="aips-history-modal-status"></div>
-                        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                        <div class="aips-history-modal-header-tools">
+                            <div id="aips-history-modal-status"></div>
+                            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                        </div>
+                        <div class="aips-history-modal-header-diagnostic"></div>
                     </div>
                 </div>
                 <div class="aips-modal-body" id="aips-history-modal-content" style="white-space: normal;"></div>
@@ -879,33 +909,61 @@ class AIPS_Admin_Assets {
               true
           );
 
-          wp_enqueue_style(
-              'aips-ai-assistance-style',
-              AIPS_PLUGIN_URL . 'assets/css/ai-assistance.css',
-              array('aips-admin-style'),
-              AIPS_VERSION
-          );
+          $this->enqueue_ai_assistance_assets( array( 'aips-authors-script' ), 'authors' );
+    }
 
-          wp_enqueue_script(
-              'aips-ai-assistance-script',
-              AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
-              array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script'),
-              AIPS_VERSION,
-              true
-          );
+    /**
+     * Enqueue the shared AI Assistance (per-field ✨ suggest / 🕐 history)
+     * CSS/JS, gated to users who can actually call its AJAX endpoints.
+     * Shared by every admin page that wires a form into AI Assistance, so
+     * the manage_options gate and dependency list live in exactly one place.
+     *
+     * wp_enqueue_style()/wp_enqueue_script() are idempotent (re-registering
+     * the same handle is a no-op), so this is safe to call from more than
+     * one enqueue_*_assets() method without double-enqueuing.
+     *
+     * @param array $extra_script_deps Extra script handles ai-assistance.js
+     *                                 should depend on for this page (e.g.
+     *                                 the page's own form script), in
+     *                                 addition to jquery/utilities/templates.
+     */
+    private function enqueue_ai_assistance_assets( array $extra_script_deps = array(), $context = 'authors' ) {
+        if ( ! current_user_can( 'manage_options' ) || ! AIPS_Settings::is_ai_assistance_enabled_for( $context ) ) {
+            return;
+        }
 
-          wp_localize_script('aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
-              'nonce'           => wp_create_nonce('aips_ajax_nonce'),
-              'loading'         => __('Loading...', 'ai-post-scheduler'),
-              'suggesting'      => __('Suggesting...', 'ai-post-scheduler'),
-              'suggested'       => __('AI suggestion applied.', 'ai-post-scheduler'),
-              'errorSuggesting' => __('Could not get AI suggestion. Please try again.', 'ai-post-scheduler'),
-              'valueApplied'    => __('Value applied from history.', 'ai-post-scheduler'),
-              'noHistory'       => __('No AI suggestions found for this field yet.', 'ai-post-scheduler'),
-              'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
-              'thisSession'     => __('This Session', 'ai-post-scheduler'),
-              'allTime'         => __('All Time', 'ai-post-scheduler'),
-          ));
+        wp_enqueue_style(
+            'aips-ai-assistance-style',
+            AIPS_PLUGIN_URL . 'assets/css/ai-assistance.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_script(
+            'aips-ai-assistance-script',
+            AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
+            array_merge( array('jquery', 'aips-utilities-script', 'aips-templates-script'), $extra_script_deps ),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-ai-assistance-script', 'aipsAIAssistanceL10n', array(
+            'nonce'           => wp_create_nonce('aips_ajax_nonce'),
+            'loading'         => __('Loading...', 'ai-post-scheduler'),
+            'suggesting'      => __('Suggesting...', 'ai-post-scheduler'),
+            'suggested'       => __('AI suggestion applied.', 'ai-post-scheduler'),
+            'errorSuggesting' => __('Could not get AI suggestion. Please try again.', 'ai-post-scheduler'),
+            'valueApplied'    => __('Value applied from history.', 'ai-post-scheduler'),
+            'noHistory'       => __('No AI suggestions found for this field yet.', 'ai-post-scheduler'),
+            'aiUnavailable'   => __('AI Engine is not available.', 'ai-post-scheduler'),
+            'thisSession'     => __('This Session', 'ai-post-scheduler'),
+            'allTime'         => __('All Time', 'ai-post-scheduler'),
+			'policy'          => AIPS_Settings::get_ai_assistance_policy(),
+			'previewTitle'    => __('Review AI suggestion', 'ai-post-scheduler'),
+			'apply'           => __('Apply suggestion', 'ai-post-scheduler'),
+			'keepCurrent'     => __('Keep current value', 'ai-post-scheduler'),
+			'regenerate'      => __('Regenerate', 'ai-post-scheduler'),
+		));
     }
 
     /**
@@ -950,6 +1008,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the templates page.
      */
     private function enqueue_templates_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-script' ), 'templates' );
+
             wp_enqueue_script(
                 'aips-admin-integrations',
                 AIPS_PLUGIN_URL . 'assets/js/admin-integrations.js',
@@ -1289,7 +1349,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script', 'aips-admin-view-session'),
+                array('aips-admin-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1323,6 +1383,7 @@ class AIPS_Admin_Assets {
                 'confirmBulkRegenerate' => __('Are you sure you want to regenerate %d selected post(s)? The current posts will be deleted.', 'ai-post-scheduler'),
                 'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
                 'bulkPublishSuccess' => __('%d posts published successfully!', 'ai-post-scheduler'),
+                'bulkPublishQueued' => __('Publishing %d posts in the background. They will go live shortly.', 'ai-post-scheduler'),
                 'deleteSuccess' => __('Post deleted successfully!', 'ai-post-scheduler'),
                 'bulkDeleteSuccess' => __('%d posts deleted successfully!', 'ai-post-scheduler'),
                 'regenerateSuccess' => __('Post regeneration started!', 'ai-post-scheduler'),
@@ -1469,6 +1530,7 @@ class AIPS_Admin_Assets {
                 'hideDetails'          => __('Hide details', 'ai-post-scheduler'),
                 'copyDetails'          => __('Copy', 'ai-post-scheduler'),
                 'copiedDetails'        => __('Copied!', 'ai-post-scheduler'),
+                'copyDiagnostic'        => __('Copy diagnostic', 'ai-post-scheduler'),
                 'confirmDelete'        => __('Delete this history container? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmBulkDelete'    => __('Delete the selected history containers? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmDeleteLabel'   => __('Yes, delete', 'ai-post-scheduler'),
@@ -1489,6 +1551,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the onboarding page.
      */
     private function enqueue_onboarding_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-onboarding' ), 'content_strategy' );
+
             wp_enqueue_script(
                 'aips-admin-onboarding',
                 AIPS_PLUGIN_URL . 'assets/js/onboarding.js',
@@ -1678,6 +1742,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the sources page.
      */
     private function enqueue_sources_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-sources' ), 'sources' );
+
             wp_enqueue_script(
                 'aips-admin-sources',
                 AIPS_PLUGIN_URL . 'assets/js/admin-sources.js',
@@ -1715,6 +1781,8 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the settings page.
      */
     private function enqueue_settings_assets() {
+            $this->enqueue_ai_assistance_assets( array( 'aips-admin-settings' ), 'content_strategy' );
+
             wp_enqueue_script(
                 'aips-admin-settings',
                 AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
@@ -1756,7 +1824,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-system-status',
                 AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1774,6 +1842,21 @@ class AIPS_Admin_Assets {
                 'nonceCleanupNotifications'             => wp_create_nonce('aips_status_cleanup_notifications'),
                 'nonceResetResilience'                  => wp_create_nonce('aips_status_reset_resilience'),
                 'nonceRepairDatetime'                   => wp_create_nonce('aips_status_repair_datetime'),
+                'noncePruneTelemetry'                   => wp_create_nonce('aips_status_prune_telemetry'),
+                'noncePurgeTelemetry'                   => wp_create_nonce('aips_status_purge_telemetry'),
+                'noncePruneHistoryLogs'                 => wp_create_nonce('aips_status_prune_history_logs'),
+                'nonceCleanEmbeddings'                  => wp_create_nonce('aips_status_clean_orphaned_embeddings'),
+                'nonceOptimizeTable'                    => wp_create_nonce('aips_status_optimize_table'),
+                'nonceGetTables'                        => wp_create_nonce('aips_status_get_tables'),
+                'confirmPruneTelemetry'                 => __('Prune telemetry records older than configured retention period? Batched deletion will defragment table if needed.', 'ai-post-scheduler'),
+                'confirmPurgeTelemetryTitle'            => __('Purge All Telemetry Data', 'ai-post-scheduler'),
+                'confirmPurgeTelemetry'                 => __('Are you sure you want to PURGE ALL telemetry records? This will truncate the table and instantly reclaim all disk space (reset to 0 bytes). This action cannot be undone.', 'ai-post-scheduler'),
+                'confirmPruneHistoryLogs'               => __('Prune generation logs older than configured retention period?', 'ai-post-scheduler'),
+                'confirmCleanEmbeddings'                => __('Clean orphaned embeddings for posts that no longer exist?', 'ai-post-scheduler'),
+                'confirmOptimizeTable'                  => __('Run OPTIMIZE TABLE on this table? This can briefly lock the table on large sites.', 'ai-post-scheduler'),
+                'confirmRefreshSystemDestructive'       => __('This includes one or more tasks that permanently delete data (e.g. telemetry/history pruning, orphaned embeddings cleanup). Continue?', 'ai-post-scheduler'),
+                'tableOptimized'                        => __('Table optimized successfully.', 'ai-post-scheduler'),
+                'tablesRefreshed'                       => __('Table sizes refreshed.', 'ai-post-scheduler'),
                 'refreshRunning'                        => __('Refreshing system…', 'ai-post-scheduler'),
                 'refreshDone'                           => __('System refresh complete.', 'ai-post-scheduler'),
                 'refreshPartial'                        => __('System refresh finished with some failures.', 'ai-post-scheduler'),
@@ -1998,7 +2081,18 @@ class AIPS_Admin_Assets {
                 'chipOutbound'             => __('Outbound', 'ai-post-scheduler'),
                 'chipOutboundTip'          => __('Suggested as a link going out of the source post.', 'ai-post-scheduler'),
                 'anchorLabel'              => __('Anchor', 'ai-post-scheduler'),
-                'optionLabel'              => __('Option', 'ai-post-scheduler'),
+                'confirmBulkDelete'        => __('Delete the selected suggestions? This cannot be undone.', 'ai-post-scheduler'),
+                'bulkDeleteTitle'          => __('Delete Suggestions', 'ai-post-scheduler'),
+                'bulkFailed'               => __('The bulk action failed. Please try again.', 'ai-post-scheduler'),
+                'bulkAccepted'             => __('Accepted %d suggestion(s).', 'ai-post-scheduler'),
+                'bulkRejected'             => __('Rejected %d suggestion(s).', 'ai-post-scheduler'),
+                'bulkDeleted'              => __('Deleted %d suggestion(s).', 'ai-post-scheduler'),
+                'bulkSkipped'              => __('%d selected suggestion(s) were skipped because the action does not apply to them.', 'ai-post-scheduler'),
+                'selectedCount'            => __('%d selected', 'ai-post-scheduler'),
+                'selectRow'                => __('Select suggestion', 'ai-post-scheduler'),
+                'cancel'                   => __('Cancel', 'ai-post-scheduler'),
+                'delete'                   => __('Delete', 'ai-post-scheduler'),
+                'optionLabel'             => __('Option', 'ai-post-scheduler'),
                 // Preview insertion flow strings
                 'updatePostBtn'            => __('Update Post with Inserted Links', 'ai-post-scheduler'),
                 'updating'                 => __('Updating…', 'ai-post-scheduler'),

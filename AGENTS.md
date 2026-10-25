@@ -5,7 +5,7 @@
 - **Project**: WordPress plugin for scheduling and generating AI-written posts through Meow Apps AI Engine.
 - **Plugin Application Root**: `ai-post-scheduler/`; run Composer, PHPUnit, and plugin scripts from that directory.
 - **Bootstrap & Version Source**: `ai-post-scheduler/ai-post-scheduler.php`.
-- **Current Plugin Version**: **3.7.18** (`Version:` header and `AIPS_VERSION`).
+- **Current Plugin Version**: **3.7.19** (`Version:` header and `AIPS_VERSION`).
 - **Runtime Targets**: PHP 8.2+ and WordPress 5.8+.
 
 ## Key Paths
@@ -55,11 +55,12 @@ Implementation step-by-step guides:
 
 ## Development & Test Commands
 
-Recommended: run PHPUnit inside the running dev stack (see [TESTING.md](TESTING.md)). Start it first with `./start-dev.sh`, and run `make composer-install` once for dev dependencies.
+Run PHPUnit ONLY as specified in the "Agent test protocol" in [TESTING.md](TESTING.md): `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` (all files in one invocation; it stops the containers it started). Do not use PowerShell/`bash.exe -lc` wrappers, `scripts/run-docker-test.sh` directly, `&&`/`;` chains or `grep`/`head`/`tail` pipes, and do not run `./start-dev.sh` just to test. Run `make composer-install` once for dev dependencies. Clean up: stop any containers you started (never `make down`/`-v`), delete scratch files, and report what you started/stopped.
 
 ```bash
 # Tests in the web container, against a separate wp_tests DB
-make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # single test file
+make test-session ARGS="tests/Test_AIPS_DB_Migrations.php"   # single file, stops what it started (preferred)
+make test ARGS="tests/Test_AIPS_DB_Migrations.php"           # same, leaves the stack up
 make test                                            # full test suite
 make test ARGS="--fresh"                             # recreate wp_tests DB first
 make test-coverage                                   # HTML report in ai-post-scheduler/coverage/
@@ -277,5 +278,5 @@ All agents modifying code in this repository must strictly adhere to the followi
 
 ## Testing Policy
 - **Test Before Merge**: Run PHPUnit for all code changes. Run tests that cover touched code, plus syntax checks on modified files.
-- **Docker Test Stack**: Execute via `make test ARGS="tests/Test_X.php"`.
+- **Docker Test Stack**: Execute via `make test-session ARGS="tests/Test_X.php"` (see the Agent test protocol in `TESTING.md`).
 - **Reporting**: Report test and syntax verification results in final responses.

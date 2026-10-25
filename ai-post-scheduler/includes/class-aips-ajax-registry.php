@@ -267,6 +267,13 @@ class AIPS_Ajax_Registry {
 		'aips_status_cleanup_notifications' => 'AIPS_System_Status_Controller',
 		'aips_status_reset_resilience'   => 'AIPS_System_Status_Controller',
 		'aips_status_repair_datetime'    => 'AIPS_System_Status_Controller',
+		'aips_status_prune_telemetry'    => 'AIPS_System_Status_Controller',
+		'aips_status_purge_telemetry'    => 'AIPS_System_Status_Controller',
+		'aips_status_prune_history_logs' => 'AIPS_System_Status_Controller',
+		'aips_status_clean_orphaned_embeddings' => 'AIPS_System_Status_Controller',
+		'aips_status_optimize_table'     => 'AIPS_System_Status_Controller',
+		'aips_status_get_tables'         => 'AIPS_System_Status_Controller',
+		'aips_status_clean_stress_test_data' => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',
@@ -274,6 +281,7 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_update_status'          => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_update_anchor'          => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_delete'                 => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_bulk_action'            => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
@@ -361,6 +369,8 @@ class AIPS_Ajax_Registry {
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+		'aips_delete_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+		'aips_clear_field_assist_history' => 'AIPS_AI_Assistance_Controller',
 
 		// Cache Monitor Controller
 		'aips_cache_monitor_summary'           => 'AIPS_Cache_Monitor_Controller',
@@ -379,7 +389,6 @@ class AIPS_Ajax_Registry {
 
 		// Stress Test Controller
 		'aips_stress_test_run'                 => 'AIPS_Stress_Test_Controller',
-		'aips_stress_test_cleanup'             => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_status'              => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_save_run'            => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_get_history'         => 'AIPS_Stress_Test_Controller',

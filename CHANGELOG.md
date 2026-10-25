@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Sources reliability (3.7.19)
+- Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
+- Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
+- Require source groups when enabling sources on templates/authors. Preserve legacy generation with actionable diagnostics, current-URL archive selection, least-used/FIFO rotation, and a 16,000-character total snippet budget.
+- Keep previews read-only and record source usage at AI submission. Usage indicates submitted reference material, not proof that an AI relied on or cited it.
+- Report duplicate archive edits and group/schedule save failures accurately; replace source groups atomically. Pending archive rows remain editable and do not queue fetching.
+- Add opt-in source archive retention (0 days disables deletion), an eligible-row review count, and bounded daily cleanup preserving the newest usable snapshot for each current URL. Generation metadata survives deletion of full archived content.
+- Record references for content regeneration at the first provider attempt, skip locally rejected requests, and deduplicate usage across retries/JSON fallbacks. Restore identical Pending/Failed snapshots after a successful fetch, retry failed schema upgrades, and preserve the site-wide autoloaded-options cache during lease operations.
+
 ### Performance
 - **Embeddings, Similarity & Clustering Performance Hardening (#2218):**
   - Eliminated N+1 database queries in `AIPS_Similarity_Evaluator::find_similar_topics()`, `suggest_related_topics()`, and `calculate_max_similarity_for_topic()` by batch reading embeddings via `get_by_source_ids()` / `get_by_topic_ids()`.
@@ -15,6 +24,13 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **Stress Test Modal & History UI Refinements:**
+  - Resolved unscrollable modal dialog by enforcing max-height, flex-column constraints, and scrollable body container.
+  - Positioned History tab header action buttons side-by-side and disabled "Compare 2 Selected Runs" with clear visual styling and ARIA attributes until exactly two runs are selected.
+  - Dynamically set modal title to "Stress Test Run Details" when viewing a single run versus "Stress Test Comparison & Diff" for comparative diffs.
+  - Capitalized all status badge labels across diff and run detail views.
+  - Added spacing between the summary card element and test case table.
+  - Standardized time formatting across stress test and history views (< 1s in ms, >= 1s in seconds with 1 decimal place).
 - **History: Move Remaining Name-Based Row Checks to `record_kind` (#2213):**
   - Migrated `AIPS_History_Repository::get_by_post_id()` to query `record_kind = 'generation'`, preventing background jobs (such as `content_indexing`) from masquerading as a post's generation history in AI Edit, History Container, and Post History UI quick links.
   - Migrated `AIPS_History_Repository::post_has_history_and_completed()` review-gate validation to require completed or partial generation runs, preventing review queue operations (publish, delete, regenerate) on posts that were merely indexed.
@@ -25,6 +41,12 @@
 - **History Status Sync Targets the Generation Run:**
   - Moving a post's History status between `completed` and `partial` (when its components become incomplete or are repaired) now updates the post's newest generation run, the row the Pending Review and Partial Generations tabs show. It used to update the post's newest non-event row, which for an indexed post is the `content_indexing` row: that row was marked partial while the real run kept its old status, and a failed indexing row blocked the update entirely.
   - Migration 3.7.16 resets background-job rows that were wrongly marked partial and puts the status back on the generation run.
+
+### Added
+- **Diagnostics — Data & Storage overview:** New "Data Storage" section on the System Info tab showing live row counts and storage size (data + index) for every plugin database table, plus a Total Plugin Storage summary, reusing the same table-status data source as the System Health management tools.
+
+### Fixed
+- **Diagnostics — re-linked table management tools:** The "Database Storage & Table Status" matrix (with its Prune/Purge/Clean Orphans/Optimize buttons, built earlier but accidentally left on an unreachable page) now renders on the System Health & Tools tab, where it's actually visible. Also fixed the per-subsystem Cache Rebuild results container, which had the same problem and never rendered.
 
 ## [3.7.14] - 2026-10-13
 
@@ -215,6 +237,32 @@
 - **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
 
 ## [Unreleased]
+
+### Added
+- **System Status / Diagnostics maintenance improvements:**
+  - "Rebuild Cache" now shows one status row per subsystem (green check / red X), matching the "Maintenance & Recovery Tasks" results styling, instead of a single concatenated message.
+  - New destructive "Clean Stress Test Data" System Maintenance task, deleting every post/attachment generated by the Stress Test page plus any embeddings left orphaned afterward. The Stress Test page's own "Delete Data" button now calls this same shared endpoint (`aips_status_clean_stress_test_data`) instead of a separate, duplicated cleanup code path.
+- **Database Retention & Telemetry Optimization:**
+  - Strict telemetry disabling: when telemetry collection is toggled off, events are never recorded, buffered in memory, flushed on shutdown, or inserted into MySQL.
+  - Dedicated "Database & Retention" settings section to configure automated pruning intervals and retention age thresholds for telemetry events, generation history logs, orphaned embeddings, and expired topics.
+  - Automated WP-Cron background cleanup runner (`aips_database_prune_cleanup`) that executes chunked retention purges and conditionally defragments tables.
+  - "Database Storage & Table Status" matrix on the System Status diagnostics page displaying real-time records, data size, index size, storage engine, and overhead per plugin table.
+  - Manual maintenance controls on System Status: batched "Prune Old" with automatic defragmentation, "Purge All" (instant table truncation to 0 MB), "Clean Orphans" for post embeddings, and table optimization.
+  - Reusable destructive confirmation modal `AIPS.Utilities.confirmWithWord(options)` requiring users to type a confirmation word (e.g. "PURGE") before executing irreversible operations.
+
+### Fixed
+- **Database Retention & Telemetry Optimization — review follow-ups:**
+  - Added a dedicated `timestamp` index to `aips_history_log` so retention pruning no longer does a full table scan on each batch.
+  - Removed a generic-nonce fallback on the System Status AJAX controller that would have accepted the plugin-wide `aips_ajax_nonce` for destructive maintenance actions (prune, purge, optimize) instead of requiring their own scoped nonces.
+  - Escaped the `message` parameter in `AIPS.Utilities.confirmWithWord()` to prevent a future caller from introducing a DOM XSS via unescaped HTML interpolation.
+  - Fixed a PHP syntax error in the system diagnostics service's refresh-task definitions that would fatal the plugin on load.
+  - "Refresh System" no longer bundles telemetry/history-log pruning and orphaned-embeddings cleanup into its default-selected, unconfirmed bulk action; these destructive tasks are now opt-in, visually flagged, and gated behind an extra confirmation.
+  - Automated background pruning (`run_automated_prune()`) now rotates its task order and stops within a time budget instead of chaining all four cleanup tasks unconditionally, so a slow run defers remaining tasks to the next tick rather than letting them starve indefinitely.
+  - Cascading-delete transactions in the prune repository now check whether `START TRANSACTION` actually succeeded before issuing `COMMIT`/`ROLLBACK`, and no longer abort a batch loop early just because a concurrent cleanup already removed the rows it was about to delete.
+  - The automated database-prune cron is no longer scheduled on plugin activation when automatic pruning is disabled, and the "Database & Retention" settings now read through `AIPS_Config` instead of raw `get_option()` calls.
+  - The System Status table-size matrix now recomputes its grand-totals row immediately after a prune/purge/optimize action instead of only on a full manual refresh.
+  - `AIPS.Utilities.confirmWithWord()`'s dialog markup is now always rendered through `AIPS.Templates` (a new `AIPS.Templates.register()` API backs this) instead of a hand-maintained string-concatenation fallback.
+  - The "Database & Data Retention" settings section (automatic pruning toggle, telemetry/history-log retention windows, prune schedule, orphan-cleanup toggles) was registered with the Settings API but never rendered anywhere — it's now exposed as its own card on the Settings page's Performance tab.
 
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 

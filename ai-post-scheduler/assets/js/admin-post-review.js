@@ -28,13 +28,24 @@
 		},
 
 		/**
+		 * Row checkboxes of the Pending Review table only (never other tabs' or
+		 * the header/footer select-all inputs), so selection counts are exact.
+		 *
+		 * @return {jQuery}
+		 */
+		rowCheckboxes: function () {
+			return $('#aips-post-review-form tbody .aips-post-checkbox');
+		},
+
+		/**
 		 * Bind all UI event listeners.
 		 *
 		 * @return {void}
 		 */
 		bindEvents: function () {
-			// Select-all checkbox.
-			$(document).on('change', '#cb-select-all-1', this.onSelectAllChange.bind(this));
+			// Select-all checkbox. WP_List_Table renders one in the top header and one
+			// in the footer (cb-select-all-1 / cb-select-all-2), so match both by id prefix.
+			$(document).on('change', 'input[id^="cb-select-all-"]', this.onSelectAllChange.bind(this));
 
 			// Individual row checkbox.
 			$(document).on('change', '.aips-post-checkbox', this.onCheckboxChange.bind(this));
@@ -58,11 +69,34 @@
 
 			// Close preview modal.
 			$(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', this.closePreviewModal.bind(this));
+
+			// Pagination page-jump: the toolbar sits outside any form, so submit on Enter manually.
+			$(document).on('keydown', '.aips-review-pagination .current-page', this.onPageJump.bind(this));
 		},
 
 		// -----------------------------------------------------------------
 		// Event handlers – Select / checkbox
 		// -----------------------------------------------------------------
+
+		/**
+		 * Navigate to the page typed into the pagination input on Enter.
+		 *
+		 * @param {Event} e Keydown event.
+		 * @return {void}
+		 */
+		onPageJump: function (e) {
+			if (e.key !== 'Enter') {
+				return;
+			}
+			e.preventDefault();
+
+			var totalPages = parseInt($('.aips-review-pagination .total-pages').first().text(), 10) || 1;
+			var page       = Math.min(Math.max(parseInt($(e.currentTarget).val(), 10) || 1, 1), totalPages);
+			var url        = new URL(window.location.href);
+
+			url.searchParams.set('paged', page);
+			window.location.href = url.toString();
+		},
 
 		/**
 		 * Sync all row checkboxes when the select-all header checkbox changes.
@@ -71,7 +105,7 @@
 		 * @return {void}
 		 */
 		onSelectAllChange: function (e) {
-			$('.aips-post-checkbox').prop('checked', $(e.currentTarget).prop('checked'));
+			AIPS.PostReview.rowCheckboxes().prop('checked', $(e.currentTarget).prop('checked'));
 		},
 
 		/**
@@ -81,8 +115,9 @@
 		 * @return {void}
 		 */
 		onCheckboxChange: function (e) {
-			var allChecked = $('.aips-post-checkbox').length === $('.aips-post-checkbox:checked').length;
-			$('#cb-select-all-1').prop('checked', allChecked);
+			var $rows      = AIPS.PostReview.rowCheckboxes();
+			var allChecked = $rows.length > 0 && $rows.length === $rows.filter(':checked').length;
+			$('input[id^="cb-select-all-"]').prop('checked', allChecked);
 		},
 
 		// -----------------------------------------------------------------
@@ -296,7 +331,7 @@
 				return;
 			}
 
-			var checkedBoxes = $('.aips-post-checkbox:checked');
+			var checkedBoxes = this.rowCheckboxes().filter(':checked');
 			if (checkedBoxes.length === 0) {
 				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
 				return;
@@ -338,18 +373,18 @@
 		 */
 		refreshList: function () {
 			AIPS.refreshContentPanel('#aips-pending-review-tab .aips-filter-bar', null, function () {
-				$('#cb-select-all-1').prop('checked', false);
+				$('input[id^="cb-select-all-"]').prop('checked', false);
 				AIPS.PostReview.syncHeaderCount();
 			});
 		},
 
 		/**
-		 * Update the page-header "Pending Approval" count from the footer total.
+		 * Update the page-header "Pending Approval" count from the filter bar's total.
 		 *
 		 * @return {void}
 		 */
 		syncHeaderCount: function () {
-			var total = parseInt($('#aips-pending-review-tab .aips-table-footer-count').data('total'), 10);
+			var total = parseInt($('#aips-pending-review-tab .aips-filter-bar').data('total'), 10);
 			if (isNaN(total)) {
 				return;
 			}
@@ -404,7 +439,13 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
+								var msg;
+								if (response.data && response.data.queued) {
+									// Large selection: the server queued a background publish job.
+									msg = response.data.message || (aipsPostReviewL10n.bulkPublishQueued || '').replace('%d', count);
+								} else {
+									msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
+								}
 								AIPS.Utilities.showToast(msg, 'success');
 								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {
@@ -698,7 +739,7 @@
 				}
 
 				$('#aips-pending-review-tab .aips-post-review-table').hide();
-				$('#aips-pending-review-tab .tablenav').hide();
+				$('#aips-pending-review-tab .aips-panel-toolbar').hide();
 
 				if ($('#aips-pending-review-tab .aips-empty-state').length === 0) {
 					var emptyStateHtml = '<div class="aips-empty-state">' +

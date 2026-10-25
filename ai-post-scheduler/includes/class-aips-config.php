@@ -114,6 +114,12 @@ class AIPS_Config {
             if ($this->cache !== null) {
                 $this->cache->delete($option);
             }
+            // Persistent entries (up to an hour TTL) must also drop when the
+            // option is written outside set_option() — e.g. the onboarding
+            // wizard's update_option()/delete_option() or the Settings API.
+            if (in_array($option, self::$persistent_cache_options, true)) {
+                AIPS_Cache_Factory::instance()->delete($option);
+            }
         };
         add_action('updated_option', $invalidate);
         add_action('added_option',   $invalidate);
@@ -159,6 +165,9 @@ class AIPS_Config {
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            // Pending Review: selections of this many drafts or more are published
+            // in the background (cron) instead of synchronously in the request.
+            'aips_bulk_publish_async_threshold' => 30,
             // General
             'aips_unsplash_access_key' => '',
             'aips_gsc_service_account' => '',
@@ -169,6 +178,18 @@ class AIPS_Config {
             'aips_persist_table_filters' => true,
             'aips_log_retention_days' => 30,
             'aips_topic_similarity_threshold' => 0.85,
+			// AI Assistance policy.
+			'aips_ai_assistance_enabled'         => true,
+			'aips_ai_assistance_contexts'        => array(
+				'authors',
+				'templates',
+				'sources',
+				'content_strategy',
+			),
+			'aips_ai_assistance_response_length' => 'standard',
+			'aips_ai_assistance_guidance'        => '',
+			'aips_ai_assistance_overwrite_mode'  => 'preview',
+			'aips_ai_assistance_retention_days'  => 30,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
@@ -218,6 +239,15 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            // Database & Retention
+            'aips_auto_prune_enabled'                  => false,
+            'aips_telemetry_retention_value'           => 30,
+            'aips_telemetry_retention_unit'            => 'days',
+            'aips_telemetry_prune_interval'            => 'daily',
+            'aips_history_log_retention_value'         => 60,
+            'aips_history_log_retention_unit'          => 'days',
+            'aips_clean_orphaned_embeddings'           => true,
+            'aips_clean_expired_topics'                => true,
             // Cache Monitor
             'aips_cache_monitor_enabled'               => false,
             'aips_cache_monitor_index_enabled'         => true,
@@ -272,6 +302,9 @@ class AIPS_Config {
             'aips_publish_linking_outbound'            => true,
             'aips_link_click_tracking_enabled'         => false,
             'aips_link_click_retention_days'           => 365,
+			'aips_source_archive_retention_days' => 0,
+			'aips_source_fetch_max_response_bytes' => 2097152,
+			'aips_source_prompt_total_max_chars' => 16000,
             'aips_silo_guide_enabled'                  => true,
             'aips_silo_guide_position'                 => 'end',
             'aips_silo_guide_max'                      => 10,

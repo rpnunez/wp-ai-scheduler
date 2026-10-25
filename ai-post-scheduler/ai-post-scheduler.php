@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.18
+ * Version: 3.7.19
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.18');
+    define('AIPS_VERSION', '3.7.19');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -86,7 +86,7 @@ final class AI_Post_Scheduler {
      * @return array<string,array<string,string>>
      */
     public static function get_cron_events() {
-        return array(
+        $events = array(
             'aips_generate_scheduled_posts' => array(
                 'schedule' => 'hourly',
                 'label'   => __( 'Post Generation', 'ai-post-scheduler' ),
@@ -111,10 +111,6 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Export Cleanup', 'ai-post-scheduler' ),
             ),
-            'aips_fetch_sources' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Sources Fetch', 'ai-post-scheduler' ),
-            ),
             'aips_cleanup_bulk_batch_jobs' => array(
                 'schedule' => 'daily',
                 'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
@@ -124,6 +120,19 @@ final class AI_Post_Scheduler {
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
         );
+
+        // Only include the prune cleanup cron while the feature is actually
+        // enabled, so every consumer of get_cron_events() (activation,
+        // reschedule_missed_cron, diagnostics) naturally skips scheduling a
+        // cron that would otherwise just no-op every time it fires.
+        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_auto_prune_enabled' ) ) {
+            $events['aips_database_prune_cleanup'] = array(
+                'schedule' => sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_telemetry_prune_interval', 'daily' ) ),
+                'label'   => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
+            );
+        }
+
+        return $events;
     }
 
     /**
@@ -279,6 +288,8 @@ final class AI_Post_Scheduler {
             }
         }
         
+        AIPS_Sources_Cron::instance()->schedule();
+        AIPS_Sources_Maintenance::instance();
         flush_rewrite_rules();
 
         $logger->log('Plugin activation finished.');
@@ -316,6 +327,9 @@ final class AI_Post_Scheduler {
      */
     public function deactivate() {
         foreach (array_keys(self::get_cron_events()) as $hook) {
+            wp_clear_scheduled_hook($hook);
+        }
+        foreach (array('aips_fetch_sources', 'aips_fetch_sources_continue', 'aips_sources_archive_maintenance', 'aips_sources_archive_maintenance_continue') as $hook) {
             wp_clear_scheduled_hook($hook);
         }
         // Single events carry per-schedule args, which wp_clear_scheduled_hook()
@@ -430,6 +444,15 @@ final class AI_Post_Scheduler {
 
         $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
             return AIPS_Telemetry_Repository::instance();
+        });
+
+        // Register AIPS_DB_Prune_Repository and AIPS_DB_Prune_Service
+        $container->singleton(AIPS_DB_Prune_Repository::class, function( $container ) {
+            return AIPS_DB_Prune_Repository::instance();
+        });
+
+        $container->singleton(AIPS_DB_Prune_Service::class, function( $container ) {
+            return AIPS_DB_Prune_Service::instance();
         });
 
         // Register AIPS_Template_Repository
@@ -656,6 +679,10 @@ final class AI_Post_Scheduler {
 
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
+
+        // Reconcile source scheduling in every request, including upgrades without activation.
+        AIPS_Sources_Cron::instance();
+        AIPS_Sources_Maintenance::instance();
 
         // Boot request-level telemetry if the option is enabled.
         if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
@@ -1029,6 +1056,27 @@ final class AI_Post_Scheduler {
             }
         );
 
+        // Background bulk-publish from the Pending Review queue. Each slice item is
+        // a draft post ID; AIPS_Post_Review::publish_review_post() runs the same
+        // review-queue guards and wp_publish_post() transition as the synchronous
+        // path. Cron has no current user, so we restore the administrator who
+        // enqueued the job (stored in job options) before the per-post capability
+        // check runs.
+        $processor->register(
+            'review_publish',
+            function( $item, $job_id, $job ) {
+                $acting_user_id = isset( $job->options['history_meta']['acting_user_id'] )
+                    ? (int) $job->options['history_meta']['acting_user_id']
+                    : 0;
+
+                if ( $acting_user_id > 0 && get_current_user_id() !== $acting_user_id ) {
+                    wp_set_current_user( $acting_user_id );
+                }
+
+                return AIPS_Post_Review::instance()->publish_review_post( (int) $item );
+            }
+        );
+
         // Daily cleanup of completed/failed bulk-batch job rows.
         add_action('aips_cleanup_bulk_batch_jobs', function() {
             $store   = new AIPS_Bulk_Batch_Job_Store();
@@ -1054,6 +1102,16 @@ final class AI_Post_Scheduler {
             );
         });
 
+        // Database retention & prune maintenance.
+        add_action('aips_database_prune_cleanup', function() {
+            $service = AIPS_Container::get_instance()->make(AIPS_DB_Prune_Service::class);
+            $result  = $service->run_automated_prune();
+            ( new AIPS_Logger() )->log(
+                sprintf( 'Database prune cleanup complete: %s', wp_json_encode( $result ) ),
+                'info'
+            );
+        });
+
         // Lazy-resolve the embeddings worker only when its hook fires.
         add_action('aips_process_author_embeddings', function($args) {
             AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
@@ -1061,11 +1119,6 @@ final class AI_Post_Scheduler {
 
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
-
-        // Sources cron: fetch content for sources that have a fetch_interval configured.
-        // AIPS_Sources_Cron::schedule() handles registering the cron event at the
-        // correct recurrence (every_6_hours) during construction.
-        AIPS_Sources_Cron::instance();
 
         // Notification event handler receives generation-failure/quota alerts from cron.
         new AIPS_Notifications();

@@ -120,7 +120,7 @@ make help        # list every target
 | `db-backup`, `db-restore` | Dump to / restore from `backup.sql`. |
 | `reload-php` | Reload Apache so `dev-php.ini` changes apply. |
 | `xdebug-on`, `xdebug-off`, `xdebug-status`, `xdebug-log`, `xdebug-log-follow` | Xdebug control (see Debugging). |
-| `test`, `test-verbose`, `test-coverage`, `test-ci` | PHPUnit (see [Testing](#testing)). |
+| `test`, `test-session`, `test-stop`, `test-verbose`, `test-coverage`, `test-ci` | PHPUnit (see [Testing](#testing)). |
 | `install`, `clean` | Reinstall / remove everything **including data volumes** (`clean` asks first). |
 | `prune` | Remove this project's dangling images only (other projects are untouched). |
 | `sync-wp-core` | Mirror WordPress files to `./.docker/wp-html` for IDE path mapping. |
@@ -379,16 +379,17 @@ The tables below document all canonical options registered and maintained by AI 
 
 ## Testing
 
-PHPUnit runs inside the `web` container of the dev stack, against a separate `wp_tests` database (never your development data). Start the stack first (`./start-dev.sh`), then:
+PHPUnit runs inside the `web` container of the dev stack, against a separate `wp_tests` database (never your development data). Run tests only as described in the [Agent test protocol](TESTING.md#agent-test-protocol-mandatory-for-ai-agents-and-humans-alike) (one `make` invocation, no direct script calls, stop what you started). The stack must be provisioned once with `./start-dev.sh`; the test runner starts `db`/`web` itself afterwards.
 
 ```bash
-make test                                            # whole suite
+make test-session ARGS="tests/Test_A.php tests/Test_B.php"   # preferred: runs, then stops what it started
+make test                                            # whole suite (leaves the stack up)
 make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # one file
 make test-verbose                                    # verbose output
 make test-coverage                                   # coverage: text summary + HTML report
 ```
 
-The coverage HTML report is written to `ai-post-scheduler/coverage/` (open `index.html`); generating it takes a while after the tests finish, so let it complete before opening it. Equivalent without `make`: `bash scripts/run-docker-test.sh [phpunit args]`.
+The coverage HTML report is written to `ai-post-scheduler/coverage/` (open `index.html`); generating it takes a while after the tests finish, so let it complete before opening it.
 
 `make test-ci` runs the host-side CI runner (`scripts/run-wp-tests-docker.sh`, needs host PHP and Composer). For the full guide, flags, a baseline run, and troubleshooting, see [TESTING.md](TESTING.md).
 

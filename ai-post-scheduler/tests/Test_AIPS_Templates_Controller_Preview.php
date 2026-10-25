@@ -52,6 +52,23 @@ class Test_AIPS_Templates_Controller_Preview extends WP_Ajax_UnitTestCase {
 		return json_decode(strtok(trim($this->_last_response), "\r\n"), true);
 	}
 
+	public function test_legacy_empty_group_preview_reports_warning_without_usage() {
+		$_POST = array('nonce' => wp_create_nonce('aips_ajax_nonce'), 'prompt_template' => 'Write {{topic}}', 'include_sources' => '1');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$response = $this->capture_ajax_callable(array($this->controller, 'ajax_preview_template_prompts'));
+		$this->assertTrue($response['success']);
+		$this->assertSame('no_groups', $response['data']['metadata']['sources_selection']['diagnostics'][0]['reason']);
+		$this->assertSame(array(), $response['data']['metadata']['sources_selection']['snapshots']);
+	}
+
+	public function test_template_save_rejects_sources_without_groups() {
+		$_POST = array('nonce' => wp_create_nonce('aips_ajax_nonce'), 'name' => 'Fixture', 'prompt_template' => 'Write {{topic}}', 'include_sources' => '1');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$response = $this->capture_ajax_callable(array($this->controller, 'ajax_save_template'));
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('source group', $response['data']['message']);
+	}
+
 	/**
 	 * Test that preview endpoint requires valid nonce
 	 */
