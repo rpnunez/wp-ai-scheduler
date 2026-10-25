@@ -46,9 +46,17 @@ class AIPS_Admin_Asset_Registrar_Global {
 		);
 
 		wp_enqueue_script(
+			'aips-templates-script',
+			AIPS_PLUGIN_URL . 'assets/js/templates.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'aips-utilities-script',
 			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-			array('jquery', 'aips-datetime-script'),
+			array('jquery', 'aips-datetime-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);
@@ -64,14 +72,6 @@ class AIPS_Admin_Asset_Registrar_Global {
 			'minutes'                => __('%d minutes', 'ai-post-scheduler'),
 			'minutesSeconds'         => __('%dm %ds', 'ai-post-scheduler'),
 		));
-
-		wp_enqueue_script(
-			'aips-templates-script',
-			AIPS_PLUGIN_URL . 'assets/js/templates.js',
-			array('jquery'),
-			AIPS_VERSION,
-			true
-		);
 
 		wp_enqueue_script(
 			'aips-admin-script',
@@ -137,9 +137,17 @@ class AIPS_Admin_Asset_Registrar_Global {
 		);
 
 		wp_enqueue_script(
+			'aips-templates-script',
+			AIPS_PLUGIN_URL . 'assets/js/templates.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'aips-utilities-script',
 			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-			array('jquery', 'aips-datetime-script'),
+			array('jquery', 'aips-datetime-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);

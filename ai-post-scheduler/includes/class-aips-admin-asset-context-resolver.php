@@ -282,8 +282,7 @@ class AIPS_Admin_Asset_Context_Resolver {
 
 		$is_settings = self::PAGE_SETTINGS === $page || $this->hook_contains($hook, self::PAGE_SETTINGS);
 
-		$telemetry_enabled = (bool) AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
-		$is_telemetry = (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && $telemetry_enabled;
+		$is_telemetry = (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry'));
 
 		$is_internal_links = self::PAGE_INTERNAL_LINKS === $page
 			|| $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS)
