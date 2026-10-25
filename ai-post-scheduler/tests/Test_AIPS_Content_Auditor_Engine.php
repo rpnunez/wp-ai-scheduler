@@ -223,7 +223,7 @@ class Test_AIPS_Content_Auditor_Engine extends WP_UnitTestCase {
 	public function test_analyze_cannibalization_empty_candidates() {
 		$result = $this->engine->analyze_cannibalization(array());
 		$this->assertSame(0, $result['conflict_count']);
-		$this->assertSame('fresh', $result['health_status']);
+		$this->assertSame('healthy', $result['status']);
 		$this->assertEmpty($result['conflicts']);
 	}
 

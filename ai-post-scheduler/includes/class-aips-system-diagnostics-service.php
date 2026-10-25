@@ -48,13 +48,25 @@ class AIPS_System_Diagnostics_Service {
 	 */
 	private $date_time_db_repair;
 
+	/**
+	 * @var AIPS_DB_Prune_Service
+	 */
+	private $db_prune_service;
+
+	/**
+	 * @var AIPS_Stress_Test_Service
+	 */
+	private $stress_test_service;
+
 	public function __construct(
 		$history_repository = null,
 		$bulk_batch_job_store = null,
 		$resilience_service = null,
 		$cache_monitor_service = null,
 		$notifications_repository = null,
-		$date_time_db_repair = null
+		$date_time_db_repair = null,
+		$db_prune_service = null,
+		$stress_test_service = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -83,6 +95,14 @@ class AIPS_System_Diagnostics_Service {
 			: AIPS_Notifications_Repository::instance());
 
 		$this->date_time_db_repair = $date_time_db_repair ?: new AIPS_Date_Time_DB_Repair();
+
+		$this->db_prune_service = $db_prune_service ?: ($container->has(AIPS_DB_Prune_Service::class)
+			? $container->make(AIPS_DB_Prune_Service::class)
+			: AIPS_DB_Prune_Service::instance());
+
+		$this->stress_test_service = $stress_test_service ?: ($container->has(AIPS_Stress_Test_Service::class)
+			? $container->make(AIPS_Stress_Test_Service::class)
+			: new AIPS_Stress_Test_Service());
 	}
 
 	/**
@@ -93,15 +113,20 @@ class AIPS_System_Diagnostics_Service {
 	 * @param string   $group        Task group key.
 	 * @param string   $action       AJAX action.
 	 * @param callable $callback     Task callback.
+	 * @param bool     $destructive  Optional. Whether this task permanently deletes data.
+	 *                               Destructive tasks are excluded from "Refresh System"'s
+	 *                               default task-selection and must be explicitly opted
+	 *                               into with an extra confirmation. Default false.
 	 * @return array<string, mixed>
 	 */
-	private function build_refresh_task_definition($label, $button_label, $group, $action, $callback) {
+	private function build_refresh_task_definition($label, $button_label, $group, $action, $callback, $destructive = false) {
 		return array(
 			'label'        => $label,
 			'button_label' => $button_label,
 			'group'        => $group,
 			'action'       => $action,
 			'callback'     => $callback,
+			'destructive'  => $destructive,
 		);
 	}
 
@@ -113,81 +138,120 @@ class AIPS_System_Diagnostics_Service {
 	private function get_refresh_task_definitions() {
 		return array(
 			'cache_maintenance' => $this->build_refresh_task_definition(
-				__('Cache maintenance', 'ai-post-scheduler'),
-				__('Prune Cache Data', 'ai-post-scheduler'),
+				__('Prune object cache', 'ai-post-scheduler'),
+				__('Prune Object Cache', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_cache_maintenance',
 				array($this, 'run_cache_maintenance')
 			),
 			'cleanup_notifications' => $this->build_refresh_task_definition(
-				__('Notification cleanup', 'ai-post-scheduler'),
-				__('Clean Old Notifications', 'ai-post-scheduler'),
+				__('Purge old notifications', 'ai-post-scheduler'),
+				__('Purge Old Notifications', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_cleanup_notifications',
 				array($this, 'cleanup_notifications')
 			),
 			'notifications_hygiene' => $this->build_refresh_task_definition(
-				__('Notifications hygiene', 'ai-post-scheduler'),
-				__('Run Notifications Hygiene', 'ai-post-scheduler'),
+				__('Sync notification counters', 'ai-post-scheduler'),
+				__('Sync Notification Counters', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_notifications_hygiene',
 				array($this, 'notifications_hygiene')
 			),
 			'cleanup_stale_jobs_cache' => $this->build_refresh_task_definition(
-				__('Stale batch jobs/cache cleanup', 'ai-post-scheduler'),
-				__('Cleanup Stale Batch Jobs/Cache', 'ai-post-scheduler'),
+				__('Purge expired batch jobs', 'ai-post-scheduler'),
+				__('Purge Expired Batch Jobs', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_cleanup_stale_jobs_cache',
 				array($this, 'cleanup_stale_jobs_cache')
 			),
 			'clear_partial_generations' => $this->build_refresh_task_definition(
-				__('Clear stuck partial generations', 'ai-post-scheduler'),
-				__('Clear Stuck Partial Generations', 'ai-post-scheduler'),
+				__('Purge orphaned drafts', 'ai-post-scheduler'),
+				__('Purge Orphaned Drafts', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_clear_partial_generations',
 				array($this, 'clear_partial_generations')
 			),
 			'repair_campaign_data' => $this->build_refresh_task_definition(
-				__('Campaign data repair', 'ai-post-scheduler'),
-				__('Repair Campaign Data', 'ai-post-scheduler'),
+				__('Rebuild campaign stats', 'ai-post-scheduler'),
+				__('Rebuild Campaign Stats', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_repair_campaign_data',
 				array($this, 'repair_campaign_data')
 			),
 			'repair_datetime' => $this->build_refresh_task_definition(
-				__('Schedule timing repair', 'ai-post-scheduler'),
-				__('Repair Schedule Timings', 'ai-post-scheduler'),
+				__('Normalize timestamps', 'ai-post-scheduler'),
+				__('Normalize Timestamps', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_repair_datetime',
 				array($this, 'repair_datetime')
 			),
 			'reschedule_missed_cron' => $this->build_refresh_task_definition(
-				__('Reschedule cron events', 'ai-post-scheduler'),
-				__('Reschedule Missed Cron Hooks', 'ai-post-scheduler'),
+				__('Resync cron schedules', 'ai-post-scheduler'),
+				__('Resync Cron Schedules', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_reschedule_missed_cron',
 				array($this, 'reschedule_missed_cron')
 			),
 			'retry_failed_slices' => $this->build_refresh_task_definition(
-				__('Retry failed slices', 'ai-post-scheduler'),
-				__('Retry Failed Slices', 'ai-post-scheduler'),
+				__('Requeue failed slices', 'ai-post-scheduler'),
+				__('Requeue Failed Slices', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_retry_failed_slices',
 				array($this, 'retry_failed_slices')
 			),
 			'reset_resilience' => $this->build_refresh_task_definition(
-				__('Reset resilience state', 'ai-post-scheduler'),
-				__('Reset Resilience', 'ai-post-scheduler'),
+				__('Reset circuit breakers', 'ai-post-scheduler'),
+				__('Reset Circuit Breakers', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_reset_resilience',
 				array($this, 'reset_resilience')
 			),
 			'rebuild_caches' => $this->build_refresh_task_definition(
-				__('Rebuild caches', 'ai-post-scheduler'),
-				__('Rebuild Caches', 'ai-post-scheduler'),
+				__('Warm system caches', 'ai-post-scheduler'),
+				__('Warm System Caches', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_rebuild_caches',
 				array($this, 'rebuild_caches')
+			),
+			'prune_telemetry' => $this->build_refresh_task_definition(
+				__('Telemetry prune', 'ai-post-scheduler'),
+				__('Prune Old Telemetry', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_prune_telemetry',
+				array($this, 'prune_telemetry'),
+				true
+			),
+			'prune_history_logs' => $this->build_refresh_task_definition(
+				__('History log prune', 'ai-post-scheduler'),
+				__('Prune History Logs', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_prune_history_logs',
+				array($this, 'prune_history_logs'),
+				true
+			),
+			'clean_orphaned_embeddings' => $this->build_refresh_task_definition(
+				__('Orphaned embeddings cleanup', 'ai-post-scheduler'),
+				__('Clean Orphaned Embeddings', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_clean_orphaned_embeddings',
+				array($this, 'clean_orphaned_embeddings'),
+				true
+			),
+			'clear_embeddings_cache' => $this->build_refresh_task_definition(
+				__('Embeddings vector cache cleanup', 'ai-post-scheduler'),
+				__('Clear Embeddings Cache', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_clear_embeddings_cache',
+				array($this, 'clear_embeddings_cache')
+			),
+			'clean_stress_test_data' => $this->build_refresh_task_definition(
+				__('Stress test data cleanup', 'ai-post-scheduler'),
+				__('Clean Stress Test Data', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_clean_stress_test_data',
+				array($this, 'clean_stress_test_data'),
+				true
 			),
 		);
 	}
@@ -201,7 +265,7 @@ class AIPS_System_Diagnostics_Service {
 		$definitions = $this->get_refresh_task_definitions();
 		$group_map   = array(
 			'recovery'       => array(
-				'label' => __('Recovery', 'ai-post-scheduler'),
+				'label' => __('System Recovery', 'ai-post-scheduler'),
 				'steps' => array(
 					'reschedule_missed_cron',
 					'retry_failed_slices',
@@ -211,14 +275,19 @@ class AIPS_System_Diagnostics_Service {
 				),
 			),
 			'cleanup_repair' => array(
-				'label' => __('Cleanup & repair', 'ai-post-scheduler'),
+				'label' => __('System Maintenance', 'ai-post-scheduler'),
 				'steps' => array(
+					'prune_telemetry',
+					'prune_history_logs',
+					'clean_orphaned_embeddings',
 					'cache_maintenance',
+					'clear_embeddings_cache',
 					'cleanup_notifications',
 					'notifications_hygiene',
 					'reset_resilience',
 					'repair_datetime',
 					'rebuild_caches',
+					'clean_stress_test_data',
 				),
 			),
 		);
@@ -233,9 +302,10 @@ class AIPS_System_Diagnostics_Service {
 				}
 
 				$tasks[] = array(
-					'step'   => $step,
-					'label'  => $definitions[$step]['button_label'],
-					'action' => $definitions[$step]['action'],
+					'step'        => $step,
+					'label'       => $definitions[$step]['button_label'],
+					'action'      => $definitions[$step]['action'],
+					'destructive' => !empty($definitions[$step]['destructive']),
 				);
 			}
 
@@ -261,7 +331,11 @@ class AIPS_System_Diagnostics_Service {
 		$definitions = $this->get_refresh_task_definitions();
 
 		if (null === $selected_tasks) {
-			$selected_tasks = array_keys($definitions);
+			// Destructive tasks (permanent data deletion) are never bundled into the
+			// implicit "run everything" default — they must be explicitly selected.
+			$selected_tasks = array_keys(array_filter($definitions, function ($definition) {
+				return empty($definition['destructive']);
+			}));
 		}
 
 		if (!is_array($selected_tasks)) {
@@ -395,31 +469,79 @@ class AIPS_System_Diagnostics_Service {
 	}
 
 	/**
-	 * Rebuild cache subsystems via the invalidation bus.
+	 * Rebuild a specific cache subsystem or all subsystems.
 	 *
-	 * @param string $subsystem Subsystem key or 'all'.
+	 * @param string|array $subsystem Subsystem key(s) or 'all'.
 	 * @return array
 	 */
 	public function rebuild_caches($subsystem = 'all') {
 		$subsystems         = AIPS_Cache_Policy::get_subsystems();
 		$allowed_subsystems = array_keys($subsystems);
+		$is_array_input     = is_array($subsystem);
 
-		if ('all' !== $subsystem && !in_array($subsystem, $allowed_subsystems, true)) {
+		if ($is_array_input) {
+			$selected = array_values(array_intersect($subsystem, $allowed_subsystems));
+			if (empty($selected)) {
+				$selected = $allowed_subsystems;
+			}
+		} elseif ('all' === $subsystem || !in_array($subsystem, $allowed_subsystems, true)) {
 			$subsystem = 'all';
+			$selected  = $allowed_subsystems;
+		} else {
+			$selected = array($subsystem);
 		}
 
-		$affected          = AIPS_Cache_Invalidation_Bus::rebuild($subsystem);
-		$subsystem_label   = ('all' === $subsystem) ? __('All subsystems', 'ai-post-scheduler') : (isset($subsystems[$subsystem]['label']) ? (string) $subsystems[$subsystem]['label'] : $subsystem);
-		$affected_display  = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
+		$affected = array();
+		$labels   = array();
+		$steps    = array();
 
-		AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystem' => $subsystem, 'affected_caches' => $affected));
+		foreach ($selected as $sub) {
+			$label           = isset($subsystems[$sub]['label']) ? (string) $subsystems[$sub]['label'] : $sub;
+			$labels[]        = $label;
+			$step_success    = true;
+			$step_message    = '';
 
-		return array(
-			'success'   => true,
-			'message'   => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
-			'subsystem' => $subsystem,
-			'affected'  => $affected,
+			try {
+				$sub_affected = AIPS_Cache_Invalidation_Bus::rebuild($sub);
+				$affected     = array_merge($affected, $sub_affected);
+				$step_message = !empty($sub_affected)
+					? sprintf(__('Affected caches: %s', 'ai-post-scheduler'), implode(', ', $sub_affected))
+					: __('No caches needed rebuilding.', 'ai-post-scheduler');
+			} catch (Throwable $e) {
+				$step_success = false;
+				$step_message = $e->getMessage();
+			}
+
+			$steps[] = array(
+				'step'    => $sub,
+				'label'   => $label,
+				'success' => $step_success,
+				'message' => $step_message,
+			);
+		}
+
+		$affected         = array_values(array_unique($affected));
+		$subsystem_label  = ($is_array_input || 'all' !== $subsystem)
+			? implode(', ', $labels)
+			: __('All subsystems', 'ai-post-scheduler');
+		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
+
+		AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystems' => $selected, 'affected_caches' => $affected));
+
+		$result = array(
+			'success' => true,
+			'message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
+			'affected' => $affected,
+			'steps'   => $steps,
 		);
+
+		if ($is_array_input) {
+			$result['subsystems'] = $selected;
+		} else {
+			$result['subsystem'] = $subsystem;
+		}
+
+		return $result;
 	}
 
 	/**
@@ -447,6 +569,24 @@ class AIPS_System_Diagnostics_Service {
 			),
 			'pruned'  => $result,
 		);
+	}
+
+	/**
+	 * Clear the embeddings vector cache.
+	 *
+	 * @return array
+	 */
+	public function clear_embeddings_cache() {
+		$container = AIPS_Container::get_instance();
+		$repo      = $container->has(AIPS_Embeddings_Repository::class)
+			? $container->make(AIPS_Embeddings_Repository::class)
+			: new AIPS_Embeddings_Repository();
+
+		$result = $repo->flush_embeddings_cache();
+
+		AIPS_Logger::instance()->log('Embeddings vector cache cleared via diagnostics.', 'info', $result);
+
+		return $result;
 	}
 
 	/**
@@ -651,6 +791,139 @@ class AIPS_System_Diagnostics_Service {
 				$succeeded,
 				count($sequence)
 			),
+		);
+	}
+
+	/**
+	 * Prune old telemetry records based on configured retention.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function prune_telemetry() {
+		$result    = $this->db_prune_service->prune_telemetry();
+		$deleted   = isset($result['deleted']) ? (int) $result['deleted'] : 0;
+		$optimized = !empty($result['optimized']);
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('Telemetry prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
+				$deleted,
+				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
+			),
+			'deleted'   => $deleted,
+			'optimized' => $optimized,
+			'tables'    => array_filter(array($this->db_prune_service->get_table_status('aips_telemetry'))),
+		);
+	}
+
+	/**
+	 * Purge all telemetry records and truncate the table.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function purge_all_telemetry() {
+		return $this->db_prune_service->purge_all_telemetry();
+	}
+
+	/**
+	 * Prune old generation event logs.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function prune_history_logs() {
+		$result    = $this->db_prune_service->prune_history_logs();
+		$deleted   = isset($result['deleted']) ? (int) $result['deleted'] : 0;
+		$optimized = !empty($result['optimized']);
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('History log prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
+				$deleted,
+				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
+			),
+			'deleted'   => $deleted,
+			'optimized' => $optimized,
+			'tables'    => array_filter(array($this->db_prune_service->get_table_status('aips_history_log'))),
+		);
+	}
+
+	/**
+	 * Clean orphaned embeddings associated with deleted posts.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function clean_orphaned_embeddings() {
+		$deleted = $this->db_prune_service->clean_orphaned_embeddings();
+
+		return array(
+			'success' => true,
+			'message' => sprintf(
+				__('Cleaned %d orphaned post embeddings.', 'ai-post-scheduler'),
+				$deleted
+			),
+			'deleted' => $deleted,
+			'tables'  => array_filter(array(
+				$this->db_prune_service->get_table_status('aips_embeddings'),
+				$this->db_prune_service->get_table_status('aips_relationships'),
+			)),
+		);
+	}
+
+	/**
+	 * Optimize a specific plugin table.
+	 *
+	 * @param string $table_name Table name.
+	 * @return array<string, mixed>
+	 */
+	public function optimize_table($table_name) {
+		$success = $this->db_prune_service->optimize_table($table_name);
+
+		return array(
+			'success' => $success,
+			'message' => $success
+				? sprintf(__('Table %s optimized successfully.', 'ai-post-scheduler'), esc_html($table_name))
+				: sprintf(__('Failed to optimize table %s.', 'ai-post-scheduler'), esc_html($table_name)),
+			'tables'  => array_filter(array($this->db_prune_service->get_table_status($table_name))),
+		);
+	}
+
+	/**
+	 * Retrieve table disk usage status for all plugin tables.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function get_tables_status() {
+		return $this->db_prune_service->get_table_status_summary();
+	}
+
+	/**
+	 * Permanently delete every post/attachment generated by the Stress Test
+	 * page, plus any embeddings left orphaned once those posts are gone.
+	 *
+	 * This is the single deletion path shared by the "Clean Stress Test Data"
+	 * System Maintenance task and the Stress Test page's own "Delete Data"
+	 * button, so there is only one place that knows how to clean up stress
+	 * test data.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function clean_stress_test_data() {
+		$deleted            = $this->stress_test_service->cleanup_test_data();
+		$embeddings_cleaned = $this->db_prune_service->clean_orphaned_embeddings();
+		$remaining          = $this->stress_test_service->count_test_data();
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('Removed %1$d posts, %2$d attachments, and %3$d orphaned embeddings.', 'ai-post-scheduler'),
+				$deleted['posts'],
+				$deleted['attachments'],
+				$embeddings_cleaned
+			),
+			'deleted'   => $deleted,
+			'test_data' => $remaining,
 		);
 	}
 }

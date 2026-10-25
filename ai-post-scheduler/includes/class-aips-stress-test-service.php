@@ -14,8 +14,9 @@
  * That pairing is the point of the page: a case can pass at the transport level
  * and still be wrong after normalization, and the two columns make that visible.
  *
- * Cases that create posts mark them with the _aips_stress_test meta key so they
- * can be listed and removed afterwards; nothing here writes to a published post.
+ * Cases that create posts mark them with the _aips_stress_test meta key and set
+ * their post status to private so they can be listed and removed afterwards;
+ * nothing here writes to a published post.
  *
  * @package AI_Post_Scheduler
  * @since 3.2.0
@@ -282,21 +283,21 @@ class AIPS_Stress_Test_Service {
                 array(
                     'id'          => 'save_post',
                     'label'       => __('Generate & Save a Post', 'ai-post-scheduler'),
-                    'description' => __('Runs the full pipeline and saves one draft post.', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline and saves one private post.', 'ai-post-scheduler'),
                     'group'       => 'pipeline',
                     'creates'     => true,
                 ),
                 array(
                     'id'          => 'save_page',
                     'label'       => __('Generate & Save a Page', 'ai-post-scheduler'),
-                    'description' => __('Runs the full pipeline to generate and save one draft WordPress Page.', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline to generate and save one private WordPress Page.', 'ai-post-scheduler'),
                     'group'       => 'pipeline',
                     'creates'     => true,
                 ),
                 array(
                     'id'          => 'post_with_taxonomies',
                     'label'       => __('Generate Post with Categories & Tags', 'ai-post-scheduler'),
-                    'description' => __('Generates a draft post and auto-extracts/assigns WordPress category and tag taxonomy terms.', 'ai-post-scheduler'),
+                    'description' => __('Generates a private post and auto-extracts/assigns WordPress category and tag taxonomy terms.', 'ai-post-scheduler'),
                     'group'       => 'pipeline',
                     'creates'     => true,
                 ),
@@ -324,7 +325,7 @@ class AIPS_Stress_Test_Service {
                 array(
                     'id'          => 'meta_fields_single',
                     'label'       => __('Meta Field: Single Field', 'ai-post-scheduler'),
-                    'description' => __('Generates one native WordPress custom-field value through the Integration engine and writes it to a draft post, then reads it back.', 'ai-post-scheduler'),
+                    'description' => __('Generates one native WordPress custom-field value through the Integration engine and writes it to a private post, then reads it back.', 'ai-post-scheduler'),
                     'group'       => 'integrations',
                     'creates'     => true,
                 ),
@@ -556,8 +557,9 @@ class AIPS_Stress_Test_Service {
             ),
             $result,
             array(
-                'duration_ms' => (int) round($duration_ms),
-                'ai_calls'    => $this->collect_ai_calls(),
+                'duration_ms'        => (int) round($duration_ms),
+                'duration_formatted' => self::format_duration_ms($duration_ms),
+                'ai_calls'           => $this->collect_ai_calls(),
             )
         );
     }
@@ -574,18 +576,19 @@ class AIPS_Stress_Test_Service {
         $case = $this->get_case($case_id);
 
         return array(
-            'case'         => $case_id,
-            'label'        => $case ? $case['label'] : $case_id,
-            'description'  => $case ? $case['description'] : '',
-            'group'        => $case ? $case['group'] : '',
-            'status'       => 'failed',
-            'summary'      => $error,
-            'ai_value'     => null,
-            'plugin_value' => null,
-            'error'        => $error,
-            'artifacts'    => array(),
-            'duration_ms'  => (int) round($duration_ms),
-            'ai_calls'     => array(),
+            'case'               => $case_id,
+            'label'              => $case ? $case['label'] : $case_id,
+            'description'        => $case ? $case['description'] : '',
+            'group'              => $case ? $case['group'] : '',
+            'status'             => 'failed',
+            'summary'            => $error,
+            'ai_value'           => null,
+            'plugin_value'       => null,
+            'error'              => $error,
+            'artifacts'          => array(),
+            'duration_ms'        => (int) round($duration_ms),
+            'duration_formatted' => self::format_duration_ms($duration_ms),
+            'ai_calls'           => array(),
         );
     }
 
@@ -862,6 +865,7 @@ class AIPS_Stress_Test_Service {
             return array('status' => 'failed', 'error' => $attachment_id->get_error_message(), 'summary' => $attachment_id->get_error_message(), 'ai_value' => $raw);
         }
 
+        $this->enforce_private_status($attachment_id);
         update_post_meta($attachment_id, self::TEST_ATTACHMENT_META, 1);
 
         $url = wp_get_attachment_url($attachment_id);
@@ -877,6 +881,7 @@ class AIPS_Stress_Test_Service {
             'plugin_value' => array(
                 'attachment_id' => (int) $attachment_id,
                 'url'           => $url,
+                'status'        => get_post_status($attachment_id),
             ),
             'artifacts'    => array(
                 'attachment_ids' => array((int) $attachment_id),
@@ -989,7 +994,7 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Full pipeline through to a saved draft post.
+     * Full pipeline through to a saved private post.
      *
      * @return array<string, mixed>
      */
@@ -1006,7 +1011,7 @@ class AIPS_Stress_Test_Service {
             'status'       => 'passed',
             'summary'      => sprintf(
                 /* translators: %d: post ID */
-                __('Draft post #%d created.', 'ai-post-scheduler'),
+                __('Private post #%d created.', 'ai-post-scheduler'),
                 $post_id
             ),
             'ai_value'     => $this->first_ai_response_text(),
@@ -1024,7 +1029,7 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Full pipeline through to a saved draft Page.
+     * Full pipeline through to a saved private Page.
      *
      * @return array<string, mixed>
      */
@@ -1057,7 +1062,7 @@ class AIPS_Stress_Test_Service {
             'status'       => 'passed',
             'summary'      => sprintf(
                 /* translators: %d: page ID */
-                __('Draft Page #%d created.', 'ai-post-scheduler'),
+                __('Private Page #%d created.', 'ai-post-scheduler'),
                 $post_id
             ),
             'ai_value'     => $this->first_ai_response_text(),
@@ -1135,6 +1140,7 @@ class AIPS_Stress_Test_Service {
             'ai_value'     => $this->last_ai_response_text(),
             'plugin_value' => array(
                 'post_id'    => (int) $post_id,
+                'status'     => get_post_status($post_id),
                 'categories' => $saved_cats,
                 'tags'       => $saved_tags,
             ),
@@ -1158,6 +1164,7 @@ class AIPS_Stress_Test_Service {
             'voice_tone'    => 'Authoritative yet engaging',
             'voice_id'      => null,
             'author_id'     => get_current_user_id() ?: 1,
+            'post_status'   => 'private',
         );
 
         $topic_obj = (object) array(
@@ -1175,7 +1182,15 @@ class AIPS_Stress_Test_Service {
             return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
         }
 
+        $this->enforce_private_status($post_id);
         update_post_meta($post_id, self::TEST_POST_META, 1);
+
+        $thumb_id = get_post_thumbnail_id($post_id);
+        if ($thumb_id) {
+            $this->enforce_private_status($thumb_id);
+            update_post_meta($thumb_id, self::TEST_ATTACHMENT_META, 1);
+        }
+
         $post = get_post($post_id);
 
         return array(
@@ -1192,6 +1207,7 @@ class AIPS_Stress_Test_Service {
                 'author_name'  => $author_persona->name,
                 'title'        => $post ? $post->post_title : '',
                 'excerpt'      => $post ? $post->post_excerpt : '',
+                'status'       => $post ? $post->post_status : '',
                 'content_len'  => $post ? mb_strlen($post->post_content) : 0,
             ),
             'artifacts'    => array(
@@ -1620,6 +1636,7 @@ class AIPS_Stress_Test_Service {
         $result['plugin_value'] = array(
             'post_id'   => (int) $post_id,
             'post_type' => $post ? $post->post_type : self::TEST_POST_TYPE,
+            'status'    => $post ? $post->post_status : 'private',
             'fields'    => isset($result['plugin_value']) ? $result['plugin_value'] : array(),
         );
         $result['summary'] = sprintf(
@@ -1693,7 +1710,7 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Create a lightweight draft post (no AI) to serve as a write target for
+     * Create a lightweight private post (no AI) to serve as a write target for
      * the integration cases, seeded with the sample article so field prompts
      * have real context to summarize.
      *
@@ -1703,7 +1720,7 @@ class AIPS_Stress_Test_Service {
     private function create_stub_post($post_type = 'post') {
         $post_id = wp_insert_post(array(
             'post_type'    => $post_type,
-            'post_status'  => 'draft',
+            'post_status'  => 'private',
             'post_title'   => __('AIPS Stress Test — Custom Fields', 'ai-post-scheduler'),
             'post_content' => $this->sample_article(),
             'post_author'  => get_current_user_id(),
@@ -1713,6 +1730,7 @@ class AIPS_Stress_Test_Service {
             return $post_id;
         }
 
+        $this->enforce_private_status($post_id);
         update_post_meta($post_id, self::TEST_POST_META, 1);
 
         return $post_id;
@@ -1910,7 +1928,7 @@ class AIPS_Stress_Test_Service {
             'title_prompt'            => __('Write a clear, specific title. No colons, no clickbait.', 'ai-post-scheduler'),
             'image_prompt'            => '',
             'generate_featured_image' => false,
-            'post_status'             => 'draft',
+            'post_status'             => 'private',
             'post_type'               => $post_type,
             'post_category'           => '',
             'post_tags'               => '',
@@ -1930,6 +1948,9 @@ class AIPS_Stress_Test_Service {
          */
         $template = apply_filters('aips_stress_test_template', $template, $topic);
 
+        // Always force post_status to 'private' so stress test data is never published.
+        $template->post_status = 'private';
+
         return new AIPS_Template_Context($template, null, $topic, 'manual');
     }
 
@@ -1944,10 +1965,44 @@ class AIPS_Stress_Test_Service {
         $post_id = $this->get_generator()->generate_post($this->build_context($index, $post_type));
 
         if (!is_wp_error($post_id)) {
+            $this->enforce_private_status($post_id);
             update_post_meta($post_id, self::TEST_POST_META, 1);
+
+            $thumb_id = get_post_thumbnail_id($post_id);
+            if ($thumb_id) {
+                $this->enforce_private_status($thumb_id);
+                update_post_meta($thumb_id, self::TEST_ATTACHMENT_META, 1);
+            }
         }
 
         return $post_id;
+    }
+
+    /**
+     * Enforce private post status on a post or attachment fixture.
+     *
+     * @param int|WP_Error $post_id Post ID or WP_Error.
+     * @return void
+     */
+    private function enforce_private_status($post_id) {
+        if (!$post_id || is_wp_error($post_id)) {
+            return;
+        }
+
+        $post_id = (int) $post_id;
+        if (get_post_status($post_id) !== 'private') {
+            $updated = wp_update_post(array(
+                'ID'          => $post_id,
+                'post_status' => 'private',
+            ), true);
+
+            if (is_wp_error($updated)) {
+                $this->logger->log(
+                    sprintf('Failed to set private status on stress test fixture #%d: %s', $post_id, $updated->get_error_message()),
+                    'warning'
+                );
+            }
+        }
     }
 
     /**
@@ -2169,7 +2224,14 @@ class AIPS_Stress_Test_Service {
 
         $container->record('session_metadata', 'Stress Test Suite Execution Results', null, $details_payload, $details_payload);
 
-        $container->complete_success(array('status' => $status));
+        $summary = sprintf(__('Stress Test Run: %1$d/%2$d Passed', 'ai-post-scheduler'), $passed, $total);
+        if ($status === 'completed') {
+            $container->complete_success();
+        } elseif ($status === 'partial') {
+            $container->complete_partial($summary);
+        } else {
+            $container->complete_failure($summary);
+        }
 
         return $container->get_id();
     }
@@ -2192,6 +2254,39 @@ class AIPS_Stress_Test_Service {
      */
     public function get_run_by_id($history_id) {
         return $this->history_repository->get_stress_test_run_by_id($history_id);
+    }
+
+    /**
+     * Format a duration in milliseconds for display.
+     *
+     * Values < 1000 ms render as integer ms (e.g. "405 ms").
+     * Values >= 1000 ms render in seconds with 1 decimal place (e.g. "2.1 s").
+     *
+     * @param int|float $ms Duration in milliseconds.
+     * @param bool      $signed Whether to prepend "+" for positive values.
+     * @return string
+     */
+    public static function format_duration_ms($ms, $signed = false) {
+        $num = (float) $ms;
+        $is_negative = $num < 0;
+        $abs = abs($num);
+
+        if (round($abs) < 1000) {
+            $formatted = round($abs) . ' ms';
+        } else {
+            $formatted = sprintf('%.1f s', $abs / 1000);
+        }
+
+        if ($signed) {
+            if ($num > 0) {
+                return '+' . $formatted;
+            } elseif ($num < 0) {
+                return '-' . $formatted;
+            }
+            return '0 ms';
+        }
+
+        return $is_negative ? '-' . $formatted : $formatted;
     }
 
     /**
@@ -2226,38 +2321,46 @@ class AIPS_Stress_Test_Service {
             $item_a = isset($cases_a[$case_id]) ? $cases_a[$case_id] : null;
             $item_b = isset($cases_b[$case_id]) ? $cases_b[$case_id] : null;
 
-            $status_a = $item_a ? $item_a['status'] : 'missing';
-            $status_b = $item_b ? $item_b['status'] : 'missing';
+            $raw_status_a = $item_a ? (string) $item_a['status'] : 'missing';
+            $raw_status_b = $item_b ? (string) $item_b['status'] : 'missing';
 
             $dur_a = $item_a && isset($item_a['duration_ms']) ? (int) $item_a['duration_ms'] : 0;
             $dur_b = $item_b && isset($item_b['duration_ms']) ? (int) $item_b['duration_ms'] : 0;
 
             $status_change = 'unchanged';
-            if ($status_a !== $status_b) {
-                if ($status_a === 'passed' && $status_b !== 'passed') {
+            if (strtolower($raw_status_a) !== strtolower($raw_status_b)) {
+                if (strtolower($raw_status_a) === 'passed' && strtolower($raw_status_b) !== 'passed') {
                     $status_change = 'regressed';
-                } elseif ($status_a !== 'passed' && $status_b === 'passed') {
+                } elseif (strtolower($raw_status_a) !== 'passed' && strtolower($raw_status_b) === 'passed') {
                     $status_change = 'improved';
                 } else {
                     $status_change = 'changed';
                 }
             }
 
+            $dur_diff = $dur_b - $dur_a;
+
             $case_diffs[] = array(
-                'case'           => $case_id,
-                'label'          => $item_b && isset($item_b['label']) ? $item_b['label'] : ($item_a && isset($item_a['label']) ? $item_a['label'] : $case_id),
-                'status_a'       => $status_a,
-                'status_b'       => $status_b,
-                'status_change'  => $status_change,
-                'duration_a'     => $dur_a,
-                'duration_b'     => $dur_b,
-                'duration_diff'  => $dur_b - $dur_a,
-                'ai_value_a'     => $item_a && isset($item_a['ai_value']) ? $item_a['ai_value'] : null,
-                'ai_value_b'     => $item_b && isset($item_b['ai_value']) ? $item_b['ai_value'] : null,
-                'plugin_value_a' => $item_a && isset($item_a['plugin_value']) ? $item_a['plugin_value'] : null,
-                'plugin_value_b' => $item_b && isset($item_b['plugin_value']) ? $item_b['plugin_value'] : null,
-                'summary_a'      => $item_a && isset($item_a['summary']) ? $item_a['summary'] : '',
-                'summary_b'      => $item_b && isset($item_b['summary']) ? $item_b['summary'] : '',
+                'case'                    => $case_id,
+                'label'                   => $item_b && isset($item_b['label']) ? $item_b['label'] : ($item_a && isset($item_a['label']) ? $item_a['label'] : $case_id),
+                'status_a'                => ucfirst($raw_status_a),
+                'raw_status_a'            => strtolower($raw_status_a),
+                'status_b'                => ucfirst($raw_status_b),
+                'raw_status_b'            => strtolower($raw_status_b),
+                'status_change'           => $status_change,
+                'status_change_label'     => ucfirst($status_change),
+                'duration_a'              => $dur_a,
+                'duration_a_formatted'    => self::format_duration_ms($dur_a),
+                'duration_b'              => $dur_b,
+                'duration_b_formatted'    => self::format_duration_ms($dur_b),
+                'duration_diff'           => $dur_diff,
+                'duration_diff_formatted' => self::format_duration_ms($dur_diff, true),
+                'ai_value_a'              => $item_a && isset($item_a['ai_value']) ? $item_a['ai_value'] : null,
+                'ai_value_b'              => $item_b && isset($item_b['ai_value']) ? $item_b['ai_value'] : null,
+                'plugin_value_a'          => $item_a && isset($item_a['plugin_value']) ? $item_a['plugin_value'] : null,
+                'plugin_value_b'          => $item_b && isset($item_b['plugin_value']) ? $item_b['plugin_value'] : null,
+                'summary_a'               => $item_a && isset($item_a['summary']) ? $item_a['summary'] : '',
+                'summary_b'               => $item_b && isset($item_b['summary']) ? $item_b['summary'] : '',
             );
         }
 
@@ -2265,14 +2368,24 @@ class AIPS_Stress_Test_Service {
         $passed_b = isset($run_b['totals']['passed']) ? (int) $run_b['totals']['passed'] : 0;
         $dur_total_a = isset($run_a['totals']['duration_ms']) ? (int) $run_a['totals']['duration_ms'] : 0;
         $dur_total_b = isset($run_b['totals']['duration_ms']) ? (int) $run_b['totals']['duration_ms'] : 0;
+        $total_dur_diff = $dur_total_b - $dur_total_a;
+
+        $dur_delta_label = '';
+        if ($total_dur_diff < 0) {
+            $dur_delta_label = sprintf('(%s faster)', self::format_duration_ms(abs($total_dur_diff)));
+        } elseif ($total_dur_diff > 0) {
+            $dur_delta_label = sprintf('(+%s slower)', self::format_duration_ms($total_dur_diff));
+        }
 
         return array(
             'run_a'       => $run_a,
             'run_b'       => $run_b,
             'case_diffs'  => $case_diffs,
             'totals_diff' => array(
-                'passed_diff'   => $passed_b - $passed_a,
-                'duration_diff' => $dur_total_b - $dur_total_a,
+                'passed_diff'             => $passed_b - $passed_a,
+                'duration_diff'           => $total_dur_diff,
+                'duration_diff_formatted' => self::format_duration_ms($total_dur_diff, true),
+                'duration_diff_label'     => $dur_delta_label,
             ),
         );
     }

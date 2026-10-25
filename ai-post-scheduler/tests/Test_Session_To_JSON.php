@@ -113,6 +113,12 @@ class Test_Session_To_JSON extends WP_UnitTestCase {
 			$this->markTestSkipped('upload_dir could not be set up properly.');
 		}
 
+		// Root ignores file permission bits, so the unwritable-file simulation
+		// below can't produce a delete failure when the test process is root.
+		if (function_exists('posix_getuid') && posix_getuid() === 0) {
+			$this->markTestSkipped('Cannot simulate an unwritable file while running as root.');
+		}
+
 		$base_dir = rtrim($this->upload_dir['basedir'], '/\\') . '/aips-exports';
 		if (!file_exists($base_dir)) {
 			mkdir($base_dir, 0777, true);

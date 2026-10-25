@@ -50,6 +50,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
+		delete_option( 'aips_pending_index_queue' );
+		delete_option( 'aips_pending_topic_index_queue' );
 		parent::tearDown();
 	}
 
@@ -277,5 +279,151 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'indexed', $status );
 		$this->assertArrayHasKey( 'percent', $status );
 		$this->assertGreaterThanOrEqual( 2, $status['total_posts'] );
+	}
+
+	/**
+	 * Test enqueue_topic_for_indexing buffers and deduplicates topic IDs in the topic queue.
+	 */
+	public function test_enqueue_topic_for_indexing() {
+		$this->indexer_service->enqueue_topic_for_indexing( 101 );
+		$this->indexer_service->enqueue_topic_for_indexing( 102 );
+		$this->indexer_service->enqueue_topic_for_indexing( 101 ); // Duplicate
+
+		$queue = get_option( 'aips_pending_topic_index_queue' );
+		$this->assertIsArray( $queue );
+		$this->assertEquals( array( 101, 102 ), $queue );
+	}
+
+	/**
+	 * Test clear_index clears pending queues.
+	 */
+	public function test_clear_index_clears_queues() {
+		$this->indexer_service->enqueue_post_for_indexing( 201 );
+		$this->indexer_service->enqueue_topic_for_indexing( 301 );
+
+		$this->assertNotEmpty( get_option( 'aips_pending_index_queue' ) );
+		$this->assertNotEmpty( get_option( 'aips_pending_topic_index_queue' ) );
+
+		$this->indexer_service->clear_index();
+
+		$this->assertFalse( get_option( 'aips_pending_index_queue' ) );
+		$this->assertFalse( get_option( 'aips_pending_topic_index_queue' ) );
+	}
+
+	/**
+	 * Test schedule_queue_worker schedules background event.
+	 */
+	public function test_schedule_queue_worker() {
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+		$this->assertFalse( $this->indexer_service->is_queue_worker_scheduled() );
+
+		$this->indexer_service->schedule_queue_worker( time() + 30 );
+		$this->assertTrue( $this->indexer_service->is_queue_worker_scheduled() );
+
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+	}
+
+	/**
+	 * Test get_queue_status reports pending counts and worker state.
+	 */
+	public function test_get_queue_status() {
+		delete_option( 'aips_pending_index_queue' );
+		delete_option( 'aips_pending_topic_index_queue' );
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+
+		$status = $this->indexer_service->get_queue_status();
+		$this->assertSame( 0, $status['pending_count'] );
+		$this->assertFalse( $status['is_running'] );
+
+		update_option( 'aips_pending_index_queue', array( 1, 2, 3 ), false );
+		update_option( 'aips_pending_topic_index_queue', array( 9 ), false );
+		$this->indexer_service->schedule_queue_worker( time() + 30 );
+
+		$status = $this->indexer_service->get_queue_status();
+		$this->assertSame( 4, $status['pending_count'] );
+		$this->assertSame( 3, $status['pending_posts'] );
+		$this->assertSame( 1, $status['pending_topics'] );
+		$this->assertTrue( $status['is_running'] );
+
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+	}
+
+	/**
+	 * Test enqueue_topics_for_indexing buffers and deduplicates an array of topic IDs.
+	 */
+	public function test_enqueue_topics_for_indexing_batch() {
+		$this->indexer_service->enqueue_topics_for_indexing( array( 10, 20, 10, 30 ) );
+		$queue = get_option( 'aips_pending_topic_index_queue' );
+		$this->assertEquals( array( 10, 20, 30 ), $queue );
+
+		$this->indexer_service->enqueue_topics_for_indexing( array( 20, 40 ) );
+		$queue = get_option( 'aips_pending_topic_index_queue' );
+		$this->assertEquals( array( 10, 20, 30, 40 ), $queue );
+	}
+
+	/**
+	 * Test enqueue_posts_for_indexing buffers and deduplicates an array of post IDs.
+	 */
+	public function test_enqueue_posts_for_indexing_batch() {
+		$this->indexer_service->enqueue_posts_for_indexing( array( 100, 200, 100, 300 ) );
+		$queue = get_option( 'aips_pending_index_queue' );
+		$this->assertEquals( array( 100, 200, 300 ), $queue );
+
+		$this->indexer_service->enqueue_posts_for_indexing( array( 200, 400 ) );
+		$queue = get_option( 'aips_pending_index_queue' );
+		$this->assertEquals( array( 100, 200, 300, 400 ), $queue );
+	}
+
+	/**
+	 * Test process_pending_indexer_queue preserves unattempted queue items when rate limit triggers early break.
+	 */
+	public function test_process_pending_indexer_queue_preserves_remainder_on_rate_limit() {
+		$post1 = wp_insert_post( array(
+			'post_title'   => 'Post 1',
+			'post_content' => 'Alpha content 1',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+		$post2 = wp_insert_post( array(
+			'post_title'   => 'Post 2',
+			'post_content' => 'Alpha content 2',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+		$post3 = wp_insert_post( array(
+			'post_title'   => 'Post 3',
+			'post_content' => 'Alpha content 3',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+
+		// Create mock AI service that fails on the second call with rate_limit_exceeded
+		$mock_ai_service = $this->createMock( AIPS_AI_Service_Interface::class );
+		$calls = 0;
+		$mock_ai_service->method( 'generate_embedding' )->willReturnCallback( function() use ( &$calls ) {
+			$calls++;
+			if ( $calls === 2 ) {
+				return new WP_Error( 'rate_limit_exceeded', 'OpenAI rate limit reached' );
+			}
+			return array( 1.0, 0.0 );
+		} );
+
+		$embeddings_service = new AIPS_Embeddings_Service( $mock_ai_service, new AIPS_Logger() );
+		$indexer = new AIPS_Content_Indexer_Service(
+			$this->embeddings_repo,
+			$this->relationships_repo,
+			$embeddings_service
+		);
+
+		update_option( 'aips_pending_index_queue', array( $post1, $post2, $post3 ) );
+
+		$result = $indexer->process_pending_indexer_queue();
+		$this->assertEquals( 1, $result['success'] );
+		$this->assertEquals( 1, $result['failed'] );
+
+		// Post 1 was indexed, Post 2 hit rate limit, Post 3 was unattempted.
+		// Both Post 2 and Post 3 MUST remain in the queue.
+		$remaining_queue = get_option( 'aips_pending_index_queue' );
+		$this->assertEquals( array( $post2, $post3 ), $remaining_queue );
 	}
 }

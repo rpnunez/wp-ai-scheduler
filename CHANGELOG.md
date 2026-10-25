@@ -1,3 +1,218 @@
+## [Unreleased]
+
+### Sources reliability (3.7.19)
+- Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
+- Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
+- Require source groups when enabling sources on templates/authors. Preserve legacy generation with actionable diagnostics, current-URL archive selection, least-used/FIFO rotation, and a 16,000-character total snippet budget.
+- Keep previews read-only and record source usage at AI submission. Usage indicates submitted reference material, not proof that an AI relied on or cited it.
+- Report duplicate archive edits and group/schedule save failures accurately; replace source groups atomically. Pending archive rows remain editable and do not queue fetching.
+- Add opt-in source archive retention (0 days disables deletion), an eligible-row review count, and bounded daily cleanup preserving the newest usable snapshot for each current URL. Generation metadata survives deletion of full archived content.
+- Record references for content regeneration at the first provider attempt, skip locally rejected requests, and deduplicate usage across retries/JSON fallbacks. Restore identical Pending/Failed snapshots after a successful fetch, retry failed schema upgrades, and preserve the site-wide autoloaded-options cache during lease operations.
+
+### Performance
+- **Embeddings, Similarity & Clustering Performance Hardening (#2218):**
+  - Eliminated N+1 database queries in `AIPS_Similarity_Evaluator::find_similar_topics()`, `suggest_related_topics()`, and `calculate_max_similarity_for_topic()` by batch reading embeddings via `get_by_source_ids()` / `get_by_topic_ids()`.
+  - Removed unbounded inline AI API calls during topic similarity checks when embeddings are missing; enqueued missing embeddings to `AIPS_Author_Embeddings_Process` background worker with an explicit opt-in parameter (`$compute_missing = false`).
+  - Added multi-tier persistent caching and L2 unit-normalization in `AIPS_Embeddings_Repository::decode_and_normalize_embedding()` to accelerate cosine dot products without repeated norm recalculations or option queries.
+  - Added post cache priming (`_prime_post_caches`) in `detect_post_clusters()` and `get_orphan_posts()` to avoid individual database queries per post for title, permalink, and edit link resolution.
+  - Exposed cluster candidate truncation state and candidate metadata (`truncated`, `total_candidates`, `analyzed_candidates`, `max_candidates`) in `AIPS_Content_Indexer_Controller::ajax_get_post_clusters()` and `AIPS_Similarity_Evaluator::get_last_cluster_meta()`.
+  - Replaced method-level static caches in `table_exists()` and `topics_table_exists()` with test-resettable class-level static cache and `reset_table_cache()`.
+### Added
+- **History `record_kind` Column:**
+  - Every History row now stores what it is: `generation` (a run that produces or regenerates a post), `job` (content indexing, embeddings, bulk slices, source fetches and other background work) or `event` (lifecycle containers, topic-generation wrappers, review actions, notifications). Run lists, run statistics and the status sync filter on the stored kind instead of guessing from `creation_method` names, so a new container type can no longer leak into them: anything unclassified is an event.
+  - The generator tags every run as a generation whatever its `creation_method`, and the bulk-generation summary container is a job, which separates it from the Planner's per-post runs that share its name. `AIPS_History_Record_Kind` classifies everything else; the `aips_generation_run_creation_methods` and `aips_history_job_creation_methods` filters extend it.
+  - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
+
+### Fixed
+- **Stress Test Modal & History UI Refinements:**
+  - Resolved unscrollable modal dialog by enforcing max-height, flex-column constraints, and scrollable body container.
+  - Positioned History tab header action buttons side-by-side and disabled "Compare 2 Selected Runs" with clear visual styling and ARIA attributes until exactly two runs are selected.
+  - Dynamically set modal title to "Stress Test Run Details" when viewing a single run versus "Stress Test Comparison & Diff" for comparative diffs.
+  - Capitalized all status badge labels across diff and run detail views.
+  - Added spacing between the summary card element and test case table.
+  - Standardized time formatting across stress test and history views (< 1s in ms, >= 1s in seconds with 1 decimal place).
+- **History: Move Remaining Name-Based Row Checks to `record_kind` (#2213):**
+  - Migrated `AIPS_History_Repository::get_by_post_id()` to query `record_kind = 'generation'`, preventing background jobs (such as `content_indexing`) from masquerading as a post's generation history in AI Edit, History Container, and Post History UI quick links.
+  - Migrated `AIPS_History_Repository::post_has_history_and_completed()` review-gate validation to require completed or partial generation runs, preventing review queue operations (publish, delete, regenerate) on posts that were merely indexed.
+  - Migrated History modal Timeline milestones to check the row's `record_kind`, suppressing generation milestones (title, image, content) for background jobs and event wrappers.
+  - Scoped `AIPS_History_Repository::get_stalled_summary()` and "Clear In-Progress" (`close_stalled_processing_rows()`) to `generation` runs by default via `AIPS_History_Repository::kind_condition()`, aligning stuck job counts with Overview tiles without terminating background jobs or lifecycle containers.
+  - Updated default History list visibility in `get_history()` to filter on `record_kind IN ('generation', 'job')`, hiding all internal event containers and wrappers without hand-kept method name allowlists.
+  - Scoped `get_template_stats()`, `get_all_template_stats()`, `count_completed_for_schedule()`, `get_daily_success_failure_trend()`, `get_average_duration_by_flow()`, and `get_top_failure_reasons()` to `record_kind = 'generation'`, and wired up `correlation_id` filtering in `AIPS_History_Repository::build_history_where()`.
+- **History Status Sync Targets the Generation Run:**
+  - Moving a post's History status between `completed` and `partial` (when its components become incomplete or are repaired) now updates the post's newest generation run, the row the Pending Review and Partial Generations tabs show. It used to update the post's newest non-event row, which for an indexed post is the `content_indexing` row: that row was marked partial while the real run kept its old status, and a failed indexing row blocked the update entirely.
+  - Migration 3.7.16 resets background-job rows that were wrongly marked partial and puts the status back on the generation run.
+
+### Added
+- **Diagnostics — Data & Storage overview:** New "Data Storage" section on the System Info tab showing live row counts and storage size (data + index) for every plugin database table, plus a Total Plugin Storage summary, reusing the same table-status data source as the System Health management tools.
+
+### Fixed
+- **Diagnostics — re-linked table management tools:** The "Database Storage & Table Status" matrix (with its Prune/Purge/Clean Orphans/Optimize buttons, built earlier but accidentally left on an unreachable page) now renders on the System Health & Tools tab, where it's actually visible. Also fixed the per-subsystem Cache Rebuild results container, which had the same problem and never rendered.
+
+## [3.7.14] - 2026-10-13
+
+### Fixed
+- **History, Dashboard and Metrics Statistics Count Generation Runs Only:**
+  - History stats and the daily chart, the dashboard summary, daily chart and recent posts, and the metrics repository (generation counts, duration percentiles, average AI calls, queue-health partial/failed/retry counts, recent outcomes) now count only post-generation runs. Topic-generation wrappers, review actions, notifications, lifecycle containers and content-indexing/background-job rows are no longer included, so totals and the success rate are no longer inflated and each failure counts once instead of once for the run and once for its wrapper.
+  - The dashboard "posts by topic" list shows a topic once; the run and its topic-generation wrapper both matched before.
+  - Queue health no longer logs a database error and reports 0 stalled runs when nothing is in progress (the stalled-run condition rendered a `CASE` with no `WHEN`).
+  - The dashboard no longer keeps its own list of excluded creation methods; the History list still hides lifecycle and notification rows as before.
+  - History page: the stat tiles are now labelled as generation runs (Failed runs, Runs in progress, Stalled runs, Run success rate, Median run duration) and clicking one filters the list to generation runs, so the tile and the list count the same rows. A new Background jobs tile shows content-indexing, bulk, source-fetch and similar work (with failed and stalled counts) and filters the list to it. "Generation runs" and "Background jobs" are also available in the Domain filter.
+- **History Run Queries (Partial Generations, Campaign Recent Posts):**
+  - Partial Generations and the campaign recent-posts list now resolve each post to its newest generation run instead of its newest History row, so topic-generation wrappers, review actions, content-indexing runs and notifications no longer replace the run (wrong row, wrong history link).
+  - Pending Review also lists runs whose `creation_method` is the container default `post_generation`, which the first Pending Review fix left out.
+  - The Partial Generations post-type filter now works; it was passed by the page but ignored by the query.
+  - Migration 3.7.15 backfills `aips_history.post_type` for generation runs written before the column was populated, so the History post-type filter no longer hides them.
+- **Author Post Generation Race Condition & Duplicate Runs (#2203):**
+  - Added atomic compare-and-swap (CAS) topic claim lock (`claimed_at`) with TTL (default 15 minutes) and historical post check (`NOT EXISTS` in `aips_author_topic_logs`) before post generation starts.
+  - Added per-author post generation run lock (`post_generation_lock`) with TTL (default 15 minutes) on `aips_authors` to prevent concurrent slice executions or overlapping manual/scheduled generation runs for the same author.
+  - Implemented automatic claim release on generation failure or exception so topics can be retried on subsequent schedule runs.
+  - Supported post regeneration flows by allowing claim override when `allow_regenerate` is explicitly requested.
+  - Added database migration `migrate_to_3_7_14()` adding `post_generation_lock` and `claimed_at` columns and index keys.
+
+### Removed
+- **MCP Bridge:** Removed `mcp-bridge.php`, its schema, validator, test script, example clients and `docs/MCP_BRIDGE.md`. The `AIPS_MCP_BRIDGE_ENABLED` and `AIPS_MCP_BRIDGE_TOKEN` constants are no longer used and can be deleted from `wp-config.php`.
+
+### Fixed
+- **Author Topic Auto-Approval:** Global Settings → Authors now actually control authors set to "Use Global Settings".
+  - New `AIPS_Author_Topic_Approval_Policy::resolve()` is the single policy resolver; the generator passes the resolved policy to `evaluate_author_topic_auto_approval()` instead of the evaluator re-deriving it from the author row.
+  - Removed the hidden, UI-less option family (`aips_author_topic_auto_approval_enabled`, `..._approval_mode`, `..._min_relevance`, `..._max_duplicate`, `..._fallback_action`); the global default mode is now `manual`.
+  - Quality score and niche relevance are separate settings, columns (`topic_auto_approval_min_relevance`) and Authors-form fields; settings gain the `score` mode and `pending` fallback, and legacy `reject`/`embeddings`/`none` values are normalized.
+  - Similarity mode no longer auto-approves topics whose niche relevance could not be measured (embeddings disabled or failing); the fallback applies instead. Author max-similarity is now clamped to 0.50-0.99, and saving an author in `manual`/`inherit` mode resets that author's stored thresholds to defaults.
+  - Migration 3.7.18 switches existing authors on `manual` (the old column default) to `inherit`; explicit `score`/`all`/`similarity` authors are unchanged.
+- **Pending Review Duplicate Rows:**
+  - A draft is now listed once, however many History rows reference it. Topic-generation wrappers, review-queue actions, content-indexing runs and notifications carry the same post ID and finish as completed; the list, its total and the dashboard draft count now use only the newest generation run per post (`AIPS_History_Repository::generation_run_condition()` / `latest_generation_run_subquery()`).
+  - The Type column reads the post's own type, so History rows written before the `post_type` column existed no longer show a dash.
+  - The template and search filters on Pending Review now match each post's newest generation run.
+- **Stress Test Data Privacy:**
+  - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.
+  - Added `enforce_private_status()` helper to guarantee post, page, custom post type, and featured image attachment fixtures are private.
+- **Stress Test Controls & Execution:**
+  - Added a "Stop All Tests" button alongside "Run Selected" that immediately aborts in-flight requests and stops test queue execution.
+  - Consolidated test case checkbox selection with dynamic selected-count badge and synchronized indeterminate header checkbox state.
+  - Re-synced leftover test data count on test cancellation.
+
+## [3.7.8] - 2026-09-24
+
+### Added
+- **Performance & Cache Architecture Hardening:**
+  - Multi-tiered caching with in-memory request L1 LRU store, reducing duplicate driver reads within single web requests and cron batches.
+  - Multi-key driver batching (`get_multiple()`, `set_multiple()`, `delete_multiple()`) across Database, Transients, and Object Cache drivers.
+  - Asynchronous / shutdown write buffering for `AIPS_Cache_Index` to minimize blocking database writes and access telemetry updates during request execution.
+  - In-memory group purging for `AIPS_Cache_Index` to avoid resurrecting flushed cache group entries on request shutdown.
+  - Compound database indexes on `wp_aips_cache_index` (`(cache_group, last_accessed_at)` and `(expires_at, last_accessed_at)`).
+  - 2-stage pagination for generation history queries to eliminate large table scans on offset pagination.
+- **Scheduler Load Pacing & Execution Resilience:**
+  - Dynamic time-budget tracking with graceful pre-timeout yield and cooldown-based resumption via single cron events.
+  - Staggered cron schedule execution to prevent concurrent batch stampedes.
+  - Inter-generation delay pacing (`aips_generation_delay_seconds`) to smooth AI API consumption and server load.
+  - Fallback recurrence resolution when resuming yielded batches with past or missing claim timestamps.
+
+## [3.7.7] - 2026-09-24
+
+### Added
+- **Redirects:** a lightweight redirect manager, found in the new **Content → Redirects** tab.
+  - AIPS keeps its own record of every redirect it creates in the new `aips_redirects` table (schema 3.7.7). Each record holds the source path, target, 301/302/307/308/410, origin, hits, and which plugin serves the redirect, with that plugin's ID.
+  - Redirects are handed to **Redirection**, **Yoast SEO Premium** or **Rank Math** when one is active. "Automatic" picks the first available, or you can choose one. Otherwise AIPS serves them itself: a `template_redirect` lookup against a cached hash index keeps the query string and counts hits.
+  - If a provider refuses a redirect, AIPS serves it and shows why.
+  - **Save and Move Existing Redirects** moves every AIPS redirect to another provider, for example after installing or removing a redirect plugin.
+  - You can also add a redirect by hand (search for a post or paste a URL), disable, re-enable or delete redirects, and search or filter them.
+  - Guards: loops, the home page, WordPress system paths, and sources on other sites are all rejected.
+  - Tested against Redirection 5.10.1 and Rank Math 1.0.279. The Yoast SEO Premium adapter uses Yoast's documented redirect manager API but hasn't been tested.
+  - New classes: `AIPS_Redirects_Service`, `AIPS_Redirects_Repository`, `AIPS_Redirects_Controller`, and the provider interface `AIPS_Redirect_Provider`.
+  - New hooks: `aips_redirect_providers`, `aips_redirection_group_id` and `aips_redirect_created`.
+- **Consolidate overlapping posts:** post-vs-post pairs in **Cannibalization Shield** now have a **Consolidate** button.
+  - Choose which post to keep. The other one is moved to draft, its old URL gets a 301 redirect to the kept post (through the redirect manager, origin "consolidation"), and every indexed internal link to it is re-pointed to the kept post. Links in the kept post itself are removed instead, keeping their text.
+  - Optional **AI-merged draft**: AI writes one article from both posts, based on the kept post and adding what only the other covers. You can review and edit the HTML, preview it in a sandboxed frame, then either **save it as a revision** of the kept post (the live post is unchanged until you restore it) or **rewrite** the kept post with it now.
+  - A new **Posts Consolidated** notification type (DB + email by default) can be set under **Settings → Notifications** like the others.
+  - The new **Recent Consolidations** card lists each consolidation with **Undo**. Undo republishes the retired post, removes the redirect, restores the re-pointed links, and deletes the saved revision or restores the pre-merge content. It skips, and reports, any step whose post was edited since.
+  - New classes: `AIPS_Consolidation_Service`, `AIPS_Consolidation_Controller` (AJAX `aips_consolidation_preview/merge/run/undo/history`) and `AIPS_Prompt_Builder_Consolidation`. New hooks: `aips_posts_consolidated` and `aips_posts_consolidation_undone`.
+
+- **Silos** (new **Content → Silos** tab): a silo is a Topic Cluster whose pillar you confirmed.
+  - Each silo card shows a health score, how many articles link up to the pillar, and how the pillar reaches its articles (through its text or the guide list), with a per-article breakdown.
+  - **Fix Silo** adds the missing article → pillar links to the articles' text. It is an auto-link run limited to that silo's articles and exempt from the per-post inbound cap. It follows **Bulk Auto-Linking**: confident links are inserted, the rest go to review, and the run appears in the Link Report history as "Silo: …", where **Undo run** removes its links.
+  - **Clusters Without a Pillar:** AIPS suggests a pillar from inbound links (40%), length (30%) and closeness to the cluster's topic (30%). Nothing happens until you click **Use This** or pick another article. Pillars chosen in Topic Clusters count as confirmed too.
+  - **"In this guide" list:** each pillar gets a list of its articles when it is displayed. The pillar's content is never edited, and the list updates as articles join or leave. It leaves out articles the pillar already links to, lists the closest matches first, and is capped (10 by default).
+  - A new **Settings → Internal Linking → Topic Silos** card controls the list: on/off, heading, position (end of post or after the first paragraph), how many articles, and style. Style is either an AIPS box that uses the theme's colours, or plain HTML for the theme to style.
+  - The `[aips_silo_guide]` shortcode places the list by hand. The link index counts the list's links.
+  - New `AIPS_Silo_Service` and `AIPS_Silos_Controller` (AJAX `aips_silos_overview/confirm_pillar/fix/refresh`). Topic Clusters now store `pillar_confirmed` and a per-post `topic_score`. `AIPS_Inbound_Links_Service::generate_for_target()` accepts a fixed list of source posts, and `AIPS_Autolink_Run_Service` has a `silo` scope.
+  - New hooks: `aips_silo_guide_items`, `aips_silo_guide_html`, `aips_link_index_render_html` and `aips_link_index_hash_salt`.
+
+### Fixed (code review pass over the whole branch)
+- **Generation-time linking:** undoing a publish-linking run (Link Report → Undo run) now clears the post's one-time "already linked" flag; a plain save of that post afterwards (not only a publish transition) re-qualifies it for another pass. New action `aips_autolink_run_undone`.
+- **Auto-link runs:** batch a target's inbound-link counts in one query instead of one query per suggestion.
+- **Broken-link fixer:** prime the post cache before scoring candidate replacements, instead of one lookup per candidate (up to ~100 per broken link).
+- **Silos:** re-detecting Topic Clusters now only re-indexes pillars whose own membership changed, instead of every confirmed pillar on every re-detection.
+- **Link click tracking:** the per-visitor rate limit increments atomically when a persistent object cache (Redis, Memcached, ...) is available, closing a race that let a burst of concurrent clicks slip past the cap.
+- **Redirects:** a bare path typed by hand (e.g. `/old-post/`) on a subdirectory WordPress install is now prefixed with the install's own path, so it matches the request the native provider sees.
+
+### Fixed
+- **Cannibalization Shield:** the audit results table called `AIPS.Templates.has()`, which did not exist, so rendering results threw a JavaScript error. `AIPS.Templates.has()` has been added.
+
+## [3.7.6] - 2026-09-24
+
+### Added
+- **Keyword Link Rules:** New "Link Rules" section in the Content hub side navigation (below Link Report). Each rule links a keyword or phrase to a chosen post wherever it appears in published content (up to N times per post per rule, capped per post by **Settings → Internal Linking → Keyword Link Rules**, default 3). Rules are applied when a post is displayed (`the_content`, priority 9, cached per post and rule version), never written into post content, so editing, disabling or deleting a rule takes effect immediately. Longer keywords win, links go only into body text (never headings, existing links, code, buttons or shortcodes), a post never links to itself, and targets already linked are skipped. The link index counts rule links (`AIPS_Link_Rules_Service`, `AIPS_Link_Rules_Controller`; AJAX `aips_link_rules_list/save/toggle/delete`).
+- **Internal link click tracking (opt-in):** New **Settings → Internal Linking → Link Click Tracking** (off by default, retention 365 days). Internal links in single posts are tagged with `data-aips-src` and a small deferred script sends a beacon to the new `POST /wp-json/aips/v1/link-click` endpoint. Only a daily count per source → target post pair is stored in the new `aips_link_clicks` table (schema 3.7.6); no IP addresses, cookies or visitor IDs. Clicks by logged-in editors, bots, links a post does not contain, and more than 30 clicks per visitor per 10 minutes are ignored. The Link Report gains a clicks stat card, a "Clicks (30d)" column, per-link clicks in the "View Links" drill-down and a "Most-Clicked Internal Links" card. New filters `aips_link_click_is_bot` and `aips_link_click_report_days`.
+- **Google Search Console target keywords:** New "Google Search Console" field on **Settings → API Keys**. Search Console data is private, so it connects with a Google Cloud service account JSON key (stored encrypted with the site's salts and never shown again; a plain API key cannot read Search Console) plus the property name, with Test Connection, Sync Keywords Now and Disconnect buttons and setup steps. A daily `aips_gsc_sync` cron reads the last 28 days of page × query data (`AIPS_GSC_Client` with a JWT bearer token, `AIPS_GSC_Keywords_Service`) and stores each post's top 10 queries of 2–6 words in `_aips_gsc_queries`. Inbound link suggestions try those real search queries first as anchor text, score them higher, and label them "Search query" in the Link Report. New filter `aips_gsc_max_rows`; new helper `AIPS_Secret_Encryption`.
+- **Linking at generation time:** when a post generated by AIPS is published, whether at generation, from an approved draft, or when a scheduled post goes live, older related posts get links to it in both directions. This runs about two minutes later in a background `aips_publish_linking` event. The new **Settings → Internal Linking → Link New AIPS Posts on Publish** option chooses Off, Review (the default: suggestions only) or Insert automatically, which applies the auto-link thresholds and caps. It can also queue outbound suggestions from the new post. Each publish appears in the Link Report run history as "New post: …", where **Undo run** removes its links. Links are inserted as the post author or an administrator, so kses doesn't strip embeds. New `AIPS_Publish_Linking_Service`, `AIPS_Autolink_Run_Service::run_now()`, and the hooks `aips_publish_linking_qualifies`, `aips_publish_linking_user` and `aips_publish_linking_completed`.
+
+## [3.7.5] - 2026-09-24
+
+### Added
+- **Link Index (storage):** New `aips_link_index` table and `AIPS_Link_Index_Repository` recording every `<a href>` found in post content (source, resolved target post, URL, anchor, internal/external, rel/nofollow, AIPS-inserted flag). Provides inbound/outbound/external/broken counts per post, true orphan detection (zero inbound internal links), a paginated Link Report query, and site totals. Internal only in this release; indexing hooks and the Link Report page follow.
+- **Link Report:** New "Link Report" section in the Content hub side navigation (below Content Indexer) showing inbound, outbound, external and broken link counts for every published post, an orphans filter, sortable columns, search, a per-post "View Links" drill-down, and background link scans you can pause, resume or cancel: scan only new/never-scanned posts, posts updated in the last N days, or a full rescan.
+- **Automatic link indexing:** Links are re-read whenever a published post is saved (`AIPS_Link_Index_Service`); deleting a post turns links to it into broken internal links; background scans index existing content in batches (a chain of `aips_link_index_scan_tick` cron events that stops cleanly on pause or cancel). Configurable under the new **Settings → Internal Linking** tab (on by default, posts and pages), including scan speed: posts per batch (default 50) and pause between batches (default 20s).
+- **Inbound link suggestions:** "Suggest Links" on any Link Report row finds existing posts that should link to it: semantic neighbours from embeddings first, then a keyword fallback for posts without embeddings. Anchor text is picked locally from the target's title and Yoast / Rank Math focus keyword and only placed in body text (never headings, existing links, code, buttons or the first paragraph). Each suggestion shows its context and confidence and can be inserted, dismissed or undone (the original text is restored exactly; edits made since insertion are detected). New actions `aips_internal_link_inserted` / `aips_internal_link_reverted` and filter `aips_inbound_anchor_phrases`.
+- **Automatic Linking runs:** New "Automatic Linking" section in the Link Report. A run finds inbound links for orphans (or posts with fewer than 3 inbound links) in the background; with Bulk Auto-Linking enabled, links at or above the auto-apply threshold are inserted and the rest go to the review queue (Internal Links page, pre-filtered to inbound + pending), otherwise runs only create suggestions (dry run). Runs can be paused, resumed, cancelled and undone as a whole; they act as the admin who started them (so saved content is not stripped by kses) and skip semantic re-indexing for link-only edits (new filter `aips_content_indexer_skip_post_save`).
+- **Internal Links editor panel:** A separate "Internal Links" panel in the Classic Editor (sidebar meta box) and Block Editor (document panel) shows the post's inbound / outbound / external / broken link counts, orphan status, the posts linking to it, and inbound link suggestions with Insert, Dismiss and Undo, plus a link to the Link Report. The edited post is always the link target, so inserting links only changes other posts.
+- **Broken-link fixer:** New "Broken Internal Links" section in the Link Report lists links to pages that no longer exist, each with the live posts it most likely meant (matched from the dead URL's slug and the anchor text). Re-point the link to a suggested post or any post you search for, or remove the link and keep its text. One fix covers every http/https/www/trailing-slash variant of the same URL in the post, and every fix can be undone exactly (edits made since are detected).
+- **Suggestion storage:** `aips_internal_links` gains `origin`, `confidence`, `anchor_source`, `match_context`, `batch_id`, `before_snippet`, `after_snippet` and `applied_at` (schema 3.7.5); regenerating outbound suggestions no longer deletes pending inbound ones.
+- **Link Extractor & URL Resolver:** `AIPS_Link_Extractor` (quote-aware `<a href>` parsing that ignores comments/block JSON, scripts and non-page schemes) and `AIPS_Link_Url_Resolver` (internal/external classification and cached URL-to-post resolution incl. `?p=`, attachments and old slugs). New filters `aips_link_resolver_url` and `aips_link_resolver_internal_hosts`.
+- **Link Insertion Engine:** `AIPS_Link_Insertion_Engine` finds whole-word anchor phrases only in linkable text (never in headings, existing links, code, buttons, shortcodes or HTML blocks), inserts links without touching surrounding markup, and reverts them with conflict detection. New filter `aips_link_insertion_skip_blocks`.
+- **Internal Link Automation settings:** New card on the Settings → Internal Linking tab with bulk auto-linking toggle (off by default), auto-apply/review confidence thresholds, per-post/per-target link caps, first-paragraph skip and rel/new-tab options, evaluated by `AIPS_Autolink_Policy` (apply / review / skip with reason codes).
+
+### Fixed
+- **UI primitives:** `AIPS_Admin_UI_Primitives::render_card()` ignored a body callback passed as its second argument (the card partial read an undefined `$body_callback`), rendering an empty card body.
+- **Settings defaults:** Added the missing `aips_author_topic_auto_approval_*` defaults to `AIPS_Config::get_default_options()` (matching the Settings UI fallbacks), which raised "Undefined array key" warnings whenever settings were registered.
+- **AJAX registry:** Registered `aips_save_author_topic`, which returned `0` because it was missing from `AIPS_Ajax_Registry`.
+
+## [3.7.3] - 2026-09-07
+
+### Fixed
+- **Rail Sidebar Styles & Layout:** Fortified CSS specificity and width constraints on `.aips-rail-layout`, `.aips-rail-sidebar`, and `.aips-rail-item` across both anchor links and button triggers to eliminate unstyled link fallbacks and prevent responsive collapse on desktop viewports.
+- **Asset Versioning:** Bumped version to 3.7.3 to invalidate cached admin stylesheets.
+
+## [3.7.2] - 2026-09-07
+
+### Added
+- **Admin UI Primitives:** Introduced `AIPS_Admin_UI_Primitives` class with reusable partial templates for Hub Shells, Page Headers, Vertical Rails, Action Toolbars, Content Panels, Badges, Empty States, and Error Fallbacks.
+
+### Fixed
+- **Content Indexer Subtabs:** Fixed initial tab stacking where all 4 nested subtabs rendered simultaneously on load.
+- **Server-rendered Rail Navigation:** Fixed click interception in `switchAipsTab` allowing native URL navigation for server-rendered multi-tab pages (Automations, Diagnostics).
+- **CSS & Asset Cache:** Bumped plugin version to bust admin asset cache.
+
+## [3.6.7] - 2026-09-07
+
+### Added
+- **8 Core Hub Navigation:** Streamlined top-level menu down to 8 core hubs (Dashboard, Automations, Studio, Research, Content, History, Settings, Diagnostics).
+- **Studio Launchpad:** Workspace grid with quick actions, live counts, and drill-down navigation for Templates, Voices, Structures, and Post Slices.
+- **Automations Vertical Rail:** Left-aligned vertical navigation rail with active state indicators and seamless tab switching.
+- **Content Hub Integration:** Integrated Content Indexer as a tab alongside Generated Posts, Partial Generations, and Pending Review.
+
+### Changed
+- **Grouped Blueprint Schedules:** Consolidated persona topic-generation and post-generation schedules into single Blueprint rows with stages, resolving row count inflation.
+- **Vector Storage Optimization**: Migrated embeddings storage from JSON to IEEE 754 Float32 binary packing (`MEDIUMBLOB`), yielding an 82% storage reduction (down to 6.1 KB per vector) and faster decoding.
+- **Resilient DB Migration**: Added a highly resilient background migration script that chunk-converts legacy JSON vectors to binary, with pacing and timeout protections for high-volume production sites.
+
+### Fixed
+- **Terminal Outcome Metrics:** Success and failure rates now compute over terminal outcomes via `AIPS_Outcome_Rate`, with accurate post attribution and zero-value tile handling.
+- **Accessibility & Contrast (WCAG 2.2 SC 1.4.3):** Dimmed text, muted labels, and telemetry empty-state contrast raised to AA standards ($\ge 4.5:1$ on composited backgrounds).
+- **History Grouping:** Fixed double-firing click events on history group expand/collapse.
+
+### Removed
+- **Schedule Calendar:** Fully removed Schedule Calendar views, controllers, assets, endpoints, and tests in favor of the consolidated schedule view and upcoming runs panel.
+
 ## [3.6.6] - 2026-09-04
 
 ### Added
@@ -7,11 +222,8 @@
 - **History Accuracy:** Content indexing persistence failures now remain failed, modal summaries read nested indexing metrics, and grouped rows report in-progress items.
 
 ## [3.6.5] - 2026-08-28
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 ### Added
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 - **Unified Semantic Vector Core**: Introduced `wp_aips_embeddings` (polymorphic store for posts, CPTs, and author topics) and `wp_aips_relationships` (precomputed cosine similarity matrix).
 - **Database Migration (`migrate_to_3_6_5`)**: Automated schema upgrade backfilling legacy vectors with post type resolution and dropping legacy tables.
 - **Top-Level Content Indexer Suite**: Centralized admin hub under **AI Post Scheduler → Content Indexer** featuring:
@@ -38,6 +250,32 @@
 
 ## [3.7.0] - 2026-09-22
 
+### Added
+- **System Status / Diagnostics maintenance improvements:**
+  - "Rebuild Cache" now shows one status row per subsystem (green check / red X), matching the "Maintenance & Recovery Tasks" results styling, instead of a single concatenated message.
+  - New destructive "Clean Stress Test Data" System Maintenance task, deleting every post/attachment generated by the Stress Test page plus any embeddings left orphaned afterward. The Stress Test page's own "Delete Data" button now calls this same shared endpoint (`aips_status_clean_stress_test_data`) instead of a separate, duplicated cleanup code path.
+- **Database Retention & Telemetry Optimization:**
+  - Strict telemetry disabling: when telemetry collection is toggled off, events are never recorded, buffered in memory, flushed on shutdown, or inserted into MySQL.
+  - Dedicated "Database & Retention" settings section to configure automated pruning intervals and retention age thresholds for telemetry events, generation history logs, orphaned embeddings, and expired topics.
+  - Automated WP-Cron background cleanup runner (`aips_database_prune_cleanup`) that executes chunked retention purges and conditionally defragments tables.
+  - "Database Storage & Table Status" matrix on the System Status diagnostics page displaying real-time records, data size, index size, storage engine, and overhead per plugin table.
+  - Manual maintenance controls on System Status: batched "Prune Old" with automatic defragmentation, "Purge All" (instant table truncation to 0 MB), "Clean Orphans" for post embeddings, and table optimization.
+  - Reusable destructive confirmation modal `AIPS.Utilities.confirmWithWord(options)` requiring users to type a confirmation word (e.g. "PURGE") before executing irreversible operations.
+
+### Fixed
+- **Database Retention & Telemetry Optimization — review follow-ups:**
+  - Added a dedicated `timestamp` index to `aips_history_log` so retention pruning no longer does a full table scan on each batch.
+  - Removed a generic-nonce fallback on the System Status AJAX controller that would have accepted the plugin-wide `aips_ajax_nonce` for destructive maintenance actions (prune, purge, optimize) instead of requiring their own scoped nonces.
+  - Escaped the `message` parameter in `AIPS.Utilities.confirmWithWord()` to prevent a future caller from introducing a DOM XSS via unescaped HTML interpolation.
+  - Fixed a PHP syntax error in the system diagnostics service's refresh-task definitions that would fatal the plugin on load.
+  - "Refresh System" no longer bundles telemetry/history-log pruning and orphaned-embeddings cleanup into its default-selected, unconfirmed bulk action; these destructive tasks are now opt-in, visually flagged, and gated behind an extra confirmation.
+  - Automated background pruning (`run_automated_prune()`) now rotates its task order and stops within a time budget instead of chaining all four cleanup tasks unconditionally, so a slow run defers remaining tasks to the next tick rather than letting them starve indefinitely.
+  - Cascading-delete transactions in the prune repository now check whether `START TRANSACTION` actually succeeded before issuing `COMMIT`/`ROLLBACK`, and no longer abort a batch loop early just because a concurrent cleanup already removed the rows it was about to delete.
+  - The automated database-prune cron is no longer scheduled on plugin activation when automatic pruning is disabled, and the "Database & Retention" settings now read through `AIPS_Config` instead of raw `get_option()` calls.
+  - The System Status table-size matrix now recomputes its grand-totals row immediately after a prune/purge/optimize action instead of only on a full manual refresh.
+  - `AIPS.Utilities.confirmWithWord()`'s dialog markup is now always rendered through `AIPS.Templates` (a new `AIPS.Templates.register()` API backs this) instead of a hand-maintained string-concatenation fallback.
+  - The "Database & Data Retention" settings section (automatic pruning toggle, telemetry/history-log retention windows, prune schedule, orphan-cleanup toggles) was registered with the Settings API but never rendered anywhere — it's now exposed as its own card on the Settings page's Performance tab.
+
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
@@ -49,6 +287,15 @@
   - Rich contextual placeholder tag interpolation (`{{topic}}`, `{{voice_instructions}}`, `{{article_data}}`, `{{sections}}`, `{{word_count_min}}`, `{{word_count_max}}`, `{{diversity_blocks}}`, etc.) with safety auto-append guard for omitted critical reference data.
   - Dedicated admin interface under **AI Post Scheduler → Prompt Profiles** featuring tabbed stage navigation, clickable placeholder insertion chips, stage-level core default resets, and a tokenless live prompt assembly preview sandbox.
   - Profile assignment pickers integrated directly into Template and Author editor modals.
+- **Content Intelligence Suite & Dedicated Pages**: Restructured the tab-heavy Content Indexer into the modern **Content Intelligence** suite using a Hybrid 2-Level architecture:
+  - **Primary Hub (`aips-content-intelligence`)**: Interactive Semantic Graph Visualizer, multi-dimensional vector health metrics, and backfill scan coverage controls.
+  - **Dedicated Topic Clusters & Gaps Page (`aips-post-clusters`)**: Standalone workflow page for thematic topic clusters, core Pillar Post designation, community cohesion meters, and AI gap topic generation with 1-click author assignment.
+  - **Dedicated Cannibalization & Duplicate Audit Page (`aips-cannibalization`)**: Standalone risk audit page with grouped risk tiers, pairwise similarity comparisons, and direct editorial action links.
+  - **Seamless Navigation & Backward Compatibility**: Persistent suite navigation tabs across all sub-pages and automatic redirection from legacy `?page=aips-content-indexer` URLs.
+- **Vector Embeddings Scope Filtering**: Added configurable indexing scope filters (`aips_only`, `date_range`, `all`) defaulting conservatively to AIPS-generated posts (`_aips_generated_post = '1'`) to prevent runaway token usage on sites with large legacy archives.
+- **Embeddings Rate Limiting & Quota Protection**: Added persistent sliding-window usage tracking across rolling 24h, 7d, and 30d windows with automated backfill scan halting and quota alert notifications upon breach. Persisted in `wp_options` (`autoload = false`) to guarantee resilience across AIPS Cache flushes and object cache invalidations.
+- **Settings > AI Vector Configuration Consolidation**: Consolidated all Vector Embeddings controls (master toggle, scope filter, rate limits, model, environment ID, dimensions) under the dedicated **Settings > AI** section, with live usage gauges and deep links in the Content Indexer hub.
+- **Embeddings System Enable/Disable Toggle**: Added global toggle (`aips_embeddings_enabled`) allowing administrators to fully enable or disable vector embeddings generation, continuous post indexing on publish/update, background topic embeddings cron jobs, and semantic duplicate detection.
 - **Author Topic Auto-Approval Policies**: Added configurable auto-approval policies per author with support for "Auto-Approve All", AI Quality Score thresholds, and Semantic Similarity Deduplication Guards, along with configurable fallback actions (`pending` vs `rejected`), full audit logging to topic logs, and dynamic UI controls in the Author management modal.
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
 - **Prompt Context Digest**: Added bounded beginning/outline/conclusion context for stateless title and excerpt requests, preserving article-wide signal without resending unbounded bodies.

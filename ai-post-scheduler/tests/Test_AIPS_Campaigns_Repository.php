@@ -226,9 +226,12 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$results = $repository->get_recent_generated_posts(42, 0);
 
 		$this->assertSame($expected_results, $results);
-		$this->assertStringContainsString('MAX(id) AS latest_history_id', $this->wpdb_stub->last_get_results_query);
-		$this->assertStringContainsString("status = 'completed'", $this->wpdb_stub->last_get_results_query);
-		$this->assertStringContainsString('GROUP BY post_id', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('MAX(r.id) AS latest_history_id', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString("r.status IN ('completed', 'partial')", $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('r.campaign_id = 42', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString("r.record_kind = 'generation'", $this->wpdb_stub->last_get_results_query);
+		$this->assertStringNotContainsString('topic_post_generation', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('GROUP BY r.post_id', $this->wpdb_stub->last_get_results_query);
 		$this->assertStringContainsString('INNER JOIN wp_posts p ON h.post_id = p.ID', $this->wpdb_stub->last_get_results_query);
 		$this->assertStringContainsString('LIMIT 1', $this->wpdb_stub->last_get_results_query);
 	}
@@ -321,6 +324,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public $posts = 'wp_posts';
 
+	public $options = 'wp_options';
+
 	public $results_to_return = array();
 
 	public $rows_to_return = array();
@@ -363,6 +368,12 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	}
 
 	public function get_results($query, $output = OBJECT) {
+		// WP core's option loading (wp_load_alloptions) also runs through
+		// $wpdb->get_results(); it must not be answered with campaign fixture rows.
+		if (false !== strpos($query, $this->options)) {
+			return array();
+		}
+
 		$this->last_get_results_query = preg_replace('/\s+/', ' ', trim($query));
 
 		return $this->results_to_return;

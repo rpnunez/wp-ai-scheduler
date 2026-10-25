@@ -6,18 +6,18 @@ if (!defined('ABSPATH')) {
 class AIPS_System_Status {
 
 
-    public function render_page($embedded = false) {
+    public function render_page() {
         $system_info = $this->get_system_info();
         $refresh_task_groups = $this->get_refresh_task_groups();
         if ( isset( $system_info['database'] ) ) {
             $system_info['database'] = $this->condense_database_checks( $system_info['database'] );
         }
-        $embedded = (bool) $embedded;
 
         $active_ai_provider          = AIPS_AI_Provider_Factory::create();
         $ai_provider_label           = $active_ai_provider->get_label();
         $ai_provider_available       = $active_ai_provider->is_available();
         $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider->get_unavailable_reason();
+        $tables_status               = $this->get_tables_status();
 
         include AIPS_PLUGIN_DIR . 'templates/admin/system-status.php';
     }
@@ -56,6 +56,17 @@ class AIPS_System_Status {
         $service = $this->resolve_service(AIPS_System_Diagnostics_Service::class);
 
         return $service->get_refresh_task_groups();
+    }
+
+    /**
+     * Retrieve table disk usage status for all plugin tables.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function get_tables_status() {
+        $service = $this->resolve_service(AIPS_System_Diagnostics_Service::class);
+
+        return $service->get_tables_status();
     }
 
     /**

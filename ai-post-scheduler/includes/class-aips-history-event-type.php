@@ -86,6 +86,32 @@ final class AIPS_History_Event_Type {
 	// Campaign lifecycle.
 	const CAMPAIGN_CREATED = 'campaign_created';
 	const CAMPAIGN_UPDATED = 'campaign_updated';
+	const CAMPAIGN_DELETED = 'campaign_deleted';
+	const CAMPAIGN_DUPLICATED = 'campaign_duplicated';
+
+	// Author lifecycle.
+	const AUTHOR_CREATED = 'author_created';
+	const AUTHOR_UPDATED = 'author_updated';
+	const AUTHOR_DELETED = 'author_deleted';
+
+	// Template lifecycle.
+	const TEMPLATE_CREATED = 'template_created';
+	const TEMPLATE_UPDATED = 'template_updated';
+	const TEMPLATE_DELETED = 'template_deleted';
+	const TEMPLATE_CLONED  = 'template_cloned';
+
+	// Additional schedule lifecycle.
+	const SCHEDULE_DELETED       = 'schedule_deleted';
+	const SCHEDULE_CIRCUIT_RESET = 'schedule_circuit_reset';
+
+	// Operational runs.
+	const RESEARCH_RUN             = 'research_run';
+	const SOURCE_FETCHED           = 'source_fetched';
+	const CONTENT_INDEX_BATCH      = 'content_index_batch';
+	const CONTENT_INDEX_CLEARED    = 'content_index_cleared';
+	const CANNIBALIZATION_AUDIT_RUN = 'cannibalization_audit_run';
+	const GSC_SYNC                 = 'gsc_sync';
+	const LINK_INDEX_REBUILT       = 'link_index_rebuilt';
 
 	/**
 	 * Subject type constants (mirrors AIPS_History_Subject::TYPE_*).
@@ -228,6 +254,32 @@ final class AIPS_History_Event_Type {
 			// Campaign lifecycle.
 			self::CAMPAIGN_CREATED => array('aliases' => array(), 'subject' => self::SUBJECT_CAMPAIGN, 'statuses' => array(AIPS_History_Event_Status::SUCCESS)),
 			self::CAMPAIGN_UPDATED => array('aliases' => array(), 'subject' => self::SUBJECT_CAMPAIGN, 'statuses' => array(AIPS_History_Event_Status::SUCCESS)),
+			self::CAMPAIGN_DELETED => array('aliases' => array(), 'subject' => self::SUBJECT_CAMPAIGN, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::CAMPAIGN_DUPLICATED => array('aliases' => array(), 'subject' => self::SUBJECT_CAMPAIGN, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+
+			// Author lifecycle.
+			self::AUTHOR_CREATED => array('aliases' => array(), 'subject' => self::SUBJECT_AUTHOR, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::AUTHOR_UPDATED => array('aliases' => array(), 'subject' => self::SUBJECT_AUTHOR, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::AUTHOR_DELETED => array('aliases' => array(), 'subject' => self::SUBJECT_AUTHOR, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+
+			// Template lifecycle.
+			self::TEMPLATE_CREATED => array('aliases' => array(), 'subject' => self::SUBJECT_TEMPLATE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::TEMPLATE_UPDATED => array('aliases' => array(), 'subject' => self::SUBJECT_TEMPLATE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::TEMPLATE_DELETED => array('aliases' => array(), 'subject' => self::SUBJECT_TEMPLATE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::TEMPLATE_CLONED  => array('aliases' => array(), 'subject' => self::SUBJECT_TEMPLATE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+
+			// Additional schedule lifecycle.
+			self::SCHEDULE_DELETED       => array('aliases' => array(), 'subject' => self::SUBJECT_SCHEDULE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::SCHEDULE_CIRCUIT_RESET => array('aliases' => array(), 'subject' => self::SUBJECT_SCHEDULE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS)),
+
+			// Operational runs.
+			self::RESEARCH_RUN              => array('aliases' => array(), 'subject' => self::SUBJECT_NONE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED, AIPS_History_Event_Status::PARTIAL)),
+			self::SOURCE_FETCHED            => array('aliases' => array(), 'subject' => self::SUBJECT_NONE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::CONTENT_INDEX_BATCH       => array('aliases' => array(), 'subject' => self::SUBJECT_NONE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED, AIPS_History_Event_Status::PARTIAL)),
+			self::CONTENT_INDEX_CLEARED     => array('aliases' => array(), 'subject' => self::SUBJECT_NONE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::CANNIBALIZATION_AUDIT_RUN => array('aliases' => array(), 'subject' => self::SUBJECT_NONE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::GSC_SYNC                  => array('aliases' => array(), 'subject' => self::SUBJECT_NONE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
+			self::LINK_INDEX_REBUILT        => array('aliases' => array(), 'subject' => self::SUBJECT_NONE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS, AIPS_History_Event_Status::FAILED)),
 		);
 
 		return self::$catalog;

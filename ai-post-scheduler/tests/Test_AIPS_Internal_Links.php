@@ -165,6 +165,63 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	}
 
 	/**
+	 * update_status_bulk() should change every listed row and leave the rest alone.
+	 */
+	public function test_links_update_status_bulk() {
+		$a     = $this->links_repo->insert( 11, 21, 0.9 );
+		$b     = $this->links_repo->insert( 12, 22, 0.8 );
+		$this->links_repo->insert( 13, 23, 0.7 );
+
+		$result = $this->links_repo->update_status_bulk( array( $a, $b ), 'rejected' );
+
+		$this->assertEquals( 2, $result );
+		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 11 )[0]->status );
+		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 12 )[0]->status );
+		$this->assertEquals( 'pending', $this->links_repo->get_by_source_post( 13 )[0]->status );
+	}
+
+	/**
+	 * update_status_bulk() with $only_from should skip rows in other statuses.
+	 */
+	public function test_links_update_status_bulk_only_from() {
+		$pending  = $this->links_repo->insert( 18, 28, 0.9 );
+		$inserted = $this->links_repo->insert( 19, 29, 0.8 );
+		$this->links_repo->update_status( $inserted, 'inserted' );
+
+		$result = $this->links_repo->update_status_bulk( array( $pending, $inserted ), 'rejected', array( 'pending' ) );
+
+		$this->assertEquals( 1, $result );
+		$this->assertEquals( 'rejected', $this->links_repo->get_by_source_post( 18 )[0]->status );
+		$this->assertEquals( 'inserted', $this->links_repo->get_by_source_post( 19 )[0]->status );
+	}
+
+	/**
+	 * update_status_bulk() should refuse invalid statuses and empty id lists.
+	 */
+	public function test_links_update_status_bulk_rejects_invalid() {
+		$id = $this->links_repo->insert( 14, 24, 0.9 );
+
+		$this->assertFalse( $this->links_repo->update_status_bulk( array( $id ), 'nope' ) );
+		$this->assertFalse( $this->links_repo->update_status_bulk( array(), 'accepted' ) );
+		$this->assertEquals( 'pending', $this->links_repo->get_by_source_post( 14 )[0]->status );
+	}
+
+	/**
+	 * delete_bulk() should remove only the listed rows.
+	 */
+	public function test_links_delete_bulk() {
+		$a = $this->links_repo->insert( 15, 25, 0.9 );
+		$b = $this->links_repo->insert( 16, 26, 0.8 );
+		$this->links_repo->insert( 17, 27, 0.7 );
+
+		$this->assertEquals( 2, $this->links_repo->delete_bulk( array( $a, $b ) ) );
+		$this->assertCount( 0, $this->links_repo->get_by_source_post( 15 ) );
+		$this->assertCount( 0, $this->links_repo->get_by_source_post( 16 ) );
+		$this->assertCount( 1, $this->links_repo->get_by_source_post( 17 ) );
+		$this->assertFalse( $this->links_repo->delete_bulk( array() ) );
+	}
+
+	/**
 	 * update_anchor_text() should update the anchor.
 	 */
 	public function test_links_update_anchor_text() {
@@ -285,5 +342,106 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 
 		$rows = $this->links_repo->get_by_source_post( 40 );
 		$this->assertCount( 5, $rows, 'One source should be able to have 5 link suggestions' );
+	}
+
+	/**
+	 * index_post should skip the AI call if the content hash has not changed.
+	 */
+	public function test_index_post_skips_ai_call_when_content_hash_matches() {
+		$p1 = wp_insert_post( array(
+			'post_title'   => 'Unchanged Article Title',
+			'post_content' => 'Sample body content for hashing test.',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+
+		$emb_service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'generate_embedding', 'get_active_model', 'is_enabled' ) )
+			->getMock();
+
+		$emb_service->method( 'is_enabled' )
+			->willReturn( true );
+
+		// generate_embedding must be called exactly once despite calling index_post twice.
+		$emb_service->expects( $this->once() )
+			->method( 'generate_embedding' )
+			->willReturn( array( 0.1, 0.2, 0.3 ) );
+
+		$emb_service->method( 'get_active_model' )
+			->willReturn( 'text-embedding-3-small' );
+
+		$service = new AIPS_Internal_Links_Service(
+			$this->embeddings_repo,
+			$this->links_repo,
+			$emb_service
+		);
+
+		// First call: generates embedding and saves content hash
+		$res1 = $service->index_post( $p1 );
+		$this->assertTrue( $res1 );
+
+		$row = $this->embeddings_repo->get_by_post_id( $p1 );
+		$this->assertNotNull( $row );
+		$this->assertNotEmpty( $row->content_hash );
+
+		// Second call: skips AI generation because hash matches
+		$res2 = $service->index_post( $p1 );
+		$this->assertTrue( $res2 );
+	}
+
+	/**
+	 * The indexing status total must honor the indexing scope, not count every published post.
+	 */
+	public function test_get_indexing_status_total_honors_scope() {
+		$aips_post = wp_insert_post( array(
+			'post_title'  => 'AIPS generated',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+		update_post_meta( $aips_post, '_aips_generated_post', 1 );
+		wp_insert_post( array(
+			'post_title'  => 'Manually written',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+
+		$service = new AIPS_Internal_Links_Service( $this->embeddings_repo, $this->links_repo );
+
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'aips_only' );
+		$status = $service->get_indexing_status();
+		$this->assertSame( 1, $status['total_posts'] );
+
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$status = $service->get_indexing_status();
+		$this->assertSame( 2, $status['total_posts'] );
+	}
+
+	/**
+	 * generate_suggestions_for_post delegates to Similarity Evaluator and creates pending suggestions.
+	 */
+	public function test_generate_suggestions_for_post_uses_similarity_evaluator() {
+		$source_id = wp_insert_post( array( 'post_title' => 'Source Post', 'post_content' => 'Source content', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$target1   = wp_insert_post( array( 'post_title' => 'Target High Match', 'post_content' => 'High match content', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$target2   = wp_insert_post( array( 'post_title' => 'Target Low Match', 'post_content' => 'Low match content', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$this->embeddings_repo->upsert( 'post', $source_id, array( 1.0, 0.0, 0.0 ), 'test-model' );
+		$this->embeddings_repo->upsert( 'post', $target1,   array( 0.95, 0.05, 0.0 ), 'test-model' );
+		$this->embeddings_repo->upsert( 'post', $target2,   array( 0.20, 0.80, 0.0 ), 'test-model' );
+
+		$service = new AIPS_Internal_Links_Service(
+			$this->embeddings_repo,
+			$this->links_repo
+		);
+
+		$created_ids = $service->generate_suggestions_for_post( $source_id, 5, 0.70 );
+
+		$this->assertCount( 1, $created_ids, 'Only target1 with >= 0.70 similarity should qualify' );
+
+		$suggestions = $this->links_repo->get_by_source_post( $source_id );
+		$this->assertCount( 1, $suggestions );
+		$this->assertEquals( $target1, (int) $suggestions[0]->target_post_id );
+		$this->assertEquals( 'Target High Match', $suggestions[0]->anchor_text );
+		$this->assertEquals( 'pending', $suggestions[0]->status );
 	}
 }

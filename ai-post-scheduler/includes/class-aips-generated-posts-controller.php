@@ -71,7 +71,7 @@ class AIPS_Generated_Posts_Controller {
 	public function render_page() {
 		// Use separate pagination parameters for each tab
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
-		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
+		// Pending Review paginates through the WP_List_Table (native 'paged' param).
 		$partial_page = isset($_GET['partial_paged']) ? absint($_GET['partial_paged']) : 1;
 		$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
@@ -83,7 +83,7 @@ class AIPS_Generated_Posts_Controller {
 		$history = $this->history_repository->get_history(array(
 			'page' => $generated_page,
 			'per_page' => 20,
-			'status' => 'completed',
+			'status' => 'generated', // completed and partial runs both produced a post
 			'search' => $search_query,
 			'author_id' => $author_id,
 			'template_id' => $template_id,
@@ -109,26 +109,7 @@ class AIPS_Generated_Posts_Controller {
 			_prime_post_caches(array_unique($history_post_ids), false, true);
 		}
 
-		$template_ids = array();
-		if (!empty($history['items'])) {
-			foreach ($history['items'] as $item) {
-				if ($item->template_id) {
-					$template_ids[] = (int) $item->template_id;
-				}
-			}
-		}
-
-		$schedules_by_template = array();
-		if (!empty($template_ids) && method_exists($this->schedule_repository, 'get_by_template_ids')) {
-			$all_schedules = $this->schedule_repository->get_by_template_ids(array_unique($template_ids));
-			foreach ($all_schedules as $sched) {
-				if (!isset($schedules_by_template[$sched->template_id])) {
-					$schedules_by_template[$sched->template_id] = $sched;
-				}
-			}
-		}
-
-		// Get schedule data for each post
+		// Build one row per generated post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
 			if (!$item->post_id) {
@@ -140,23 +121,18 @@ class AIPS_Generated_Posts_Controller {
 				continue;
 			}
 			
-			// Get most recent schedule for this template (if exists)
-			$schedule = null;
-			if ($item->template_id) {
-				if (method_exists($this->schedule_repository, 'get_by_template_ids')) {
-					$schedule = isset($schedules_by_template[$item->template_id]) ? $schedules_by_template[$item->template_id] : null;
-				} else {
-					$schedules = $this->schedule_repository->get_by_template($item->template_id);
-					// get_by_template returns multiple schedules, get the first one
-					$schedule = !empty($schedules) ? $schedules[0] : null;
-				}
-			}
-			
 			// Format source information
 			$source = $this->format_source($item);
 
 			// Use a GMT timestamp to avoid timezone skew when formatting relative time.
-			$published_timestamp = (int) get_post_time('U', true, $post);
+			// The Published column only means something once the post is public;
+			// for a future-dated post that same timestamp is its scheduled
+			// publish time, which is what the Scheduled column reports. Showing
+			// post_date under "Published" regardless of status is what produced
+			// rows published months before they were generated.
+			$post_timestamp = (int) get_post_time('U', true, $post);
+			$published_timestamp = ('publish' === $post->post_status) ? $post_timestamp : null;
+			$scheduled_timestamp = ('future' === $post->post_status) ? $post_timestamp : null;
 			
 			$posts_data[] = array(
 				'history_id' => $item->id,
@@ -165,26 +141,18 @@ class AIPS_Generated_Posts_Controller {
 				'title' => $post->post_title,
 				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format),
 				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, $datetime_format),
-				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, $datetime_format),
+				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($scheduled_timestamp, $datetime_format),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
 			);
 		}
 		
-		// Get draft posts for Post Review tab
-		$draft_posts = $this->post_review_repository->get_draft_posts(array(
-			'page' => $review_page,
-			'search' => $search_query,
-			'template_id' => $template_id,
-			'post_type' => $post_type_filter,
-		));
-
-		// Pre-format dates for draft posts
-		if (!empty($draft_posts['items'])) {
-			foreach ($draft_posts['items'] as $item) {
-				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format);
-			}
-		}
+		// Pending Review tab renders through a WP_List_Table subclass so it gains
+		// native Screen Options (drafts-per-page + column show/hide). It reads its
+		// own filters and pagination (via get_pagenum()) and loads its own page of
+		// drafts, including the per-item created-at formatting.
+		$review_table = new AIPS_Pending_Review_List_Table(array('controller' => $this));
+		$review_table->prepare_items();
 
 		$partial_generations = $this->history_repository->get_partial_generations(array(
 			'page' => $partial_page,
@@ -235,7 +203,6 @@ class AIPS_Generated_Posts_Controller {
 		
 		// Pass separate page variables for each tab
 		$current_page = $generated_page; // For Generated Posts tab
-		$review_current_page = $review_page; // For Pending Review tab
 		$partial_current_page = $partial_page; // For Partial Generations tab
 		
 		// Get templates for filter dropdown
@@ -551,41 +518,50 @@ class AIPS_Generated_Posts_Controller {
 	 */
 	public function format_source($history_item) {
 		$source = '';
-		
-		// Determine the source type
-		if (!empty($history_item->template_id)) {
-			// Template-based generation with caching
-			$template_id = $history_item->template_id;
-			
-			if (!isset($this->template_cache[$template_id])) {
-				$template_repository = new AIPS_Template_Repository();
-				$this->template_cache[$template_id] = $template_repository->get_by_id($template_id);
+
+		$template_id = !empty($history_item->template_id) ? (int) $history_item->template_id : 0;
+		$author_id   = !empty($history_item->author_id) ? (int) $history_item->author_id : 0;
+		$topic_id    = !empty($history_item->topic_id) ? (int) $history_item->topic_id : 0;
+
+		// A topic knows its own author, so a row carrying only topic_id can still
+		// be attributed. Without this, author-post-generation rows (which have no
+		// topic) and topic-only rows both fell through to "Unknown".
+		if (!$author_id && $topic_id) {
+			$topic = $this->get_cached_topic($topic_id);
+			if ($topic && !empty($topic->author_id)) {
+				$author_id = (int) $topic->author_id;
 			}
-			
-			$template = $this->template_cache[$template_id];
+		}
+
+		if ($template_id) {
+			// `list` field sets already join the template name; only fall back to a
+			// per-row lookup when that join is absent.
+			$template_name = !empty($history_item->template_name) ? $history_item->template_name : '';
+			if ($template_name === '') {
+				if (!isset($this->template_cache[$template_id])) {
+					$template_repository = new AIPS_Template_Repository();
+					$this->template_cache[$template_id] = $template_repository->get_by_id($template_id);
+				}
+				$template = $this->template_cache[$template_id];
+				if ($template && isset($template->name)) {
+					$template_name = $template->name;
+				}
+			}
+
 			$source = __('Template', 'ai-post-scheduler');
-			if ($template && isset($template->name)) {
-				$source .= ': ' . $template->name;
+			if ($template_name !== '') {
+				$source .= ': ' . $template_name;
 			}
-		} elseif (!empty($history_item->author_id) && !empty($history_item->topic_id)) {
-			// Author Topic-based generation with caching
-			$author_id = $history_item->author_id;
-			$topic_id = $history_item->topic_id;
-			
+		} elseif ($author_id) {
 			if (!isset($this->author_cache[$author_id])) {
 				$authors_repository = new AIPS_Authors_Repository();
 				$this->author_cache[$author_id] = $authors_repository->get_by_id($author_id);
 			}
-			
-			if (!isset($this->topic_cache[$topic_id])) {
-				$topics_repository = new AIPS_Author_Topics_Repository();
-				$this->topic_cache[$topic_id] = $topics_repository->get_by_id($topic_id);
-			}
-			
+
 			$author = $this->author_cache[$author_id];
-			$topic = $this->topic_cache[$topic_id];
-			
-			$source = __('Author Topic', 'ai-post-scheduler');
+			$topic  = $topic_id ? $this->get_cached_topic($topic_id) : null;
+
+			$source = __('Author', 'ai-post-scheduler');
 			if ($author && isset($author->name)) {
 				$source .= ': ' . $author->name;
 			}
@@ -595,15 +571,52 @@ class AIPS_Generated_Posts_Controller {
 		} else {
 			$source = __('Unknown', 'ai-post-scheduler');
 		}
-		
+
 		// Add creation method if available
 		if (!empty($history_item->creation_method)) {
-			$method = $history_item->creation_method === 'manual' 
-				? __('Manual', 'ai-post-scheduler') 
-				: __('Scheduled', 'ai-post-scheduler');
-			$source .= ' (' . $method . ')';
+			$source .= ' (' . $this->format_creation_method($history_item->creation_method) . ')';
 		}
-		
+
 		return $source;
+	}
+
+	/**
+	 * Resolve an author topic, caching per request.
+	 *
+	 * @param int $topic_id Topic ID.
+	 * @return object|null
+	 */
+	private function get_cached_topic($topic_id) {
+		$topic_id = (int) $topic_id;
+
+		if (!isset($this->topic_cache[$topic_id])) {
+			$topics_repository = new AIPS_Author_Topics_Repository();
+			$this->topic_cache[$topic_id] = $topics_repository->get_by_id($topic_id);
+		}
+
+		return $this->topic_cache[$topic_id];
+	}
+
+	/**
+	 * Human-readable label for a history creation_method.
+	 *
+	 * Everything that was not `manual` used to be labelled "Scheduled", which
+	 * mislabelled bulk and batch runs.
+	 *
+	 * @param string $creation_method Raw creation_method column value.
+	 * @return string
+	 */
+	private function format_creation_method($creation_method) {
+		$creation_method = (string) $creation_method;
+
+		if (strpos($creation_method, 'manual') !== false || strpos($creation_method, 'admin') !== false) {
+			return __('Manual', 'ai-post-scheduler');
+		}
+
+		if (strpos($creation_method, 'bulk') !== false || strpos($creation_method, 'batch') !== false) {
+			return __('Bulk', 'ai-post-scheduler');
+		}
+
+		return __('Scheduled', 'ai-post-scheduler');
 	}
 }

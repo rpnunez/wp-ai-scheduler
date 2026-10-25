@@ -102,9 +102,8 @@
 			if (!topic || !authorId) return;
 
 			var $btn = $('#aips-confirm-add-topic-btn');
-			$btn.prop('disabled', true);
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -115,18 +114,21 @@
 					status: 'approved'
 				},
 				success: function (res) {
-					$btn.prop('disabled', false);
 					if (res && res.success) {
-						alert(aipsAuditorL10n.topicAddedSuccess || 'Topic successfully added to Author Persona!');
+						AIPS.Utilities.showToast(aipsAuditorL10n.topicAddedSuccess || 'Topic successfully added to Author Persona!', 'success');
 						$('#aips-add-to-author-modal').hide();
 					} else {
-						alert(res && res.data && res.data.message ? res.data.message : 'Error saving topic.');
+						AIPS.Utilities.showToast(res && res.data && res.data.message ? res.data.message : 'Error saving topic.', 'error');
 					}
 				},
 				error: function () {
-					$btn.prop('disabled', false);
-					alert('Network error while saving topic.');
+					AIPS.Utilities.showToast('Network error while saving topic.', 'error');
 				}
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Saving...',
+				timeout: 30000
 			});
 		});
 
@@ -136,9 +138,20 @@
 			var topic = $(this).data('topic') || '';
 			if (!topic) return;
 
-			if (confirm(aipsAuditorL10n.confirmGeneratePost || 'Generate post immediately for topic: "' + topic + '"?')) {
-				window.location.href = 'admin.php?page=aips-templates&generate_topic=' + encodeURIComponent(topic);
-			}
+			AIPS.Utilities.confirm(
+				aipsAuditorL10n.confirmGeneratePost || 'Generate post immediately for topic: "' + topic + '"?',
+				'Generate Post',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Generate Now',
+						className: 'aips-btn aips-btn-primary',
+						action: function () {
+							window.location.href = 'admin.php?page=aips-studio&tab=templates&generate_topic=' + encodeURIComponent(topic);
+						}
+					}
+				]
+			);
 		});
 	}
 
@@ -679,6 +692,9 @@
 	}
 
 	function escapeHtml(str) {
+		if (window.AIPS && window.AIPS.Utilities && typeof window.AIPS.Utilities.escapeHtml === 'function') {
+			return window.AIPS.Utilities.escapeHtml(str);
+		}
 		if (!str) return '';
 		return String(str)
 			.replace(/&/g, '&amp;')

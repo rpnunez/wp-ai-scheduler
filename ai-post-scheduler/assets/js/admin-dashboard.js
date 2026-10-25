@@ -47,7 +47,8 @@
 			$(document).on('click', '#aips-date-popover-cancel', this.handlePopoverCancel.bind(this));
 			$(document).on('click', this.handleDocumentClick.bind(this));
 			$(document).on('submit', '#aips-dashboard-date-form', this.handleDateFormSubmit.bind(this));
-			$(document).on('click', '.aips-tab-btn', this.handleTabSwitch.bind(this));
+			$(document).on('click', '.detail-tabs-panel .aips-tab-btn', this.handleTabSwitch.bind(this));
+			$(document).on('keydown', '.detail-tabs-panel .aips-tab-btn', this.handleTabKeydown.bind(this));
 			$(document).on('click', '.aips-dashboard-publish-post', this.handlePublishPost.bind(this));
 			$(document).on('click', '.aips-dashboard-approve-topic', this.handleApproveTopic.bind(this));
 			$(document).on('click', '.aips-dashboard-reject-topic', this.handleRejectTopic.bind(this));
@@ -157,16 +158,53 @@
 		 */
 		handleTabSwitch: function(e) {
 			e.preventDefault();
-			var $btn = $(e.currentTarget);
+			this.activateTab($(e.currentTarget));
+		},
+
+		/**
+		 * Activate a detail tab button and show its panel, scoped to the detail tabs panel.
+		 *
+		 * @param {jQuery} $btn The tab button to activate.
+		 * @return {void}
+		 */
+		activateTab: function($btn) {
+			var $root = $btn.closest('.detail-tabs-panel');
 			var targetId = $btn.attr('aria-controls');
 
-			// Toggle active classes on buttons
-			$('.aips-tab-btn').removeClass('active').attr('aria-selected', 'false');
-			$btn.addClass('active').attr('aria-selected', 'true');
+			$root.find('.aips-tab-btn')
+				.removeClass('active')
+				.attr({ 'aria-selected': 'false', tabindex: '-1' });
+			$btn.addClass('active').attr({ 'aria-selected': 'true', tabindex: '0' });
 
-			// Show the target tab panel and hide the rest
-			$('.aips-tab-panel').hide().removeClass('active');
-			$('#' + targetId).show().addClass('active');
+			$root.find('.aips-tab-panel').hide().removeClass('active').attr('aria-hidden', 'true');
+			$root.find('#' + targetId).show().addClass('active').attr('aria-hidden', 'false');
+		},
+
+		/**
+		 * Arrow/Home/End keyboard navigation for the detail tablist.
+		 *
+		 * @param {Event} e The keydown event.
+		 * @return {void}
+		 */
+		handleTabKeydown: function(e) {
+			var keys = { 37: -1, 39: 1, 36: 'first', 35: 'last' };
+			if (!(e.which in keys)) {
+				return;
+			}
+			var $tabs = $(e.currentTarget).closest('[role="tablist"]').find('.aips-tab-btn');
+			var idx = $tabs.index(e.currentTarget);
+			var move = keys[e.which];
+			if (move === 'first') {
+				idx = 0;
+			} else if (move === 'last') {
+				idx = $tabs.length - 1;
+			} else {
+				idx = (idx + move + $tabs.length) % $tabs.length;
+			}
+			e.preventDefault();
+			var $next = $tabs.eq(idx);
+			this.activateTab($next);
+			$next.trigger('focus');
 		},
 
 		/**
@@ -181,38 +219,44 @@
 			var postId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			if (!confirm('Are you sure you want to publish this post now?')) {
-				return;
-			}
+			AIPS.Utilities.confirm(
+				'Are you sure you want to publish this post now?',
+				'Confirm',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{ label: 'Publish Now', className: 'aips-btn aips-btn-primary', action: function () {
+						var req = $.ajax({
+							url: ajaxurl,
+							type: 'POST',
+							data: {
+								action: 'aips_publish_post',
+								nonce: l10n.nonce,
+								post_id: postId
+							},
+							success: function(response) {
+								if (response.success) {
+									var $tr = $btn.closest('tr');
+									$tr.find('.aips-badge')
+										.removeClass('aips-badge-warning aips-badge-neutral')
+										.addClass('aips-badge-success')
+										.text('Completed');
+									$btn.remove();
+								} else {
+									AIPS.Utilities.showToast(response.data || 'Failed to publish post.', 'error');
+								}
+							},
+							error: function() {
+								AIPS.Utilities.showToast('An error occurred while publishing the post.', 'error');
+							}
+						});
 
-			$btn.text('Publishing...');
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_publish_post',
-					nonce: l10n.nonce,
-					post_id: postId
-				},
-				success: function(response) {
-					if (response.success) {
-						var $tr = $btn.closest('tr');
-						$tr.find('.aips-badge')
-							.removeClass('aips-badge-warning aips-badge-neutral')
-							.addClass('aips-badge-success')
-							.text('Completed');
-						$btn.remove();
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to publish post.', 'error');
-						$btn.text('Publish Now');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while publishing the post.', 'error');
-					$btn.text('Publish Now');
-				}
-			});
+						AIPS.Utilities.withLock($btn, req, {
+							loadingText: 'Publishing...',
+							timeout: 30000
+						});
+					}}
+				]
+			);
 		},
 
 		/**
@@ -227,7 +271,7 @@
 			var topicId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -251,6 +295,11 @@
 					AIPS.Utilities.showToast('An error occurred while approving the topic.', 'error');
 				}
 			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Approving...',
+				timeout: 30000
+			});
 		},
 
 		/**
@@ -265,7 +314,7 @@
 			var topicId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -289,6 +338,11 @@
 					AIPS.Utilities.showToast('An error occurred while rejecting the topic.', 'error');
 				}
 			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Rejecting...',
+				timeout: 30000
+			});
 		},
 
 		/**
@@ -303,9 +357,7 @@
 			var scheduleId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$btn.text('Running...');
-
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -316,16 +368,18 @@
 				success: function(response) {
 					if (response.success) {
 						AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
-						$btn.text('Run Now');
 					} else {
 						AIPS.Utilities.showToast(response.data || 'Failed to trigger schedule.', 'error');
-						$btn.text('Run Now');
 					}
 				},
 				error: function() {
 					AIPS.Utilities.showToast('An error occurred while triggering the schedule.', 'error');
-					$btn.text('Run Now');
 				}
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Running...',
+				timeout: 180000
 			});
 		},
 
@@ -535,7 +589,7 @@
 			$('#aips-input-date-to').attr('min', data.date_from).val(data.date_to);
 
 			// 2. Update Section Headers Meta Title date descriptions
-			$('.aips-section-meta').text('Activity from ' + data.date_from_formatted + ' to ' + data.date_to_formatted);
+			$('.aips-summary-meta').text('Activity from ' + data.date_from_formatted + ' to ' + data.date_to_formatted);
 
 			// 3. Update top-level metrics counters
 			// Card 1: Completed Posts

@@ -90,6 +90,39 @@ class AIPS_Templates_Controller {
         );
     }
 
+    /**
+     * Record a template create/update/delete/clone in History.
+     *
+     * @param string               $event_type  AIPS_History_Event_Type template constant.
+     * @param int                  $template_id Template ID.
+     * @param string               $name        Template name (may be empty).
+     * @param bool                 $success     Whether the operation succeeded.
+     * @param array<string,mixed>  $extra       Extra context stored with the event.
+     * @return void
+     */
+    private function record_template_event($event_type, $template_id, $name, $success, array $extra = array()) {
+        $verbs = array(
+            AIPS_History_Event_Type::TEMPLATE_CREATED => array(__('created', 'ai-post-scheduler'), __('create', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::TEMPLATE_UPDATED => array(__('updated', 'ai-post-scheduler'), __('update', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::TEMPLATE_DELETED => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::TEMPLATE_CLONED  => array(__('cloned', 'ai-post-scheduler'), __('clone', 'ai-post-scheduler')),
+        );
+        $verb = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
+
+        AIPS_History_Event_Recorder::instance()->record_entity_change(
+            $event_type,
+            'template_lifecycle',
+            AIPS_History_Subject::TYPE_TEMPLATE,
+            $template_id,
+            $name,
+            $success,
+            __('Template', 'ai-post-scheduler'),
+            $verb[0],
+            $verb[1],
+            array_merge(array('template_name' => $name), $extra)
+        );
+    }
+
     public function ajax_save_template() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -119,13 +152,17 @@ class AIPS_Templates_Controller {
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
-            'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+            'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
+
+        if ($data['include_sources'] && empty(array_filter(json_decode($data['source_group_ids'], true)))) {
+            AIPS_Ajax_Response::error(__('Select at least one source group when sources are enabled.', 'ai-post-scheduler'));
+        }
 
         // post_type is write-once: only honor it when creating a new template
         // (no template_id yet). Existing templates ignore any post_type sent
@@ -151,6 +188,8 @@ class AIPS_Templates_Controller {
         if ($id) {
             $slicing_notice = $this->maybe_log_template_slicing_notice($id, $data['name'], $data['post_quantity']);
 
+            $this->record_template_event($data['id'] ? AIPS_History_Event_Type::TEMPLATE_UPDATED : AIPS_History_Event_Type::TEMPLATE_CREATED, absint($id), $data['name'], true);
+
             do_action('aips_template_changed', array(
                 'action'        => $data['id'] ? 'updated' : 'created',
                 'template_id'   => absint($id),
@@ -164,6 +203,7 @@ class AIPS_Templates_Controller {
                 'slicing_notice' => $slicing_notice,
             ));
         } else {
+            $this->record_template_event($data['id'] ? AIPS_History_Event_Type::TEMPLATE_UPDATED : AIPS_History_Event_Type::TEMPLATE_CREATED, absint($data['id']), $data['name'], false);
             AIPS_Ajax_Response::error(__('Failed to save template.', 'ai-post-scheduler'));
         }
     }
@@ -190,6 +230,8 @@ class AIPS_Templates_Controller {
         }
 
         if ($this->templates->delete($id)) {
+            $this->record_template_event(AIPS_History_Event_Type::TEMPLATE_DELETED, $id, ($template && !empty($template->name)) ? (string) $template->name : '', true);
+
             do_action('aips_template_changed', array(
                 'action'        => 'deleted',
                 'template_id'   => $id,
@@ -199,6 +241,7 @@ class AIPS_Templates_Controller {
 
             AIPS_Ajax_Response::success(array(), __('Template deleted successfully.', 'ai-post-scheduler'));
         } else {
+            $this->record_template_event(AIPS_History_Event_Type::TEMPLATE_DELETED, $id, ($template && !empty($template->name)) ? (string) $template->name : '', false);
             AIPS_Ajax_Response::error(__('Failed to delete template.', 'ai-post-scheduler'));
         }
     }
@@ -278,6 +321,8 @@ class AIPS_Templates_Controller {
             $mappings_repo = new AIPS_Integration_Mappings_Repository();
             $mappings_repo->clone_template_mappings($id, $new_id);
 
+            $this->record_template_event(AIPS_History_Event_Type::TEMPLATE_CLONED, absint($new_id), $new_data['name'], true, array('cloned_from' => $id));
+
             do_action('aips_template_changed', array(
                 'action'        => 'cloned',
                 'template_id'   => absint($new_id),
@@ -290,6 +335,7 @@ class AIPS_Templates_Controller {
                 'template_id' => $new_id
             ));
         } else {
+            $this->record_template_event(AIPS_History_Event_Type::TEMPLATE_CLONED, $id, $new_data['name'], false, array('cloned_from' => $id));
             AIPS_Ajax_Response::error(__('Failed to clone template.', 'ai-post-scheduler'));
         }
     }
@@ -390,7 +436,7 @@ class AIPS_Templates_Controller {
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
-            'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+            'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
@@ -451,6 +497,7 @@ class AIPS_Templates_Controller {
                 'article_structure' => $structure_name,
                 'sample_topic' => $sample_topic,
                 'include_sources' => !empty($template_data->include_sources),
+                'sources_selection' => $prompt_builder->get_post_content_builder()->get_sources_selection(),
             ),
         );
 

@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
         <!-- Content Panel -->
         <div class="aips-content-panel">
             <div class="aips-panel-body">
-                <form id="aips-dev-scaffold-form">
+                <form id="aips-dev-scaffold-form" data-aips-async="true">
                     <div class="aips-form-section">
                         <h3 class="aips-form-section-title">
                             <span class="dashicons dashicons-admin-tools"></span>

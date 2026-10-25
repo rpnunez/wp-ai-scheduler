@@ -2,7 +2,6 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Description: Schedule AI-generated posts using advanced features & scheduling options.
  * Version: 3.8.0
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
@@ -87,7 +86,7 @@ final class AI_Post_Scheduler {
      * @return array<string,array<string,string>>
      */
     public static function get_cron_events() {
-        return array(
+        $events = array(
             'aips_generate_scheduled_posts' => array(
                 'schedule' => 'hourly',
                 'label'   => __( 'Post Generation', 'ai-post-scheduler' ),
@@ -112,10 +111,6 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Export Cleanup', 'ai-post-scheduler' ),
             ),
-            'aips_fetch_sources' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Sources Fetch', 'ai-post-scheduler' ),
-            ),
             'aips_cleanup_bulk_batch_jobs' => array(
                 'schedule' => 'daily',
                 'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
@@ -125,6 +120,19 @@ final class AI_Post_Scheduler {
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
         );
+
+        // Only include the prune cleanup cron while the feature is actually
+        // enabled, so every consumer of get_cron_events() (activation,
+        // reschedule_missed_cron, diagnostics) naturally skips scheduling a
+        // cron that would otherwise just no-op every time it fires.
+        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_auto_prune_enabled' ) ) {
+            $events['aips_database_prune_cleanup'] = array(
+                'schedule' => sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_telemetry_prune_interval', 'daily' ) ),
+                'label'   => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
+            );
+        }
+
+        return $events;
     }
 
     /**
@@ -280,6 +288,8 @@ final class AI_Post_Scheduler {
             }
         }
         
+        AIPS_Sources_Cron::instance()->schedule();
+        AIPS_Sources_Maintenance::instance();
         flush_rewrite_rules();
 
         $logger->log('Plugin activation finished.');
@@ -319,6 +329,12 @@ final class AI_Post_Scheduler {
         foreach (array_keys(self::get_cron_events()) as $hook) {
             wp_clear_scheduled_hook($hook);
         }
+        foreach (array('aips_fetch_sources', 'aips_fetch_sources_continue', 'aips_sources_archive_maintenance', 'aips_sources_archive_maintenance_continue') as $hook) {
+            wp_clear_scheduled_hook($hook);
+        }
+        // Single events carry per-schedule args, which wp_clear_scheduled_hook()
+        // only matches exactly; wp_unschedule_hook() removes every instance.
+        wp_unschedule_hook(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK);
         flush_rewrite_rules();
     }
 
@@ -355,9 +371,13 @@ final class AI_Post_Scheduler {
      * Registers the most-duplicated singletons to validate the container works
      * correctly before more complex refactors.
      *
+     * Public so tests that call AIPS_Container::clear() (e.g. to isolate
+     * container behavior) can re-register the real bindings afterward and
+     * avoid leaking an empty container into every later test in the process.
+     *
      * @return void
      */
-    private function register_container_bindings() {
+    public function register_container_bindings() {
         $container = AIPS_Container::get_instance();
 
         // Register AIPS_Config (uses get_instance() instead of instance())
@@ -426,6 +446,15 @@ final class AI_Post_Scheduler {
             return AIPS_Telemetry_Repository::instance();
         });
 
+        // Register AIPS_DB_Prune_Repository and AIPS_DB_Prune_Service
+        $container->singleton(AIPS_DB_Prune_Repository::class, function( $container ) {
+            return AIPS_DB_Prune_Repository::instance();
+        });
+
+        $container->singleton(AIPS_DB_Prune_Service::class, function( $container ) {
+            return AIPS_DB_Prune_Service::instance();
+        });
+
         // Register AIPS_Template_Repository
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
@@ -480,6 +509,69 @@ final class AI_Post_Scheduler {
             return new AIPS_Relationships_Repository();
         });
 
+        // Background process registry/manager (start, pause, resume, stop, Heartbeat snapshots)
+        $container->singleton(AIPS_Background_Process_Manager::class, function( $container ) {
+            return new AIPS_Background_Process_Manager();
+        });
+
+        // Register the link index (actual <a href> links in post content)
+        $container->singleton(AIPS_Link_Index_Repository::class, function( $container ) {
+            return new AIPS_Link_Index_Repository();
+        });
+
+        $container->singleton(AIPS_Link_Index_Service::class, function( $container ) {
+            return new AIPS_Link_Index_Service(
+                $container->make(AIPS_Link_Index_Repository::class)
+            );
+        });
+
+        $container->singleton(AIPS_Link_Rules_Service::class, function( $container ) {
+            return new AIPS_Link_Rules_Service();
+        });
+
+        $container->singleton(AIPS_Redirects_Service::class, function( $container ) {
+            return new AIPS_Redirects_Service();
+        });
+
+        $container->singleton(AIPS_Publish_Linking_Service::class, function( $container ) {
+            return new AIPS_Publish_Linking_Service();
+        });
+
+        $container->singleton(AIPS_Silo_Service::class, function( $container ) {
+            return new AIPS_Silo_Service();
+        });
+
+        $container->singleton(AIPS_GSC_Client::class, function( $container ) {
+            return new AIPS_GSC_Client();
+        });
+
+        $container->singleton(AIPS_GSC_Keywords_Service::class, function( $container ) {
+            return new AIPS_GSC_Keywords_Service($container->make(AIPS_GSC_Client::class));
+        });
+
+        $container->singleton(AIPS_Link_Clicks_Repository::class, function( $container ) {
+            return new AIPS_Link_Clicks_Repository();
+        });
+
+        $container->singleton(AIPS_Link_Click_Tracking_Service::class, function( $container ) {
+            return new AIPS_Link_Click_Tracking_Service(null, $container->make(AIPS_Link_Clicks_Repository::class));
+        });
+
+        $container->singleton(AIPS_Autolink_Run_Service::class, function( $container ) {
+            return new AIPS_Autolink_Run_Service(
+                $container->make(AIPS_Inbound_Links_Service::class),
+                $container->make(AIPS_Link_Index_Service::class)
+            );
+        });
+
+        $container->singleton(AIPS_Inbound_Links_Service::class, function( $container ) {
+            return new AIPS_Inbound_Links_Service(
+                null,
+                $container->make(AIPS_Link_Index_Service::class),
+                $container->make(AIPS_Relationships_Repository::class)
+            );
+        });
+
         // Register AIPS_Embeddings_Service
         $container->singleton(AIPS_Embeddings_Service::class, function( $container ) {
             return new AIPS_Embeddings_Service(
@@ -520,6 +612,22 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Config::class),
                 $container->make(AIPS_Logger_Interface::class)
             );
+        });
+
+        // Register AIPS_Similarity_Evaluator
+        $container->singleton(AIPS_Similarity_Evaluator::class, function( $container ) {
+            return new AIPS_Similarity_Evaluator(
+                $container->make(AIPS_Config::class)
+            );
+        });
+        // Register AIPS_Post_Insights_Repository
+        $container->singleton(AIPS_Post_Insights_Repository::class, function( $container ) {
+            return new AIPS_Post_Insights_Repository();
+        });
+
+        // Register AIPS_Post_Insights_Controller
+        $container->singleton(AIPS_Post_Insights_Controller::class, function( $container ) {
+            return new AIPS_Post_Insights_Controller();
         });
     }
 
@@ -601,6 +709,10 @@ final class AI_Post_Scheduler {
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
 
+        // Reconcile source scheduling in every request, including upgrades without activation.
+        AIPS_Sources_Cron::instance();
+        AIPS_Sources_Maintenance::instance();
+
         // Boot request-level telemetry if the option is enabled.
         if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
             AIPS_Telemetry::instance()->boot();
@@ -652,6 +764,73 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
         }, 10, 2);
 
+        // Link index: record the links each published post contains, and turn
+        // links to a deleted post into broken internal links.
+        add_action('save_post', function ($post_id, $post) {
+            if (!is_object($post) || !isset($post->post_status)) {
+                return;
+            }
+            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_post_save($post_id, $post);
+        }, 20, 2);
+
+        add_action('before_delete_post', function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
+            AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
+        });
+
+        // Silos: keep the link index and the "In this guide" cache in step with
+        // pillar, cluster and settings changes (see AIPS_Silo_Service).
+        AIPS_Container::get_instance()->make(AIPS_Silo_Service::class)->register_common_hooks();
+
+        // Generation-time linking: when an AIPS post goes live, link older
+        // related posts to it in the background (see AIPS_Publish_Linking_Service).
+        add_action('transition_post_status', function ($new_status, $old_status, $post) {
+            if ($new_status === 'publish' && $old_status !== 'publish') {
+                AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_transition($new_status, $old_status, $post);
+            }
+        }, 20, 3);
+
+        add_action('aips_post_generated', function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_generated($post_id);
+        }, 20);
+
+        // Re-qualify a post for generation-time linking on its next save, once
+        // an earlier pass's "already linked" flag is cleared (see on_run_undone()
+        // below) — a plain save doesn't fire transition_post_status when the
+        // post was already published.
+        add_action('save_post', function ($post_id, $post) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_saved($post_id, $post);
+        }, 20, 2);
+
+        // Undoing an auto-link run clears the one-time "already linked" flag
+        // for a publish-linking run, so the post can be linked again.
+        add_action('aips_autolink_run_undone', function ($run) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_run_undone($run);
+        });
+
+        // Process pending background indexing queue (single event / cron worker)
+        add_action('aips_process_pending_indexer_queue', function () {
+            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
+        });
+
+        // Background processes: one slice per tick (pause/resume/stop and quota
+        // waits are handled by AIPS_Managed_Background_Process). Registered in every
+        // context, not only wp-cron, so an event fired by WP-CLI or a "run now" tool
+        // is handled rather than consumed with no callback.
+        add_action(AIPS_Managed_Background_Process::TICK_HOOK, function ($process_key) {
+            AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->tick((string) $process_key);
+        }, 10, 1);
+
+        // Background processes: answer Heartbeat polls from the admin bar and
+        // admin pages. Heartbeat requests are AJAX, so this must live here
+        // rather than in boot_admin().
+        add_filter('heartbeat_received', function ($response, $data) {
+            if (empty($data['aips_bg'])) {
+                return $response;
+            }
+            return AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->on_heartbeat_received($response, $data);
+        }, 10, 2);
+
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
@@ -677,6 +856,12 @@ final class AI_Post_Scheduler {
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();
+        });
+        // Single due-schedule events: staggered due schedules and yielded
+        // batches resuming after their cooldown. Runs through the same
+        // claim-first lock as the main tick, never the manual-run path.
+        add_action(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, function($schedule_id) {
+            AIPS_Scheduler::instance()->process_queued_due_schedule((int) $schedule_id);
         });
         add_filter('cron_schedules', function($schedules) {
             return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
@@ -752,6 +937,32 @@ final class AI_Post_Scheduler {
             );
         }, 10, 2);
 
+        // Link index scans: each tick indexes one batch and schedules the next,
+        // so scans can be paused, resumed and cancelled between batches.
+        // Generation-time linking pass for a newly published AIPS post.
+        add_action(AIPS_Publish_Linking_Service::CRON_HOOK, function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->process($post_id);
+        });
+
+        // Scheduled duplicate scan (Settings > Engine > Scheduled Duplicate Scan).
+        add_action(AIPS_Duplicate_Group_Service::CRON_HOOK, function () {
+            (new AIPS_Duplicate_Group_Service())->run_scheduled_scan();
+        });
+
+        // Daily Search Console target keyword sync.
+        add_action(AIPS_GSC_Keywords_Service::CRON_HOOK, function () {
+            AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->sync();
+        });
+
+        add_action(AIPS_Link_Index_Service::SCAN_TICK_HOOK, function( $job_id ) {
+            AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_scan_tick( $job_id );
+        });
+
+        // Bulk auto-link runs: same tick pattern, one batch of target posts per event.
+        add_action(AIPS_Autolink_Run_Service::TICK_HOOK, function( $job_id ) {
+            AIPS_Container::get_instance()->make( AIPS_Autolink_Run_Service::class )->process_tick( $job_id );
+        });
+
         // Async bulk-batch processing: each single event processes one slice of a stored job.
         // Args: job_id, start_index, batch_size, total_quantity, correlation_id.
         add_action('aips_process_bulk_batch', function(
@@ -783,7 +994,11 @@ final class AI_Post_Scheduler {
         $processor->register(
             'author_topic_post',
             function( $topic_id, $job_id, $job ) {
-                return AIPS_Author_Post_Generator::instance()->generate_now( (int) $topic_id );
+                return AIPS_Author_Post_Generator::instance()->generate_now(
+                    (int) $topic_id,
+                    'author_topic_post',
+                    array( 'detail' => sprintf( __( 'Bulk job %s (Author topics)', 'ai-post-scheduler' ), $job_id ) )
+                );
             }
         );
 
@@ -814,7 +1029,10 @@ final class AI_Post_Scheduler {
                 $topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
                 $generator = new AIPS_Generator();
 
-                return $generator->generate_post( $template, null, $topic );
+                return $generator->generate_post( $template, null, $topic, array(
+                    'creation_method' => 'planner_post',
+                    'trigger_context' => array( 'detail' => sprintf( __( 'Bulk job %s (Planner)', 'ai-post-scheduler' ), $job_id ) ),
+                ) );
             }
         );
 
@@ -849,7 +1067,10 @@ final class AI_Post_Scheduler {
                     );
                 }
 
-                $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'cron' );
+                $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'trending_topic_post' );
+                $context->set_trigger_context( array(
+                    'detail' => sprintf( __( 'Bulk job %s (Trending topics)', 'ai-post-scheduler' ), $job_id ),
+                ) );
                 $generator = new AIPS_Generator();
                 $post_id   = $generator->generate_post( $context );
 
@@ -864,10 +1085,32 @@ final class AI_Post_Scheduler {
             }
         );
 
+        // Background bulk-publish from the Pending Review queue. Each slice item is
+        // a draft post ID; AIPS_Post_Review::publish_review_post() runs the same
+        // review-queue guards and wp_publish_post() transition as the synchronous
+        // path. Cron has no current user, so we restore the administrator who
+        // enqueued the job (stored in job options) before the per-post capability
+        // check runs.
+        $processor->register(
+            'review_publish',
+            function( $item, $job_id, $job ) {
+                $acting_user_id = isset( $job->options['history_meta']['acting_user_id'] )
+                    ? (int) $job->options['history_meta']['acting_user_id']
+                    : 0;
+
+                if ( $acting_user_id > 0 && get_current_user_id() !== $acting_user_id ) {
+                    wp_set_current_user( $acting_user_id );
+                }
+
+                return AIPS_Post_Review::instance()->publish_review_post( (int) $item );
+            }
+        );
+
         // Daily cleanup of completed/failed bulk-batch job rows.
         add_action('aips_cleanup_bulk_batch_jobs', function() {
             $store   = new AIPS_Bulk_Batch_Job_Store();
             $deleted = $store->cleanup_old_jobs();
+            $deleted += (new AIPS_Background_Process_Repository())->cleanup_old();
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),
@@ -888,6 +1131,16 @@ final class AI_Post_Scheduler {
             );
         });
 
+        // Database retention & prune maintenance.
+        add_action('aips_database_prune_cleanup', function() {
+            $service = AIPS_Container::get_instance()->make(AIPS_DB_Prune_Service::class);
+            $result  = $service->run_automated_prune();
+            ( new AIPS_Logger() )->log(
+                sprintf( 'Database prune cleanup complete: %s', wp_json_encode( $result ) ),
+                'info'
+            );
+        });
+
         // Lazy-resolve the embeddings worker only when its hook fires.
         add_action('aips_process_author_embeddings', function($args) {
             AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
@@ -895,11 +1148,6 @@ final class AI_Post_Scheduler {
 
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
-
-        // Sources cron: fetch content for sources that have a fetch_interval configured.
-        // AIPS_Sources_Cron::schedule() handles registering the cron event at the
-        // correct recurrence (every_6_hours) during construction.
-        AIPS_Sources_Cron::instance();
 
         // Notification event handler receives generation-failure/quota alerts from cron.
         new AIPS_Notifications();
@@ -986,6 +1234,15 @@ final class AI_Post_Scheduler {
         // Native WordPress post list/editor History links for plugin containers.
         new AIPS_Post_History_UI();
 
+        // "Internal Links" panel in the Classic and Block editors.
+        new AIPS_Internal_Links_Editor_Panel();
+
+        // Keep the duplicate scan cron event in line with its setting.
+        (new AIPS_Duplicate_Group_Service())->ensure_schedule();
+
+        // Keep the daily Search Console sync scheduled while it is connected.
+        AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();
+
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing
         // the object (which would double-register all AJAX hooks).
@@ -1000,6 +1257,8 @@ final class AI_Post_Scheduler {
             new AIPS_Seeder_Admin();
         }
 
+        // Post Insights controller for editor metabox and post list column.
+        new AIPS_Post_Insights_Controller();
     }
 
     /**
@@ -1012,6 +1271,26 @@ final class AI_Post_Scheduler {
      */
     private function boot_frontend() {
         new AIPS_Admin_Bar();
+
+        // Keyword link rules are applied when posts are displayed (after
+        // blocks render, before shortcodes and the Related Posts block).
+        add_filter('the_content', function ($content) {
+            return AIPS_Container::get_instance()->make(AIPS_Link_Rules_Service::class)->filter_content($content);
+        }, 9);
+
+        // Silo pillars get an "In this guide" list of their articles when
+        // displayed (or where the [aips_silo_guide] shortcode is placed).
+        AIPS_Container::get_instance()->make(AIPS_Silo_Service::class)->register_frontend_hooks();
+
+        // Redirects AIPS serves itself (when no redirect plugin handles them).
+        // Runs early so it wins over canonical redirects and 404 handling.
+        add_action('template_redirect', function () {
+            AIPS_Container::get_instance()->make(AIPS_Redirects_Service::class)->maybe_redirect();
+        }, 1);
+
+        // Internal link click tracking (opt-in): tags content links and
+        // registers the aips/v1/link-click beacon endpoint.
+        AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->register_frontend();
     }
 }
 

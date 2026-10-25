@@ -101,15 +101,15 @@ class Test_AIPS_Related_Posts_Service extends WP_UnitTestCase {
 			->getMock();
 
 		$stub_service->method( 'generate_embedding' )->willReturn( array( 0.1, 0.2, 0.3 ) );
-		$stub_service->method( 'find_nearest_neighbors' )->willReturn( array(
-			array( 'id' => $p1, 'similarity' => 0.95 ),
-			array( 'id' => 0, 'similarity' => 0.80 ),
-		) );
+
+		$evaluator = new AIPS_Similarity_Evaluator( null, $this->embeddings_repo, $stub_service );
 
 		$service = new AIPS_Related_Posts_Service(
 			$this->relationships_repo,
 			$this->embeddings_repo,
-			$stub_service
+			$stub_service,
+			null,
+			$evaluator
 		);
 
 		$results = $service->get_related_posts_for_topic( 'Topic Article', 2, 0.50 );

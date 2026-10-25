@@ -14,8 +14,22 @@ $row_classes = array('aips-history-row', 'aips-view-history-logs');
 if ($is_child_row) {
     $row_classes[] = 'aips-history-group-child';
 }
+
+// One status per row: an idle in-progress run is shown as Stalled instead of Processing.
+$display_status = isset($item->effective_status) ? (string) $item->effective_status : (string) $item->status;
+$is_stalled = $display_status === 'stalled';
+$elapsed_label = '';
+if (isset($item->status) && $item->status === 'processing' && !empty($item->created_at)) {
+    $now_ts = AIPS_DateTime::now()->timestamp();
+    $created_ts = (int) $item->created_at;
+    if ($is_stalled && !empty($item->last_activity_at)) {
+        $elapsed_label = sprintf(__('Last activity %s ago', 'ai-post-scheduler'), human_time_diff((int) $item->last_activity_at, $now_ts));
+    } else {
+        $elapsed_label = sprintf(__('Started %s ago', 'ai-post-scheduler'), human_time_diff($created_ts, $now_ts));
+    }
+}
 ?>
-<tr class="<?php echo esc_attr(implode(' ', $row_classes)); ?>" data-id="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>"<?php endif; ?> tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
+<tr class="<?php echo esc_attr(implode(' ', $row_classes)); ?>" data-id="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>" style="display: none;"<?php endif; ?> tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
     <th scope="row" class="check-column">
         <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>">
             <?php esc_html_e('Select Item', 'ai-post-scheduler'); ?>
@@ -23,17 +37,19 @@ if ($is_child_row) {
         <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" class="aips-history-cb" name="history[]" value="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>"<?php endif; ?>>
     </th>
     <td class="column-title">
-        <?php if ($is_child_row): ?>
-        <span class="aips-group-child-indent" aria-hidden="true">&rdsh;&nbsp;</span>
-        <?php endif; ?>
-        <?php $display_title = AIPS_History::get_display_title( $item ); ?>
-        <?php if ($item->post_id): ?>
-        <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
+        <div class="aips-history-title-row">
+            <?php if ($is_child_row): ?>
+            <span class="dashicons dashicons-arrow-right-alt2 aips-history-child-arrow" aria-hidden="true"></span>
+            <?php endif; ?>
+            <?php $display_title = AIPS_History::get_display_title( $item ); ?>
+            <?php if ($item->post_id): ?>
+            <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
+                <strong class="aips-history-title"><?php echo esc_html($display_title); ?></strong>
+            </a>
+            <?php else: ?>
             <strong class="aips-history-title"><?php echo esc_html($display_title); ?></strong>
-        </a>
-        <?php else: ?>
-        <strong class="aips-history-title"><?php echo esc_html($display_title); ?></strong>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
         <?php if (!empty($item->template_name)): ?>
         <span class="aips-history-subtitle"><?php echo esc_html($item->template_name); ?></span>
         <?php elseif (!empty($item->template_id)): ?>
@@ -45,9 +61,8 @@ if ($is_child_row) {
     </td>
     <td class="column-post-type">
         <?php if (!empty($item->post_type)): ?>
-        <?php $post_type_obj = get_post_type_object($item->post_type); ?>
         <span class="aips-badge aips-badge-neutral">
-            <?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : $item->post_type); ?>
+            <?php echo esc_html(AIPS_History::humanize_post_type_label($item->post_type)); ?>
         </span>
         <?php else: ?>
         <span class="aips-meta-text">&mdash;</span>
@@ -56,7 +71,7 @@ if ($is_child_row) {
     <td class="column-status">
         <?php
         $status_class = 'aips-badge ';
-        switch ($item->status) {
+        switch ($display_status) {
             case 'completed':
             case 'indexed':
                 $status_class .= 'aips-badge-success';
@@ -70,14 +85,22 @@ if ($is_child_row) {
                 $status_class .= 'aips-badge-info';
                 $icon = 'update';
                 break;
+            case 'stalled':
+                $status_class .= 'aips-badge-warning aips-stalled-badge';
+                $icon = 'warning';
+                break;
+            case 'partial':
+                $status_class .= 'aips-badge-warning';
+                $icon = 'warning';
+                break;
             default:
                 $status_class .= 'aips-badge-neutral';
                 $icon = 'minus';
         }
         ?>
-        <span class="<?php echo esc_attr($status_class); ?>">
+        <span class="<?php echo esc_attr($status_class); ?>"<?php if ($is_stalled): ?> title="<?php esc_attr_e('This run is still marked in progress but has logged no activity for a while, so it appears stalled.', 'ai-post-scheduler'); ?>"<?php endif; ?>>
             <span class="dashicons dashicons-<?php echo esc_attr($icon); ?>"></span>
-            <?php echo esc_html(ucfirst($item->status)); ?>
+            <?php echo esc_html(ucfirst($display_status)); ?>
         </span>
         <?php if ($item->error_count > 0 || $item->warning_count > 0): ?>
             <span class="aips-history-issue-counts">
@@ -89,7 +112,11 @@ if ($is_child_row) {
     <td class="column-type">
         <strong><?php echo !empty($item->creation_method) ? esc_html(AIPS_History::get_creation_method_label($item->creation_method)) : '&mdash;'; ?></strong>
         <span class="aips-history-activity-meta">
-            <?php if (!empty($item->duration_label)): ?><span><?php echo esc_html($item->duration_label); ?></span><?php endif; ?>
+            <?php if (!empty($item->duration_label)): ?>
+                <span><?php echo esc_html($item->duration_label); ?></span>
+            <?php elseif (!empty($elapsed_label)): ?>
+                <span class="<?php echo $is_stalled ? 'aips-text-warning' : ''; ?>"><?php echo esc_html($elapsed_label); ?></span>
+            <?php endif; ?>
             <?php if ($item->ai_call_count > 0): ?><span><?php echo esc_html(sprintf(_n('%d AI call', '%d AI calls', $item->ai_call_count, 'ai-post-scheduler'), $item->ai_call_count)); ?></span><?php endif; ?>
         </span>
     </td>
@@ -120,7 +147,7 @@ if ($is_child_row) {
                    class="aips-row-action-item"
                    target="_blank"
                    rel="noopener noreferrer">
-                    <?php esc_html_e('View Topic', 'ai-post-scheduler'); ?>
+                    <?php esc_html_e('View Post', 'ai-post-scheduler'); ?>
                 </a>
                 <?php endif; ?>
                 <?php if ($item->status === 'failed' && $item->template_id): ?>

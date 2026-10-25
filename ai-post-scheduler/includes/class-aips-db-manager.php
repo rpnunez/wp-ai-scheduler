@@ -39,6 +39,10 @@ class AIPS_DB_Manager {
         'aips_content_audits',
         'aips_prompt_profiles',
         'aips_prompt_profile_versions',
+        'aips_link_index',
+        'aips_link_clicks',
+        'aips_redirects',
+        'aips_background_processes',
     );
 
     public function __construct() {
@@ -106,6 +110,10 @@ class AIPS_DB_Manager {
         $table_content_audits       = $tables['aips_content_audits'];
         $table_prompt_profiles      = $tables['aips_prompt_profiles'];
         $table_prompt_profile_versions = $tables['aips_prompt_profile_versions'];
+        $table_link_index           = $tables['aips_link_index'];
+        $table_link_clicks          = $tables['aips_link_clicks'];
+        $table_redirects            = $tables['aips_redirects'];
+        $table_background_processes = $tables['aips_background_processes'];
 
         $sql = array();
 
@@ -120,6 +128,7 @@ class AIPS_DB_Manager {
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(64) DEFAULT NULL,
+            record_kind varchar(16) NOT NULL DEFAULT 'event',
             status varchar(50) NOT NULL DEFAULT 'pending',
             prompt text,
             generated_title varchar(500),
@@ -140,6 +149,9 @@ class AIPS_DB_Manager {
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
+            KEY template_status (template_id, status),
+            KEY post_status (post_id, status),
+            KEY record_kind_status_post (record_kind, status, post_id),
             KEY correlation_id (correlation_id)
         ) $charset_collate;";
 
@@ -152,11 +164,11 @@ class AIPS_DB_Manager {
             timestamp bigint(20) unsigned NOT NULL DEFAULT 0,
             details longtext,
             PRIMARY KEY  (id),
-            KEY history_id (history_id),
             KEY history_type_id (history_type_id),
-            KEY history_id_type (history_id, history_type_id),
+            KEY history_type_timestamp (history_id, history_type_id, timestamp),
             KEY event_status (event_status),
-            KEY event_type_timestamp (event_type, timestamp)
+            KEY event_type_timestamp (event_type, timestamp),
+            KEY timestamp (timestamp)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_campaigns (
@@ -321,6 +333,7 @@ class AIPS_DB_Manager {
             post_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
             post_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
             post_generation_is_active tinyint(1) DEFAULT 1,
+            post_generation_lock bigint(20) unsigned NOT NULL DEFAULT 0,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
@@ -342,8 +355,9 @@ class AIPS_DB_Manager {
             source_group_ids text DEFAULT NULL,
             prompt_profile_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
-            topic_auto_approval_mode varchar(50) DEFAULT 'manual',
+            topic_auto_approval_mode varchar(50) DEFAULT 'inherit',
             topic_auto_approval_min_score int DEFAULT 70,
+            topic_auto_approval_min_relevance int DEFAULT 65,
             topic_auto_approval_max_similarity decimal(5,4) DEFAULT 0.8000,
             topic_auto_approval_fallback varchar(50) DEFAULT 'pending',
             is_active tinyint(1) DEFAULT 1,
@@ -354,7 +368,8 @@ class AIPS_DB_Manager {
             KEY prompt_profile_id (prompt_profile_id),
             KEY is_active (is_active),
           KEY topic_generation_next_run (topic_generation_next_run),
-          KEY post_generation_next_run (post_generation_next_run)
+          KEY post_generation_next_run (post_generation_next_run),
+          KEY post_generation_lock (post_generation_lock)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_post_slices (
@@ -379,12 +394,14 @@ class AIPS_DB_Manager {
             status varchar(20) DEFAULT 'pending',
             score int DEFAULT 50,
             metadata longtext,
+            claimed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             generated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
             KEY author_id (author_id),
             KEY status (status),
+            KEY claimed_at (claimed_at),
             KEY generated_at (generated_at),
             KEY author_id_status (author_id, status),
             KEY status_score_reviewed (status, score, reviewed_at)
@@ -455,7 +472,10 @@ class AIPS_DB_Manager {
             is_active tinyint(1) NOT NULL DEFAULT 1,
             fetch_interval varchar(50) DEFAULT NULL,
             last_fetched_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            next_fetch_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_fetch_attempt_at bigint(20) unsigned DEFAULT NULL,
+            last_fetch_status varchar(20) DEFAULT NULL,
+            last_fetch_error text DEFAULT NULL,
+            next_fetch_at bigint(20) unsigned DEFAULT NULL,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
@@ -523,7 +543,7 @@ class AIPS_DB_Manager {
             object_post_type varchar(50) DEFAULT '',
             object_id bigint(20) NOT NULL,
             content_hash varchar(64) DEFAULT '',
-            embedding longtext NOT NULL,
+            embedding mediumblob NOT NULL,
             dimensions int(11) DEFAULT 0,
             model varchar(100) DEFAULT '',
             indexed_at bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -558,6 +578,14 @@ class AIPS_DB_Manager {
             similarity_score float NOT NULL DEFAULT 0,
             anchor_text varchar(500) DEFAULT '',
             status varchar(20) NOT NULL DEFAULT 'pending',
+            origin varchar(20) NOT NULL DEFAULT 'outbound',
+            confidence decimal(5,4) NOT NULL DEFAULT 0.0000,
+            anchor_source varchar(20) NOT NULL DEFAULT '',
+            match_context text,
+            batch_id varchar(36) DEFAULT NULL,
+            before_snippet longtext,
+            after_snippet longtext,
+            applied_at bigint(20) unsigned NOT NULL DEFAULT 0,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
@@ -565,7 +593,67 @@ class AIPS_DB_Manager {
             KEY target_post_id (target_post_id),
             KEY status (status),
             KEY similarity_score (similarity_score),
+            KEY target_status (target_post_id, status),
+            KEY origin (origin),
+            KEY batch_id (batch_id),
             UNIQUE KEY source_target (source_post_id, target_post_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_link_index (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_post_id bigint(20) NOT NULL,
+            target_post_id bigint(20) NOT NULL DEFAULT 0,
+            target_url text NOT NULL,
+            url_hash char(32) NOT NULL DEFAULT '',
+            anchor_text varchar(500) DEFAULT '',
+            link_type varchar(10) NOT NULL DEFAULT 'internal',
+            rel varchar(100) DEFAULT '',
+            is_nofollow tinyint(1) NOT NULL DEFAULT 0,
+            inserted_by_aips tinyint(1) NOT NULL DEFAULT 0,
+            position int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY source_post_id (source_post_id),
+            KEY target_link (target_post_id, link_type),
+            KEY url_hash (url_hash),
+            KEY link_type (link_type)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_link_clicks (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_post_id bigint(20) NOT NULL,
+            target_post_id bigint(20) NOT NULL,
+            day_start bigint(20) unsigned NOT NULL DEFAULT 0,
+            clicks int(11) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY link_day (source_post_id, target_post_id, day_start),
+            KEY target_day (target_post_id, day_start),
+            KEY day_start (day_start)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_redirects (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_path varchar(500) NOT NULL,
+            source_hash char(32) NOT NULL,
+            target_url text NOT NULL,
+            target_post_id bigint(20) NOT NULL DEFAULT 0,
+            status_code smallint(3) NOT NULL DEFAULT 301,
+            provider varchar(20) NOT NULL DEFAULT 'aips',
+            provider_ref varchar(191) NOT NULL DEFAULT '',
+            provider_error varchar(255) NOT NULL DEFAULT '',
+            origin varchar(30) NOT NULL DEFAULT 'manual',
+            origin_ref bigint(20) NOT NULL DEFAULT 0,
+            enabled tinyint(1) NOT NULL DEFAULT 1,
+            hits bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_hit_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_by bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY source_hash (source_hash),
+            KEY provider (provider),
+            KEY origin (origin, origin_ref),
+            KEY target_post_id (target_post_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_affiliate_links (
@@ -660,6 +748,29 @@ class AIPS_DB_Manager {
             KEY job_type (job_type),
             KEY status (status),
             KEY created_at (created_at),
+            KEY status_updated (status, updated_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_background_processes (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            process_key varchar(64) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'running',
+            total int(11) NOT NULL DEFAULT 0,
+            processed int(11) NOT NULL DEFAULT 0,
+            failed int(11) NOT NULL DEFAULT 0,
+            cursor_id bigint(20) unsigned NOT NULL DEFAULT 0,
+            ai_calls_used int(11) NOT NULL DEFAULT 0,
+            ai_calls_budget int(11) NOT NULL DEFAULT 0,
+            options_json longtext,
+            message varchar(500) DEFAULT NULL,
+            next_run_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_tick_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            started_by bigint(20) unsigned NOT NULL DEFAULT 0,
+            started_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            finished_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY process_status (process_key, status),
             KEY status_updated (status, updated_at)
         ) $charset_collate;";
 
@@ -929,6 +1040,17 @@ class AIPS_DB_Manager {
                 array( 'updated_at', false ),
             ),
             'aips_affiliate_links' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_link_index' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_link_clicks' => array(
+                array( 'day_start', false ),
+            ),
+            'aips_redirects' => array(
+                array( 'last_hit_at', false ),
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),
