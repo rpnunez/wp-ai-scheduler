@@ -134,4 +134,20 @@ interface AIPS_History_Repository_Interface {
 	 * @return bool
 	 */
 	public function post_has_history_and_completed($post_id);
+
+	/**
+	 * Retrieve AI error records and associated history metadata.
+	 *
+	 * @param array $args Filter and pagination arguments.
+	 * @return array{items:array,total:int,total_pages:int,page:int,per_page:int}
+	 */
+	public function get_ai_errors($args = array());
+
+	/**
+	 * Retrieve a single AI error record with full details by history log ID.
+	 *
+	 * @param int $log_id History log row ID.
+	 * @return array|null
+	 */
+	public function get_ai_error_by_id($log_id);
 }

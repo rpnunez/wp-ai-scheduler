@@ -8737,3 +8737,173 @@ tr.aips-row-details > td {
 	flex-wrap: wrap;
 	justify-content: flex-end;
 }
+
+/* ==========================================================================
+   Diagnostics: AI Errors Tab, Deep Links & Modal
+   ========================================================================== */
+.aips-ai-errors-deep-link {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.aips-ai-errors-deep-link:hover,
+.aips-ai-errors-deep-link:focus {
+	color: var(--aips-primary, #2271b1);
+}
+
+.aips-tab-ai-errors .aips-filter-bar {
+	margin-bottom: var(--aips-space-4);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+}
+
+.aips-ai-errors-summary-bar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: var(--aips-space-3);
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-600);
+}
+
+.aips-ai-errors-summary-bar-bottom {
+	margin-top: var(--aips-space-4);
+	margin-bottom: 0;
+	justify-content: flex-end;
+}
+
+.aips-ai-errors-table-wrap {
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	background: #fff;
+	overflow: hidden;
+}
+
+.aips-ai-error-row {
+	cursor: pointer;
+	transition: background-color var(--aips-transition-fast);
+}
+
+.aips-ai-error-row:hover {
+	background-color: var(--aips-gray-50);
+}
+
+.aips-ai-error-cell-msg {
+	font-family: var(--aips-font-mono, monospace);
+	font-size: var(--aips-text-xs);
+	color: var(--aips-danger, #d63638);
+	max-width: 450px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.aips-ai-error-cell-title {
+	font-weight: 500;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.aips-ai-error-cell-run-id {
+	font-size: 11px;
+	color: var(--aips-gray-500);
+}
+
+.aips-ai-error-run-card {
+	background: var(--aips-gray-50);
+	border: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-md);
+	padding: var(--aips-space-3) var(--aips-space-4);
+	margin-bottom: var(--aips-space-4);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--aips-space-3);
+}
+
+.aips-ai-error-run-card-label {
+	font-size: 11px;
+	text-transform: uppercase;
+	font-weight: 600;
+	color: var(--aips-gray-600);
+	margin-bottom: 4px;
+}
+
+.aips-ai-error-run-card-title {
+	font-size: var(--aips-text-md);
+	font-weight: 600;
+	color: var(--aips-gray-900);
+}
+
+.aips-ai-error-run-card-meta {
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-600);
+	margin-top: 4px;
+}
+
+.aips-ai-error-modal-header-badge {
+	font-size: 11px;
+	text-transform: uppercase;
+	padding: 2px 8px;
+	border-radius: var(--aips-radius-sm);
+	background: #fcf0f1;
+	color: var(--aips-danger, #d63638);
+	border: 1px solid #f8d7da;
+}
+
+.aips-ai-error-modal-notice {
+	margin: 0;
+	padding: 12px 16px;
+	border-left-width: 4px;
+	background: #fff5f5;
+	word-break: break-word;
+}
+
+.aips-ai-error-code-block {
+	background: var(--aips-gray-50);
+	border: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-sm);
+	padding: var(--aips-space-3);
+	font-family: var(--aips-font-mono, monospace);
+	font-size: var(--aips-text-xs);
+	max-height: 200px;
+	overflow-y: auto;
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.aips-ai-error-diagnostic-block {
+	background: #2c3338;
+	color: #f0f0f1;
+	border-radius: var(--aips-radius-sm);
+	padding: var(--aips-space-3);
+	font-family: var(--aips-font-mono, monospace);
+	font-size: 11px;
+	max-height: 180px;
+	overflow-y: auto;
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.aips-ai-error-modal-section-title {
+	font-size: var(--aips-text-xs);
+	font-weight: 600;
+	color: var(--aips-gray-900);
+	margin-bottom: var(--aips-space-2);
+}
+
+.aips-ai-error-modal-section-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: var(--aips-space-2);
+}
+
+.aips-ai-error-modal-section {
+	margin-bottom: var(--aips-space-4);
+}
