@@ -2,7 +2,8 @@
 /**
  * Author Topics Controller
  *
- * Handles AJAX requests for author topic management (approve, reject, edit, delete, etc.).
+ * Handles AJAX requests for author topic management by delegating to dedicated
+ * query, mutation, and job handlers.
  *
  * @package AI_Post_Scheduler
  * @since 1.8.0
@@ -97,16 +98,38 @@ class AIPS_Author_Topics_Controller {
 	private $relationships_repo;
 
 	/**
+	 * @var AIPS_Author_Topics_Query_Handler
+	 */
+	private $query_handler;
+
+	/**
+	 * @var AIPS_Author_Topics_Mutation_Handler
+	 */
+	private $mutation_handler;
+
+	/**
+	 * @var AIPS_Author_Topics_Job_Handler
+	 */
+	private $job_handler;
+
+	/**
 	 * Initialize the controller.
 	 *
-	 * @param AIPS_Similarity_Evaluator|null     $similarity_evaluator   Similarity evaluator.
-	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
-	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
-	 * @param AIPS_Job_Scheduler|null            $job_scheduler          Job scheduler service.
-	 * @param AIPS_Embeddings_Repository|null    $embeddings_repo        Embeddings repository.
-	 * @param AIPS_Relationships_Repository|null $relationships_repo     Relationships repository.
+	 * @param AIPS_Similarity_Evaluator|null         $similarity_evaluator   Similarity evaluator.
+	 * @param AIPS_History_Repository_Interface|null $history_repository    History repository.
+	 * @param AIPS_Bulk_Generator_Service|null       $bulk_generator_service Bulk generator service.
+	 * @param AIPS_Job_Scheduler|null                $job_scheduler          Job scheduler service.
+	 * @param AIPS_Embeddings_Repository|null        $embeddings_repo        Embeddings repository.
+	 * @param AIPS_Relationships_Repository|null     $relationships_repo     Relationships repository.
 	 */
-	public function __construct($similarity_evaluator = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null, ?AIPS_Embeddings_Repository $embeddings_repo = null, ?AIPS_Relationships_Repository $relationships_repo = null) {
+	public function __construct(
+		$similarity_evaluator = null,
+		?AIPS_History_Repository_Interface $history_repository = null,
+		$bulk_generator_service = null,
+		?AIPS_Job_Scheduler $job_scheduler = null,
+		?AIPS_Embeddings_Repository $embeddings_repo = null,
+		?AIPS_Relationships_Repository $relationships_repo = null
+	) {
 		$container = AIPS_Container::get_instance();
 		$this->repository             = new AIPS_Author_Topics_Repository();
 		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
@@ -116,1144 +139,127 @@ class AIPS_Author_Topics_Controller {
 		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
 		$this->similarity_evaluator   = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());
 		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
-		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
+		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service($this->history_service);
 		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
 		$this->embeddings_repo        = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->relationships_repo     = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
 
-		// Register AJAX endpoints
-		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
-		add_action('wp_ajax_aips_reject_topic', array($this, 'ajax_reject_topic'));
-		add_action('wp_ajax_aips_edit_topic', array($this, 'ajax_edit_topic'));
-		add_action('wp_ajax_aips_delete_topic', array($this, 'ajax_delete_topic'));
-		add_action('wp_ajax_aips_generate_post_from_topic', array($this, 'ajax_generate_post_from_topic'));
-		add_action('wp_ajax_aips_get_topic_logs', array($this, 'ajax_get_topic_logs'));
-		add_action('wp_ajax_aips_get_topic_feedback', array($this, 'ajax_get_topic_feedback'));
-		add_action('wp_ajax_aips_bulk_approve_topics', array($this, 'ajax_bulk_approve_topics'));
-		add_action('wp_ajax_aips_bulk_reject_topics', array($this, 'ajax_bulk_reject_topics'));
-		add_action('wp_ajax_aips_bulk_delete_topics', array($this, 'ajax_bulk_delete_topics'));
-		add_action('wp_ajax_aips_bulk_generate_topics', array($this, 'ajax_bulk_generate_topics'));
-		add_action('wp_ajax_aips_bulk_delete_feedback', array($this, 'ajax_bulk_delete_feedback'));
-		add_action('wp_ajax_aips_regenerate_post', array($this, 'ajax_regenerate_post'));
-		add_action('wp_ajax_aips_delete_generated_post', array($this, 'ajax_delete_generated_post'));
-		add_action('wp_ajax_aips_get_similar_topics', array($this, 'ajax_get_similar_topics'));
-		add_action('wp_ajax_aips_suggest_related_topics', array($this, 'ajax_suggest_related_topics'));
-		add_action('wp_ajax_aips_compute_topic_embeddings', array($this, 'ajax_compute_topic_embeddings'));
-		add_action('wp_ajax_aips_get_generation_queue', array($this, 'ajax_get_generation_queue'));
-		add_action('wp_ajax_aips_bulk_generate_from_queue', array($this, 'ajax_bulk_generate_from_queue'));
-		add_action('wp_ajax_aips_get_bulk_generate_estimate', array($this, 'ajax_get_bulk_generate_estimate'));
-		add_action('wp_ajax_aips_save_author_topic', array($this, 'ajax_save_author_topic'));
-	}
-
-	/**
-	 * AJAX handler for approving a topic.
-	 */
-	public function ajax_approve_topic() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-		$reason = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
-		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
-		$source = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'UI';
-
-		if (!$topic_id) {
-			AIPS_Ajax_Response::error(__('Invalid topic ID.', 'ai-post-scheduler'));
-		}
-
-		$result = $this->repository->update_status($topic_id, 'approved', get_current_user_id());
-
-		if ($result) {
-			// Get topic details for logging
-			$topic = $this->repository->get_by_id($topic_id);
-
-			// Log the approval
-			$this->logs_repository->log_approval($topic_id, get_current_user_id());
-
-			// Record feedback with reason context.
-			$this->feedback_repository->record_approval($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
-
-			// Apply reward for approval
-			$this->penalty_service->apply_reward($topic_id, $reason_category);
-
-			// Log to activity feed via the canonical event recorder.
-			if ($topic) {
-				$recorder = new AIPS_History_Event_Recorder($this->history_service);
-				$recorder->record(
-					AIPS_History_Event::success(
-						AIPS_History_Event_Type::TOPIC_APPROVED,
-						sprintf(
-							__('Topic approved: "%s"', 'ai-post-scheduler'),
-							$topic->topic_title
-						),
-						AIPS_History_Subject::of(AIPS_History_Subject::TYPE_TOPIC, $topic_id, $topic->topic_title),
-						array(
-							'topic_id' => $topic_id,
-							'topic_title' => $topic->topic_title,
-							'author_id' => $topic->author_id,
-							'reason' => $reason,
-							'reason_category' => $reason_category,
-							'source' => $source,
-							'approved_by' => get_current_user_id(),
-						)
-					)
-				);
-			}
-
-			AIPS_Ajax_Response::success(array(), __('Topic approved successfully.', 'ai-post-scheduler'));
-		} else {
-			AIPS_Ajax_Response::error(__('Failed to approve topic.', 'ai-post-scheduler'));
-		}
-	}
-
-	/**
-	 * AJAX handler for rejecting a topic.
-	 */
-	public function ajax_reject_topic() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-		$reason = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
-		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
-		$source = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'UI';
-
-		if (!$topic_id) {
-			AIPS_Ajax_Response::error(__('Invalid topic ID.', 'ai-post-scheduler'));
-		}
-
-		$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
-
-		if ($result) {
-			// Purge topic vector embedding and relationships upon rejection
-			$this->embeddings_repo->delete('topic', $topic_id);
-			$this->relationships_repo->delete_for_object('topic', $topic_id);
-
-			// Get topic details for logging
-			$topic = $this->repository->get_by_id($topic_id);
-
-			// Log the rejection
-			$this->logs_repository->log_rejection($topic_id, get_current_user_id());
-
-			// Record feedback with reason context.
-			$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
-
-			// Apply penalty based on reason category
-			$this->penalty_service->apply_penalty($topic_id, $reason_category);
-
-			// Log to activity feed via the canonical event recorder.
-			if ($topic) {
-				$recorder = new AIPS_History_Event_Recorder($this->history_service);
-				$recorder->record(
-					AIPS_History_Event::failure(
-						AIPS_History_Event_Type::TOPIC_REJECTED,
-						sprintf(
-							__('Topic rejected: "%s"', 'ai-post-scheduler'),
-							$topic->topic_title
-						),
-						AIPS_History_Subject::of(AIPS_History_Subject::TYPE_TOPIC, $topic_id, $topic->topic_title),
-						array(
-							'topic_id' => $topic_id,
-							'topic_title' => $topic->topic_title,
-							'author_id' => $topic->author_id,
-							'reason' => $reason,
-							'reason_category' => $reason_category,
-							'source' => $source,
-							'rejected_by' => get_current_user_id(),
-						)
-					)
-				);
-			}
-
-			AIPS_Ajax_Response::success(array(), __('Topic rejected successfully.', 'ai-post-scheduler'));
-		} else {
-			AIPS_Ajax_Response::error(__('Failed to reject topic.', 'ai-post-scheduler'));
-		}
-	}
-
-	/**
-	 * AJAX handler for editing a topic.
-	 */
-	public function ajax_edit_topic() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-		$new_title = isset($_POST['topic_title']) ? sanitize_text_field(wp_unslash($_POST['topic_title'])) : '';
-
-		if (!$topic_id || empty($new_title)) {
-			AIPS_Ajax_Response::error(__('Invalid topic ID or title.', 'ai-post-scheduler'));
-		}
-
-		// Get old title for logging
-		$topic = $this->repository->get_by_id($topic_id);
-		$old_title = $topic ? $topic->topic_title : '';
-
-		$result = $this->repository->update($topic_id, array('topic_title' => $new_title));
-
-		if ($result) {
-			// Log the edit
-			$this->logs_repository->log_edit(
-				$topic_id,
-				get_current_user_id(),
-				"Changed from: {$old_title}"
-			);
-
-			AIPS_Ajax_Response::success(array(), __('Topic updated successfully.', 'ai-post-scheduler'));
-		} else {
-			AIPS_Ajax_Response::error(__('Failed to update topic.', 'ai-post-scheduler'));
-		}
-	}
-
-	/**
-	 * AJAX handler for creating/saving an author topic (e.g. from Content Auditor).
-	 */
-	public function ajax_save_author_topic() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$author_id   = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$topic_title = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : (isset($_POST['topic_title']) ? sanitize_text_field(wp_unslash($_POST['topic_title'])) : '');
-		$status      = isset($_POST['status']) ? sanitize_key(wp_unslash($_POST['status'])) : 'approved';
-
-		if (!$author_id || empty($topic_title)) {
-			AIPS_Ajax_Response::error(__('Author ID and topic title are required.', 'ai-post-scheduler'));
-		}
-
-		$allowed_statuses = array('pending', 'approved', 'rejected');
-		if (!in_array($status, $allowed_statuses, true)) {
-			$status = 'approved';
-		}
-
-		$topic_data = array(
-			'author_id'    => $author_id,
-			'topic_title'  => $topic_title,
-			'topic_prompt' => isset($_POST['topic_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['topic_prompt'])) : '',
-			'status'       => $status,
-			'score'        => isset($_POST['score']) ? absint($_POST['score']) : 50,
-			'metadata'     => isset($_POST['metadata']) ? sanitize_text_field(wp_unslash($_POST['metadata'])) : '',
+		$this->query_handler = new AIPS_Author_Topics_Query_Handler(
+			$this->repository,
+			$this->logs_repository,
+			$this->feedback_repository,
+			$this->similarity_evaluator,
+			$this->history_repository
 		);
 
-		$topic_id = $this->repository->create($topic_data);
-
-		if ($topic_id) {
-			$this->logs_repository->log(
-				$topic_id,
-				'created',
-				sprintf(
-					/* translators: %s: topic title */
-					__('Topic "%s" created manually.', 'ai-post-scheduler'),
-					$topic_title
-				),
-				get_current_user_id()
-			);
-
-			AIPS_Ajax_Response::success(
-				array(
-					'topic_id'    => $topic_id,
-					'author_id'   => $author_id,
-					'topic_title' => $topic_title,
-					'status'      => $status,
-				),
-				__('Topic saved successfully.', 'ai-post-scheduler')
-			);
-		} else {
-			AIPS_Ajax_Response::error(__('Failed to save topic.', 'ai-post-scheduler'));
-		}
-	}
-
-	/**
-	 * AJAX handler for deleting a topic.
-	 */
-	public function ajax_delete_topic() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-
-		if (!$topic_id) {
-			AIPS_Ajax_Response::error(__('Invalid topic ID.', 'ai-post-scheduler'));
-		}
-
-		$result = $this->repository->delete($topic_id);
-
-		if ($result) {
-			$this->embeddings_repo->delete('topic', $topic_id);
-			$this->relationships_repo->delete_for_object('topic', $topic_id);
-			AIPS_Ajax_Response::success(array(), __('Topic deleted successfully.', 'ai-post-scheduler'));
-		} else {
-			AIPS_Ajax_Response::error(__('Failed to delete topic.', 'ai-post-scheduler'));
-		}
-	}
-
-	/**
-	 * AJAX handler for generating a post from a topic.
-	 */
-	public function ajax_generate_post_from_topic() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-
-		if (!$topic_id) {
-			AIPS_Ajax_Response::error(__('Invalid topic ID.', 'ai-post-scheduler'));
-		}
-
-		// Check if topic is approved
-		$topic = $this->repository->get_by_id($topic_id);
-		if (!$topic || $topic->status !== 'approved') {
-			AIPS_Ajax_Response::error(__('Only approved topics can generate posts.', 'ai-post-scheduler'));
-		}
-
-		// Create history container for manual generation
-		$history = $this->history_service->create('manual_generation', array(
-			'topic_id' => $topic_id,
-			'user_id' => get_current_user_id(),
-			'source' => 'manual_ui',
-			'trigger' => 'ajax_generate_post_from_topic'
-		));
-
-		AIPS_Generation_Trigger::record(
-			$history,
-			array(
-				'event'    => __('Manual post generation from topic', 'ai-post-scheduler'),
-				'topic_id' => (int) $topic_id,
-				'topic'    => (string) $topic->topic_title,
-			),
-			'manual'
+		$this->mutation_handler = new AIPS_Author_Topics_Mutation_Handler(
+			$this->repository,
+			$this->logs_repository,
+			$this->feedback_repository,
+			$this->penalty_service,
+			$this->history_service,
+			$this->embeddings_repo,
+			$this->relationships_repo
 		);
 
-		$history->record_user_action(
-			'manual_topic_generation',
-			sprintf(__('User manually triggered post generation from topic: %s', 'ai-post-scheduler'), $topic->topic_title),
-			array('topic_id' => $topic_id, 'topic_title' => $topic->topic_title)
+		$this->job_handler = new AIPS_Author_Topics_Job_Handler(
+			$this->repository,
+			$this->post_generator,
+			$this->history_service,
+			$this->bulk_generator_service
 		);
 
-		$result = $this->post_generator->generate_now($topic_id);
-
-		if (is_wp_error($result)) {
-			$history->record_error(
-				sprintf(__('Manual post generation failed for topic: %s', 'ai-post-scheduler'), $topic->topic_title),
-				array('topic_id' => $topic_id, 'error_code' => 'GENERATION_FAILED'),
-				$result
-			);
-			$history->complete_failure($result->get_error_message(), array('topic_id' => $topic_id));
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
-		}
-
-		$history->record('activity', __('Post generated successfully from topic', 'ai-post-scheduler'), null, null, array(
-			'post_id' => $result,
-			'topic_id' => $topic_id
-		));
-		$history->complete_success(array('post_id' => $result, 'topic_id' => $topic_id));
-
-		AIPS_Ajax_Response::success(array(
-			'message' => __('Post generated successfully.', 'ai-post-scheduler'),
-			'post_id' => $result
-		));
+		// Canonical hook registration
+		AIPS_Ajax_Registry::register_controller_actions($this);
 	}
 
-	/**
-	 * AJAX handler for getting topic logs.
-	 */
+	// --- Query endpoints ---
+
 	public function ajax_get_topic_logs() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-
-		if (!$topic_id) {
-			AIPS_Ajax_Response::error(__('Invalid topic ID.', 'ai-post-scheduler'));
-		}
-
-		// Ensure topic exists before fetching logs
-		$topic = $this->repository->get_by_id($topic_id);
-		if (!$topic) {
-			AIPS_Ajax_Response::error(__('Topic not found.', 'ai-post-scheduler'));
-		}
-
-		$logs = $this->logs_repository->get_by_topic($topic_id, 200);
-		foreach ($logs as &$log) {
-			if ($log->user_id) {
-				$user = get_user_by('id', $log->user_id);
-				$log->user_name = $user ? $user->display_name : 'Unknown';
-			}
-		}
-
-		AIPS_Ajax_Response::success(array('logs' => $logs));
+		return $this->query_handler->get_topic_logs();
 	}
 
-	/**
-	 * AJAX handler for bulk approving topics.
-	 */
-	public function ajax_bulk_approve_topics() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
-
-		if (empty($topic_ids)) {
-			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
-		}
-
-		$reason          = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
-		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
-		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
-
-		$topic_ids     = array_values(array_unique(array_filter($topic_ids)));
-		$user_id       = get_current_user_id();
-		$update_result = $this->repository->update_status_bulk($topic_ids, 'approved', $user_id);
-
-		$success_count = 0;
-		$failed_count  = 0;
-
-		if (false === $update_result) {
-			$failed_count = count($topic_ids);
-		} else {
-			$existing_ids = $this->repository->get_existing_ids($topic_ids);
-			foreach ($topic_ids as $topic_id) {
-				if (!in_array($topic_id, $existing_ids, true)) {
-					$failed_count++;
-					continue;
-				}
-
-				$this->logs_repository->log_approval($topic_id, $user_id);
-
-				// Record feedback and apply reward if feedback context is provided
-				if (!empty($reason) || !empty($reason_category)) {
-					$this->feedback_repository->record_approval($topic_id, $user_id, $reason, '', $reason_category, $source);
-					$this->penalty_service->apply_reward($topic_id, $reason_category);
-				}
-
-				$success_count++;
-			}
-		}
-
-		$message = sprintf(__('%d topics approved successfully.', 'ai-post-scheduler'), $success_count);
-		if ($failed_count > 0) {
-			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
-		}
-
-		AIPS_Ajax_Response::success(array(
-			'message'       => $message,
-			'success_count' => $success_count,
-			'failed_count'  => $failed_count,
-		));
-	}
-
-	/**
-	 * AJAX handler for bulk rejecting topics.
-	 */
-	public function ajax_bulk_reject_topics() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
-
-		if (empty($topic_ids)) {
-			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
-		}
-
-		$reason          = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
-		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
-		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
-
-		$topic_ids     = array_values(array_unique(array_filter($topic_ids)));
-		$user_id       = get_current_user_id();
-		$update_result = $this->repository->update_status_bulk($topic_ids, 'rejected', $user_id);
-
-		$success_count = 0;
-		$failed_count  = 0;
-
-		if (false === $update_result) {
-			$failed_count = count($topic_ids);
-		} else {
-			$existing_ids = $this->repository->get_existing_ids($topic_ids);
-			foreach ($topic_ids as $topic_id) {
-				if (!in_array($topic_id, $existing_ids, true)) {
-					$failed_count++;
-					continue;
-				}
-
-				$this->embeddings_repo->delete('topic', $topic_id);
-				$this->relationships_repo->delete_for_object('topic', $topic_id);
-				$this->logs_repository->log_rejection($topic_id, $user_id);
-
-				// Record feedback and apply penalty if feedback context is provided
-				if (!empty($reason) || !empty($reason_category)) {
-					$this->feedback_repository->record_rejection($topic_id, $user_id, $reason, '', $reason_category, $source);
-					$this->penalty_service->apply_penalty($topic_id, $reason_category);
-				}
-
-				$success_count++;
-			}
-		}
-
-		$message = sprintf(__('%d topics rejected successfully.', 'ai-post-scheduler'), $success_count);
-		if ($failed_count > 0) {
-			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
-		}
-
-		AIPS_Ajax_Response::success(array(
-			'message'       => $message,
-			'success_count' => $success_count,
-			'failed_count'  => $failed_count,
-		));
-	}
-
-	/**
-	 * AJAX handler for bulk deleting topics.
-	 */
-	public function ajax_bulk_delete_topics() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
-
-		if (empty($topic_ids)) {
-			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
-		}
-
-		// Create history container for bulk delete operation
-		$history = $this->history_service->create('bulk_delete', array(
-			'user_id' => get_current_user_id(),
-			'source' => 'manual_ui',
-			'trigger' => 'ajax_bulk_delete_topics',
-			'entity_type' => 'topics',
-			'entity_count' => count($topic_ids)
-		));
-
-		$history->record_user_action(
-			'bulk_delete_topics',
-			sprintf(__('User initiated bulk delete for %d topics', 'ai-post-scheduler'), count($topic_ids)),
-			array('topic_ids' => $topic_ids, 'topic_count' => count($topic_ids))
-		);
-
-		$success_count = 0;
-		$failed_count  = 0;
-		foreach ($topic_ids as $topic_id) {
-			$result = $this->repository->delete($topic_id);
-			if ($result) {
-				$this->embeddings_repo->delete('topic', $topic_id);
-				$this->relationships_repo->delete_for_object('topic', $topic_id);
-				$success_count++;
-			} else {
-				$failed_count++;
-				$history->record('warning', sprintf(__('Failed to delete topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id));
-			}
-		}
-
-		$history->record('activity', sprintf(__('Deleted %d topics', 'ai-post-scheduler'), $success_count), null, null, array(
-			'deleted_count' => $success_count,
-			'requested_count' => count($topic_ids)
-		));
-
-		$message = sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), $success_count);
-		if ($failed_count > 0) {
-			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
-			$history->complete_success(array('deleted_count' => $success_count, 'failed_count' => $failed_count));
-		} else {
-			$history->complete_success(array('deleted_count' => $success_count));
-		}
-
-		AIPS_Ajax_Response::success(array(
-			'message'       => $message,
-			'success_count' => $success_count,
-			'failed_count'  => $failed_count,
-		));
-	}
-
-	/**
-	 * AJAX handler for regenerating a post.
-	 */
-	public function ajax_regenerate_post() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-
-		if (!$post_id || !$topic_id) {
-			AIPS_Ajax_Response::error(__('Invalid post or topic ID.', 'ai-post-scheduler'));
-		}
-
-		// Create history container for regeneration
-		$history = $this->history_service->create('manual_regeneration', array(
-			'user_id' => get_current_user_id(),
-			'source' => 'manual_ui',
-			'trigger' => 'ajax_regenerate_post',
-			'post_id' => $post_id,
-			'topic_id' => $topic_id
-		));
-
-		AIPS_Generation_Trigger::record(
-			$history,
-			array(
-				'event'    => __('Manual post regeneration', 'ai-post-scheduler'),
-				'post_id'  => (int) $post_id,
-				'topic_id' => (int) $topic_id,
-			),
-			'manual_regeneration'
-		);
-
-		$history->record_user_action(
-			'regenerate_post',
-			sprintf(__('User initiated post regeneration for post ID %d from topic ID %d', 'ai-post-scheduler'), $post_id, $topic_id),
-			array('post_id' => $post_id, 'topic_id' => $topic_id)
-		);
-
-		$result = $this->post_generator->regenerate_post($post_id, $topic_id);
-
-		if (is_wp_error($result)) {
-			$history->record_error(
-				sprintf(__('Post regeneration failed for post ID %d', 'ai-post-scheduler'), $post_id),
-				array('post_id' => $post_id, 'topic_id' => $topic_id, 'error_code' => 'REGENERATION_FAILED'),
-				$result
-			);
-			$history->complete_failure($result->get_error_message(), array('post_id' => $post_id, 'topic_id' => $topic_id));
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
-		}
-
-		$history->record('activity', __('Post regenerated successfully', 'ai-post-scheduler'), null, null, array(
-			'post_id' => $result,
-			'original_post_id' => $post_id,
-			'topic_id' => $topic_id
-		));
-		$history->complete_success(array('post_id' => $result));
-
-		AIPS_Ajax_Response::success(array(
-			'message' => __('Post regenerated successfully.', 'ai-post-scheduler'),
-			'post_id' => $result
-		));
-	}
-
-	/**
-	 * AJAX handler for deleting a generated post.
-	 */
-	public function ajax_delete_generated_post() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
-
-		if (!$post_id) {
-			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
-		}
-
-		$result = wp_delete_post($post_id, true);
-
-		if ($result) {
-			AIPS_Ajax_Response::success(array(), __('Post deleted successfully.', 'ai-post-scheduler'));
-		} else {
-			AIPS_Ajax_Response::error(__('Failed to delete post.', 'ai-post-scheduler'));
-		}
-	}
-
-	/**
-	 * AJAX handler for getting topic feedback.
-	 */
 	public function ajax_get_topic_feedback() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-
-		if (!$topic_id) {
-			AIPS_Ajax_Response::error(__('Invalid topic ID.', 'ai-post-scheduler'));
-		}
-
-		$feedback = $this->feedback_repository->get_by_topic($topic_id);
-
-		// Get user display names
-		foreach ($feedback as $item) {
-			if ($item->user_id) {
-				$user = get_userdata($item->user_id);
-				$item->user_name = $user ? $user->display_name : __('Unknown', 'ai-post-scheduler');
-			} else {
-				$item->user_name = __('System', 'ai-post-scheduler');
-			}
-		}
-
-		AIPS_Ajax_Response::success(array('feedback' => $feedback));
+		return $this->query_handler->get_topic_feedback();
 	}
 
-	/**
-	 * AJAX handler for getting similar topics.
-	 */
 	public function ajax_get_similar_topics() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_id  = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
-		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$limit     = isset($_POST['limit']) ? absint($_POST['limit']) : 5;
-
-		if (!$topic_id || !$author_id) {
-			AIPS_Ajax_Response::error(__('Invalid topic or author ID.', 'ai-post-scheduler'));
-		}
-
-		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
-			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
-			: new AIPS_Similarity_Evaluator();
-
-		$similar_topics = $similarity_evaluator->find_similar_topics($topic_id, $author_id, $limit);
-
-		// Enrich with topic details
-		foreach ($similar_topics as &$item) {
-			if (isset($item['id'])) {
-				$topic = $this->repository->get_by_id($item['id']);
-				if ($topic) {
-					$item['topic_title'] = $topic->topic_title;
-					$item['status']      = $topic->status;
-				}
-			}
-		}
-
-		AIPS_Ajax_Response::success(array('similar_topics' => $similar_topics));
+		return $this->query_handler->get_similar_topics();
 	}
 
-	/**
-	 * AJAX handler for suggesting related topics.
-	 */
 	public function ajax_suggest_related_topics() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$limit     = isset($_POST['limit']) ? absint($_POST['limit']) : 10;
-
-		if (!$author_id) {
-			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
-		}
-
-		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
-			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
-			: new AIPS_Similarity_Evaluator();
-
-		$suggestions = $similarity_evaluator->suggest_related_topics($author_id, $limit);
-
-		AIPS_Ajax_Response::success(array('suggestions' => $suggestions));
+		return $this->query_handler->suggest_related_topics();
 	}
 
-	/**
-	 * AJAX handler for computing topic embeddings.
-	 *
-	 * Starts the "Author Topic Embeddings" background process (for one author, or
-	 * every author when author_id is 0) instead of computing inline. The process
-	 * runs under the background process manager, so it respects the embeddings
-	 * rate limits and can be paused or stopped from Diagnostics > Background
-	 * Processes.
-	 */
-	public function ajax_compute_topic_embeddings() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		if (!AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true)) {
-			AIPS_Ajax_Response::error(__('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
-		}
-
-		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-
-		$result = AIPS_Container::get_instance()
-			->make(AIPS_Background_Process_Manager::class)
-			->control(AIPS_Author_Embeddings_Process::KEY, AIPS_Background_Process_Manager::ACTION_START, array('author_id' => $author_id));
-
-		if (is_wp_error($result)) {
-			$code = $result->get_error_code();
-
-			if ('aips_bg_nothing_to_do' === $code) {
-				AIPS_Ajax_Response::success(array(
-					'message'      => __('Every topic already has an embedding.', 'ai-post-scheduler'),
-					'queued_count' => 0,
-				));
-			}
-
-			if ('aips_bg_already_open' === $code) {
-				$run        = ( new AIPS_Background_Process_Repository() )->get_open(AIPS_Author_Embeddings_Process::KEY);
-				$run_author = ($run && isset($run->options['author_id'])) ? (int) $run->options['author_id'] : 0;
-
-				// A paused run processes nothing until it is resumed.
-				if ($run && AIPS_Background_Process_Repository::STATUS_PAUSED === $run->status) {
-					AIPS_Ajax_Response::error(__('Topic embeddings are paused. Resume the run from Diagnostics > Background Processes to continue.', 'ai-post-scheduler'));
-				}
-
-				// The open run covers one other author, or a single author while all were asked for.
-				if ($run && 0 !== $run_author && $run_author !== $author_id) {
-					AIPS_Ajax_Response::error(__('Embeddings for another author are already being processed. Wait for that run to finish, or stop it from Diagnostics > Background Processes, then try again.', 'ai-post-scheduler'));
-				}
-
-				AIPS_Ajax_Response::success(array(
-					'message'      => __('Topic embeddings are already being processed. See Diagnostics > Background Processes.', 'ai-post-scheduler'),
-					'queued_count' => 0,
-				));
-			}
-
-			AIPS_Ajax_Response::error($result->get_error_message());
-		}
-
-		AIPS_Ajax_Response::success(array(
-			'message'      => sprintf(
-				/* translators: %d: number of topics queued. */
-				_n(
-					'Queued embeddings for %d topic. Processing runs in the background and can be paused from Diagnostics > Background Processes.',
-					'Queued embeddings for %d topics. Processing runs in the background and can be paused from Diagnostics > Background Processes.',
-					(int) $result['total'],
-					'ai-post-scheduler'
-				),
-				(int) $result['total']
-			),
-			'queued_count' => (int) $result['total'],
-		));
-	}
-
-	/**
-	 * AJAX handler for getting all approved topics for the generation queue.
-	 */
 	public function ajax_get_generation_queue() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topics = $this->repository->get_all_approved_for_queue();
-
-		AIPS_Ajax_Response::success(array('topics' => $topics));
+		return $this->query_handler->get_generation_queue();
 	}
 
-	/**
-	 * AJAX handler for bulk generating posts from queue topics.
-	 *
-	 * Delegates to AIPS_Bulk_Generator_Service via _do_bulk_generate_topics().
-	 * The `aips_bulk_run_now_limit` filter and history logging are handled there.
-	 */
-	public function ajax_bulk_generate_from_queue() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
-
-		if (empty($topic_ids)) {
-			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
-		}
-
-		$this->_do_bulk_generate_topics(
-			$topic_ids,
-			array(
-				'history_type' => 'bulk_generation',
-				'history_meta' => array( 'topic_count' => count( $topic_ids ) ),
-				'trigger_name' => 'ajax_bulk_generate_from_queue',
-				'user_action'  => 'bulk_generation',
-				'user_message' => sprintf(
-					/* translators: %d: number of topics */
-					__( 'User initiated bulk generation for %d topics', 'ai-post-scheduler' ),
-					count( $topic_ids )
-				),
-				'error_formatter' => function ( $topic_id, $msg ) {
-					/* translators: 1: topic ID, 2: error message */
-					return sprintf( __( 'Topic ID %1$d: %2$s', 'ai-post-scheduler' ), $topic_id, $msg );
-				},
-			)
-		);
-	}
-
-	/**
-	 * AJAX handler for bulk generating posts from topics.
-	 *
-	 * Delegates to AIPS_Bulk_Generator_Service via _do_bulk_generate_topics().
-	 * The `aips_bulk_run_now_limit` filter and history logging are handled there.
-	 */
-	public function ajax_bulk_generate_topics() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
-
-		if (empty($topic_ids)) {
-			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
-		}
-
-		$this->_do_bulk_generate_topics(
-			$topic_ids,
-			array(
-				'history_type' => 'bulk_generate',
-				'history_meta' => array( 'entity_type' => 'topics', 'entity_count' => count( $topic_ids ) ),
-				'trigger_name' => 'ajax_bulk_generate_topics',
-				'user_action'  => 'bulk_generate_topics',
-				'user_message' => sprintf(
-					/* translators: %d: number of topics */
-					__( 'User initiated bulk generation for %d topics', 'ai-post-scheduler' ),
-					count( $topic_ids )
-				),
-				'error_formatter' => function ( $topic_id, $msg ) {
-					/* translators: 1: topic ID, 2: error message */
-					return sprintf( __( 'Topic ID %1$d: %2$s', 'ai-post-scheduler' ), $topic_id, $msg );
-				},
-			)
-		);
-	}
-
-	/**
-	 * Shared bulk generation driver used by ajax_bulk_generate_topics() and
-	 * ajax_bulk_generate_from_queue().
-	 *
-	 * Delegates the batch harness (limit enforcement, loop, history) to
-	 * AIPS_Bulk_Generator_Service and emits the JSON response.
-	 *
-	 * @param int[]  $topic_ids Sanitized topic IDs to process.
-	 * @param array  $options   Options forwarded to AIPS_Bulk_Generator_Service::run().
-	 */
-	private function _do_bulk_generate_topics( array $topic_ids, array $options ): void {
-		$post_generator = $this->post_generator;
-
-		// Merge in async queue support: large batches are dispatched to cron workers.
-		$options = array_merge(
-			array( 'queue_job_type' => 'author_topic_post' ),
-			$options
-		);
-
-		$result = $this->bulk_generator_service->run(
-			$topic_ids,
-			function ( $topic_id ) use ( $post_generator ) {
-				return $post_generator->generate_now( $topic_id );
-			},
-			$options
-		);
-
-		// Async queued path: large batch dispatched to cron workers.
-		if ( $result->was_queued ) {
-			AIPS_Ajax_Response::success(array(
-				'message' => sprintf(
-					/* translators: %d: number of topics */
-					__( 'Bulk generation queued for %d topics. Posts will be created in the background.', 'ai-post-scheduler' ),
-					count( $topic_ids )
-				),
-				'queued'        => true,
-				'job_id'        => $result->job_id,
-				'success_count' => 0,
-				'failed_count'  => 0,
-				'errors'        => array(),
-			));
-			return;
-		}
-
-		if ( $result->was_limited ) {
-			AIPS_Ajax_Response::error(array(
-				'message' => sprintf(
-					/* translators: 1: selected count, 2: max allowed */
-					__( 'Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation.', 'ai-post-scheduler' ),
-					$result->failed_count,
-					$result->max_bulk
-				),
-			));
-			return;
-		}
-
-		$message = sprintf(
-			/* translators: %d: number of posts */
-			__( '%d post(s) generated successfully.', 'ai-post-scheduler' ),
-			$result->success_count
-		);
-		if ( $result->failed_count > 0 ) {
-			$message .= ' ' . sprintf(
-				/* translators: %d: number of failures */
-				__( '%d failed.', 'ai-post-scheduler' ),
-				$result->failed_count
-			);
-		}
-
-		AIPS_Ajax_Response::success(array(
-			'message'       => $message,
-			'success_count' => $result->success_count,
-			'failed_count'  => $result->failed_count,
-			'errors'        => $result->errors,
-		));
-	}
-
-	/**
-	 * AJAX handler for bulk deleting feedback items.
-	 */
-	public function ajax_bulk_delete_feedback() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$feedback_ids = isset($_POST['feedback_ids']) && is_array($_POST['feedback_ids']) ? array_map('absint', $_POST['feedback_ids']) : array();
-
-		if (empty($feedback_ids)) {
-			AIPS_Ajax_Response::error(__('No feedback items selected.', 'ai-post-scheduler'));
-		}
-
-		// Create history container for bulk delete operation
-		$history = $this->history_service->create('bulk_delete_feedback', array(
-			'user_id' => get_current_user_id(),
-			'source' => 'manual_ui',
-			'trigger' => 'ajax_bulk_delete_feedback',
-			'entity_type' => 'feedback',
-			'entity_count' => count($feedback_ids)
-		));
-
-		$history->record_user_action(
-			'bulk_delete_feedback',
-			sprintf(__('User initiated bulk delete for %d feedback items', 'ai-post-scheduler'), count($feedback_ids)),
-			array('feedback_ids' => $feedback_ids, 'feedback_count' => count($feedback_ids))
-		);
-
-		$success_count = 0;
-		$failed_count  = 0;
-		foreach ($feedback_ids as $feedback_id) {
-			$result = $this->feedback_repository->delete($feedback_id);
-			if ($result) {
-				$success_count++;
-			} else {
-				$failed_count++;
-				$history->record('warning', sprintf(__('Failed to delete feedback ID %d', 'ai-post-scheduler'), $feedback_id), null, null, array('feedback_id' => $feedback_id));
-			}
-		}
-
-		$history->record('activity', sprintf(__('Deleted %d feedback items', 'ai-post-scheduler'), $success_count), null, null, array(
-			'deleted_count' => $success_count,
-			'requested_count' => count($feedback_ids)
-		));
-
-		$message = sprintf(__('%d feedback item(s) deleted successfully.', 'ai-post-scheduler'), $success_count);
-		if ($failed_count > 0) {
-			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
-			$history->complete_success(array('deleted_count' => $success_count, 'failed_count' => $failed_count));
-		} else {
-			$history->complete_success(array('deleted_count' => $success_count));
-		}
-
-		AIPS_Ajax_Response::success(array(
-			'message'       => $message,
-			'success_count' => $success_count,
-			'failed_count'  => $failed_count,
-		));
-	}
-
-	/**
-	 * AJAX handler that returns a per-post generation time estimate for the
-	 * bulk-generate progress bar.
-	 *
-	 * Reads up to 20 of the most recently stored `_aips_post_generation_total_time`
-	 * post meta values (written by AIPS_Author_Post_Generator::generate_now()) and
-	 * returns their average as `per_post_seconds`. Falls back to a conservative
-	 * default of 30 seconds when no historical data is available.
-	 */
 	public function ajax_get_bulk_generate_estimate() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+		return $this->query_handler->get_bulk_generate_estimate();
+	}
 
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+	// --- Mutation endpoints ---
 
-		// Use the history repository to get the estimate based on historical performance
-		$estimate           = $this->history_repository->get_estimated_generation_time(20);
+	public function ajax_approve_topic() {
+		return $this->mutation_handler->approve_topic();
+	}
 
-		$per_post_seconds   = $estimate['per_post_seconds'];
-		$sample_size        = $estimate['sample_size'];
+	public function ajax_reject_topic() {
+		return $this->mutation_handler->reject_topic();
+	}
 
-		AIPS_Ajax_Response::success(array(
-			'per_post_seconds' => $per_post_seconds,
-			'sample_size'      => $sample_size,
-		));
+	public function ajax_edit_topic() {
+		return $this->mutation_handler->edit_topic();
+	}
+
+	public function ajax_save_author_topic() {
+		return $this->mutation_handler->save_author_topic();
+	}
+
+	public function ajax_delete_topic() {
+		return $this->mutation_handler->delete_topic();
+	}
+
+	public function ajax_bulk_approve_topics() {
+		return $this->mutation_handler->bulk_approve_topics();
+	}
+
+	public function ajax_bulk_reject_topics() {
+		return $this->mutation_handler->bulk_reject_topics();
+	}
+
+	public function ajax_bulk_delete_topics() {
+		return $this->mutation_handler->bulk_delete_topics();
+	}
+
+	public function ajax_bulk_delete_feedback() {
+		return $this->mutation_handler->bulk_delete_feedback();
+	}
+
+	public function ajax_delete_generated_post() {
+		return $this->mutation_handler->delete_generated_post();
+	}
+
+	// --- Job endpoints ---
+
+	public function ajax_generate_post_from_topic() {
+		return $this->job_handler->generate_post_from_topic();
+	}
+
+	public function ajax_regenerate_post() {
+		return $this->job_handler->regenerate_post();
+	}
+
+	public function ajax_compute_topic_embeddings() {
+		return $this->job_handler->compute_topic_embeddings();
+	}
+
+	public function ajax_bulk_generate_from_queue() {
+		return $this->job_handler->bulk_generate_from_queue();
+	}
+
+	public function ajax_bulk_generate_topics() {
+		return $this->job_handler->bulk_generate_topics();
 	}
 }
