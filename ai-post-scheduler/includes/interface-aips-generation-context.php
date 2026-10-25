@@ -54,6 +54,20 @@ interface AIPS_Generation_Context {
 	public function get_title_prompt();
 
 	/**
+	 * Get the slug prompt for AI slug generation.
+	 *
+	 * @return string|null Slug generation prompt or null if not applicable.
+	 */
+	public function get_slug_prompt();
+
+	/**
+	 * Check if slug generation is enabled.
+	 *
+	 * @return bool True if post slug should be generated.
+	 */
+	public function should_generate_slug();
+
+	/**
 	 * Get the image prompt for featured image generation.
 	 *
 	 * @return string|null Image prompt or null if not applicable.

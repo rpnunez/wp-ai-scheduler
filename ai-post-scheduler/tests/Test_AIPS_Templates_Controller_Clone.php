@@ -64,6 +64,8 @@ class Test_AIPS_Templates_Controller_Clone extends WP_UnitTestCase {
 		$source->featured_image_source = 'ai_prompt';
 		$source->featured_image_unsplash_keywords = '';
 		$source->featured_image_media_ids = '';
+		$source->generate_slug = 1;
+		$source->slug_prompt = 'custom-slug-prompt';
 		$source->post_status = 'draft';
 		$source->post_type = 'product_review';
 		$source->post_category = array();
@@ -92,6 +94,8 @@ class Test_AIPS_Templates_Controller_Clone extends WP_UnitTestCase {
 		$this->assertTrue($response['success']);
 		$this->assertNotNull($this->templates_stub->saved_data);
 		$this->assertSame('product_review', $this->templates_stub->saved_data['post_type']);
+		$this->assertSame(1, $this->templates_stub->saved_data['generate_slug']);
+		$this->assertSame('custom-slug-prompt', $this->templates_stub->saved_data['slug_prompt']);
 	}
 
 	public function test_clone_duplicates_integration_field_mappings() {
@@ -107,6 +111,8 @@ class Test_AIPS_Templates_Controller_Clone extends WP_UnitTestCase {
 		$source->featured_image_source = 'ai_prompt';
 		$source->featured_image_unsplash_keywords = '';
 		$source->featured_image_media_ids = '';
+		$source->generate_slug = 1;
+		$source->slug_prompt = 'custom-slug-prompt';
 		$source->post_status = 'draft';
 		$source->post_type = 'recipe';
 		$source->post_category = array();

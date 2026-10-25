@@ -62,6 +62,11 @@ class AIPS_Prompt_Builder {
     private $post_excerpt_builder;
 
 	/**
+	 * @var AIPS_Prompt_Builder_Post_Slug Post slug builder instance
+	 */
+	private $post_slug_builder;
+
+	/**
 	 * @var AIPS_Prompt_Builder_Post_Featured_Image Post featured image builder instance
 	 */
 	private $post_featured_image_builder;
@@ -212,6 +217,20 @@ class AIPS_Prompt_Builder {
      */
 	public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '') {
 		return $this->get_post_title_builder()->build($template_or_context, $topic, $voice, $content);
+	}
+
+	/**
+	 * Builds the complete prompt for slug generation.
+	 *
+	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+	 * @param string|null                    $topic               Optional topic to be injected into prompts.
+	 * @param object|null                    $voice               Optional voice object with overrides.
+	 * @param string                         $content             Generated article content used as context.
+	 * @param string                         $title               Generated article title used as context.
+	 * @return string The complete slug generation prompt.
+	 */
+	public function build_slug_prompt($template_or_context, $topic = null, $voice = null, $content = '', $title = '') {
+		return $this->get_post_slug_builder()->build($template_or_context, $topic, $voice, $content, $title);
 	}
 
     /**
@@ -490,6 +509,12 @@ INSTRUCTIONS
         // Build image prompt if enabled
         $image_prompt_processed = $this->get_post_featured_image_builder()->build($template_data, $sample_topic);
 
+        // Build slug prompt if enabled
+        $slug_prompt = '';
+        if (!empty($template_data->generate_slug)) {
+            $slug_prompt = $this->get_post_slug_builder()->build($template_data, $sample_topic, $voice, $sample_content, $sample_title);
+        }
+
         // Get voice name if applicable
         $voice_name = '';
         if ($voice && isset($voice->name)) {
@@ -510,6 +535,7 @@ INSTRUCTIONS
                 'content' => $content_prompt,
                 'title' => $title_prompt,
                 'excerpt' => $excerpt_prompt,
+                'slug' => $slug_prompt,
                 'image' => $image_prompt_processed,
             ),
             'metadata' => array(
@@ -591,6 +617,19 @@ INSTRUCTIONS
 		}
 
 		return $this->post_featured_image_builder;
+	}
+
+	/**
+	 * Get the dedicated post slug prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Slug
+	 */
+	public function get_post_slug_builder() {
+		if (null === $this->post_slug_builder) {
+			$this->post_slug_builder = new AIPS_Prompt_Builder_Post_Slug($this->template_processor);
+		}
+
+		return $this->post_slug_builder;
 	}
 
     /**

@@ -130,6 +130,54 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$this->assertSame('A Title', $post_manager->created_post_data['title']);
 	}
 
+	public function test_metadata_turn_includes_slug_when_enabled() {
+		update_option('aips_conversational_generation', 1);
+		update_option('aips_conversational_metadata_turn', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array('title' => 'A Combined Title', 'excerpt' => 'A combined excerpt.', 'slug' => 'widgets-slug-guide'),
+		);
+
+		$context = $this->make_context('scheduled', true);
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		$this->assertSame('widgets-slug-guide', $post_manager->created_post_data['slug']);
+		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_slug']);
+	}
+
+	public function test_slug_generation_failure_marks_component_failed_and_draft_status() {
+		update_option('aips_conversational_generation', 0);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		// Body, Title, Excerpt, then Slug returns empty string (failure)
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', ''));
+		$ai_service->conversation_supported = false;
+
+		$context = $this->make_context('scheduled', true);
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_slug']);
+		$this->assertSame('draft', $post_manager->created_post_data['post_status']);
+	}
+
+	public function test_slug_generation_wp_error_marks_component_failed_and_draft_status() {
+		update_option('aips_conversational_generation', 0);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		// Body, Title, Excerpt, then Slug returns WP_Error (provider failure)
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', new WP_Error('provider_error', 'API error')));
+		$ai_service->conversation_supported = false;
+
+		$context = $this->make_context('scheduled', true);
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_slug']);
+		$this->assertSame('draft', $post_manager->created_post_data['post_status']);
+	}
+
 	public function test_set_conversation_is_ignored_when_the_feature_is_off() {
 		$ai_service = $this->make_service(array('An excerpt.'));
 		$ai_service->conversation_supported = true;
@@ -193,6 +241,24 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		return $post_manager;
 	}
 
+	private function run_generation_with_context($ai_service, $context) {
+		$post_manager = new AIPS_Test_Conversational_Post_Manager();
+
+		$generator = new AIPS_Generator(
+			null,
+			$ai_service,
+			null,
+			null,
+			null,
+			$post_manager,
+			new AIPS_Test_Conversational_History_Service()
+		);
+
+		$generator->generate_post($context);
+
+		return $post_manager;
+	}
+
 	/**
 	 * @param string[] $text_responses Ordered generate_text() responses.
 	 * @return AIPS_Test_Conversational_AI_Service
@@ -224,7 +290,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		);
 	}
 
-	private function make_context($creation_method = 'scheduled') {
+	private function make_context($creation_method = 'scheduled', $generate_slug = false) {
 		$template = (object) array(
 			'id'                      => 321,
 			'name'                    => 'Conversational Test',
@@ -232,6 +298,8 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 			'title_prompt'            => 'Write the post title.',
 			'image_prompt'            => '',
 			'generate_featured_image' => false,
+			'generate_slug'           => $generate_slug ? 1 : 0,
+			'slug_prompt'             => '',
 			'post_status'             => 'draft',
 			'post_type'               => 'post',
 			'post_category'           => '',

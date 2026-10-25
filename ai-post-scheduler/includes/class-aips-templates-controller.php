@@ -133,6 +133,7 @@ class AIPS_Templates_Controller {
         }
 
         $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
+        $generate_slug = isset($_POST['generate_slug']) ? $_POST['generate_slug'] : 0;
 
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
@@ -140,10 +141,12 @@ class AIPS_Templates_Controller {
             'description' => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
             'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '',
             'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field(wp_unslash($_POST['title_prompt'])) : '',
+            'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['slug_prompt'])) : '',
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
             'post_quantity' => isset($_POST['post_quantity']) ? absint($_POST['post_quantity']) : 1,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
+            'generate_slug' => $this->normalize_boolean_flag($generate_slug),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
@@ -302,6 +305,8 @@ class AIPS_Templates_Controller {
             'featured_image_source' => $template->featured_image_source,
             'featured_image_unsplash_keywords' => $template->featured_image_unsplash_keywords,
             'featured_image_media_ids' => $template->featured_image_media_ids,
+            'generate_slug' => isset($template->generate_slug) ? $template->generate_slug : 0,
+            'slug_prompt' => isset($template->slug_prompt) ? $template->slug_prompt : '',
             'post_status' => $template->post_status,
             'post_type' => isset($template->post_type) ? $template->post_type : 'post',
             'post_category' => $template->post_category,
