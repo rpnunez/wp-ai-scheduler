@@ -165,5 +165,11 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		public function post_has_history_and_completed($post_id) {
 			return isset($this->history_by_post[$post_id]);
 		}
+		public function get_ai_errors($args = array()) {
+			return array('items' => array(), 'total' => 0, 'total_pages' => 1, 'page' => 1, 'per_page' => 20);
+		}
+		public function get_ai_error_by_id($log_id) {
+			return null;
+		}
 	}
 }

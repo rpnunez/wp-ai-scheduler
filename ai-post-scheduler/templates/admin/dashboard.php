@@ -106,7 +106,23 @@ $page_context = AIPS_Admin_Page_Context::resolve('ai-post-scheduler');
 					<span class="aips-stat-label"><?php esc_html_e('AI Requests & Calls', 'ai-post-scheduler'); ?></span>
 					<strong class="aips-stat-value"><?php echo esc_html($ai_calls_in_period); ?></strong>
 					<span class="aips-stat-sub-meta">
-						<?php echo sprintf(__('Error Rate: %s%% (%d AI call errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
+						<?php
+						$ai_errors_url = add_query_arg(
+							array(
+								'page'      => 'aips-diagnostics',
+								'tab'       => 'ai-errors',
+								'date_from' => !empty($from_ts) ? AIPS_DateTime::fromTimestamp((int) $from_ts)->format('Y-m-d') : '',
+								'date_to'   => !empty($to_ts) ? AIPS_DateTime::fromTimestamp((int) $to_ts)->format('Y-m-d') : '',
+							),
+							admin_url('admin.php')
+						);
+						echo sprintf(
+							__('Error Rate: %1$s%% (<a href="%2$s" class="aips-ai-errors-deep-link">%3$d AI call errors</a>)', 'ai-post-scheduler'),
+							esc_html($ai_error_rate_in_period),
+							esc_url($ai_errors_url),
+							(int) $ai_errors_in_period
+						);
+						?>
 					</span>
 				</div>
 			</div>

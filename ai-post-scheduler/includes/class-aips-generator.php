@@ -1526,6 +1526,48 @@ class AIPS_Generator {
         $featured_image_result = null;
 
         if ($featured_image_source === 'unsplash') {
+            if (!$this->image_service->has_unsplash_access_key()) {
+                $component_success = false;
+                $skip_message = __('Unsplash API key is missing, skipped featured image generation', 'ai-post-scheduler');
+                $this->logger->log($skip_message, 'warning');
+
+                if ($this->current_history) {
+                    $this->current_history->record(
+                        'warning',
+                        $skip_message,
+                        array('source' => 'unsplash'),
+                        null,
+                        array('component' => 'featured_image', 'reason' => 'unsplash_key_missing')
+                    );
+                    $this->current_history->record(
+                        'metric_generation_result',
+                        'Featured image generation metric snapshot',
+                        array(
+                            'outcome'          => 'failed',
+                            'duration_seconds' => 0,
+                            'image_attempted'  => true,
+                            'image_success'    => false,
+                            'image_source'     => 'unsplash',
+                        ),
+                        null,
+                        array('component' => 'featured_image')
+                    );
+                }
+
+                do_action('aips_integration_error', array(
+                    'title'          => __('Unsplash Integration Error', 'ai-post-scheduler'),
+                    'error_message'  => __('Featured image generation attempt requested with Unsplash, but there is no API key set.', 'ai-post-scheduler'),
+                    'message'        => __('Featured image generation attempt requested with Unsplash, but there is no API key set.', 'ai-post-scheduler'),
+                    'error_code'     => 'unsplash_key_missing',
+                    'request_type'   => 'featured_image_unsplash',
+                    'dedupe_key'     => 'integration_error_unsplash_key_missing',
+                    'dedupe_window'  => 1800,
+                    'url'            => admin_url('admin.php?page=aips-settings#aips_api_keys_section'),
+                ));
+
+                return null;
+            }
+
             $keywords = $context->get_unsplash_keywords();
             $topic_str = $context->get_topic();
 

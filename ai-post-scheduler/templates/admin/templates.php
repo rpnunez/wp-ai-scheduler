@@ -542,6 +542,14 @@ if (!defined('ABSPATH')) {
                                 <label for="featured_image_unsplash_keywords"><?php esc_html_e('Unsplash Keywords', 'ai-post-scheduler'); ?></label>
                                 <input type="text" id="featured_image_unsplash_keywords" name="featured_image_unsplash_keywords" class="regular-text" placeholder="<?php esc_attr_e('e.g. sunrise, mountains, drone view', 'ai-post-scheduler'); ?>">
                                 <p class="description"><?php esc_html_e('Unsplash will return a random image that matches these keywords.', 'ai-post-scheduler'); ?></p>
+                                <div class="notice notice-warning inline aips-unsplash-missing-key-notice">
+                                    <p>
+                                        <?php esc_html_e('Unsplash Access Key is not configured. Generations will skip image fetching until an access key is provided in', 'ai-post-scheduler'); ?>
+                                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings#aips_api_keys_section')); ?>" target="_blank">
+                                            <?php esc_html_e('Settings &rarr; API Keys', 'ai-post-scheduler'); ?>
+                                        </a>.
+                                    </p>
+                                </div>
                             </div>
 
                             <div class="aips-form-row aips-image-source aips-image-source-media" style="display: none;">
