@@ -294,7 +294,10 @@ class AIPS_Campaigns_Controller {
 	 * @return void
 	 */
 	private function record_campaign_lifecycle_activity($campaign_id, $event_type, $action_label) {
-		$history_service = new AIPS_History_Service();
+		$container       = AIPS_Container::get_instance();
+		$history_service = $container->has(AIPS_History_Service_Interface::class)
+			? $container->make(AIPS_History_Service_Interface::class)
+			: new AIPS_History_Service();
 		$history = $history_service->create('campaign_lifecycle', array(
 			'campaign_id'     => absint($campaign_id),
 			'creation_method' => 'campaign_lifecycle',

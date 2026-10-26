@@ -54,10 +54,14 @@ class AIPS_Post_Review {
 	
 	/**
 	 * Initialize the post review handler.
+	 *
+	 * @param AIPS_Post_Review_Repository|null    $repository      Repository instance.
+	 * @param AIPS_History_Service_Interface|null $history_service History service instance.
 	 */
-	public function __construct() {
-		$this->repository             = new AIPS_Post_Review_Repository();
-		$this->history_service        = new AIPS_History_Service();
+	public function __construct(?AIPS_Post_Review_Repository $repository = null, ?AIPS_History_Service_Interface $history_service = null) {
+		$container                    = AIPS_Container::get_instance();
+		$this->repository             = $repository ?: new AIPS_Post_Review_Repository();
+		$this->history_service        = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 		$this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
 		
 		// Register AJAX handlers
