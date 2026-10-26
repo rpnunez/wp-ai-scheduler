@@ -1,3 +1,8 @@
+---
+name: batch-job-changes
+description: "Use this skill when adding or modifying bulk batch jobs, WP-Cron handlers, or background task queues in `wp-ai-scheduler`."
+---
+
 # Batch Job & Cron Processing Skill
 
 Use this skill when adding or modifying bulk batch jobs, WP-Cron handlers, or background task queues in `wp-ai-scheduler`.
@@ -40,4 +45,4 @@ Use this skill when adding or modifying bulk batch jobs, WP-Cron handlers, or ba
 - `ai-post-scheduler/tests/Test_AIPS_Bulk_Batch_Processor.php`
 
 ## Useful agents
-- `.Codex/agents/batch-job-reviewer.md` — post-implementation review
+- `.agents/agents/batch-job-reviewer.md` — post-implementation review

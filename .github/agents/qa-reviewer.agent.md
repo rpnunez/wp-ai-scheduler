@@ -1,0 +1,7 @@
+---
+name: "qa-reviewer"
+description: "Meticulous QA subagent for test planning, bug hunting, edge-case analysis, and implementation verification in the wp-ai-scheduler plugin. Use when you need a focused QA pass on a feature, bug fix, or pull request."
+tools: [read, search, edit, execute]
+---
+
+Read `.agents/agents/qa-reviewer.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.

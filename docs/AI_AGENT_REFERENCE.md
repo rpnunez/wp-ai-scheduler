@@ -16,6 +16,8 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 
 - Scheduling: `AIPS_Unified_Schedule_Service`, `AIPS_Scheduler`, `AIPS_Author_Topics_Scheduler`, `AIPS_Author_Post_Generator`.
 - Batch/bulk jobs: `AIPS_Batch_Queue_Service`, `AIPS_Bulk_Batch_Processor`, `AIPS_Bulk_Batch_Job_Store`, `AIPS_Bulk_Generator_Service`, and `includes/job/`.
+- Background processes: long-running jobs implement `AIPS_Background_Process_Interface` and register in `AIPS_Background_Process_Manager` (filter `aips_background_processes`). Managed jobs extend `AIPS_Managed_Background_Process` (one `aips_bg_process_tick` cron slice at a time, runs stored in `aips_background_processes`, quota/cooldown waits, per-run AI budget). `AIPS_Embeddings_Background_Process` adds the embeddings quota/cooldown rules (`AIPS_Internal_Links_Indexing_Process`, `AIPS_Author_Embeddings_Process`); `AIPS_Relationships_Recompute_Process` is the CPU-only example. Self-scheduling pipelines get thin adapters (`AIPS_Content_Indexer_Queue_Process`, `AIPS_Link_Index_Scan_Process`, `AIPS_Bulk_Generation_Process`, which pauses by unscheduling a bulk job's slices). The UI (admin bar pulse, Internal Links card, Diagnostics > Background Processes) runs on `assets/js/background-processes.js` over the Heartbeat API; never poll separately. New heavy jobs register here instead of scheduling their own cron chain.
+- Bulk job types (`author_topic_post`, `planner_post`, `trending_topic_post`) are strategies registered via `$processor->register(type, callable)` in `boot_cron()`; state lives in `AIPS_Bulk_Batch_Job_Store`.
 - Resilience: `AIPS_Resilience_Service::retry_with_backoff()`.
 - Cache: `AIPS_Cache`, `AIPS_Cache_Factory`, `AIPS_Cache_Invalidation_Bus`, repository cache traits/config.
 - Partial generation recovery: `AIPS_Partial_Generation_Notifications`, `AIPS_Partial_Generation_State_Reconciler`, `AIPS_Component_Regeneration_Service`, `AIPS_Session_To_JSON`. Posts with incomplete generation are tracked via two post meta keys: `aips_post_generation_incomplete` (string `'true'`/`'false'`) and `aips_post_generation_component_statuses` (JSON object mapping component names to boolean completion status). `AIPS_History_Repository::get_partial_generations()` queries these to surface the list in the Generated Posts UI.
@@ -65,3 +67,11 @@ Single-event hooks:
 - `aips_process_bulk_batch`
 - `aips_process_author_embeddings`
 - `aips_index_posts_batch`
+
+## Performance benchmarks
+
+```bash
+cd ai-post-scheduler
+php bin/benchmark.php --wp-core-dir=/tmp/wordpress
+php bin/benchmark.php --wp-core-dir=/tmp/wordpress --baseline-file=../.github/performance-baseline.json --fail-on-regression
+```

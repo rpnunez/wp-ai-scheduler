@@ -1,0 +1,7 @@
+---
+name: "generation-pipeline-reviewer"
+description: "Reviews changes touching the wp-ai-scheduler generation pipeline — AIPS_Generation_Context, prompt builders, scheduling orchestration, and resilience/retry flows. Use when modifying post generation, regeneration, or prompt assembly code."
+tools: [read, search]
+---
+
+Read `.agents/agents/generation-pipeline-reviewer.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.

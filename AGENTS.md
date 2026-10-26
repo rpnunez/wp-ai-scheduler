@@ -13,8 +13,40 @@
 - Admin templates: `ai-post-scheduler/templates/admin/`.
 - Admin assets: `ai-post-scheduler/assets/`.
 - Tests: `ai-post-scheduler/tests/`.
-- Changelog: `ai-post-scheduler/CHANGELOG.md`.
+- Changelog: `CHANGELOG.md` (repo root).
 - Deeper docs: [README.md](README.md), [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md), [docs/AI_AGENT_REFERENCE.md](docs/AI_AGENT_REFERENCE.md), [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md), [docs/HOOKS.md](docs/HOOKS.md), [docs/MIGRATIONS.md](docs/MIGRATIONS.md), [docs/SETUP.md](docs/SETUP.md).
+
+## Rules by file type (read on demand)
+Open the matching file before editing. Always read `wordpress-core.md` plus the one for the files you touch.
+
+| Editing | Read |
+|---|---|
+| Any plugin code | [.agents/rules/wordpress-core.md](.agents/rules/wordpress-core.md) |
+| `ai-post-scheduler/includes/**` | [.agents/rules/php-includes.md](.agents/rules/php-includes.md) |
+| `ai-post-scheduler/assets/js/**` | [.agents/rules/js-assets.md](.agents/rules/js-assets.md) |
+| `ai-post-scheduler/templates/**` | [.agents/rules/templates-admin.md](.agents/rules/templates-admin.md) |
+
+## Agents (subagents / personas)
+Each agent is written once in `.agents/agents/<name>.md`. `.claude/agents/`, `.codex/agents/` and `.github/agents/` hold only thin wrappers that point there; edit the canonical file, never the wrappers. `make check-agents` verifies the wrappers.
+
+| Agent | Use for |
+|---|---|
+| `ajax-controller-reviewer` | Nonce/capability/sanitization/registry review of AJAX handlers |
+| `batch-job-reviewer` | Bulk batch processors, cron slicing, job store state |
+| `db-migration-reviewer` | Schema and migration changes |
+| `generation-pipeline-reviewer` | Generation contexts, prompt builders, resilience flows |
+| `l10n-reviewer` | Text domain, i18n escaping, language stores |
+| `wordpress-reviewer` | General WordPress correctness, security, compatibility review (read-only) |
+| `qa-reviewer` | Test planning, bug hunting, edge cases, verification |
+| `test-analyst` | Choosing focused checks and finding coverage gaps (read-only) |
+| `codebase-explorer` | Tracing execution paths and the smallest change surface (read-only) |
+| `feature-slicer` | Splitting a feature into mergeable slices |
+| `pr-triage` | Overlap, risk and readiness of pull requests |
+| `atlas` | Architecture, schemas, foundational patterns (can edit) |
+| `nunezscheduler` | Feature-flow optimization for the scheduler (can edit) |
+| `principal-software-engineer` | Principal-level engineering guidance (can edit) |
+
+Skills (task playbooks) live in `.agents/skills/<name>/SKILL.md`: `admin-ui-changes`, `ajax-controller-changes`, `batch-job-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `sql-batch`. Use the one matching your task. Do not duplicate skills or rules into tool-specific folders.
 
 ## Coding conventions
 - Use `AIPS_`-prefixed, underscore-separated PHP class names.
@@ -53,9 +85,9 @@
 - **The one way to run tests** is defined in `TESTING.md` ("Agent test protocol"); follow it exactly: `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` (all files in ONE invocation; it stops the containers it started when done). Do not call `scripts/run-docker-test.sh` or `bash.exe -lc` directly, do not loop/chain runs with `&&`/`;`, do not pipe output through `grep`/`head`/`tail`, and do not run `./start-dev.sh` just to test (first-time provisioning only; `AIPS_SKIP_API_KEY_CHECK=1` if no key). Install dev dependencies once with `make composer-install`. Coverage: `make test-coverage` (HTML in `ai-post-scheduler/coverage/`; let it finish). `--fresh` resets the `wp_tests` database.
 - **Clean up after yourself.** If you started the Docker stack, stop it when finished (`make test-session` does this; otherwise `make stop`). If it was already running, leave it. Never use `make down`, `down -v`, `make clean`/`prune` to clean up. Delete scratch/coverage files you created, and state in your final response what you started and stopped.
 - `make test` runs PHPUnit inside the `web` container against a separate `wp_tests` database; it needs no host PHP. Host-side `composer test` / `make test-ci` are for CI parity only; set `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable there.
-- Need data from a database (dev or production) to diagnose a bug? Do not hand-roll `docker exec` SQL or ask the user to paste queries into phpMyAdmin: write the queries to `.artifacts/sql-queries/*.sql` and follow `.claude/skills/sql-batch/SKILL.md` (`make sql-batch QUERIES=...`; read-only, secrets redacted, results in `.artifacts/sql-results/`).
+- Need data from a database (dev or production) to diagnose a bug? Do not hand-roll `docker exec` SQL or ask the user to paste queries into phpMyAdmin: write the queries to `.artifacts/sql-queries/*.sql` and follow `.agents/skills/sql-batch/SKILL.md` (`make sql-batch QUERIES=...`; read-only, secrets redacted, results in `.artifacts/sql-results/`).
 - Each `./start-dev.sh` run logs to `.artifacts/start-dev-*.log` (gitignored); check the newest one when the environment misbehaves. Never print or commit API keys from `.env`.
 
 ## Documentation ownership
-- Keep this file concise (about 40–60 lines) and high-level.
+- Keep this file concise (under about 100 lines) and high-level.
 - Put long subsystem inventories, cron hook lists, table catalogs, and workflow details in `docs/AI_AGENT_REFERENCE.md` or `docs/DEVELOPMENT_GUIDELINES.md`.
