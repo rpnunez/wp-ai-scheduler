@@ -1348,6 +1348,12 @@ class AIPS_Campaigns_Repository {
 				'cache_null'  => false,
 				'description' => 'Cache single campaign reads by ID including metrics aggregates.',
 			),
+			'campaigns.template_campaign_mappings' => array(
+				'tier'        => 'long',
+				'tags'        => array( 'campaigns' ),
+				'cache_null'  => false,
+				'description' => 'Cache template-to-campaign mappings for template lists.',
+			),
 		);
 	}
 }

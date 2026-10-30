@@ -319,19 +319,19 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 					? '<span class="aips-badge aips-badge-success">' . esc_html__('Active', 'ai-post-scheduler') . '</span>'
 					: '<span class="aips-badge aips-badge-warning">' . esc_html__('Paused', 'ai-post-scheduler') . '</span>');
 
-			echo '<tr class="aips-campaign-group-header" style="background:var(--aips-gray-50, #f8fafc); border-top:2px solid var(--aips-gray-300, #cbd5e1);">';
-			echo '<td colspan="' . esc_attr($total_cols) . '" style="padding:10px 14px;">';
-			echo '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">';
-			echo '<div style="display:flex; align-items:center; gap:8px;">';
-			echo '<span class="dashicons dashicons-category" style="color:var(--aips-primary, #2563eb); font-size:18px;"></span>';
-			echo '<strong><a href="' . esc_url($campaign_detail_url) . '" style="font-size:14px; color:var(--aips-gray-900, #0f172a); text-decoration:none;">' . esc_html($campaign->name) . '</a></strong>';
+			echo '<tr class="aips-campaign-group-header">';
+			echo '<td colspan="' . esc_attr($total_cols) . '">';
+			echo '<div class="aips-campaign-group-content">';
+			echo '<div class="aips-campaign-group-title">';
+			echo '<span class="dashicons dashicons-category"></span>';
+			echo '<strong><a href="' . esc_url($campaign_detail_url) . '">' . esc_html($campaign->name) . '</a></strong>';
 			echo $status_badge; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			echo '<span class="aips-badge aips-badge-neutral">' . esc_html(sprintf(_n('%d Schedule', '%d Schedules', $schedule_count, 'ai-post-scheduler'), $schedule_count)) . '</span>';
 			echo '<span class="aips-badge aips-badge-neutral">' . esc_html(sprintf(_n('%d Template linked', '%d Templates linked', $template_count, 'ai-post-scheduler'), $template_count)) . '</span>';
 			echo '</div>';
-			echo '<div style="display:flex; align-items:center; gap:8px;">';
+			echo '<div class="aips-campaign-group-actions">';
 			echo '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-run-campaign-all-btn" data-campaign-id="' . esc_attr($camp_id) . '" title="' . esc_attr__('Run all templates linked to this campaign right now', 'ai-post-scheduler') . '">';
-			echo '<span class="dashicons dashicons-controls-forward" style="font-size:14px; width:14px; height:14px; vertical-align:middle;"></span> ';
+			echo '<span class="dashicons dashicons-controls-forward"></span> ';
 			echo esc_html__('Run All Templates Now', 'ai-post-scheduler');
 			echo '</button>';
 			echo '<a href="' . esc_url($campaign_detail_url) . '" class="aips-btn aips-btn-sm aips-btn-secondary">' . esc_html__('View Campaign', 'ai-post-scheduler') . '</a>';
@@ -349,10 +349,10 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 
 		// 2. Render Standalone Section Header if campaigns exist
 		if (!empty($groups['campaigns']) && !empty($groups['standalone'])) {
-			echo '<tr class="aips-campaign-group-header aips-standalone-group-header" style="background:var(--aips-gray-50, #f8fafc); border-top:2px solid var(--aips-gray-300, #cbd5e1);">';
-			echo '<td colspan="' . esc_attr($total_cols) . '" style="padding:10px 14px;">';
-			echo '<div style="display:flex; align-items:center; gap:8px;">';
-			echo '<span class="dashicons dashicons-calendar-alt" style="color:var(--aips-gray-500); font-size:18px;"></span>';
+			echo '<tr class="aips-campaign-group-header aips-standalone-group-header">';
+			echo '<td colspan="' . esc_attr($total_cols) . '">';
+			echo '<div class="aips-campaign-group-title">';
+			echo '<span class="dashicons dashicons-calendar-alt"></span>';
 			echo '<strong>' . esc_html__('Standalone Schedules (Ungrouped)', 'ai-post-scheduler') . '</strong>';
 			echo '<span class="aips-badge aips-badge-neutral">' . esc_html(sprintf(_n('%d Schedule', '%d Schedules', count($groups['standalone']), 'ai-post-scheduler'), count($groups['standalone']))) . '</span>';
 			echo '</div>';
@@ -452,7 +452,7 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 		$html  = '<div class="cell-primary aips-schedule-title-cell">';
 		$html .= '<div class="aips-schedule-header" style="display:flex;align-items:center;gap:6px;">';
 		if ($this->current_is_child) {
-			$html .= '<span class="aips-tree-connector" style="color:var(--aips-primary, #3b82f6); font-family:monospace; font-size:14px; font-weight:bold; margin-left:14px; margin-right:4px;" title="' . esc_attr__('Campaign child schedule', 'ai-post-scheduler') . '">↳</span>';
+			$html .= '<span class="aips-tree-connector" title="' . esc_attr__('Campaign child schedule', 'ai-post-scheduler') . '">↳</span>';
 		}
 		$html .= '<button type="button" class="aips-btn-icon aips-row-expand-toggle" aria-expanded="false" aria-controls="' . esc_attr($details_id) . '" aria-label="' . esc_attr__('Toggle schedule details', 'ai-post-scheduler') . '" title="' . esc_attr__('Expand details', 'ai-post-scheduler') . '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
 		$html .= '<strong class="aips-schedule-name">' . esc_html($item['title']) . '</strong>';
@@ -535,9 +535,9 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 		}
 
 		if (!empty($item['rotation_pattern']) && $item['rotation_pattern'] === 'campaign_all') {
-			$html .= '<span class="aips-badge aips-badge-primary" style="margin-left:4px;" title="' . esc_attr__('Runs all templates linked to this campaign on each interval', 'ai-post-scheduler') . '"><span class="dashicons dashicons-controls-repeat" style="font-size:11px;width:11px;height:11px;vertical-align:middle;"></span> ' . esc_html__('All Templates (Batch)', 'ai-post-scheduler') . '</span>';
+			$html .= '<span class="aips-badge aips-badge-primary aips-badge-batch" title="' . esc_attr__('Runs all templates linked to this campaign on each interval', 'ai-post-scheduler') . '"><span class="dashicons dashicons-controls-repeat aips-batch-badge-icon"></span> ' . esc_html__('All Templates (Batch)', 'ai-post-scheduler') . '</span>';
 		} elseif (!empty($item['rotation_pattern']) && $item['rotation_pattern'] === 'campaign_rotate') {
-			$html .= '<span class="aips-badge aips-badge-secondary" style="margin-left:4px;" title="' . esc_attr__('Rotates through campaign templates', 'ai-post-scheduler') . '">' . esc_html__('Rotate Templates', 'ai-post-scheduler') . '</span>';
+			$html .= '<span class="aips-badge aips-badge-secondary aips-badge-batch" title="' . esc_attr__('Rotates through campaign templates', 'ai-post-scheduler') . '">' . esc_html__('Rotate Templates', 'ai-post-scheduler') . '</span>';
 		}
 		$html .= '</div>';
 

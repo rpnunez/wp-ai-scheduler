@@ -3533,12 +3533,17 @@
                 return;
             }
 
-            if (!confirm('Run all active templates linked to this campaign now?')) {
+            var confirmMsg = (window.aipsAdminL10n && aipsAdminL10n.confirmRunCampaignAll) || 'Run all active templates linked to this campaign now?';
+            if (!confirm(confirmMsg)) {
                 return;
             }
 
+            var loadingText = (window.aipsAdminL10n && aipsAdminL10n.processing) || 'Processing...';
             var origHtml = $btn.html();
-            $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> Processing...');
+            $btn.prop('disabled', true);
+
+            var $spinner = $('<span />', { 'class': 'spinner is-active aips-btn-spinner' });
+            $btn.empty().append($spinner).append(document.createTextNode(' ' + loadingText));
 
             $.ajax({
                 url: typeof aipsAjax !== 'undefined' ? aipsAjax.ajaxUrl : ajaxurl,
@@ -3551,15 +3556,18 @@
                 success: function(response) {
                     $btn.prop('disabled', false).html(origHtml);
                     if (response.success) {
-                        alert(response.data?.message || 'Campaign execution complete!');
+                        var successMsg = response.data?.message || (window.aipsAdminL10n && aipsAdminL10n.campaignRunAllSuccess) || 'Campaign execution complete.';
+                        alert(successMsg);
                         location.reload();
                     } else {
-                        alert(response.data?.message || 'Failed to execute campaign templates.');
+                        var errorMsg = response.data?.message || (window.aipsAdminL10n && aipsAdminL10n.campaignRunAllError) || 'Failed to execute campaign templates.';
+                        alert(errorMsg);
                     }
                 },
                 error: function() {
                     $btn.prop('disabled', false).html(origHtml);
-                    alert('Network error while running campaign templates.');
+                    var netError = (window.aipsAdminL10n && aipsAdminL10n.networkError) || 'Network error while running campaign templates.';
+                    alert(netError);
                 }
             });
         },

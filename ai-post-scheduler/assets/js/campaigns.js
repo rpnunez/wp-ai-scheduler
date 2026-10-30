@@ -56,7 +56,7 @@
 		 */
 		handleOpenQuickCreateModal: function(e) {
 			e.preventDefault();
-			$('#aips-quick-create-campaign-modal').fadeIn(150);
+			$('#aips-quick-create-campaign-modal').removeAttr('hidden').fadeIn(150);
 			$('#aips-quick-campaign-name').focus();
 		},
 
@@ -65,7 +65,7 @@
 		 */
 		handleOpenLinkTemplateModal: function(e) {
 			e.preventDefault();
-			$('#aips-link-template-modal').fadeIn(150);
+			$('#aips-link-template-modal').removeAttr('hidden').fadeIn(150);
 		},
 
 		/**
@@ -75,7 +75,9 @@
 			if ($(e.target).closest('.aips-modal-content').length && !$(e.target).is('.aips-modal-close, .aips-modal-cancel')) {
 				return;
 			}
-			$('.aips-modal').fadeOut(150);
+			$('.aips-modal').fadeOut(150, function() {
+				$(this).attr('hidden', true);
+			});
 		},
 
 		/**
@@ -107,12 +109,12 @@
 					if (response.success && redirectUrl) {
 						window.location.href = redirectUrl;
 					} else {
-						alert(response.data?.message || 'Failed to create campaign.');
+						AIPS.Utilities.showNotice(response.data?.message || aipsCampaignsL10n.errorToggle || 'Failed to create campaign.', 'error');
 						$btn.prop('disabled', false);
 					}
 				},
 				error: function() {
-					alert('Network error while creating campaign.');
+					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork || 'Network error while creating campaign.', 'error');
 					$btn.prop('disabled', false);
 				}
 			});
@@ -131,7 +133,7 @@
 			var postStatus = $form.find('select[name="override_post_status"]').val();
 
 			if (!templateId) {
-				alert('Please select a template to link.');
+				AIPS.Utilities.showNotice((typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.selectTemplateRequired) || 'Please select a template to link.', 'warning');
 				return;
 			}
 
@@ -158,12 +160,12 @@
 					if (response.success) {
 						location.reload();
 					} else {
-						alert(response.data?.message || 'Failed to link template.');
+						AIPS.Utilities.showNotice(response.data?.message || (typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.errorLinkTemplate) || 'Failed to link template.', 'error');
 						$btn.prop('disabled', false);
 					}
 				},
 				error: function() {
-					alert('Network error while linking template.');
+					AIPS.Utilities.showNotice((typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.errorNetwork) || 'Network error while linking template.', 'error');
 					$btn.prop('disabled', false);
 				}
 			});
@@ -179,33 +181,44 @@
 			var templateId = $btn.data('template-id');
 			var templateName = $btn.data('template-name') || 'this template';
 
-			if (!confirm('Unlink "' + templateName + '" from this campaign? The template itself will not be deleted.')) {
-				return;
-			}
+			var confirmMsg = (typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.confirmUnlinkTemplate) || 'Unlink this template from the campaign? The template itself will not be deleted.';
 
-			$btn.prop('disabled', true);
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_unlink_campaign_template',
-					nonce: aipsAjax.nonce,
-					campaign_id: campaignId,
-					template_id: templateId
-				},
-				success: function(response) {
-					if (response.success) {
-						location.reload();
-					} else {
-						alert(response.data?.message || 'Failed to unlink template.');
-						$btn.prop('disabled', false);
+			AIPS.Utilities.confirm(
+				confirmMsg,
+				(typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.unlinkTemplateTitle) || 'Unlink Template',
+				[
+					{ label: (typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.cancelAction) || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: (typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.unlinkAction) || 'Unlink',
+						className: 'aips-btn aips-btn-danger',
+						action: function() {
+							$btn.prop('disabled', true);
+							$.ajax({
+								url: ajaxurl,
+								type: 'POST',
+								data: {
+									action: 'aips_unlink_campaign_template',
+									nonce: aipsAjax.nonce,
+									campaign_id: campaignId,
+									template_id: templateId
+								},
+								success: function(response) {
+									if (response.success) {
+										location.reload();
+									} else {
+										AIPS.Utilities.showNotice(response.data?.message || (typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.errorUnlinkTemplate) || 'Failed to unlink template.', 'error');
+										$btn.prop('disabled', false);
+									}
+								},
+								error: function() {
+									AIPS.Utilities.showNotice((typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.errorNetwork) || 'Network error while unlinking template.', 'error');
+									$btn.prop('disabled', false);
+								}
+							});
+						}
 					}
-				},
-				error: function() {
-					alert('Network error while unlinking template.');
-					$btn.prop('disabled', false);
-				}
-			});
+				]
+			);
 		},
 
 		/**
@@ -235,7 +248,7 @@
 			$('#aips-override-categories').val(overrides.post_category || overrides.categories || '');
 			$('#aips-override-tags').val(overrides.post_tags || overrides.tags || '');
 
-			$('#aips-template-overrides-modal').fadeIn(150);
+			$('#aips-template-overrides-modal').removeAttr('hidden').fadeIn(150);
 		},
 
 		/**
@@ -272,12 +285,12 @@
 					if (response.success) {
 						location.reload();
 					} else {
-						alert(response.data?.message || 'Failed to update overrides.');
+						AIPS.Utilities.showNotice(response.data?.message || (typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.errorUpdateOverrides) || 'Failed to update overrides.', 'error');
 						$btn.prop('disabled', false);
 					}
 				},
 				error: function() {
-					alert('Network error while updating overrides.');
+					AIPS.Utilities.showNotice((typeof aipsCampaignsL10n !== 'undefined' && aipsCampaignsL10n.errorNetwork) || 'Network error while updating overrides.', 'error');
 					$btn.prop('disabled', false);
 				}
 			});
