@@ -183,15 +183,100 @@ class AIPS_Bulk_Batch_Processor {
 			'info'
 		);
 
-		// Load the job descriptor.
 		$job = $this->job_store->get( $job_id );
 
+		if ( $this->should_skip_or_requeue_slice( $job, $job_id, $start_index, $batch_size, $total_quantity, $correlation_id ) ) {
+			return;
+		}
+
+		$job_type = $job->job_type;
+		if ( ! $this->has_strategy( $job_type ) ) {
+			$this->logger->log(
+				sprintf( 'Bulk batch processor: no strategy registered for job type "%s" — skipping.', $job_type ),
+				'warning'
+			);
+			$this->job_store->update_status( $job_id, AIPS_Bulk_Batch_Job_Store::STATUS_FAILED );
+			return;
+		}
+
+		$items_slice = array_slice( $job->items, $start_index, $batch_size );
+
+		if ( empty( $items_slice ) ) {
+			$this->logger->log(
+				sprintf( 'Bulk batch processor: empty slice for job %s at start_index %d — skipping.', $job_id, $start_index ),
+				'warning'
+			);
+			return;
+		}
+
+		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_PENDING ) {
+			$this->job_store->start_processing( $job_id );
+			$this->logger->log(
+				sprintf( 'Bulk batch processor: job %s transitioned from pending to processing.', $job_id ),
+				'info'
+			);
+		}
+
+		$history = $this->create_slice_history( $job_id, $job_type, $start_index, $batch_size, $total_quantity, $correlation_id );
+
+		$strategy = $this->strategies[ $job_type ];
+		list( $success_count, $failed_count ) = $this->execute_items_slice( $items_slice, $strategy, $job_id, $job, $history );
+
+		$this->update_job_status_after_slice( $job_id, $start_index, $batch_size, $total_quantity, count( $items_slice ), $failed_count );
+
+		if ( $failed_count > 0 ) {
+			$history->complete_failure(
+				sprintf( __( 'Batch slice completed with %d failures', 'ai-post-scheduler' ), $failed_count ),
+				array( 'success_count' => $success_count, 'failed_count' => $failed_count )
+			);
+		} else {
+			$history->complete_success(
+				array( 'success_count' => $success_count, 'failed_count' => 0 )
+			);
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Bulk batch processor: job %s slice [%d, +%d] done — %d succeeded, %d failed.',
+				$job_id,
+				$start_index,
+				$batch_size,
+				$success_count,
+				$failed_count
+			),
+			'info'
+		);
+
+		if ( ! empty( $correlation_id ) ) {
+			AIPS_Correlation_ID::reset();
+		}
+	}
+
+	/**
+	 * Determines whether a slice execution should be skipped or requeued based on job status.
+	 *
+	 * @param object|null $job            Job descriptor object.
+	 * @param string      $job_id         UUID of the job.
+	 * @param int         $start_index    Start index of slice.
+	 * @param int         $batch_size     Batch size of slice.
+	 * @param int         $total_quantity Total quantity.
+	 * @param string      $correlation_id Correlation ID.
+	 * @return bool True if processing should stop, false otherwise.
+	 */
+	private function should_skip_or_requeue_slice(
+		$job,
+		string $job_id,
+		int $start_index,
+		int $batch_size,
+		int $total_quantity,
+		string $correlation_id
+	): bool {
 		if ( ! $job ) {
 			$this->logger->log(
 				sprintf( 'Bulk batch processor: job %s not found — skipping.', $job_id ),
 				'warning'
 			);
-			return;
+			return true;
 		}
 
 		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED ) {
@@ -199,10 +284,9 @@ class AIPS_Bulk_Batch_Processor {
 				sprintf( 'Bulk batch processor: job %s already completed; skipping duplicate slice.', $job_id ),
 				'warning'
 			);
-			return;
+			return true;
 		}
 
-		// Stopped by an administrator (Diagnostics > Background Processes): do nothing.
 		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED ) {
 			$this->logger->log(
 				sprintf( 'Bulk batch processor: job %s was stopped; skipping slice at %d.', $job_id, $start_index ),
@@ -211,14 +295,10 @@ class AIPS_Bulk_Batch_Processor {
 			if ( ! empty( $correlation_id ) ) {
 				AIPS_Correlation_ID::reset();
 			}
-			return;
+			return true;
 		}
 
-		// Paused while this slice was already firing: put it back so it runs after the
-		// job is resumed instead of being lost.
 		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED ) {
-			// pause() records the slices it unschedules and resume() schedules them again.
-			// If this slice is among them, requeuing it here would run it twice.
 			$recorded         = isset( $job->options['paused_slices'] ) && is_array( $job->options['paused_slices'] )
 				? $job->options['paused_slices']
 				: array();
@@ -240,42 +320,31 @@ class AIPS_Bulk_Batch_Processor {
 			if ( ! empty( $correlation_id ) ) {
 				AIPS_Correlation_ID::reset();
 			}
-			return;
+			return true;
 		}
 
-		// Look up the registered strategy.
-		$job_type = $job->job_type;
-		if ( ! $this->has_strategy( $job_type ) ) {
-			$this->logger->log(
-				sprintf( 'Bulk batch processor: no strategy registered for job type "%s" — skipping.', $job_type ),
-				'warning'
-			);
-			$this->job_store->update_status( $job_id, AIPS_Bulk_Batch_Job_Store::STATUS_FAILED );
-			return;
-		}
+		return false;
+	}
 
-		$strategy = $this->strategies[ $job_type ];
-
-		// Slice the items for this batch.
-		$items_slice = array_slice( $job->items, $start_index, $batch_size );
-
-		if ( empty( $items_slice ) ) {
-			$this->logger->log(
-				sprintf( 'Bulk batch processor: empty slice for job %s at start_index %d — skipping.', $job_id, $start_index ),
-				'warning'
-			);
-			return;
-		}
-
-		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_PENDING ) {
-			$this->job_store->start_processing( $job_id );
-			$this->logger->log(
-				sprintf( 'Bulk batch processor: job %s transitioned from pending to processing.', $job_id ),
-				'info'
-			);
-		}
-
-		// Create a history container for this slice.
+	/**
+	 * Creates and initializes the history container for a batch slice.
+	 *
+	 * @param string $job_id         UUID of job.
+	 * @param string $job_type       Job type slug.
+	 * @param int    $start_index    Start index.
+	 * @param int    $batch_size     Batch size.
+	 * @param int    $total_quantity Total quantity.
+	 * @param string $correlation_id Correlation ID.
+	 * @return object History container.
+	 */
+	private function create_slice_history(
+		string $job_id,
+		string $job_type,
+		int $start_index,
+		int $batch_size,
+		int $total_quantity,
+		string $correlation_id
+	) {
 		$history = $this->history_service->create(
 			'bulk_batch_slice',
 			array(
@@ -300,7 +369,6 @@ class AIPS_Bulk_Batch_Processor {
 		$history->record(
 			'activity',
 			sprintf(
-				/* translators: 1: start index, 2: batch size, 3: total */
 				__( 'Processing bulk batch slice: items %1$d–%2$d of %3$d', 'ai-post-scheduler' ),
 				$start_index + 1,
 				min( $start_index + $batch_size, $total_quantity ),
@@ -316,7 +384,26 @@ class AIPS_Bulk_Batch_Processor {
 			)
 		);
 
-		// Execute the strategy for each item in the slice.
+		return $history;
+	}
+
+	/**
+	 * Executes the strategy over each item in the slice.
+	 *
+	 * @param array    $items_slice Items array slice.
+	 * @param callable $strategy    Strategy callback.
+	 * @param string   $job_id      Job ID.
+	 * @param object   $job         Job object.
+	 * @param object   $history     History object.
+	 * @return array Array containing [success_count, failed_count].
+	 */
+	private function execute_items_slice(
+		array $items_slice,
+		$strategy,
+		string $job_id,
+		$job,
+		$history
+	): array {
 		$success_count = 0;
 		$failed_count  = 0;
 
@@ -338,7 +425,6 @@ class AIPS_Bulk_Batch_Processor {
 					$post_result = is_array( $result ) ? $result : (int) $result;
 					$history->record(
 						'activity',
-						/* translators: %s: post ID */
 						sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_result ) ? implode( ',', $post_result ) : $post_result ),
 						null,
 						null,
@@ -361,8 +447,29 @@ class AIPS_Bulk_Batch_Processor {
 			}
 		}
 
-		// Increment the processed counter atomically.
-		$this->job_store->increment_processed( $job_id, count( $items_slice ) );
+		return array( $success_count, $failed_count );
+	}
+
+	/**
+	 * Updates the job status after processing a slice.
+	 *
+	 * @param string $job_id         Job ID.
+	 * @param int    $start_index    Start index.
+	 * @param int    $batch_size     Batch size.
+	 * @param int    $total_quantity Total quantity.
+	 * @param int    $slice_count    Number of items in current slice.
+	 * @param int    $failed_count   Number of failed items.
+	 * @return void
+	 */
+	private function update_job_status_after_slice(
+		string $job_id,
+		int $start_index,
+		int $batch_size,
+		int $total_quantity,
+		int $slice_count,
+		int $failed_count
+	): void {
+		$this->job_store->increment_processed( $job_id, $slice_count );
 		$job_after_slice = $this->job_store->get( $job_id );
 		$processed_total = $job_after_slice ? (int) $job_after_slice->processed : 0;
 		$total_items     = $job_after_slice ? (int) $job_after_slice->total : $total_quantity;
@@ -391,35 +498,6 @@ class AIPS_Bulk_Batch_Processor {
 				),
 				'info'
 			);
-		}
-
-		// Complete the history container for this slice.
-		if ( $failed_count > 0 ) {
-			$history->complete_failure(
-				/* translators: %d: failures */
-				sprintf( __( 'Batch slice completed with %d failures', 'ai-post-scheduler' ), $failed_count ),
-				array( 'success_count' => $success_count, 'failed_count' => $failed_count )
-			);
-		} else {
-			$history->complete_success(
-				array( 'success_count' => $success_count, 'failed_count' => 0 )
-			);
-		}
-
-		$this->logger->log(
-			sprintf(
-				'Bulk batch processor: job %s slice [%d, +%d] done — %d succeeded, %d failed.',
-				$job_id,
-				$start_index,
-				$batch_size,
-				$success_count,
-				$failed_count
-			),
-			'info'
-		);
-
-		if ( ! empty( $correlation_id ) ) {
-			AIPS_Correlation_ID::reset();
 		}
 	}
 }
