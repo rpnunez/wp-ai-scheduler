@@ -83,6 +83,12 @@ class AIPS_Campaigns_Controller {
 		add_action('wp_ajax_aips_archive_campaign', array($this, 'ajax_archive_campaign'));
 		add_action('wp_ajax_aips_restore_campaign', array($this, 'ajax_restore_campaign'));
 		add_action('wp_ajax_aips_delete_campaign', array($this, 'ajax_delete_campaign'));
+		add_action('wp_ajax_aips_quick_create_campaign', array($this, 'ajax_quick_create_campaign'));
+		add_action('wp_ajax_aips_link_campaign_template', array($this, 'ajax_link_campaign_template'));
+		add_action('wp_ajax_aips_unlink_campaign_template', array($this, 'ajax_unlink_campaign_template'));
+		add_action('wp_ajax_aips_update_campaign_template_overrides', array($this, 'ajax_update_campaign_template_overrides'));
+		add_action('wp_ajax_aips_run_campaign_all_templates', array($this, 'ajax_run_campaign_all_templates'));
+		add_action('wp_ajax_aips_save_campaign_directives', array($this, 'ajax_save_campaign_directives'));
 		add_action('wp_ajax_aips_campaign_wizard_save_draft', array($this, 'ajax_save_draft'));
 		add_action('wp_ajax_aips_campaign_wizard_validate_step', array($this, 'ajax_validate_step'));
 		add_action('wp_ajax_aips_campaign_wizard_finalize', array($this, 'ajax_finalize_campaign'));
@@ -163,13 +169,16 @@ class AIPS_Campaigns_Controller {
 			$result = true;
 
 			if ('save' === $detail_action) {
-				$name = isset($_POST['campaign_name']) ? sanitize_text_field(wp_unslash($_POST['campaign_name'])) : '';
-				$content_goal = isset($_POST['content_goal']) ? sanitize_textarea_field(wp_unslash($_POST['content_goal'])) : '';
+				$name                         = isset($_POST['campaign_name']) ? sanitize_text_field(wp_unslash($_POST['campaign_name'])) : '';
+				$content_goal                 = isset($_POST['content_goal']) ? sanitize_textarea_field(wp_unslash($_POST['content_goal'])) : '';
 
 				if ('' !== $name) {
-					$result = $this->campaigns_repository->update_campaign($campaign_id, array(
-						'name' => $name,
-						'content_goal' => $content_goal,
+					$result = $this->campaigns_repository->update_campaign($campaign_id, array_merge(
+						array(
+							'name'         => $name,
+							'content_goal' => $content_goal,
+						),
+						$this->read_campaign_defaults_from_request(true)
 					));
 					if (!is_wp_error($result) && $result) {
 						$this->record_campaign_lifecycle_activity($campaign_id, AIPS_History_Event_Type::CAMPAIGN_UPDATED, __('updated', 'ai-post-scheduler'));
@@ -205,26 +214,39 @@ class AIPS_Campaigns_Controller {
 					'message' => $result->get_error_message(),
 				);
 			} else {
-				$redirect_url = add_query_arg(
-					array(
-						'page' => 'aips-campaign-detail',
-						'campaign_id' => $campaign_id,
-						'detail_notice' => isset($detail_notice_map[$detail_action]) ? $detail_action : 'save',
-					),
-					admin_url('admin.php')
+				$redirect_args = array(
+					'page'          => 'aips-campaign-detail',
+					'campaign_id'   => $campaign_id,
+					'detail_notice' => isset($detail_notice_map[$detail_action]) ? $detail_action : 'save',
 				);
+				if (!empty($_POST['current_tab'])) {
+					$redirect_args['tab'] = sanitize_key(wp_unslash($_POST['current_tab']));
+				}
+				$redirect_url = add_query_arg($redirect_args, admin_url('admin.php'));
 
 				wp_safe_redirect($redirect_url);
 				return;
 			}
 		}
 
-		$templates = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
-		$schedules = $this->campaigns_repository->get_schedules_by_campaign($campaign_id);
-		$campaign_health = $this->campaigns_repository->get_campaign_health($campaign_id);
-		$recent_activity = $this->campaigns_repository->get_recent_activity($campaign_id, 10);
+		$templates              = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
+		$schedules              = $this->campaigns_repository->get_schedules_by_campaign($campaign_id);
+		$campaign_health        = $this->campaigns_repository->get_campaign_health($campaign_id);
+		$recent_activity        = $this->campaigns_repository->get_recent_activity($campaign_id, 10);
 		$recent_generated_posts = $this->campaigns_repository->get_recent_generated_posts($campaign_id, 10);
-		$campaign_warnings = $this->build_campaign_warnings($campaign, $campaign_health);
+		$campaign_warnings      = $this->build_campaign_warnings($campaign, $campaign_health);
+
+		$active_tab             = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'overview';
+		$templates_handler      = new AIPS_Templates();
+		$all_templates          = $templates_handler->get_all(true);
+		$voices_repo            = new AIPS_Voices_Repository();
+		$voices                 = $voices_repo->get_active();
+		$structure_manager      = new AIPS_Article_Structure_Manager();
+		$article_structures     = $structure_manager->get_active_structures();
+		$authors                = get_users(array(
+			'fields'  => array('ID', 'display_name'),
+			'orderby' => 'display_name',
+		));
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/campaign-detail.php';
 	}
@@ -497,6 +519,330 @@ class AIPS_Campaigns_Controller {
 		}
 
 		AIPS_Ajax_Response::error(__('Failed to delete campaign.', 'ai-post-scheduler'), 'delete_failed', 500);
+	}
+
+	/**
+	 * Read and sanitize the prompt directives and default_* campaign fields from $_POST.
+	 *
+	 * @param bool $include_missing When true, absent fields are returned as cleared values.
+	 * @return array
+	 */
+	private function read_campaign_defaults_from_request($include_missing) {
+		$data = array();
+
+		if ($include_missing || isset($_POST['prompt_directives'])) {
+			$data['prompt_directives'] = isset($_POST['prompt_directives']) ? wp_kses_post(wp_unslash($_POST['prompt_directives'])) : '';
+		}
+
+		foreach (array('default_article_structure_id', 'default_voice_id', 'default_author_id') as $key) {
+			if ($include_missing || isset($_POST[$key])) {
+				$data[$key] = !empty($_POST[$key]) ? absint($_POST[$key]) : null;
+			}
+		}
+
+		if ($include_missing || isset($_POST['default_post_status'])) {
+			$status = !empty($_POST['default_post_status']) ? sanitize_key(wp_unslash($_POST['default_post_status'])) : '';
+			$data['default_post_status'] = ('' !== $status && in_array($status, get_post_stati(), true)) ? $status : null;
+		}
+
+		foreach (array('default_categories', 'default_tags') as $key) {
+			if ($include_missing || isset($_POST[$key])) {
+				$data[$key] = !empty($_POST[$key]) ? sanitize_text_field(wp_unslash($_POST[$key])) : null;
+			}
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Read per-template overrides from $_POST, keeping only supported keys.
+	 *
+	 * Maps form field aliases (categories -> post_category, tags -> post_tags, author_id -> post_author)
+	 * and sanitizes/casts values to appropriate types.
+	 *
+	 * @return array
+	 */
+	private function read_template_overrides_from_request() {
+		if (!isset($_POST['overrides']) || !is_array($_POST['overrides'])) {
+			return array();
+		}
+
+		$raw   = wp_unslash($_POST['overrides']);
+		$clean = array();
+
+		// Field mapping aliases: input field name => canonical context key
+		$alias_map = array(
+			'categories' => 'post_category',
+			'tags'       => 'post_tags',
+			'author_id'  => 'post_author',
+		);
+		foreach ($alias_map as $alias => $canonical) {
+			if (isset($raw[$alias]) && !isset($raw[$canonical])) {
+				$raw[$canonical] = $raw[$alias];
+			}
+		}
+
+		if (!empty($raw['post_status'])) {
+			$clean['post_status'] = sanitize_key($raw['post_status']);
+		}
+
+		if (!empty($raw['post_type'])) {
+			$clean['post_type'] = sanitize_key($raw['post_type']);
+		}
+
+		if (!empty($raw['post_category'])) {
+			$clean['post_category'] = is_array($raw['post_category'])
+				? array_map('sanitize_text_field', array_filter($raw['post_category'], 'is_scalar'))
+				: sanitize_text_field((string) $raw['post_category']);
+		}
+
+		if (!empty($raw['post_tags'])) {
+			$clean['post_tags'] = is_array($raw['post_tags'])
+				? array_map('sanitize_text_field', array_filter($raw['post_tags'], 'is_scalar'))
+				: sanitize_text_field((string) $raw['post_tags']);
+		}
+
+		if (!empty($raw['post_author'])) {
+			$clean['post_author'] = absint($raw['post_author']);
+		}
+
+		if (!empty($raw['article_structure_id'])) {
+			$clean['article_structure_id'] = absint($raw['article_structure_id']);
+		}
+
+		if (!empty($raw['voice_id'])) {
+			$clean['voice_id'] = absint($raw['voice_id']);
+		}
+
+		return $clean;
+	}
+
+	/**
+	 * AJAX: Quick create a campaign with basic information.
+	 */
+	public function ajax_quick_create_campaign() {
+		$this->ajax_guard();
+
+		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
+		$content_goal = isset($_POST['content_goal']) ? sanitize_textarea_field(wp_unslash($_POST['content_goal'])) : '';
+
+		if (empty($name)) {
+			AIPS_Ajax_Response::error(__('Campaign name is required.', 'ai-post-scheduler'), 'missing_name', 400);
+		}
+
+		$campaign_id = $this->campaigns_repository->create_campaign(array(
+			'name'         => $name,
+			'content_goal' => $content_goal,
+			'is_active'    => 1,
+			'is_archived'  => 0,
+		));
+
+		if (!$campaign_id) {
+			AIPS_Ajax_Response::error(__('Failed to create campaign.', 'ai-post-scheduler'), 'create_failed', 500);
+		}
+
+		$this->record_campaign_lifecycle_activity($campaign_id, AIPS_History_Event_Type::CAMPAIGN_CREATED, __('created', 'ai-post-scheduler'));
+
+		$detail_url = add_query_arg(
+			array('page' => 'aips-campaign-detail', 'campaign_id' => $campaign_id),
+			admin_url('admin.php')
+		);
+
+		AIPS_Ajax_Response::success(array(
+			'campaign_id'  => $campaign_id,
+			'redirect_url' => $detail_url,
+			'detail_url'   => $detail_url,
+		), __('Campaign created successfully.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: Link a template to a campaign.
+	 */
+	public function ajax_link_campaign_template() {
+		$this->ajax_guard();
+
+		$campaign_id = $this->get_campaign_id_from_request();
+		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+		$overrides   = $this->read_template_overrides_from_request();
+
+		if (!$campaign_id || !$template_id) {
+			AIPS_Ajax_Response::error(__('Invalid campaign or template ID.', 'ai-post-scheduler'), 'invalid_id', 400);
+		}
+
+		$result = $this->campaigns_repository->link_template($campaign_id, $template_id, $overrides);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), 400);
+		}
+
+		$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_template_linked', __('template linked', 'ai-post-scheduler'));
+		AIPS_Ajax_Response::success(array('template_id' => $template_id), __('Template linked to campaign.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: Unlink a template from a campaign.
+	 */
+	public function ajax_unlink_campaign_template() {
+		$this->ajax_guard();
+
+		$campaign_id = $this->get_campaign_id_from_request();
+		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+
+		if (!$campaign_id || !$template_id) {
+			AIPS_Ajax_Response::error(__('Invalid campaign or template ID.', 'ai-post-scheduler'), 'invalid_id', 400);
+		}
+
+		$result = $this->campaigns_repository->unlink_template($campaign_id, $template_id);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), 400);
+		}
+
+		$this->record_campaign_lifecycle_activity($campaign_id, 'campaign_template_unlinked', __('template unlinked', 'ai-post-scheduler'));
+		AIPS_Ajax_Response::success(array('template_id' => $template_id), __('Template unlinked from campaign.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: Update template overrides for a campaign.
+	 */
+	public function ajax_update_campaign_template_overrides() {
+		$this->ajax_guard();
+
+		$campaign_id = $this->get_campaign_id_from_request();
+		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+		$overrides   = $this->read_template_overrides_from_request();
+
+		if (!$campaign_id || !$template_id) {
+			AIPS_Ajax_Response::error(__('Invalid campaign or template ID.', 'ai-post-scheduler'), 'invalid_id', 400);
+		}
+
+		$result = $this->campaigns_repository->update_template_overrides($campaign_id, $template_id, $overrides);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), 400);
+		}
+
+		AIPS_Ajax_Response::success(array('template_id' => $template_id), __('Template overrides updated.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: Save campaign directives and defaults.
+	 */
+	public function ajax_save_campaign_directives() {
+		$this->ajax_guard();
+
+		$campaign_id = $this->get_campaign_id_from_request();
+		if (!$campaign_id) {
+			AIPS_Ajax_Response::error(__('Invalid campaign ID.', 'ai-post-scheduler'), 'invalid_id', 400);
+		}
+
+		$data = array();
+		if (isset($_POST['name'])) {
+			$data['name'] = sanitize_text_field(wp_unslash($_POST['name']));
+		}
+		if (isset($_POST['content_goal'])) {
+			$data['content_goal'] = sanitize_textarea_field(wp_unslash($_POST['content_goal']));
+		}
+		$data = array_merge($data, $this->read_campaign_defaults_from_request(false));
+
+		$result = $this->campaigns_repository->update_campaign($campaign_id, $data);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code(), 400);
+		}
+
+		$this->record_campaign_lifecycle_activity($campaign_id, AIPS_History_Event_Type::CAMPAIGN_UPDATED, __('directives updated', 'ai-post-scheduler'));
+		AIPS_Ajax_Response::success(array('campaign_id' => $campaign_id), __('Campaign directives saved.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: Run all templates for a campaign now.
+	 */
+	public function ajax_run_campaign_all_templates() {
+		$this->ajax_guard();
+
+		$campaign_id = $this->get_campaign_id_from_request();
+		if (!$campaign_id) {
+			AIPS_Ajax_Response::error(__('Invalid campaign ID.', 'ai-post-scheduler'), 'invalid_id', 400);
+		}
+
+		$campaign = $this->campaigns_repository->get_campaign_by_id($campaign_id);
+		if (!$campaign) {
+			AIPS_Ajax_Response::error(__('Campaign not found.', 'ai-post-scheduler'), 'campaign_not_found', 404);
+		}
+
+		if (!empty($campaign->is_archived) || (isset($campaign->is_active) && !(int) $campaign->is_active)) {
+			AIPS_Ajax_Response::error(__('Only active, unarchived campaigns can be run.', 'ai-post-scheduler'), 'campaign_not_runnable', 400);
+		}
+
+		$templates = $this->campaigns_repository->get_templates_by_campaign($campaign_id);
+		if (empty($templates)) {
+			AIPS_Ajax_Response::error(__('No templates are linked to this campaign.', 'ai-post-scheduler'), 'no_templates', 400);
+		}
+
+		// Generation runs one LLM call per template; avoid the request dying mid-batch.
+		if (function_exists('set_time_limit')) {
+			@set_time_limit(0);
+		}
+
+		$generator = new AIPS_Generator();
+		$structure_selector = new AIPS_Template_Type_Selector();
+		$generated_count = 0;
+		$errors = array();
+
+		foreach ($templates as $template) {
+			if (isset($template->is_active) && !(bool) $template->is_active) {
+				continue;
+			}
+
+			$overrides = array();
+			if (!empty($template->campaign_overrides)) {
+				$decoded = json_decode($template->campaign_overrides, true);
+				if (is_array($decoded)) {
+					$overrides = $decoded;
+				}
+			}
+
+			$article_structure_id = !empty($overrides['article_structure_id'])
+				? absint($overrides['article_structure_id'])
+				: (!empty($campaign->default_article_structure_id)
+					? absint($campaign->default_article_structure_id)
+					: (!empty($template->article_structure_id) ? absint($template->article_structure_id) : null));
+
+			$template_entry = AIPS_Template_Entry::from_template_and_overrides(
+				(int) $template->id,
+				$template,
+				1,
+				$article_structure_id
+			);
+
+			$base_context = new AIPS_Template_Context($template_entry, null, null, 'manual');
+			$context      = new AIPS_Campaign_Context($base_context, $campaign, $overrides);
+
+			$result = $generator->generate_from_context($context);
+			if (is_wp_error($result)) {
+				$errors[] = sprintf('%s: %s', $template->name, $result->get_error_message());
+			} else {
+				$generated_count++;
+			}
+		}
+
+		$this->record_campaign_lifecycle_activity(
+			$campaign_id,
+			'campaign_run_all',
+			sprintf(__('generated %d post(s)', 'ai-post-scheduler'), $generated_count)
+		);
+
+		if ($generated_count === 0 && !empty($errors)) {
+			AIPS_Ajax_Response::error(implode('; ', $errors), 'generation_failed', 500);
+		}
+
+		$message = sprintf(
+			/* translators: %d: number of posts generated */
+			__('Batch execution complete: %d post(s) generated.', 'ai-post-scheduler'),
+			$generated_count
+		);
+
+		AIPS_Ajax_Response::success(array(
+			'generated_count' => $generated_count,
+			'errors'          => $errors,
+		), $message);
 	}
 
 	/**

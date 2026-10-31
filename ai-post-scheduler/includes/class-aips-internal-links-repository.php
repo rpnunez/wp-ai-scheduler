@@ -301,6 +301,29 @@ class AIPS_Internal_Links_Repository {
 	}
 
 	/**
+	 * Return the subset of the given IDs whose current status matches.
+	 *
+	 * @param int[]  $ids    Row IDs.
+	 * @param string $status Status to match.
+	 * @return int[]
+	 */
+	public function get_ids_with_status(array $ids, $status) {
+		$ids = array_values(array_filter(array_map('absint', $ids)));
+		if (empty($ids)) {
+			return array();
+		}
+
+		$placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+		$rows         = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT id FROM {$this->table} WHERE status = %s AND id IN ({$placeholders})",
+				array_merge(array($status), $ids)
+			)
+		);
+
+		return array_map('intval', (array) $rows);
+	}
+	/**
 	 * Delete several suggestions in one query.
 	 *
 	 * @param int[] $ids Row IDs.

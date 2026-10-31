@@ -36,6 +36,11 @@ class AIPS_Campaigns_Repository {
 	/**
 	 * @var string
 	 */
+	private $campaign_templates_table;
+
+	/**
+	 * @var string
+	 */
 	private $templates_table;
 
 	/**
@@ -85,6 +90,7 @@ class AIPS_Campaigns_Repository {
 
 		$this->wpdb = $wpdb;
 		$this->campaigns_table = $wpdb->prefix . 'aips_campaigns';
+		$this->campaign_templates_table = $wpdb->prefix . 'aips_campaign_templates';
 		$this->templates_table = $wpdb->prefix . 'aips_templates';
 		$this->schedule_table = $wpdb->prefix . 'aips_schedule';
 		$this->history_table = $wpdb->prefix . 'aips_history';
@@ -122,7 +128,7 @@ class AIPS_Campaigns_Repository {
 		$where_sql = empty($where_clauses) ? '' : 'WHERE ' . implode(' AND ', $where_clauses);
 		$order_sql = null === $campaign_id ? 'ORDER BY c.is_archived ASC, c.created_at DESC' : '';
 
-		$sql = $this->build_campaign_metrics_query($where_sql, $order_sql);
+		$sql = $this->build_campaign_metrics_query($where_sql, $order_sql, $campaign_id ? (int) $campaign_id : 0);
 
 		$rows = empty($where_args)
 			? $this->wpdb->get_results($sql)
@@ -158,7 +164,7 @@ class AIPS_Campaigns_Repository {
 			'campaigns.get_campaign_by_id',
 			array( 'campaign_id' => $campaign_id ),
 			function() use ( $campaign_id ) {
-				$sql  = $this->build_campaign_metrics_query('WHERE c.id = %d');
+				$sql  = $this->build_campaign_metrics_query('WHERE c.id = %d', '', $campaign_id);
 				$rows = $this->wpdb->get_results($this->wpdb->prepare($sql, $campaign_id));
 				if (empty($rows)) {
 					return null;
@@ -262,12 +268,14 @@ class AIPS_Campaigns_Repository {
 		));
 
 		$empty_prompt_count = (int) $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->templates_table} WHERE campaign_id = %d AND TRIM(COALESCE(prompt_template, '')) = ''",
+			"SELECT COUNT(*) FROM {$this->templates_table} t
+			INNER JOIN {$this->campaign_templates_table} ct ON ct.template_id = t.id
+			WHERE ct.campaign_id = %d AND TRIM(COALESCE(t.prompt_template, '')) = ''",
 			$campaign_id
 		));
 
 		$last_history_status = $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT status FROM {$this->history_table} WHERE campaign_id = %d ORDER BY created_at DESC, id DESC LIMIT 1",
+			"SELECT status FROM {$this->history_table} WHERE campaign_id = %d ORDER BY id DESC LIMIT 1",
 			$campaign_id
 		));
 
@@ -415,6 +423,8 @@ class AIPS_Campaigns_Repository {
 			);
 		}
 
+		$this->link_template($campaign_id, $template_id);
+
 		$scheduler = new AIPS_Scheduler();
 		$schedule_id = $scheduler->save_schedule(array(
 			'template_id'           => $template_id,
@@ -482,11 +492,18 @@ class AIPS_Campaigns_Repository {
 		$started_transaction = $this->start_transaction();
 
 		$new_campaign_id = $this->create_campaign(array(
-			'name'          => $campaign->name . ' ' . __('(Copy)', 'ai-post-scheduler'),
-			'content_goal'  => $campaign->content_goal,
-			'campaign_mode' => $campaign->campaign_mode,
-			'is_active'     => 0,
-			'is_archived'   => 0,
+			'name'                         => $campaign->name . ' ' . __('(Copy)', 'ai-post-scheduler'),
+			'content_goal'                 => $campaign->content_goal,
+			'prompt_directives'            => isset($campaign->prompt_directives) ? $campaign->prompt_directives : '',
+			'default_article_structure_id' => !empty($campaign->default_article_structure_id) ? $campaign->default_article_structure_id : null,
+			'default_post_status'          => !empty($campaign->default_post_status) ? $campaign->default_post_status : null,
+			'default_voice_id'             => !empty($campaign->default_voice_id) ? $campaign->default_voice_id : null,
+			'default_author_id'            => !empty($campaign->default_author_id) ? $campaign->default_author_id : null,
+			'default_categories'           => !empty($campaign->default_categories) ? $campaign->default_categories : null,
+			'default_tags'                 => !empty($campaign->default_tags) ? $campaign->default_tags : null,
+			'campaign_mode'                => $campaign->campaign_mode,
+			'is_active'                    => 0,
+			'is_archived'                  => 0,
 		));
 
 		if (!$new_campaign_id) {
@@ -498,10 +515,10 @@ class AIPS_Campaigns_Repository {
 
 		$template_map = array();
 		foreach ($templates as $template) {
+			$overrides     = !empty($template->campaign_overrides) ? json_decode($template->campaign_overrides, true) : array();
 			$template_data = get_object_vars($template);
-			unset($template_data['id'], $template_data['created_at'], $template_data['updated_at']);
+			unset($template_data['id'], $template_data['created_at'], $template_data['updated_at'], $template_data['campaign_overrides'], $template_data['sort_order'], $template_data['linked_at']);
 			$template_data['name'] = $template->name . ' ' . __('(Copy)', 'ai-post-scheduler');
-			$template_data['campaign_id'] = $new_campaign_id;
 			$new_template_id = $this->template_repository->create($template_data);
 
 			if (!$new_template_id) {
@@ -509,6 +526,11 @@ class AIPS_Campaigns_Repository {
 					$started_transaction,
 					$this->build_campaign_error('campaign_template_duplicate_failed', __('Campaign template could not be duplicated.', 'ai-post-scheduler'))
 				);
+			}
+
+			$link_result = $this->link_template($new_campaign_id, (int) $new_template_id, is_array($overrides) ? $overrides : array(), isset($template->sort_order) ? (int) $template->sort_order : 0);
+			if (is_wp_error($link_result)) {
+				return $this->rollback_with_error($started_transaction, $link_result);
 			}
 
 			$template_map[(int) $template->id] = (int) $new_template_id;
@@ -665,20 +687,18 @@ class AIPS_Campaigns_Repository {
 
 		$started_transaction = $this->start_transaction();
 
+		// Unlink templates from this campaign.
+		$this->wpdb->delete(
+			$this->campaign_templates_table,
+			array('campaign_id' => $campaign_id),
+			array('%d')
+		);
+
 		foreach ($this->get_schedules_by_campaign($campaign_id) as $schedule) {
 			if (!$this->schedule_repository->delete((int) $schedule->id)) {
 				return $this->rollback_with_error(
 					$started_transaction,
 					$this->build_campaign_error('campaign_schedule_delete_failed', __('Failed to delete campaign schedule.', 'ai-post-scheduler'))
-				);
-			}
-		}
-
-		foreach ($this->get_templates_by_campaign($campaign_id) as $template) {
-			if (!$this->template_repository->delete((int) $template->id)) {
-				return $this->rollback_with_error(
-					$started_transaction,
-					$this->build_campaign_error('campaign_template_delete_failed', __('Failed to delete campaign template.', 'ai-post-scheduler'))
 				);
 			}
 		}
@@ -695,6 +715,13 @@ class AIPS_Campaigns_Repository {
 				$this->build_campaign_error('campaign_delete_failed', __('Campaign could not be deleted.', 'ai-post-scheduler'))
 			);
 		}
+
+		// Clean up any remaining non-post lifecycle entries in history for this campaign.
+		$this->wpdb->delete(
+			$this->history_table,
+			array('campaign_id' => $campaign_id),
+			array('%d')
+		);
 
 		if ($started_transaction) {
 			$this->wpdb->query('COMMIT');
@@ -716,14 +743,17 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
-	 * Count historical attribution rows attached to a campaign.
+	 * Count historical generated post rows attached to a campaign.
+	 *
+	 * Lifecycle events and logs that did not generate a post are excluded
+	 * so empty campaigns can be safely deleted.
 	 *
 	 * @param int $campaign_id Campaign ID.
 	 * @return int
 	 */
 	public function get_generated_post_count($campaign_id) {
 		return (int) $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d",
+			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d AND (post_id IS NOT NULL OR status IN ('completed', 'partial'))",
 			absint($campaign_id)
 		));
 	}
@@ -752,15 +782,22 @@ class AIPS_Campaigns_Repository {
 		$result = $this->wpdb->insert(
 			$this->campaigns_table,
 			array(
-				'name'          => sanitize_text_field($data['name']),
-				'content_goal'  => isset($data['content_goal']) ? sanitize_textarea_field($data['content_goal']) : '',
-				'campaign_mode' => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
-				'is_active'     => isset($data['is_active']) ? absint($data['is_active']) : 1,
-				'is_archived'   => isset($data['is_archived']) ? absint($data['is_archived']) : 0,
-				'created_at'    => $now,
-				'updated_at'    => $now,
+				'name'                         => sanitize_text_field($data['name']),
+				'content_goal'                 => isset($data['content_goal']) ? sanitize_textarea_field($data['content_goal']) : '',
+				'prompt_directives'            => isset($data['prompt_directives']) ? wp_kses_post($data['prompt_directives']) : '',
+				'default_article_structure_id' => !empty($data['default_article_structure_id']) ? absint($data['default_article_structure_id']) : null,
+				'default_post_status'          => isset($data['default_post_status']) ? sanitize_key($data['default_post_status']) : null,
+				'default_voice_id'             => !empty($data['default_voice_id']) ? absint($data['default_voice_id']) : null,
+				'default_author_id'            => !empty($data['default_author_id']) ? absint($data['default_author_id']) : null,
+				'default_categories'           => isset($data['default_categories']) ? sanitize_text_field($data['default_categories']) : null,
+				'default_tags'                 => isset($data['default_tags']) ? sanitize_text_field($data['default_tags']) : null,
+				'campaign_mode'                => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
+				'is_active'                    => isset($data['is_active']) ? absint($data['is_active']) : 1,
+				'is_archived'                  => isset($data['is_archived']) ? absint($data['is_archived']) : 0,
+				'created_at'                   => $now,
+				'updated_at'                   => $now,
 			),
-			array('%s', '%s', '%s', '%d', '%d', '%d', '%d')
+			array('%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d')
 		);
 
 		if (!$result) {
@@ -796,6 +833,41 @@ class AIPS_Campaigns_Repository {
 
 		if (isset($data['content_goal'])) {
 			$update_data['content_goal'] = sanitize_textarea_field($data['content_goal']);
+			$format[] = '%s';
+		}
+
+		if (array_key_exists('prompt_directives', $data)) {
+			$update_data['prompt_directives'] = wp_kses_post($data['prompt_directives']);
+			$format[] = '%s';
+		}
+
+		if (array_key_exists('default_article_structure_id', $data)) {
+			$update_data['default_article_structure_id'] = !empty($data['default_article_structure_id']) ? absint($data['default_article_structure_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('default_post_status', $data)) {
+			$update_data['default_post_status'] = !empty($data['default_post_status']) ? sanitize_key($data['default_post_status']) : null;
+			$format[] = '%s';
+		}
+
+		if (array_key_exists('default_voice_id', $data)) {
+			$update_data['default_voice_id'] = !empty($data['default_voice_id']) ? absint($data['default_voice_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('default_author_id', $data)) {
+			$update_data['default_author_id'] = !empty($data['default_author_id']) ? absint($data['default_author_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('default_categories', $data)) {
+			$update_data['default_categories'] = !empty($data['default_categories']) ? sanitize_text_field($data['default_categories']) : null;
+			$format[] = '%s';
+		}
+
+		if (array_key_exists('default_tags', $data)) {
+			$update_data['default_tags'] = !empty($data['default_tags']) ? sanitize_text_field($data['default_tags']) : null;
 			$format[] = '%s';
 		}
 
@@ -841,16 +913,231 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
-	 * Get child templates by campaign.
+	 * Get linked templates by campaign.
 	 *
 	 * @param int $campaign_id Campaign ID.
 	 * @return array
 	 */
 	public function get_templates_by_campaign($campaign_id) {
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->templates_table} WHERE campaign_id = %d ORDER BY id ASC",
-			absint($campaign_id)
+		$campaign_id = absint($campaign_id);
+		if (!$campaign_id) {
+			return array();
+		}
+
+		$sql = "
+			SELECT t.*, ct.overrides AS campaign_overrides, ct.overrides, ct.sort_order, ct.created_at AS linked_at
+			FROM {$this->templates_table} t
+			INNER JOIN {$this->campaign_templates_table} ct ON ct.template_id = t.id
+			WHERE ct.campaign_id = %d
+			ORDER BY ct.sort_order ASC, t.id ASC
+		";
+
+		return $this->wpdb->get_results($this->wpdb->prepare($sql, $campaign_id));
+	}
+
+	/**
+	 * Link a template to a campaign.
+	 *
+	 * @param int   $campaign_id Campaign ID.
+	 * @param int   $template_id Template ID.
+	 * @param array $overrides Optional per-template overrides.
+	 * @param int   $sort_order Optional sort order.
+	 * @return bool|WP_Error
+	 */
+	public function link_template($campaign_id, $template_id, $overrides = array(), $sort_order = 0) {
+		$campaign_id = absint($campaign_id);
+		$template_id = absint($template_id);
+
+		if (!$campaign_id || !$template_id) {
+			return $this->build_campaign_error('invalid_ids', __('Invalid campaign or template ID.', 'ai-post-scheduler'));
+		}
+
+		$overrides_json = !empty($overrides) ? wp_json_encode($overrides) : null;
+		$now = AIPS_DateTime::now()->timestamp();
+
+		$result = $this->wpdb->replace(
+			$this->campaign_templates_table,
+			array(
+				'campaign_id' => $campaign_id,
+				'template_id' => $template_id,
+				'overrides'   => $overrides_json,
+				'sort_order'  => absint($sort_order),
+				'created_at'  => $now,
+			),
+			array('%d', '%d', '%s', '%d', '%d')
+		);
+
+		if ($result === false) {
+			return $this->build_campaign_error('link_failed', __('Failed to link template to campaign.', 'ai-post-scheduler'));
+		}
+
+		$this->invalidate_cache_domain('campaign', array('campaign_id' => $campaign_id), 'template_linked');
+		return true;
+	}
+
+	/**
+	 * Unlink a template from a campaign.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $template_id Template ID.
+	 * @return bool|WP_Error
+	 */
+	public function unlink_template($campaign_id, $template_id) {
+		$campaign_id = absint($campaign_id);
+		$template_id = absint($template_id);
+
+		if (!$campaign_id || !$template_id) {
+			return $this->build_campaign_error('invalid_ids', __('Invalid campaign or template ID.', 'ai-post-scheduler'));
+		}
+
+		$deleted = $this->wpdb->delete(
+			$this->campaign_templates_table,
+			array(
+				'campaign_id' => $campaign_id,
+				'template_id' => $template_id,
+			),
+			array('%d', '%d')
+		);
+
+		if ($deleted === false) {
+			return $this->build_campaign_error('unlink_failed', __('Failed to unlink template from campaign.', 'ai-post-scheduler'));
+		}
+
+		$this->invalidate_cache_domain('campaign', array('campaign_id' => $campaign_id), 'template_unlinked');
+		return true;
+	}
+
+	/**
+	 * Update per-template overrides for a campaign.
+	 *
+	 * @param int   $campaign_id Campaign ID.
+	 * @param int   $template_id Template ID.
+	 * @param array $overrides Overrides array.
+	 * @return bool|WP_Error
+	 */
+	public function update_template_overrides($campaign_id, $template_id, $overrides = array()) {
+		$campaign_id = absint($campaign_id);
+		$template_id = absint($template_id);
+
+		$overrides_json = !empty($overrides) ? wp_json_encode($overrides) : null;
+
+		$updated = $this->wpdb->update(
+			$this->campaign_templates_table,
+			array('overrides' => $overrides_json),
+			array('campaign_id' => $campaign_id, 'template_id' => $template_id),
+			array('%s'),
+			array('%d', '%d')
+		);
+
+		if ($updated === false) {
+			return $this->build_campaign_error('update_overrides_failed', __('Failed to update template overrides.', 'ai-post-scheduler'));
+		}
+
+		$this->invalidate_cache_domain('campaign', array('campaign_id' => $campaign_id), 'overrides_updated');
+		return true;
+	}
+
+	/**
+	 * Get the per-template overrides stored on a campaign link.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $template_id Template ID.
+	 * @return array
+	 */
+	public function get_template_overrides($campaign_id, $template_id) {
+		$campaign_id = absint($campaign_id);
+		$template_id = absint($template_id);
+		if (!$campaign_id || !$template_id) {
+			return array();
+		}
+
+		$json = $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT overrides FROM {$this->campaign_templates_table} WHERE campaign_id = %d AND template_id = %d",
+			$campaign_id,
+			$template_id
 		));
+		$decoded = $json ? json_decode($json, true) : array();
+
+		return is_array($decoded) ? $decoded : array();
+	}
+	/**
+	 * Get campaign IDs linked to a template.
+	 *
+	 * @param int $template_id Template ID.
+	 * @return int[]
+	 */
+	public function get_campaign_ids_by_template($template_id) {
+		$template_id = absint($template_id);
+		if (!$template_id) {
+			return array();
+		}
+
+		$ids = $this->wpdb->get_col($this->wpdb->prepare(
+			"SELECT campaign_id FROM {$this->campaign_templates_table} WHERE template_id = %d ORDER BY campaign_id ASC",
+			$template_id
+		));
+
+		return array_map('absint', $ids);
+	}
+
+	/**
+	 * Get count of linked templates grouped by campaign ID.
+	 *
+	 * Pre-fetches counts in a single query to eliminate N+1 overhead in lists.
+	 *
+	 * @param int[] $campaign_ids List of campaign IDs.
+	 * @return array<int, int> Map of campaign_id => template_count.
+	 */
+	public function get_template_counts_by_campaign_ids($campaign_ids) {
+		$campaign_ids = array_filter(array_map('absint', (array) $campaign_ids));
+		if (empty($campaign_ids)) {
+			return array();
+		}
+
+		$in_placeholders = implode(',', array_fill(0, count($campaign_ids), '%d'));
+		$sql = $this->wpdb->prepare(
+			"SELECT campaign_id, COUNT(*) AS count
+			FROM {$this->campaign_templates_table}
+			WHERE campaign_id IN ({$in_placeholders})
+			GROUP BY campaign_id",
+			$campaign_ids
+		);
+
+		$rows = $this->wpdb->get_results($sql);
+		$counts = array();
+		if (!empty($rows)) {
+			foreach ($rows as $row) {
+				$counts[(int) $row->campaign_id] = (int) $row->count;
+			}
+		}
+
+		return $counts;
+	}
+
+	/**
+	 * Get mapping of template_id to array of campaign_ids.
+	 *
+	 * Uses persistent tier caching to avoid SHOW TABLES and repeated queries on Templates page.
+	 *
+	 * @return array<int, int[]> Map of template_id => array of campaign_ids.
+	 */
+	public function get_template_campaign_mappings() {
+		return $this->cache_read(
+			'campaigns.template_campaign_mappings',
+			array(),
+			function() {
+				$rows = $this->wpdb->get_results(
+					"SELECT campaign_id, template_id FROM {$this->campaign_templates_table}"
+				);
+				$map = array();
+				if (!empty($rows)) {
+					foreach ($rows as $row) {
+						$map[(int) $row->template_id][] = (int) $row->campaign_id;
+					}
+				}
+				return $map;
+			}
+		);
 	}
 
 	/**
@@ -885,7 +1172,6 @@ class AIPS_Campaigns_Repository {
 			'post_category'        => $payload['post_category'],
 			'post_tags'            => $payload['post_tags'],
 			'post_author'          => $payload['post_author'],
-			'campaign_id'          => $campaign_id,
 			'is_active'            => 1,
 		);
 
@@ -974,17 +1260,27 @@ class AIPS_Campaigns_Repository {
 		$row->active_schedule_count = (int) $row->active_schedule_count;
 		$row->primary_template_id = !empty($row->primary_template_id) ? (int) $row->primary_template_id : null;
 		$row->primary_schedule_id = !empty($row->primary_schedule_id) ? (int) $row->primary_schedule_id : null;
-		$row->can_delete = 0 === $row->total_history_count;
+		$row->can_delete = 0 === $row->generated_posts_count;
 	}
 
 	/**
 	 * Build the aggregate campaign query.
 	 *
-	 * @param string $where_sql WHERE clause.
-	 * @param string $order_sql ORDER clause.
+	 * When $single_campaign_id > 0, subqueries are filtered directly by campaign_id
+	 * to prevent full table scans on history, schedule, and template link tables.
+	 *
+	 * @param string $where_sql           WHERE clause for the outer query.
+	 * @param string $order_sql           ORDER clause for the outer query.
+	 * @param int    $single_campaign_id  Optional single campaign ID to push into subqueries.
 	 * @return string
 	 */
-	private function build_campaign_metrics_query($where_sql = '', $order_sql = '') {
+	private function build_campaign_metrics_query($where_sql = '', $order_sql = '', $single_campaign_id = 0) {
+		$single_campaign_id = absint($single_campaign_id);
+
+		$t_where = $single_campaign_id > 0 ? "WHERE campaign_id = {$single_campaign_id}" : '';
+		$s_where = $single_campaign_id > 0 ? "WHERE campaign_id = {$single_campaign_id}" : 'WHERE campaign_id IS NOT NULL';
+		$h_where = $single_campaign_id > 0 ? "WHERE campaign_id = {$single_campaign_id}" : 'WHERE campaign_id IS NOT NULL';
+
 		return "
 			SELECT
 				c.*,
@@ -999,9 +1295,9 @@ class AIPS_Campaigns_Repository {
 				s.primary_schedule_id AS primary_schedule_id
 			FROM {$this->campaigns_table} c
 			LEFT JOIN (
-				SELECT campaign_id, COUNT(*) AS linked_template_count, MIN(id) AS primary_template_id
-				FROM {$this->templates_table}
-				WHERE campaign_id IS NOT NULL
+				SELECT campaign_id, COUNT(*) AS linked_template_count, MIN(template_id) AS primary_template_id
+				FROM {$this->campaign_templates_table}
+				{$t_where}
 				GROUP BY campaign_id
 			) t ON t.campaign_id = c.id
 			LEFT JOIN (
@@ -1013,7 +1309,7 @@ class AIPS_Campaigns_Repository {
 					MIN(CASE WHEN is_active = 1 AND next_run > 0 THEN next_run END) AS next_run,
 					MIN(id) AS primary_schedule_id
 				FROM {$this->schedule_table}
-				WHERE campaign_id IS NOT NULL
+				{$s_where}
 				GROUP BY campaign_id
 			) s ON s.campaign_id = c.id
 			LEFT JOIN (
@@ -1022,7 +1318,7 @@ class AIPS_Campaigns_Repository {
 					SUM(CASE WHEN status IN ('completed', 'partial') THEN 1 ELSE 0 END) AS generated_posts_count,
 					COUNT(*) AS total_history_count
 				FROM {$this->history_table}
-				WHERE campaign_id IS NOT NULL
+				{$h_where}
 				GROUP BY campaign_id
 			) h ON h.campaign_id = c.id
 			{$where_sql}
@@ -1051,6 +1347,12 @@ class AIPS_Campaigns_Repository {
 				'tags'        => array( 'campaigns', 'campaign:{campaign_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single campaign reads by ID including metrics aggregates.',
+			),
+			'campaigns.template_campaign_mappings' => array(
+				'tier'        => 'long',
+				'tags'        => array( 'campaigns' ),
+				'cache_null'  => false,
+				'description' => 'Cache template-to-campaign mappings for template lists.',
 			),
 		);
 	}

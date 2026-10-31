@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+### Fixed & Improved
+- **Campaigns Container Hardening & Query Optimizations:**
+  - Pushed single-campaign ID filtering directly into derived metric subqueries (`build_campaign_metrics_query`) to eliminate full table scans across history, schedule, and template tables.
+  - Eliminated N+1 queries in `AIPS_Schedules_List_Table` by batch prefetching template counts via `get_template_counts_by_campaign_ids()`.
+  - Added cached `get_template_campaign_mappings()` in `AIPS_Campaigns_Repository` to eliminate repeated `SHOW TABLES` on Templates page loads.
+  - Fixed Quick Create redirect by supporting both `redirect_url` and `detail_url` in controller and JavaScript handlers.
+  - Fixed template overrides field mapping between modal form (`categories`, `tags`, `author_id`) and controller whitelist, ensuring overrides are persisted and rendered accurately.
+  - Fixed campaign deletion check (`can_delete_campaign`) to only count generated posts rather than non-post lifecycle event rows, allowing empty campaigns to be cleanly deleted.
+  - Scoped embedded History tab AJAX reloads to the active campaign ID and enqueued history assets on the Campaign Detail workspace.
+  - Corrected article structure precedence (`Per-template override > Campaign default > Inner context / system default`) in batch schedule generation and context resolution.
+  - Injected campaign content goals into post title generation prompts.
+  - Preserved active tab state on Campaign Directives & Defaults form saves.
+
+## [3.8.0] - 2026-10-23
+
+### Added
+- **Campaigns Container Architecture & 6-Tab Workspace:**
+  - Elevated Campaigns into a first-class container model supporting shared templates (M:N via `aips_campaign_templates`) and dedicated schedules.
+  - Added Campaign Context Engine (`AIPS_Campaign_Context`) injecting `content_goal` and `prompt_directives` into AI prompt generation with hierarchical override precedence (Template Overrides > Template Config > Campaign Defaults > Global Settings).
+  - Added Campaign-level defaults for Article Structure, Post Status, Voice, Author, Categories, and Tags with per-template overrides stored in `aips_campaign_templates`.
+  - Added `campaign_all` execution mode to `AIPS_Schedule_Processor`, allowing schedules to batch generate posts for all linked templates in a single execution cycle.
+  - Added "Run All Templates Now" one-click action to the Schedules table, Campaigns list, and Campaign workspace.
+  - Visual hierarchy grouping in Schedules list table (`AIPS_Schedules_List_Table`) displaying Campaign Group Headers and indented (`↳`) child schedules with mode badges (`All Templates (Batch)`, `Rotate Templates`).
+  - Redesigned `campaign-detail.php` into a complete 6-tab container workspace: Overview, Templates, Schedules, Directives & Defaults, Generated Posts, and an embedded scoped History tab.
+  - Added Quick Create Campaign modal flow alongside the Campaign Wizard.
+  - Added migration `migrate_to_3_8_0()` to backfill `aips_templates.campaign_id` into the new pivot table and safely drop the column.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
