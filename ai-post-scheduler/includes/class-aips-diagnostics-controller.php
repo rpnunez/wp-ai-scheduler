@@ -23,6 +23,27 @@ class AIPS_Diagnostics_Controller {
 	private const DEFAULT_TAB = 'system-info';
 
 	/**
+	 * @var AIPS_History_Repository_Interface
+	 */
+	private $history_repository;
+
+	/**
+	 * Constructor.
+	 *
+	 * Registers AJAX hooks for Diagnostics page.
+	 *
+	 * @param AIPS_History_Repository_Interface|null $history_repository Optional history repository.
+	 */
+	public function __construct( $history_repository = null ) {
+		$this->history_repository = $history_repository instanceof AIPS_History_Repository_Interface
+			? $history_repository
+			: new AIPS_History_Repository();
+
+		add_action( 'wp_ajax_aips_get_ai_errors', array( $this, 'ajax_get_ai_errors' ) );
+		add_action( 'wp_ajax_aips_get_ai_error_details', array( $this, 'ajax_get_ai_error_details' ) );
+	}
+
+	/**
 	 * Render the Diagnostics page.
 	 *
 	 * @return void
@@ -64,6 +85,10 @@ class AIPS_Diagnostics_Controller {
 				$summary_items = array(
 					array('label' => __('Telemetry Stream', 'ai-post-scheduler'), 'value' => __('Active', 'ai-post-scheduler'), 'type' => 'info', 'icon' => 'dashicons-performance'),
 				);
+			} elseif ('ai-errors' === $active_tab) {
+				$summary_items = array(
+					array('label' => __('Scope', 'ai-post-scheduler'), 'value' => __('AI Failures', 'ai-post-scheduler'), 'type' => 'warning', 'icon' => 'dashicons-warning'),
+				);
 			}
 		} catch (\Throwable $e) {
 			// Fail-safe: empty summary items
@@ -100,6 +125,11 @@ class AIPS_Diagnostics_Controller {
 				'label'       => __('Operational Status', 'ai-post-scheduler'),
 				'icon'        => 'dashicons-dashboard',
 				'description' => __('Scheduler, queue & pipeline metrics', 'ai-post-scheduler'),
+			),
+			'ai-errors' => array(
+				'label'       => __('AI Errors', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-warning',
+				'description' => __('AI call failures & generation error log', 'ai-post-scheduler'),
 			),
 		);
 
@@ -184,7 +214,7 @@ class AIPS_Diagnostics_Controller {
 
 		// Keep in step with get_tabs(): a tab listed there but missing here is
 		// rejected by get_active_tab_key() and silently falls back to the default.
-		if (in_array($tab, array('system-info', 'health', 'operations', 'status', 'insights', 'stress-test', 'background-processes'), true)) {
+		if (in_array($tab, array('system-info', 'health', 'operations', 'status', 'insights', 'stress-test', 'background-processes', 'ai-errors'), true)) {
 			return true;
 		}
 
@@ -251,6 +281,11 @@ class AIPS_Diagnostics_Controller {
 				AIPS_Admin_Menu_Helper::safe_render(function() {
 					include AIPS_PLUGIN_DIR . 'templates/admin/operational-status.php';
 				}, __('Operational Status', 'ai-post-scheduler'), true);
+				break;
+			case 'ai-errors':
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_ai_errors_tab();
+				}, __('AI Errors', 'ai-post-scheduler'), true);
 				break;
 			case 'operations-insights':
 			case 'insights':
@@ -382,5 +417,103 @@ class AIPS_Diagnostics_Controller {
 	private function render_dev_tools_tab() {
 		$dev_tools = new AIPS_Dev_Tools();
 		$dev_tools->render_page();
+	}
+
+	/**
+	 * Render the AI Errors tab.
+	 *
+	 * @return void
+	 */
+	private function render_ai_errors_tab() {
+		$history_repository = $this->history_repository;
+		include AIPS_PLUGIN_DIR . 'templates/admin/tab-ai-errors.php';
+	}
+
+	/**
+	 * AJAX endpoint to retrieve paginated AI error logs with filtering.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_ai_errors() {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
+			AIPS_Ajax_Response::error( __( 'Invalid nonce.', 'ai-post-scheduler' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$date_from_str = isset( $_POST['date_from'] ) ? sanitize_text_field( wp_unslash( $_POST['date_from'] ) ) : '';
+		$date_to_str   = isset( $_POST['date_to'] ) ? sanitize_text_field( wp_unslash( $_POST['date_to'] ) ) : '';
+		$component     = isset( $_POST['component'] ) ? sanitize_key( wp_unslash( $_POST['component'] ) ) : '';
+		$error_scope   = isset( $_POST['error_scope'] ) ? sanitize_key( wp_unslash( $_POST['error_scope'] ) ) : 'ai_only';
+		$search        = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
+		$page          = isset( $_POST['page'] ) ? max( 1, absint( $_POST['page'] ) ) : 1;
+		$per_page      = isset( $_POST['per_page'] ) ? min( 100, max( 1, absint( $_POST['per_page'] ) ) ) : 20;
+
+		$from_ts = 0;
+		if ( ! empty( $date_from_str ) ) {
+			if ( is_numeric( $date_from_str ) ) {
+				$from_ts = (int) $date_from_str;
+			} else {
+				try {
+					$from_ts = AIPS_DateTime::fromDate( $date_from_str )->timestamp();
+				} catch ( \Throwable $e ) {
+					$from_ts = 0;
+				}
+			}
+		}
+
+		$to_ts = 0;
+		if ( ! empty( $date_to_str ) ) {
+			if ( is_numeric( $date_to_str ) ) {
+				$to_ts = (int) $date_to_str;
+			} else {
+				try {
+					$to_ts = AIPS_DateTime::fromDate( $date_to_str )->timestamp() + DAY_IN_SECONDS - 1;
+				} catch ( \Throwable $e ) {
+					$to_ts = 0;
+				}
+			}
+		}
+
+		$results = $this->history_repository->get_ai_errors( array(
+			'date_from'   => $from_ts,
+			'date_to'     => $to_ts,
+			'component'   => $component,
+			'error_scope' => $error_scope,
+			'search'      => $search,
+			'page'        => $page,
+			'per_page'    => $per_page,
+		) );
+
+		AIPS_Ajax_Response::success( $results );
+	}
+
+	/**
+	 * AJAX endpoint to retrieve full details for a single AI error log.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_ai_error_details() {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
+			AIPS_Ajax_Response::error( __( 'Invalid nonce.', 'ai-post-scheduler' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$log_id = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : 0;
+		if ( ! $log_id ) {
+			AIPS_Ajax_Response::error( __( 'Invalid error log ID.', 'ai-post-scheduler' ) );
+		}
+
+		$error_details = $this->history_repository->get_ai_error_by_id( $log_id );
+		if ( ! $error_details ) {
+			AIPS_Ajax_Response::error( __( 'Error log record not found.', 'ai-post-scheduler' ) );
+		}
+
+		AIPS_Ajax_Response::success( $error_details );
 	}
 }

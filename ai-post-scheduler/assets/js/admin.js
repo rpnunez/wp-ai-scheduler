@@ -3831,6 +3831,13 @@
 
             if (source === 'unsplash') {
                 $('.aips-image-source-unsplash').show();
+                var hasKey = (typeof aipsAdminL10n !== 'undefined' && Boolean(aipsAdminL10n.hasUnsplashAccessKey)) ||
+                             (typeof aipsTemplatesL10n !== 'undefined' && Boolean(aipsTemplatesL10n.hasUnsplashAccessKey));
+                if (!hasKey) {
+                    $('.aips-unsplash-missing-key-notice').show();
+                } else {
+                    $('.aips-unsplash-missing-key-notice').hide();
+                }
             } else if (source === 'media_library') {
                 $('.aips-image-source-media').show();
             } else {
