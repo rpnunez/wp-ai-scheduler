@@ -135,5 +135,30 @@ If none of the above procedures resolve the incident:
 - [ ] Review Generation Metrics → Success Rate trend.
 - [ ] Check Schedule Run Success Rate is ≥ 90 %.
 - [ ] Confirm no stuck jobs have been accumulating silently.
-- [ ] Prune History records older than your retention policy (Data Management → Export then wipe).
+- [ ] Review and apply the database retention policy below.
 - [ ] Verify API key expiry dates with your AI provider.
+
+---
+
+## Database retention and maintenance
+
+Use **Settings → Performance → Database & Data Retention** to configure scheduled cleanup. Leave the master switch disabled until the site's retention policy has been agreed; no automatic cleanup is scheduled while it is off.
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| Telemetry retention | 30 days | Removes older performance and usage events. |
+| History-log retention | 60 days | Removes older generation-log entries. |
+| Prune frequency | Daily | Runs the configured cleanup on a daily, twice-daily, or weekly schedule. |
+| Orphaned embeddings cleanup | Enabled | Removes embeddings and relationship entries for posts that no longer exist. |
+| Expired topics cleanup | Enabled | Removes expired or rejected author topics. |
+
+For an immediate maintenance action, open the hidden System Status page at `wp-admin/admin.php?page=aips-status`. It provides live table sizes and these guarded actions:
+
+- **Prune Old Telemetry** and **Prune History Logs** delete data older than the configured retention window in batches.
+- **Clean Orphaned Embeddings** removes vectors and relationships for deleted posts.
+- **Optimize Table** reclaims fragmented table space after confirmation.
+- **Purge All** truncates telemetry and is irreversible; it requires typing `PURGE`.
+
+All maintenance actions require `manage_options` and an action-specific nonce. The bundled **Refresh System** flow excludes data-deleting tasks by default and prompts for an additional confirmation if any are selected.
+
+Administrators who manage settings through WP-CLI may set the same options directly. The relevant options are `aips_auto_prune_enabled`, `aips_telemetry_retention_value`, `aips_telemetry_retention_unit`, `aips_telemetry_prune_interval`, `aips_history_log_retention_value`, `aips_history_log_retention_unit`, `aips_clean_orphaned_embeddings`, and `aips_clean_expired_topics`.
