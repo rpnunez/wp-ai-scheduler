@@ -161,6 +161,7 @@ class AIPS_DB_Manager {
             details longtext,
             PRIMARY KEY  (id),
             KEY history_type_id (history_type_id),
+            KEY history_type_ts (history_type_id, timestamp),
             KEY history_type_timestamp (history_id, history_type_id, timestamp),
             KEY event_status (event_status),
             KEY event_type_timestamp (event_type, timestamp),
