@@ -175,6 +175,47 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertNull($this->wpdb_stub->last_update_call);
 	}
 
+	public function test_create_campaign_persists_silo_fields() {
+		$repository = $this->new_repository();
+		$this->wpdb_stub->insert_id = 99;
+
+		$id = $repository->create_campaign(array(
+			'name'                   => 'Silo Campaign',
+			'content_goal'           => 'Rank for Solar',
+			'silo_enabled'           => 1,
+			'pillar_post_id'         => 301,
+			'pillar_template_id'     => 15,
+			'pillar_anchor_keywords' => 'best solar, residential solar',
+		));
+
+		$this->assertSame(99, $id);
+		$this->assertNotNull($this->wpdb_stub->last_insert_call);
+		$data = $this->wpdb_stub->last_insert_call['data'];
+		$this->assertSame(1, $data['silo_enabled']);
+		$this->assertSame(301, $data['pillar_post_id']);
+		$this->assertSame(15, $data['pillar_template_id']);
+		$this->assertSame('best solar, residential solar', $data['pillar_anchor_keywords']);
+	}
+
+	public function test_update_campaign_persists_silo_fields() {
+		$repository = $this->new_repository();
+
+		$result = $repository->update_campaign(42, array(
+			'silo_enabled'           => 1,
+			'pillar_post_id'         => 505,
+			'pillar_template_id'     => 22,
+			'pillar_anchor_keywords' => 'keyword one, keyword two',
+		));
+
+		$this->assertTrue($result);
+		$this->assertNotNull($this->wpdb_stub->last_update_call);
+		$data = $this->wpdb_stub->last_update_call['data'];
+		$this->assertSame(1, $data['silo_enabled']);
+		$this->assertSame(505, $data['pillar_post_id']);
+		$this->assertSame(22, $data['pillar_template_id']);
+		$this->assertSame('keyword one, keyword two', $data['pillar_anchor_keywords']);
+	}
+
 	public function test_get_campaign_health_returns_expected_metrics_and_query_shapes() {
 		$this->wpdb_stub->rows_to_return = array(
 			(object) array(
@@ -481,6 +522,11 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	}
 
 	public function insert($table, $data, $format = null) {
+		$this->last_insert_call = array(
+			'table' => $table,
+			'data' => $data,
+			'format' => $format,
+		);
 		if (!empty($this->insert_return_values)) {
 			return array_shift($this->insert_return_values);
 		}

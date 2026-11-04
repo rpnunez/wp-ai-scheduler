@@ -1301,7 +1301,24 @@ class AIPS_Generator {
             $this->current_history->complete_success($completion_data);
         }
 
-        if ($context instanceof AIPS_Template_Context) {
+        if ($context instanceof AIPS_Campaign_Context && $context->get_campaign_id()) {
+            $campaign_id = $context->get_campaign_id();
+            update_post_meta($post_id, '_aips_campaign_id', $campaign_id);
+            if (class_exists('AIPS_Campaigns_Repository')) {
+                $campaigns_repo = AIPS_Campaigns_Repository::instance();
+                if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
+                    $campaigns_repo->flush_campaign_cache($campaign_id);
+                }
+                // Auto-designate pillar post if this template was configured as the pillar template.
+                if ($context->is_silo_enabled() && !$context->get_pillar_post_id()) {
+                    $pillar_template_id = $context->get_pillar_template_id();
+                    $template_id = (int) $context->get_id();
+                    if ($pillar_template_id && $pillar_template_id === $template_id) {
+                        $campaigns_repo->update_campaign($campaign_id, array('pillar_post_id' => $post_id));
+                    }
+                }
+            }
+        } elseif ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();
             if ($template && !empty($template->campaign_id) && class_exists('AIPS_Campaigns_Repository')) {
                 $campaigns_repo = AIPS_Campaigns_Repository::instance();

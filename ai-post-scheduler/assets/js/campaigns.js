@@ -47,6 +47,11 @@
 			$(document).on('click', '.aips-edit-overrides-btn', this.handleOpenOverridesModal.bind(this));
 			$(document).on('submit', '#aips-template-overrides-form', this.handleSubmitOverrides.bind(this));
 
+			// Topic Silo toggle handler
+			$(document).on('change', '#silo_enabled', function() {
+				$('#aips-silo-settings-wrapper').toggleClass('aips-hidden', !this.checked);
+			});
+
 			// Generic modal close
 			$(document).on('click', '.aips-modal-close, .aips-modal-cancel, .aips-modal-backdrop', this.handleCloseModals.bind(this));
 		},

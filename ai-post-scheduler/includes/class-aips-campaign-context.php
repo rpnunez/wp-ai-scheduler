@@ -110,6 +110,57 @@ class AIPS_Campaign_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Check whether topic silo mode is enabled for this campaign.
+	 *
+	 * @return bool
+	 */
+	public function is_silo_enabled(): bool {
+		return !empty($this->campaign->silo_enabled);
+	}
+
+	/**
+	 * Get the designated pillar post ID.
+	 *
+	 * @return int|null
+	 */
+	public function get_pillar_post_id(): ?int {
+		return !empty($this->campaign->pillar_post_id) ? (int) $this->campaign->pillar_post_id : null;
+	}
+
+	/**
+	 * Get the designated pillar template ID.
+	 *
+	 * @return int|null
+	 */
+	public function get_pillar_template_id(): ?int {
+		return !empty($this->campaign->pillar_template_id) ? (int) $this->campaign->pillar_template_id : null;
+	}
+
+	/**
+	 * Get the pillar anchor keywords as an array of strings.
+	 *
+	 * @return array<string>
+	 */
+	public function get_pillar_anchor_keywords(): array {
+		if (empty($this->campaign->pillar_anchor_keywords)) {
+			return array();
+		}
+
+		$raw = (string) $this->campaign->pillar_anchor_keywords;
+		$lines = preg_split('/[\r\n,]+/', $raw);
+		$keywords = array();
+
+		foreach ($lines as $line) {
+			$clean = trim($line);
+			if ($clean !== '') {
+				$keywords[] = $clean;
+			}
+		}
+
+		return array_values(array_unique($keywords));
+	}
+
+	/**
 	 * Get the context type identifier.
 	 *
 	 * @return string
@@ -415,6 +466,10 @@ class AIPS_Campaign_Context implements AIPS_Generation_Context {
 		$data['post_author']         = $this->get_post_author();
 		$data['voice_id']            = $this->get_voice_id();
 		$data['article_structure_id'] = $this->get_article_structure_id();
+		$data['silo_enabled']           = $this->is_silo_enabled();
+		$data['pillar_post_id']         = $this->get_pillar_post_id();
+		$data['pillar_template_id']     = $this->get_pillar_template_id();
+		$data['pillar_anchor_keywords'] = $this->get_pillar_anchor_keywords();
 
 		return $data;
 	}

@@ -198,6 +198,7 @@ class AIPS_Admin_Assets {
             || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
         ) {
 			$this->enqueue_history_assets();
+			$this->enqueue_silos_assets();
 		}
 
         if (self::PAGE_ONBOARDING === $page || $this->hook_contains($hook, self::PAGE_ONBOARDING)) {
