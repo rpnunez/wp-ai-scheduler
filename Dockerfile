@@ -25,7 +25,7 @@ RUN apt-get update \
 # Copy a dedicated development PHP/Xdebug configuration file. This is also
 # bind-mounted by docker-compose during local development so it can be edited
 # without rebuilding the image.
-COPY dev-php.ini /usr/local/etc/php/conf.d/zz-dev-php.ini
+COPY docker/dev-php.ini /usr/local/etc/php/conf.d/zz-dev-php.ini
 RUN sed -i 's/\r$//' /usr/local/etc/php/conf.d/zz-dev-php.ini && chmod 644 /usr/local/etc/php/conf.d/zz-dev-php.ini
 
 # Install a pinned WP-CLI release (retry on transient network failures)
@@ -45,11 +45,11 @@ RUN a2enmod rewrite expires headers
 COPY ai-post-scheduler /plugin-src/ai-post-scheduler
 
 # Copy custom entrypoint and make executable
-COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/docker-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
 
 # Copy healthcheck script and make executable
-COPY healthcheck.sh /usr/local/bin/healthcheck.sh
+COPY docker/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN sed -i 's/\r$//' /usr/local/bin/healthcheck.sh && chmod +x /usr/local/bin/healthcheck.sh
 
 # Define healthcheck (first boot installs WP + plugins, hence the long start period)
