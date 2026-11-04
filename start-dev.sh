@@ -636,10 +636,15 @@ finally:
     # Point the site at this instance's local URL (serialization-safe).
     # Compose health checks can complete just before WP-CLI can read the
     # installed site. Do not silently skip the URL sync in that short window.
-    WP_CLI_WEB="$DOCKER_COMPOSE exec -T web wp --path=/var/www/html --allow-root --skip-plugins --skip-themes"
+    # Git Bash rewrites /var/www/html into a Windows path unless conversion is
+    # disabled. That path belongs to the web container, not the host.
+    wp_cli_web() {
+        MSYS_NO_PATHCONV=1 $DOCKER_COMPOSE exec -T web wp --path=/var/www/html --allow-root --skip-plugins --skip-themes "$@"
+    }
+
     WP_READY=0
     for attempt in 1 2 3 4 5; do
-        if $WP_CLI_WEB core is-installed >/dev/null 2>&1; then
+        if wp_cli_web core is-installed >/dev/null 2>&1; then
             WP_READY=1
             break
         fi
@@ -653,7 +658,7 @@ finally:
     fi
 
     NEW_URL="http://localhost:${WP_PORT}"
-    OLD_URL="$($WP_CLI_WEB option get siteurl 2>/dev/null | tr -d '\r' || true)"
+    OLD_URL="$(wp_cli_web option get siteurl 2>/dev/null | tr -d '\r' || true)"
     if [ -z "$OLD_URL" ]; then
         echo -e "${RED}Could not read the WordPress site URL for synchronization.${NC}"
         exit 1
@@ -661,9 +666,9 @@ finally:
 
     if [ "$OLD_URL" != "$NEW_URL" ]; then
         echo "Syncing WordPress site URL: ${OLD_URL} -> ${NEW_URL}"
-        $WP_CLI_WEB search-replace "$OLD_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
-        $WP_CLI_WEB option update home "$NEW_URL"
-        $WP_CLI_WEB option update siteurl "$NEW_URL"
+        wp_cli_web search-replace "$OLD_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
+        wp_cli_web option update home "$NEW_URL"
+        wp_cli_web option update siteurl "$NEW_URL"
     elif [ "$IMPORTED_SQL" = "1" ]; then
         echo "Imported site URL already matches ${NEW_URL}."
     fi
