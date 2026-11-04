@@ -24,6 +24,8 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **Settings Navigation Page Scroll:**
+  - Fixed page scroll position not resetting to top when clicking Settings tabs from the left-hand navigation rail.
 - **Stress Test Modal & History UI Refinements:**
   - Resolved unscrollable modal dialog by enforcing max-height, flex-column constraints, and scrollable body container.
   - Positioned History tab header action buttons side-by-side and disabled "Compare 2 Selected Runs" with clear visual styling and ARIA attributes until exactly two runs are selected.
