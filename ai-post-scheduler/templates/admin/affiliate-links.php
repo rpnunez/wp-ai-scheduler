@@ -466,7 +466,7 @@ $aips_all_categories = get_categories( array( 'hide_empty' => false ) );
 			try {
 				catIds = JSON.parse(item.category_ids || '[]');
 			} catch (e) {
-				catIds = [];
+				catIds = (item.category_ids || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
 			}
 			catIds.forEach(function(cid) {
 				$('#aips-afl-categories option[value="' + cid + '"]').prop('selected', true);
@@ -654,14 +654,16 @@ $aips_all_categories = get_categories( array( 'hide_empty' => false ) );
 				actionsHtml = '<span class="aips-text-muted">—</span>';
 			}
 
-			var snippet = sug.context_snippet ? ('<code style="font-size:11px;display:block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + $('<span>').text(sug.context_snippet).html() + '</code>') : '—';
-			var shortUrl = sug.target_url.length > 30 ? sug.target_url.substring(0, 30) + '…' : sug.target_url;
+			var targetUrl = sug.affiliate_url || sug.target_url || '';
+			var snippetText = sug.before_snippet || sug.after_snippet || sug.context_snippet || '';
+			var snippet = snippetText ? ('<code style="font-size:11px;display:block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + $('<span>').text(snippetText).html() + '</code>') : '—';
+			var shortUrl = targetUrl.length > 30 ? targetUrl.substring(0, 30) + '…' : targetUrl;
 
 			return '<tr data-id="' + sug.id + '">'
 				+ '<td><input type="checkbox" class="aips-sug-cb" value="' + sug.id + '"></td>'
 				+ '<td><a href="' + editUrl + '" target="_blank"><strong>' + $('<span>').text(postTitle).html() + '</strong></a></td>'
-				+ '<td><a href="' + $('<span>').text(sug.target_url).html() + '" target="_blank" rel="noopener">' + $('<span>').text(shortUrl).html() + '</a></td>'
-				+ '<td><code>' + $('<span>').text(sug.anchor_text || sug.insertion_mode).html() + '</code></td>'
+				+ '<td><a href="' + $('<span>').text(targetUrl).html() + '" target="_blank" rel="noopener">' + $('<span>').text(shortUrl).html() + '</a></td>'
+				+ '<td><code>' + $('<span>').text(sug.anchor_text || sug.match_type || sug.insertion_mode || '—').html() + '</code></td>'
 				+ '<td>' + snippet + '</td>'
 				+ '<td>' + (statusBadges[sug.status] || sug.status) + '</td>'
 				+ '<td>' + actionsHtml + '</td>'
@@ -698,7 +700,7 @@ $aips_all_categories = get_categories( array( 'hide_empty' => false ) );
 	$(document).on('click', '.aips-sug-apply-btn', function() {
 		var id = $(this).data('id');
 		var btn = $(this).prop('disabled', true);
-		aflRequest('aips_affiliate_suggestions_apply', { suggestion_id: id }, function(res) {
+		aflRequest('aips_affiliate_suggestions_apply', { id: id, suggestion_id: id }, function(res) {
 			if (res.success) { loadSuggestions(); }
 			else { alert(res.data && res.data.message ? res.data.message : '<?php echo esc_js( __( 'Failed to apply suggestion.', 'ai-post-scheduler' ) ); ?>'); btn.prop('disabled', false); }
 		});
@@ -707,7 +709,7 @@ $aips_all_categories = get_categories( array( 'hide_empty' => false ) );
 	$(document).on('click', '.aips-sug-reject-btn', function() {
 		var id = $(this).data('id');
 		var btn = $(this).prop('disabled', true);
-		aflRequest('aips_affiliate_suggestions_reject', { suggestion_id: id }, function(res) {
+		aflRequest('aips_affiliate_suggestions_reject', { id: id, suggestion_id: id }, function(res) {
 			if (res.success) { loadSuggestions(); }
 			else { alert(res.data && res.data.message ? res.data.message : '<?php echo esc_js( __( 'Failed to reject suggestion.', 'ai-post-scheduler' ) ); ?>'); btn.prop('disabled', false); }
 		});
@@ -720,7 +722,7 @@ $aips_all_categories = get_categories( array( 'hide_empty' => false ) );
 		$('.aips-sug-cb:checked').each(function() { ids.push($(this).val()); });
 		if (!ids.length) { alert('<?php echo esc_js( __( 'Please select at least one suggestion.', 'ai-post-scheduler' ) ); ?>'); return; }
 
-		aflRequest('aips_affiliate_suggestions_bulk', { bulk_action: action, suggestion_ids: ids }, function(res) {
+		aflRequest('aips_affiliate_suggestions_bulk', { bulk_action: action, ids: ids, suggestion_ids: ids }, function(res) {
 			if (res.success) {
 				$('#aips-sug-select-all').prop('checked', false);
 				loadSuggestions();

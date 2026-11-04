@@ -27,6 +27,13 @@ class AIPS_Affiliate_Url_Replace_Process extends AIPS_Managed_Background_Process
 	 */
 	private $wpdb;
 
+	/**
+	 * Transient options passed during start() before record creation.
+	 *
+	 * @var array
+	 */
+	private $current_options = array();
+
 	public function __construct(
 		?AIPS_Background_Process_Repository $repository = null,
 		?AIPS_Affiliate_Links_Repository $repo = null
@@ -35,6 +42,15 @@ class AIPS_Affiliate_Url_Replace_Process extends AIPS_Managed_Background_Process
 		parent::__construct($repository);
 		$this->repo = $repo ?: new AIPS_Affiliate_Links_Repository();
 		$this->wpdb = $wpdb;
+	}
+
+	public function start(array $options = array()) {
+		$this->current_options = $options;
+		try {
+			return parent::start($options);
+		} finally {
+			$this->current_options = array();
+		}
 	}
 
 	public function get_key(): string {
@@ -62,9 +78,8 @@ class AIPS_Affiliate_Url_Replace_Process extends AIPS_Managed_Background_Process
 	}
 
 	protected function count_remaining(): int {
-		$snapshot = $this->get_snapshot();
-		$options  = $this->repository->get_active_options(self::KEY);
-		$old_url  = isset($options['old_url']) ? esc_url_raw($options['old_url']) : '';
+		$options = !empty($this->current_options) ? $this->current_options : $this->repository->get_active_options(self::KEY);
+		$old_url = isset($options['old_url']) ? esc_url_raw($options['old_url']) : '';
 
 		if (empty($old_url)) {
 			return 0;
@@ -136,6 +151,14 @@ class AIPS_Affiliate_Url_Replace_Process extends AIPS_Managed_Background_Process
 				},
 				$content
 			);
+
+			// Also replace markdown links [anchor](old_url) or raw URL instances
+			$url_variants = array_unique(array(
+				$old_url,
+				esc_url($old_url),
+				htmlspecialchars($old_url, ENT_QUOTES, 'UTF-8'),
+			));
+			$updated_content = str_replace($url_variants, $new_url, $updated_content);
 
 			if ($updated_content !== $content) {
 				$res = wp_update_post(array(

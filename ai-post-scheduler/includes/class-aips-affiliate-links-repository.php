@@ -354,8 +354,14 @@ class AIPS_Affiliate_Links_Repository {
 
 			// 3. Category matching.
 			if ( ! $is_match && ! empty( $mapping->category_ids ) && ! empty( $cat_list ) ) {
-				$mapping_cats = array_filter( array_map( 'trim', explode( ',', (string) $mapping->category_ids ) ) );
-				if ( ! empty( array_intersect( $mapping_cats, $cat_list ) ) ) {
+				$decoded = json_decode( (string) $mapping->category_ids, true );
+				if ( is_array( $decoded ) ) {
+					$mapping_cats = array_map( 'strval', $decoded );
+				} else {
+					$mapping_cats = array_filter( array_map( 'trim', explode( ',', (string) $mapping->category_ids ) ) );
+				}
+				$string_cat_list = array_map( 'strval', $cat_list );
+				if ( ! empty( array_intersect( $mapping_cats, $string_cat_list ) ) ) {
 					$is_match = true;
 				}
 			}

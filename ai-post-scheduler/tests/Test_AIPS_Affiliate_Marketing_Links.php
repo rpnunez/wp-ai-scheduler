@@ -180,4 +180,56 @@ class Test_AIPS_Affiliate_Marketing_Links extends WP_UnitTestCase {
 		$this->sug_repo->delete( $sug_id );
 		$this->assertFalse( $this->sug_repo->exists_for_post_and_link( $post_id, 999 ) );
 	}
+
+	public function test_category_matching_json_and_csv() {
+		$id_json = $this->links_repo->insert( array(
+			'tag'           => 'cat-test-json',
+			'label'         => 'Category Test JSON',
+			'affiliate_url' => 'https://example.com/cat1',
+			'category_ids'  => array( 42, 84 ),
+			'enabled'       => 1,
+		) );
+
+		$id_csv = $this->links_repo->insert( array(
+			'tag'           => 'cat-test-csv',
+			'label'         => 'Category Test CSV',
+			'affiliate_url' => 'https://example.com/cat2',
+			'category_ids'  => '99,101',
+			'enabled'       => 1,
+		) );
+
+		// Matching category 42 should match JSON offer
+		$match_json = $this->links_repo->find_matching_offers( '', '42', array() );
+		$this->assertNotEmpty( $match_json );
+		$this->assertEquals( $id_json, $match_json[0]->id );
+
+		// Matching category 99 should match CSV offer
+		$match_csv = $this->links_repo->find_matching_offers( '', '99', array() );
+		$this->assertNotEmpty( $match_csv );
+		$this->assertEquals( $id_csv, $match_csv[0]->id );
+
+		// Clean up
+		$this->links_repo->delete( $id_json );
+		$this->links_repo->delete( $id_csv );
+	}
+
+	public function test_affiliate_url_replace_process_startup() {
+		$post_id = $this->factory->post->create( array(
+			'post_content' => '<p>Get discounts at <a href="https://old-affiliate.com/deal">Old Deal</a> today.</p>',
+			'post_status'  => 'publish',
+		) );
+
+		$process = new AIPS_Affiliate_Url_Replace_Process();
+		$snapshot = $process->start( array(
+			'old_url' => 'https://old-affiliate.com/deal',
+			'new_url' => 'https://new-affiliate.com/deal',
+		) );
+
+		$this->assertNotWPError( $snapshot );
+		$this->assertEquals( 'affiliate_url_replace', $snapshot['key'] );
+		$this->assertGreaterThanOrEqual( 1, $snapshot['total'] );
+
+		// Cancel process to clean up active run in repository
+		$process->cancel();
+	}
 }

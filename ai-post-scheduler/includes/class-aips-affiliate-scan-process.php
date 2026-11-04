@@ -130,7 +130,7 @@ class AIPS_Affiliate_Scan_Process extends AIPS_Managed_Background_Process {
 
 			foreach ($matched as $offer) {
 				// Skip if post already contains this URL
-				if (strpos($content, $offer->affiliate_url) !== false) {
+				if (strpos($content, $offer->affiliate_url) !== false || strpos($content, esc_url($offer->affiliate_url)) !== false) {
 					continue;
 				}
 

@@ -259,7 +259,7 @@ class AIPS_Affiliate_Links_Controller {
 	public function ajax_suggestions_apply() {
 		$this->verify_request();
 
-		$id         = absint( isset( $_POST['id'] ) ? wp_unslash( $_POST['id'] ) : 0 );
+		$id         = absint( isset( $_POST['id'] ) ? wp_unslash( $_POST['id'] ) : ( isset( $_POST['suggestion_id'] ) ? wp_unslash( $_POST['suggestion_id'] ) : 0 ) );
 		$suggestion = $id ? $this->suggestions_repo->get_by_id( $id ) : null;
 
 		if ( ! $suggestion ) {
@@ -290,6 +290,7 @@ class AIPS_Affiliate_Links_Controller {
 			AIPS_Ajax_Response::error( array( 'message' => __( 'Failed to update post.', 'ai-post-scheduler' ) ) );
 		}
 
+		AIPS_Link_Index_Service::get_instance()->index_post( (int) $post->ID, true );
 		$this->suggestions_repo->update_status( $id, 'applied' );
 
 		AIPS_Ajax_Response::success( array( 'message' => __( 'Affiliate link applied to post.', 'ai-post-scheduler' ) ) );
@@ -301,7 +302,7 @@ class AIPS_Affiliate_Links_Controller {
 	public function ajax_suggestions_reject() {
 		$this->verify_request();
 
-		$id = absint( isset( $_POST['id'] ) ? wp_unslash( $_POST['id'] ) : 0 );
+		$id = absint( isset( $_POST['id'] ) ? wp_unslash( $_POST['id'] ) : ( isset( $_POST['suggestion_id'] ) ? wp_unslash( $_POST['suggestion_id'] ) : 0 ) );
 		if ( ! $id ) {
 			AIPS_Ajax_Response::error( array( 'message' => __( 'Invalid ID.', 'ai-post-scheduler' ) ) );
 		}
@@ -316,8 +317,9 @@ class AIPS_Affiliate_Links_Controller {
 	public function ajax_suggestions_bulk() {
 		$this->verify_request();
 
-		$action = isset( $_POST['bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['bulk_action'] ) ) : '';
-		$ids    = isset( $_POST['ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['ids'] ) ) : array();
+		$action  = isset( $_POST['bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['bulk_action'] ) ) : '';
+		$raw_ids = isset( $_POST['ids'] ) ? $_POST['ids'] : ( isset( $_POST['suggestion_ids'] ) ? $_POST['suggestion_ids'] : array() );
+		$ids     = array_map( 'absint', (array) wp_unslash( $raw_ids ) );
 
 		if ( empty( $ids ) ) {
 			AIPS_Ajax_Response::error( array( 'message' => __( 'No suggestions selected.', 'ai-post-scheduler' ) ) );
@@ -340,6 +342,7 @@ class AIPS_Affiliate_Links_Controller {
 							'ID'           => $post->ID,
 							'post_content' => $content,
 						) );
+						AIPS_Link_Index_Service::get_instance()->index_post( (int) $post->ID, true );
 						$this->suggestions_repo->update_status( $id, 'applied' );
 						$processed++;
 					}
@@ -419,6 +422,12 @@ class AIPS_Affiliate_Links_Controller {
 	 * @return array
 	 */
 	private function extract_mapping_data() {
+		$raw_categories = isset( $_POST['category_ids'] ) ? wp_unslash( $_POST['category_ids'] ) : array();
+		if ( is_string( $raw_categories ) ) {
+			$raw_categories = array_filter( array_map( 'trim', explode( ',', $raw_categories ) ) );
+		}
+		$category_ids = is_array( $raw_categories ) ? array_map( 'absint', $raw_categories ) : array();
+
 		return array(
 			'tag'                => isset( $_POST['tag'] )                ? sanitize_text_field( wp_unslash( $_POST['tag'] ) )                : '',
 			'label'              => isset( $_POST['label'] )              ? sanitize_text_field( wp_unslash( $_POST['label'] ) )              : '',
@@ -431,7 +440,7 @@ class AIPS_Affiliate_Links_Controller {
 			'cta_max_insertions' => isset( $_POST['cta_max_insertions'] ) ? absint( wp_unslash( $_POST['cta_max_insertions'] ) )              : 1,
 			'use_ai_injection'   => isset( $_POST['use_ai_injection'] )   ? (bool) wp_unslash( $_POST['use_ai_injection'] )                  : false,
 			'keywords'           => isset( $_POST['keywords'] )           ? sanitize_text_field( wp_unslash( $_POST['keywords'] ) )           : '',
-			'category_ids'       => isset( $_POST['category_ids'] )       ? sanitize_text_field( wp_unslash( $_POST['category_ids'] ) )       : '',
+			'category_ids'       => $category_ids,
 			'prompt_guidance'    => isset( $_POST['prompt_guidance'] )    ? sanitize_textarea_field( wp_unslash( $_POST['prompt_guidance'] ) ): '',
 			'is_global_fallback' => isset( $_POST['is_global_fallback'] ) ? (bool) wp_unslash( $_POST['is_global_fallback'] )               : false,
 		);

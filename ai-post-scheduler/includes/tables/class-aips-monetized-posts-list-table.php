@@ -268,7 +268,7 @@ class AIPS_Monetized_Posts_List_Table extends AIPS_List_Table {
 		foreach ($posts as $p) {
 			$p->detected_offers = array();
 			$p->detected_links  = array();
-			$p->total_clicks    = count( $clicks_repo->get_clicks_by_target( (int) $p->ID, 0 ) );
+			$p->total_clicks    = (int) array_sum( $clicks_repo->get_clicks_by_target( (int) $p->ID, 0 ) );
 
 			// Extract <a> tags
 			if (preg_match_all('/<a\s+[^>]*?href=(["\'])(https?:\/\/[^"\']+)\1[^>]*?>(.*?)<\/a>/is', $p->post_content, $matches, PREG_SET_ORDER)) {
