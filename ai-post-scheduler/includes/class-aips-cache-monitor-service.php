@@ -59,8 +59,8 @@ class AIPS_Cache_Monitor_Service {
 	public function __construct(
 		AIPS_Cache_Monitor_Repository $repository,
 		AIPS_Cache_Index $cache_index,
-		AIPS_Cache $cache = null,
-		AIPS_Logger_Interface $logger = null
+		?AIPS_Cache $cache = null,
+		?AIPS_Logger_Interface $logger = null
 	) {
 		$this->repository  = $repository;
 		$this->cache_index = $cache_index;
