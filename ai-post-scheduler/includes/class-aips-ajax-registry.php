@@ -254,6 +254,8 @@ class AIPS_Ajax_Registry {
 		// Diagnostics Controller
 		'aips_get_ai_errors'              => 'AIPS_Diagnostics_Controller',
 		'aips_get_ai_error_details'       => 'AIPS_Diagnostics_Controller',
+		'aips_get_ai_error_summary'       => 'AIPS_Diagnostics_Controller',
+		'aips_export_ai_errors'           => 'AIPS_Diagnostics_Controller',
 
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
@@ -274,6 +276,7 @@ class AIPS_Ajax_Registry {
 		'aips_status_prune_telemetry'    => 'AIPS_System_Status_Controller',
 		'aips_status_purge_telemetry'    => 'AIPS_System_Status_Controller',
 		'aips_status_prune_history_logs' => 'AIPS_System_Status_Controller',
+		'aips_status_prune_ai_errors'    => 'AIPS_System_Status_Controller',
 		'aips_status_clean_orphaned_embeddings' => 'AIPS_System_Status_Controller',
 		'aips_status_optimize_table'     => 'AIPS_System_Status_Controller',
 		'aips_status_get_tables'         => 'AIPS_System_Status_Controller',

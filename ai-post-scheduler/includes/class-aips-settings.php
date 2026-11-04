@@ -672,6 +672,14 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_retention_unit'),
 				'default'           => $defaults['aips_history_log_retention_unit'],
 			),
+			'aips_ai_error_log_retention_value' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_ai_error_log_retention_value'],
+			),
+			'aips_ai_error_log_retention_unit' => array(
+				'sanitize_callback' => array($ui, 'sanitize_retention_unit'),
+				'default'           => $defaults['aips_ai_error_log_retention_unit'],
+			),
 			'aips_clean_orphaned_embeddings' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_clean_orphaned_embeddings'],
@@ -1893,6 +1901,14 @@ class AIPS_Settings {
             'aips_history_log_retention',
             __('Generation History Log Retention', 'ai-post-scheduler'),
             array($this->ui, 'history_log_retention_field_callback'),
+            'aips-settings',
+            'aips_database_retention_section'
+        );
+
+        add_settings_field(
+            'aips_ai_error_log_retention',
+            __('AI Error Log Retention', 'ai-post-scheduler'),
+            array($this->ui, 'ai_error_log_retention_field_callback'),
             'aips-settings',
             'aips_database_retention_section'
         );

@@ -144,6 +144,14 @@ interface AIPS_History_Repository_Interface {
 	public function get_ai_errors($args = array());
 
 	/**
+	 * Retrieve aggregate statistics and category breakdown for AI errors.
+	 *
+	 * @param array $args Filter arguments (date_from, date_to, error_scope, search).
+	 * @return array
+	 */
+	public function get_ai_error_summary_stats($args = array());
+
+	/**
 	 * Retrieve a single AI error record with full details by history log ID.
 	 *
 	 * @param int $log_id History log row ID.

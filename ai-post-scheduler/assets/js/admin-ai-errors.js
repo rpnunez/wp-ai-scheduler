@@ -1,7 +1,8 @@
 /**
  * AI Errors Diagnostics Tab Management
  *
- * Handles filtering, search, pagination, and modal inspection for AI error logs.
+ * Handles filtering, search, pagination, aggregate analytics, live provider health checks,
+ * log exporting, and modal inspection for AI error logs.
  * Renders UI components using AIPS.Templates.
  *
  * @package AI_Post_Scheduler
@@ -22,6 +23,7 @@
 		dateFrom: '',
 		dateTo: '',
 		component: '',
+		category: '',
 		errorScope: 'ai_only',
 		search: '',
 		searchTimer: null,
@@ -45,6 +47,7 @@
 			}
 
 			this.fetchErrors();
+			this.fetchSummaryStats();
 		},
 
 		/**
@@ -65,6 +68,10 @@
 				this.component = urlParams.get('component') || '';
 				$('#aips-ai-errors-component').val(this.component);
 			}
+			if (urlParams.has('category')) {
+				this.category = urlParams.get('category') || '';
+				$('#aips-ai-errors-category').val(this.category);
+			}
 			if (urlParams.has('search')) {
 				this.search = urlParams.get('search') || '';
 				$('#aips-ai-errors-search').val(this.search);
@@ -73,123 +80,334 @@
 				this.errorScope = urlParams.get('error_scope') || 'ai_only';
 				$('#aips-ai-errors-scope').val(this.errorScope);
 			}
+
+			// Update active state on preset buttons if custom dates provided
+			if (this.dateFrom || this.dateTo) {
+				$('.aips-date-preset-btn').removeClass('active');
+			}
 		},
 
 		/**
-		 * Bind DOM and keyboard event listeners.
+		 * Bind DOM and keyboard event listeners using named method references.
 		 */
 		bindEvents: function () {
-			var self = this;
-
-			// Filter button
-			$('#aips-ai-errors-filter-btn').on('click', function (e) {
-				e.preventDefault();
-				self.applyFilters();
-			});
-
-			// Reset button
-			$('#aips-ai-errors-reset-btn').on('click', function (e) {
-				e.preventDefault();
-				self.resetFilters();
-			});
-
-			// Scope or Component change
-			$('#aips-ai-errors-component, #aips-ai-errors-scope').on('change', function () {
-				self.applyFilters();
-			});
-
-			// Search with debounce
-			$('#aips-ai-errors-search').on('input', function () {
-				clearTimeout(self.searchTimer);
-				self.searchTimer = setTimeout(function () {
-					self.applyFilters();
-				}, 400);
-			}).on('keydown', function (e) {
-				if (e.key === 'Enter') {
-					e.preventDefault();
-					clearTimeout(self.searchTimer);
-					self.applyFilters();
-				}
-			});
-
-			// Row click to view details
-			$(document).on('click', '.aips-ai-error-row', function (e) {
-				if ($(e.target).closest('a, button, input').length) {
-					return;
-				}
-				var logId = $(this).data('log-id');
-				if (logId) {
-					self.openErrorDetails(logId);
-				}
-			});
-
-			// View details button click
-			$(document).on('click', '.aips-ai-error-view-btn', function (e) {
-				e.preventDefault();
-				e.stopPropagation();
-				var logId = $(this).data('log-id');
-				if (logId) {
-					self.openErrorDetails(logId);
-				}
-			});
-
-			// Pagination clicks
-			$(document).on('click', '.aips-ai-errors-page-btn', function (e) {
-				e.preventDefault();
-				var targetPage = parseInt($(this).data('page'), 10);
-				if (targetPage && targetPage !== self.page) {
-					self.page = targetPage;
-					self.fetchErrors();
-				}
-			});
-
-			// Modal close handlers
-			$('#aips-ai-error-modal').on('click', '.aips-modal-close, .aips-modal-overlay', function (e) {
-				e.preventDefault();
-				self.closeModal();
-			});
-
-			// ESC key handler for error modal
-			$(document).on('keydown', function (e) {
-				if (e.key === 'Escape' && $('#aips-ai-error-modal').is(':visible')) {
-					if (!$('#aips-history-modal').is(':visible')) {
-						self.closeModal();
-					}
-				}
-			});
-
-			// Copy Prompt button
-			$('#aips-ai-error-copy-prompt-btn').on('click', function (e) {
-				e.preventDefault();
-				var text = $('#aips-ai-error-modal-prompt').text();
-				self.copyToClipboard(text, $(this));
-			});
-
-			// Copy Diagnostic button
-			$('#aips-ai-error-copy-diagnostic-btn').on('click', function (e) {
-				e.preventDefault();
-				var text = $('#aips-ai-error-modal-diagnostic').text();
-				self.copyToClipboard(text, $(this));
-			});
-
-			// When "Open History Container" is clicked from inside the error modal,
-			// ensure history modal displays above error modal
-			$('#aips-ai-error-open-history-btn').on('click', function () {
-				$('#aips-history-modal').css('z-index', 100050);
-			});
+			$(document).on('click', '.aips-date-preset-btn', this.handleDatePresetClick.bind(this));
+			$('#aips-ai-errors-filter-btn').on('click', this.handleFilterClick.bind(this));
+			$('#aips-ai-errors-reset-btn').on('click', this.handleResetClick.bind(this));
+			$('#aips-ai-errors-component, #aips-ai-errors-category, #aips-ai-errors-scope').on('change', this.handleFilterChange.bind(this));
+			$(document).on('click', '.aips-ai-errors-cat-pill', this.handleCategoryPillClick.bind(this));
+			$('#aips-ai-errors-ping-btn').on('click', this.handlePingClick.bind(this));
+			$('#aips-ai-errors-export-toggle').on('click', this.handleExportToggleClick.bind(this));
+			$(document).on('click', this.handleExportDropdownDismiss.bind(this));
+			$(document).on('click', '.aips-export-btn', this.handleExportActionClick.bind(this));
+			$('#aips-ai-errors-search').on('input', this.handleSearchInput.bind(this))
+				.on('keydown', this.handleSearchKeydown.bind(this));
+			$(document).on('click', '.aips-ai-error-row', this.handleRowClick.bind(this));
+			$(document).on('click', '.aips-ai-error-view-btn', this.handleViewDetailsClick.bind(this));
+			$(document).on('click', '.aips-ai-errors-page-btn', this.handlePaginationClick.bind(this));
+			$('#aips-ai-error-modal').on('click', '.aips-modal-close, .aips-modal-overlay', this.handleModalClose.bind(this));
+			$(document).on('keydown', this.handleModalKeydown.bind(this));
+			$('#aips-ai-error-copy-prompt-btn').on('click', this.handleCopyPrompt.bind(this));
+			$('#aips-ai-error-copy-diagnostic-btn').on('click', this.handleCopyDiagnostic.bind(this));
+			$('#aips-ai-error-copy-report-btn').on('click', this.handleCopySupportReport.bind(this));
+			$('#aips-ai-error-open-history-btn').on('click', this.handleOpenHistoryClick.bind(this));
 		},
 
 		/**
-		 * Read inputs, reset to page 1, and fetch errors.
+		 * Handler for date preset button click.
+		 *
+		 * @param {Event} e
+		 */
+		handleDatePresetClick: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var preset = $btn.data('preset');
+			$('.aips-date-preset-btn').removeClass('active');
+			$btn.addClass('active');
+			this.applyDatePreset(preset);
+		},
+
+		/**
+		 * Handler for filter button click.
+		 *
+		 * @param {Event} e
+		 */
+		handleFilterClick: function (e) {
+			e.preventDefault();
+			this.applyFilters();
+		},
+
+		/**
+		 * Handler for filter reset button click.
+		 *
+		 * @param {Event} e
+		 */
+		handleResetClick: function (e) {
+			e.preventDefault();
+			this.resetFilters();
+		},
+
+		/**
+		 * Handler for dropdown filter changes (component, category, scope).
+		 */
+		handleFilterChange: function () {
+			this.applyFilters();
+		},
+
+		/**
+		 * Handler for clicking on a category pill in the summary card.
+		 *
+		 * @param {Event} e
+		 */
+		handleCategoryPillClick: function (e) {
+			e.preventDefault();
+			var catSlug = $(e.currentTarget).data('category');
+			var currentCat = $('#aips-ai-errors-category').val();
+
+			if (currentCat === catSlug) {
+				$('#aips-ai-errors-category').val('');
+			} else {
+				$('#aips-ai-errors-category').val(catSlug);
+			}
+			this.applyFilters();
+		},
+
+		/**
+		 * Handler for clicking the live provider health ping test button.
+		 *
+		 * @param {Event} e
+		 */
+		handlePingClick: function (e) {
+			e.preventDefault();
+			this.pingProviderConnection();
+		},
+
+		/**
+		 * Handler for toggling export dropdown menu.
+		 *
+		 * @param {Event} e
+		 */
+		handleExportToggleClick: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			var $menu = $('#aips-ai-errors-export-menu');
+			$menu.toggleClass('aips-is-hidden');
+		},
+
+		/**
+		 * Handler for dismissing export dropdown when clicking outside.
+		 *
+		 * @param {Event} e
+		 */
+		handleExportDropdownDismiss: function (e) {
+			if (!$(e.target).closest('#aips-ai-errors-export-dropdown').length) {
+				$('#aips-ai-errors-export-menu').addClass('aips-is-hidden');
+			}
+		},
+
+		/**
+		 * Handler for export format selection (CSV or JSON).
+		 *
+		 * @param {Event} e
+		 */
+		handleExportActionClick: function (e) {
+			e.preventDefault();
+			var format = $(e.currentTarget).data('format') || 'csv';
+			$('#aips-ai-errors-export-menu').addClass('aips-is-hidden');
+			this.triggerExport(format);
+		},
+
+		/**
+		 * Handler for search input debounce.
+		 */
+		handleSearchInput: function () {
+			var self = this;
+			clearTimeout(this.searchTimer);
+			this.searchTimer = setTimeout(function () {
+				self.applyFilters();
+			}, 400);
+		},
+
+		/**
+		 * Handler for search Enter keypress.
+		 *
+		 * @param {KeyboardEvent} e
+		 */
+		handleSearchKeydown: function (e) {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				clearTimeout(this.searchTimer);
+				this.applyFilters();
+			}
+		},
+
+		/**
+		 * Handler for table row click.
+		 *
+		 * @param {Event} e
+		 */
+		handleRowClick: function (e) {
+			if ($(e.target).closest('a, button, input').length) {
+				return;
+			}
+			var logId = $(e.currentTarget).data('log-id');
+			if (logId) {
+				this.openErrorDetails(logId);
+			}
+		},
+
+		/**
+		 * Handler for "View Details" button click on a table row.
+		 *
+		 * @param {Event} e
+		 */
+		handleViewDetailsClick: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			var logId = $(e.currentTarget).data('log-id');
+			if (logId) {
+				this.openErrorDetails(logId);
+			}
+		},
+
+		/**
+		 * Handler for pagination control button clicks.
+		 *
+		 * @param {Event} e
+		 */
+		handlePaginationClick: function (e) {
+			e.preventDefault();
+			var targetPage = parseInt($(e.currentTarget).data('page'), 10);
+			if (targetPage && targetPage !== this.page) {
+				this.page = targetPage;
+				this.fetchErrors();
+			}
+		},
+
+		/**
+		 * Handler for closing the error detail modal.
+		 *
+		 * @param {Event} e
+		 */
+		handleModalClose: function (e) {
+			if (e) {
+				e.preventDefault();
+			}
+			this.closeModal();
+		},
+
+		/**
+		 * Handler for Escape key when modal is open.
+		 *
+		 * @param {KeyboardEvent} e
+		 */
+		handleModalKeydown: function (e) {
+			if (e.key === 'Escape' && $('#aips-ai-error-modal').is(':visible')) {
+				if (!$('#aips-history-modal').is(':visible')) {
+					this.closeModal();
+				}
+			}
+		},
+
+		/**
+		 * Handler for copying prompt text to clipboard.
+		 *
+		 * @param {Event} e
+		 */
+		handleCopyPrompt: function (e) {
+			e.preventDefault();
+			var text = $('#aips-ai-error-modal-prompt').text();
+			this.copyToClipboard(text, $(e.currentTarget));
+		},
+
+		/**
+		 * Handler for copying full diagnostic JSON payload.
+		 *
+		 * @param {Event} e
+		 */
+		handleCopyDiagnostic: function (e) {
+			e.preventDefault();
+			var text = $('#aips-ai-error-modal-diagnostic').text();
+			this.copyToClipboard(text, $(e.currentTarget));
+		},
+
+		/**
+		 * Handler for copying formatted support report Markdown.
+		 *
+		 * @param {Event} e
+		 */
+		handleCopySupportReport: function (e) {
+			e.preventDefault();
+			var reportText = (this.currentErrorData && this.currentErrorData.support_report) || '';
+			if (!reportText) {
+				reportText = $('#aips-ai-error-modal-diagnostic').text();
+			}
+			this.copyToClipboard(reportText, $(e.currentTarget));
+		},
+
+		/**
+		 * Handler for elevating history modal z-index when opened from inside the error modal.
+		 */
+		handleOpenHistoryClick: function () {
+			$('#aips-history-modal').css('z-index', 100050);
+		},
+
+		/**
+		 * Calculate and apply date range preset.
+		 *
+		 * @param {string} preset 'today', '7d', '30d', 'all'
+		 */
+		applyDatePreset: function (preset) {
+			var today = new Date();
+			var formatDate = function (d) {
+				var month = '' + (d.getMonth() + 1);
+				var day   = '' + d.getDate();
+				var year  = d.getFullYear();
+				if (month.length < 2) {
+					month = '0' + month;
+				}
+				if (day.length < 2) {
+					day = '0' + day;
+				}
+				return [year, month, day].join('-');
+			};
+
+			if ('today' === preset) {
+				var todayStr = formatDate(today);
+				$('#aips-ai-errors-from').val(todayStr);
+				$('#aips-ai-errors-to').val(todayStr);
+			} else if ('7d' === preset) {
+				var d7 = new Date();
+				d7.setDate(today.getDate() - 7);
+				$('#aips-ai-errors-from').val(formatDate(d7));
+				$('#aips-ai-errors-to').val(formatDate(today));
+			} else if ('30d' === preset) {
+				var d30 = new Date();
+				d30.setDate(today.getDate() - 30);
+				$('#aips-ai-errors-from').val(formatDate(d30));
+				$('#aips-ai-errors-to').val(formatDate(today));
+			} else {
+				$('#aips-ai-errors-from').val('');
+				$('#aips-ai-errors-to').val('');
+			}
+
+			this.applyFilters();
+		},
+
+		/**
+		 * Read inputs, reset to page 1, and fetch errors and summary stats.
 		 */
 		applyFilters: function () {
 			this.page = 1;
 			this.dateFrom = $('#aips-ai-errors-from').val() || '';
 			this.dateTo = $('#aips-ai-errors-to').val() || '';
 			this.component = $('#aips-ai-errors-component').val() || '';
+			this.category = $('#aips-ai-errors-category').val() || '';
 			this.errorScope = $('#aips-ai-errors-scope').val() || 'ai_only';
 			this.search = $('#aips-ai-errors-search').val() || '';
+
 			this.fetchErrors();
+			this.fetchSummaryStats();
 		},
 
 		/**
@@ -200,16 +418,22 @@
 			this.dateFrom = '';
 			this.dateTo = '';
 			this.component = '';
+			this.category = '';
 			this.errorScope = 'ai_only';
 			this.search = '';
 
 			$('#aips-ai-errors-from').val('');
 			$('#aips-ai-errors-to').val('');
 			$('#aips-ai-errors-component').val('');
+			$('#aips-ai-errors-category').val('');
 			$('#aips-ai-errors-scope').val('ai_only');
 			$('#aips-ai-errors-search').val('');
 
+			$('.aips-date-preset-btn').removeClass('active');
+			$('.aips-date-preset-btn[data-preset="all"]').addClass('active');
+
 			this.fetchErrors();
+			this.fetchSummaryStats();
 		},
 
 		/**
@@ -230,10 +454,11 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_ai_errors',
-					nonce: ajaxConfig.nonce || '',
+					nonce: ajaxConfig.nonce || (l10n.nonce || ''),
 					date_from: self.dateFrom,
 					date_to: self.dateTo,
 					component: self.component,
+					category: self.category,
 					error_scope: self.errorScope,
 					search: self.search,
 					page: self.page,
@@ -263,6 +488,155 @@
 		},
 
 		/**
+		 * Perform AJAX fetch of aggregate summary metrics and category rollups.
+		 */
+		fetchSummaryStats: function () {
+			var self = this;
+			var l10n = window.aipsAiErrorsL10n || {};
+			var ajaxConfig = window.aipsAjax || {};
+
+			$.ajax({
+				url: ajaxConfig.ajaxUrl || window.ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_ai_error_summary',
+					nonce: ajaxConfig.nonce || (l10n.nonce || ''),
+					date_from: self.dateFrom,
+					date_to: self.dateTo,
+					error_scope: self.errorScope,
+					search: self.search
+				},
+				success: function (response) {
+					if (!response || !response.success || !response.data) {
+						return;
+					}
+
+					self.renderSummaryStats(response.data);
+				}
+			});
+		},
+
+		/**
+		 * Render summary stats across the 4-card header using AIPS.Templates.
+		 *
+		 * @param {Object} data Summary metrics payload.
+		 */
+		renderSummaryStats: function (data) {
+			var total = data.total_errors || 0;
+			$('#aips-stat-total-errors').text(total.toLocaleString());
+
+			// Render category pills
+			var categories = data.categories || {};
+			var pillsHtml = '';
+			var activeCategory = $('#aips-ai-errors-category').val();
+
+			for (var key in categories) {
+				if (!Object.prototype.hasOwnProperty.call(categories, key)) {
+					continue;
+				}
+				var cat = categories[key];
+				if (cat.count === 0 && !activeCategory) {
+					continue;
+				}
+
+				pillsHtml += AIPS.Templates.render('aips-tmpl-ai-errors-category-pill', {
+					slug: cat.slug,
+					label: cat.label,
+					short_label: cat.short_label || cat.label,
+					badge_class: cat.badge_class || 'aips-badge-light',
+					icon: cat.icon || 'dashicons-warning',
+					count: cat.count,
+					active_class: activeCategory === cat.slug ? 'active' : ''
+				});
+			}
+
+			if (!pillsHtml) {
+				pillsHtml = AIPS.Templates.render('aips-tmpl-ai-errors-no-categories', {
+					message: 'No category errors logged in this range.'
+				});
+			}
+			$('#aips-stat-category-pills').html(pillsHtml);
+
+			// Render Top Component
+			if (data.top_component && data.top_component.count > 0) {
+				$('#aips-stat-top-component').text(data.top_component.label);
+				$('#aips-stat-top-component-sub').text(data.top_component.count + ' failures (' + data.top_component.percentage + '%)');
+			} else {
+				$('#aips-stat-top-component').text('None');
+				$('#aips-stat-top-component-sub').text('No failures recorded');
+			}
+		},
+
+		/**
+		 * Trigger live provider connectivity test ping.
+		 */
+		pingProviderConnection: function () {
+			var l10n = window.aipsAiErrorsL10n || {};
+			var ajaxConfig = window.aipsAjax || {};
+			var $btn = $('#aips-ai-errors-ping-btn');
+			var $badge = $('#aips-ai-errors-ping-badge');
+			var $msg = $('#aips-ai-errors-ping-msg');
+
+			var startTime = new Date().getTime();
+			$btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
+			$badge.attr('class', 'aips-badge aips-badge-info').text(l10n.pinging || 'Testing…');
+			$msg.text('');
+
+			$.ajax({
+				url: ajaxConfig.ajaxUrl || window.ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_test_connection',
+					nonce: ajaxConfig.nonce || (l10n.nonce || '')
+				},
+				success: function (response) {
+					var latency = new Date().getTime() - startTime;
+					$btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+
+					if (response && response.success) {
+						$badge.attr('class', 'aips-badge aips-badge-success').text('Online (' + latency + 'ms)');
+						$msg.text('Connection verified successfully.');
+					} else {
+						var errMsg = (response && response.data && response.data.message) || l10n.pingFailed || 'Connection Failed';
+						$badge.attr('class', 'aips-badge aips-badge-danger').text('Offline');
+						$msg.text(errMsg);
+					}
+				},
+				error: function (xhr, status, error) {
+					$btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+					$badge.attr('class', 'aips-badge aips-badge-danger').text('Offline');
+					$msg.text(error || 'HTTP request failed.');
+				}
+			});
+		},
+
+		/**
+		 * Trigger CSV or JSON download with current filter parameters.
+		 *
+		 * @param {string} format 'csv' or 'json'
+		 */
+		triggerExport: function (format) {
+			var l10n = window.aipsAiErrorsL10n || {};
+			var ajaxConfig = window.aipsAjax || {};
+			var baseUrl = ajaxConfig.ajaxUrl || window.ajaxurl;
+
+			var params = {
+				action: 'aips_export_ai_errors',
+				nonce: ajaxConfig.nonce || (l10n.nonce || ''),
+				format: format,
+				date_from: this.dateFrom,
+				date_to: this.dateTo,
+				component: this.component,
+				category: this.category,
+				error_scope: this.errorScope,
+				search: this.search
+			};
+
+			var queryString = $.param(params);
+			window.location.href = baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '?') + queryString;
+		},
+
+		/**
 		 * Render items into the table body using AIPS.Templates.
 		 *
 		 * @param {Array} items
@@ -289,6 +663,11 @@
 					history_id: item.history_id,
 					relative_date: item.relative_date || item.formatted_date || '',
 					formatted_date: item.formatted_date || '',
+					category: item.category || 'general',
+					category_label: item.category_label || 'General Error',
+					category_short: item.category_short || item.category_label || 'General',
+					category_badge: item.category_badge || 'aips-badge-light',
+					category_icon: item.category_icon || 'dashicons-warning',
 					component_label: compLabel,
 					error_message: item.error_message || item.message || '',
 					post_title: item.post_title || runLabel,
@@ -369,39 +748,44 @@
 			var $loading = $('#aips-ai-error-modal-loading');
 			var $inner = $('#aips-ai-error-modal-inner');
 
-			$modal.fadeIn(150);
-			$loading.show();
-			$inner.hide();
+			$modal.removeClass('aips-is-hidden').fadeIn(150);
+			$loading.removeClass('aips-is-hidden').show();
+			$inner.addClass('aips-is-hidden').hide();
 
 			$.ajax({
 				url: ajaxConfig.ajaxUrl || window.ajaxurl,
 				type: 'POST',
 				data: {
 					action: 'aips_get_ai_error_details',
-					nonce: ajaxConfig.nonce || '',
+					nonce: ajaxConfig.nonce || (l10n.nonce || ''),
 					log_id: logId
 				},
 				success: function (response) {
 					if (!response || !response.success || !response.data) {
 						var msg = (response && response.data && response.data.message) || l10n.errorLoadingDetails || 'Failed to load error details.';
-						alert(msg);
+						if (AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
+							AIPS.Utilities.showToast(msg, 'error');
+						}
 						self.closeModal();
 						return;
 					}
 
 					self.populateModal(response.data);
-					$loading.hide();
-					$inner.show();
+					$loading.addClass('aips-is-hidden').hide();
+					$inner.removeClass('aips-is-hidden').show();
 				},
 				error: function () {
-					alert(l10n.errorLoadingDetails || 'Failed to load error details.');
+					var err = l10n.errorLoadingDetails || 'Failed to load error details.';
+					if (AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
+						AIPS.Utilities.showToast(err, 'error');
+					}
 					self.closeModal();
 				}
 			});
 		},
 
 		/**
-		 * Populate modal elements with retrieved error data.
+		 * Populate modal elements with retrieved error data and root-cause resolution banner.
 		 *
 		 * @param {Object} data
 		 */
@@ -413,6 +797,28 @@
 			var compLabel = data.component_label || data.component || 'General';
 			$('#aips-ai-error-modal-title').text('AI Error #' + data.id + ' — ' + compLabel);
 			$('#aips-ai-error-modal-badge').text(data.relative_date || data.formatted_date || '');
+
+			// Root Cause & Resolution Banner
+			var cls = data.classification || {};
+			var $banner = $('#aips-ai-error-modal-resolution-banner');
+			$banner.attr('class', 'aips-ai-error-resolution-banner aips-severity-' + (cls.severity || 'warning'));
+			$('#aips-ai-error-res-icon').attr('class', 'dashicons ' + (cls.icon || 'dashicons-warning'));
+
+			var bannerTitle = cls.label || 'Error Diagnosis';
+			if (cls.http_code) {
+				bannerTitle += ' (HTTP ' + cls.http_code + ')';
+			}
+			$('#aips-ai-error-res-title').text(bannerTitle);
+			$('#aips-ai-error-res-cause').text(cls.root_cause || '');
+			$('#aips-ai-error-res-action').text(cls.action || '');
+
+			var $link = $('#aips-ai-error-res-link');
+			if (cls.action_link) {
+				$link.attr('href', cls.action_link).removeClass('aips-is-hidden').show();
+				$('#aips-ai-error-res-link-text').text(cls.link_label || 'View Action ↗');
+			} else {
+				$link.addClass('aips-is-hidden').hide();
+			}
 
 			// Run info
 			$('#aips-ai-error-modal-run-title').text(data.post_title || ('Run #' + data.history_id));
@@ -448,6 +854,8 @@
 			var diagnosticPayload = {
 				error_log_id: data.id,
 				history_id: data.history_id,
+				category: data.category,
+				classification: data.classification,
 				component: data.component,
 				timestamp: data.timestamp,
 				date: data.formatted_date,
@@ -462,7 +870,10 @@
 		 * Close the detail modal.
 		 */
 		closeModal: function () {
-			$('#aips-ai-error-modal').fadeOut(150);
+			var $modal = $('#aips-ai-error-modal');
+			$modal.fadeOut(150, function () {
+				$modal.addClass('aips-is-hidden');
+			});
 		},
 
 		/**

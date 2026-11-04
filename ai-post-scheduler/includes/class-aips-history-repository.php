@@ -2849,6 +2849,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 			'date_from'   => 0,
 			'date_to'     => 0,
 			'component'   => '',
+			'category'    => '',
 			'error_scope' => 'ai_only', // 'ai_only' or 'all'
 			'search'      => '',
 			'page'        => 1,
@@ -2888,6 +2889,20 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 		if (!empty($args['component'])) {
 			$where_clauses[] = 'hl.details LIKE %s';
 			$where_args[]    = '%"component":"' . $this->wpdb->esc_like(sanitize_key($args['component'])) . '"%';
+		}
+
+		// Category filtering via AIPS_AI_Error_Classifier pattern mapping.
+		if (!empty($args['category']) && 'all' !== $args['category']) {
+			$cat_slug = sanitize_key($args['category']);
+			$patterns = AIPS_AI_Error_Classifier::get_sql_patterns_for_category($cat_slug);
+			if (!empty($patterns)) {
+				$cat_clauses = array();
+				foreach ($patterns as $pattern) {
+					$cat_clauses[] = 'hl.details LIKE %s';
+					$where_args[]  = $pattern;
+				}
+				$where_clauses[] = '(' . implode(' OR ', $cat_clauses) . ')';
+			}
 		}
 
 		// Search term across hl.details or h.generated_title.
@@ -3070,6 +3085,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 			? $row->generated_title
 			: (!empty($row->creation_method) ? ucfirst(str_replace('_', ' ', $row->creation_method)) : sprintf(__('Run #%d', 'ai-post-scheduler'), (int) $row->history_id));
 
+		$classification = AIPS_AI_Error_Classifier::classify($details);
+
 		$formatted = array(
 			'id'               => (int) $row->id,
 			'history_id'       => (int) $row->history_id,
@@ -3085,6 +3102,13 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 			'post_title'       => $post_title,
 			'creation_method'  => !empty($row->creation_method) ? $row->creation_method : '',
 			'container_status' => !empty($row->container_status) ? $row->container_status : '',
+			'category'         => $classification['category'],
+			'category_label'   => $classification['label'],
+			'category_short'   => $classification['short_label'],
+			'category_badge'   => $classification['badge_class'],
+			'category_icon'    => $classification['icon'],
+			'category_severity'=> $classification['severity'],
+			'classification'   => $classification,
 		);
 
 		if ($include_full_details) {
@@ -3106,9 +3130,163 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 			$formatted['container_uuid']    = !empty($row->container_uuid) ? $row->container_uuid : '';
 			$formatted['container_created'] = !empty($row->container_created_at) ? (int) $row->container_created_at : 0;
 			$formatted['post_edit_url']     = !empty($row->post_id) ? get_edit_post_link((int) $row->post_id) : '';
+			$formatted['support_report']    = AIPS_AI_Error_Classifier::generate_support_report($formatted);
 		}
 
 		return $formatted;
+	}
+
+	/**
+	 * Retrieve aggregate statistics and category breakdown for AI errors.
+	 *
+	 * @param array $args Filter arguments (date_from, date_to, error_scope, search).
+	 * @return array
+	 */
+	public function get_ai_error_summary_stats($args = array()) {
+		$defaults = array(
+			'date_from'   => 0,
+			'date_to'     => 0,
+			'error_scope' => 'ai_only',
+			'search'      => '',
+		);
+		$args = wp_parse_args($args, $defaults);
+
+		$where_clauses = array('1=1');
+		$where_args    = array();
+
+		if ('all' === $args['error_scope']) {
+			$where_clauses[] = 'hl.history_type_id = %d';
+			$where_args[]    = AIPS_History_Type::ERROR;
+		} else {
+			$where_clauses[] = 'hl.history_type_id = %d';
+			$where_args[]    = AIPS_History_Type::ERROR;
+			$where_clauses[] = 'hl.details LIKE %s';
+			$where_args[]    = '%AI generation failed%';
+		}
+
+		if (!empty($args['date_from'])) {
+			$where_clauses[] = 'hl.timestamp >= %d';
+			$where_args[]    = (int) $args['date_from'];
+		}
+		if (!empty($args['date_to'])) {
+			$where_clauses[] = 'hl.timestamp <= %d';
+			$where_args[]    = (int) $args['date_to'];
+		}
+
+		if (!empty($args['search'])) {
+			$search_like     = '%' . $this->wpdb->esc_like(sanitize_text_field($args['search'])) . '%';
+			$where_clauses[] = '(hl.details LIKE %s OR h.generated_title LIKE %s)';
+			$where_args[]    = $search_like;
+			$where_args[]    = $search_like;
+		}
+
+		$where_sql   = implode(' AND ', $where_clauses);
+		$has_search  = !empty($args['search']);
+		$phase1_join = $has_search ? "INNER JOIN {$this->table_name} h ON hl.history_id = h.id" : '';
+
+		$sql = "SELECT 
+			COUNT(*) AS total_errors,
+			SUM(CASE WHEN hl.details LIKE '%%429%%' OR hl.details LIKE '%%rate_limit%%' OR hl.details LIKE '%%rate limit%%' OR hl.details LIKE '%%too many requests%%' OR hl.details LIKE '%%insufficient_quota%%' OR hl.details LIKE '%%quota exceeded%%' THEN 1 ELSE 0 END) AS count_rate_limit,
+			SUM(CASE WHEN hl.details LIKE '%%401%%' OR hl.details LIKE '%%403%%' OR hl.details LIKE '%%invalid_api_key%%' OR hl.details LIKE '%%invalid api key%%' OR hl.details LIKE '%%unauthorized%%' OR hl.details LIKE '%%permission_denied%%' THEN 1 ELSE 0 END) AS count_auth,
+			SUM(CASE WHEN hl.details LIKE '%%context_length%%' OR hl.details LIKE '%%context length%%' OR hl.details LIKE '%%maximum context%%' OR hl.details LIKE '%%tokens exceeded%%' OR hl.details LIKE '%%prompt is too long%%' THEN 1 ELSE 0 END) AS count_context_length,
+			SUM(CASE WHEN hl.details LIKE '%%504%%' OR hl.details LIKE '%%408%%' OR hl.details LIKE '%%curl error 28%%' OR hl.details LIKE '%%operation timed out%%' OR hl.details LIKE '%%timed out%%' OR hl.details LIKE '%%gateway timeout%%' THEN 1 ELSE 0 END) AS count_timeout,
+			SUM(CASE WHEN hl.details LIKE '%%500%%' OR hl.details LIKE '%%502%%' OR hl.details LIKE '%%503%%' OR hl.details LIKE '%%internal_server_error%%' OR hl.details LIKE '%%bad gateway%%' OR hl.details LIKE '%%service unavailable%%' OR hl.details LIKE '%%service_unavailable%%' OR hl.details LIKE '%%overloaded%%' THEN 1 ELSE 0 END) AS count_provider_down,
+			SUM(CASE WHEN hl.details LIKE '%%content_policy%%' OR hl.details LIKE '%%safety_policy%%' OR hl.details LIKE '%%blocked by safety filters%%' OR hl.details LIKE '%%moderation%%' THEN 1 ELSE 0 END) AS count_content_policy,
+			SUM(CASE WHEN hl.details LIKE '%%json_decode%%' OR hl.details LIKE '%%invalid json%%' OR hl.details LIKE '%%failed to parse json%%' THEN 1 ELSE 0 END) AS count_json_parsing,
+			SUM(CASE WHEN hl.details LIKE '%%\"component\":\"content\"%%' THEN 1 ELSE 0 END) AS comp_content,
+			SUM(CASE WHEN hl.details LIKE '%%\"component\":\"title\"%%' THEN 1 ELSE 0 END) AS comp_title,
+			SUM(CASE WHEN hl.details LIKE '%%\"component\":\"excerpt\"%%' THEN 1 ELSE 0 END) AS comp_excerpt,
+			SUM(CASE WHEN hl.details LIKE '%%\"component\":\"featured_image\"%%' THEN 1 ELSE 0 END) AS comp_featured_image,
+			SUM(CASE WHEN hl.details LIKE '%%\"component\":\"topics\"%%' THEN 1 ELSE 0 END) AS comp_topics,
+			SUM(CASE WHEN hl.details LIKE '%%\"component\":\"research\"%%' THEN 1 ELSE 0 END) AS comp_research,
+			SUM(CASE WHEN hl.details LIKE '%%\"component\":\"taxonomy\"%%' THEN 1 ELSE 0 END) AS comp_taxonomy
+		FROM {$this->table_name_log} hl
+		{$phase1_join}
+		WHERE {$where_sql}";
+
+		$row = !empty($where_args)
+			? $this->wpdb->get_row($this->wpdb->prepare($sql, $where_args), ARRAY_A)
+			: $this->wpdb->get_row($sql, ARRAY_A);
+
+		$total = !empty($row['total_errors']) ? (int) $row['total_errors'] : 0;
+
+		$cat_meta   = AIPS_AI_Error_Classifier::get_categories();
+		$categories = array();
+		$known_sum  = 0;
+
+		$slug_map = array(
+			AIPS_AI_Error_Classifier::CATEGORY_RATE_LIMIT     => !empty($row['count_rate_limit']) ? (int) $row['count_rate_limit'] : 0,
+			AIPS_AI_Error_Classifier::CATEGORY_AUTH           => !empty($row['count_auth']) ? (int) $row['count_auth'] : 0,
+			AIPS_AI_Error_Classifier::CATEGORY_CONTEXT_LENGTH => !empty($row['count_context_length']) ? (int) $row['count_context_length'] : 0,
+			AIPS_AI_Error_Classifier::CATEGORY_TIMEOUT        => !empty($row['count_timeout']) ? (int) $row['count_timeout'] : 0,
+			AIPS_AI_Error_Classifier::CATEGORY_PROVIDER_DOWN  => !empty($row['count_provider_down']) ? (int) $row['count_provider_down'] : 0,
+			AIPS_AI_Error_Classifier::CATEGORY_CONTENT_POLICY => !empty($row['count_content_policy']) ? (int) $row['count_content_policy'] : 0,
+			AIPS_AI_Error_Classifier::CATEGORY_JSON_PARSING   => !empty($row['count_json_parsing']) ? (int) $row['count_json_parsing'] : 0,
+		);
+
+		foreach ($slug_map as $slug => $cnt) {
+			$known_sum += $cnt;
+			$categories[$slug] = array(
+				'slug'        => $slug,
+				'label'       => $cat_meta[$slug]['label'],
+				'short_label' => $cat_meta[$slug]['short_label'],
+				'badge_class' => $cat_meta[$slug]['badge_class'],
+				'icon'        => $cat_meta[$slug]['icon'],
+				'count'       => $cnt,
+				'percentage'  => $total > 0 ? round(($cnt / $total) * 100, 1) : 0,
+			);
+		}
+
+		$general_count = max(0, $total - $known_sum);
+		$categories[AIPS_AI_Error_Classifier::CATEGORY_GENERAL] = array(
+			'slug'        => AIPS_AI_Error_Classifier::CATEGORY_GENERAL,
+			'label'       => $cat_meta[AIPS_AI_Error_Classifier::CATEGORY_GENERAL]['label'],
+			'short_label' => $cat_meta[AIPS_AI_Error_Classifier::CATEGORY_GENERAL]['short_label'],
+			'badge_class' => $cat_meta[AIPS_AI_Error_Classifier::CATEGORY_GENERAL]['badge_class'],
+			'icon'        => $cat_meta[AIPS_AI_Error_Classifier::CATEGORY_GENERAL]['icon'],
+			'count'       => $general_count,
+			'percentage'  => $total > 0 ? round(($general_count / $total) * 100, 1) : 0,
+		);
+
+		$top_category = null;
+		$highest_cnt  = 0;
+		foreach ($categories as $cat) {
+			if ($cat['count'] > $highest_cnt) {
+				$highest_cnt  = $cat['count'];
+				$top_category = $cat;
+			}
+		}
+
+		$components = array(
+			'content'        => !empty($row['comp_content']) ? (int) $row['comp_content'] : 0,
+			'title'          => !empty($row['comp_title']) ? (int) $row['comp_title'] : 0,
+			'excerpt'        => !empty($row['comp_excerpt']) ? (int) $row['comp_excerpt'] : 0,
+			'featured_image' => !empty($row['comp_featured_image']) ? (int) $row['comp_featured_image'] : 0,
+			'topics'         => !empty($row['comp_topics']) ? (int) $row['comp_topics'] : 0,
+			'research'       => !empty($row['comp_research']) ? (int) $row['comp_research'] : 0,
+			'taxonomy'       => !empty($row['comp_taxonomy']) ? (int) $row['comp_taxonomy'] : 0,
+		);
+
+		$top_component    = null;
+		$highest_comp_cnt = 0;
+		foreach ($components as $comp_key => $comp_cnt) {
+			if ($comp_cnt > $highest_comp_cnt) {
+				$highest_comp_cnt = $comp_cnt;
+				$top_component    = array(
+					'key'        => $comp_key,
+					'label'      => ucfirst(str_replace('_', ' ', $comp_key)),
+					'count'      => $comp_cnt,
+					'percentage' => $total > 0 ? round(($comp_cnt / $total) * 100, 1) : 0,
+				);
+			}
+		}
+
+		return array(
+			'total_errors'  => $total,
+			'categories'    => $categories,
+			'top_category'  => $top_category,
+			'top_component' => $top_component,
+		);
 	}
 
     /**
