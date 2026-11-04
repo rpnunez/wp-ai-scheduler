@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+### Added - Affiliate Marketing Links & Generation-Time Monetization (3.7.20)
+- **Generation-Time AI Link Injection:**
+  - Extended `AIPS_Prompt_Builder_Post_Content` to assemble structured affiliate instructions, anchor keywords, and custom prompt guidance when an offer is resolved for the generation context.
+  - Added hybrid safety net in `AIPS_Generator` that inspects model content, automatically normalizes `rel="nofollow sponsored"` and `target="_blank"`, injects fallback CTA blocks if omitted by the model, and renders FTC disclosure banners (top or bottom).
+- **Multi-Factor Offer Matching & Pinned Overrides:**
+  - Enhanced `AIPS_Affiliate_Links_Repository` with multi-factor matching across tags, keywords, and category IDs, plus global fallback offers.
+  - Added optional pinned `affiliate_link_override_id` on Templates and Author personas (`AIPS_Template_Context` & `AIPS_Topic_Context`).
+- **Retroactive Suggestions Queue & Background Scan:**
+  - Added `aips_affiliate_link_suggestions` table and repository (`AIPS_Affiliate_Link_Suggestions_Repository`).
+  - Added `AIPS_Affiliate_Scan_Process` background worker (`AIPS_Managed_Background_Process`) to analyze existing published posts and stage inline link suggestions with review, single-click approve, and bulk actions.
+- **Mass URL Replacement & Link Index Synchronization:**
+  - Added `AIPS_Affiliate_Url_Replace_Process` to batch mass-update published posts and synchronize `aips_link_index` when an affiliate URL changes.
+  - Added in-modal URL change detector that prompts admin when editing an offer with published links.
+- **Content Hub: Monetized Posts List Table:**
+  - Added "Monetized Posts" sub-rail under Content Hub powered by `AIPS_Monetized_Posts_List_Table`, allowing filtering by offer, search, link details, and click metrics.
+- **Monetization Settings Tab:**
+  - Added dedicated "Monetization" tab in plugin Settings (`aips-settings`) exposing FTC disclosure controls, notice placement, maximum links per post, and sponsored rel attributes.
+
+### Fixed
+- **Affiliate Links Mapping Modal Styling:**
+  - Fixed transparent floating modal in Automations / Monetization by replacing missing CSS classes with native `.aips-modal-overlay` and `.aips-modal-large` structures.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.

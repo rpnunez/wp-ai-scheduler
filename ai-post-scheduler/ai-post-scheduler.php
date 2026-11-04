@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.19
+ * Version: 3.7.20
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.19');
+    define('AIPS_VERSION', '3.7.20');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -599,6 +599,29 @@ final class AI_Post_Scheduler {
         // Register AIPS_Post_Insights_Controller
         $container->singleton(AIPS_Post_Insights_Controller::class, function( $container ) {
             return new AIPS_Post_Insights_Controller();
+        });
+
+        // Register Affiliate Links Repositories & Services
+        $container->singleton(AIPS_Affiliate_Links_Repository::class, function( $container ) {
+            return new AIPS_Affiliate_Links_Repository();
+        });
+
+        $container->singleton(AIPS_Affiliate_Link_Suggestions_Repository::class, function( $container ) {
+            return new AIPS_Affiliate_Link_Suggestions_Repository();
+        });
+
+        $container->singleton(AIPS_Affiliate_Links_Service::class, function( $container ) {
+            return new AIPS_Affiliate_Links_Service(
+                $container->make(AIPS_Affiliate_Links_Repository::class),
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_Affiliate_Link_Inserter_Service::class, function( $container ) {
+            return new AIPS_Affiliate_Link_Inserter_Service(
+                $container->make(AIPS_Affiliate_Links_Repository::class),
+                $container->make(AIPS_Config::class)
+            );
         });
     }
 

@@ -69,6 +69,8 @@ class AIPS_Templates {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'affiliate_links_enabled' => isset($data['affiliate_links_enabled']) ? (int) $data['affiliate_links_enabled'] : 0,
+            'affiliate_link_override_id' => isset($data['affiliate_link_override_id']) ? absint($data['affiliate_link_override_id']) : 0,
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         

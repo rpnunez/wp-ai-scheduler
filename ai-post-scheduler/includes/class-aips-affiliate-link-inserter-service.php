@@ -338,4 +338,66 @@ class AIPS_Affiliate_Link_Inserter_Service {
 	private function record_injected_ids( $post_id, array $ids ) {
 		update_post_meta( $post_id, self::INJECTED_META_KEY, array_unique( $ids ) );
 	}
+
+	/**
+	 * Ensure rel="nofollow sponsored" and target="_blank" are present on target affiliate link in content.
+	 *
+	 * @param string $content Post content.
+	 * @param string $affiliate_url Affiliate URL.
+	 * @return string Modified content.
+	 */
+	public function normalize_affiliate_attributes( $content, $affiliate_url ) {
+		if ( empty( $content ) || empty( $affiliate_url ) ) {
+			return $content;
+		}
+
+		$escaped_url = preg_quote( $affiliate_url, '/' );
+		return preg_replace_callback(
+			'/<a\s+([^>]*?)href=(["\'])(' . $escaped_url . ')(["\'])([^>]*?)>/i',
+			function( $m ) {
+				$before = $m[1];
+				$url    = $m[3];
+				$after  = $m[5];
+				$tag    = $before . ' ' . $after;
+
+				// Remove existing rel and target to re-add cleanly.
+				$tag = preg_replace( '/\s*rel=(["\']).*?\1/i', '', $tag );
+				$tag = preg_replace( '/\s*target=(["\']).*?\1/i', '', $tag );
+
+				$clean_tag = trim( (string) $tag );
+				$prefix    = ! empty( $clean_tag ) ? ' ' . $clean_tag : '';
+
+				return '<a' . $prefix . ' href="' . esc_url( $url ) . '" rel="nofollow sponsored noopener" target="_blank">';
+			},
+			$content
+		);
+	}
+
+	/**
+	 * Append or prepend FTC affiliate disclosure if enabled.
+	 *
+	 * @param string $content Post content.
+	 * @return string Modified content.
+	 */
+	public function apply_disclosure( $content ) {
+		$config = AIPS_Config::get_instance();
+		if ( ! $config->get_option( 'aips_affiliate_disclosure_enabled', false ) ) {
+			return $content;
+		}
+
+		$text = trim( (string) $config->get_option( 'aips_affiliate_disclosure_text', '' ) );
+		if ( empty( $text ) ) {
+			return $content;
+		}
+
+		$pos  = $config->get_option( 'aips_affiliate_disclosure_position', 'top' );
+		$html = '<div class="aips-affiliate-disclosure"><p><em>' . wp_kses_post( $text ) . '</em></p></div>';
+
+		// Avoid duplicate disclosure.
+		if ( strpos( $content, 'aips-affiliate-disclosure' ) !== false || strpos( $content, esc_html( $text ) ) !== false ) {
+			return $content;
+		}
+
+		return ( 'bottom' === $pos ) ? $content . "\n\n" . $html : $html . "\n\n" . $content;
+	}
 }

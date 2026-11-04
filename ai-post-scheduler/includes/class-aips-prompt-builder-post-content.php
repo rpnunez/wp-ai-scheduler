@@ -136,6 +136,7 @@ class AIPS_Prompt_Builder_Post_Content {
 		}
 
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+		$processed_prompt = $this->inject_affiliate_instructions($processed_prompt, $context, $topic);
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic, $this);
 	}
@@ -212,5 +213,28 @@ class AIPS_Prompt_Builder_Post_Content {
 		}
 
 		return $prompt . "\n\n" . $rel_context;
+	}
+
+	/**
+	 * Inject affiliate linking requirements into prompt when enabled.
+	 *
+	 * @param string $prompt  Current assembled prompt.
+	 * @param mixed  $context Generation context or template.
+	 * @param string $topic   Target topic.
+	 * @return string Modified prompt.
+	 */
+	private function inject_affiliate_instructions($prompt, $context, $topic) {
+		$service = AIPS_Container::get_instance()->make( AIPS_Affiliate_Links_Service::class );
+		$offers  = $service->resolve_offers_for_context($context, $topic);
+		if (empty($offers)) {
+			return $prompt;
+		}
+
+		$aff_block = $service->format_prompt_instructions($offers);
+		if (!empty($aff_block)) {
+			$prompt .= "\n\n" . $aff_block;
+		}
+
+		return $prompt;
 	}
 }

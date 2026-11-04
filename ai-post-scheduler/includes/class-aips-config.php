@@ -357,6 +357,12 @@ class AIPS_Config {
             // Server load & generation pacing
             'aips_generation_delay_seconds'            => 2,
             'aips_batch_resume_cooldown_minutes'       => 5,
+            // Affiliate Marketing & Monetization
+            'aips_affiliate_disclosure_enabled'        => false,
+            'aips_affiliate_disclosure_text'           => '*Disclosure: This post contains affiliate links. If you make a purchase through these links, we may earn an affiliate commission at no extra cost to you.*',
+            'aips_affiliate_disclosure_position'       => 'top',
+            'aips_affiliate_max_links_per_post'        => 1,
+            'aips_affiliate_enforce_sponsored_rel'     => true,
         );
     }
     

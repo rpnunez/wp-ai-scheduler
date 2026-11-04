@@ -189,12 +189,14 @@ class AIPS_Template_Repository {
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
             'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
+            'affiliate_links_enabled' => isset($data['affiliate_links_enabled']) ? (int) $data['affiliate_links_enabled'] : 0,
+            'affiliate_link_override_id' => isset($data['affiliate_link_override_id']) ? absint($data['affiliate_link_override_id']) : 0,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'created_at' => $now,
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         // Read insert_id before cache invalidation: invalidation can write
@@ -308,6 +310,16 @@ class AIPS_Template_Repository {
 
         if (array_key_exists('campaign_id', $data)) {
             $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
+            $format[] = '%d';
+        }
+
+        if (isset($data['affiliate_links_enabled'])) {
+            $update_data['affiliate_links_enabled'] = $data['affiliate_links_enabled'] ? 1 : 0;
+            $format[] = '%d';
+        }
+
+        if (isset($data['affiliate_link_override_id'])) {
+            $update_data['affiliate_link_override_id'] = absint($data['affiliate_link_override_id']);
             $format[] = '%d';
         }
 

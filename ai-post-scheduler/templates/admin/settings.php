@@ -31,6 +31,8 @@ if ('engine' === $active_settings_tab || 'settings-engine' === $active_settings_
 	$active_settings_tab = 'settings-api-keys';
 } elseif ('developers' === $active_settings_tab || 'dev' === $active_settings_tab || 'debug' === $active_settings_tab) {
 	$active_settings_tab = 'settings-developers';
+} elseif ('monetization' === $active_settings_tab || 'affiliate' === $active_settings_tab || 'settings-monetization' === $active_settings_tab) {
+	$active_settings_tab = 'settings-monetization';
 }
 
 $settings_rail_items = array(
@@ -65,6 +67,14 @@ $settings_rail_items = array(
 		'description' => __('Link index & auto-linking', 'ai-post-scheduler'),
 		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-linking'),
 		'active'      => ($active_settings_tab === 'settings-linking'),
+	),
+	array(
+		'key'         => 'settings-monetization',
+		'label'       => __('Monetization', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-money-alt',
+		'description' => __('Affiliate links & disclosures', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-monetization'),
+		'active'      => ($active_settings_tab === 'settings-monetization'),
 	),
 	array(
 		'key'         => 'settings-feedback',
@@ -272,6 +282,29 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 									<h3 class="aips-settings-card-title"><?php esc_html_e('Internal Link Automation', 'ai-post-scheduler'); ?></h3>
 									<table class="form-table" role="presentation">
 										<?php do_settings_fields('aips-settings', 'aips_ai_autolink_section'); ?>
+									</table>
+								</div>
+
+								<p class="submit">
+									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+								</p>
+							</div>
+
+							<!-- Monetization Tab -->
+							<div id="settings-monetization-tab" class="aips-tab-content<?php echo 'settings-monetization' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-monetization' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-monetization' === $active_settings_tab ? '' : 'hidden'; ?>>
+								<p class="description"><?php esc_html_e('Configure affiliate link compliance rules, per-post caps, and FTC disclosure banners.', 'ai-post-scheduler'); ?></p>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Affiliate Linking Rules & Caps', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_monetization_rules_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('FTC Affiliate Disclosure Notice', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_monetization_disclosure_section'); ?>
 									</table>
 								</div>
 

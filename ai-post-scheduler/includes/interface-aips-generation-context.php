@@ -180,6 +180,13 @@ interface AIPS_Generation_Context {
 	public function get_affiliate_links_enabled();
 
 	/**
+	 * Get the specific affiliate link override ID, or 0 for auto-match.
+	 *
+	 * @return int
+	 */
+	public function get_affiliate_link_override_id();
+
+	/**
 	 * Get all context data as an array for serialization/storage.
 	 *
 	 * @return array Context data array.

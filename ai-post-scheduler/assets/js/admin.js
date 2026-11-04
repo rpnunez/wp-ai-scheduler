@@ -938,6 +938,7 @@
             AIPS.bindTemplateEvents();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
+            $('#template_affiliate_link_override_id').val('');
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
@@ -1027,6 +1028,7 @@
 
                         // Restore affiliate links setting.
                         $('#affiliate_links_enabled').prop('checked', t.affiliate_links_enabled == 1);
+                        $('#template_affiliate_link_override_id').val(t.affiliate_link_override_id || '');
 
                         // Restore source group settings.
                         var includeSources = t.include_sources == 1;
@@ -1211,6 +1213,7 @@
                     post_author: $('#post_author').val(),
                     include_sources: $('#include_sources').is(':checked') ? 1 : 0,
                     affiliate_links_enabled: $('#affiliate_links_enabled').is(':checked') ? 1 : 0,
+                    affiliate_link_override_id: $('#template_affiliate_link_override_id').val() || null,
                     source_group_ids: (function() {
                         var ids = [];
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
@@ -1285,6 +1288,7 @@
                     post_author: $('#post_author').val(),
                     include_sources: $('#include_sources').is(':checked') ? 1 : 0,
                     affiliate_links_enabled: $('#affiliate_links_enabled').is(':checked') ? 1 : 0,
+                    affiliate_link_override_id: $('#template_affiliate_link_override_id').val() || null,
                     source_group_ids: (function() {
                         var ids = [];
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });

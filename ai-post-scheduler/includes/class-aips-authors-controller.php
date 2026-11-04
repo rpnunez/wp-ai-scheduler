@@ -143,6 +143,7 @@ class AIPS_Authors_Controller {
 			// Source group fields
 			'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
 			'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
+			'affiliate_link_override_id' => isset($_POST['affiliate_link_override_id']) ? absint($_POST['affiliate_link_override_id']) : 0,
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
 				: wp_json_encode(array()),

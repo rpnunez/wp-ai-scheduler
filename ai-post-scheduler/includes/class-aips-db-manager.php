@@ -41,6 +41,7 @@ class AIPS_DB_Manager {
         'aips_link_clicks',
         'aips_redirects',
         'aips_background_processes',
+        'aips_affiliate_link_suggestions',
     );
 
     public function __construct() {
@@ -110,6 +111,7 @@ class AIPS_DB_Manager {
         $table_link_clicks          = $tables['aips_link_clicks'];
         $table_redirects            = $tables['aips_redirects'];
         $table_background_processes = $tables['aips_background_processes'];
+        $table_affiliate_link_suggestions = $tables['aips_affiliate_link_suggestions'];
 
         $sql = array();
 
@@ -206,6 +208,7 @@ class AIPS_DB_Manager {
             source_group_ids text DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
+            affiliate_link_override_id bigint(20) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -349,6 +352,7 @@ class AIPS_DB_Manager {
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
+            affiliate_link_override_id bigint(20) DEFAULT 0,
             topic_auto_approval_mode varchar(50) DEFAULT 'inherit',
             topic_auto_approval_min_score int DEFAULT 70,
             topic_auto_approval_min_relevance int DEFAULT 65,
@@ -661,11 +665,34 @@ class AIPS_DB_Manager {
             cta_match_text varchar(255) DEFAULT NULL,
             cta_max_insertions tinyint(3) unsigned NOT NULL DEFAULT 1,
             use_ai_injection tinyint(1) NOT NULL DEFAULT 0,
+            keywords text DEFAULT NULL,
+            category_ids text DEFAULT NULL,
+            prompt_guidance text DEFAULT NULL,
+            is_global_fallback tinyint(1) NOT NULL DEFAULT 0,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY tag (tag),
-            KEY enabled (enabled)
+            KEY enabled (enabled),
+            KEY is_global_fallback (is_global_fallback)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_affiliate_link_suggestions (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) NOT NULL,
+            affiliate_link_id bigint(20) NOT NULL,
+            anchor_text varchar(500) DEFAULT '',
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            match_type varchar(50) NOT NULL DEFAULT 'in_content',
+            before_snippet longtext,
+            after_snippet longtext,
+            applied_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY post_id (post_id),
+            KEY affiliate_link_id (affiliate_link_id),
+            KEY status (status)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_cache (
@@ -995,6 +1022,10 @@ class AIPS_DB_Manager {
                 array( 'updated_at', false ),
             ),
             'aips_affiliate_links' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_affiliate_link_suggestions' => array(
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),
