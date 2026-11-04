@@ -118,6 +118,7 @@ class AIPS_Notification_Templates {
 		$this->register($this->build_standard_event_template('daily_digest', __('Daily Digest', 'ai-post-scheduler'), '#2271b1'));
 		$this->register($this->build_standard_event_template('weekly_summary', __('Weekly Summary', 'ai-post-scheduler'), '#2271b1'));
 		$this->register($this->build_standard_event_template('monthly_report', __('Monthly Report', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_summarized_digest_template());
 	}
 
 	/**
@@ -224,6 +225,45 @@ class AIPS_Notification_Templates {
 
 		return new AIPS_Notification_Template(
 			'post_generated',
+			$subject,
+			$body,
+			$header_title,
+			$header_color
+		);
+	}
+
+	/**
+	 * Build the "Summarized Digest" email template.
+	 *
+	 * Uses a structured layout that embeds the grouped digest items table
+	 * and a call-to-action button linking directly to the Generated Posts screen.
+	 *
+	 * @return AIPS_Notification_Template
+	 */
+	private function build_summarized_digest_template() {
+		$header_title = __('Activity Digest', 'ai-post-scheduler');
+		$header_color = '#2271b1';
+		$subject      = '[{{site_name}}] ' . __('Notification Digest', 'ai-post-scheduler') . ' ({{item_count}} ' . __('updates', 'ai-post-scheduler') . ')';
+
+		$body_content =
+			'<p style="font-size:15px;color:#1d2327;line-height:1.5;">'
+			. sprintf(
+				/* translators: %s: placeholder token for count */
+				esc_html__('AI Post Scheduler batched %s updates for your review:', 'ai-post-scheduler'),
+				'<strong>{{item_count}}</strong>'
+			)
+			. '</p>'
+			. '{{digest_items_html}}'
+			. '<p class="button-center" style="margin-top:25px;">'
+			. '<a href="{{all_posts_url}}" class="button" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:600;">'
+			. esc_html__('Open Generated Posts', 'ai-post-scheduler')
+			. '</a>'
+			. '</p>';
+
+		$body = $this->render_layout($header_title, $header_color, $body_content);
+
+		return new AIPS_Notification_Template(
+			'summarized_digest',
 			$subject,
 			$body,
 			$header_title,

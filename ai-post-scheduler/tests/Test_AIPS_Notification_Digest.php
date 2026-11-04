@@ -1,0 +1,284 @@
+<?php
+/**
+ * Tests for Summarized Notification Digest
+ *
+ * @package AI_Post_Scheduler
+ */
+
+class Test_AIPS_Notification_Digest extends WP_UnitTestCase {
+
+	/**
+	 * @var AIPS_Config
+	 */
+	private $config;
+
+	/**
+	 * @var AIPS_Settings_UI
+	 */
+	private $ui;
+
+	/**
+	 * @var AIPS_Notifications
+	 */
+	private $notifications;
+
+	public function setUp(): void {
+		parent::setUp();
+		$this->config = AIPS_Config::get_instance();
+		$this->ui = new AIPS_Settings_UI();
+		$this->notifications = AIPS_Notifications::instance();
+
+		// Ensure a clean queue state for each test.
+		delete_option('aips_notif_digest_queue');
+	}
+
+	public function tearDown(): void {
+		delete_option('aips_notif_digest_queue');
+		parent::tearDown();
+	}
+
+	// -----------------------------------------------------------------------
+	// Configuration & Defaults
+	// -----------------------------------------------------------------------
+
+	public function test_default_options_exist() {
+		$defaults = $this->config->get_default_options();
+
+		$this->assertArrayHasKey('aips_notif_digest_enabled', $defaults);
+		$this->assertFalse($defaults['aips_notif_digest_enabled']);
+
+		$this->assertArrayHasKey('aips_notif_digest_threshold', $defaults);
+		$this->assertSame(5, $defaults['aips_notif_digest_threshold']);
+
+		$this->assertArrayHasKey('aips_notif_digest_max_delay', $defaults);
+		$this->assertSame(3600, $defaults['aips_notif_digest_max_delay']);
+
+		$this->assertArrayHasKey('aips_notif_digest_types', $defaults);
+		$this->assertContains('post_generated', $defaults['aips_notif_digest_types']);
+		$this->assertContains('post_ready_for_review', $defaults['aips_notif_digest_types']);
+	}
+
+	public function test_get_notification_summarized_digest_config() {
+		$this->config->set_option('aips_notif_digest_enabled', true);
+		$this->config->set_option('aips_notif_digest_threshold', 10);
+		$this->config->set_option('aips_notif_digest_max_delay', 1800);
+		$this->config->set_option('aips_notif_digest_types', array('post_generated'));
+
+		$config = $this->config->get_notification_summarized_digest_config();
+
+		$this->assertTrue($config['enabled']);
+		$this->assertSame(10, $config['threshold']);
+		$this->assertSame(1800, $config['max_delay']);
+		$this->assertSame(array('post_generated'), $config['types']);
+	}
+
+	// -----------------------------------------------------------------------
+	// Settings UI Sanitizers
+	// -----------------------------------------------------------------------
+
+	public function test_sanitize_digest_threshold_clamps_values() {
+		// Non-numeric fallback: 5
+		$this->assertSame(5, $this->ui->sanitize_digest_threshold('invalid'));
+		$this->assertSame(5, $this->ui->sanitize_digest_threshold(''));
+
+		// Minimum clamp: 2
+		$this->assertSame(2, $this->ui->sanitize_digest_threshold(1));
+		$this->assertSame(2, $this->ui->sanitize_digest_threshold(-5));
+
+		// Within valid range
+		$this->assertSame(5, $this->ui->sanitize_digest_threshold(5));
+		$this->assertSame(20, $this->ui->sanitize_digest_threshold('20'));
+
+		// Maximum clamp: 50
+		$this->assertSame(50, $this->ui->sanitize_digest_threshold(100));
+	}
+
+	public function test_sanitize_digest_max_delay_validates_options() {
+		$this->assertSame(900, $this->ui->sanitize_digest_max_delay(900));
+		$this->assertSame(1800, $this->ui->sanitize_digest_max_delay(1800));
+		$this->assertSame(3600, $this->ui->sanitize_digest_max_delay(3600));
+		$this->assertSame(7200, $this->ui->sanitize_digest_max_delay(7200));
+		$this->assertSame(21600, $this->ui->sanitize_digest_max_delay(21600));
+
+		// Fallback for invalid inputs
+		$this->assertSame(3600, $this->ui->sanitize_digest_max_delay(42));
+		$this->assertSame(3600, $this->ui->sanitize_digest_max_delay('abc'));
+	}
+
+	public function test_sanitize_digest_types_filters_ineligible_types() {
+		$raw = array(
+			'post_generated',
+			'generation_failed', // Error - not eligible
+			'non_existent_type', // Invalid
+			'template_generated',
+		);
+
+		$sanitized = $this->ui->sanitize_digest_types($raw);
+
+		$this->assertContains('post_generated', $sanitized);
+		$this->assertContains('template_generated', $sanitized);
+		$this->assertNotContains('generation_failed', $sanitized);
+		$this->assertNotContains('non_existent_type', $sanitized);
+	}
+
+	// -----------------------------------------------------------------------
+	// Interception & Queueing
+	// -----------------------------------------------------------------------
+
+	public function test_should_intercept_for_digest() {
+		// When disabled: false
+		$this->config->set_option('aips_notif_digest_enabled', false);
+		$this->config->set_option('aips_notif_digest_types', array('post_generated'));
+		$this->assertFalse($this->notifications->should_intercept_for_digest('post_generated'));
+
+		// When enabled: true for configured eligible types
+		$this->config->set_option('aips_notif_digest_enabled', true);
+		$this->assertTrue($this->notifications->should_intercept_for_digest('post_generated'));
+
+		// Ineligible type (system error): false even if configured
+		$this->assertFalse($this->notifications->should_intercept_for_digest('generation_failed'));
+
+		// Eligible type not in user-selected types: false
+		$this->assertFalse($this->notifications->should_intercept_for_digest('template_generated'));
+	}
+
+	public function test_enqueue_digest_notification_and_threshold_dispatch() {
+		$this->config->set_option('aips_notif_digest_enabled', true);
+		$this->config->set_option('aips_notif_digest_threshold', 3);
+		$this->config->set_option('aips_notif_digest_types', array('post_generated'));
+
+		// Queue first item (below threshold of 3)
+		$this->notifications->enqueue_digest_notification('post_generated', array(
+			'title'   => 'First Post',
+			'message' => 'Post created',
+		));
+
+		$this->assertSame(1, $this->notifications->get_digest_queue_count());
+
+		// Queue second item (still below threshold)
+		$this->notifications->enqueue_digest_notification('post_generated', array(
+			'title'   => 'Second Post',
+			'message' => 'Post created',
+		));
+
+		$this->assertSame(2, $this->notifications->get_digest_queue_count());
+
+		// Queue third item (meets threshold of 3 -> triggers automatic flush)
+		$this->notifications->enqueue_digest_notification('post_generated', array(
+			'title'   => 'Third Post',
+			'message' => 'Post created',
+		));
+
+		// Queue should now be empty after flush
+		$this->assertSame(0, $this->notifications->get_digest_queue_count());
+	}
+
+	// -----------------------------------------------------------------------
+	// Time-based Fallback Timeout
+	// -----------------------------------------------------------------------
+
+	public function test_check_digest_timeout_flushes_when_window_elapsed() {
+		$this->config->set_option('aips_notif_digest_enabled', true);
+		$this->config->set_option('aips_notif_digest_threshold', 10);
+		$this->config->set_option('aips_notif_digest_max_delay', 900); // 15 mins
+
+		// Empty queue should return false
+		$this->assertFalse($this->notifications->check_digest_timeout());
+
+		// Put an item enqueued "just now"
+		$queue = array(
+			array(
+				'type'        => 'post_generated',
+				'title'       => 'Recent Post',
+				'enqueued_at' => AIPS_DateTime::now()->timestamp() - 100, // 100s ago (< 900)
+			),
+		);
+		update_option('aips_notif_digest_queue', $queue, false);
+
+		// Timeout not yet reached
+		$this->assertFalse($this->notifications->check_digest_timeout());
+		$this->assertSame(1, $this->notifications->get_digest_queue_count());
+
+		// Put an item enqueued 1000s ago (> 900)
+		$queue[0]['enqueued_at'] = AIPS_DateTime::now()->timestamp() - 1000;
+		update_option('aips_notif_digest_queue', $queue, false);
+
+		// Timeout exceeded -> flushes queue
+		$this->assertTrue($this->notifications->check_digest_timeout());
+		$this->assertSame(0, $this->notifications->get_digest_queue_count());
+	}
+
+	// -----------------------------------------------------------------------
+	// Email Template Registration
+	// -----------------------------------------------------------------------
+
+	public function test_summarized_digest_template_registered() {
+		$templates = new AIPS_Notification_Templates();
+		$template = $templates->get('summarized_digest');
+
+		$this->assertNotNull($template);
+		$this->assertSame('summarized_digest', $template->get_type());
+		$this->assertStringContainsString('Notification Digest', $template->render_subject());
+		$this->assertStringContainsString('{{digest_items_html}}', $template->render_body());
+		$this->assertStringContainsString('{{all_posts_url}}', $template->render_body());
+	}
+
+	// -----------------------------------------------------------------------
+	// Event Handler Cron Hook
+	// -----------------------------------------------------------------------
+
+	public function test_cron_event_is_registered_in_handler() {
+		$events = AIPS_Notifications_Event_Handler::get_hook_bindings();
+
+		$found = false;
+		foreach ($events as $event) {
+			if ('aips_notif_digest_cron' === $event['hook']) {
+				$found = true;
+				$this->assertSame('handle_digest_cron', $event['method']);
+				break;
+			}
+		}
+
+		$this->assertTrue($found, 'aips_notif_digest_cron hook not found in event handler registered events.');
+	}
+
+	// -----------------------------------------------------------------------
+	// Cron Synchronization on Setting Change
+	// -----------------------------------------------------------------------
+
+	public function test_sync_digest_cron_schedule_schedules_when_enabled() {
+		wp_clear_scheduled_hook('aips_notif_digest_cron');
+		$this->assertFalse(wp_next_scheduled('aips_notif_digest_cron'));
+
+		$this->config->set_option('aips_notif_digest_enabled', true);
+		AIPS_Settings::sync_digest_cron_schedule();
+
+		$this->assertNotEmpty(wp_next_scheduled('aips_notif_digest_cron'));
+	}
+
+	public function test_sync_digest_cron_schedule_unschedules_and_flushes_when_disabled() {
+		$this->config->set_option('aips_notif_digest_enabled', true);
+		AIPS_Settings::sync_digest_cron_schedule();
+		$this->assertNotEmpty(wp_next_scheduled('aips_notif_digest_cron'));
+
+		// Put a pending item into the queue
+		$queue = array(
+			array(
+				'type'        => 'post_generated',
+				'title'       => 'Pending Post',
+				'enqueued_at' => AIPS_DateTime::now()->timestamp(),
+			),
+		);
+		update_option('aips_notif_digest_queue', $queue, false);
+		$this->assertSame(1, $this->notifications->get_digest_queue_count());
+
+		// Disable digest and synchronize
+		$this->config->set_option('aips_notif_digest_enabled', false);
+		AIPS_Settings::sync_digest_cron_schedule();
+
+		// Cron should be cleared
+		$this->assertFalse(wp_next_scheduled('aips_notif_digest_cron'));
+		// Pending queue should be flushed to avoid stranded notifications
+		$this->assertSame(0, $this->notifications->get_digest_queue_count());
+	}
+}

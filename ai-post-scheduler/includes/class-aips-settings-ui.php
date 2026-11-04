@@ -892,6 +892,110 @@ class AIPS_Settings_UI {
         <?php
     }
 
+	/**
+	 * Render the summarized digest enabled toggle field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_enabled_field_callback() {
+		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_notif_digest_enabled');
+		?>
+		<label for="aips_notif_digest_enabled">
+			<input type="checkbox" id="aips_notif_digest_enabled" name="aips_notif_digest_enabled" value="1" <?php checked($enabled, true); ?>>
+			<?php esc_html_e('Enable summarized activity digest', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('Batch frequent generation and review email notifications into a single digest instead of sending separate emails for each post.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest threshold number field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_threshold_field_callback() {
+		$threshold = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_threshold', 5));
+		if ($threshold < 2) {
+			$threshold = 5;
+		}
+		?>
+		<input type="number" id="aips_notif_digest_threshold" name="aips_notif_digest_threshold" value="<?php echo esc_attr($threshold); ?>" min="2" max="50" step="1" class="small-text">
+		<p class="description"><?php esc_html_e('Number of notifications that triggers an immediate digest email (2–50).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest max delay select field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_max_delay_field_callback() {
+		$selected = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_max_delay', 3600));
+		$options = array(
+			900   => __('15 minutes', 'ai-post-scheduler'),
+			1800  => __('30 minutes', 'ai-post-scheduler'),
+			3600  => __('1 hour (default)', 'ai-post-scheduler'),
+			7200  => __('2 hours', 'ai-post-scheduler'),
+			21600 => __('6 hours', 'ai-post-scheduler'),
+		);
+		?>
+		<select id="aips_notif_digest_max_delay" name="aips_notif_digest_max_delay">
+			<?php foreach ($options as $seconds => $label) : ?>
+				<option value="<?php echo esc_attr($seconds); ?>" <?php selected($selected, $seconds); ?>><?php echo esc_html($label); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e('Maximum wait time before dispatching queued notifications, even if the count threshold has not been reached.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest eligible notification types multi-checkbox callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_types_field_callback() {
+		$selected_types = (array) AIPS_Config::get_instance()->get_option('aips_notif_digest_types', array('post_generated', 'post_ready_for_review'));
+		$eligible_types = AIPS_Notification_Registry::get_digest_eligible_types();
+		?>
+		<fieldset>
+			<legend class="screen-reader-text"><span><?php esc_html_e('Eligible Notification Types', 'ai-post-scheduler'); ?></span></legend>
+			<?php foreach ($eligible_types as $type_key => $meta) : ?>
+				<label style="display:block;margin-bottom:6px;">
+					<input type="checkbox" name="aips_notif_digest_types[]" value="<?php echo esc_attr($type_key); ?>" <?php checked(in_array($type_key, $selected_types, true)); ?>>
+					<strong><?php echo esc_html($meta['label']); ?></strong>
+					<span class="description" style="margin-left:4px;">&mdash; <?php echo esc_html($meta['description']); ?></span>
+				</label>
+			<?php endforeach; ?>
+		</fieldset>
+		<p class="description"><?php esc_html_e('Select which notification types are intercepted into the digest. Critical errors and system resilience alerts are never batched.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest manual queue flush action callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_actions_field_callback() {
+		$queue_count = AIPS_Notifications::instance()->get_digest_queue_count();
+		?>
+		<div style="display:flex;align-items:center;gap:12px;">
+			<button type="button" id="aips-flush-digest-btn" class="button button-secondary">
+				<?php esc_html_e('Send Pending Digest Now', 'ai-post-scheduler'); ?>
+			</button>
+			<span class="description">
+				<?php
+				printf(
+					/* translators: %s: span element containing pending count */
+					esc_html__('Currently %s pending notifications in the digest queue.', 'ai-post-scheduler'),
+					'<strong id="aips-digest-queue-count">' . esc_html($queue_count) . '</strong>'
+				);
+				?>
+			</span>
+		</div>
+		<?php
+	}
+
     /**
      * Sanitize comma-separated notification email addresses.
      *
@@ -940,6 +1044,58 @@ class AIPS_Settings_UI {
 
         return $sanitized;
     }
+
+	/**
+	 * Sanitize the summarized digest count threshold (2–50).
+	 *
+	 * @param mixed $value Raw input.
+	 * @return int Clamped integer between 2 and 50.
+	 */
+	public function sanitize_digest_threshold($value) {
+		if (!is_numeric($value)) {
+			return 5;
+		}
+		$val = intval($value);
+		if ($val < 2) {
+			$val = 2;
+		} elseif ($val > 50) {
+			$val = 50;
+		}
+		return $val;
+	}
+
+	/**
+	 * Sanitize the summarized digest maximum delay window.
+	 *
+	 * @param mixed $value Raw input in seconds.
+	 * @return int Valid delay in seconds (default 3600).
+	 */
+	public function sanitize_digest_max_delay($value) {
+		$val = absint($value);
+		$allowed = array(900, 1800, 3600, 7200, 21600);
+		return in_array($val, $allowed, true) ? $val : 3600;
+	}
+
+	/**
+	 * Sanitize the summarized digest eligible notification types.
+	 *
+	 * @param mixed $value Raw input array of type keys.
+	 * @return array Sanitized list of eligible notification type keys.
+	 */
+	public function sanitize_digest_types($value) {
+		if (!is_array($value)) {
+			return array();
+		}
+		$eligible = array_keys(AIPS_Notification_Registry::get_digest_eligible_types());
+		$sanitized = array();
+		foreach ($value as $type) {
+			$type = sanitize_key($type);
+			if (in_array($type, $eligible, true)) {
+				$sanitized[] = $type;
+			}
+		}
+		return array_values(array_unique($sanitized));
+	}
 
     /**
      * Sanitize the topic similarity threshold value.
