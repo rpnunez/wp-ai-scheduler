@@ -58,7 +58,7 @@ class AIPS_Silos_Controller {
 	public function ajax_overview() {
 		$this->verify_request();
 
-		AIPS_Ajax_Response::success($this->service->get_overview());
+		AIPS_Ajax_Response::success($this->service->get_overview($this->get_campaign_id()));
 	}
 
 	/**
@@ -82,7 +82,7 @@ class AIPS_Silos_Controller {
 				/* translators: %s: post title */
 				'message' => sprintf(__('"%s" is now the pillar of this silo.', 'ai-post-scheduler'), get_the_title($post_id)),
 			),
-			$this->service->get_overview()
+			$this->service->get_overview($this->get_campaign_id())
 		));
 	}
 
@@ -121,7 +121,7 @@ class AIPS_Silos_Controller {
 				'message' => $message,
 				'run'     => $run,
 			),
-			$this->service->get_overview()
+			$this->service->get_overview($this->get_campaign_id())
 		));
 	}
 
@@ -144,8 +144,25 @@ class AIPS_Silos_Controller {
 					/* translators: %d: number of clusters */
 					: sprintf(_n('%d cluster found.', '%d clusters found.', count($clusters), 'ai-post-scheduler'), count($clusters)),
 			),
-			$this->service->get_overview()
+			$this->service->get_overview($this->get_campaign_id())
 		));
+	}
+
+	/**
+	 * Read optional campaign_id from POST or GET request.
+	 *
+	 * @return int|null
+	 */
+	private function get_campaign_id(): ?int {
+		if (isset($_POST['campaign_id']) && is_numeric($_POST['campaign_id'])) {
+			$cid = absint($_POST['campaign_id']);
+			return $cid > 0 ? $cid : null;
+		}
+		if (isset($_GET['campaign_id']) && is_numeric($_GET['campaign_id'])) {
+			$cid = absint($_GET['campaign_id']);
+			return $cid > 0 ? $cid : null;
+		}
+		return null;
 	}
 
 	/**

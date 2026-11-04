@@ -181,6 +181,10 @@ class AIPS_DB_Manager {
             default_author_id bigint(20) DEFAULT NULL,
             default_categories text DEFAULT NULL,
             default_tags text DEFAULT NULL,
+            silo_enabled tinyint(1) NOT NULL DEFAULT 0,
+            pillar_post_id bigint(20) DEFAULT NULL,
+            pillar_template_id bigint(20) DEFAULT NULL,
+            pillar_anchor_keywords text DEFAULT NULL,
             campaign_mode varchar(20) DEFAULT 'template',
             is_active tinyint(1) NOT NULL DEFAULT 1,
             is_archived tinyint(1) NOT NULL DEFAULT 0,
@@ -193,6 +197,8 @@ class AIPS_DB_Manager {
             KEY default_article_structure_id (default_article_structure_id),
             KEY default_voice_id (default_voice_id),
             KEY default_author_id (default_author_id),
+            KEY silo_enabled (silo_enabled),
+            KEY pillar_post_id (pillar_post_id),
             KEY active_archived (is_active, is_archived)
         ) $charset_collate;";
 

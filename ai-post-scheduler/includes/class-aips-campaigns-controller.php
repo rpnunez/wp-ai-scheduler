@@ -551,6 +551,20 @@ class AIPS_Campaigns_Controller {
 			}
 		}
 
+		if ($include_missing || isset($_POST['silo_enabled'])) {
+			$data['silo_enabled'] = !empty($_POST['silo_enabled']) ? 1 : 0;
+		}
+
+		foreach (array('pillar_post_id', 'pillar_template_id') as $key) {
+			if ($include_missing || isset($_POST[$key])) {
+				$data[$key] = !empty($_POST[$key]) ? absint($_POST[$key]) : null;
+			}
+		}
+
+		if ($include_missing || isset($_POST['pillar_anchor_keywords'])) {
+			$data['pillar_anchor_keywords'] = !empty($_POST['pillar_anchor_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['pillar_anchor_keywords'])) : null;
+		}
+
 		return $data;
 	}
 

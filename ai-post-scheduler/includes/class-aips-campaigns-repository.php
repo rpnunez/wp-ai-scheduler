@@ -791,13 +791,17 @@ class AIPS_Campaigns_Repository {
 				'default_author_id'            => !empty($data['default_author_id']) ? absint($data['default_author_id']) : null,
 				'default_categories'           => isset($data['default_categories']) ? sanitize_text_field($data['default_categories']) : null,
 				'default_tags'                 => isset($data['default_tags']) ? sanitize_text_field($data['default_tags']) : null,
+				'silo_enabled'                 => !empty($data['silo_enabled']) ? 1 : 0,
+				'pillar_post_id'               => !empty($data['pillar_post_id']) ? absint($data['pillar_post_id']) : null,
+				'pillar_template_id'           => !empty($data['pillar_template_id']) ? absint($data['pillar_template_id']) : null,
+				'pillar_anchor_keywords'       => isset($data['pillar_anchor_keywords']) ? sanitize_textarea_field($data['pillar_anchor_keywords']) : null,
 				'campaign_mode'                => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
 				'is_active'                    => isset($data['is_active']) ? absint($data['is_active']) : 1,
 				'is_archived'                  => isset($data['is_archived']) ? absint($data['is_archived']) : 0,
 				'created_at'                   => $now,
 				'updated_at'                   => $now,
 			),
-			array('%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d')
+			array('%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%d')
 		);
 
 		if (!$result) {
@@ -868,6 +872,26 @@ class AIPS_Campaigns_Repository {
 
 		if (array_key_exists('default_tags', $data)) {
 			$update_data['default_tags'] = !empty($data['default_tags']) ? sanitize_text_field($data['default_tags']) : null;
+			$format[] = '%s';
+		}
+
+		if (array_key_exists('silo_enabled', $data)) {
+			$update_data['silo_enabled'] = !empty($data['silo_enabled']) ? 1 : 0;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('pillar_post_id', $data)) {
+			$update_data['pillar_post_id'] = !empty($data['pillar_post_id']) ? absint($data['pillar_post_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('pillar_template_id', $data)) {
+			$update_data['pillar_template_id'] = !empty($data['pillar_template_id']) ? absint($data['pillar_template_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('pillar_anchor_keywords', $data)) {
+			$update_data['pillar_anchor_keywords'] = !empty($data['pillar_anchor_keywords']) ? sanitize_textarea_field($data['pillar_anchor_keywords']) : null;
 			$format[] = '%s';
 		}
 
@@ -1260,6 +1284,10 @@ class AIPS_Campaigns_Repository {
 		$row->active_schedule_count = (int) $row->active_schedule_count;
 		$row->primary_template_id = !empty($row->primary_template_id) ? (int) $row->primary_template_id : null;
 		$row->primary_schedule_id = !empty($row->primary_schedule_id) ? (int) $row->primary_schedule_id : null;
+		$row->silo_enabled = !empty($row->silo_enabled) ? 1 : 0;
+		$row->pillar_post_id = !empty($row->pillar_post_id) ? (int) $row->pillar_post_id : null;
+		$row->pillar_template_id = !empty($row->pillar_template_id) ? (int) $row->pillar_template_id : null;
+		$row->pillar_anchor_keywords = isset($row->pillar_anchor_keywords) ? (string) $row->pillar_anchor_keywords : '';
 		$row->can_delete = 0 === $row->generated_posts_count;
 	}
 
