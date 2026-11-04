@@ -1346,42 +1346,46 @@ class AIPS_DB_Migrations {
 
 		// 1. Templates table: generate_slug and slug_prompt
 		$templates_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_templates ) );
-		if ( $templates_table_exists === $table_templates ) {
-			$has_gen_slug = $wpdb->get_row( $wpdb->prepare(
+		if ( $templates_table_exists !== $table_templates ) {
+			return false;
+		}
+
+		$has_gen_slug = $wpdb->get_row( $wpdb->prepare(
 				"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'generate_slug'
 			) );
-			if ( ! $has_gen_slug ) {
-				$wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
-			}
+		if ( ! $has_gen_slug && false === $wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
 
-			$has_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+		$has_slug_prompt = $wpdb->get_row( $wpdb->prepare(
 				"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'slug_prompt'
 			) );
-			if ( ! $has_slug_prompt ) {
-				$wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER title_prompt" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
-			}
+		if ( ! $has_slug_prompt && false === $wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER title_prompt" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
 		}
 
 		// 2. Authors table: generate_slug and slug_prompt
 		$authors_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_authors ) );
-		if ( $authors_table_exists === $table_authors ) {
-			$has_author_gen_slug = $wpdb->get_row( $wpdb->prepare(
+		if ( $authors_table_exists !== $table_authors ) {
+			return false;
+		}
+
+		$has_author_gen_slug = $wpdb->get_row( $wpdb->prepare(
 				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'generate_slug'
 			) );
-			if ( ! $has_author_gen_slug ) {
-				$wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
-			}
+		if ( ! $has_author_gen_slug && false === $wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
 
-			$has_author_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+		$has_author_slug_prompt = $wpdb->get_row( $wpdb->prepare(
 				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'slug_prompt'
 			) );
-			if ( ! $has_author_slug_prompt ) {
-				$wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER generate_slug" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
-			}
+		if ( ! $has_author_slug_prompt && false === $wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER generate_slug" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
 		}
 
 		$this->logger->log( 'Migration 3.7.20: Added generate_slug and slug_prompt to templates and authors.', 'info' );

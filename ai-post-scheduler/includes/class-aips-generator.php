@@ -399,14 +399,16 @@ class AIPS_Generator {
     /**
      * Resolve AI Variables from a generation context.
      *
-     * Extracts AI Variables from the title prompt and uses AI to generate
-     * appropriate values based on the content context.
+     * Extracts AI Variables from the title prompt and optional component
+     * instructions, then uses AI to generate appropriate values based on the
+     * content context.
      *
      * @param AIPS_Generation_Context $context Generation context.
-     * @param string                  $content Generated article content for context.
+     * @param string                  $content                 Generated article content for context.
+     * @param string                  $additional_instructions Optional component instructions that can contain AI variables.
      * @return array Associative array of resolved AI variable values.
      */
-    private function resolve_ai_variables_from_context($context, $content) {
+    private function resolve_ai_variables_from_context($context, $content, $additional_instructions = '') {
         // Get the title prompt from context
         $title_prompt = $context->get_title_prompt();
 
@@ -425,6 +427,12 @@ class AIPS_Generator {
         }
 
         $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
+        if ($additional_instructions !== '') {
+            $ai_variables = array_values(array_unique(array_merge(
+                $ai_variables,
+                $this->template_processor->extract_ai_variables($additional_instructions)
+            )));
+        }
         if (empty($ai_variables)) {
             return array();
         }
@@ -443,7 +451,11 @@ class AIPS_Generator {
             $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
         }
 
-        return $this->resolve_ai_variables_for_template_string($title_prompt, $context_str, 'ai_variables');
+        return $this->resolve_ai_variables_for_template_string(
+            $title_prompt . "\n" . $additional_instructions,
+            $context_str,
+            'ai_variables'
+        );
     }
 
     /**
@@ -1935,7 +1947,8 @@ class AIPS_Generator {
 			$slug_prompt = $this->post_slug_prompt_builder->build($context, null, null, $content, $title);
 		}
 
-		$ai_variables = $this->resolve_ai_variables_from_context($context, $content);
+		$slug_instructions = $this->post_slug_prompt_builder->resolve_slug_instructions($context, $context->get_topic(), $title);
+		$ai_variables      = $this->resolve_ai_variables_from_context($context, $content, $slug_instructions);
 		if (!empty($ai_variables)) {
 			$slug_prompt = $this->template_processor->process_with_ai_variables(
 				$slug_prompt,

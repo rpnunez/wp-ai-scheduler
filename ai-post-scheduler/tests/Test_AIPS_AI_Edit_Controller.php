@@ -167,7 +167,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
 		$this->sync_request_from_post();
-		
+
 		ob_start();
 		try {
 			$this->controller->ajax_regenerate_component();
@@ -197,7 +197,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
 		$this->sync_request_from_post();
-		
+
 		ob_start();
 		try {
 			$this->controller->ajax_save_post_components();
@@ -242,6 +242,14 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
 		$this->sync_request_from_post();
+
+		$hook_components = array();
+		$hook_callback = function($updated_post_id, $updated_components, $sanitized_components) use (&$hook_components, $post_id) {
+			$this->assertSame($post_id, $updated_post_id);
+			$this->assertContains('slug', $updated_components);
+			$hook_components = $sanitized_components;
+		};
+		add_action('aips_post_components_updated', $hook_callback, 10, 3);
 		
 		ob_start();
 		try {
@@ -250,6 +258,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			// Expected exception from wp_send_json_success
 		}
 		$output = ob_get_clean();
+		remove_action('aips_post_components_updated', $hook_callback, 10);
 		$response = json_decode($output, true);
 		
 		$this->assertTrue($response['success']);
@@ -260,6 +269,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertEquals('New excerpt', $updated_post->post_excerpt);
 		$this->assertEquals('New content', $updated_post->post_content);
 		$this->assertEquals('brand-new-slug', $updated_post->post_name);
+		$this->assertSame('brand-new-slug', $hook_components['slug']);
 		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
 		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
 

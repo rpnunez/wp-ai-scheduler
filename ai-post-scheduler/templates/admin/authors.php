@@ -407,7 +407,7 @@ $site_ctx = AIPS_Site_Context::get();
 
             <div class="form-group" id="author-slug-prompt-group" style="display: none;">
                 <label for="author_slug_prompt"><?php esc_html_e('Slug Prompt', 'ai-post-scheduler'); ?></label>
-                <input type="text" id="author_slug_prompt" name="slug_prompt" placeholder="<?php esc_attr_e('Leave empty for standard SEO-optimized slug', 'ai-post-scheduler'); ?>">
+                <textarea id="author_slug_prompt" name="slug_prompt" rows="3" placeholder="<?php esc_attr_e('Leave empty for standard SEO-optimized slug', 'ai-post-scheduler'); ?>"></textarea>
                 <p class="description"><?php esc_html_e('Optional custom instructions for post slug generation.', 'ai-post-scheduler'); ?></p>
             </div>
 

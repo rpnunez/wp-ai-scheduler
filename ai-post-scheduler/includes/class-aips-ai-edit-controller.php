@@ -308,7 +308,7 @@ class AIPS_AI_Edit_Controller {
 		$context['current_excerpt'] = $post->post_excerpt;
 		$context['current_content'] = $post->post_content;
 
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		foreach ($manual_snapshots as $component => $value) {
 			if (!in_array($component, $valid_components, true)) {
 				continue;
@@ -434,6 +434,9 @@ class AIPS_AI_Edit_Controller {
 		$sanitized_components = array();
 		if (isset($components['title'])) {
 			$sanitized_components['title'] = sanitize_text_field(wp_unslash($components['title']));
+		}
+		if (isset($components['slug'])) {
+			$sanitized_components['slug'] = sanitize_title(wp_unslash($components['slug']));
 		}
 		if (isset($components['excerpt'])) {
 			$sanitized_components['excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
@@ -619,6 +622,9 @@ class AIPS_AI_Edit_Controller {
 		switch ($component) {
 			case 'title':
 				$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
+				break;
+			case 'slug':
+				$sanitized_components['slug'] = sanitize_title((string) $restored_value);
 				break;
 			case 'excerpt':
 				$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
