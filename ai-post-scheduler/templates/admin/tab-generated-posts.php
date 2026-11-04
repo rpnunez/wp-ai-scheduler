@@ -129,7 +129,7 @@ if (!defined('ABSPATH')) {
 						<tbody>
 							<?php foreach ($posts_data as $post_data): ?>
 							<tr>
-								<th scope="row" class="check-column"><input type="checkbox" class="aips-generated-cb" value="<?php echo esc_attr($post_data['id']); ?>"></th>
+								<th scope="row" class="check-column"><input type="checkbox" class="aips-generated-cb" value="<?php echo esc_attr(!empty($post_data['post_id']) ? $post_data['post_id'] : (!empty($post_data['id']) ? $post_data['id'] : '')); ?>"></th>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
