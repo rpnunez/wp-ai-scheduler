@@ -1,0 +1,459 @@
+/**
+ * AI Post Scheduler - Monetization & Conversion Styles
+ * @package AI_Post_Scheduler
+ */
+
+.aips-product-card {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+	margin: 24px 0;
+	position: relative;
+	overflow: hidden;
+	font-family: inherit;
+}
+
+.aips-product-badge {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	background: #2563eb;
+	color: #ffffff;
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	padding: 4px 10px;
+	border-radius: 20px;
+	letter-spacing: 0.5px;
+	z-index: 2;
+}
+
+.aips-card-inner {
+	display: flex;
+	flex-direction: column;
+	padding: 20px;
+	gap: 16px;
+}
+
+@media (min-width: 640px) {
+	.aips-layout-horizontal .aips-card-inner,
+	.aips-layout-card .aips-card-inner {
+		flex-direction: row;
+		align-items: center;
+	}
+	.aips-product-image-wrap {
+		flex: 0 0 180px;
+		max-width: 180px;
+	}
+}
+
+.aips-product-image-wrap img.aips-product-img {
+	width: 100%;
+	height: auto;
+	max-height: 180px;
+	object-fit: contain;
+	border-radius: 6px;
+}
+
+.aips-product-details {
+	flex: 1;
+}
+
+.aips-product-title {
+	margin: 0 0 8px 0;
+	font-size: 1.25rem;
+	line-height: 1.4;
+}
+
+.aips-product-link {
+	color: #1e293b;
+	text-decoration: none;
+}
+
+.aips-product-link:hover {
+	color: #2563eb;
+}
+
+.aips-product-rating {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.aips-stars, .aips-stars-sm {
+	color: #f59e0b;
+	letter-spacing: 2px;
+}
+
+.aips-rating-val {
+	font-size: 13px;
+	font-weight: 600;
+	color: #64748b;
+}
+
+.aips-product-desc {
+	font-size: 14px;
+	color: #475569;
+	margin-bottom: 16px;
+	line-height: 1.6;
+}
+
+.aips-product-action-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid #f1f5f9;
+}
+
+.aips-price-box {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.aips-current-price {
+	font-size: 1.35rem;
+	font-weight: 800;
+	color: #0f172a;
+}
+
+.aips-stock-badge {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.aips-stock-badge.in-stock {
+	background: #dcfce7;
+	color: #166534;
+}
+
+/* Button styles */
+.aips-btn {
+	display: inline-block;
+	padding: 10px 20px;
+	font-size: 14px;
+	font-weight: 600;
+	text-align: center;
+	text-decoration: none;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background-color 0.2s ease, transform 0.1s ease;
+	border: none;
+}
+
+.aips-btn-primary {
+	background: #16a34a;
+	color: #ffffff !important;
+}
+
+.aips-btn-primary:hover {
+	background: #15803d;
+	color: #ffffff !important;
+	transform: translateY(-1px);
+}
+
+.aips-btn-sm {
+	padding: 6px 14px;
+	font-size: 13px;
+	background: #2563eb;
+	color: #ffffff !important;
+}
+
+.aips-btn-sm:hover {
+	background: #1d4ed8;
+	color: #ffffff !important;
+}
+
+/* Comparison Table */
+.aips-comparison-wrapper {
+	margin: 32px 0;
+	overflow: hidden;
+}
+
+.aips-table-responsive {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+}
+
+.aips-comparison-table {
+	width: 100%;
+	border-collapse: collapse;
+	background: #ffffff;
+	font-size: 14px;
+}
+
+.aips-comparison-table th {
+	background: #f8fafc;
+	padding: 14px 16px;
+	text-align: left;
+	font-weight: 700;
+	color: #334155;
+	border-bottom: 2px solid #e2e8f0;
+}
+
+.aips-comparison-table td {
+	padding: 14px 16px;
+	border-bottom: 1px solid #e2e8f0;
+	vertical-align: middle;
+}
+
+.aips-has-badge td {
+	background: #fdfefe;
+}
+
+.aips-table-badge {
+	display: inline-block;
+	background: #e0e7ff;
+	color: #3730a3;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 4px;
+	margin-bottom: 6px;
+	text-transform: uppercase;
+}
+
+.aips-cell-content {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.aips-thumb-sm {
+	width: 48px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: 4px;
+}
+
+/* Pros and Cons */
+.aips-pros-cons-box {
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	padding: 20px;
+	margin: 28px 0;
+}
+
+.aips-pros-cons-title {
+	margin-top: 0;
+	margin-bottom: 16px;
+	font-size: 1.15rem;
+}
+
+.aips-pros-cons-columns {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 20px;
+}
+
+@media (min-width: 640px) {
+	.aips-pros-cons-columns {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+.aips-col-header {
+	font-size: 14px;
+	font-weight: 700;
+	margin: 0 0 10px 0;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.pros-header {
+	color: #166534;
+}
+
+.cons-header {
+	color: #991b1b;
+}
+
+.aips-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.aips-list li {
+	padding: 6px 0 6px 20px;
+	position: relative;
+	font-size: 14px;
+	color: #334155;
+	line-height: 1.4;
+}
+
+.pros-list li::before {
+	content: "✓";
+	position: absolute;
+	left: 0;
+	color: #16a34a;
+	font-weight: bold;
+}
+
+.cons-list li::before {
+	content: "✗";
+	position: absolute;
+	left: 0;
+	color: #dc2626;
+	font-weight: bold;
+}
+
+/* FAQ Accordion */
+.aips-faq-container {
+	margin: 32px 0;
+}
+
+.aips-faq-main-title {
+	margin-bottom: 16px;
+}
+
+.aips-faq-item {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 6px;
+	margin-bottom: 10px;
+	padding: 14px 18px;
+	transition: background 0.2s ease;
+}
+
+.aips-faq-item[open] {
+	background: #f8fafc;
+}
+
+.aips-faq-question {
+	cursor: pointer;
+	font-size: 15px;
+	color: #1e293b;
+	user-select: none;
+}
+
+.aips-faq-answer {
+	margin-top: 10px;
+	font-size: 14px;
+	color: #475569;
+	line-height: 1.6;
+}
+
+/* Table of Contents */
+.aips-toc-container {
+	background: #f1f5f9;
+	border-left: 4px solid #2563eb;
+	border-radius: 4px;
+	padding: 16px 20px;
+	margin: 24px 0;
+}
+
+.aips-toc-header {
+	font-weight: 700;
+	font-size: 15px;
+	margin-bottom: 10px;
+	color: #1e293b;
+}
+
+.aips-toc-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.aips-toc-list li {
+	margin: 6px 0;
+}
+
+.aips-toc-list a {
+	color: #3b82f6;
+	text-decoration: none;
+	font-size: 14px;
+}
+
+.aips-toc-list a:hover {
+	text-decoration: underline;
+}
+
+/* Cross-Sells Grid */
+.aips-cross-sells-container {
+	margin: 36px 0;
+	padding: 24px;
+	background: #f8fafc;
+	border-radius: 8px;
+	border: 1px solid #e2e8f0;
+}
+
+.aips-cross-sells-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 16px;
+	margin-top: 16px;
+}
+
+.aips-cross-sell-item {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 6px;
+	padding: 14px;
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.aips-thumb-md {
+	width: 100%;
+	height: 120px;
+	object-fit: contain;
+	margin-bottom: 10px;
+}
+
+.aips-item-heading {
+	font-size: 14px;
+	margin: 0 0 8px 0;
+	color: #1e293b;
+}
+
+.aips-item-cost {
+	font-weight: 700;
+	font-size: 15px;
+	color: #0f172a;
+	margin-bottom: 12px;
+	display: block;
+}
+
+/* Affiliate Disclosure */
+.aips-affiliate-disclosure {
+	background: #f8fafc;
+	border: 1px dashed #cbd5e1;
+	border-radius: 4px;
+	padding: 10px 14px;
+	font-size: 12px;
+	color: #64748b;
+	margin: 16px 0;
+	font-style: italic;
+}
+
+/* Ad Slot Container */
+.aips-ad-slot-wrapper {
+	margin: 28px auto;
+	text-align: center;
+	padding: 10px;
+	background: #fbfbfc;
+	border: 1px dashed #e2e8f0;
+	border-radius: 4px;
+	max-width: 100%;
+	min-height: 90px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}

@@ -247,6 +247,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             null,
+            __('Catalog AI Enrichment', 'ai-post-scheduler'),
+            __('Catalog AI Enrichment', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-catalog-enrichment',
+            array($this, 'render_catalog_enrichment_page')
+        );
+
+        add_submenu_page(
+            null,
             __('System Status', 'ai-post-scheduler'),
             __('System Status', 'ai-post-scheduler'),
             'manage_options',
@@ -938,5 +947,9 @@ class AIPS_Admin_Menu {
 
     public function render_content_indexer_page() {
         $this->redirect_to_hub('aips-content', 'content-indexer');
+    }
+
+    public function render_catalog_enrichment_page() {
+        require_once AIPS_PLUGIN_DIR . 'templates/admin/catalog-enrichment.php';
     }
 }
