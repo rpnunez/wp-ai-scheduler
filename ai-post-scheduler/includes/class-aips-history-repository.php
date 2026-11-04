@@ -2894,14 +2894,38 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 		// Category filtering via AIPS_AI_Error_Classifier pattern mapping.
 		if (!empty($args['category']) && 'all' !== $args['category']) {
 			$cat_slug = sanitize_key($args['category']);
-			$patterns = AIPS_AI_Error_Classifier::get_sql_patterns_for_category($cat_slug);
-			if (!empty($patterns)) {
-				$cat_clauses = array();
-				foreach ($patterns as $pattern) {
-					$cat_clauses[] = 'hl.details LIKE %s';
-					$where_args[]  = $pattern;
+			if ($cat_slug === AIPS_AI_Error_Classifier::CATEGORY_GENERAL) {
+				// General is the catch-all category; exclude all known specific category patterns.
+				$known_categories = array(
+					AIPS_AI_Error_Classifier::CATEGORY_RATE_LIMIT,
+					AIPS_AI_Error_Classifier::CATEGORY_AUTH,
+					AIPS_AI_Error_Classifier::CATEGORY_CONTEXT_LENGTH,
+					AIPS_AI_Error_Classifier::CATEGORY_TIMEOUT,
+					AIPS_AI_Error_Classifier::CATEGORY_PROVIDER_DOWN,
+					AIPS_AI_Error_Classifier::CATEGORY_CONTENT_POLICY,
+					AIPS_AI_Error_Classifier::CATEGORY_JSON_PARSING,
+				);
+				$exclude_clauses = array();
+				foreach ($known_categories as $kc) {
+					$kc_patterns = AIPS_AI_Error_Classifier::get_sql_patterns_for_category($kc);
+					foreach ($kc_patterns as $p) {
+						$exclude_clauses[] = 'hl.details NOT LIKE %s';
+						$where_args[]      = $p;
+					}
 				}
-				$where_clauses[] = '(' . implode(' OR ', $cat_clauses) . ')';
+				if (!empty($exclude_clauses)) {
+					$where_clauses[] = '(' . implode(' AND ', $exclude_clauses) . ')';
+				}
+			} else {
+				$patterns = AIPS_AI_Error_Classifier::get_sql_patterns_for_category($cat_slug);
+				if (!empty($patterns)) {
+					$cat_clauses = array();
+					foreach ($patterns as $pattern) {
+						$cat_clauses[] = 'hl.details LIKE %s';
+						$where_args[]  = $pattern;
+					}
+					$where_clauses[] = '(' . implode(' OR ', $cat_clauses) . ')';
+				}
 			}
 		}
 
@@ -3204,9 +3228,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 		{$phase1_join}
 		WHERE {$where_sql}";
 
-		$row = !empty($where_args)
-			? $this->wpdb->get_row($this->wpdb->prepare($sql, $where_args), ARRAY_A)
-			: $this->wpdb->get_row($sql, ARRAY_A);
+		if (!empty($where_args)) {
+			$prepared_sql = $this->wpdb->prepare($sql, $where_args);
+		} else {
+			$prepared_sql = str_replace('%%', '%', $sql);
+		}
+		$row = $this->wpdb->get_row($prepared_sql, ARRAY_A);
 
 		$total = !empty($row['total_errors']) ? (int) $row['total_errors'] : 0;
 

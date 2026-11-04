@@ -401,9 +401,18 @@ class Test_AIPS_AI_Errors_Diagnostics extends WP_UnitTestCase {
 			'message' => 'AI generation failed for title: 401 Unauthorized invalid_api_key',
 		), AIPS_History_Type::ERROR );
 
+		// General unclassified
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for excerpt: Unexpected response structure from experimental model',
+		), AIPS_History_Type::ERROR );
+
 		$filtered = $this->repository->get_ai_errors( array( 'category' => 'rate_limit' ) );
 		$this->assertSame( 1, $filtered['total'] );
 		$this->assertSame( 'rate_limit', $filtered['items'][0]['category'] );
+
+		$general_filtered = $this->repository->get_ai_errors( array( 'category' => 'general' ) );
+		$this->assertSame( 1, $general_filtered['total'] );
+		$this->assertSame( 'general', $general_filtered['items'][0]['category'] );
 	}
 
 	/**

@@ -663,29 +663,34 @@ class AIPS_Diagnostics_Controller {
 			'Post / Run Title',
 		) );
 
-		foreach ( $items as $row ) {
-			$raw_msg = isset( $row['error_message'] ) ? $row['error_message'] : '';
-			$sanitized_msg = AIPS_AI_Error_Classifier::redact_secrets( $raw_msg );
-
-			// Prevent CSV Formula Injection by prefixing leading special chars with single quote
-			if ( ! empty( $sanitized_msg ) && in_array( substr( $sanitized_msg, 0, 1 ), array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
-				$sanitized_msg = "'" . $sanitized_msg;
+		$escape_csv_formula = static function ( $val ) {
+			$str = (string) $val;
+			if ( '' !== $str && in_array( substr( $str, 0, 1 ), array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+				return "'" . $str;
 			}
+			return $str;
+		};
 
-			$http_code = ! empty( $row['classification']['http_code'] ) ? (string) $row['classification']['http_code'] : '';
+		foreach ( $items as $row ) {
+			$raw_msg       = isset( $row['error_message'] ) ? $row['error_message'] : '';
+			$sanitized_msg = $escape_csv_formula( AIPS_AI_Error_Classifier::redact_secrets( $raw_msg ) );
+			$http_code     = ! empty( $row['classification']['http_code'] ) ? (string) $row['classification']['http_code'] : '';
+			$post_title    = $escape_csv_formula( isset( $row['post_title'] ) ? $row['post_title'] : '' );
+			$cat_label     = $escape_csv_formula( isset( $row['category_label'] ) ? $row['category_label'] : '' );
+			$comp_label    = $escape_csv_formula( isset( $row['component_label'] ) ? $row['component_label'] : '' );
 
 			fputcsv( $output, array(
 				isset( $row['id'] ) ? $row['id'] : '',
 				! empty( $row['timestamp'] ) ? gmdate( 'Y-m-d H:i:s', $row['timestamp'] ) : '',
 				isset( $row['formatted_date'] ) ? $row['formatted_date'] : '',
 				isset( $row['category'] ) ? $row['category'] : '',
-				isset( $row['category_label'] ) ? $row['category_label'] : '',
+				$cat_label,
 				$http_code,
-				isset( $row['component_label'] ) ? $row['component_label'] : '',
+				$comp_label,
 				$sanitized_msg,
 				isset( $row['history_id'] ) ? $row['history_id'] : '',
 				isset( $row['post_id'] ) ? $row['post_id'] : '',
-				isset( $row['post_title'] ) ? $row['post_title'] : '',
+				$post_title,
 			) );
 		}
 

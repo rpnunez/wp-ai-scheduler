@@ -9204,27 +9204,27 @@ tr.aips-row-details > td {
 }
 
 .aips-severity-warning {
-	background: #fffbeb;
-	border-left-color: #f59e0b;
-	color: #92400e;
+	background: var(--aips-warning-bg, #fffbeb);
+	border-left-color: var(--aips-warning, #f59e0b);
+	color: var(--aips-warning-text, #92400e);
 }
 
 .aips-severity-error {
-	background: #fef2f2;
-	border-left-color: #ef4444;
-	color: #991b1b;
+	background: var(--aips-danger-bg, #fef2f2);
+	border-left-color: var(--aips-danger, #ef4444);
+	color: var(--aips-danger-text, #991b1b);
 }
 
 .aips-severity-critical {
-	background: #7f1d1d;
-	border-left-color: #b91c1c;
-	color: #ffffff;
+	background: var(--aips-danger-dark, #7f1d1d);
+	border-left-color: var(--aips-danger, #b91c1c);
+	color: var(--aips-white, #ffffff);
 }
 
 .aips-severity-info {
-	background: #f0f9ff;
-	border-left-color: #0284c7;
-	color: #075985;
+	background: var(--aips-info-bg, #f0f9ff);
+	border-left-color: var(--aips-info, #0284c7);
+	color: var(--aips-info-text, #075985);
 }
 
 .aips-ai-error-resolution-header {
@@ -9274,4 +9274,8 @@ tr.aips-row-details > td {
 
 .aips-retention-input-val {
 	width: 80px;
+}
+
+.aips-z-modal-elevated {
+	z-index: 100050 !important;
 }

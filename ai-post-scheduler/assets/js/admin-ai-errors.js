@@ -92,6 +92,7 @@
 		 */
 		bindEvents: function () {
 			$(document).on('click', '.aips-date-preset-btn', this.handleDatePresetClick.bind(this));
+			$('#aips-ai-errors-from, #aips-ai-errors-to').on('change input', this.handleDateInputChange.bind(this));
 			$('#aips-ai-errors-filter-btn').on('click', this.handleFilterClick.bind(this));
 			$('#aips-ai-errors-reset-btn').on('click', this.handleResetClick.bind(this));
 			$('#aips-ai-errors-component, #aips-ai-errors-category, #aips-ai-errors-scope').on('change', this.handleFilterChange.bind(this));
@@ -125,6 +126,13 @@
 			$('.aips-date-preset-btn').removeClass('active');
 			$btn.addClass('active');
 			this.applyDatePreset(preset);
+		},
+
+		/**
+		 * Handler for manual changes to date range inputs, deselecting active presets.
+		 */
+		handleDateInputChange: function () {
+			$('.aips-date-preset-btn').removeClass('active');
 		},
 
 		/**
@@ -349,7 +357,7 @@
 		 * Handler for elevating history modal z-index when opened from inside the error modal.
 		 */
 		handleOpenHistoryClick: function () {
-			$('#aips-history-modal').css('z-index', 100050);
+			$('#aips-history-modal').addClass('aips-z-modal-elevated');
 		},
 
 		/**
@@ -873,6 +881,7 @@
 			var $modal = $('#aips-ai-error-modal');
 			$modal.fadeOut(150, function () {
 				$modal.addClass('aips-is-hidden');
+				$('#aips-history-modal').removeClass('aips-z-modal-elevated');
 			});
 		},
 
