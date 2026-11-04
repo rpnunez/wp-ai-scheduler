@@ -91,8 +91,7 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$table_name = $wpdb->prefix . 'aips_schedule';
 		
 		// Check table exists
-		$table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'");
-		$this->assertEquals($table_name, $table_exists, 'aips_schedule table should exist');
+		$this->assertSame( 0, $wpdb->query("SELECT 1 FROM `{$table_name}` LIMIT 0") );
 		
 		// Get columns
 		$columns = $wpdb->get_results("SHOW COLUMNS FROM {$table_name}");
@@ -223,8 +222,7 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'aips_campaigns';
 
-		$table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'");
-		$this->assertEquals($table_name, $table_exists, 'aips_campaigns table should exist');
+		$this->assertSame( 0, $wpdb->query("SELECT 1 FROM `{$table_name}` LIMIT 0") );
 	}
 
 	/**

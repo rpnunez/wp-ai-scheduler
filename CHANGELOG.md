@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Table contract and migration cleanup (3.7.20)
+- Remove table-existence preflight queries from repositories, backups, exports, repairs, and diagnostics; use the canonical installed schema directly.
+- Retain only migrations 3.7.16 through 3.7.20, with 3.7.15 as the existing-installation baseline. Remove completed historical conversions and the retired post-embeddings table's migration and datetime-repair entry.
+- Apply the schema before recent migrations and acknowledge the database version only after every eligible migration succeeds, preserving retries on SQL failure.
+- Suspend optional cache-index metadata during activation/schema installation. Align the release version with the retained History log index migration.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.

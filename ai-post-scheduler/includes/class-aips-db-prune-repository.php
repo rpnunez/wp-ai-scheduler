@@ -402,13 +402,8 @@ class AIPS_DB_Prune_Repository {
 	 */
 	public function clean_orphaned_embeddings($batch_size = 1000) {
 		$table_embeddings = $this->wpdb->prefix . 'aips_embeddings';
-		// Check if embeddings table exists.
-		if ($this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $table_embeddings)) !== $table_embeddings) {
-			return 0;
-		}
 
 		$table_relationships = $this->wpdb->prefix . 'aips_relationships';
-		$has_relationships   = ($this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $table_relationships)) === $table_relationships);
 		$table_posts         = $this->wpdb->posts;
 		$batch_size          = max(1, min(5000, (int) $batch_size));
 		$total_deleted       = 0;
@@ -443,9 +438,9 @@ class AIPS_DB_Prune_Repository {
 
 			$started_transaction = $this->start_transaction();
 
-			// Cascade cleanup: remove orphaned post entries from relationships table if present.
+			// Cascade cleanup: remove orphaned post entries from declared relationships table.
 			$relationships_failed = false;
-			if ($has_relationships && !empty($post_ids)) {
+			if (!empty($post_ids)) {
 				$post_ids_in = implode(',', array_unique($post_ids));
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$relationships_result = $this->wpdb->query(
