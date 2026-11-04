@@ -138,6 +138,20 @@ class Test_AIPS_Image_Service extends WP_UnitTestCase {
     }
 
     /**
+     * Ensure has_unsplash_access_key returns correct boolean.
+     */
+    public function test_has_unsplash_access_key() {
+        delete_option('aips_unsplash_access_key');
+        $this->assertFalse($this->service->has_unsplash_access_key());
+
+        update_option('aips_unsplash_access_key', '   ');
+        $this->assertFalse($this->service->has_unsplash_access_key());
+
+        update_option('aips_unsplash_access_key', 'test_key_123');
+        $this->assertTrue($this->service->has_unsplash_access_key());
+    }
+
+    /**
      * Ensure Unsplash integration validates missing access key.
      */
     public function test_fetch_unsplash_image_requires_key() {

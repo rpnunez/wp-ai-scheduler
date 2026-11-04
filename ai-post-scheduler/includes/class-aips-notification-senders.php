@@ -164,8 +164,8 @@ class AIPS_Notification_Senders {
 	 */
 	public function integration_error( array $payload ) {
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('AI integration unavailable.', 'ai-post-scheduler');
-		$title         = __('AI integration error', 'ai-post-scheduler');
-		$message       = sprintf(__('The AI integration is unavailable. Error: %s', 'ai-post-scheduler'), $error_message);
+		$title         = !empty($payload['title']) ? $payload['title'] : __('AI integration error', 'ai-post-scheduler');
+		$message       = !empty($payload['message']) ? $payload['message'] : sprintf(__('The AI integration is unavailable. Error: %s', 'ai-post-scheduler'), $error_message);
 
 		call_user_func(
 			$this->dispatcher,
