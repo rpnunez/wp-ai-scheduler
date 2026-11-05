@@ -173,16 +173,18 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function post_status_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_default_post_status');
-        ?>
-        <select name="aips_default_post_status">
-            <option value="draft" <?php selected($value, 'draft'); ?>><?php esc_html_e('Draft', 'ai-post-scheduler'); ?></option>
-            <option value="pending" <?php selected($value, 'pending'); ?>><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></option>
-            <option value="publish" <?php selected($value, 'publish'); ?>><?php esc_html_e('Published', 'ai-post-scheduler'); ?></option>
-        </select>
-        <p class="description"><?php esc_html_e('Default status for newly generated posts.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function post_status_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'select',
+            'option_name' => 'aips_default_post_status',
+            'options'     => array(
+                'draft'   => __('Draft', 'ai-post-scheduler'),
+                'pending' => __('Pending Review', 'ai-post-scheduler'),
+                'publish' => __('Published', 'ai-post-scheduler'),
+            ),
+            'description' => __('Default status for newly generated posts.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -190,31 +192,34 @@ class AIPS_Settings_UI {
      *
      * Displays a dropdown of available post categories.
      *
+     * @param array $args Optional field args.
      * @return void
      */
-    public function category_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_default_category');
-        wp_dropdown_categories(array(
-            'name' => 'aips_default_category',
-            'selected' => $value,
-            'show_option_none' => __('Select a category', 'ai-post-scheduler'),
-            'option_none_value' => 0,
-            'hide_empty' => false,
-        ));
-        echo '<p class="description">' . esc_html__('Default category for generated posts.', 'ai-post-scheduler') . '</p>';
+    public function category_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'category',
+            'option_name' => 'aips_default_category',
+            'description' => __('Default category for generated posts.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the bulk-publish background threshold field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function bulk_publish_async_threshold_field_callback() {
-        $value = (int) AIPS_Config::get_instance()->get_option('aips_bulk_publish_async_threshold');
-        ?>
-        <input type="number" name="aips_bulk_publish_async_threshold" value="<?php echo esc_attr($value); ?>" min="2" max="500" step="1" class="small-text">
-        <p class="description">
-            <?php esc_html_e('On the Content → Pending Review screen, when you bulk-publish this many drafts or more, they are published in the background (via WP-Cron) so the page responds instantly instead of waiting for every post. You can watch progress under Diagnostics → Background Processes. Smaller selections publish immediately. Raise this to keep more selections publishing instantly; lower it to offload medium-sized batches to the background sooner. Default: 30.', 'ai-post-scheduler'); ?>
-        </p>
-        <?php
+    public function bulk_publish_async_threshold_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_bulk_publish_async_threshold',
+            'min'         => 2,
+            'max'         => 500,
+            'step'        => 1,
+            'description' => __('On the Content → Pending Review screen, when you bulk-publish this many drafts or more, they are published in the background (via WP-Cron) so the page responds instantly instead of waiting for every post. You can watch progress under Diagnostics → Background Processes. Smaller selections publish immediately. Raise this to keep more selections publishing instantly; lower it to offload medium-sized batches to the background sooner. Default: 30.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -400,12 +405,14 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function max_tokens_limit_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_limit');
-        ?>
-        <input type="number" name="aips_max_tokens_limit" value="<?php echo esc_attr($value); ?>" min="100" class="small-text">
-        <p class="description"><?php esc_html_e('Hard maximum number of tokens that can be requested in a single AI call. The plugin calculates tokens dynamically per request type (title, excerpt, content) and will never exceed this limit. Default: 16000.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function max_tokens_limit_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_max_tokens_limit',
+            'min'         => 100,
+            'description' => __('Hard maximum number of tokens that can be requested in a single AI call. The plugin calculates tokens dynamically per request type (title, excerpt, content) and will never exceed this limit. Default: 16000.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -413,14 +420,17 @@ class AIPS_Settings_UI {
      *
      * Controls the expected output token budget when generating post titles.
      *
+     * @param array $args Optional field args.
      * @return void
      */
-    public function max_tokens_title_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_title');
-        ?>
-        <input type="number" name="aips_max_tokens_title" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected visible-output budget for post title generation (~10–20 words). Short-form requests reserve at least 1200 provider tokens so reasoning-capable models can finish the response. Default: 150.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function max_tokens_title_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_max_tokens_title',
+            'min'         => 1,
+            'description' => __('Expected visible-output budget for post title generation (~10–20 words). Short-form requests reserve at least 1200 provider tokens so reasoning-capable models can finish the response. Default: 150.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -428,14 +438,17 @@ class AIPS_Settings_UI {
      *
      * Controls the expected output token budget when generating post excerpts.
      *
+     * @param array $args Optional field args.
      * @return void
      */
-    public function max_tokens_excerpt_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_excerpt');
-        ?>
-        <input type="number" name="aips_max_tokens_excerpt" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected visible-output budget for post excerpt generation (~2–3 sentence summary). Short-form requests reserve at least 1200 provider tokens so reasoning-capable models can finish the response. Default: 300.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function max_tokens_excerpt_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_max_tokens_excerpt',
+            'min'         => 1,
+            'description' => __('Expected visible-output budget for post excerpt generation (~2–3 sentence summary). Short-form requests reserve at least 1200 provider tokens so reasoning-capable models can finish the response. Default: 300.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -443,14 +456,17 @@ class AIPS_Settings_UI {
      *
      * Controls the expected output token budget when generating full post content.
      *
+     * @param array $args Optional field args.
      * @return void
      */
-    public function max_tokens_content_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_content');
-        ?>
-        <input type="number" name="aips_max_tokens_content" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected output token budget for full post content generation (approximately 2,000–3,000 words, depending on the model and content). Default: 4000. Actual output is also capped by the Max Tokens Limit setting.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function max_tokens_content_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_max_tokens_content',
+            'min'         => 1,
+            'description' => __('Expected output token budget for full post content generation (approximately 2,000–3,000 words, depending on the model and content). Default: 4000. Actual output is also capped by the Max Tokens Limit setting.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -568,125 +584,175 @@ class AIPS_Settings_UI {
     /**
      * Render the enable retry setting field.
      */
-    public function enable_retry_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_retry');
-        ?>
-        <input type="hidden" name="aips_enable_retry" value="0">
-        <input type="checkbox" name="aips_enable_retry" value="1" <?php checked(1, $value); ?>>
-        <p class="description"><?php esc_html_e('Enable exponential backoff and retry logic for failed AI requests.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function enable_retry_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkbox',
+            'option_name' => 'aips_enable_retry',
+            'description' => __('Enable exponential backoff and retry logic for failed AI requests.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the max retries setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function max_retries_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_retry_max_attempts');
-        ?>
-        <input type="number" name="aips_retry_max_attempts" value="<?php echo esc_attr($value); ?>" min="0" max="10" class="small-text">
-        <p class="description"><?php esc_html_e('Number of retry attempts if generation fails.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function max_retries_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_retry_max_attempts',
+            'min'         => 0,
+            'max'         => 10,
+            'description' => __('Number of retry attempts if generation fails.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the retry initial delay setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function retry_initial_delay_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_retry_initial_delay');
-        ?>
-        <input type="number" name="aips_retry_initial_delay" value="<?php echo esc_attr($value); ?>" min="1" max="60" class="small-text">
-        <p class="description"><?php esc_html_e('Initial delay (in seconds) before the first retry attempt.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function retry_initial_delay_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_retry_initial_delay',
+            'min'         => 1,
+            'max'         => 60,
+            'description' => __('Initial delay (in seconds) before the first retry attempt.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the enable rate limiting setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function enable_rate_limiting_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_rate_limiting');
-        ?>
-        <input type="hidden" name="aips_enable_rate_limiting" value="0">
-        <input type="checkbox" name="aips_enable_rate_limiting" value="1" <?php checked(1, $value); ?>>
-        <p class="description"><?php esc_html_e('Limit the number of AI requests per time period.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function enable_rate_limiting_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkbox',
+            'option_name' => 'aips_enable_rate_limiting',
+            'description' => __('Limit the number of AI requests per time period.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the rate limit requests setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function rate_limit_requests_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_rate_limit_requests');
-        ?>
-        <input type="number" name="aips_rate_limit_requests" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Maximum number of allowed requests within the defined period.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function rate_limit_requests_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_rate_limit_requests',
+            'min'         => 1,
+            'description' => __('Maximum number of allowed requests within the defined period.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the rate limit period setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function rate_limit_period_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_rate_limit_period');
-        ?>
-        <input type="number" name="aips_rate_limit_period" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Period (in seconds) for rate limiting (e.g., 60 = 1 minute).', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function rate_limit_period_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_rate_limit_period',
+            'min'         => 1,
+            'description' => __('Period (in seconds) for rate limiting (e.g., 60 = 1 minute).', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the generation pacing delay setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function generation_delay_seconds_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_generation_delay_seconds');
-        ?>
-        <input type="number" name="aips_generation_delay_seconds" value="<?php echo esc_attr($value); ?>" min="0" max="30" class="small-text">
-        <p class="description"><?php esc_html_e('Pause between posts in scheduled batch runs to smooth server load and stay under provider rate limits. Manual runs are not delayed. 0 disables the pause.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function generation_delay_seconds_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_generation_delay_seconds',
+            'min'         => 0,
+            'max'         => 30,
+            'description' => __('Pause between posts in scheduled batch runs to smooth server load and stay under provider rate limits. Manual runs are not delayed. 0 disables the pause.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the batch resume cooldown setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function batch_resume_cooldown_minutes_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_batch_resume_cooldown_minutes');
-        ?>
-        <input type="number" name="aips_batch_resume_cooldown_minutes" value="<?php echo esc_attr($value); ?>" min="1" max="1440" class="small-text">
-        <p class="description"><?php esc_html_e('When a scheduled batch stops early to avoid a PHP timeout, wait this many minutes before generating its remaining posts.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function batch_resume_cooldown_minutes_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_batch_resume_cooldown_minutes',
+            'min'         => 1,
+            'max'         => 1440,
+            'description' => __('When a scheduled batch stops early to avoid a PHP timeout, wait this many minutes before generating its remaining posts.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the enable circuit breaker setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function enable_circuit_breaker_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_circuit_breaker');
-        ?>
-        <input type="hidden" name="aips_enable_circuit_breaker" value="0">
-        <input type="checkbox" name="aips_enable_circuit_breaker" value="1" <?php checked(1, $value); ?>>
-        <p class="description"><?php esc_html_e('Enable circuit breaker to temporarily halt requests after a number of consecutive failures.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function enable_circuit_breaker_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkbox',
+            'option_name' => 'aips_enable_circuit_breaker',
+            'description' => __('Enable circuit breaker to temporarily halt requests after a number of consecutive failures.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the circuit breaker threshold setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function circuit_breaker_threshold_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_circuit_breaker_threshold');
-        ?>
-        <input type="number" name="aips_circuit_breaker_threshold" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Number of consecutive failures required to open the circuit.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function circuit_breaker_threshold_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_circuit_breaker_threshold',
+            'min'         => 1,
+            'description' => __('Number of consecutive failures required to open the circuit.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render the circuit breaker timeout setting field.
+     *
+     * @param array $args Optional field args.
+     * @return void
      */
-    public function circuit_breaker_timeout_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_circuit_breaker_timeout');
-        ?>
-        <input type="number" name="aips_circuit_breaker_timeout" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Time (in seconds) to keep the circuit open before attempting to recover.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function circuit_breaker_timeout_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_circuit_breaker_timeout',
+            'min'         => 1,
+            'description' => __('Time (in seconds) to keep the circuit open before attempting to recover.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -696,15 +762,13 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function logging_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_logging');
-        ?>
-        <input type="hidden" name="aips_enable_logging" value="0">
-        <label>
-            <input type="checkbox" name="aips_enable_logging" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
-        </label>
-        <?php
+    public function logging_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkbox',
+            'option_name' => 'aips_enable_logging',
+            'label'       => __('Enable detailed logging for debugging', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
 	/**
@@ -712,20 +776,17 @@ class AIPS_Settings_UI {
 	 *
 	 * Displays a checkbox to enable or disable table filter persistence in localStorage.
 	 *
+	 * @param array $args Optional field args.
 	 * @return void
 	 */
-	public function persist_table_filters_field_callback() {
-		$value = AIPS_Config::get_instance()->get_option('aips_persist_table_filters');
-		?>
-		<input type="hidden" name="aips_persist_table_filters" value="0">
-		<label>
-			<input type="checkbox" name="aips_persist_table_filters" value="1" <?php checked($value, 1); ?>>
-			<?php esc_html_e('Persist table filter and search selections across sessions', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description">
-			<?php esc_html_e('When enabled, your active search terms, status views, and filter dropdowns are automatically remembered in your browser for each table.', 'ai-post-scheduler'); ?>
-		</p>
-		<?php
+	public function persist_table_filters_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkbox',
+            'option_name' => 'aips_persist_table_filters',
+            'label'       => __('Persist table filter and search selections across sessions', 'ai-post-scheduler'),
+            'description' => __('When enabled, your active search terms, status views, and filter dropdowns are automatically remembered in your browser for each table.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
 	}
 
     /**
@@ -790,15 +851,13 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function developer_mode_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_developer_mode');
-        ?>
-        <input type="hidden" name="aips_developer_mode" value="0">
-        <label>
-            <input type="checkbox" name="aips_developer_mode" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable developer tools and features', 'ai-post-scheduler'); ?>
-        </label>
-        <?php
+    public function developer_mode_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkbox',
+            'option_name' => 'aips_developer_mode',
+            'label'       => __('Enable developer tools and features', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -807,18 +866,17 @@ class AIPS_Settings_UI {
      * Displays a checkbox to enable or disable request-level telemetry
      * recording (staging/dev use only).
      *
+     * @param array $args Optional field args.
      * @return void
      */
-    public function enable_telemetry_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
-        ?>
-        <input type="hidden" name="aips_enable_telemetry" value="0">
-        <label>
-            <input type="checkbox" name="aips_enable_telemetry" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable request-level telemetry (staging/dev only)', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('Logs query counts, memory usage, elapsed time, and events for each request to the aips_telemetry table. Not recommended for production.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function enable_telemetry_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkbox',
+            'option_name' => 'aips_enable_telemetry',
+            'label'       => __('Enable request-level telemetry (staging/dev only)', 'ai-post-scheduler'),
+            'description' => __('Logs query counts, memory usage, elapsed time, and events for each request to the aips_telemetry table. Not recommended for production.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -827,18 +885,17 @@ class AIPS_Settings_UI {
      * Displays a checkbox to enable or disable the Cache Monitor
      * admin page and its AJAX endpoints (internal cache introspection tool).
      *
+     * @param array $args Optional field args.
      * @return void
      */
-    public function cache_monitor_enabled_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled');
-        ?>
-        <input type="hidden" name="aips_cache_monitor_enabled" value="0">
-        <label>
-            <input type="checkbox" name="aips_cache_monitor_enabled" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable Cache Monitor (internal cache introspection tool)', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('Exposes an admin page and AJAX endpoints for inspecting and flushing internal cache entries. Not recommended for production.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function cache_monitor_enabled_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkbox',
+            'option_name' => 'aips_cache_monitor_enabled',
+            'label'       => __('Enable Cache Monitor (internal cache introspection tool)', 'ai-post-scheduler'),
+            'description' => __('Exposes an admin page and AJAX endpoints for inspecting and flushing internal cache entries. Not recommended for production.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -846,14 +903,18 @@ class AIPS_Settings_UI {
      *
      * Displays an email input field for the notifications recipient.
      *
+     * @param array $args Optional field args.
      * @return void
      */
-    public function review_notifications_email_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_review_notifications_email') ?: get_option('admin_email');
-        ?>
-        <input type="text" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
-        <p class="description"><?php esc_html_e('Comma-separated email addresses used for system notification emails.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function review_notifications_email_field_callback($args = array()) {
+        $default_email = get_option('admin_email');
+        $defaults = array(
+            'type'        => 'text',
+            'option_name' => 'aips_review_notifications_email',
+            'default'     => $default_email,
+            'description' => __('Comma-separated email addresses used for system notification emails.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**

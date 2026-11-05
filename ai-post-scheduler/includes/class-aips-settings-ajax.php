@@ -86,9 +86,31 @@ class AIPS_Settings_AJAX {
 			AIPS_Ajax_Response::invalid_request(__('No valid settings were provided.', 'ai-post-scheduler'));
 		}
 
+		$settings_errors = get_settings_errors();
+		$has_errors      = false;
+		if (!empty($settings_errors)) {
+			foreach ($settings_errors as $err) {
+				if (isset($err['type']) && 'error' === $err['type']) {
+					$has_errors = true;
+					break;
+				}
+			}
+		}
+
+		if ($has_errors) {
+			AIPS_Ajax_Response::error(
+				__('Some settings could not be saved due to validation errors.', 'ai-post-scheduler'),
+				array(
+					'errors'  => $settings_errors,
+					'updated' => array_values($updated),
+				)
+			);
+		}
+
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Settings saved successfully.', 'ai-post-scheduler'),
 			'updated' => array_values($updated),
+			'notices' => $settings_errors,
 		));
 	}
 
