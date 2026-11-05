@@ -27,7 +27,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since   2.3.0
  */
-class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_Driver {
+class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver {
 
 	/**
 	 * Base group name used as the prefix for all groups.
@@ -56,6 +56,16 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver, AIPS_Cache
 	 * @var string
 	 */
 	private $meta_group = 'aips__flush_meta';
+
+	/**
+	 * Per-group generation counters, memoized from the object cache.
+	 *
+	 * Bumped by delete_group() so a single group's entries become unreachable
+	 * the same way flush() shadows every group.
+	 *
+	 * @var array<string, int>
+	 */
+	private $group_generations = array();
 
 	/**
 	 * Constructor.
@@ -164,6 +174,23 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver, AIPS_Cache
 		return $found;
 	}
 
+	/**
+	 * Delete all entries for a specific group.
+	 *
+	 * The object cache API cannot enumerate a group's keys, so this bumps a
+	 * per-group generation counter (persisted in the meta group) that is part
+	 * of the resolved group name, making the old entries unreachable.
+	 *
+	 * @param string $group Cache group name.
+	 * @return bool True on success.
+	 */
+	public function delete_group( string $group ): bool {
+		$generation = $this->get_group_generation( $group ) + 1;
+		$this->group_generations[ $group ] = $generation;
+		wp_cache_set( $this->group_generation_key( $group ), $generation, $this->meta_group );
+		return true;
+	}
+
 	// -----------------------------------------------------------------------
 	// Internal helpers
 	// -----------------------------------------------------------------------
@@ -185,85 +212,37 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver, AIPS_Cache
 			? $this->base_group
 			: $this->base_group . '_' . $group;
 
+		$group_generation = $this->get_group_generation( (string) $group );
+		if ( $group_generation > 0 ) {
+			$base .= '_v' . $group_generation;
+		}
+
 		return $this->generation > 0 ? $base . '_g' . $this->generation : $base;
 	}
 
-	// -----------------------------------------------------------------------
-	// AIPS_Cache_Monitorable_Driver implementation
-	// -----------------------------------------------------------------------
+	/**
+	 * Current delete_group() generation for a group, loaded once per instance.
+	 *
+	 * @param string $group Logical group name.
+	 * @return int
+	 */
+	private function get_group_generation( $group ) {
+		if ( ! isset( $this->group_generations[ $group ] ) ) {
+			$stored = wp_cache_get( $this->group_generation_key( $group ), $this->meta_group );
+			$this->group_generations[ $group ] = ( false !== $stored && is_int( $stored ) ) ? $stored : 0;
+		}
+
+		return $this->group_generations[ $group ];
+	}
 
 	/**
-	 * {@inheritdoc}
+	 * Meta-group key holding a group's delete_group() generation.
 	 *
-	 * WP Object Cache does not expose its internal key list.
+	 * @param string $group Logical group name.
+	 * @return string
 	 */
-	public function get_monitor_capabilities(): array {
-		return array(
-			'list_keys'     => false,
-			'inspect_entry' => false,
-			'delete_key'    => true,
-			'delete_group'  => false,
-			'flush_plugin'  => true,
-			'size_bytes'    => false,
-			'ttl_remaining' => false,
-			'tag_versions'  => false,
-			'live_metrics'  => false,
-		);
+	private function group_generation_key( $group ) {
+		return $this->base_group . ':group:' . $group;
 	}
 
-	/** {@inheritdoc} */
-	public function list_entries( array $filters = array(), int $limit = 100, int $offset = 0 ): array {
-		return array();
-	}
-
-	/** {@inheritdoc} */
-	public function count_entries( array $filters = array() ): int {
-		return 0;
-	}
-
-	/** {@inheritdoc} */
-	public function get_entry_metadata( string $key, string $group = 'default' ): array {
-		return array();
-	}
-
-	/** {@inheritdoc} */
-	public function delete_entry( string $key, string $group = 'default' ): bool {
-		return $this->delete( $key, $group );
-	}
-
-	/** {@inheritdoc} */
-	public function delete_group( string $group ): bool {
-		return false;
-	}
-
-	/** {@inheritdoc} */
-	public function estimate_size( array $filters = array() ): array {
-		return array(
-			'total_bytes'   => 0,
-			'row_count'     => 0,
-			'expired_bytes' => 0,
-			'expired_count' => 0,
-			'available'     => false,
-		);
-	}
-
-	/** {@inheritdoc} */
-	public function get_driver_info(): array {
-		$has_persistent = (bool) wp_using_ext_object_cache();
-
-		return array(
-			'driver'         => 'wp_object_cache',
-			'label'          => __( 'WP Object Cache', 'ai-post-scheduler' ),
-			'persistent'     => $has_persistent,
-			'base_group'     => $this->base_group,
-			'generation'     => $this->generation,
-			'limitations'    => array(
-				__( 'Key listing is not available from the WP Object Cache API.', 'ai-post-scheduler' ),
-				__( 'Use the Cache Index tab to browse entries written through AIPS_Cache.', 'ai-post-scheduler' ),
-				$has_persistent
-					? __( 'A persistent object cache drop-in is active — data survives page loads.', 'ai-post-scheduler' )
-					: __( 'No persistent object cache detected — data is request-scoped only.', 'ai-post-scheduler' ),
-			),
-		);
-	}
 }

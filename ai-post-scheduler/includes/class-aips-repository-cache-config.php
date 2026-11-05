@@ -48,7 +48,7 @@ class AIPS_Repository_Cache_Config {
 		// Note: stale-read serving is not yet implemented in AIPS_Cacheable_Repository.
 		// The 'allow_stale_reads' key is intentionally absent from tier configs to avoid
 		// implying that behaviour. Per-policy allow_stale_reads is accepted but only
-		// forwarded to telemetry until the feature is built out.
+		// forwarded to repository cache observer logging until the feature is built out.
 		$configs = array(
 			self::TIER_REQUEST => array(
 				'tier'               => self::TIER_REQUEST,

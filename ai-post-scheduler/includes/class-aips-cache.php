@@ -29,32 +29,11 @@ class AIPS_Cache {
 	private $driver;
 
 	/**
-	 * Repository cache observer for tag invalidation telemetry.
+	 * Repository cache observer for tag invalidation observation and logging.
 	 *
 	 * @var AIPS_Repository_Cache_Observer|null
 	 */
 	private $repository_cache_observer;
-
-	/**
-	 * Cache index for the Cache Monitor.
-	 *
-	 * @var AIPS_Cache_Index|null
-	 */
-	private $cache_index = null;
-
-	/**
-	 * Whether get_cache_index() has already attempted index resolution.
-	 *
-	 * @var bool
-	 */
-	private $cache_index_checked = false;
-
-	/**
-	 * Context for the next set() call. Consumed after one use.
-	 *
-	 * @var array
-	 */
-	private $pending_context = array();
 
 	/**
 	 * In-memory L1 request-scoped cache storage.
@@ -126,50 +105,6 @@ class AIPS_Cache {
 		}
 		$this->driver                    = $driver;
 		$this->repository_cache_observer = $repository_cache_observer;
-	}
-
-	// -----------------------------------------------------------------------
-	// Driver + Index accessors
-	// -----------------------------------------------------------------------
-
-	/**
-	 * Fluently set metadata context for the next set() call.
-	 *
-	 * The context array is consumed once by the next set() invocation and
-	 * then cleared, so callers should call with_context() immediately before
-	 * set() / remember() in the same execution frame.
-	 *
-	 * @param array $context Metadata: tags, tier, operation_id, repository_class, domain.
-	 * @return static Fluent return.
-	 */
-	public function with_context( array $context ) {
-		$this->pending_context = $context;
-		return $this;
-	}
-
-	/**
-	 * Lazy-initialise and return the Cache Index singleton for this request.
-	 *
-	 * If the Cache Monitor or the index is disabled, returns null.
-	 *
-	 * @return AIPS_Cache_Index|null
-	 */
-	private function get_cache_index(): ?AIPS_Cache_Index {
-		if ($this->cache_index !== null) {
-			return $this->cache_index;
-		}
-		if ($this->cache_index_checked) {
-			return null;
-		}
-		$this->cache_index_checked = true;
-
-		$enabled = get_option('aips_cache_monitor_index_enabled', '1');
-		if ($enabled === '0' || $enabled === 0 || $enabled === false) {
-			return null;
-		}
-
-		$this->cache_index = new AIPS_Cache_Index();
-		return $this->cache_index;
 	}
 
 	// -----------------------------------------------------------------------
@@ -347,20 +282,6 @@ class AIPS_Cache {
 			$this->l1_put( $composite, $value );
 		}
 
-		if ($value !== null) {
-			$index = $this->get_cache_index();
-			if ($index) {
-				$index->record_access( (string) $key, (string) $group );
-			}
-		}
-		$this->record_cache_event(
-			'get',
-			array(
-				'key'   => (string) $key,
-				'group' => (string) $group,
-				'hit'   => null !== $value,
-			)
-		);
 		return $value !== null ? $value : $default;
 	}
 
@@ -409,28 +330,6 @@ class AIPS_Cache {
 			}
 		}
 
-		$index = $this->get_cache_index();
-		$hits  = 0;
-		foreach ( $results as $key_str => $val ) {
-			if ( null === $val ) {
-				continue;
-			}
-			$hits++;
-			if ( $index ) {
-				$index->record_access( (string) $key_str, (string) $group );
-			}
-		}
-
-		$this->record_cache_event(
-			'get_multiple',
-			array(
-				'group'  => (string) $group,
-				'keys'   => count( $results ),
-				'hits'   => $hits,
-				'misses' => count( $results ) - $hits,
-			)
-		);
-
 		return $results;
 	}
 
@@ -458,23 +357,7 @@ class AIPS_Cache {
 			// Only mirror into L1 once the driver accepted the write, so a
 			// failed write never leaves a value visible to this request only.
 			$this->l1_put( $composite, $value, (int) $ttl );
-
-			$context               = $this->pending_context;
-			$this->pending_context = array();
-			$index = $this->get_cache_index();
-			if ($index) {
-				$index->record_set( (string) $key, $value, (int) $ttl, (string) $group, $context );
-			}
 		}
-		$this->record_cache_event(
-			'set',
-			array(
-				'key'     => (string) $key,
-				'group'   => (string) $group,
-				'ttl'     => (int) $ttl,
-				'success' => (bool) $result,
-			)
-		);
 		return $result;
 	}
 
@@ -494,22 +377,31 @@ class AIPS_Cache {
 
 		$this->l1_invalidate( $group . ':' . $key );
 
-		$result = $this->driver->delete( $key, $group );
-		if ($result) {
-			$index = $this->get_cache_index();
-			if ($index) {
-				$index->record_delete( (string) $key, (string) $group );
-			}
+		return $this->driver->delete( $key, $group );
+	}
+
+	/**
+	 * Invalidate all cached entries for a given group.
+	 *
+	 * Forwards to the underlying driver's delete_group() and discards the L1
+	 * request cache on every instance, since other instances may hold copies
+	 * of the group's keys that per-key invalidation cannot enumerate.
+	 *
+	 * @param string $group Cache group. Default 'default'.
+	 * @return bool True on success, false when the driver cannot delete groups.
+	 */
+	public function delete_group( $group = 'default' ) {
+		if ( ! self::is_system_enabled() ) {
+			return true;
 		}
-		$this->record_cache_event(
-			'delete',
-			array(
-				'key'     => (string) $key,
-				'group'   => (string) $group,
-				'success' => (bool) $result,
-			)
-		);
-		return $result;
+
+		self::reset_request_cache();
+
+		if ( ! method_exists( $this->driver, 'delete_group' ) ) {
+			return false;
+		}
+
+		return (bool) $this->driver->delete_group( (string) $group );
 	}
 
 	/**
@@ -527,22 +419,7 @@ class AIPS_Cache {
 		}
 
 		$composite = $group . ':' . $key;
-		$result    = $this->l1_get( $composite, $unused ) || $this->driver->has( $key, $group );
-		if ($result) {
-			$index = $this->get_cache_index();
-			if ($index) {
-				$index->record_access( (string) $key, (string) $group );
-			}
-		}
-		$this->record_cache_event(
-			'has',
-			array(
-				'key'     => (string) $key,
-				'group'   => (string) $group,
-				'present' => (bool) $result,
-			)
-		);
-		return $result;
+		return $this->l1_get( $composite, $unused ) || $this->driver->has( $key, $group );
 	}
 
 	/**
@@ -559,20 +436,7 @@ class AIPS_Cache {
 
 		self::reset_request_cache();
 
-		$result = $this->driver->flush();
-		if ($result) {
-			$index = $this->get_cache_index();
-			if ($index) {
-				$index->record_flush();
-			}
-		}
-		$this->record_cache_event(
-			'flush',
-			array(
-				'success' => (bool) $result,
-			)
-		);
-		return $result;
+		return $this->driver->flush();
 	}
 
 	// -----------------------------------------------------------------------
@@ -600,15 +464,6 @@ class AIPS_Cache {
 		// and for entries that expire between the calls. null always means miss.
 		$cached = $this->get( $key, $group );
 		if (null !== $cached) {
-			$this->record_cache_event(
-				'remember',
-				array(
-					'key'   => (string) $key,
-					'group' => (string) $group,
-					'ttl'   => (int) $ttl,
-					'hit'   => true,
-				)
-			);
 			return $cached;
 		}
 
@@ -618,15 +473,6 @@ class AIPS_Cache {
 		if (null !== $value) {
 			$this->set( $key, $value, (int) $ttl, $group );
 		}
-		$this->record_cache_event(
-			'remember',
-			array(
-				'key'   => (string) $key,
-				'group' => (string) $group,
-				'ttl'   => (int) $ttl,
-				'hit'   => false,
-			)
-		);
 
 		return $value;
 	}
@@ -655,15 +501,6 @@ class AIPS_Cache {
 		$value = (int) $this->get( $key, $group, 0 );
 		$value += (int) $step;
 		$this->set( $key, $value, 0, $group );
-		$this->record_cache_event(
-			'increment',
-			array(
-				'key'   => (string) $key,
-				'group' => (string) $group,
-				'step'  => (int) $step,
-				'value' => $value,
-			)
-		);
 		return $value;
 	}
 
@@ -691,15 +528,6 @@ class AIPS_Cache {
 		$value = (int) $this->get( $key, $group, 0 );
 		$value -= (int) $step;
 		$this->set( $key, $value, 0, $group );
-		$this->record_cache_event(
-			'decrement',
-			array(
-				'key'   => (string) $key,
-				'group' => (string) $group,
-				'step'  => (int) $step,
-				'value' => $value,
-			)
-		);
 		return $value;
 	}
 
@@ -863,32 +691,6 @@ class AIPS_Cache {
 	 */
 	public function get_driver(): AIPS_Cache_Driver {
 		return $this->driver;
-	}
-
-	/**
-	 * Record a cache-specific telemetry event when request telemetry is enabled.
-	 *
-	 * @param string $operation Cache operation name.
-	 * @param array  $data      Additional event metadata.
-	 * @return void
-	 */
-	private function record_cache_event( $operation, array $data ) {
-		if (!class_exists( 'AIPS_Telemetry' ) || !AIPS_Telemetry::is_enabled()) {
-			return;
-		}
-
-		$driver = get_class( $this->driver );
-		AIPS_Telemetry::instance()->add_event(
-			'cache',
-			array_merge(
-				array(
-					'type'      => 'cache_' . sanitize_key( $operation ),
-					'operation' => sanitize_key( $operation ),
-					'driver'    => sanitize_text_field( $driver ),
-				),
-				$data
-			)
-		);
 	}
 
 	/**

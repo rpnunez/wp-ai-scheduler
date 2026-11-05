@@ -228,7 +228,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 		<div class="aips-panel-body no-padding">
 			<div style="padding: 12px 16px 0;">
 				<p class="description">
-					<?php esc_html_e('Monitor table disk usage, records, and overhead. Large tables such as telemetry and generation history can be pruned safely to reclaim MySQL disk space.', 'ai-post-scheduler'); ?>
+					<?php esc_html_e('Monitor table disk usage, records, and overhead. Large tables such as generation history can be pruned safely to reclaim MySQL disk space.', 'ai-post-scheduler'); ?>
 				</p>
 			</div>
 			<div class="aips-table-wrap" style="overflow-x: auto;">
@@ -263,11 +263,6 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 								<tr id="aips-tbl-row-<?php echo esc_attr($short); ?>" data-table="<?php echo esc_attr($short); ?>" data-records="<?php echo esc_attr((int) $table['records']); ?>" data-data-size="<?php echo esc_attr((int) $table['data_size']); ?>" data-index-size="<?php echo esc_attr((int) $table['index_size']); ?>" data-overhead="<?php echo esc_attr((int) $table['overhead']); ?>">
 									<td>
 										<strong><code><?php echo esc_html($table['table']); ?></code></strong>
-										<?php if ('aips_telemetry' === $short && !AIPS_Telemetry::is_enabled()) : ?>
-											<span class="aips-badge aips-badge-info" style="margin-left: 6px; font-size: 11px;">
-												<?php esc_html_e('Collection Inactive', 'ai-post-scheduler'); ?>
-											</span>
-										<?php endif; ?>
 									</td>
 									<td style="text-align: right;" class="aips-cell-records">
 										<?php echo esc_html(isset($table['formatted_records']) ? $table['formatted_records'] : number_format_i18n($table['records'])); ?>
@@ -293,16 +288,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 									</td>
 									<td style="text-align: right;" class="aips-cell-actions">
 										<div class="aips-btn-group" style="justify-content: flex-end; gap: 4px;">
-											<?php if ('aips_telemetry' === $short) : ?>
-												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-prune-telemetry-btn" title="<?php esc_attr_e('Prune telemetry records older than configured retention period', 'ai-post-scheduler'); ?>">
-													<span class="dashicons dashicons-clock"></span>
-													<?php esc_html_e('Prune Old', 'ai-post-scheduler'); ?>
-												</button>
-												<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-purge-telemetry-btn" title="<?php esc_attr_e('Instantly truncate table and reclaim all disk space', 'ai-post-scheduler'); ?>">
-													<span class="dashicons dashicons-trash"></span>
-													<?php esc_html_e('Purge All', 'ai-post-scheduler'); ?>
-												</button>
-											<?php elseif ('aips_history_log' === $short) : ?>
+											<?php if ('aips_history_log' === $short) : ?>
 												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-prune-history-logs-btn" title="<?php esc_attr_e('Prune generation logs older than configured retention period', 'ai-post-scheduler'); ?>">
 													<span class="dashicons dashicons-clock"></span>
 													<?php esc_html_e('Prune Old', 'ai-post-scheduler'); ?>

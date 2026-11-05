@@ -168,65 +168,6 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 	// -----------------------------------------------------------------------
 	// Cache index buffering
 	// -----------------------------------------------------------------------
-
-	public function test_index_writes_are_buffered_until_flush() {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_cache_index';
-		$wpdb->query( "DELETE FROM {$table}" );
-
-		$index = new AIPS_Cache_Index();
-		$index->record_set( 'buffered', 'value', 0, 'idx' );
-		$this->assertSame( '0', (string) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) );
-
-		$index->flush_buffer();
-		$this->assertSame( '1', (string) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) );
-	}
-
-	public function test_index_delete_before_flush_drops_buffered_write() {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_cache_index';
-		$wpdb->query( "DELETE FROM {$table}" );
-
-		$index = new AIPS_Cache_Index();
-		$index->record_set( 'short-lived', 'value', 0, 'idx' );
-		$index->record_delete( 'short-lived', 'idx' );
-		$index->flush_buffer();
-
-		$this->assertSame( '0', (string) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) );
-	}
-
-	public function test_index_delete_group_drops_buffered_writes_and_accesses() {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_cache_index';
-		$wpdb->query( "DELETE FROM {$table}" );
-
-		$index = new AIPS_Cache_Index();
-		$index->record_set( 'key1', 'val1', 0, 'purge-grp' );
-		$index->record_set( 'key2', 'val2', 0, 'purge-grp' );
-		$index->record_set( 'keep1', 'val3', 0, 'keep-grp' );
-		$index->record_access( 'key1', 'purge-grp' );
-
-		$index->record_delete_group( 'purge-grp' );
-		$index->flush_buffer();
-
-		$this->assertSame( '1', (string) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) );
-		$this->assertSame( 'keep1', (string) $wpdb->get_var( "SELECT cache_key FROM {$table} LIMIT 1" ) );
-	}
-
-	public function test_index_buffer_flushes_early_past_threshold() {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_cache_index';
-		$wpdb->query( "DELETE FROM {$table}" );
-
-		$index = new AIPS_Cache_Index();
-		for ( $i = 0; $i < AIPS_Cache_Index::BUFFER_FLUSH_THRESHOLD; $i++ ) {
-			$index->record_set( 'bulk-' . $i, $i, 0, 'idx' );
-		}
-
-		$this->assertGreaterThan( 0, (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) );
-	}
-
-	// -----------------------------------------------------------------------
 	// Scheduler
 	// -----------------------------------------------------------------------
 

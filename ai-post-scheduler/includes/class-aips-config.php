@@ -237,27 +237,13 @@ class AIPS_Config {
             'aips_cache_default_ttl'    => 3600,
             // Research
             'aips_research_niches' => array(),
-            // Telemetry
-            'aips_enable_telemetry' => false,
             // Database & Retention
             'aips_auto_prune_enabled'                  => false,
-            'aips_telemetry_retention_value'           => 30,
-            'aips_telemetry_retention_unit'            => 'days',
             'aips_telemetry_prune_interval'            => 'daily',
             'aips_history_log_retention_value'         => 60,
             'aips_history_log_retention_unit'          => 'days',
             'aips_clean_orphaned_embeddings'           => true,
             'aips_clean_expired_topics'                => true,
-            // Cache Monitor
-            'aips_cache_monitor_enabled'               => false,
-            'aips_cache_monitor_index_enabled'         => true,
-            'aips_cache_monitor_metrics_enabled'       => true,
-            'aips_cache_monitor_event_retention_days'  => 30,
-            'aips_cache_monitor_max_index_entries'     => 10000,
-            'aips_cache_monitor_preview_length'        => 500,
-            'aips_cache_monitor_full_value_debug_only' => true,
-            'aips_cache_monitor_live_refresh_enabled'  => false,
-            'aips_cache_monitor_live_refresh_interval' => 30,
             // Content Indexer & Embeddings
             'aips_embeddings_enabled'                  => true,
             'aips_embeddings_persistent_cache_enabled' => true,

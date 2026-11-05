@@ -29,11 +29,6 @@ class AIPS_DB_Prune_Service {
 	private $prune_repository;
 
 	/**
-	 * @var AIPS_Telemetry_Repository
-	 */
-	private $telemetry_repository;
-
-	/**
 	 * @var AIPS_Config
 	 */
 	private $config;
@@ -42,16 +37,13 @@ class AIPS_DB_Prune_Service {
 	 * Constructor.
 	 *
 	 * @param AIPS_DB_Prune_Repository|null  $prune_repository     Optional repository dependency.
-	 * @param AIPS_Telemetry_Repository|null $telemetry_repository Optional telemetry repository.
 	 * @param AIPS_Config|null               $config               Optional config instance.
 	 */
 	public function __construct(
 		$prune_repository = null,
-		$telemetry_repository = null,
 		$config = null
 	) {
 		$this->prune_repository     = $prune_repository ?: AIPS_DB_Prune_Repository::instance();
-		$this->telemetry_repository = $telemetry_repository ?: AIPS_Telemetry_Repository::instance();
 		$this->config               = $config ?: AIPS_Config::get_instance();
 	}
 
@@ -95,18 +87,6 @@ class AIPS_DB_Prune_Service {
 	}
 
 	/**
-	 * Get the configured telemetry cutoff timestamp.
-	 *
-	 * @return int UTC cutoff timestamp.
-	 */
-	public function get_telemetry_cutoff() {
-		$value = (int) $this->config->get_option('aips_telemetry_retention_value', 30);
-		$unit  = (string) $this->config->get_option('aips_telemetry_retention_unit', 'days');
-
-		return $this->calculate_cutoff($value, $unit);
-	}
-
-	/**
 	 * Get the configured history log cutoff timestamp.
 	 *
 	 * @return int UTC cutoff timestamp.
@@ -116,53 +96,6 @@ class AIPS_DB_Prune_Service {
 		$unit  = (string) $this->config->get_option('aips_history_log_retention_unit', 'days');
 
 		return $this->calculate_cutoff($value, $unit);
-	}
-
-	/**
-	 * Prune telemetry records older than the cutoff timestamp.
-	 *
-	 * When more than 500 records are removed, automatically runs OPTIMIZE TABLE
-	 * on the telemetry table to reclaim InnoDB tablespace.
-	 *
-	 * @param int|null $cutoff Optional explicit cutoff timestamp. If null, uses configured retention.
-	 * @return array<string, mixed> Operation outcome details.
-	 */
-	public function prune_telemetry($cutoff = null) {
-		if (null === $cutoff) {
-			$cutoff = $this->get_telemetry_cutoff();
-		}
-
-		$deleted   = $this->telemetry_repository->prune_older_than($cutoff);
-		$optimized = false;
-
-		if ($deleted > 500) {
-			$optimized = $this->telemetry_repository->optimize();
-		}
-
-		return array(
-			'deleted'   => $deleted,
-			'optimized' => $optimized,
-			'cutoff'    => $cutoff,
-		);
-	}
-
-	/**
-	 * Purge all records from the telemetry table using TRUNCATE TABLE.
-	 *
-	 * Immediately releases allocated disk space back to MySQL.
-	 *
-	 * @return array<string, mixed> Operation outcome.
-	 */
-	public function purge_all_telemetry() {
-		$success = $this->telemetry_repository->truncate();
-
-		return array(
-			'success' => $success,
-			'message' => $success
-				? __('All telemetry records permanently purged and table reset.', 'ai-post-scheduler')
-				: __('Failed to truncate telemetry table.', 'ai-post-scheduler'),
-			'tables'  => array_filter(array($this->get_table_status('aips_telemetry'))),
-		);
 	}
 
 	/**
@@ -279,7 +212,6 @@ class AIPS_DB_Prune_Service {
 		}
 
 		$tasks = array(
-			'telemetry'    => array($this, 'prune_telemetry'),
 			'history_logs' => array($this, 'prune_history_logs'),
 		);
 

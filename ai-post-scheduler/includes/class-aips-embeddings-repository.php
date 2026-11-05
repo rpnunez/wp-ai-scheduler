@@ -753,14 +753,10 @@ class AIPS_Embeddings_Repository {
 		$this->decoded_memory_cache = array();
 
 		// Flush AIPS_Cache group
-		if (class_exists('AIPS_Cache_Monitor_Service')) {
-			$container = AIPS_Container::get_instance();
-			$monitor_service = $container->has(AIPS_Cache_Monitor_Service::class)
-				? $container->make(AIPS_Cache_Monitor_Service::class)
-				: null;
-			if ($monitor_service) {
-				$monitor_service->flush_group('aips_embeddings');
-			}
+		if (class_exists('AIPS_Cache_Factory')) {
+			// Use the shared instance that get_vector() reads and writes through;
+			// a fresh make() instance would get its own Array driver store.
+			AIPS_Cache_Factory::instance()->delete_group('aips_embeddings');
 		}
 
 		// Flush WordPress transients

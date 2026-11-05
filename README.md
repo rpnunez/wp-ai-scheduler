@@ -375,7 +375,6 @@ The tables below document all canonical options registered and maintained by AI 
 | `aips_cache_driver` | `string` | `'transient'` | Settings > Performance | Caching driver (`'transient'`, `'object_cache'`, `'database'`). |
 | `aips_cache_default_ttl` | `integer` | `3600` | Settings > Performance | Default cache time-to-live in seconds for cached entities. |
 | `aips_cache_prefix` | `string` | `'aips_'` | Settings > Performance | Key prefix used for cache isolation across multi-site installations. |
-| `aips_cache_monitor_enabled` | `boolean` | `false` | Settings > Developers | Records cache hit/miss statistics for performance debugging. |
 
 ## Testing
 

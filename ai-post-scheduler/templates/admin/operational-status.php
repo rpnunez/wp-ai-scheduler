@@ -18,7 +18,7 @@ $operational_info = array_diff_key($system_info, array_flip($exclude_sections));
 	<div class="aips-system-health-panel">
 		<div class="aips-system-health-header">
 			<h2><span class="dashicons dashicons-dashboard"></span> <?php esc_html_e('Operational Status', 'ai-post-scheduler'); ?></h2>
-			<p><?php esc_html_e('Live runtime telemetry, generation pipeline throughput, scheduler status, and error logs.', 'ai-post-scheduler'); ?></p>
+			<p><?php esc_html_e('Live runtime pipeline metrics, generation throughput, scheduler status, and error logs.', 'ai-post-scheduler'); ?></p>
 		</div>
 	</div>
 

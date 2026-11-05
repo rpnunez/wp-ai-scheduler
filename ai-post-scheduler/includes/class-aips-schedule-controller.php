@@ -197,7 +197,6 @@ class AIPS_Schedule_Controller {
             'quick_links' => array(
                 'history' => AIPS_Admin_Menu_Helper::get_page_url('history'),
                 'notifications' => AIPS_Admin_Menu_Helper::get_page_url('settings', array('tab' => 'notifications')),
-                'telemetry' => AIPS_Admin_Menu_Helper::get_page_url('telemetry'),
                 'system_status' => AIPS_Admin_Menu_Helper::get_page_url('system-status'),
             ),
         );
