@@ -325,6 +325,37 @@ class Test_AIPS_Notification_Digest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Draft', $vars['{{digest_items_html}}'] );
 	}
 
+	public function test_interval_calculator_fifteen_minutes_frequency() {
+		$calc = AIPS_Interval_Calculator::instance();
+		$intervals = $calc->get_intervals();
+		$this->assertArrayHasKey( 'fifteen_minutes', $intervals );
+		$this->assertSame( 900, $intervals['fifteen_minutes']['interval'] );
+
+		$last   = 1000;
+		$target = 1001;
+		$next   = $calc->calculate_next_occurrence_after( 'fifteen_minutes', $last, $target );
+		$this->assertSame( 1900, $next );
+	}
+
+	public function test_settings_ui_callbacks_render_classes_without_inline_styles() {
+		$ui = new AIPS_Settings_UI();
+
+		ob_start();
+		$ui->notif_digest_types_field_callback();
+		$types_output = ob_get_clean();
+
+		$this->assertStringContainsString( 'class="aips-checkbox-label-block"', $types_output );
+		$this->assertStringContainsString( 'class="description aips-checkbox-label-desc"', $types_output );
+		$this->assertStringNotContainsString( 'style="', $types_output );
+
+		ob_start();
+		$ui->notif_digest_actions_field_callback();
+		$actions_output = ob_get_clean();
+
+		$this->assertStringContainsString( 'class="aips-settings-action-row"', $actions_output );
+		$this->assertStringNotContainsString( 'style="', $actions_output );
+	}
+
 	// -----------------------------------------------------------------------
 	// Event Handler Cron Hook
 	// -----------------------------------------------------------------------

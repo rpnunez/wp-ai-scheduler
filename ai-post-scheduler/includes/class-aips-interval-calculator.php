@@ -232,6 +232,9 @@ class AIPS_Interval_Calculator {
     private function calculate_next_timestamp($frequency, $base_time) {
         $dt = AIPS_DateTime::fromTimestamp($base_time);
         switch ($frequency) {
+            case 'fifteen_minutes':
+                return (int) $dt->modify('+15 minutes')->timestamp();
+
             case 'hourly':
                 return (int) $dt->modify('+1 hour')->timestamp();
 

@@ -960,10 +960,10 @@ class AIPS_Settings_UI {
 		<fieldset>
 			<legend class="screen-reader-text"><span><?php esc_html_e('Eligible Notification Types', 'ai-post-scheduler'); ?></span></legend>
 			<?php foreach ($eligible_types as $type_key => $meta) : ?>
-				<label style="display:block;margin-bottom:6px;">
+				<label class="aips-checkbox-label-block">
 					<input type="checkbox" name="aips_notif_digest_types[]" value="<?php echo esc_attr($type_key); ?>" <?php checked(in_array($type_key, $selected_types, true)); ?>>
 					<strong><?php echo esc_html($meta['label']); ?></strong>
-					<span class="description" style="margin-left:4px;">&mdash; <?php echo esc_html($meta['description']); ?></span>
+					<span class="description aips-checkbox-label-desc">&mdash; <?php echo esc_html($meta['description']); ?></span>
 				</label>
 			<?php endforeach; ?>
 		</fieldset>
@@ -979,7 +979,7 @@ class AIPS_Settings_UI {
 	public function notif_digest_actions_field_callback() {
 		$queue_count = AIPS_Notifications::instance()->get_digest_queue_count();
 		?>
-		<div style="display:flex;align-items:center;gap:12px;">
+		<div class="aips-settings-action-row">
 			<button type="button" id="aips-flush-digest-btn" class="button button-secondary">
 				<?php esc_html_e('Send Pending Digest Now', 'ai-post-scheduler'); ?>
 			</button>
