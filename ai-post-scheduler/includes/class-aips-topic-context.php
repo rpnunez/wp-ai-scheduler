@@ -90,6 +90,7 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @return string Content generation prompt.
 	 */
 	public function get_content_prompt() {
+		$profile_helper = new AIPS_Author_Profile_Prompt_Helper();
 		$prompt = "Write a comprehensive blog post about: {$this->topic->topic_title}\n\nField/Niche: {$this->author->field_niche}";
 		
 		if (!empty($this->author->voice_tone)) {
@@ -102,6 +103,16 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 		
 		if (!empty($this->expanded_context)) {
 			$prompt .= "\n\n" . $this->expanded_context;
+		}
+
+		$site_context = (new AIPS_Prompt_Builder())->build_site_context_block($profile_helper->get_site_context_omissions($this->author));
+		if ($site_context !== '') {
+			$prompt .= "\n\n" . trim($site_context);
+		}
+
+		$profile_guidance = $profile_helper->build_post_guidance($this->author);
+		if ($profile_guidance !== '') {
+			$prompt .= "\n\n" . $profile_guidance;
 		}
 		
 		return $prompt;
@@ -329,6 +340,7 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @return array Context data.
 	 */
 	public function to_array() {
+		$profile_fields = (new AIPS_Author_Profile_Prompt_Helper())->get_effective_fields($this->author);
 		return array(
 			'type' => $this->get_type(),
 			'id' => $this->get_id(),
@@ -347,6 +359,13 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			'article_structure_id' => $this->get_article_structure_id(),
 			'voice_tone' => isset($this->author->voice_tone) ? $this->author->voice_tone : '',
 			'writing_style' => isset($this->author->writing_style) ? $this->author->writing_style : '',
+			'language' => $profile_fields['language'],
+			'expertise_level' => $profile_fields['expertise_level'],
+			'preferred_content_length' => $profile_fields['preferred_content_length'],
+			'excluded_topics' => $profile_fields['excluded_topics'],
+			'target_audience' => $profile_fields['target_audience'],
+			'content_goals' => $profile_fields['content_goals'],
+			'keywords' => $profile_fields['keywords'],
 		);
 	}
 }

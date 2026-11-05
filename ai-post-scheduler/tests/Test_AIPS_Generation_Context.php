@@ -100,6 +100,108 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals(5, $context->get_article_structure_id());
 		$this->assertNull($context->get_voice_id());
 	}
+
+	/**
+	 * A populated author profile is included in the post prompt and serialized
+	 * with the context so History records the resolved prompt inputs.
+	 */
+	public function test_topic_context_adds_author_post_profile_guidance() {
+		update_option('aips_site_excluded_topics', 'Competitor products');
+		update_option('aips_site_niche', 'B2B SaaS');
+		update_option('aips_site_content_language', 'fr');
+
+		$author = (object) array(
+			'id'                       => 456,
+			'name'                     => 'Test Author',
+			'field_niche'              => 'Software Development',
+			'language'                 => 'es',
+			'expertise_level'          => 'expert',
+			'preferred_content_length' => 'long',
+			'excluded_topics'          => 'Unverified claims',
+			'target_audience'          => 'Engineering leaders',
+			'content_goals'            => 'Help teams make safe choices',
+			'keywords'                 => 'platform engineering, reliability',
+			'details'                  => 'Topic-only details',
+			'description'              => 'Topic-only description',
+			'topic_generation_prompt'  => 'Topic-only instructions',
+		);
+		$topic = (object) array(
+			'id'          => 789,
+			'topic_title' => 'Reliable deployment practices',
+		);
+
+		$context = new AIPS_Topic_Context($author, $topic);
+		$prompt  = $context->get_content_prompt();
+		$data    = $context->to_array();
+
+		$this->assertStringContainsString('Write in language code: es', $prompt);
+		$this->assertStringContainsString('Site niche: B2B SaaS', $prompt);
+		$this->assertStringNotContainsString('Language: fr', $prompt);
+		$this->assertStringContainsString('Author expertise level: expert', $prompt);
+		$this->assertStringContainsString('Preferred post length: 1,500+ words', $prompt);
+		$this->assertStringContainsString('Topics to avoid: Competitor products, Unverified claims', $prompt);
+		$this->assertStringNotContainsString('Topics to avoid globally:', $prompt);
+		$this->assertStringContainsString('Target audience: Engineering leaders', $prompt);
+		$this->assertStringContainsString('Content goals: Help teams make safe choices', $prompt);
+		$this->assertStringContainsString('Keywords/Focus Areas: platform engineering, reliability', $prompt);
+		$this->assertStringNotContainsString('Topic-only details', $prompt);
+		$this->assertStringNotContainsString('Topic-only description', $prompt);
+		$this->assertStringNotContainsString('Topic-only instructions', $prompt);
+		$this->assertSame('es', $data['language']);
+		$this->assertSame('long', $data['preferred_content_length']);
+		$this->assertSame('Competitor products, Unverified claims', $data['excluded_topics']);
+
+		delete_option('aips_site_excluded_topics');
+		delete_option('aips_site_niche');
+		delete_option('aips_site_content_language');
+	}
+
+	/**
+	 * Empty author profile fields preserve the established topic-context prompt.
+	 */
+	public function test_topic_context_with_empty_profile_preserves_legacy_prompt() {
+		$author = (object) array(
+			'id'          => 456,
+			'name'        => 'Test Author',
+			'field_niche' => 'Software Development',
+			'language'    => 'en',
+		);
+		$topic = (object) array(
+			'id'          => 789,
+			'topic_title' => 'Reliable deployment practices',
+		);
+
+		$context = new AIPS_Topic_Context($author, $topic);
+
+		$this->assertSame(
+			"Write a comprehensive blog post about: Reliable deployment practices\n\nField/Niche: Software Development",
+			$context->get_content_prompt()
+		);
+	}
+
+	/**
+	 * The default author language leaves the selected site language in place.
+	 */
+	public function test_topic_context_default_author_language_keeps_site_language() {
+		update_option('aips_site_content_language', 'fr');
+		$author = (object) array(
+			'id'          => 456,
+			'name'        => 'Test Author',
+			'field_niche' => 'Software Development',
+			'language'    => 'en',
+		);
+		$topic = (object) array(
+			'id'          => 789,
+			'topic_title' => 'Reliable deployment practices',
+		);
+
+		$prompt = (new AIPS_Topic_Context($author, $topic))->get_content_prompt();
+
+		$this->assertStringContainsString('Language: fr', $prompt);
+		$this->assertStringNotContainsString('Write in language code:', $prompt);
+
+		delete_option('aips_site_content_language');
+	}
 	
 	/**
 	 * Test that Generation Session accepts context objects.

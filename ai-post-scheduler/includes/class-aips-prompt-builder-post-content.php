@@ -101,6 +101,20 @@ class AIPS_Prompt_Builder_Post_Content {
 			}
 		}
 
+		if ($used_structured_prompt && $context instanceof AIPS_Topic_Context) {
+			$profile_helper = new AIPS_Author_Profile_Prompt_Helper();
+			$author = $context->get_author();
+			$site_context = (new AIPS_Prompt_Builder())->build_site_context_block($profile_helper->get_site_context_omissions($author));
+			if ($site_context !== '') {
+				$processed_prompt .= "\n\n" . trim($site_context);
+			}
+
+			$profile_guidance = $profile_helper->build_post_guidance($author);
+			if ($profile_guidance !== '') {
+				$processed_prompt .= "\n\n" . $profile_guidance;
+			}
+		}
+
 		if (!$used_structured_prompt) {
 			// Always process template variables, even when topic is empty.
 			// This prevents raw placeholders like {{topic}} from leaking into prompts.

@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- **Author profile guidance in generated posts:** Populated author language, expertise, preferred length, exclusions, audience, goals, and keywords now guide posts generated from that author's topics, including posts using an article structure. Site-wide context is included for author-topic posts; author-selected languages override the site language, and site and author exclusions are combined into one avoid-list. Existing `details`, `description`, and custom topic-generation instructions remain topic-generation-only. These additional instructions may modestly increase generated-post prompt size.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.

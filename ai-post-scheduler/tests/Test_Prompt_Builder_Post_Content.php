@@ -30,6 +30,9 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 
 	public function tearDown(): void {
 		remove_all_filters('aips_content_prompt');
+		delete_option('aips_site_content_goals');
+		delete_option('aips_site_content_language');
+		delete_option('aips_site_excluded_topics');
 		parent::tearDown();
 	}
 
@@ -182,6 +185,105 @@ class Test_Prompt_Builder_Post_Content extends WP_UnitTestCase {
 		$result = $this->builder->build($context);
 
 		$this->assertStringContainsString('Helm Charts Best Practices', $result);
+	}
+
+	/**
+	 * A structure replaces the base topic prompt but retains author guidance.
+	 */
+	public function test_context_topic_structure_retains_author_profile_guidance() {
+		update_option('aips_site_content_goals', 'Improve reader outcomes');
+		update_option('aips_site_content_language', 'de');
+		update_option('aips_site_excluded_topics', 'Competitor products');
+		$section_builder = new class {
+			public function build($article_structure_id, $topic) {
+				return 'Structured prompt for: ' . $topic;
+			}
+		};
+		$builder = new AIPS_Prompt_Builder_Post_Content(
+			new AIPS_Template_Processor(),
+			$section_builder,
+			$this->make_diversity_injector('', '', '', '')
+		);
+		$author = (object) array(
+			'id'                       => 1,
+			'name'                     => 'Bob',
+			'field_niche'              => 'DevOps',
+			'article_structure_id'     => 25,
+			'language'                 => 'fr',
+			'expertise_level'          => 'intermediate',
+			'preferred_content_length' => 'medium',
+			'target_audience'          => 'Platform teams',
+			'excluded_topics'          => 'Unverified claims',
+		);
+		$topic = (object) array(
+			'id'          => 9,
+			'topic_title' => 'Helm Charts Best Practices',
+		);
+
+		$result = $builder->build(new AIPS_Topic_Context($author, $topic));
+
+		$this->assertStringContainsString('Structured prompt for: Helm Charts Best Practices', $result);
+		$this->assertStringContainsString('Content goals: Improve reader outcomes', $result);
+		$this->assertStringContainsString('Write in language code: fr', $result);
+		$this->assertStringNotContainsString('Language: de', $result);
+		$this->assertStringContainsString('Topics to avoid: Competitor products, Unverified claims', $result);
+		$this->assertStringNotContainsString('Topics to avoid globally:', $result);
+		$this->assertStringContainsString('Author expertise level: intermediate', $result);
+		$this->assertStringContainsString('Preferred post length: 800–1,500 words', $result);
+		$this->assertStringContainsString('Target audience: Platform teams', $result);
+	}
+
+	/**
+	 * Generic topic contexts may use structures without exposing an author row.
+	 */
+	public function test_context_topic_structure_without_author_accessor_remains_supported() {
+		$section_builder = new class {
+			public function build($article_structure_id, $topic) {
+				return 'Structured prompt for: ' . $topic;
+			}
+		};
+		$builder = new AIPS_Prompt_Builder_Post_Content(
+			new AIPS_Template_Processor(),
+			$section_builder,
+			$this->make_diversity_injector('', '', '', '')
+		);
+		$template = (object) array(
+			'id'                   => 1,
+			'name'                 => 'Generic topic',
+			'prompt_template'      => 'Fallback {{topic}}.',
+			'article_structure_id' => 25,
+		);
+		$context = new class($template) extends AIPS_Template_Context {
+			public function __construct($template) {
+				parent::__construct($template, null, 'Generic topic');
+			}
+
+			public function get_type() {
+				return 'topic';
+			}
+		};
+
+		$this->assertSame('Structured prompt for: Generic topic', $builder->build($context));
+	}
+
+	/**
+	 * Template and legacy prompts do not receive author-topic profile guidance.
+	 */
+	public function test_template_and_legacy_prompts_remain_unchanged_by_author_profile_guidance() {
+		$builder = new AIPS_Prompt_Builder_Post_Content(
+			new AIPS_Template_Processor(),
+			new AIPS_Prompt_Builder_Article_Structure_Section(),
+			$this->make_diversity_injector('', '', '', '')
+		);
+		$template = (object) array(
+			'id'                   => 1,
+			'name'                 => 'T',
+			'prompt_template'      => 'Write about {{topic}}.',
+			'article_structure_id' => null,
+		);
+
+		$this->assertSame('Write about Testing.', $builder->build($template, 'Testing'));
+		$this->assertSame('Write about Testing.', $builder->build(new AIPS_Template_Context($template, null, 'Testing')));
 	}
 
 	// ------------------------------------------------------------------
