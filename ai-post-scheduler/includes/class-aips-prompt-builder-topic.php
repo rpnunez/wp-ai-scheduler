@@ -76,6 +76,7 @@ class AIPS_Prompt_Builder_Topic {
 		array $rejected_topics = array(),
 		$feedback_guidance = ''
 	) {
+		$profile_helper = new AIPS_Author_Profile_Prompt_Helper();
 		$this->sources_selection = array();
 		$quantity = (int) $author->topic_generation_quantity;
 		if ($quantity < 1) {
@@ -92,7 +93,7 @@ class AIPS_Prompt_Builder_Topic {
 		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
 
 		// ---- Site-wide context (injected first so author-level settings override if needed) ----
-		$prompt .= $this->base_builder->build_site_context_block();
+		$prompt .= $this->base_builder->build_site_context_block($profile_helper->get_site_context_omissions($author));
 
 		// ---- Trusted sources (injected when the author opts in) ----
 		if (!empty($author->include_sources)) {
@@ -139,14 +140,7 @@ class AIPS_Prompt_Builder_Topic {
 
 		// Preferred content length
 		if (!empty($author->preferred_content_length)) {
-			$length_map = array(
-				'short'  => 'under 800 words',
-				'medium' => '800–1,500 words',
-				'long'   => '1,500 words or more',
-			);
-			$length_label = isset($length_map[$author->preferred_content_length])
-				? $length_map[$author->preferred_content_length]
-				: $author->preferred_content_length;
+			$length_label = $profile_helper->get_preferred_content_length_label($author->preferred_content_length);
 			$prompt .= "Preferred post length: {$length_label}\n\n";
 		}
 
@@ -157,16 +151,9 @@ class AIPS_Prompt_Builder_Topic {
 		}
 
 		// ---- Excluded topics (merge site-wide + author-level) ----
-		$excluded_parts = array();
-		$site_excluded  = AIPS_Site_Context::get_setting('excluded_topics', '');
-		if (!empty($site_excluded)) {
-			$excluded_parts[] = $site_excluded;
-		}
-		if (!empty($author->excluded_topics)) {
-			$excluded_parts[] = $author->excluded_topics;
-		}
-		if (!empty($excluded_parts)) {
-			$prompt .= 'Topics to avoid: ' . implode(', ', $excluded_parts) . "\n\n";
+		$excluded_topics = $profile_helper->get_merged_excluded_topics($author);
+		if ($excluded_topics !== '') {
+			$prompt .= 'Topics to avoid: ' . $excluded_topics . "\n\n";
 		}
 
 		// ---- Custom per-author generation prompt ----

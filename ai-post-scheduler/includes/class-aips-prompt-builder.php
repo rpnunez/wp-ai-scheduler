@@ -315,37 +315,38 @@ INSTRUCTIONS
      * Returns an empty string when no site-wide settings have been configured,
      * allowing callers to safely append the result without extra whitespace.
      *
+     * @param string[] $omit_keys Context keys to omit when a caller supplies a more specific value.
      * @return string Formatted context block ending with two newlines, or empty string.
      */
-    public function build_site_context_block() {
+    public function build_site_context_block(array $omit_keys = array()) {
         $ctx   = AIPS_Site_Context::get();
         $lines = array();
 
-        if (!empty($ctx['niche'])) {
+        if (!in_array('niche', $omit_keys, true) && !empty($ctx['niche'])) {
             $lines[] = 'Site niche: ' . $ctx['niche'];
         }
 
-        if (!empty($ctx['target_audience'])) {
+        if (!in_array('target_audience', $omit_keys, true) && !empty($ctx['target_audience'])) {
             $lines[] = 'Target audience: ' . $ctx['target_audience'];
         }
 
-        if (!empty($ctx['content_goals'])) {
+        if (!in_array('content_goals', $omit_keys, true) && !empty($ctx['content_goals'])) {
             $lines[] = 'Content goals: ' . $ctx['content_goals'];
         }
 
-        if (!empty($ctx['brand_voice'])) {
+        if (!in_array('brand_voice', $omit_keys, true) && !empty($ctx['brand_voice'])) {
             $lines[] = 'Brand voice/tone: ' . $ctx['brand_voice'];
         }
 
-        if (!empty($ctx['content_language']) && $ctx['content_language'] !== 'en') {
+        if (!in_array('content_language', $omit_keys, true) && !empty($ctx['content_language']) && $ctx['content_language'] !== 'en') {
             $lines[] = 'Language: ' . $ctx['content_language'];
         }
 
-        if (!empty($ctx['content_guidelines'])) {
+        if (!in_array('content_guidelines', $omit_keys, true) && !empty($ctx['content_guidelines'])) {
             $lines[] = 'Content guidelines: ' . $ctx['content_guidelines'];
         }
 
-        if (!empty($ctx['excluded_topics'])) {
+        if (!in_array('excluded_topics', $omit_keys, true) && !empty($ctx['excluded_topics'])) {
             $lines[] = 'Topics to avoid globally: ' . $ctx['excluded_topics'];
         }
 
