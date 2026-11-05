@@ -59,3 +59,7 @@
 ## Documentation ownership
 - Keep this file concise (about 40–60 lines) and high-level.
 - Put long subsystem inventories, cron hook lists, table catalogs, and workflow details in `docs/AI_AGENT_REFERENCE.md` or `docs/DEVELOPMENT_GUIDELINES.md`.
+
+## End-to-end feature delivery
+- For a request that explicitly invokes `$feature-to-pr`, follow `.agents/skills/feature-to-pr/SKILL.md` from branch setup through the final PR update. Ordinary coding requests do not automatically authorize the full PR workflow.
+- Keep project standards here and in `TESTING.md`; keep the delivery sequence in the skill. The user's explicit constraints for a task take precedence.
