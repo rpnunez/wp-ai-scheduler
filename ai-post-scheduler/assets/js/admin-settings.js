@@ -78,6 +78,10 @@
 
 			$('#aips-settings-form').off('submit.aipsSettings').on('submit.aipsSettings', AIPS.onSettingsFormSubmit);
 			$(document).off('aips:tabSwitch.aipsSettings').on('aips:tabSwitch.aipsSettings', AIPS.onSettingsTabSwitch);
+			$(document).off('click.aipsSettingsTab', '#aips-settings-tab-nav .aips-rail-item, #aips-settings-tab-nav .aips-tab-link')
+				.on('click.aipsSettingsTab', '#aips-settings-tab-nav .aips-rail-item, #aips-settings-tab-nav .aips-tab-link', function() {
+					AIPS.scrollToTop();
+				});
 			if (AIPS.testConnection) {
 				$(document).off('click.aipsTestConn', '#aips-test-connection').on('click.aipsTestConn', '#aips-test-connection', AIPS.testConnection);
 			}
@@ -529,6 +533,45 @@
 				try {
 					localStorage.setItem('aips_active_tab_aips-settings', tabId);
 				} catch (err) {}
+
+				AIPS.scrollToTop();
+			}
+		},
+
+		/**
+		 * Scroll the page to the top when navigating between settings tabs.
+		 *
+		 * @param {boolean} [smooth=true] Whether to use smooth scrolling.
+		 * @return {void}
+		 */
+		scrollToTop: function(smooth) {
+			if (typeof smooth === 'undefined') {
+				smooth = true;
+			}
+			var prefersReducedMotion = false;
+			try {
+				prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+			} catch (e) {}
+
+			var behavior = (smooth && !prefersReducedMotion) ? 'smooth' : 'auto';
+
+			if (typeof window.scrollTo === 'function') {
+				try {
+					window.scrollTo({
+						top: 0,
+						left: 0,
+						behavior: behavior
+					});
+				} catch (err) {
+					window.scrollTo(0, 0);
+				}
+			} else {
+				window.scrollTo(0, 0);
+			}
+
+			if (!smooth || prefersReducedMotion) {
+				document.documentElement.scrollTop = 0;
+				document.body.scrollTop = 0;
 			}
 		}
 
