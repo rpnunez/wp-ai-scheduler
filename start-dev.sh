@@ -658,15 +658,21 @@ finally:
     fi
 
     NEW_URL="http://localhost:${WP_PORT}"
-    OLD_URL="$(wp_cli_web option get siteurl 2>/dev/null | tr -d '\r' || true)"
-    if [ -z "$OLD_URL" ]; then
-        echo -e "${RED}Could not read the WordPress site URL for synchronization.${NC}"
+    SITE_URL="$(wp_cli_web option get siteurl 2>/dev/null | tr -d '\r' || true)"
+    HOME_URL="$(wp_cli_web option get home 2>/dev/null | tr -d '\r' || true)"
+    if [ -z "$SITE_URL" ] || [ -z "$HOME_URL" ]; then
+        echo -e "${RED}Could not read the WordPress home or site URL for synchronization.${NC}"
         exit 1
     fi
 
-    if [ "$OLD_URL" != "$NEW_URL" ]; then
-        echo "Syncing WordPress site URL: ${OLD_URL} -> ${NEW_URL}"
-        wp_cli_web search-replace "$OLD_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
+    if [ "$SITE_URL" != "$NEW_URL" ] || [ "$HOME_URL" != "$NEW_URL" ]; then
+        echo "Syncing WordPress URLs: siteurl=${SITE_URL}, home=${HOME_URL} -> ${NEW_URL}"
+        if [ "$SITE_URL" != "$NEW_URL" ]; then
+            wp_cli_web search-replace "$SITE_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
+        fi
+        if [ "$HOME_URL" != "$NEW_URL" ] && [ "$HOME_URL" != "$SITE_URL" ]; then
+            wp_cli_web search-replace "$HOME_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
+        fi
         wp_cli_web option update home "$NEW_URL"
         wp_cli_web option update siteurl "$NEW_URL"
     elif [ "$IMPORTED_SQL" = "1" ]; then
