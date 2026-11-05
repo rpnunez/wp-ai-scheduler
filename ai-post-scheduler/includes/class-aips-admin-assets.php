@@ -256,6 +256,10 @@ class AIPS_Admin_Assets {
 			$this->enqueue_stress_test_assets();
 		}
 
+		if ($this->is_diagnostics_tab($page, 'ai-errors')) {
+			$this->enqueue_ai_errors_tab_assets();
+		}
+
 	}
 
 	/**
@@ -319,6 +323,43 @@ class AIPS_Admin_Assets {
 				'comparisonDiff'        => __('Stress Test Comparison & Diff', 'ai-post-scheduler'),
 				'selectTwoRunsToCompare'=> __('Please select exactly 2 runs to compare.', 'ai-post-scheduler'),
 			),
+		));
+	}
+
+	/**
+	 * Enqueue assets for the AI Errors diagnostics tab.
+	 *
+	 * @return void
+	 */
+	private function enqueue_ai_errors_tab_assets() {
+		$this->enqueue_history_modal_opener_script();
+
+		wp_enqueue_script(
+			'aips-admin-ai-errors',
+			AIPS_PLUGIN_URL . 'assets/js/admin-ai-errors.js',
+			array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-admin-history'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-admin-ai-errors', 'aipsAiErrorsL10n', array(
+			'loading'             => __('Loading error logs…', 'ai-post-scheduler'),
+			'loadingDetails'      => __('Loading error details…', 'ai-post-scheduler'),
+			'noErrorsFound'       => __('No errors found matching the current filters.', 'ai-post-scheduler'),
+			'errorLoading'        => __('Failed to load error logs.', 'ai-post-scheduler'),
+			'errorLoadingDetails' => __('Failed to load error details.', 'ai-post-scheduler'),
+			'copied'              => __('Copied!', 'ai-post-scheduler'),
+			'copyDiagnostic'      => __('Copy Diagnostic Info', 'ai-post-scheduler'),
+			'copyPrompt'          => __('Copy Prompt', 'ai-post-scheduler'),
+			'runLabel'            => __('Run #%d', 'ai-post-scheduler'),
+			'viewDetails'         => __('View Details', 'ai-post-scheduler'),
+			'colDateTime'         => __('Date / Time', 'ai-post-scheduler'),
+			'colComponent'        => __('Component', 'ai-post-scheduler'),
+			'colError'            => __('Error Message', 'ai-post-scheduler'),
+			'colRun'              => __('Associated Run / Post', 'ai-post-scheduler'),
+			'colActions'          => __('Actions', 'ai-post-scheduler'),
+			'promptEmpty'         => __('No prompt recorded for this error.', 'ai-post-scheduler'),
+			'optionsEmpty'        => __('No request parameters recorded.', 'ai-post-scheduler'),
 		));
 	}
 
@@ -531,6 +572,7 @@ class AIPS_Admin_Assets {
             'noneOption'          => __('None', 'ai-post-scheduler'),
             // Table filter persistence
             'persistTableFilters' => (bool) AIPS_Config::get_instance()->get_option('aips_persist_table_filters'),
+            'hasUnsplashAccessKey' => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
         ));
     }
 
@@ -1059,6 +1101,7 @@ class AIPS_Admin_Assets {
                 // Per-post-type category/tag taxonomy support, used to hide the
                 // Categories/Tags fields for post types that don't support them.
                 'postTypeTaxonomySupport' => AIPS_Utilities::get_selectable_post_types(),
+                'hasUnsplashAccessKey'    => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
             ));
     }
 
