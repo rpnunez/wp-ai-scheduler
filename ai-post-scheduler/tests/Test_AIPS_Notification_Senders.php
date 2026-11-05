@@ -134,6 +134,16 @@ class Test_AIPS_Notification_Senders extends WP_UnitTestCase {
 		$this->assertSame('integration_error', $this->last_dispatch()['type']);
 	}
 
+	public function test_integration_error_honors_custom_title_and_message() {
+		$this->senders->integration_error(array(
+			'title'   => 'Unsplash Integration Error',
+			'message' => 'Featured image generation attempt requested with Unsplash, but there is no API key set.',
+		));
+		$options = $this->last_dispatch()['options'];
+		$this->assertSame('Unsplash Integration Error', $options['title']);
+		$this->assertSame('Featured image generation attempt requested with Unsplash, but there is no API key set.', $options['message']);
+	}
+
 	// -----------------------------------------------------------------------
 	// scheduler_error
 	// -----------------------------------------------------------------------

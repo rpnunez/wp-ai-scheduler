@@ -99,7 +99,7 @@ class AIPS_Cache {
 	 *                                        factory resolves the driver from
 	 *                                        the current admin settings.
 	 */
-	public function __construct( AIPS_Cache_Driver $driver = null, AIPS_Repository_Cache_Observer $repository_cache_observer = null ) {
+	public function __construct( ?AIPS_Cache_Driver $driver = null, ?AIPS_Repository_Cache_Observer $repository_cache_observer = null ) {
 		if ($driver === null) {
 			$driver = AIPS_Cache_Factory::make_driver();
 		}

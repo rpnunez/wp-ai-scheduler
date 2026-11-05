@@ -1337,6 +1337,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_AI_Assistance_Settings' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Assistance_Settings.php',
         'Test_AIPS_AI_Conversation' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Conversation.php',
         'Test_AIPS_AI_Edit_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Edit_Controller.php',
+        'Test_AIPS_AI_Errors_Diagnostics' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Errors_Diagnostics.php',
         'Test_AIPS_AI_Provider_Factory' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Provider_Factory.php',
         'Test_AIPS_AI_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Service.php',
         'Test_AIPS_AI_Service_With_Provider' => __DIR__ . '/../..' . '/tests/Test_AIPS_AI_Service_With_Provider.php',

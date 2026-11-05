@@ -265,8 +265,14 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
-		if ( version_compare( $from_version, '3.7.20', '<' ) ) {
-			$this->migrate_to_3_7_20();
+		if ( version_compare( $from_version, '3.7.20', '<' ) && ! $this->migrate_to_3_7_20() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'AI errors index migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
+		if ( version_compare( $from_version, '3.7.21', '<' ) ) {
+			$this->migrate_to_3_7_21();
 		}
 
 		// Use AIPS_Config::set_option() so the per-request option cache is
@@ -1795,14 +1801,38 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
-	 * Migration for version 3.7.20.
+	 * Migration to 3.7.20:
+	 * Adds composite index `history_type_ts` (history_type_id, timestamp) to `aips_history_log`.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_20() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return true;
+		}
+
+		$has_index = $wpdb->get_row(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'history_type_ts'"
+		);
+		if ( ! $has_index ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_type_ts (history_type_id, timestamp)" );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Migration for version 3.7.21.
 	 *
 	 * Drops obsolete Cache Monitor and Telemetry database tables, clears scheduled
 	 * maintenance hooks, and deletes obsolete options.
 	 *
 	 * @return void
 	 */
-	private function migrate_to_3_7_20() {
+	private function migrate_to_3_7_21() {
 		global $wpdb;
 
 		// 1. Drop obsolete tables if they exist.
@@ -1840,7 +1870,7 @@ class AIPS_DB_Migrations {
 			delete_option( $option );
 		}
 
-		$this->logger->log( 'Migration 3.7.20: Dropped obsolete Cache Monitor and Telemetry tables and options.', 'info' );
+		$this->logger->log( 'Migration 3.7.21: Dropped obsolete Cache Monitor and Telemetry tables and options.', 'info' );
 	}
 
 }

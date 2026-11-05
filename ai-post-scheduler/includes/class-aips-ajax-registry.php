@@ -251,6 +251,10 @@ class AIPS_Ajax_Registry {
 		// Dev Tools
 		'aips_generate_scaffold'          => 'AIPS_Dev_Tools',
 
+		// Diagnostics Controller
+		'aips_get_ai_errors'              => 'AIPS_Diagnostics_Controller',
+		'aips_get_ai_error_details'       => 'AIPS_Diagnostics_Controller',
+
 		// System Status
 		'aips_reset_circuit_breaker'      => 'AIPS_System_Status_Controller',
 		'aips_status_reschedule_missed_cron' => 'AIPS_System_Status_Controller',

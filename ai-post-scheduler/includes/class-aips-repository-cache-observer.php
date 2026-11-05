@@ -32,7 +32,7 @@ class AIPS_Repository_Cache_Observer {
 	 *
 	 * @param AIPS_Logger_Interface|null $logger Optional logger dependency.
 	 */
-	public function __construct(AIPS_Logger_Interface $logger = null) {
+	public function __construct(?AIPS_Logger_Interface $logger = null) {
 		$this->logger = $logger;
 	}
 

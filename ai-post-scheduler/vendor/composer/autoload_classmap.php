@@ -1302,6 +1302,7 @@ return array(
     'Test_AIPS_AI_Assistance_Settings' => $baseDir . '/tests/Test_AIPS_AI_Assistance_Settings.php',
     'Test_AIPS_AI_Conversation' => $baseDir . '/tests/Test_AIPS_AI_Conversation.php',
     'Test_AIPS_AI_Edit_Controller' => $baseDir . '/tests/Test_AIPS_AI_Edit_Controller.php',
+    'Test_AIPS_AI_Errors_Diagnostics' => $baseDir . '/tests/Test_AIPS_AI_Errors_Diagnostics.php',
     'Test_AIPS_AI_Provider_Factory' => $baseDir . '/tests/Test_AIPS_AI_Provider_Factory.php',
     'Test_AIPS_AI_Service' => $baseDir . '/tests/Test_AIPS_AI_Service.php',
     'Test_AIPS_AI_Service_With_Provider' => $baseDir . '/tests/Test_AIPS_AI_Service_With_Provider.php',
