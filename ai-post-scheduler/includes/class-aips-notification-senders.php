@@ -549,31 +549,7 @@ class AIPS_Notification_Senders {
 		);
 
 		$all_posts_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
-
-		// Group items by notification type.
-		$grouped = array();
-		$type_registry = AIPS_Notification_Registry::get_type_registry();
-
-		foreach ($items as $item) {
-			$type = isset($item['type']) ? $item['type'] : 'unknown';
-			if (!isset($grouped[$type])) {
-				$label = isset($type_registry[$type]['label']) ? $type_registry[$type]['label'] : ucwords(str_replace('_', ' ', $type));
-				$grouped[$type] = array(
-					'label' => $label,
-					'items' => array(),
-				);
-			}
-			$grouped[$type]['items'][] = $item;
-		}
-
-		// Render grouped digest items HTML via email template using output buffering.
-		$template_path = (defined('AIPS_PLUGIN_DIR') ? AIPS_PLUGIN_DIR : dirname(__DIR__) . '/') . 'templates/email/summarized-digest.php';
-		$items_html    = '';
-		if (file_exists($template_path)) {
-			ob_start();
-			include $template_path;
-			$items_html = (string) ob_get_clean();
-		}
+		$items_html    = AIPS_Notification_Templates::render_summarized_digest_items($items);
 
 		$vars = array(
 			'{{site_name}}'         => esc_html(get_bloginfo('name')),

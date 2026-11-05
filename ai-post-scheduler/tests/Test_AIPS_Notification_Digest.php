@@ -255,6 +255,26 @@ class Test_AIPS_Notification_Digest extends WP_UnitTestCase {
 		$this->assertStringContainsString('{{digest_items_html}}', $digest_tpl->render_body());
 	}
 
+	public function test_render_summarized_digest_items_in_templates_class() {
+		$items = array(
+			array(
+				'type'  => 'post_generated',
+				'title' => 'Direct Template Test',
+				'url'   => 'http://example.com/?p=99',
+				'meta'  => array(
+					'source_label'      => 'Custom Strategy',
+					'post_status_label' => 'Published',
+				),
+			),
+		);
+
+		$html = AIPS_Notification_Templates::render_summarized_digest_items( $items );
+		$this->assertStringContainsString( 'Direct Template Test', $html );
+		$this->assertStringContainsString( 'Custom Strategy', $html );
+		$this->assertStringContainsString( 'Published', $html );
+		$this->assertStringContainsString( 'http://example.com/?p=99', $html );
+	}
+
 	public function test_summarized_digest_sender_renders_items_using_template_file() {
 		$captured = null;
 		$dispatcher = function ( $type, $args ) use ( &$captured ) {

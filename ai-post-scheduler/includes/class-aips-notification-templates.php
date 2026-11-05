@@ -220,14 +220,41 @@ class AIPS_Notification_Templates {
 	// -----------------------------------------------------------------------
 
 	/**
+	 * Render the summarized digest items HTML table from a list of queued notification items.
+	 *
+	 * Groups items by type and renders templates/email/summarized-digest.php using output buffering.
+	 *
+	 * @param array $items List of queued notification item arrays.
+	 * @return string Rendered HTML fragment.
+	 */
+	public static function render_summarized_digest_items( array $items ) {
+		$grouped       = array();
+		$type_registry = AIPS_Notification_Registry::get_type_registry();
+
+		foreach ($items as $item) {
+			$type = isset($item['type']) ? $item['type'] : 'unknown';
+			if (!isset($grouped[$type])) {
+				$label = isset($type_registry[$type]['label']) ? $type_registry[$type]['label'] : ucwords(str_replace('_', ' ', $type));
+				$grouped[$type] = array(
+					'label' => $label,
+					'items' => array(),
+				);
+			}
+			$grouped[$type]['items'][] = $item;
+		}
+
+		return self::render_email_template('summarized-digest.php', array('grouped' => $grouped));
+	}
+
+	/**
 	 * Render an email content template using output buffering.
 	 *
 	 * @param string $template_filename Filename inside templates/email/ (e.g. 'template-alert.php').
 	 * @param array  $args              Optional variables to pass to the template scope.
 	 * @return string Rendered template content, or empty string if file does not exist.
 	 */
-	private function render_email_body_template($template_filename, array $args = array()) {
-		$template_path = (defined('AIPS_PLUGIN_DIR') ? AIPS_PLUGIN_DIR : dirname(__DIR__) . '/') . 'templates/email/' . $template_filename;
+	public static function render_email_template($template_filename, array $args = array()) {
+		$template_path = AIPS_PLUGIN_DIR . 'templates/email/' . $template_filename;
 
 		if (!file_exists($template_path)) {
 			return '';
@@ -240,6 +267,17 @@ class AIPS_Notification_Templates {
 		ob_start();
 		include $template_path;
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Render an email content template using output buffering (internal alias).
+	 *
+	 * @param string $template_filename Filename inside templates/email/ (e.g. 'template-alert.php').
+	 * @param array  $args              Optional variables to pass to the template scope.
+	 * @return string Rendered template content, or empty string if file does not exist.
+	 */
+	private function render_email_body_template($template_filename, array $args = array()) {
+		return self::render_email_template($template_filename, $args);
 	}
 
 	/**
