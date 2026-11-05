@@ -3184,5 +3184,87 @@ class AIPS_Settings_UI {
 		return in_array($value, array('daily', 'twicedaily', 'weekly'), true) ? $value : 'daily';
 	}
 
+	/**
+	 * Render monetization rules section description.
+	 */
+	public function monetization_rules_section_callback() {
+		echo '<p>' . esc_html__('Configure maximum affiliate links per post and SEO compliance attributes.', 'ai-post-scheduler') . '</p>';
+	}
+
+	/**
+	 * Render monetization rules fields (max links and sponsored rel).
+	 */
+	public function monetization_rules_field_callback() {
+		$config    = AIPS_Config::get_instance();
+		$max_links = absint($config->get_option('aips_affiliate_max_links_per_post', 1));
+		$enforce   = (bool) $config->get_option('aips_affiliate_enforce_sponsored_rel', true);
+		?>
+		<fieldset>
+			<p>
+				<label for="aips_affiliate_max_links_per_post"><strong><?php esc_html_e('Max Affiliate Links per Post:', 'ai-post-scheduler'); ?></strong></label><br>
+				<input type="number" min="1" max="10" name="aips_affiliate_max_links_per_post" id="aips_affiliate_max_links_per_post" value="<?php echo esc_attr((string) $max_links); ?>" class="small-text">
+				<span class="description"><?php esc_html_e('Maximum number of distinct affiliate links injected per generated article (Default: 1).', 'ai-post-scheduler'); ?></span>
+			</p>
+			<p>
+				<label for="aips_affiliate_enforce_sponsored_rel">
+					<input type="checkbox" name="aips_affiliate_enforce_sponsored_rel" id="aips_affiliate_enforce_sponsored_rel" value="1" <?php checked($enforce); ?>>
+					<?php esc_html_e('Automatically enforce rel="nofollow sponsored" and target="_blank"', 'ai-post-scheduler'); ?>
+				</label>
+				<br>
+				<span class="description"><?php esc_html_e('Recommended for SEO compliance to prevent search engine penalties for commercial affiliate links.', 'ai-post-scheduler'); ?></span>
+			</p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render FTC disclosure section description.
+	 */
+	public function monetization_disclosure_section_callback() {
+		echo '<p>' . esc_html__('Configure automated FTC-compliant affiliate disclosure notices for posts containing affiliate links.', 'ai-post-scheduler') . '</p>';
+	}
+
+	/**
+	 * Render FTC disclosure fields.
+	 */
+	public function monetization_disclosure_field_callback() {
+		$config   = AIPS_Config::get_instance();
+		$enabled  = (bool) $config->get_option('aips_affiliate_disclosure_enabled', false);
+		$text     = (string) $config->get_option('aips_affiliate_disclosure_text', '*Disclosure: This post contains affiliate links. If you make a purchase through these links, we may earn an affiliate commission at no extra cost to you.*');
+		$position = (string) $config->get_option('aips_affiliate_disclosure_position', 'top');
+		?>
+		<fieldset>
+			<p>
+				<label for="aips_affiliate_disclosure_enabled">
+					<input type="checkbox" name="aips_affiliate_disclosure_enabled" id="aips_affiliate_disclosure_enabled" value="1" <?php checked($enabled); ?>>
+					<strong><?php esc_html_e('Enable automated FTC affiliate disclosure banner', 'ai-post-scheduler'); ?></strong>
+				</label>
+			</p>
+			<p>
+				<label for="aips_affiliate_disclosure_position"><?php esc_html_e('Placement Position:', 'ai-post-scheduler'); ?></label><br>
+				<select name="aips_affiliate_disclosure_position" id="aips_affiliate_disclosure_position">
+					<option value="top" <?php selected($position, 'top'); ?>><?php esc_html_e('Top of Post (Recommended by FTC)', 'ai-post-scheduler'); ?></option>
+					<option value="bottom" <?php selected($position, 'bottom'); ?>><?php esc_html_e('Bottom of Post', 'ai-post-scheduler'); ?></option>
+				</select>
+			</p>
+			<p>
+				<label for="aips_affiliate_disclosure_text"><?php esc_html_e('Disclosure Notice Text:', 'ai-post-scheduler'); ?></label><br>
+				<textarea name="aips_affiliate_disclosure_text" id="aips_affiliate_disclosure_text" rows="3" class="large-text"><?php echo esc_textarea($text); ?></textarea>
+			</p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Sanitize disclosure position.
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return string
+	 */
+	public function sanitize_affiliate_disclosure_position($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('top', 'bottom'), true) ? $value : 'top';
+	}
+
 }
 

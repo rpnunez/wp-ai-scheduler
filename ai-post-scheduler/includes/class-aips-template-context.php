@@ -294,6 +294,10 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 		return !empty($this->template->affiliate_links_enabled);
 	}
 
+	public function get_affiliate_link_override_id() {
+		return isset($this->template->affiliate_link_override_id) ? (int) $this->template->affiliate_link_override_id : 0;
+	}
+
 	/**
 	 * Get all context data as an array.
 	 *

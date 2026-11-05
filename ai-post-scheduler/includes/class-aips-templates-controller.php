@@ -153,6 +153,7 @@ class AIPS_Templates_Controller {
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
             'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
+            'affiliate_link_override_id' => isset($_POST['affiliate_link_override_id']) ? absint($_POST['affiliate_link_override_id']) : 0,
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
@@ -309,6 +310,7 @@ class AIPS_Templates_Controller {
             'post_author' => $template->post_author,
             'include_sources' => isset($template->include_sources) ? $template->include_sources : 0,
             'affiliate_links_enabled' => isset($template->affiliate_links_enabled) ? $template->affiliate_links_enabled : 0,
+            'affiliate_link_override_id' => isset($template->affiliate_link_override_id) ? $template->affiliate_link_override_id : 0,
             'source_group_ids' => isset($template->source_group_ids) ? $template->source_group_ids : wp_json_encode(array()),
             'is_active' => $template->is_active,
         );
@@ -436,6 +438,7 @@ class AIPS_Templates_Controller {
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
             'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
+            'affiliate_link_override_id' => isset($_POST['affiliate_link_override_id']) ? absint($_POST['affiliate_link_override_id']) : 0,
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),

@@ -36,6 +36,7 @@ $valid_tabs = array(
 	'aips-silos',
 	'aips-content-clusters',
 	'aips-content-cannibalization',
+	'aips-monetized-posts',
 );
 
 if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embeddings' === $active_tab) {
@@ -58,6 +59,8 @@ if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embedding
 	$active_tab = 'aips-content-clusters';
 } elseif ('cannibalization' === $active_tab || 'content-cannibalization' === $active_tab) {
 	$active_tab = 'aips-content-cannibalization';
+} elseif ('monetized-posts' === $active_tab || 'monetized' === $active_tab) {
+	$active_tab = 'aips-monetized-posts';
 } elseif (!in_array($active_tab, $valid_tabs, true)) {
 	$active_tab = 'aips-generated-posts';
 }
@@ -149,6 +152,14 @@ $rail_items = array(
 		'description' => __('Semantic duplicate & overlap audit', 'ai-post-scheduler'),
 		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-content-cannibalization'),
 		'active'      => ($active_tab === 'aips-content-cannibalization'),
+	),
+	array(
+		'key'         => 'aips-monetized-posts',
+		'label'       => __('Monetized Posts', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-money-alt',
+		'description' => __('Posts with active affiliate links', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-monetized-posts'),
+		'active'      => ($active_tab === 'aips-monetized-posts'),
 	),
 );
 
@@ -295,6 +306,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 						include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-cannibalization.php';
 					}, __('Cannibalization Shield', 'ai-post-scheduler'), true);
 					?>
+				</div>
+
+				<!-- Tab: Monetized Posts -->
+				<div id="aips-monetized-posts-tab" class="aips-tab-content<?php echo $active_tab === 'aips-monetized-posts' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-monetized-posts' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-monetized-posts' ? '' : 'hidden'; ?>>
+					<div class="aips-content-panel">
+						<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-monetized-posts.php'; ?>
+					</div>
 				</div>
 			</main>
 		</div><!-- /.aips-rail-layout -->

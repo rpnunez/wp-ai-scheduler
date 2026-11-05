@@ -254,6 +254,7 @@
 			$('#aips-author-form').show();
 
 			// Reset source group fields.
+			$('#author_affiliate_link_override_id').val('');
 			$('#author_include_sources').prop('checked', false);
 			$('.aips-author-source-group-cb').prop('checked', false);
 			$('#author-source-groups-selector').hide();
@@ -363,6 +364,7 @@
 
 						// Restore affiliate links setting.
 						$('#author_affiliate_links_enabled').prop('checked', author.affiliate_links_enabled == 1);
+						$('#author_affiliate_link_override_id').val(author.affiliate_link_override_id || '');
 
 						// Restore source group settings.
 						var includeSources = author.include_sources == 1;

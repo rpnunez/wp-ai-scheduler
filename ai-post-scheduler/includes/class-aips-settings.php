@@ -420,6 +420,26 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_silo_guide_heading'],
 			),
+			'aips_affiliate_disclosure_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_affiliate_disclosure_enabled'],
+			),
+			'aips_affiliate_disclosure_text' => array(
+				'sanitize_callback' => 'wp_kses_post',
+				'default'           => $defaults['aips_affiliate_disclosure_text'],
+			),
+			'aips_affiliate_disclosure_position' => array(
+				'sanitize_callback' => array($ui, 'sanitize_affiliate_disclosure_position'),
+				'default'           => $defaults['aips_affiliate_disclosure_position'],
+			),
+			'aips_affiliate_max_links_per_post' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_affiliate_max_links_per_post'],
+			),
+			'aips_affiliate_enforce_sponsored_rel' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_affiliate_enforce_sponsored_rel'],
+			),
 			'aips_autolink_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_autolink_enabled'],
@@ -1344,6 +1364,39 @@ class AIPS_Settings {
             array($this->ui, 'autolink_placement_field_callback'),
             'aips-settings',
             'aips_ai_autolink_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Monetization tab: Rules & FTC Disclosure
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_monetization_rules_section',
+            __('Affiliate Linking Rules & Caps', 'ai-post-scheduler'),
+            array($this->ui, 'monetization_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_monetization_rules',
+            __('Linking Caps & Attributes', 'ai-post-scheduler'),
+            array($this->ui, 'monetization_rules_field_callback'),
+            'aips-settings',
+            'aips_monetization_rules_section'
+        );
+
+        add_settings_section(
+            'aips_monetization_disclosure_section',
+            __('FTC Affiliate Disclosure Notice', 'ai-post-scheduler'),
+            array($this->ui, 'monetization_disclosure_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_monetization_disclosure',
+            __('Disclosure Notice', 'ai-post-scheduler'),
+            array($this->ui, 'monetization_disclosure_field_callback'),
+            'aips-settings',
+            'aips_monetization_disclosure_section'
         );
 
         // -----------------------------------------------------------------------

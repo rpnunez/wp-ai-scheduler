@@ -323,6 +323,10 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 		return !empty($this->author->affiliate_links_enabled);
 	}
 
+	public function get_affiliate_link_override_id() {
+		return isset($this->author->affiliate_link_override_id) ? (int) $this->author->affiliate_link_override_id : 0;
+	}
+
 	/**
 	 * Get all context data as an array.
 	 *

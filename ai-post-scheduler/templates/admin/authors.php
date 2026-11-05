@@ -397,6 +397,23 @@ $site_ctx = AIPS_Site_Context::get();
                 </p>
             </div>
 
+            <?php
+            $aips_affiliate_repo = AIPS_Container::get_instance()->make( AIPS_Affiliate_Links_Repository::class );
+            $aips_affiliate_offers = $aips_affiliate_repo->get_all( false );
+            ?>
+            <div class="form-group" id="author_affiliate_link_override_row" style="margin-top: 10px;">
+                <label for="author_affiliate_link_override_id"><strong><?php esc_html_e('Pinned Affiliate Offer (Optional):', 'ai-post-scheduler'); ?></strong></label>
+                <select id="author_affiliate_link_override_id" name="affiliate_link_override_id" class="aips-form-select" style="max-width: 100%;">
+                    <option value=""><?php esc_html_e('— None (Auto-match via tags/keywords/categories) —', 'ai-post-scheduler'); ?></option>
+                    <?php foreach ($aips_affiliate_offers as $offer): ?>
+                        <option value="<?php echo esc_attr($offer->id); ?>">
+                            <?php echo esc_html((!empty($offer->label) ? $offer->label : $offer->tag) . ' (' . $offer->affiliate_url . ')'); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description"><?php esc_html_e('Pin a specific offer to always be prioritized for posts generated for this author persona.', 'ai-post-scheduler'); ?></p>
+            </div>
+
             <div class="aips-modal-footer">
                 <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                 <button type="submit" class="aips-btn aips-btn-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>

@@ -1799,6 +1799,7 @@ class AIPS_DB_Migrations {
 	/**
 	 * Migration to 3.7.20:
 	 * Adds composite index `history_type_ts` (history_type_id, timestamp) to `aips_history_log`.
+	 * Ensures multi-factor columns exist on `aips_affiliate_links` and overrides on templates & authors.
 	 *
 	 * @return bool
 	 */
@@ -1806,15 +1807,49 @@ class AIPS_DB_Migrations {
 		global $wpdb;
 		$table = $wpdb->prefix . 'aips_history_log';
 
-		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
-			return true;
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
+			$has_index = $wpdb->get_row(
+				"SHOW INDEX FROM `{$table}` WHERE Key_name = 'history_type_ts'"
+			);
+			if ( ! $has_index ) {
+				$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_type_ts (history_type_id, timestamp)" );
+			}
 		}
 
-		$has_index = $wpdb->get_row(
-			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'history_type_ts'"
-		);
-		if ( ! $has_index ) {
-			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_type_ts (history_type_id, timestamp)" );
+		$aff_table = $wpdb->prefix . 'aips_affiliate_links';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $aff_table ) ) === $aff_table ) {
+			$columns = array(
+				'keywords'           => 'text DEFAULT NULL',
+				'category_ids'       => 'text DEFAULT NULL',
+				'prompt_guidance'    => 'text DEFAULT NULL',
+				'is_global_fallback' => 'tinyint(1) NOT NULL DEFAULT 0',
+			);
+			foreach ( $columns as $column => $def ) {
+				$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$aff_table}` LIKE %s", $column ) );
+				if ( ! $exists ) {
+					$wpdb->query( "ALTER TABLE `{$aff_table}` ADD COLUMN `{$column}` {$def}" );
+				}
+			}
+			$has_fallback_idx = $wpdb->get_row(
+				"SHOW INDEX FROM `{$aff_table}` WHERE Key_name = 'is_global_fallback'"
+			);
+			if ( ! $has_fallback_idx ) {
+				$wpdb->query( "ALTER TABLE `{$aff_table}` ADD KEY is_global_fallback (is_global_fallback)" );
+			}
+		}
+
+		$tpl_table = $wpdb->prefix . 'aips_templates';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tpl_table ) ) === $tpl_table ) {
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$tpl_table}` LIKE %s", 'affiliate_link_override_id' ) ) ) {
+				$wpdb->query( "ALTER TABLE `{$tpl_table}` ADD COLUMN `affiliate_link_override_id` bigint(20) DEFAULT 0" );
+			}
+		}
+
+		$author_table = $wpdb->prefix . 'aips_authors';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $author_table ) ) === $author_table ) {
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$author_table}` LIKE %s", 'affiliate_link_override_id' ) ) ) {
+				$wpdb->query( "ALTER TABLE `{$author_table}` ADD COLUMN `affiliate_link_override_id` bigint(20) DEFAULT 0" );
+			}
 		}
 
 		return true;

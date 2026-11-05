@@ -1196,13 +1196,33 @@ class AIPS_Generator {
         // ever downgrade further, never upgrade back to the intended status.
         $initial_post_status = $pre_image_incomplete ? 'draft' : $intended_post_status;
 
-        // Generation-time affiliate link injection (when enabled on the template/author).
+        // Generation-time affiliate link injection & hybrid fallback guardrail.
         if ( $context instanceof AIPS_Generation_Context && $context->get_affiliate_links_enabled() && ! empty( $content ) ) {
-            $raw_tags = $context->get_post_tags();
-            if ( ! empty( $raw_tags ) ) {
-                $tag_names = array_filter( array_map( 'trim', explode( ',', $raw_tags ) ) );
-                if ( ! empty( $tag_names ) ) {
-                    $content = ( new AIPS_Affiliate_Links_Service() )->inject_into_content( $content, $tag_names );
+            $aff_service = new AIPS_Affiliate_Links_Service();
+            $offers      = $aff_service->resolve_offers_for_context( $context );
+            if ( ! empty( $offers ) ) {
+                $inserter           = new AIPS_Affiliate_Link_Inserter_Service();
+                $enforce_sponsored  = (bool) AIPS_Config::get_instance()->get_option( 'aips_affiliate_enforce_sponsored_rel', true );
+                $has_affiliate_link = false;
+
+                foreach ( $offers as $offer ) {
+                    $url = $offer->affiliate_url;
+                    if ( strpos( $content, $url ) !== false ) {
+                        // AI model successfully embedded the link; normalize rel/target attributes.
+                        if ( $enforce_sponsored ) {
+                            $content = $inserter->normalize_affiliate_attributes( $content, $url );
+                        }
+                        $has_affiliate_link = true;
+                    } else {
+                        // Hybrid Fallback: AI model missed the link; inject CTA or in-content anchor.
+                        $content = $inserter->inject_into_content( $content, array( $offer ) );
+                        $has_affiliate_link = true;
+                    }
+                }
+
+                // Apply FTC disclosure notice if enabled.
+                if ( $has_affiliate_link ) {
+                    $content = $inserter->apply_disclosure( $content );
                 }
             }
         }
