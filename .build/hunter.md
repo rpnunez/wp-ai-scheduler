@@ -8,6 +8,10 @@ This file merges two complementary journals:
 
 ## Part 1 — Domain & Testing Patterns
 
+## 2026-04-27 - Handle Template Data Object Type Error
+**Learning:** Legacy template variables might receive class instances instead of expected associative arrays, causing fatal `Cannot use object of type class as array` errors in PHP 8+.
+**Action:** Always check `is_object($data)` before accessing elements via `$data['key']` in templates. If it is an object, use getter methods (e.g. `$handler->get_data()`) to retrieve an array context.
+
 ## 2024-05-25 - [Schedule Initialization Logic Flaw]
 **Learning:** Using `calculate_next_run(interval, start_time)` for *initial* schedule creation is incorrect because it calculates `start_time + interval`, effectively skipping the first run.
 **Action:** When creating schedules, always treat `start_time` as the explicit *first* execution time (`next_run`), rather than a base for calculation. Only use `calculate_next_run` for subsequent recurring executions.
