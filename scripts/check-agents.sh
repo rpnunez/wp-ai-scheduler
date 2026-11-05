@@ -28,7 +28,22 @@ for wrapper in .claude/agents/*.md .codex/agents/*.toml .github/agents/*.agent.m
 	[ -f ".agents/agents/$name.md" ] || err "orphan wrapper (no canonical agent): $wrapper"
 done
 
+for canon in .agents/skills/*/SKILL.md; do
+	name=$(basename "$(dirname "$canon")")
+	wrapper=".claude/skills/$name/SKILL.md"
+	if [ ! -f "$wrapper" ]; then
+		err "missing skill wrapper: $wrapper"
+	elif ! grep -q "\.agents/skills/$name/SKILL\.md" "$wrapper"; then
+		err "$wrapper does not reference .agents/skills/$name/SKILL.md"
+	fi
+done
+
+for wrapper in .claude/skills/*/SKILL.md; do
+	name=$(basename "$(dirname "$wrapper")")
+	[ -f ".agents/skills/$name/SKILL.md" ] || err "orphan skill wrapper (no canonical skill): $wrapper"
+done
+
 if [ "$fail" -eq 0 ]; then
-	echo "OK: $(ls .agents/agents/*.md | wc -l) agents, all wrappers present."
+	echo "OK: $(ls .agents/agents/*.md | wc -l) agents and $(ls .agents/skills/*/SKILL.md | wc -l) skills, all wrappers present."
 fi
 exit "$fail"
