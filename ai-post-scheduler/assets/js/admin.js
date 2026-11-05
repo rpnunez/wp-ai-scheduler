@@ -497,6 +497,7 @@
             $(document).on('click', '.aips-tab', this.switchScheduleTab);
             $(document).on('click', '.aips-reset-circuit', this.resetScheduleCircuit);
             $(document).on('click', '.aips-resume-batch', this.resumeScheduleBatch);
+            $(document).on('click', '.aips-run-campaign-all-btn', this.runCampaignAllTemplates);
         },
 
         /**
@@ -3519,6 +3520,56 @@
                     }}
                 ]
             );
+        },
+
+        /**
+         * Run all templates for a campaign.
+         */
+        runCampaignAllTemplates: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var campaignId = $btn.data('campaign-id');
+            if (!campaignId || $btn.prop('disabled')) {
+                return;
+            }
+
+            var confirmMsg = (window.aipsAdminL10n && aipsAdminL10n.confirmRunCampaignAll) || 'Run all active templates linked to this campaign now?';
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            var loadingText = (window.aipsAdminL10n && aipsAdminL10n.processing) || 'Processing...';
+            var origHtml = $btn.html();
+            $btn.prop('disabled', true);
+
+            var $spinner = $('<span />', { 'class': 'spinner is-active aips-btn-spinner' });
+            $btn.empty().append($spinner).append(document.createTextNode(' ' + loadingText));
+
+            $.ajax({
+                url: typeof aipsAjax !== 'undefined' ? aipsAjax.ajaxUrl : ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_campaign_all_templates',
+                    campaign_id: campaignId,
+                    nonce: typeof aipsAjax !== 'undefined' ? aipsAjax.nonce : (window.aips_admin?.nonce || '')
+                },
+                success: function(response) {
+                    $btn.prop('disabled', false).html(origHtml);
+                    if (response.success) {
+                        var successMsg = response.data?.message || (window.aipsAdminL10n && aipsAdminL10n.campaignRunAllSuccess) || 'Campaign execution complete.';
+                        alert(successMsg);
+                        location.reload();
+                    } else {
+                        var errorMsg = response.data?.message || (window.aipsAdminL10n && aipsAdminL10n.campaignRunAllError) || 'Failed to execute campaign templates.';
+                        alert(errorMsg);
+                    }
+                },
+                error: function() {
+                    $btn.prop('disabled', false).html(origHtml);
+                    var netError = (window.aipsAdminL10n && aipsAdminL10n.networkError) || 'Network error while running campaign templates.';
+                    alert(netError);
+                }
+            });
         },
 
         /** Execute a unified schedule using the selected schedule-advance mode. */

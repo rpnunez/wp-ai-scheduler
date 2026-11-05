@@ -52,7 +52,7 @@ class AIPS_AI_Assistance_Repository {
 	 *     @type string   $prompt          Full prompt sent to the AI.
 	 *     @type string   $response        AI-generated response text.
 	 * }
-	 * @return int|false New record ID on success, false on failure.
+	 * @return int|false New record ID on success, 0 when history is disabled (retention 0), false on failure.
 	 */
 	public function create( array $data ) {
 		if ( AIPS_Settings::get_ai_assistance_retention_days() === 0 ) {
@@ -157,6 +157,13 @@ class AIPS_AI_Assistance_Repository {
 	 * @return void
 	 */
 	public function delete_expired(): void {
+		// Throttle: pruning is housekeeping, not something every read/write needs.
+		$throttle_key = 'aips_ai_assist_pruned';
+		if ( get_transient( $throttle_key ) ) {
+			return;
+		}
+		set_transient( $throttle_key, 1, HOUR_IN_SECONDS );
+
 		$days = AIPS_Settings::get_ai_assistance_retention_days();
 		if ( $days === 0 ) {
 			$this->clear_all();

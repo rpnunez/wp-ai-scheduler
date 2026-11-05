@@ -161,18 +161,19 @@ class AIPS_Generation_Trigger {
 			}
 		}
 
+		if (!empty($trigger['campaign_id'])) {
+			$source['campaign_id'] = (int) $trigger['campaign_id'];
+			$campaign_name         = !empty($trigger['campaign_name']) ? (string) $trigger['campaign_name'] : self::lookup_campaign_name((int) $trigger['campaign_id']);
+			if ($campaign_name !== '') {
+				$source['campaign_name'] = $campaign_name;
+			}
+		}
+
 		if ($context instanceof AIPS_Template_Context) {
 			$template = $context->get_template();
 			if ($template) {
 				$source['template_id']   = (int) $context->get_id();
 				$source['template_name'] = (string) $context->get_name();
-				if (!empty($template->campaign_id)) {
-					$source['campaign_id'] = (int) $template->campaign_id;
-					$campaign_name         = self::lookup_campaign_name((int) $template->campaign_id);
-					if ($campaign_name !== '') {
-						$source['campaign_name'] = $campaign_name;
-					}
-				}
 			}
 			$topic = $context->get_topic();
 			if (!empty($topic)) {

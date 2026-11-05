@@ -111,15 +111,15 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertStringNotContainsString('ORDER BY c.is_archived ASC, c.created_at DESC', $this->wpdb_stub->last_get_results_query);
 	}
 
-	public function test_can_delete_campaign_checks_all_history_entries() {
+	public function test_can_delete_campaign_checks_only_generated_posts() {
 		$this->wpdb_stub->var_to_return = '3';
 
 		$repository = $this->new_repository();
 
 		$this->assertFalse($repository->can_delete_campaign(55));
 		$this->assertStringContainsString('WHERE campaign_id = 55', $this->wpdb_stub->last_get_var_query);
-		$this->assertStringNotContainsString("status = 'completed'", $this->wpdb_stub->last_get_var_query);
-		$this->assertStringNotContainsString('post_id IS NOT NULL', $this->wpdb_stub->last_get_var_query);
+		$this->assertStringContainsString("status IN ('completed', 'partial')", $this->wpdb_stub->last_get_var_query);
+		$this->assertStringContainsString('post_id IS NOT NULL', $this->wpdb_stub->last_get_var_query);
 	}
 
 	public function test_create_campaign_bundle_returns_wp_error_when_campaign_insert_fails() {
@@ -200,7 +200,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertStringContainsString('FROM wp_aips_history h LEFT JOIN wp_posts p ON h.post_id = p.ID', $this->wpdb_stub->get_row_queries[0]);
 		$this->assertStringContainsString('FROM wp_aips_schedule', $this->wpdb_stub->get_row_queries[1]);
 		$this->assertStringContainsString("TRIM(COALESCE(prompt_template, '')) = ''", $this->wpdb_stub->get_var_queries[0]);
-		$this->assertStringContainsString('ORDER BY created_at DESC, id DESC LIMIT 1', $this->wpdb_stub->get_var_queries[1]);
+		$this->assertStringContainsString('ORDER BY id DESC LIMIT 1', $this->wpdb_stub->get_var_queries[1]);
 	}
 
 	public function test_get_recent_activity_uses_expected_union_order_and_limit() {
@@ -274,6 +274,70 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 			'post_author'           => 1,
 			'prompt_template'       => 'Prompt body',
 		);
+	}
+
+	public function test_link_template_inserts_or_updates_pivot_record() {
+		$repository = $this->new_repository();
+		$result = $repository->link_template(10, 25, array('post_status' => 'draft'));
+		$this->assertTrue($result);
+		$this->assertNotEmpty($this->wpdb_stub->queries);
+		$this->assertStringContainsString('aips_campaign_templates', end($this->wpdb_stub->queries));
+	}
+
+	public function test_unlink_template_deletes_pivot_record() {
+		$repository = $this->new_repository();
+		$result = $repository->unlink_template(10, 25);
+		$this->assertTrue($result);
+	}
+
+	public function test_update_template_overrides_updates_record() {
+		$repository = $this->new_repository();
+		$result = $repository->update_template_overrides(10, 25, array('voice_id' => 3));
+		$this->assertTrue($result);
+		$this->assertNotNull($this->wpdb_stub->last_update_call);
+		$this->assertSame('wp_aips_campaign_templates', $this->wpdb_stub->last_update_call['table']);
+	}
+
+	public function test_get_templates_by_campaign_queries_pivot_table() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('id' => 25, 'name' => 'Tech Article', 'overrides' => null),
+		);
+		$repository = $this->new_repository();
+		$templates = $repository->get_templates_by_campaign(10);
+		$this->assertCount(1, $templates);
+		$this->assertSame('Tech Article', $templates[0]->name);
+		$this->assertStringContainsString('aips_campaign_templates', $this->wpdb_stub->last_get_results_query);
+	}
+
+	public function test_get_campaign_ids_by_template_returns_array_of_ids() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('campaign_id' => '10'),
+			(object) array('campaign_id' => '12'),
+		);
+		$repository = $this->new_repository();
+		$campaign_ids = $repository->get_campaign_ids_by_template(25);
+		$this->assertSame(array(10, 12), $campaign_ids);
+	}
+
+	public function test_get_template_counts_by_campaign_ids_returns_map_of_counts() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('campaign_id' => '10', 'count' => '3'),
+			(object) array('campaign_id' => '12', 'count' => '1'),
+		);
+		$repository = $this->new_repository();
+		$counts = $repository->get_template_counts_by_campaign_ids(array(10, 12));
+		$this->assertSame(array(10 => 3, 12 => 1), $counts);
+		$this->assertStringContainsString('IN (10,12)', $this->wpdb_stub->last_get_results_query);
+	}
+
+	public function test_get_template_campaign_mappings_returns_grouped_array() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('campaign_id' => '10', 'template_id' => '25'),
+			(object) array('campaign_id' => '12', 'template_id' => '25'),
+		);
+		$repository = $this->new_repository();
+		$mappings = $repository->get_template_campaign_mappings();
+		$this->assertSame(array(25 => array(10, 12)), $mappings);
 	}
 
 	private function define_test_dependency_classes() {

@@ -191,7 +191,12 @@ class AIPS_Admin_Assets {
 			$this->enqueue_silos_assets();
 		}
 
-        if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
+        if (
+            self::PAGE_HISTORY === $page
+            || $this->hook_contains($hook, self::PAGE_HISTORY)
+            || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
+            || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
+        ) {
 			$this->enqueue_history_assets();
 		}
 
@@ -571,8 +576,14 @@ class AIPS_Admin_Assets {
             // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
             // Table filter persistence
-            'persistTableFilters' => (bool) AIPS_Config::get_instance()->get_option('aips_persist_table_filters'),
-            'hasUnsplashAccessKey' => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
+            'persistTableFilters'   => (bool) AIPS_Config::get_instance()->get_option('aips_persist_table_filters'),
+            'hasUnsplashAccessKey'  => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
+            // Campaign batch execution strings
+            'processing'            => __('Processing...', 'ai-post-scheduler'),
+            'confirmRunCampaignAll' => __('Run all active templates linked to this campaign now?', 'ai-post-scheduler'),
+            'campaignRunAllSuccess' => __('Campaign execution complete.', 'ai-post-scheduler'),
+            'campaignRunAllError'   => __('Failed to execute campaign templates.', 'ai-post-scheduler'),
+            'networkError'          => __('Network error. Please try again.', 'ai-post-scheduler'),
         ));
     }
 
@@ -1613,6 +1624,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the campaign wizard page.
      */
     private function enqueue_campaign_wizard_assets() {
+            wp_enqueue_style(
+                'aips-campaigns-style',
+                AIPS_PLUGIN_URL . 'assets/css/campaigns.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
             wp_enqueue_script(
                 'aips-admin-campaign-wizard',
                 AIPS_PLUGIN_URL . 'assets/js/campaign-wizard.js',
@@ -1703,15 +1721,32 @@ class AIPS_Admin_Assets {
             );
 
             wp_localize_script('aips-admin-campaigns', 'aipsCampaignsL10n', array(
-                'confirmDuplicate' => __('Duplicate this campaign? The copy will be created in a paused state.', 'ai-post-scheduler'),
-                'confirmArchive'   => __('Archive this campaign? It will be hidden from the active campaigns list.', 'ai-post-scheduler'),
-                'confirmDelete'    => __('Delete this campaign? This removes the campaign and its owned template/schedule rows.', 'ai-post-scheduler'),
-                'errorToggle'      => __('Failed to update campaign.', 'ai-post-scheduler'),
-                'errorDuplicate'   => __('Failed to duplicate campaign.', 'ai-post-scheduler'),
-                'errorArchive'     => __('Failed to archive campaign.', 'ai-post-scheduler'),
-                'errorRestore'     => __('Failed to restore campaign.', 'ai-post-scheduler'),
-                'errorDelete'      => __('Failed to delete campaign.', 'ai-post-scheduler'),
-                'errorNetwork'     => __('Network error. Please try again.', 'ai-post-scheduler'),
+                'confirmDuplicate'       => __('Duplicate this campaign? The copy will be created in a paused state.', 'ai-post-scheduler'),
+                'confirmArchive'         => __('Archive this campaign? It will be hidden from the active campaigns list.', 'ai-post-scheduler'),
+                'confirmDelete'          => __('Delete this campaign? This removes the campaign and its owned template/schedule rows.', 'ai-post-scheduler'),
+                'errorToggle'            => __('Failed to update campaign.', 'ai-post-scheduler'),
+                'errorDuplicate'         => __('Failed to duplicate campaign.', 'ai-post-scheduler'),
+                'errorArchive'           => __('Failed to archive campaign.', 'ai-post-scheduler'),
+                'errorRestore'           => __('Failed to restore campaign.', 'ai-post-scheduler'),
+                'errorDelete'            => __('Failed to delete campaign.', 'ai-post-scheduler'),
+                'errorNetwork'           => __('Network error. Please try again.', 'ai-post-scheduler'),
+                'selectTemplateRequired' => __('Please select a template to link.', 'ai-post-scheduler'),
+                'confirmUnlinkTemplate'  => __('Unlink this template from the campaign? The template itself will not be deleted.', 'ai-post-scheduler'),
+                'unlinkTemplateTitle'    => __('Unlink Template', 'ai-post-scheduler'),
+                'unlinkAction'           => __('Unlink', 'ai-post-scheduler'),
+                'cancelAction'           => __('Cancel', 'ai-post-scheduler'),
+                'errorLinkTemplate'      => __('Failed to link template to campaign.', 'ai-post-scheduler'),
+                'errorUnlinkTemplate'    => __('Failed to unlink template from campaign.', 'ai-post-scheduler'),
+                'errorUpdateOverrides'   => __('Failed to update template overrides.', 'ai-post-scheduler'),
+                'confirmRunAll'          => __('Run all active templates linked to this campaign now?', 'ai-post-scheduler'),
+                'runAllTitle'            => __('Run All Templates', 'ai-post-scheduler'),
+                'runAllSuccess'          => __('Campaign execution complete.', 'ai-post-scheduler'),
+                'runAllError'            => __('Failed to execute campaign templates.', 'ai-post-scheduler'),
+                'running'                => __('Running...', 'ai-post-scheduler'),
+                'archiving'              => __('Archiving...', 'ai-post-scheduler'),
+                'restoring'              => __('Restoring...', 'ai-post-scheduler'),
+                'deleting'               => __('Deleting...', 'ai-post-scheduler'),
+                'processing'             => __('Processing...', 'ai-post-scheduler'),
             ));
     }
 

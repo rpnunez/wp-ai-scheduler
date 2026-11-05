@@ -271,6 +271,12 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.8.0', '<' ) && ! $this->migrate_to_3_8_0() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Campaign container migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1817,6 +1823,80 @@ class AIPS_DB_Migrations {
 			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_type_ts (history_type_id, timestamp)" );
 		}
 
+		return true;
+	}
+
+	/**
+	 * Migrate to 3.8.0:
+	 * 1. Ensure aips_campaign_templates exists.
+	 * 2. Add directives and default columns to aips_campaigns.
+	 * 3. Backfill template-campaign relationships into aips_campaign_templates.
+	 * 4. Drop campaign_id from aips_templates.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_8_0() {
+		global $wpdb;
+
+		$campaigns_table          = $wpdb->prefix . 'aips_campaigns';
+		$campaign_templates_table = $wpdb->prefix . 'aips_campaign_templates';
+		$templates_table          = $wpdb->prefix . 'aips_templates';
+
+		// Ensure install_tables has created aips_campaign_templates.
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $campaign_templates_table ) ) !== $campaign_templates_table ) {
+			$this->db_manager->install_tables();
+		}
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $campaign_templates_table ) ) !== $campaign_templates_table ) {
+			return false;
+		}
+
+		// Ensure campaign columns exist.
+		$campaign_cols = array(
+			'prompt_directives'            => 'text DEFAULT NULL',
+			'default_article_structure_id' => 'bigint(20) DEFAULT NULL',
+			'default_post_status'          => 'varchar(50) DEFAULT NULL',
+			'default_voice_id'             => 'bigint(20) DEFAULT NULL',
+			'default_author_id'            => 'bigint(20) DEFAULT NULL',
+			'default_categories'           => 'text DEFAULT NULL',
+			'default_tags'                 => 'text DEFAULT NULL',
+		);
+
+		foreach ( $campaign_cols as $col => $definition ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$campaigns_table}` LIKE %s", $col ) );
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD COLUMN `{$col}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return false;
+			}
+		}
+
+		// Backfill existing template links and drop campaign_id from templates table.
+		$has_template_campaign_col = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$templates_table}` LIKE %s", 'campaign_id' ) );
+		if ( $has_template_campaign_col ) {
+			$backfilled = $wpdb->query( "
+				INSERT IGNORE INTO `{$campaign_templates_table}` (campaign_id, template_id, created_at)
+				SELECT campaign_id, id, created_at
+				FROM `{$templates_table}`
+				WHERE campaign_id IS NOT NULL AND campaign_id > 0
+			" );
+			if ( false === $backfilled ) {
+				return false;
+			}
+
+			// Drop index if exists.
+			$index_exists = $wpdb->get_row( "SHOW INDEX FROM `{$templates_table}` WHERE Key_name = 'campaign_id'" );
+			if ( $index_exists ) {
+				if ( false === $wpdb->query( "ALTER TABLE `{$templates_table}` DROP INDEX `campaign_id`" ) ) {
+					return false;
+				}
+			}
+
+			// Drop column.
+			if ( false === $wpdb->query( "ALTER TABLE `{$templates_table}` DROP COLUMN `campaign_id`" ) ) {
+				return false;
+			}
+		}
+
+		$this->logger->log( 'migrate_to_3_8_0: campaign container schema migration complete', 'info' );
 		return true;
 	}
 

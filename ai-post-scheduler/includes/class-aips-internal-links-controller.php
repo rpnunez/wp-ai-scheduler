@@ -352,8 +352,15 @@ class AIPS_Internal_Links_Controller {
 			AIPS_Ajax_Response::error(array('message' => __('Bulk action failed.', 'ai-post-scheduler')));
 		}
 
+		// Report only rows that actually changed: accept/reject skip non-pending rows.
+		$applied_ids = $ids;
+		if ($bulk_action !== 'delete' && (int) $result < count($ids)) {
+			$expected    = $bulk_action === 'accept' ? 'accepted' : 'rejected';
+			$applied_ids = $this->links_repo->get_ids_with_status($ids, $expected);
+		}
+
 		AIPS_Ajax_Response::success(array(
-			'ids'    => $ids,
+			'ids'    => $applied_ids,
 			'action' => $bulk_action,
 			'count'  => (int) $result,
 		));

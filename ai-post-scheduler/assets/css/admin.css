@@ -1102,6 +1102,84 @@
 	opacity: 1;
 }
 
+/* Schedule List Table: Campaign Grouping & Hierarchy */
+.aips-list-table-wrap .wp-list-table tr.aips-campaign-group-header,
+.aips-table tr.aips-campaign-group-header,
+tr.aips-campaign-group-header {
+	background: var(--aips-gray-50);
+	border-top: 2px solid var(--aips-gray-300);
+}
+
+.aips-list-table-wrap .wp-list-table tr.aips-campaign-group-header td,
+tr.aips-campaign-group-header td {
+	padding: var(--aips-space-2) var(--aips-space-4);
+}
+
+.aips-campaign-group-content {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+}
+
+.aips-campaign-group-title {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-campaign-group-title .dashicons {
+	color: var(--aips-primary);
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+}
+
+.aips-standalone-group-header .aips-campaign-group-title .dashicons {
+	color: var(--aips-gray-500);
+}
+
+.aips-campaign-group-title strong a {
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-900);
+	text-decoration: none;
+	font-weight: var(--aips-font-semibold);
+}
+
+.aips-campaign-group-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-campaign-group-actions .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	vertical-align: middle;
+}
+
+.aips-tree-connector {
+	color: var(--aips-primary);
+	font-family: monospace;
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-bold);
+	margin-left: var(--aips-space-3);
+	margin-right: var(--aips-space-1);
+}
+
+.aips-badge-batch {
+	margin-left: var(--aips-space-1);
+}
+
+.aips-batch-badge-icon {
+	font-size: 11px;
+	width: 11px;
+	height: 11px;
+	vertical-align: middle;
+}
+
 /* History table: checkbox column background (integrate with table) */
 .aips-history-table thead .column-cb,
 .aips-history-table thead .check-column {

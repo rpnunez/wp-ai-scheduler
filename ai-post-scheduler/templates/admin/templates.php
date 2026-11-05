@@ -18,6 +18,7 @@ if (!defined('ABSPATH')) {
             foreach ($campaign_options as $campaign_option) {
                 $campaign_map[(int) $campaign_option->id] = $campaign_option;
             }
+            $template_campaign_map = $campaigns_repo->get_template_campaign_mappings();
             $category_name_map = array();
             if (!empty($categories) && is_array($categories)) {
                 foreach ($categories as $category) {
@@ -105,14 +106,23 @@ if (!defined('ABSPATH')) {
                                 <?php if (!empty($template->include_sources) && empty(array_filter((array) json_decode($template->source_group_ids ?? '[]', true)))): ?>
                                     <p class="description"><?php esc_html_e('Sources enabled without a group. Edit this template and select at least one source group.', 'ai-post-scheduler'); ?></p>
                                 <?php endif; ?>
-                                <?php if (!empty($template->campaign_id) && isset($campaign_map[(int) $template->campaign_id])) : ?>
-                                    <?php $campaign = $campaign_map[(int) $template->campaign_id]; ?>
-                                    <div class="cell-meta aips-mt-xs">
-                                        <a class="aips-badge aips-badge-info" href="<?php echo esc_url(add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($campaign->id)), admin_url('admin.php'))); ?>">
-                                            <?php echo esc_html($campaign->name); ?>
-                                        </a>
-                                    </div>
-                                <?php endif; ?>
+                                <?php
+                                $linked_cids = isset($template_campaign_map[(int) $template->id]) ? $template_campaign_map[(int) $template->id] : array();
+                                if (!empty($linked_cids)) :
+                                    foreach ($linked_cids as $cid) :
+                                        if (isset($campaign_map[$cid])) :
+                                            $campaign = $campaign_map[$cid];
+                                            ?>
+                                            <div class="cell-meta aips-mt-xs">
+                                                <a class="aips-badge aips-badge-info" href="<?php echo esc_url(add_query_arg(array('page' => AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG, 'campaign_id' => absint($campaign->id)), admin_url('admin.php'))); ?>">
+                                                    <?php echo esc_html($campaign->name); ?>
+                                                </a>
+                                            </div>
+                                            <?php
+                                        endif;
+                                    endforeach;
+                                endif;
+                                ?>
                             </td>
                             <td class="column-category">
                                 <?php 
@@ -207,8 +217,7 @@ if (!defined('ABSPATH')) {
                                             <button type="button"
                                                     class="aips-row-action-item aips-delete-template aips-text-danger"
                                                     data-id="<?php echo esc_attr($template->id); ?>"
-                                                    title="<?php echo !empty($template->campaign_id) ? esc_attr__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler') : esc_attr__('Delete', 'ai-post-scheduler'); ?>"
-                                                    <?php disabled(!empty($template->campaign_id)); ?>>
+                                                    title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-trash"></span>
                                                 <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                                             </button>

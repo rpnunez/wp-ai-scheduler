@@ -115,6 +115,28 @@ class AIPS_Prompt_Builder_Post_Content {
 			}
 		}
 
+		if (method_exists($context, 'get_campaign_directives') || method_exists($context, 'get_campaign_goal')) {
+			$campaign_name       = method_exists($context, 'get_campaign_name') ? $context->get_campaign_name() : '';
+			$campaign_goal       = method_exists($context, 'get_campaign_goal') ? $context->get_campaign_goal() : '';
+			$campaign_directives = method_exists($context, 'get_campaign_directives') ? $context->get_campaign_directives() : '';
+
+			$campaign_lines = array();
+			if (!empty($campaign_name)) {
+				$campaign_lines[] = 'Campaign: ' . $campaign_name;
+			}
+			if (!empty($campaign_goal)) {
+				$campaign_lines[] = 'Content Goal: ' . $campaign_goal;
+			}
+			if (!empty($campaign_directives)) {
+				$campaign_lines[] = 'Directives: ' . $campaign_directives;
+			}
+
+			if (!empty($campaign_lines)) {
+				$campaign_block   = "[CAMPAIGN STRATEGY & DIRECTIVES]\n" . implode("\n", $campaign_lines);
+				$processed_prompt = $campaign_block . "\n\n" . $processed_prompt;
+			}
+		}
+
 		$diversity_block = $this->diversity_injector->build_avoid_titles_block($context);
 		if (!empty($diversity_block)) {
 			$processed_prompt .= "\n\n" . $diversity_block;

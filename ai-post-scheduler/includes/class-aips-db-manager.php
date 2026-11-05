@@ -9,6 +9,7 @@ class AIPS_DB_Manager {
         'aips_history',
         'aips_history_log',
         'aips_campaigns',
+        'aips_campaign_templates',
         'aips_templates',
         'aips_schedule',
         'aips_voices',
@@ -78,6 +79,7 @@ class AIPS_DB_Manager {
         $table_history = $tables['aips_history'];
         $table_history_log = $tables['aips_history_log'];
         $table_campaigns = $tables['aips_campaigns'];
+        $table_campaign_templates = $tables['aips_campaign_templates'];
         $table_templates = $tables['aips_templates'];
         $table_schedule = $tables['aips_schedule'];
         $table_voices = $tables['aips_voices'];
@@ -172,6 +174,13 @@ class AIPS_DB_Manager {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
             content_goal text,
+            prompt_directives text DEFAULT NULL,
+            default_article_structure_id bigint(20) DEFAULT NULL,
+            default_post_status varchar(50) DEFAULT NULL,
+            default_voice_id bigint(20) DEFAULT NULL,
+            default_author_id bigint(20) DEFAULT NULL,
+            default_categories text DEFAULT NULL,
+            default_tags text DEFAULT NULL,
             campaign_mode varchar(20) DEFAULT 'template',
             is_active tinyint(1) NOT NULL DEFAULT 1,
             is_archived tinyint(1) NOT NULL DEFAULT 0,
@@ -181,7 +190,23 @@ class AIPS_DB_Manager {
             KEY is_active (is_active),
             KEY is_archived (is_archived),
             KEY campaign_mode (campaign_mode),
+            KEY default_article_structure_id (default_article_structure_id),
+            KEY default_voice_id (default_voice_id),
+            KEY default_author_id (default_author_id),
             KEY active_archived (is_active, is_archived)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_campaign_templates (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            campaign_id bigint(20) NOT NULL,
+            template_id bigint(20) NOT NULL,
+            overrides longtext DEFAULT NULL,
+            sort_order int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY campaign_template (campaign_id, template_id),
+            KEY campaign_id (campaign_id),
+            KEY template_id (template_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_templates (
@@ -204,13 +229,11 @@ class AIPS_DB_Manager {
             post_author bigint(20) DEFAULT NULL,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
-            campaign_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY campaign_id (campaign_id)
+            PRIMARY KEY  (id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (

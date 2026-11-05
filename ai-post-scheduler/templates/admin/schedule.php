@@ -10,8 +10,10 @@ $structure_manager      = new AIPS_Article_Structure_Manager();
 $article_structures     = $structure_manager->get_active_structures();
 $template_type_selector = new AIPS_Template_Type_Selector();
 $rotation_patterns      = $template_type_selector->get_rotation_patterns();
+$campaign_options       = class_exists('AIPS_Campaigns_Repository') ? AIPS_Campaigns_Repository::instance()->get_campaign_filter_options() : array();
 
 $preselect_template_id  = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
+$preselect_campaign_id  = isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0;
 $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
 ?>
 		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
@@ -50,6 +52,16 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 					<label for="schedule_title"><?php esc_html_e('Title (Optional)', 'ai-post-scheduler'); ?></label>
 					<input type="text" id="schedule_title" name="schedule_title" class="regular-text">
 					<p class="description"><?php esc_html_e('A friendly name for this schedule to help identify it in the list.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="aips-form-row">
+					<label for="schedule_campaign"><?php esc_html_e('Campaign (Optional)', 'ai-post-scheduler'); ?></label>
+					<select id="schedule_campaign" name="campaign_id">
+						<option value=""><?php esc_html_e('None (Standalone Schedule)', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($campaign_options as $co): ?>
+						<option value="<?php echo esc_attr($co->id); ?>" <?php selected($preselect_campaign_id, $co->id); ?>><?php echo esc_html($co->name); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description"><?php esc_html_e('Assigning a schedule to a campaign groups it under that campaign container.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-form-row">
 					<label for="schedule_template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
@@ -197,9 +209,15 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 					<label for="rotation_pattern"><?php esc_html_e('Rotation Pattern (Optional)', 'ai-post-scheduler'); ?></label>
 					<select id="rotation_pattern" name="rotation_pattern">
 						<option value=""><?php esc_html_e('No Rotation', 'ai-post-scheduler'); ?></option>
+						<optgroup label="<?php esc_attr_e('Campaign Execution Modes', 'ai-post-scheduler'); ?>">
+							<option value="campaign_all"><?php esc_html_e('Run All Campaign Templates (Batch)', 'ai-post-scheduler'); ?></option>
+							<option value="campaign_rotate"><?php esc_html_e('Rotate Through Campaign Templates', 'ai-post-scheduler'); ?></option>
+						</optgroup>
+						<optgroup label="<?php esc_attr_e('Article Structure Rotation', 'ai-post-scheduler'); ?>">
 						<?php foreach ($rotation_patterns as $key => $label): ?>
 						<option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
 						<?php endforeach; ?>
+						</optgroup>
 					</select>
 				</div>
 				<div class="aips-form-row">

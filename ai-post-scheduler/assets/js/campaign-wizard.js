@@ -485,7 +485,7 @@
 			this.renderPreviewList('#aips-ai-preview-ideas', preview.sample_article_ideas || []);
 			this.renderPreviewList('#aips-ai-preview-risks', preview.risks_assumptions || []);
 
-			$('#aips-ai-strategy-preview').show();
+			$('#aips-ai-strategy-preview').removeAttr('hidden').show();
 			$('html, body').animate({
 				scrollTop: $('#aips-ai-strategy-preview').offset().top - 20,
 			}, 200);
@@ -524,7 +524,7 @@
 		 * @return {void}
 		 */
 		hideStrategyPreview: function() {
-			$('#aips-ai-strategy-preview').hide();
+			$('#aips-ai-strategy-preview').attr('hidden', true).hide();
 		},
 
 		/**
@@ -843,12 +843,12 @@
 			this.currentStepIndex = Math.max(0, Math.min(index, stepCount - 1));
 
 			var step = this.steps[this.currentStepIndex];
-			$('.aips-wizard-step').hide().filter('[data-step="' + step + '"]').show();
+			$('.aips-wizard-step').attr('hidden', true).hide().filter('[data-step="' + step + '"]').removeAttr('hidden').show();
 			$('.aips-wizard-step-tab').removeClass('aips-btn-primary').addClass('aips-btn-secondary');
 			$('.aips-wizard-step-tab[data-step="' + step + '"]').removeClass('aips-btn-secondary').addClass('aips-btn-primary');
 			$('#aips-wizard-prev').prop('disabled', this.currentStepIndex === 0);
-			$('#aips-wizard-next').toggle(this.currentStepIndex < stepCount - 1);
-			$('#aips-wizard-finalize').toggle(this.currentStepIndex === stepCount - 1);
+			$('#aips-wizard-next').attr('hidden', this.currentStepIndex >= stepCount - 1).toggle(this.currentStepIndex < stepCount - 1);
+			$('#aips-wizard-finalize').attr('hidden', this.currentStepIndex !== stepCount - 1).toggle(this.currentStepIndex === stepCount - 1);
 
 			if (step === 'confirm') {
 				this.validateConfirmStep();
@@ -1024,35 +1024,65 @@
 				return { value: $(this).val(), label: $(this).text() };
 			}).get();
 
-			var $newRule = $(
-				'<div class="aips-post-type-rule" data-rule-index="' + nextIndex + '" style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 10px;">' +
-					'<div style="display: grid; grid-template-columns: 1fr 1fr 80px 50px; gap: 10px; align-items: start;">' +
-						'<div>' +
-							'<label>Post Type</label>' +
-							'<select name="post_type_rules[' + nextIndex + '][post_type]" class="regular-text"></select>' +
-						'</div>' +
-						'<div>' +
-							'<label>Prompt Override (Optional)</label>' +
-							'<input type="text" name="post_type_rules[' + nextIndex + '][prompt_override]" class="regular-text" placeholder="Leave empty to use main template">' +
-						'</div>' +
-						'<div>' +
-							'<label>Quantity</label>' +
-							'<input type="number" name="post_type_rules[' + nextIndex + '][quantity]" min="1" max="100" value="1" style="width: 100%;">' +
-						'</div>' +
-						'<div style="padding-top: 20px;">' +
-							'<button type="button" class="button button-small aips-remove-post-type-rule" title="Remove">' +
-								'<span class="dashicons dashicons-no-alt" style="margin-top: 2px;"></span>' +
-							'</button>' +
-						'</div>' +
-					'</div>' +
-				'</div>'
-			);
+			var $newRule = $('<div />', {
+				'class': 'aips-post-type-rule',
+				'data-rule-index': nextIndex
+			});
 
-			var $select = $newRule.find('select');
+			var $grid = $('<div />', { 'class': 'aips-post-type-rule-grid' });
+
+			// Post Type field
+			var $ptCol = $('<div />');
+			$('<label />', { text: 'Post Type' }).appendTo($ptCol);
+			var $select = $('<select />', {
+				name: 'post_type_rules[' + nextIndex + '][post_type]',
+				'class': 'regular-text'
+			});
 			for (var i = 0; i < postTypesJson.length; i++) {
-				$select.append('<option value="' + postTypesJson[i].value + '">' + postTypesJson[i].label + '</option>');
+				$('<option />', {
+					value: postTypesJson[i].value,
+					text: postTypesJson[i].label
+				}).appendTo($select);
 			}
+			$select.appendTo($ptCol);
+			$ptCol.appendTo($grid);
 
+			// Prompt Override field
+			var $promptCol = $('<div />');
+			$('<label />', { text: 'Prompt Override (Optional)' }).appendTo($promptCol);
+			$('<input />', {
+				type: 'text',
+				name: 'post_type_rules[' + nextIndex + '][prompt_override]',
+				'class': 'regular-text',
+				placeholder: 'Leave empty to use main template'
+			}).appendTo($promptCol);
+			$promptCol.appendTo($grid);
+
+			// Quantity field
+			var $qtyCol = $('<div />');
+			$('<label />', { text: 'Quantity' }).appendTo($qtyCol);
+			$('<input />', {
+				type: 'number',
+				name: 'post_type_rules[' + nextIndex + '][quantity]',
+				min: '1',
+				max: '100',
+				value: '1',
+				'class': 'aips-w-full'
+			}).appendTo($qtyCol);
+			$qtyCol.appendTo($grid);
+
+			// Action button
+			var $actionCol = $('<div />', { 'class': 'aips-post-type-rule-action' });
+			var $removeBtn = $('<button />', {
+				type: 'button',
+				'class': 'button button-small aips-remove-post-type-rule',
+				title: 'Remove'
+			});
+			$('<span />', { 'class': 'dashicons dashicons-no-alt' }).appendTo($removeBtn);
+			$removeBtn.appendTo($actionCol);
+			$actionCol.appendTo($grid);
+
+			$grid.appendTo($newRule);
 			$container.append($newRule);
 		},
 

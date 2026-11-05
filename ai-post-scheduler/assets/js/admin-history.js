@@ -1561,6 +1561,7 @@
 					correlation_id: self.correlationId,
 					date_from: self.dateFrom,
 					date_to: self.dateTo,
+					campaign_id: $('#aips-history-campaign-id').val() || 0,
 					paged: paged
 				},
 				success: function (response) {

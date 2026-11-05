@@ -1132,10 +1132,6 @@ class AIPS_Generator {
 
         if ($context instanceof AIPS_Template_Context) {
             $history_metadata['template_id'] = $context->get_id();
-            $template = $context->get_template();
-            if ($template && !empty($template->campaign_id)) {
-                $history_metadata['campaign_id'] = absint($template->campaign_id);
-            }
         } elseif ($context instanceof AIPS_Topic_Context) {
             // For topic context, store author_id and topic_id
             $history_metadata['topic_id'] = $context->get_id();
@@ -1143,6 +1139,11 @@ class AIPS_Generator {
             if ($author && isset($author->id)) {
                 $history_metadata['author_id'] = $author->id;
             }
+        }
+
+        // Campaign attribution comes from the campaign context decorator.
+        if ($context instanceof AIPS_Campaign_Context && $context->get_campaign_id()) {
+            $history_metadata['campaign_id'] = $context->get_campaign_id();
         }
 
         // Get creation_method from context, default to 'manual' if not specified
