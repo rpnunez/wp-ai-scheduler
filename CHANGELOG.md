@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Added
+- **Summarized Notification Digest & Batch Threshold:**
+  - Added configurable summarized notification digest in Settings > Notifications to batch frequent generation and review emails (e.g. Post Generated, Post Ready For Review) into a single digest email instead of sending individual emails per post.
+  - Exposed customizable batch threshold (clamped 2–50, default 5) to trigger instant digest dispatch when accumulated count is met.
+  - Added maximum delay fallback window (15m, 30m, 1h default, 2h, 6h) via recurring 15-minute WP-Cron check (`aips_notif_digest_cron`) to dispatch pending notifications even if below threshold.
+  - Added "Send Pending Digest Now" admin action for immediate manual queue testing and flush.
+  - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
+
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.

@@ -85,6 +85,7 @@
 			if (AIPS.testConnection) {
 				$(document).off('click.aipsTestConn', '#aips-test-connection').on('click.aipsTestConn', '#aips-test-connection', AIPS.testConnection);
 			}
+			$(document).off('click.aipsFlushDigest', '#aips-flush-digest-btn').on('click.aipsFlushDigest', '#aips-flush-digest-btn', AIPS.onFlushNotificationDigest);
 			$(document).on('click', '[data-aips-connector-move]', AIPS.onConnectorMove);
 			$(document).on('change', 'input[name="aips_embeddings_scope"], #aips_embeddings_scope', function() {
 				var val = $(this).val();
@@ -129,6 +130,58 @@
 			}
 			$(document).on('change', '#aips_author_topic_auto_approval_mode', updateAuthorApprovalFields);
 			updateAuthorApprovalFields();
+		},
+
+		/**
+		 * Flush and send pending notification digest immediately.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onFlushNotificationDigest: function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var originalHtml = $btn.html();
+			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> ' + 'Sending...');
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_flush_notification_digest',
+					nonce: aipsAjax.nonce
+				},
+				success: function(response) {
+					$btn.prop('disabled', false).html(originalHtml);
+					if (response && response.success) {
+						var msg = (response.data && response.data.message) ? response.data.message : 'Digest sent successfully.';
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(msg, 'success');
+						} else {
+							alert(msg);
+						}
+						if (response.data && typeof response.data.queue_count !== 'undefined') {
+							$('#aips-digest-queue-count').text(response.data.queue_count);
+						}
+					} else {
+						var errMsg = (response && response.data && response.data.message) ? response.data.message : 'Failed to send digest.';
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(errMsg, 'error');
+						} else {
+							alert(errMsg);
+						}
+					}
+				},
+				error: function() {
+					$btn.prop('disabled', false).html(originalHtml);
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Network error while flushing digest.', 'error');
+					} else {
+						alert('Network error while flushing digest.');
+					}
+				}
+			});
 		},
 
 		/**
