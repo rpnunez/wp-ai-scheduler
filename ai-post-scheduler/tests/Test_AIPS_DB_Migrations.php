@@ -601,8 +601,49 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	}
 
 	/**
-	 * migrate_to_3_7_21() must return true and be a safe no-op on a second run
-	 * (tables already utf8mb4, indexes already consolidated).
+	 * migrate_to_3_7_21() must strip the cached embedding vector from existing
+	 * author_topics metadata while preserving every other metadata field.
+	 */
+	public function test_migrate_to_3_7_21_strips_metadata_embeddings() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		$wpdb->insert(
+			$table,
+			array(
+				'author_id'    => 1,
+				'topic_title'  => 'Bloated topic',
+				'status'       => 'approved',
+				'score'        => 90,
+				'metadata'     => wp_json_encode( array(
+					'embedding'           => array_fill( 0, 1536, 0.1234 ),
+					'potential_duplicate' => false,
+					'auto_approval_rule'  => 'similarity',
+				) ),
+				'generated_at' => 1700000000,
+			),
+			array( '%d', '%s', '%s', '%d', '%s', '%d' )
+		);
+		$topic_id = (int) $wpdb->insert_id;
+
+		$this->assertTrue( $this->run_migrate_3_7_21() );
+
+		$meta = json_decode(
+			(string) $wpdb->get_var( $wpdb->prepare( "SELECT metadata FROM `{$table}` WHERE id = %d", $topic_id ) ),
+			true
+		);
+		$this->assertArrayNotHasKey( 'embedding', $meta, 'embedding must be stripped from metadata' );
+		$this->assertArrayHasKey( 'potential_duplicate', $meta, 'other metadata fields must be preserved' );
+		$this->assertSame( 'similarity', $meta['auto_approval_rule'], 'other metadata values must be preserved' );
+
+		$wpdb->query( $wpdb->prepare( "DELETE FROM `{$table}` WHERE id = %d", $topic_id ) );
+	}
+
+	/**
+	 * migrate_to_3_7_21() must return true and be a safe, idempotent no-op on a
+	 * second run (indexes already consolidated, no embeddings left to strip).
 	 */
 	public function test_migrate_to_3_7_21_is_idempotent() {
 		AIPS_DB_Manager::install_tables();

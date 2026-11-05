@@ -1835,80 +1835,34 @@ class AIPS_DB_Migrations {
 	 * Migration for version 3.7.21.
 	 *
 	 * Three storage/efficiency fixes surfaced by a production DB audit:
-	 *   1. Converts every AIPS table to utf8mb4 / utf8mb4_unicode_520_ci. The
-	 *      tables were created latin1_swedish_ci on installs where
-	 *      get_charset_collate() returned an empty string (empty DB_CHARSET),
-	 *      which silently drops non-latin1 characters on write and forces a
-	 *      collation conversion on every join to the utf8mb4 core tables.
-	 *   2. Consolidates redundant single-column indexes that are left-prefixes of
+	 *   1. Consolidates redundant single-column indexes that are left-prefixes of
 	 *      existing composites on aips_history and aips_author_topics, and adds
 	 *      author_id_status_score so the per-author topic claim no longer
 	 *      filesorts on score.
+	 *   2. Strips the cached candidate embedding vector out of every
+	 *      aips_author_topics.metadata payload — a ~50 KB-per-row float array that
+	 *      the duplicate/auto-approval pipeline no longer persists (the vector is
+	 *      transient and also lives canonically in aips_embeddings).
 	 *   3. Deletes aips_history_log rows whose parent aips_history row is gone.
 	 *
-	 * Every step is guarded (collation check / covering-index presence /
-	 * SHOW INDEX) so it is a safe, idempotent no-op once applied and on fresh
-	 * installs. Returns false to leave the version unstamped and retry when a
-	 * charset conversion fails, so a partial conversion always finishes.
+	 * Every step is guarded (covering-index presence / SHOW INDEX / SHOW TABLES)
+	 * so it is a safe, idempotent no-op once applied and on fresh installs.
+	 *
+	 * The latin1 -> utf8mb4 table conversion the audit also surfaced is handled
+	 * separately: this site sets DB_CHARSET=latin1, so the latin1 AIPS columns
+	 * hold raw UTF-8 bytes and a plain CONVERT TO would double-encode them. That
+	 * conversion needs byte-level verification and a DB_CHARSET change, so it is
+	 * deliberately out of scope here.
 	 *
 	 * @return bool
 	 */
 	private function migrate_to_3_7_21() {
-		if ( ! $this->convert_aips_tables_to_utf8mb4() ) {
-			return false;
-		}
-
 		$this->consolidate_history_indexes();
 		$this->consolidate_author_topic_indexes();
+		$this->strip_author_topic_metadata_embeddings();
 		$this->cleanup_orphaned_history_log();
 
 		return true;
-	}
-
-	/**
-	 * Convert every existing AIPS table to utf8mb4 / utf8mb4_unicode_520_ci.
-	 *
-	 * Tables already on utf8mb4 and tables that do not exist are skipped, so the
-	 * method is cheap to re-run. WordPress has always connected with
-	 * SET NAMES utf8mb4 against these latin1 columns, so the stored bytes are
-	 * valid latin1 and CONVERT TO reinterprets them to their correct code points;
-	 * characters already lost to the narrower latin1 columns cannot be recovered.
-	 * Falls back to the server-default utf8mb4 collation if _520_ci is unavailable.
-	 *
-	 * @return bool True when every table is utf8mb4; false if a conversion failed.
-	 */
-	private function convert_aips_tables_to_utf8mb4() {
-		global $wpdb;
-
-		$all_ok = true;
-
-		foreach ( AIPS_DB_Manager::get_full_table_names() as $table ) {
-			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
-				continue;
-			}
-
-			$collation = $wpdb->get_var( $wpdb->prepare(
-				'SELECT TABLE_COLLATION FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
-				$table
-			) );
-			if ( is_string( $collation ) && 0 === stripos( $collation, 'utf8mb4' ) ) {
-				continue;
-			}
-
-			$result = $wpdb->query( "ALTER TABLE `{$table}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
-			if ( false === $result ) {
-				// Older servers may not know utf8mb4_unicode_520_ci; fall back to the
-				// server-default utf8mb4 collation rather than looping forever.
-				$result = $wpdb->query( "ALTER TABLE `{$table}` CONVERT TO CHARACTER SET utf8mb4" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
-			}
-
-			if ( false === $result ) {
-				$all_ok = false;
-				$this->logger->log( 'Migration 3.7.21: utf8mb4 conversion failed for ' . $table . ': ' . $wpdb->last_error, 'error' );
-			}
-		}
-
-		return $all_ok;
 	}
 
 	/**
@@ -1993,6 +1947,68 @@ class AIPS_DB_Migrations {
 		) );
 		if ( $exists ) {
 			$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `{$index_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		}
+	}
+
+	/**
+	 * Remove the cached `embedding` vector from existing aips_author_topics
+	 * metadata payloads.
+	 *
+	 * The duplicate/auto-approval pipeline used to persist the full candidate
+	 * embedding (a ~1,536-float array, ~50 KB of JSON) in each topic's metadata.
+	 * It is transient — only reused within the generating request — and the
+	 * canonical vector lives in aips_embeddings, so it is stripped here to reclaim
+	 * the space. Only the `embedding` key is removed; every other metadata field
+	 * (scores, duplicate flags, approval notes) is preserved. Processed in indexed
+	 * id batches and safe to re-run (rows without the key are skipped).
+	 *
+	 * @return void
+	 */
+	private function strip_author_topic_metadata_embeddings() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		$batch_size = 200;
+		$last_id    = 0;
+		$updated    = 0;
+
+		do {
+			$rows = $wpdb->get_results( $wpdb->prepare(
+				"SELECT id, metadata FROM `{$table}`
+				WHERE id > %d AND metadata LIKE %s
+				ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$last_id,
+				'%"embedding"%',
+				$batch_size
+			) );
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row->id;
+
+				$meta = json_decode( (string) $row->metadata, true );
+				if ( ! is_array( $meta ) || ! array_key_exists( 'embedding', $meta ) ) {
+					continue;
+				}
+
+				unset( $meta['embedding'] );
+
+				$wpdb->update(
+					$table,
+					array( 'metadata' => wp_json_encode( $meta ) ),
+					array( 'id' => (int) $row->id ),
+					array( '%s' ),
+					array( '%d' )
+				);
+				++$updated;
+			}
+		} while ( ! empty( $rows ) );
+
+		if ( $updated ) {
+			$this->logger->log( sprintf( 'Migration 3.7.21: Stripped cached embeddings from %d aips_author_topics metadata rows.', $updated ), 'info' );
 		}
 	}
 

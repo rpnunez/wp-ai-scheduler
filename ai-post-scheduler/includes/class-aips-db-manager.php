@@ -73,14 +73,6 @@ class AIPS_DB_Manager {
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
-        if ( '' === trim( (string) $charset_collate ) ) {
-            // Some installs report an empty DB_CHARSET, which would otherwise let
-            // dbDelta fall back to the server default (often latin1_swedish_ci) and
-            // silently drop non-latin1 characters on write while forcing collation
-            // conversions on every join to the utf8mb4 core tables. Force utf8mb4 so
-            // new tables always match WordPress core. See migrate_to_3_7_21().
-            $charset_collate = 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci';
-        }
         $tables = self::get_full_table_names();
 
         $table_history = $tables['aips_history'];
