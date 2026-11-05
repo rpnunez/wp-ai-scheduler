@@ -89,6 +89,43 @@ if (!defined('ABSPATH')) {
 					</div>
 				</div>
 				
+				<!-- Slug Component -->
+				<div class="aips-component-section" data-component="slug">
+					<div class="aips-component-header">
+						<h4 class="aips-component-title"><?php esc_html_e('Slug', 'ai-post-scheduler'); ?></h4>
+						<div class="aips-component-actions">
+							<span class="aips-component-status"></span>
+							<button type="button" class="aips-regenerate-btn" data-component="slug">
+								<span class="dashicons dashicons-update"></span>
+								<span class="button-text"><?php esc_html_e('Re-generate', 'ai-post-scheduler'); ?></span>
+							</button>
+						</div>
+					</div>
+					<div class="aips-component-body">
+						<input type="text" id="aips-component-slug" class="aips-component-input" />
+						<div class="aips-component-meta">
+							<span class="aips-char-count"></span>
+						</div>
+					</div>
+					<div class="aips-component-revisions-wrapper">
+						<button type="button" class="aips-view-revisions-btn" data-component="slug">
+							<span class="dashicons dashicons-backup"></span>
+							<span class="button-text"><?php esc_html_e('View Revisions', 'ai-post-scheduler'); ?></span>
+							<span class="revision-count"></span>
+						</button>
+						<div class="aips-component-revisions" style="display: none;">
+							<div class="aips-revisions-loading">
+								<span class="spinner is-active"></span>
+								<span><?php esc_html_e('Loading revisions...', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-revisions-list"></div>
+							<div class="aips-revisions-empty" style="display: none;">
+								<?php esc_html_e('No previous revisions found.', 'ai-post-scheduler'); ?>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<!-- Excerpt Component -->
 				<div class="aips-component-section" data-component="excerpt">
 					<div class="aips-component-header">

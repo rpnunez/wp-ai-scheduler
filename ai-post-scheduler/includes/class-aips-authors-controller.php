@@ -127,6 +127,8 @@ class AIPS_Authors_Controller {
 			'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
 			'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
 			'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+			'generate_slug' => isset($_POST['generate_slug']) ? 1 : 0,
+			'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['slug_prompt'])) : '',
 			'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
 			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field(wp_unslash($_POST['voice_tone'])) : '',
 			'writing_style' => isset($_POST['writing_style']) ? sanitize_text_field(wp_unslash($_POST['writing_style'])) : '',

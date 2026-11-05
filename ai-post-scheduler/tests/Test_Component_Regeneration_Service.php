@@ -557,4 +557,44 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			(is_array($result) && isset($result['attachment_id'])) || is_wp_error($result)
 		);
 	}
+
+	// ------------------------------------------------------------------
+	// regenerate_slug
+	// ------------------------------------------------------------------
+
+	/**
+	 * Test regenerate_slug requires generation context
+	 */
+	public function test_regenerate_slug_requires_context() {
+		$context = array();
+		$result = $this->service->regenerate_slug($context);
+
+		$this->assertInstanceOf('WP_Error', $result);
+		$this->assertEquals('missing_context', $result->get_error_code());
+	}
+
+	/**
+	 * Test regenerate_slug with template context
+	 */
+	public function test_regenerate_slug_with_template() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test Template',
+			'generate_slug'   => 1,
+			'slug_prompt'     => 'SEO slug',
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$context = array(
+			'generation_context' => $generation_context,
+			'current_title'      => 'A Test Post Title',
+			'current_content'    => 'Article body',
+		);
+
+		$result = $this->service->regenerate_slug($context);
+
+		// Returns string or WP_Error
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+	}
 }
