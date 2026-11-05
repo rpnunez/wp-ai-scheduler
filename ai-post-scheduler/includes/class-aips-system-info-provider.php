@@ -16,18 +16,88 @@ if (!defined('ABSPATH')) {
 class AIPS_System_Info_Provider {
 
 	/**
+	 * @var AIPS_DB_Prune_Service
+	 */
+	private $db_prune_service;
+
+	/**
+	 * @param AIPS_DB_Prune_Service|null $db_prune_service Optional service override.
+	 */
+	public function __construct($db_prune_service = null) {
+		$container = AIPS_Container::get_instance();
+
+		$this->db_prune_service = $db_prune_service ?: ($container->has(AIPS_DB_Prune_Service::class)
+			? $container->make(AIPS_DB_Prune_Service::class)
+			: AIPS_DB_Prune_Service::instance());
+	}
+
+	/**
 	 * Get all system info data organized by section.
 	 *
 	 * @return array<string, array<string, array{label:string, value:string, status:string, details?:array<string>}>>
 	 */
 	public function get_system_info(): array {
 		return array(
-			'environment' => $this->get_environment_info(),
-			'plugin'      => $this->get_plugin_info(),
-			'database'    => $this->get_database_info(),
-			'filesystem'  => $this->get_filesystem_info(),
-			'ai'          => $this->get_ai_info(),
+			'environment'  => $this->get_environment_info(),
+			'plugin'       => $this->get_plugin_info(),
+			'database'     => $this->get_database_info(),
+			'filesystem'   => $this->get_filesystem_info(),
+			'ai'           => $this->get_ai_info(),
+			'data_storage' => $this->get_data_storage_info(),
 		);
+	}
+
+	/**
+	 * Gather row count and storage size for every plugin database table, so an
+	 * admin can see at a glance how much of each kind of data exists on the site.
+	 *
+	 * @return array<string, array{label:string, value:string, status:string}>
+	 */
+	private function get_data_storage_info(): array {
+		$tables = $this->db_prune_service->get_table_status_summary();
+
+		$checks       = array();
+		$tot_records  = 0;
+		$tot_data     = 0;
+		$tot_index    = 0;
+
+		foreach ($tables as $table) {
+			$short_name = isset($table['short_name']) ? (string) $table['short_name'] : (string) $table['table'];
+			$records    = isset($table['records']) ? (int) $table['records'] : 0;
+			$data_size  = isset($table['data_size']) ? (int) $table['data_size'] : 0;
+			$index_size = isset($table['index_size']) ? (int) $table['index_size'] : 0;
+			$overhead   = isset($table['overhead']) ? (int) $table['overhead'] : 0;
+
+			$tot_records += $records;
+			$tot_data    += $data_size;
+			$tot_index   += $index_size;
+
+			$checks[$short_name] = array(
+				'label'  => $short_name,
+				'value'  => sprintf(
+					/* translators: 1: formatted row count, 2: formatted data size, 3: formatted index size */
+					__('%1$s rows · %2$s data · %3$s index', 'ai-post-scheduler'),
+					isset($table['formatted_records']) ? $table['formatted_records'] : number_format_i18n($records),
+					isset($table['formatted_data_size']) ? $table['formatted_data_size'] : size_format($data_size, 2),
+					isset($table['formatted_index_size']) ? $table['formatted_index_size'] : size_format($index_size, 2)
+				),
+				'status' => ($overhead > 1048576) ? 'warning' : 'info',
+			);
+		}
+
+		$checks['total'] = array(
+			'label'  => __('Total Plugin Storage', 'ai-post-scheduler'),
+			'value'  => sprintf(
+				/* translators: 1: formatted total row count, 2: formatted total data size, 3: formatted total index size */
+				__('%1$s rows · %2$s data · %3$s index', 'ai-post-scheduler'),
+				number_format_i18n($tot_records),
+				size_format($tot_data, 2),
+				size_format($tot_index, 2)
+			),
+			'status' => 'info',
+		);
+
+		return $checks;
 	}
 
 	/**

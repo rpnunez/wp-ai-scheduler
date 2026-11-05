@@ -135,6 +135,7 @@ class AIPS_Generated_Posts_Controller {
 			$scheduled_timestamp = ('future' === $post->post_status) ? $post_timestamp : null;
 			
 			$posts_data[] = array(
+				'id' => $item->post_id,
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'post_type' => $post->post_type,
@@ -187,6 +188,7 @@ class AIPS_Generated_Posts_Controller {
 			}
 
 			$partial_posts_data[] = array(
+				'id' => $item->post_id,
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'post_type' => $post->post_type,

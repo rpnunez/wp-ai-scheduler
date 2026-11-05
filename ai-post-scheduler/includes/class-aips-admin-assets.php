@@ -224,7 +224,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-		if ((self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+		if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) {
 			$this->enqueue_telemetry_assets();
 		}
 
@@ -256,6 +256,10 @@ class AIPS_Admin_Assets {
 			$this->enqueue_stress_test_assets();
 		}
 
+		if ($this->is_diagnostics_tab($page, 'ai-errors')) {
+			$this->enqueue_ai_errors_tab_assets();
+		}
+
 	}
 
 	/**
@@ -280,7 +284,8 @@ class AIPS_Admin_Assets {
 		);
 
 		wp_localize_script('aips-admin-stress-test', 'aipsStressTest', array(
-			'nonce' => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'nonce'                    => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'nonceCleanStressTestData' => wp_create_nonce('aips_status_clean_stress_test_data'),
 			'i18n'  => array(
 				'running'               => __('Running…', 'ai-post-scheduler'),
 				'notRun'                => __('Not run', 'ai-post-scheduler'),
@@ -314,7 +319,47 @@ class AIPS_Admin_Assets {
 				/* translators: %d: number of selected test cases */
 				'runSelectedCount'      => __('Run Selected (%d)', 'ai-post-scheduler'),
 				'selectAtLeastOne'      => __('Please select at least one test case to run.', 'ai-post-scheduler'),
+				'runDetails'            => __('Stress Test Run Details', 'ai-post-scheduler'),
+				'comparisonDiff'        => __('Stress Test Comparison & Diff', 'ai-post-scheduler'),
+				'selectTwoRunsToCompare'=> __('Please select exactly 2 runs to compare.', 'ai-post-scheduler'),
 			),
+		));
+	}
+
+	/**
+	 * Enqueue assets for the AI Errors diagnostics tab.
+	 *
+	 * @return void
+	 */
+	private function enqueue_ai_errors_tab_assets() {
+		$this->enqueue_history_modal_opener_script();
+
+		wp_enqueue_script(
+			'aips-admin-ai-errors',
+			AIPS_PLUGIN_URL . 'assets/js/admin-ai-errors.js',
+			array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-admin-history'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-admin-ai-errors', 'aipsAiErrorsL10n', array(
+			'loading'             => __('Loading error logs…', 'ai-post-scheduler'),
+			'loadingDetails'      => __('Loading error details…', 'ai-post-scheduler'),
+			'noErrorsFound'       => __('No errors found matching the current filters.', 'ai-post-scheduler'),
+			'errorLoading'        => __('Failed to load error logs.', 'ai-post-scheduler'),
+			'errorLoadingDetails' => __('Failed to load error details.', 'ai-post-scheduler'),
+			'copied'              => __('Copied!', 'ai-post-scheduler'),
+			'copyDiagnostic'      => __('Copy Diagnostic Info', 'ai-post-scheduler'),
+			'copyPrompt'          => __('Copy Prompt', 'ai-post-scheduler'),
+			'runLabel'            => __('Run #%d', 'ai-post-scheduler'),
+			'viewDetails'         => __('View Details', 'ai-post-scheduler'),
+			'colDateTime'         => __('Date / Time', 'ai-post-scheduler'),
+			'colComponent'        => __('Component', 'ai-post-scheduler'),
+			'colError'            => __('Error Message', 'ai-post-scheduler'),
+			'colRun'              => __('Associated Run / Post', 'ai-post-scheduler'),
+			'colActions'          => __('Actions', 'ai-post-scheduler'),
+			'promptEmpty'         => __('No prompt recorded for this error.', 'ai-post-scheduler'),
+			'optionsEmpty'        => __('No request parameters recorded.', 'ai-post-scheduler'),
 		));
 	}
 
@@ -452,20 +497,28 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
-			'aips-datetime-script',
-			AIPS_PLUGIN_URL . 'assets/js/datetime.js',
-			array('jquery'),
-			AIPS_VERSION,
-			true
-		);
+          'aips-datetime-script',
+          AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+          array('jquery'),
+          AIPS_VERSION,
+          true
+        );
 
-		wp_enqueue_script(
-			'aips-utilities-script',
-			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-			array('jquery', 'aips-datetime-script', 'wp-a11y'),
-			AIPS_VERSION,
-			true
-		);
+        wp_enqueue_script(
+          'aips-templates-script',
+          AIPS_PLUGIN_URL . 'assets/js/templates.js',
+          array('jquery'),
+          AIPS_VERSION,
+          true
+        );
+
+        wp_enqueue_script(
+          'aips-utilities-script',
+          AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+          array('jquery', 'aips-datetime-script', 'aips-templates-script', 'wp-a11y'),
+          AIPS_VERSION,
+          true
+        );
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
@@ -479,14 +532,6 @@ class AIPS_Admin_Assets {
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
             'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
         ));
-
-        wp_enqueue_script(
-            'aips-templates-script',
-            AIPS_PLUGIN_URL . 'assets/js/templates.js',
-            array('jquery'),
-            AIPS_VERSION,
-            true
-        );
 
         wp_enqueue_script(
             'aips-admin-script',
@@ -527,6 +572,7 @@ class AIPS_Admin_Assets {
             'noneOption'          => __('None', 'ai-post-scheduler'),
             // Table filter persistence
             'persistTableFilters' => (bool) AIPS_Config::get_instance()->get_option('aips_persist_table_filters'),
+            'hasUnsplashAccessKey' => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
         ));
     }
 
@@ -560,9 +606,17 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-utilities-script',
             AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-            array('jquery', 'aips-datetime-script'),
+            array('jquery', 'aips-datetime-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
         );
@@ -1047,6 +1101,7 @@ class AIPS_Admin_Assets {
                 // Per-post-type category/tag taxonomy support, used to hide the
                 // Categories/Tags fields for post types that don't support them.
                 'postTypeTaxonomySupport' => AIPS_Utilities::get_selectable_post_types(),
+                'hasUnsplashAccessKey'    => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
             ));
     }
 
@@ -1812,7 +1867,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-system-status',
                 AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1830,6 +1885,21 @@ class AIPS_Admin_Assets {
                 'nonceCleanupNotifications'             => wp_create_nonce('aips_status_cleanup_notifications'),
                 'nonceResetResilience'                  => wp_create_nonce('aips_status_reset_resilience'),
                 'nonceRepairDatetime'                   => wp_create_nonce('aips_status_repair_datetime'),
+                'noncePruneTelemetry'                   => wp_create_nonce('aips_status_prune_telemetry'),
+                'noncePurgeTelemetry'                   => wp_create_nonce('aips_status_purge_telemetry'),
+                'noncePruneHistoryLogs'                 => wp_create_nonce('aips_status_prune_history_logs'),
+                'nonceCleanEmbeddings'                  => wp_create_nonce('aips_status_clean_orphaned_embeddings'),
+                'nonceOptimizeTable'                    => wp_create_nonce('aips_status_optimize_table'),
+                'nonceGetTables'                        => wp_create_nonce('aips_status_get_tables'),
+                'confirmPruneTelemetry'                 => __('Prune telemetry records older than configured retention period? Batched deletion will defragment table if needed.', 'ai-post-scheduler'),
+                'confirmPurgeTelemetryTitle'            => __('Purge All Telemetry Data', 'ai-post-scheduler'),
+                'confirmPurgeTelemetry'                 => __('Are you sure you want to PURGE ALL telemetry records? This will truncate the table and instantly reclaim all disk space (reset to 0 bytes). This action cannot be undone.', 'ai-post-scheduler'),
+                'confirmPruneHistoryLogs'               => __('Prune generation logs older than configured retention period?', 'ai-post-scheduler'),
+                'confirmCleanEmbeddings'                => __('Clean orphaned embeddings for posts that no longer exist?', 'ai-post-scheduler'),
+                'confirmOptimizeTable'                  => __('Run OPTIMIZE TABLE on this table? This can briefly lock the table on large sites.', 'ai-post-scheduler'),
+                'confirmRefreshSystemDestructive'       => __('This includes one or more tasks that permanently delete data (e.g. telemetry/history pruning, orphaned embeddings cleanup). Continue?', 'ai-post-scheduler'),
+                'tableOptimized'                        => __('Table optimized successfully.', 'ai-post-scheduler'),
+                'tablesRefreshed'                       => __('Table sizes refreshed.', 'ai-post-scheduler'),
                 'refreshRunning'                        => __('Refreshing system…', 'ai-post-scheduler'),
                 'refreshDone'                           => __('System refresh complete.', 'ai-post-scheduler'),
                 'refreshPartial'                        => __('System refresh finished with some failures.', 'ai-post-scheduler'),

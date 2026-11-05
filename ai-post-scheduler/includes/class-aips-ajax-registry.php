@@ -254,6 +254,10 @@ class AIPS_Ajax_Registry {
 		// Dev Tools
 		'aips_generate_scaffold'          => 'AIPS_Dev_Tools',
 
+		// Diagnostics Controller
+		'aips_get_ai_errors'              => 'AIPS_Diagnostics_Controller',
+		'aips_get_ai_error_details'       => 'AIPS_Diagnostics_Controller',
+
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
 		'aips_get_telemetry_details'      => 'AIPS_Telemetry_Controller',
@@ -270,6 +274,13 @@ class AIPS_Ajax_Registry {
 		'aips_status_cleanup_notifications' => 'AIPS_System_Status_Controller',
 		'aips_status_reset_resilience'   => 'AIPS_System_Status_Controller',
 		'aips_status_repair_datetime'    => 'AIPS_System_Status_Controller',
+		'aips_status_prune_telemetry'    => 'AIPS_System_Status_Controller',
+		'aips_status_purge_telemetry'    => 'AIPS_System_Status_Controller',
+		'aips_status_prune_history_logs' => 'AIPS_System_Status_Controller',
+		'aips_status_clean_orphaned_embeddings' => 'AIPS_System_Status_Controller',
+		'aips_status_optimize_table'     => 'AIPS_System_Status_Controller',
+		'aips_status_get_tables'         => 'AIPS_System_Status_Controller',
+		'aips_status_clean_stress_test_data' => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',
@@ -385,7 +396,6 @@ class AIPS_Ajax_Registry {
 
 		// Stress Test Controller
 		'aips_stress_test_run'                 => 'AIPS_Stress_Test_Controller',
-		'aips_stress_test_cleanup'             => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_status'              => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_save_run'            => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_get_history'         => 'AIPS_Stress_Test_Controller',
