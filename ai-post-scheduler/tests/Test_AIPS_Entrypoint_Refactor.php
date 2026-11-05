@@ -41,18 +41,31 @@ class Test_AIPS_Entrypoint_Refactor extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that AI_Post_Scheduler proxy delegates to AIPS_Container_Bindings properly.
+	 * Test that AI_Post_Scheduler proxy delegates to AIPS_Container_Bindings properly with optional argument.
 	 */
 	public function test_entrypoint_delegates_to_container_bindings() {
 		$container = AIPS_Container::get_instance();
 		$container->clear();
 
-		AI_Post_Scheduler::get_instance()->register_container_bindings();
+		AI_Post_Scheduler::get_instance()->register_container_bindings($container);
 
 		$this->assertTrue($container->has(AIPS_Config::class));
 		$this->assertTrue($container->has(AIPS_History_Service::class));
 		$this->assertTrue($container->has(AIPS_Notifications_Repository::class));
 		$this->assertTrue($container->has(AIPS_Logger::class));
+	}
+
+	/**
+	 * Test that AIPS_Cron_Bootstrapper registers cron action hooks.
+	 */
+	public function test_cron_bootstrapper_registers_hooks() {
+		AIPS_Cron_Bootstrapper::boot();
+
+		$this->assertGreaterThan(0, has_action('aips_generate_scheduled_posts'));
+		$this->assertGreaterThan(0, has_action('aips_generate_author_topics'));
+		$this->assertGreaterThan(0, has_action('aips_generate_author_posts'));
+		$this->assertGreaterThan(0, has_action('aips_cleanup_bulk_batch_jobs'));
+		$this->assertGreaterThan(0, has_action('aips_cache_monitor_maintenance'));
 	}
 
 	/**
@@ -72,5 +85,15 @@ class Test_AIPS_Entrypoint_Refactor extends WP_UnitTestCase {
 			$this->assertSame('ai-post-scheduler', AIPS_Query_Monitor::filter_component_context('default', $file));
 		}
 		$this->assertSame('other', AIPS_Query_Monitor::filter_component_context('other', '/wp-content/plugins/other-plugin/file.php'));
+	}
+
+	/**
+	 * Test Query Monitor component directory filter.
+	 */
+	public function test_query_monitor_filter_component_dirs() {
+		$dirs = array('some_key' => '/some/path');
+		$result = AIPS_Query_Monitor::filter_component_dirs($dirs);
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('some_key', $result);
 	}
 }

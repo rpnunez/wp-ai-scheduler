@@ -32,15 +32,21 @@ final class AIPS_Query_Monitor {
 	 * @return array
 	 */
 	public static function filter_component_dirs( array $dirs ) {
+		if ( ! defined( 'AIPS_PLUGIN_DIR' ) ) {
+			return $dirs;
+		}
+
 		$real = realpath( AIPS_PLUGIN_DIR );
 		if ( false === $real ) {
 			return $dirs;
 		}
 
 		$real = rtrim( str_replace( '\\', '/', $real ), '/' );
-		$expected = rtrim( str_replace( '\\', '/', WP_PLUGIN_DIR . '/ai-post-scheduler' ), '/' );
+		$expected = defined( 'WP_PLUGIN_DIR' )
+			? rtrim( str_replace( '\\', '/', WP_PLUGIN_DIR . '/ai-post-scheduler' ), '/' )
+			: '';
 
-		if ( $real !== $expected ) {
+		if ( $expected !== '' && $real !== $expected ) {
 			$dirs['plugin:ai-post-scheduler'] = $real;
 		}
 

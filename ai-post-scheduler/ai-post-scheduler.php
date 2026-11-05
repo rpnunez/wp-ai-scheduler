@@ -33,6 +33,10 @@ if (!defined('AIPS_PLUGIN_BASENAME')) {
     define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 }
 
+// Register Query Monitor filters early at file-load time so symlink resolution is in place.
+require_once AIPS_PLUGIN_DIR . 'includes/class-aips-query-monitor.php';
+AIPS_Query_Monitor::init();
+
 final class AI_Post_Scheduler {
 
     /**
@@ -153,9 +157,6 @@ final class AI_Post_Scheduler {
 
         // Helpers
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-admin-menu-helper.php';
-
-        // Query Monitor integration
-        AIPS_Query_Monitor::init();
     }
 
     /**
@@ -301,10 +302,11 @@ final class AI_Post_Scheduler {
      * Delegates to AIPS_Container_Bindings for modular dependency registration.
      * Public for test suite container reset compatibility.
      *
+     * @param AIPS_Container|null $container Optional container instance.
      * @return void
      */
-    public function register_container_bindings() {
-        AIPS_Container_Bindings::register();
+    public function register_container_bindings( $container = null ) {
+        AIPS_Container_Bindings::register( $container );
     }
 
     /**
