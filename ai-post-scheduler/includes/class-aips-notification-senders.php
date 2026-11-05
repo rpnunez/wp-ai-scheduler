@@ -566,51 +566,13 @@ class AIPS_Notification_Senders {
 			$grouped[$type]['items'][] = $item;
 		}
 
-		// Build HTML for grouped items.
-		$items_html = '';
-		foreach ($grouped as $type_key => $group) {
-			$group_count = count($group['items']);
-			$items_html .= '<div style="margin-top:20px;margin-bottom:8px;">';
-			$items_html .= '<h3 style="margin:0 0 10px 0;font-size:15px;color:#1d2327;border-bottom:2px solid #2271b1;padding-bottom:4px;">'
-				. esc_html($group['label']) . ' <span style="font-weight:normal;color:#646970;font-size:13px;">(' . esc_html($group_count) . ')</span></h3>';
-			$items_html .= '<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #dcdcde;border-collapse:collapse;background:#ffffff;margin-bottom:15px;border-radius:4px;overflow:hidden;">';
-
-			foreach ($group['items'] as $idx => $entry) {
-				$bg_color = ($idx % 2 === 0) ? '#ffffff' : '#f6f7f7';
-				$entry_title = !empty($entry['title']) ? $entry['title'] : __('Untitled', 'ai-post-scheduler');
-				$entry_meta = isset($entry['meta']) && is_array($entry['meta']) ? $entry['meta'] : array();
-				$entry_url = !empty($entry['url']) ? $entry['url'] : '';
-				$status_label = !empty($entry_meta['post_status_label']) ? $entry_meta['post_status_label'] : (!empty($entry_meta['post_status']) ? ucfirst($entry_meta['post_status']) : '');
-				$source_label = !empty($entry_meta['source_label']) ? $entry_meta['source_label'] : '';
-
-				$items_html .= '<tr style="background:' . $bg_color . ';border-bottom:1px solid #dcdcde;">';
-				$items_html .= '<td style="padding:10px 12px;font-size:14px;color:#1d2327;">';
-				$items_html .= '<strong>' . esc_html($entry_title) . '</strong>';
-				if ($source_label || $status_label) {
-					$items_html .= '<div style="font-size:12px;color:#646970;margin-top:3px;">';
-					if ($source_label) {
-						$items_html .= '<span>' . esc_html($source_label) . '</span>';
-					}
-					if ($source_label && $status_label) {
-						$items_html .= ' &middot; ';
-					}
-					if ($status_label) {
-						$items_html .= '<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:#e2e4e7;font-size:11px;font-weight:600;color:#2c3338;">' . esc_html($status_label) . '</span>';
-					}
-					$items_html .= '</div>';
-				}
-				$items_html .= '</td>';
-
-				$items_html .= '<td style="padding:10px 12px;text-align:right;white-space:nowrap;font-size:13px;">';
-				if (!empty($entry_url)) {
-					$items_html .= '<a href="' . esc_url($entry_url) . '" style="display:inline-block;padding:4px 10px;background:#2271b1;color:#ffffff;text-decoration:none;border-radius:3px;font-weight:500;font-size:12px;">' . esc_html__('View / Edit', 'ai-post-scheduler') . '</a>';
-				}
-				$items_html .= '</td>';
-				$items_html .= '</tr>';
-			}
-
-			$items_html .= '</table>';
-			$items_html .= '</div>';
+		// Render grouped digest items HTML via email template using output buffering.
+		$template_path = (defined('AIPS_PLUGIN_DIR') ? AIPS_PLUGIN_DIR : dirname(__DIR__) . '/') . 'templates/email/summarized-digest.php';
+		$items_html    = '';
+		if (file_exists($template_path)) {
+			ob_start();
+			include $template_path;
+			$items_html = (string) ob_get_clean();
 		}
 
 		$vars = array(

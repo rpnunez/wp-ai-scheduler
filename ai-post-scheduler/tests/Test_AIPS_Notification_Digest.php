@@ -209,7 +209,7 @@ class Test_AIPS_Notification_Digest extends WP_UnitTestCase {
 	}
 
 	// -----------------------------------------------------------------------
-	// Email Template Registration
+	// Email Template Registration & Dedicated Template Files
 	// -----------------------------------------------------------------------
 
 	public function test_summarized_digest_template_registered() {
@@ -221,6 +221,88 @@ class Test_AIPS_Notification_Digest extends WP_UnitTestCase {
 		$this->assertStringContainsString('Notification Digest', $template->render_subject());
 		$this->assertStringContainsString('{{digest_items_html}}', $template->render_body());
 		$this->assertStringContainsString('{{all_posts_url}}', $template->render_body());
+	}
+
+	public function test_email_template_files_exist_and_render() {
+		$template_dir = dirname(__DIR__) . '/templates/email/';
+		$this->assertFileExists($template_dir . 'template-alert.php');
+		$this->assertFileExists($template_dir . 'template-event.php');
+		$this->assertFileExists($template_dir . 'template-post-generated.php');
+		$this->assertFileExists($template_dir . 'template-summarized-digest.php');
+		$this->assertFileExists($template_dir . 'summarized-digest.php');
+
+		$templates = new AIPS_Notification_Templates();
+
+		// Alert template
+		$alert_tpl = $templates->get('generation_failed');
+		$this->assertNotNull($alert_tpl);
+		$this->assertStringContainsString('alert-box', $alert_tpl->render_body());
+
+		// Event template
+		$event_tpl = $templates->get('post_ready_for_review');
+		$this->assertNotNull($event_tpl);
+		$this->assertStringContainsString('alert-box', $event_tpl->render_body());
+
+		// Post generated template
+		$post_tpl = $templates->get('post_generated');
+		$this->assertNotNull($post_tpl);
+		$this->assertStringContainsString('{{post_title}}', $post_tpl->render_body());
+		$this->assertStringContainsString('{{post_excerpt}}', $post_tpl->render_body());
+
+		// Summarized digest template
+		$digest_tpl = $templates->get('summarized_digest');
+		$this->assertNotNull($digest_tpl);
+		$this->assertStringContainsString('{{digest_items_html}}', $digest_tpl->render_body());
+	}
+
+	public function test_summarized_digest_sender_renders_items_using_template_file() {
+		$captured = null;
+		$dispatcher = function ( $type, $args ) use ( &$captured ) {
+			$captured = array(
+				'type' => $type,
+				'args' => $args,
+			);
+		};
+		$vars_builder = function () {
+			return array();
+		};
+
+		$senders = new AIPS_Notification_Senders( $dispatcher, $vars_builder );
+		$payload = array(
+			'items' => array(
+				array(
+					'type'  => 'post_generated',
+					'title' => 'Test Post Alpha',
+					'url'   => 'http://example.com/?p=1',
+					'meta'  => array(
+						'source_label'      => 'Technology',
+						'post_status_label' => 'Draft',
+					),
+				),
+				array(
+					'type'  => 'post_ready_for_review',
+					'title' => 'Test Post Beta',
+					'url'   => 'http://example.com/?p=2',
+					'meta'  => array(
+						'source_label'      => 'Science',
+						'post_status_label' => 'Pending Review',
+					),
+				),
+			),
+			'count' => 2,
+		);
+
+		$senders->summarized_digest( $payload );
+
+		$this->assertNotNull( $captured );
+		$this->assertSame( 'summarized_digest', $captured['type'] );
+		$this->assertArrayHasKey( 'vars', $captured['args'] );
+		$vars = $captured['args']['vars'];
+		$this->assertSame( '2', $vars['{{item_count}}'] );
+		$this->assertStringContainsString( 'Test Post Alpha', $vars['{{digest_items_html}}'] );
+		$this->assertStringContainsString( 'Test Post Beta', $vars['{{digest_items_html}}'] );
+		$this->assertStringContainsString( 'Technology', $vars['{{digest_items_html}}'] );
+		$this->assertStringContainsString( 'Draft', $vars['{{digest_items_html}}'] );
 	}
 
 	// -----------------------------------------------------------------------

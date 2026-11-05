@@ -130,20 +130,9 @@ class AIPS_Notification_Templates {
 	 * @return AIPS_Notification_Template
 	 */
 	private function build_standard_alert_template($type, $header_title, $header_color) {
-		$subject = '[{{site_name}}] {{notification_title}}';
-
-		$body_content =
-			'<p>' . esc_html__('A high-priority notification was triggered by AI Post Scheduler.', 'ai-post-scheduler') . '</p>'
-			. '<div class="alert-box">'
-			. '<strong>' . esc_html__('Alert:', 'ai-post-scheduler') . '</strong> {{notification_title}}<br>'
-			. '<strong>' . esc_html__('Summary:', 'ai-post-scheduler') . '</strong> {{notification_message}}'
-			. '</div>'
-			. '{{details_html}}'
-			. '<p class="button-center">'
-			. '<a href="{{action_url}}" class="button">{{action_label}}</a>'
-			. '</p>';
-
-		$body = $this->render_layout($header_title, $header_color, $body_content);
+		$subject      = '[{{site_name}}] {{notification_title}}';
+		$body_content = $this->render_email_body_template('template-alert.php');
+		$body         = $this->render_layout($header_title, $header_color, $body_content);
 
 		return new AIPS_Notification_Template(
 			$type,
@@ -163,20 +152,9 @@ class AIPS_Notification_Templates {
 	 * @return AIPS_Notification_Template
 	 */
 	private function build_standard_event_template($type, $header_title, $header_color) {
-		$subject = '[{{site_name}}] {{notification_title}}';
-
-		$body_content =
-			'<p>' . esc_html__('AI Post Scheduler has a new notification for your review.', 'ai-post-scheduler') . '</p>'
-			. '<div class="alert-box">'
-			. '<strong>' . esc_html__('Update:', 'ai-post-scheduler') . '</strong> {{notification_title}}<br>'
-			. '<strong>' . esc_html__('Summary:', 'ai-post-scheduler') . '</strong> {{notification_message}}'
-			. '</div>'
-			. '{{details_html}}'
-			. '<p class="button-center">'
-			. '<a href="{{action_url}}" class="button">{{action_label}}</a>'
-			. '</p>';
-
-		$body = $this->render_layout($header_title, $header_color, $body_content);
+		$subject      = '[{{site_name}}] {{notification_title}}';
+		$body_content = $this->render_email_body_template('template-event.php');
+		$body         = $this->render_layout($header_title, $header_color, $body_content);
 
 		return new AIPS_Notification_Template(
 			$type,
@@ -201,27 +179,8 @@ class AIPS_Notification_Templates {
 		$header_title = __('Post Generated', 'ai-post-scheduler');
 		$header_color = '#2271b1';
 		$subject      = '[{{site_name}}] ' . __('Post Generated', 'ai-post-scheduler') . ' — {{source_label}} — {{post_status_label}}';
-
-		$body_content =
-			'<p>' . esc_html__('AI Post Scheduler generated a new post:', 'ai-post-scheduler') . '</p>'
-			. '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #ddd;border-radius:4px;overflow:hidden;margin:20px 0;border-collapse:collapse;">'
-			. '<tr><td style="background:#2271b1;color:#ffffff;padding:14px 18px;font-size:18px;font-weight:bold;">{{post_title}}</td></tr>'
-			. '{{featured_image_row}}'
-			. '<tr><td style="padding:14px 18px;border-top:1px solid #eee;">'
-			. '<strong style="display:block;margin-bottom:6px;color:#1d2327;">' . esc_html__('Excerpt', 'ai-post-scheduler') . '</strong>'
-			. '<div style="color:#3c434a;">{{post_excerpt}}</div></td></tr>'
-			. '<tr><td style="padding:14px 18px;border-top:1px solid #eee;">'
-			. '<strong style="display:block;margin-bottom:6px;color:#1d2327;">' . esc_html__('Content', 'ai-post-scheduler') . '</strong>'
-			. '<div style="color:#3c434a;line-height:1.6;">{{post_content}}</div></td></tr>'
-			. '<tr><td style="padding:12px 18px;border-top:1px solid #eee;background:#f9f9f9;font-size:13px;color:#646970;">'
-			. '<strong>{{source_label}}</strong> &middot; <strong>{{post_status_label}}</strong></td></tr>'
-			. '</table>'
-			. '<p class="button-center">'
-			. '<a href="{{edit_url}}" class="button">' . esc_html__('Edit Post', 'ai-post-scheduler') . '</a>'
-			. '<a href="{{view_url}}" class="button button-secondary">' . esc_html__('View Post', 'ai-post-scheduler') . '</a>'
-			. '</p>';
-
-		$body = $this->render_layout($header_title, $header_color, $body_content);
+		$body_content = $this->render_email_body_template('template-post-generated.php');
+		$body         = $this->render_layout($header_title, $header_color, $body_content);
 
 		return new AIPS_Notification_Template(
 			'post_generated',
@@ -244,23 +203,8 @@ class AIPS_Notification_Templates {
 		$header_title = __('Activity Digest', 'ai-post-scheduler');
 		$header_color = '#2271b1';
 		$subject      = '[{{site_name}}] ' . __('Notification Digest', 'ai-post-scheduler') . ' ({{item_count}} ' . __('updates', 'ai-post-scheduler') . ')';
-
-		$body_content =
-			'<p style="font-size:15px;color:#1d2327;line-height:1.5;">'
-			. sprintf(
-				/* translators: %s: placeholder token for count */
-				esc_html__('AI Post Scheduler batched %s updates for your review:', 'ai-post-scheduler'),
-				'<strong>{{item_count}}</strong>'
-			)
-			. '</p>'
-			. '{{digest_items_html}}'
-			. '<p class="button-center" style="margin-top:25px;">'
-			. '<a href="{{all_posts_url}}" class="button" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:600;">'
-			. esc_html__('Open Generated Posts', 'ai-post-scheduler')
-			. '</a>'
-			. '</p>';
-
-		$body = $this->render_layout($header_title, $header_color, $body_content);
+		$body_content = $this->render_email_body_template('template-summarized-digest.php');
+		$body         = $this->render_layout($header_title, $header_color, $body_content);
 
 		return new AIPS_Notification_Template(
 			'summarized_digest',
@@ -272,8 +216,31 @@ class AIPS_Notification_Templates {
 	}
 
 	// -----------------------------------------------------------------------
-	// Shared layout helper
+	// Shared layout and template helpers
 	// -----------------------------------------------------------------------
+
+	/**
+	 * Render an email content template using output buffering.
+	 *
+	 * @param string $template_filename Filename inside templates/email/ (e.g. 'template-alert.php').
+	 * @param array  $args              Optional variables to pass to the template scope.
+	 * @return string Rendered template content, or empty string if file does not exist.
+	 */
+	private function render_email_body_template($template_filename, array $args = array()) {
+		$template_path = (defined('AIPS_PLUGIN_DIR') ? AIPS_PLUGIN_DIR : dirname(__DIR__) . '/') . 'templates/email/' . $template_filename;
+
+		if (!file_exists($template_path)) {
+			return '';
+		}
+
+		if (!empty($args)) {
+			extract($args, EXTR_SKIP);
+		}
+
+		ob_start();
+		include $template_path;
+		return (string) ob_get_clean();
+	}
 
 	/**
 	 * Render the shared email layout template with the given content.
