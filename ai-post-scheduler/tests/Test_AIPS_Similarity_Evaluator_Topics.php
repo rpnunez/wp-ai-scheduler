@@ -27,14 +27,12 @@ class Test_AIPS_Similarity_Evaluator_Topics extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_author_topics WHERE author_id = {$this->author_id}" );
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_embeddings WHERE object_type = 'topic'" );
-		AIPS_Embeddings_Repository::reset_table_cache();
 	}
 
 	public function tearDown(): void {
 		global $wpdb;
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_author_topics WHERE author_id = {$this->author_id}" );
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_embeddings WHERE object_type = 'topic'" );
-		AIPS_Embeddings_Repository::reset_table_cache();
 		parent::tearDown();
 	}
 

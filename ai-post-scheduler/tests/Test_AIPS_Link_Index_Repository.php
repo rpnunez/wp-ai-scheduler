@@ -40,10 +40,6 @@ class Test_AIPS_Link_Index_Repository extends WP_UnitTestCase {
 		);
 	}
 
-	public function test_table_exists() {
-		$this->assertTrue( $this->repo->table_exists() );
-	}
-
 	public function test_sync_for_source_replaces_existing_rows() {
 		list( $source, $a, $b ) = self::factory()->post->create_many( 3 );
 

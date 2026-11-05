@@ -40,12 +40,6 @@ class AIPS_Embeddings_Repository {
 	 */
 	private $decoded_memory_cache = array();
 
-	/**
-	 * Cached table existence map keyed by table name.
-	 *
-	 * @var array<string, bool>
-	 */
-	private static array $table_exists_cache = array();
 
 	/**
 	 * Initialize the repository.
@@ -61,19 +55,6 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
-	 * Check if the embeddings table exists in the database.
-	 *
-	 * @return bool
-	 */
-	public function table_exists(): bool {
-		if (!isset(self::$table_exists_cache[$this->table])) {
-			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
-			self::$table_exists_cache[$this->table] = ($found === $this->table);
-		}
-		return self::$table_exists_cache[$this->table];
-	}
-
-	/**
 	 * Get a single embedding record by object type and ID.
 	 *
 	 * @param string $object_type Entity type ('post', 'topic', etc.).
@@ -81,10 +62,6 @@ class AIPS_Embeddings_Repository {
 	 * @return object|null Row object or null if not found.
 	 */
 	public function get_by_object($object_type, $object_id) {
-		if (!$this->table_exists()) {
-			return null;
-		}
-
 		$object_type = sanitize_key($object_type);
 		$object_id   = absint($object_id);
 
@@ -137,7 +114,7 @@ class AIPS_Embeddings_Repository {
 	 * @return array<int, object> Array of row objects keyed by object_id.
 	 */
 	public function get_by_source_ids(string $object_type, array $object_ids): array {
-		if (empty($object_ids) || !$this->table_exists()) {
+		if (empty($object_ids)) {
 			return array();
 		}
 
@@ -201,10 +178,6 @@ class AIPS_Embeddings_Repository {
 	 * @return object[] Rows with object_id and embedding.
 	 */
 	public function get_similarity_candidates_page($post_types = array('post'), $post_status = 'publish', $after_id = 0, $limit = 250) {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$post_types = array_values(array_filter(array_map('sanitize_key', (array) $post_types)));
 		if (empty($post_types)) {
 			$post_types = array('post');
@@ -236,10 +209,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function count_similarity_candidates($post_types = array('post'), $post_status = 'publish') {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		$post_types = array_values(array_filter(array_map('sanitize_key', (array) $post_types)));
 		if (empty($post_types)) {
 			$post_types = array('post');
@@ -269,10 +238,6 @@ class AIPS_Embeddings_Repository {
 	 * @return object[] Array of row objects with object_id, object_post_type, model, dimensions, and embedding.
 	 */
 	public function get_all_for_similarity($object_type = 'post', $post_types = array('post'), $post_status = 'publish') {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$object_type = sanitize_key($object_type);
 
 		if ('post' === $object_type) {
@@ -866,10 +831,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int[] Array of unindexed post IDs.
 	 */
 	public function get_unindexed_post_ids($limit = 20, $last_post_id = 0, $post_types = array('post'), $post_status = 'publish', $scope = null, array $scope_args = array()) {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$post_types   = (array) $post_types;
 		$post_types   = array_map('sanitize_key', $post_types);
 		$post_status  = sanitize_key($post_status);
@@ -934,10 +895,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int Count of indexed records.
 	 */
 	public function count_indexed_for_types($post_types = array('post'), $post_status = 'publish', $scope = null, array $scope_args = array()) {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		$post_types  = (array) $post_types;
 		$post_types  = array_map('sanitize_key', $post_types);
 		$post_status = sanitize_key($post_status);
@@ -1028,10 +985,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function count($object_type = '', $object_post_type = '') {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		$where = array();
 		$args  = array();
 
@@ -1061,16 +1014,6 @@ class AIPS_Embeddings_Repository {
 	 * @return array Index statistics breakdown.
 	 */
 	public function get_stats() {
-		if (!$this->table_exists()) {
-			return array(
-				'total'        => 0,
-				'posts'        => 0,
-				'topics'       => 0,
-				'by_post_type' => array(),
-				'models'       => array(),
-			);
-		}
-
 		$total_embeddings = $this->count();
 		$post_embeddings  = $this->count('post');
 		$topic_embeddings = $this->count('topic');
@@ -1113,10 +1056,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function get_total_indexed($object_type = 'post') {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		return $this->count($object_type);
 	}
 
@@ -1126,10 +1065,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int[]
 	 */
 	public function get_all_indexed_post_ids() {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$results = $this->wpdb->get_col(
 			$this->wpdb->prepare(
 				"SELECT object_id FROM {$this->table} WHERE object_type = 'post' ORDER BY object_id ASC"
@@ -1148,10 +1083,6 @@ class AIPS_Embeddings_Repository {
 	 * @return object[] Array of rows with post_id and embedding columns.
 	 */
 	public function get_all_for_similarity_by_type($post_type = 'post', $post_status = 'publish') {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$post_type   = sanitize_key($post_type);
 		$post_status = sanitize_key($post_status);
 
@@ -1176,38 +1107,11 @@ class AIPS_Embeddings_Repository {
 	 * @return int[] Array of distinct dimension integers.
 	 */
 	public function get_stored_dimensions() {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$results = $this->wpdb->get_col(
 			"SELECT DISTINCT dimensions FROM {$this->table} WHERE dimensions > 0 ORDER BY dimensions ASC"
 		);
 
 		return array_map('intval', (array) $results);
-	}
-
-	/**
-	 * Check if author topics table exists in the database.
-	 *
-	 * @return bool
-	 */
-	public function topics_table_exists(): bool {
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		if (!isset(self::$table_exists_cache[$topics_table])) {
-			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $topics_table));
-			self::$table_exists_cache[$topics_table] = ($found === $topics_table);
-		}
-		return self::$table_exists_cache[$topics_table];
-	}
-
-	/**
-	 * Reset table existence cache (useful for testing and migration runs).
-	 *
-	 * @return void
-	 */
-	public static function reset_table_cache(): void {
-		self::$table_exists_cache = array();
 	}
 
 	/**
@@ -1219,10 +1123,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int[] Array of unindexed topic IDs.
 	 */
 	public function get_unindexed_topic_ids(int $limit = 50, int $after_id = 0, int $author_id = 0): array {
-		if (!$this->table_exists() || !$this->topics_table_exists()) {
-			return array();
-		}
-
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 		$limit        = max(1, min(500, absint($limit)));
 		$params       = array(absint($after_id));
@@ -1261,10 +1161,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function get_unindexed_topic_count(int $author_id = 0): int {
-		if (!$this->table_exists() || !$this->topics_table_exists()) {
-			return 0;
-		}
-
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 		$author_sql   = '';
 		$params       = array();
@@ -1293,10 +1189,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function get_total_topic_count(): int {
-		if (!$this->topics_table_exists()) {
-			return 0;
-		}
-
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -1315,10 +1207,6 @@ class AIPS_Embeddings_Repository {
 	 * @return int[]
 	 */
 	public function get_all_indexed_topic_ids(): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$results = $this->wpdb->get_col(
 			"SELECT object_id FROM {$this->table} WHERE object_type = 'topic' ORDER BY object_id ASC"
 		);
@@ -1332,10 +1220,6 @@ class AIPS_Embeddings_Repository {
 	 * @return object[] Array of topic objects with topic_id, topic_title, author_id, status, and embedding.
 	 */
 	public function get_all_topics_for_similarity(): array {
-		if (!$this->table_exists() || !$this->topics_table_exists()) {
-			return array();
-		}
-
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

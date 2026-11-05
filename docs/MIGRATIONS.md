@@ -1,5 +1,39 @@
 # AI Post Scheduler - Database Schema Updates
 
+## Active development migration window (3.7.20)
+
+DevStackTips is the only deployed installation. The supported existing-installation
+baseline is 3.7.15; fresh installations create the current schema directly. Only
+the five migrations 3.7.16 through 3.7.20 remain executable. Older completed data
+conversions and structural transformations are retired, including the removed
+post-embeddings table and the old Sources word-count and History log-type columns.
+This does not delete production tables or data during the cleanup.
+
+| Version | Retained work |
+| --- | --- |
+| 3.7.16 | Repair generation statuses stored on the wrong History row |
+| 3.7.17 | Classify History record kinds, then backfill post types and repair statuses |
+| 3.7.18 | Consolidate current author approval columns and stored options |
+| 3.7.19 | Apply nullable source scheduling and fetch-attempt columns |
+| 3.7.20 | Ensure the History log history_type_ts composite index |
+
+`AIPS_DB_Migrations::check_and_run()` compares the stored version to `AIPS_VERSION`.
+It performs no table-existence discovery on normal requests. When needed, it calls
+`AIPS_DB_Manager::install_tables(false)` to apply the canonical schema, runs only
+newer retained migrations in ascending order, then acknowledges the final version
+through `AIPS_Config`. Failed schema or migration work leaves the previous version
+intact for retry. The standalone `install_tables()` default still records the
+schema version for explicit repair and existing direct callers.
+
+Activation forces schema application even when versions match. Optional cache-index
+metadata is suspended during activation and schema installation and restored with
+`finally`; an actual schema failure keeps optional metadata disabled for the
+remainder of the request until a successful retry. This handles early logging
+without table probes or cached existence flags. Repository operations
+and exports use the declared tables directly. Explicit diagnostics retain actual
+column inspection and table statistics. A manually deleted table no longer triggers
+automatic repair on every ordinary request; use activation or explicit repair.
+
 ## Sources reliability (3.7.19)
 
 The Sources table adds nullable `last_fetch_attempt_at`, `last_fetch_status`, and `last_fetch_error`. Legacy attempt state remains unknown until the next fetch; `last_fetched_at` continues to mean last successful fetch. `next_fetch_at` becomes nullable so disabling automatic fetching can clear it under strict MySQL. The guarded migration preserves existing due timestamps and can run repeatedly. It verifies the structural changes before acknowledging version 3.7.19 and restores the previous version gate on failure so the next request retries. Atomic group replacement requires a transactional source-group table, normally InnoDB; verify the storage engine on legacy installations.
@@ -36,11 +70,11 @@ Runs after `install_tables()` adds `aips_authors.topic_auto_approval_min_relevan
 ### On Plugin Activation or Update
 
 1. Plugin detects version change by comparing `aips_db_version` with `AIPS_VERSION`
-2. If update needed, calls `AIPS_Upgrades::check_and_run()`
-3. This calls `AIPS_DB_Manager::install_tables()` which:
+2. If update needed, calls `AIPS_DB_Migrations::check_and_run()`
+3. This calls `AIPS_DB_Manager::install_tables(false)` which:
    - Runs `dbDelta()` with current schema definition
    - Seeds default data (prompt sections and article structures)
-4. Updates `aips_db_version` to current plugin version
+4. Runs eligible retained migrations, then updates `aips_db_version` only on success
 
 ### For Developers
 

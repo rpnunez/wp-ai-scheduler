@@ -36,37 +36,12 @@ class AIPS_Redirects_Repository {
 	}
 
 	/**
-	 * Whether the table exists (schema may not be upgraded yet).
-	 *
-	 * @return bool
-	 */
-	public function table_exists(): bool {
-		// Keyed by table name (the static is shared by every instance) and only a
-		// positive result is memoized, so a table created later in this request
-		// by a migration is still picked up.
-		static $known = array();
-		if (!empty($known[$this->table])) {
-			return true;
-		}
-		$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
-		if ($found === $this->table) {
-			$known[$this->table] = true;
-			return true;
-		}
-		return false;
-	}
-
-	/**
 	 * Insert a redirect.
 	 *
 	 * @param array $data Column values.
 	 * @return int|false New ID.
 	 */
 	public function insert(array $data) {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		$now  = time();
 		$data = array_merge(array('created_at' => $now, 'updated_at' => $now), $this->only_columns($data));
 
@@ -81,10 +56,6 @@ class AIPS_Redirects_Repository {
 	 * @return bool
 	 */
 	public function update(int $id, array $data): bool {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		$data               = $this->only_columns($data);
 		$data['updated_at'] = time();
 
@@ -98,7 +69,7 @@ class AIPS_Redirects_Repository {
 	 * @return bool
 	 */
 	public function delete(int $id): bool {
-		return $this->table_exists() && (bool) $this->wpdb->delete($this->table, array('id' => $id), array('%d'));
+		return (bool) $this->wpdb->delete($this->table, array('id' => $id), array('%d'));
 	}
 
 	/**
@@ -108,10 +79,6 @@ class AIPS_Redirects_Repository {
 	 * @return object|null
 	 */
 	public function get(int $id) {
-		if (!$this->table_exists()) {
-			return null;
-		}
-
 		return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table} WHERE id = %d", $id)) ?: null;
 	}
 
@@ -122,10 +89,6 @@ class AIPS_Redirects_Repository {
 	 * @return object|null
 	 */
 	public function get_by_hash(string $hash) {
-		if (!$this->table_exists()) {
-			return null;
-		}
-
 		return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table} WHERE source_hash = %s", $hash)) ?: null;
 	}
 
@@ -137,10 +100,6 @@ class AIPS_Redirects_Repository {
 	 * @return object[]
 	 */
 	public function get_by_origin(string $origin, int $origin_ref): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		return (array) $this->wpdb->get_results(
 			$this->wpdb->prepare("SELECT * FROM {$this->table} WHERE origin = %s AND origin_ref = %d ORDER BY id ASC", $origin, $origin_ref)
 		);
@@ -153,10 +112,6 @@ class AIPS_Redirects_Repository {
 	 * @return object[]
 	 */
 	public function get_page(array $args = array()): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$per_page = max(1, min(100, (int) ($args['per_page'] ?? 25)));
 		$offset   = (max(1, (int) ($args['page'] ?? 1)) - 1) * $per_page;
 		list($where, $params) = $this->build_where($args);
@@ -176,10 +131,6 @@ class AIPS_Redirects_Repository {
 	 * @return int
 	 */
 	public function count(array $args = array()): int {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		list($where, $params) = $this->build_where($args);
 		$sql = "SELECT COUNT(*) FROM {$this->table} WHERE {$where}";
 
@@ -193,10 +144,6 @@ class AIPS_Redirects_Repository {
 	 * @return int[]
 	 */
 	public function get_ids_by_provider(string $provider): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		return array_map('intval', (array) $this->wpdb->get_col(
 			$this->wpdb->prepare("SELECT id FROM {$this->table} WHERE provider = %s ORDER BY id ASC", $provider)
 		));
@@ -208,10 +155,6 @@ class AIPS_Redirects_Repository {
 	 * @return array<string,int>
 	 */
 	public function count_by_provider(): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$counts = array();
 		foreach ((array) $this->wpdb->get_results("SELECT provider, COUNT(*) AS total FROM {$this->table} GROUP BY provider") as $row) {
 			$counts[(string) $row->provider] = (int) $row->total;
@@ -227,10 +170,6 @@ class AIPS_Redirects_Repository {
 	 * @return string[]
 	 */
 	public function get_enabled_hashes(string $provider): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		return (array) $this->wpdb->get_col(
 			$this->wpdb->prepare("SELECT source_hash FROM {$this->table} WHERE provider = %s AND enabled = 1", $provider)
 		);
@@ -243,10 +182,6 @@ class AIPS_Redirects_Repository {
 	 * @return void
 	 */
 	public function record_hit(int $id): void {
-		if (!$this->table_exists()) {
-			return;
-		}
-
 		$this->wpdb->query(
 			$this->wpdb->prepare("UPDATE {$this->table} SET hits = hits + 1, last_hit_at = %d WHERE id = %d", time(), $id)
 		);

@@ -857,36 +857,78 @@ class AIPS_DB_Manager {
         return $sql;
     }
 
-    public static function install_tables() {
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        $instance = new self();
-        $schema = $instance->get_schema();
-        global $wpdb;
+    /**
+     * Apply the canonical schema, optionally recording the completed version.
+     *
+     * Migration orchestration defers acknowledgement until its data work succeeds.
+     *
+     * @param bool $record_version Whether to record AIPS_VERSION on success.
+     * @return true|WP_Error
+     */
+    public static function install_tables($record_version = true) {
+        AIPS_Cache_Index::suspend();
+        // Retain a failed outcome for the request if installation exits early or throws.
+        AIPS_Cache_Index::set_schema_install_failed(true);
+        try {
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            $instance = new self();
+            $schema = $instance->get_schema();
+            global $wpdb;
 
-        foreach ($schema as $sql) {
-            $pre_error = $wpdb->last_error;
-            dbDelta($sql);
-
-            if (!empty($wpdb->last_error) && $wpdb->last_error !== $pre_error) {
-                if (self::is_ignorable_dbdelta_error($wpdb->last_error)) {
-                    // dbDelta can report duplicate index/column messages on some
-                    // MariaDB/MySQL versions for already-existing schema elements.
-                    // Treat these as no-op so upgrades remain idempotent.
-                    $wpdb->last_error = $pre_error;
-                    continue;
+            foreach ($schema as $sql) {
+                $pre_error = $wpdb->last_error;
+                $schema_errors = array();
+                $query_seen = false;
+                // wpdb's query filter runs before flush() clears the previous result.
+                // Observe each error before the next dbDelta statement can hide it.
+                $capture_error = static function($query) use ($wpdb, &$schema_errors, &$query_seen) {
+                    if ($query_seen && !empty($wpdb->last_error)) {
+                        // dbDelta itself discovers new tables with DESCRIBE; its
+                        // expected missing-table result is followed by CREATE TABLE.
+                        $expected_new_table = preg_match('/^\s*DESCRIBE\s/i', (string) $wpdb->last_query)
+                            && false !== stripos($wpdb->last_error, "doesn't exist");
+                        if (!$expected_new_table) {
+                            $schema_errors[] = $wpdb->last_error;
+                        }
+                    }
+                    $query_seen = true;
+                    return $query;
+                };
+                add_filter('query', $capture_error, PHP_INT_MAX);
+                try {
+                    dbDelta($sql);
+                    if (!empty($wpdb->last_error)) {
+                        $schema_errors[] = $wpdb->last_error;
+                    }
+                } finally {
+                    remove_filter('query', $capture_error, PHP_INT_MAX);
                 }
-
-                return new WP_Error('db_install_failed', $wpdb->last_error);
+                foreach ($schema_errors as $schema_error) {
+                    if (!self::is_ignorable_dbdelta_error($schema_error)) {
+                        return new WP_Error('db_install_failed', $schema_error);
+                    }
+                }
+                if (!empty($schema_errors)) {
+                    $wpdb->last_error = $pre_error;
+                }
             }
+
+            // Seed default data for new installations or upgrades
+            self::seed_default_data();
+
+            // Record that the DB schema is now at the current plugin version
+            if ($record_version) {
+                AIPS_Config::get_instance()->set_option('aips_db_version', AIPS_VERSION);
+                if (AIPS_VERSION !== get_option('aips_db_version')) {
+                    return new WP_Error('db_version_save_failed', __('Unable to save the completed database version.', 'ai-post-scheduler'));
+                }
+            }
+
+            AIPS_Cache_Index::set_schema_install_failed(false);
+            return true;
+        } finally {
+            AIPS_Cache_Index::resume();
         }
-
-        // Seed default data for new installations or upgrades
-        self::seed_default_data();
-
-        // Record that the DB schema is now at the current plugin version
-        update_option('aips_db_version', AIPS_VERSION);
-
-        return true;
     }
 
     /**
@@ -984,9 +1026,6 @@ class AIPS_DB_Manager {
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),
-            'aips_post_embeddings' => array(
-                array( 'indexed_at', false ),
-            ),
             'aips_ai_assistance' => array(
                 array( 'created_at', false ),
             ),
@@ -1032,7 +1071,7 @@ class AIPS_DB_Manager {
      * false immediately (no-op). This makes it safe to call on fresh installs
      * where dbDelta has already created BIGINT columns from get_schema().
      *
-     * This is the single canonical implementation. Both AIPS_DB_Migrations and
+     * This is the single canonical implementation. The explicit datetime repair service and
      * AIPS_Date_Time_DB_Repair delegate here rather than duplicating the logic.
      *
      * @param string $table    Full table name including WordPress prefix.
@@ -1102,17 +1141,10 @@ class AIPS_DB_Manager {
     public function backup_data() {
         global $wpdb;
         $data = array();
-        $tables = self::get_full_table_names();
-
-        foreach ($tables as $key => $table_name) {
-            if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name) {
-                $table_escaped = '`' . esc_sql($table_name) . '`';
-                $data[$key] = $wpdb->get_results("SELECT * FROM {$table_escaped}", ARRAY_A); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            } else {
-                $data[$key] = array();
-            }
+        foreach (self::get_full_table_names() as $key => $table_name) {
+            $table_escaped = '`' . esc_sql($table_name) . '`';
+            $data[$key] = $wpdb->get_results("SELECT * FROM {$table_escaped}", ARRAY_A);
         }
-
         return $data;
     }
 

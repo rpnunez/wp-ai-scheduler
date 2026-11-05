@@ -60,49 +60,11 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	}
 
 	/**
-	 * check_and_run() with a pre-2.3.1 version must add the composite indexes
-	 * to aips_notifications via the versioned migrate_to_2_3_1() migration.
-	 */
-	public function test_migrate_to_2_3_1_adds_composite_indexes() {
-		// Simulate an existing install at a pre-2.3.1 version that has the
-		// notifications table but lacks the composite indexes.
-		AIPS_DB_Manager::install_tables();
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_notifications';
-
-		// Drop the composite indexes to simulate the pre-2.3.1 state.
-		$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX IF EXISTS is_read_created_at" );
-		$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX IF EXISTS dedupe_key_created_at" );
-
-		// Confirm the indexes are gone before the migration runs.
-		$index_names_before = $wpdb->get_col( "SHOW INDEX FROM `{$table}`", 2 );
-		$this->assertNotContains( 'is_read_created_at', $index_names_before, 'Pre-condition: index should be absent before migration' );
-		$this->assertNotContains( 'dedupe_key_created_at', $index_names_before, 'Pre-condition: index should be absent before migration' );
-
-		// Trigger upgrade from a version older than 2.3.1.
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '2.3.0' );
-		AIPS_DB_Migrations::check_and_run();
-
-		$index_names_after = $wpdb->get_col( "SHOW INDEX FROM `{$table}`", 2 );
-		$this->assertContains(
-			'is_read_created_at',
-			$index_names_after,
-			'migrate_to_2_3_1 must add is_read_created_at index'
-		);
-		$this->assertContains(
-			'dedupe_key_created_at',
-			$index_names_after,
-			'migrate_to_2_3_1 must add dedupe_key_created_at index'
-		);
-	}
-
-	/**
 	 * check_and_run() must trigger an upgrade and save the new version when the
 	 * stored version is older than the current plugin version.
 	 */
 	public function test_check_and_run_saves_version_after_upgrade() {
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '0.0.1' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.15' );
 
 		AIPS_DB_Migrations::check_and_run();
 
@@ -121,134 +83,6 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 
 		$saved = get_option('aips_db_version');
 		$this->assertSame(AIPS_VERSION, $saved, 'aips_db_version should remain unchanged when versions match');
-	}
-
-	/**
-	 * Legacy partial-generation keys should be renamed and the generated-post
-	 * marker should be backfilled without duplicating rows on re-run.
-	 */
-	public function test_migrate_to_3_0_1_normalizes_partial_generation_meta() {
-		AIPS_DB_Manager::install_tables();
-
-		$post_id = self::factory()->post->create( array(
-			'post_title' => 'Legacy Partial Generation Post',
-		) );
-
-		add_post_meta( $post_id, 'aips_post_generation_component_statuses', wp_json_encode( array( 'post_title' => true ) ) );
-		add_post_meta( $post_id, 'aips_post_generation_incomplete', 'true' );
-		add_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode( array( 'post_title' => false ) ) );
-
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
-		AIPS_DB_Migrations::check_and_run();
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
-		AIPS_DB_Migrations::check_and_run();
-
-		$this->assertFalse( metadata_exists( 'post', $post_id, 'aips_post_generation_component_statuses' ) );
-		$this->assertFalse( metadata_exists( 'post', $post_id, 'aips_post_generation_incomplete' ) );
-		$this->assertSame(
-			wp_json_encode( array( 'post_title' => false ) ),
-			get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true )
-		);
-		$this->assertSame( 'true', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true ) );
-		$this->assertSame( '1', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATED_POST, true ) );
-
-		global $wpdb;
-		$generated_marker_count = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*)
-				FROM {$wpdb->postmeta}
-				WHERE post_id = %d
-				AND meta_key = %s",
-				$post_id,
-				AIPS_Post_Manager::META_GENERATED_POST
-			)
-		);
-		$this->assertSame( 1, $generated_marker_count );
-	}
-
-	/**
-	 * The generated-post marker should also backfill for posts referenced only
-	 * by generation history.
-	 */
-	public function test_migrate_to_3_0_1_backfills_generated_post_marker_from_history() {
-		AIPS_DB_Manager::install_tables();
-
-		$post_id = self::factory()->post->create( array(
-			'post_title' => 'History Only Generated Post',
-		) );
-
-		$history_repository = new AIPS_History_Repository();
-		$history_id         = $history_repository->create( array(
-			'post_id' => $post_id,
-			'status'  => 'completed',
-		) );
-
-		$this->assertNotFalse( $history_id );
-		$this->assertFalse( metadata_exists( 'post', $post_id, AIPS_Post_Manager::META_GENERATED_POST ) );
-
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
-		AIPS_DB_Migrations::check_and_run();
-		clean_post_cache( $post_id );
-
-		$this->assertSame( '1', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATED_POST, true ) );
-	}
-
-	/**
-	 * migrate_to_3_4_0() must backfill aips_history.post_type from the linked
-	 * post's actual post type for rows created before the column existed.
-	 */
-	public function test_migrate_to_3_4_0_backfills_post_type_from_linked_post() {
-		AIPS_DB_Manager::install_tables();
-
-		$post_id = self::factory()->post->create( array(
-			'post_title' => 'Legacy History Row Post',
-			'post_type'  => 'page',
-		) );
-
-		$history_repository = new AIPS_History_Repository();
-		$history_id         = $history_repository->create( array(
-			'post_id' => $post_id,
-			'status'  => 'completed',
-			// post_type intentionally omitted, simulating a pre-3.4.0 row.
-		) );
-
-		$before = $history_repository->get_by_id( $history_id );
-		$this->assertNull( $before->post_type );
-
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
-		AIPS_DB_Migrations::check_and_run();
-
-		$after = $history_repository->get_by_id( $history_id );
-		$this->assertSame( 'page', $after->post_type );
-	}
-
-	/**
-	 * migrate_to_3_4_0() must not overwrite a post_type that's already set
-	 * (e.g. by the write path on a more recent row), and must be a safe
-	 * no-op to run twice.
-	 */
-	public function test_migrate_to_3_4_0_does_not_overwrite_existing_post_type() {
-		AIPS_DB_Manager::install_tables();
-
-		$post_id = self::factory()->post->create( array(
-			'post_title' => 'Already Backfilled Post',
-			'post_type'  => 'page',
-		) );
-
-		$history_repository = new AIPS_History_Repository();
-		$history_id         = $history_repository->create( array(
-			'post_id'   => $post_id,
-			'status'    => 'completed',
-			'post_type' => 'post', // Deliberately mismatched from the post's real type.
-		) );
-
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
-		AIPS_DB_Migrations::check_and_run();
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
-		AIPS_DB_Migrations::check_and_run();
-
-		$after = $history_repository->get_by_id( $history_id );
-		$this->assertSame( 'post', $after->post_type, 'Migration must only backfill NULL post_type values, never overwrite an existing one.' );
 	}
 
 	public function test_sources_nullable_migration_failure_preserves_version_and_retries() {
@@ -289,30 +123,34 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		}
 		$wpdb->insert( $table, array( 'url' => 'https://example.com/migration', 'fetch_interval' => 'hourly', 'next_fetch_at' => 123456 ) );
 		$id = (int) $wpdb->insert_id;
-		$migration = new ReflectionMethod( AIPS_DB_Migrations::class, 'migrate_to_3_7_19' );
-		$migration->setAccessible( true );
-		$instance = new AIPS_DB_Migrations();
-		$this->assertTrue( $migration->invoke( $instance ) );
-		$this->assertTrue( $migration->invoke( $instance ) );
-		$this->assertSame( '', $wpdb->last_error );
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `$table` WHERE id = %d", $id ) );
-		$this->assertSame( 123456, (int) $row->next_fetch_at );
-		$this->assertNull( $row->last_fetch_attempt_at );
-		$this->assertNull( $row->last_fetch_status );
-		$this->assertNull( $row->last_fetch_error );
-		$this->assertNotFalse( $wpdb->update( $table, array( 'next_fetch_at' => null ), array( 'id' => $id ) ) );
-		$this->assertNull( $wpdb->get_var( $wpdb->prepare( "SELECT next_fetch_at FROM `$table` WHERE id = %d", $id ) ) );
+		try {
+			$migration = new ReflectionMethod( AIPS_DB_Migrations::class, 'migrate_to_3_7_19' );
+			$migration->setAccessible( true );
+			$instance = new AIPS_DB_Migrations();
+			$this->assertTrue( $migration->invoke( $instance ) );
+			$this->assertTrue( $migration->invoke( $instance ) );
+			$this->assertSame( '', $wpdb->last_error );
+			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `$table` WHERE id = %d", $id ) );
+			$this->assertSame( 123456, (int) $row->next_fetch_at );
+			$this->assertNull( $row->last_fetch_attempt_at );
+			$this->assertNull( $row->last_fetch_status );
+			$this->assertNull( $row->last_fetch_error );
+			$this->assertNotFalse( $wpdb->update( $table, array( 'next_fetch_at' => null ), array( 'id' => $id ) ) );
+			$this->assertNull( $wpdb->get_var( $wpdb->prepare( "SELECT next_fetch_at FROM `$table` WHERE id = %d", $id ) ) );
+		} finally {
+			$wpdb->delete( $table, array( 'id' => $id ) );
+		}
 	}
 
 
 	/**
-	 * migrate_to_3_7_14() must ensure post_generation_lock exists on aips_authors
+	 * Current schema must ensure post_generation_lock exists on aips_authors
 	 * and claimed_at exists on aips_author_topics.
 	 */
-	public function test_migrate_to_3_7_14_adds_lock_and_claim_columns() {
+	public function test_current_schema_has_lock_and_claim_columns() {
 		AIPS_DB_Manager::install_tables();
 
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.13' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.15' );
 		AIPS_DB_Migrations::check_and_run();
 
 		global $wpdb;
@@ -327,10 +165,10 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	}
 
 	/**
-	 * migrate_to_3_7_15() must fill a NULL post_type on generation-run rows from the
+	 * The retained History backfill must fill a NULL post_type on generation-run rows from the
 	 * post, leave event rows alone and never overwrite an existing value.
 	 */
-	public function test_migrate_to_3_7_15_backfills_post_type_on_run_rows_only() {
+	public function test_retained_history_backfill_preserves_event_rows_and_existing_types() {
 		AIPS_DB_Manager::install_tables();
 
 		$post_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
@@ -353,7 +191,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			'post_type'       => 'post',
 		) );
 
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.14' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.15' );
 		AIPS_DB_Migrations::check_and_run();
 
 		$this->assertSame( 'page', $history_repository->get_by_id( $run_id )->post_type );

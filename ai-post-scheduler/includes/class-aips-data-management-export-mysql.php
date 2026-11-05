@@ -73,11 +73,17 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 		$sql_dump .= "SET time_zone = \"+00:00\";\n\n";
 		
 		$tables = $this->get_tables();
-		$existing_tables = $this->repository->get_existing_tables($tables);
 		
 		foreach ($tables as $table_name => $full_table_name) {
-			if (!isset($existing_tables[$table_name])) {
-				$sql_dump .= "-- Table $full_table_name does not exist\n\n";
+			// Read the actual schema/data before emitting any destructive restore SQL.
+			$create_table_statement = $this->repository->get_create_table_statement($full_table_name);
+			if (empty($create_table_statement)) {
+				$sql_dump .= "-- Unable to export table $full_table_name: schema read failed\n\n";
+				continue;
+			}
+			$rows = $this->repository->get_table_rows($full_table_name);
+			if (null === $rows) {
+				$sql_dump .= "-- Unable to export table $full_table_name: data read failed\n\n";
 				continue;
 			}
 			
@@ -85,7 +91,6 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 			$sql_dump .= "-- Table structure for table `$full_table_name`\n";
 			$sql_dump .= "-- --------------------------------------------------------\n\n";
 			
-			$create_table_statement = $this->repository->get_create_table_statement($full_table_name);
 			if (!empty($create_table_statement)) {
 				$sql_dump .= "DROP TABLE IF EXISTS `" . $this->escape_identifier($full_table_name) . "`;\n";
 				$sql_dump .= $create_table_statement . ";\n\n";
@@ -93,8 +98,6 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 			
 			// Get table data
 			$sql_dump .= "-- Dumping data for table `$full_table_name`\n\n";
-			
-			$rows = $this->repository->get_table_rows($full_table_name);
 			
 			if (!empty($rows)) {
 				foreach ($rows as $row) {

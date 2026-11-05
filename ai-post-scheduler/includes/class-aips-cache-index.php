@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
  * AIPS_Cache::set(). This makes cache entries enumerable even when the
  * underlying driver (for example, WP Object Cache) cannot list its keys.
  *
- * The index stores metadata only — never the cached value. Writes are
+ * The index stores metadata only â€” never the cached value. Writes are
  * fire-and-forget: any DB error is silently swallowed so that a failing
  * index never blocks a cache write.
  *
@@ -33,17 +33,26 @@ class AIPS_Cache_Index {
 	 */
 	private $max_entries;
 
-	/**
-	 * Memoized result of the aips_cache_index table-existence check.
-	 *
-	 * Null until first resolved, then true/false for the remainder of the
-	 * request. Guards every DB operation so that cache writes triggered before
-	 * the table is installed (for example, during plugin activation before
-	 * install_tables() runs) no-op silently instead of emitting DB errors.
-	 *
-	 * @var bool|null
-	 */
-	private $table_exists = null;
+	/** @var int Nested schema/activation scopes that suspend metadata writes. */
+	private static $suspension_depth = 0;
+
+	/** @var bool An actual schema failure disables optional metadata until a retry succeeds. */
+	private static $schema_install_failed = false;
+
+	/** Record an installation outcome, without probing or caching table existence. */
+	public static function set_schema_install_failed( bool $failed ): void {
+		self::$schema_install_failed = $failed;
+	}
+
+	/** Suspend optional metadata while the schema is being installed. */
+	public static function suspend(): void {
+		self::$suspension_depth++;
+	}
+
+	/** Restore the previous metadata state after an installation scope. */
+	public static function resume(): void {
+		self::$suspension_depth = max( 0, self::$suspension_depth - 1 );
+	}
 
 	/**
 	 * In-memory buffer for writes awaiting flush on shutdown.
@@ -126,7 +135,7 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function record_set( string $key, $value, int $ttl, string $group, array $context = array() ): void {
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled || (self::$suspension_depth > 0 || self::$schema_install_failed)) {
 			return;
 		}
 
@@ -152,7 +161,7 @@ class AIPS_Cache_Index {
 		$key_hash  = hash( 'sha256', $composite );
 		unset( $this->pending_writes[ $composite ], $this->pending_access[ $key_hash ], $this->pending_access_groups[ $key_hash ] );
 
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled || (self::$suspension_depth > 0 || self::$schema_install_failed)) {
 			return;
 		}
 
@@ -200,7 +209,7 @@ class AIPS_Cache_Index {
 		$this->pending_access        = array();
 		$this->pending_access_groups = array();
 
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled || (self::$suspension_depth > 0 || self::$schema_install_failed)) {
 			return;
 		}
 
@@ -225,7 +234,7 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function record_access( string $key, string $group ): void {
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled || (self::$suspension_depth > 0 || self::$schema_install_failed)) {
 			return;
 		}
 
@@ -248,7 +257,7 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function flush_buffer(): void {
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled || (self::$suspension_depth > 0 || self::$schema_install_failed)) {
 			$this->pending_writes        = array();
 			$this->pending_access        = array();
 			$this->pending_access_groups = array();
@@ -401,7 +410,7 @@ class AIPS_Cache_Index {
 	 * @return int Number of rows deleted.
 	 */
 	public function prune_expired(): int {
-		if (!$this->table_ready()) {
+		if ((self::$suspension_depth > 0 || self::$schema_install_failed)) {
 			return 0;
 		}
 
@@ -432,14 +441,14 @@ class AIPS_Cache_Index {
 	 * @return int Number of rows deleted.
 	 */
 	public function prune_orphans(): int {
-		// Use get_option() directly — see constructor comment.
+		// Use get_option() directly â€” see constructor comment.
 		$driver = get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
 		}
 
-		if (!$this->table_ready()) {
+		if ((self::$suspension_depth > 0 || self::$schema_install_failed)) {
 			return 0;
 		}
 
@@ -469,14 +478,14 @@ class AIPS_Cache_Index {
 	 * @return int Number of rows inserted/updated.
 	 */
 	public function rebuild_from_db(): int {
-		// Use get_option() directly — see constructor comment.
+		// Use get_option() directly â€” see constructor comment.
 		$driver = get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
 			return 0;
 		}
 
-		if (!$this->table_ready()) {
+		if ((self::$suspension_depth > 0 || self::$schema_install_failed)) {
 			return 0;
 		}
 
@@ -552,34 +561,6 @@ class AIPS_Cache_Index {
 	// -----------------------------------------------------------------------
 	// Internal helpers
 	// -----------------------------------------------------------------------
-
-	/**
-	 * Determine whether the aips_cache_index table exists, memoizing the result.
-	 *
-	 * The index is a fire-and-forget metadata store. When a cache write happens
-	 * before the table is created — most notably during plugin activation, where
-	 * the logger writes cache entries before AIPS_DB_Manager::install_tables()
-	 * runs — querying the missing table would emit a "table doesn't exist" DB
-	 * error for every write. Gating all DB operations on this check keeps those
-	 * pre-install writes silent while the index self-heals once the table lands.
-	 *
-	 * @return bool
-	 */
-	private function table_ready(): bool {
-		if (null !== $this->table_exists) {
-			return $this->table_exists;
-		}
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_cache_index';
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
-
-		$this->table_exists = ( $found === $table );
-
-		return $this->table_exists;
-	}
 
 	/**
 	 * Prepare normalized row data for a cache index entry.
@@ -674,7 +655,7 @@ class AIPS_Cache_Index {
 	 */
 	private function estimate_value_size( $value ): int {
 		if (is_string( $value )) {
-			// Exact for strings — the most common cached type (HTML, JSON, etc.).
+			// Exact for strings â€” the most common cached type (HTML, JSON, etc.).
 			return strlen( $value );
 		}
 		if (is_int( $value )) {
