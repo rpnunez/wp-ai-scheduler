@@ -501,4 +501,118 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$wpdb->query("DELETE FROM `{$table}` WHERE id IN (" . implode(',', $ids) . ')');
 		delete_option('aips_author_topic_auto_approval_fallback');
 	}
+
+	/**
+	 * Invoke the private migrate_to_3_7_21() on a fresh instance.
+	 *
+	 * @return bool
+	 */
+	private function run_migrate_3_7_21() {
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_21' );
+		$method->setAccessible( true );
+		return (bool) $method->invoke( $migrations );
+	}
+
+	/**
+	 * migrate_to_3_7_21() must drop the redundant single-column indexes that are
+	 * left-prefixes of a composite and add the author_id_status_score covering
+	 * index, so the per-author topic claim no longer filesorts.
+	 */
+	public function test_migrate_to_3_7_21_consolidates_indexes() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$history = $wpdb->prefix . 'aips_history';
+		$topics  = $wpdb->prefix . 'aips_author_topics';
+
+		// Recreate the pre-3.7.21 index layout.
+		$wpdb->query( "ALTER TABLE `{$history}` ADD KEY status (status)" );
+		$wpdb->query( "ALTER TABLE `{$history}` ADD KEY template_id (template_id)" );
+		$wpdb->query( "ALTER TABLE `{$history}` ADD KEY post_id (post_id)" );
+		$wpdb->query( "ALTER TABLE `{$topics}` DROP INDEX IF EXISTS author_id_status_score" );
+		$wpdb->query( "ALTER TABLE `{$topics}` ADD KEY author_id (author_id)" );
+		$wpdb->query( "ALTER TABLE `{$topics}` ADD KEY status (status)" );
+		$wpdb->query( "ALTER TABLE `{$topics}` ADD KEY author_id_status (author_id, status)" );
+
+		$this->assertTrue( $this->run_migrate_3_7_21() );
+
+		$history_indexes = $wpdb->get_col( "SHOW INDEX FROM `{$history}`", 2 );
+		$this->assertNotContains( 'status', $history_indexes, 'Redundant aips_history.status index should be dropped' );
+		$this->assertNotContains( 'template_id', $history_indexes, 'Redundant aips_history.template_id index should be dropped' );
+		$this->assertNotContains( 'post_id', $history_indexes, 'Redundant aips_history.post_id index should be dropped' );
+		$this->assertContains( 'status_created', $history_indexes, 'Covering composite status_created must remain' );
+		$this->assertContains( 'post_status', $history_indexes, 'Covering composite post_status must remain' );
+
+		$topic_indexes = $wpdb->get_col( "SHOW INDEX FROM `{$topics}`", 2 );
+		$this->assertContains( 'author_id_status_score', $topic_indexes, 'author_id_status_score covering index must be added' );
+		$this->assertNotContains( 'author_id', $topic_indexes, 'Redundant author_id index should be dropped' );
+		$this->assertNotContains( 'author_id_status', $topic_indexes, 'Redundant author_id_status index should be dropped' );
+		$this->assertNotContains( 'status', $topic_indexes, 'Redundant status index should be dropped' );
+		$this->assertContains( 'status_score_reviewed', $topic_indexes, 'status_score_reviewed must remain' );
+	}
+
+	/**
+	 * migrate_to_3_7_21() must delete history_log rows whose parent history row
+	 * no longer exists, and leave rows with a live parent untouched.
+	 */
+	public function test_migrate_to_3_7_21_deletes_orphaned_history_log() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$history = $wpdb->prefix . 'aips_history';
+		$log     = $wpdb->prefix . 'aips_history_log';
+
+		$wpdb->insert(
+			$history,
+			array( 'status' => 'completed', 'record_kind' => 'event', 'created_at' => 1700000000 ),
+			array( '%s', '%s', '%d' )
+		);
+		$parent_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$log,
+			array( 'history_id' => $parent_id, 'timestamp' => 1700000000 ),
+			array( '%d', '%d' )
+		);
+		$live_log_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$log,
+			array( 'history_id' => 999999999, 'timestamp' => 1700000000 ),
+			array( '%d', '%d' )
+		);
+		$orphan_log_id = (int) $wpdb->insert_id;
+
+		$this->assertTrue( $this->run_migrate_3_7_21() );
+
+		$this->assertNull(
+			$wpdb->get_var( $wpdb->prepare( "SELECT id FROM `{$log}` WHERE id = %d", $orphan_log_id ) ),
+			'Orphaned history_log row should be deleted'
+		);
+		$this->assertSame(
+			(string) $live_log_id,
+			$wpdb->get_var( $wpdb->prepare( "SELECT id FROM `{$log}` WHERE id = %d", $live_log_id ) ),
+			'history_log row with a live parent must be kept'
+		);
+
+		$wpdb->query( $wpdb->prepare( "DELETE FROM `{$log}` WHERE id = %d", $live_log_id ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM `{$history}` WHERE id = %d", $parent_id ) );
+	}
+
+	/**
+	 * migrate_to_3_7_21() must return true and be a safe no-op on a second run
+	 * (tables already utf8mb4, indexes already consolidated).
+	 */
+	public function test_migrate_to_3_7_21_is_idempotent() {
+		AIPS_DB_Manager::install_tables();
+
+		$this->assertTrue( $this->run_migrate_3_7_21() );
+		$this->assertTrue( $this->run_migrate_3_7_21() );
+
+		global $wpdb;
+		$topics        = $wpdb->prefix . 'aips_author_topics';
+		$topic_indexes = $wpdb->get_col( "SHOW INDEX FROM `{$topics}`", 2 );
+		$this->assertContains( 'author_id_status_score', $topic_indexes );
+	}
 }

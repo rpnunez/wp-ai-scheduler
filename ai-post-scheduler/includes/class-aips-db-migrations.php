@@ -271,6 +271,17 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		// migrate_to_3_7_21() converts the AIPS tables to utf8mb4, consolidates
+		// redundant indexes and clears orphaned history_log rows. It reads the
+		// schema install_tables() has just normalised, so it runs after the
+		// Layer-1 apply, and returns false (leaving the version unstamped) if a
+		// charset conversion fails so a partial run always finishes.
+		if ( version_compare( $from_version, '3.7.21', '<' ) && ! $this->migrate_to_3_7_21() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Charset/index consolidation migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1818,6 +1829,199 @@ class AIPS_DB_Migrations {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Migration for version 3.7.21.
+	 *
+	 * Three storage/efficiency fixes surfaced by a production DB audit:
+	 *   1. Converts every AIPS table to utf8mb4 / utf8mb4_unicode_520_ci. The
+	 *      tables were created latin1_swedish_ci on installs where
+	 *      get_charset_collate() returned an empty string (empty DB_CHARSET),
+	 *      which silently drops non-latin1 characters on write and forces a
+	 *      collation conversion on every join to the utf8mb4 core tables.
+	 *   2. Consolidates redundant single-column indexes that are left-prefixes of
+	 *      existing composites on aips_history and aips_author_topics, and adds
+	 *      author_id_status_score so the per-author topic claim no longer
+	 *      filesorts on score.
+	 *   3. Deletes aips_history_log rows whose parent aips_history row is gone.
+	 *
+	 * Every step is guarded (collation check / covering-index presence /
+	 * SHOW INDEX) so it is a safe, idempotent no-op once applied and on fresh
+	 * installs. Returns false to leave the version unstamped and retry when a
+	 * charset conversion fails, so a partial conversion always finishes.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_21() {
+		if ( ! $this->convert_aips_tables_to_utf8mb4() ) {
+			return false;
+		}
+
+		$this->consolidate_history_indexes();
+		$this->consolidate_author_topic_indexes();
+		$this->cleanup_orphaned_history_log();
+
+		return true;
+	}
+
+	/**
+	 * Convert every existing AIPS table to utf8mb4 / utf8mb4_unicode_520_ci.
+	 *
+	 * Tables already on utf8mb4 and tables that do not exist are skipped, so the
+	 * method is cheap to re-run. WordPress has always connected with
+	 * SET NAMES utf8mb4 against these latin1 columns, so the stored bytes are
+	 * valid latin1 and CONVERT TO reinterprets them to their correct code points;
+	 * characters already lost to the narrower latin1 columns cannot be recovered.
+	 * Falls back to the server-default utf8mb4 collation if _520_ci is unavailable.
+	 *
+	 * @return bool True when every table is utf8mb4; false if a conversion failed.
+	 */
+	private function convert_aips_tables_to_utf8mb4() {
+		global $wpdb;
+
+		$all_ok = true;
+
+		foreach ( AIPS_DB_Manager::get_full_table_names() as $table ) {
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+				continue;
+			}
+
+			$collation = $wpdb->get_var( $wpdb->prepare(
+				'SELECT TABLE_COLLATION FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
+				$table
+			) );
+			if ( is_string( $collation ) && 0 === stripos( $collation, 'utf8mb4' ) ) {
+				continue;
+			}
+
+			$result = $wpdb->query( "ALTER TABLE `{$table}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+			if ( false === $result ) {
+				// Older servers may not know utf8mb4_unicode_520_ci; fall back to the
+				// server-default utf8mb4 collation rather than looping forever.
+				$result = $wpdb->query( "ALTER TABLE `{$table}` CONVERT TO CHARACTER SET utf8mb4" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+			}
+
+			if ( false === $result ) {
+				$all_ok = false;
+				$this->logger->log( 'Migration 3.7.21: utf8mb4 conversion failed for ' . $table . ': ' . $wpdb->last_error, 'error' );
+			}
+		}
+
+		return $all_ok;
+	}
+
+	/**
+	 * Drop the redundant single-/multi-column indexes on aips_history that are
+	 * left-prefixes of an existing composite.
+	 *
+	 * @return void
+	 */
+	private function consolidate_history_indexes() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		// Redundant index => the composite that makes it a left-prefix. Each is
+		// dropped only when its covering composite is present.
+		$redundant = array(
+			'status'      => 'status_created',
+			'template_id' => 'template_created',
+			'post_id'     => 'post_status',
+		);
+
+		foreach ( $redundant as $index_name => $covering_index ) {
+			$this->drop_redundant_index( $table, $index_name, $covering_index );
+		}
+	}
+
+	/**
+	 * Add the (author_id, status, score) covering index on aips_author_topics and
+	 * drop the now-redundant author_id / author_id_status / status indexes.
+	 *
+	 * The covering index lets the per-author topic claim filter and sort from one
+	 * index instead of filesorting on score. install_tables() also adds it from
+	 * the schema, but it is added here so the drops never depend on dbDelta.
+	 *
+	 * @return void
+	 */
+	private function consolidate_author_topic_indexes() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		$has_new = $wpdb->get_row(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'author_id_status_score'" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		);
+		if ( ! $has_new ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY author_id_status_score (author_id, status, score)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		}
+
+		$this->drop_redundant_index( $table, 'author_id', 'author_id_status_score' );
+		$this->drop_redundant_index( $table, 'author_id_status', 'author_id_status_score' );
+		$this->drop_redundant_index( $table, 'status', 'status_score_reviewed' );
+	}
+
+	/**
+	 * Drop an index, but only once the covering index that replaces it exists.
+	 *
+	 * @param string $table          Full table name.
+	 * @param string $index_name     Index to drop.
+	 * @param string $covering_index Index that must be present first.
+	 * @return void
+	 */
+	private function drop_redundant_index( $table, $index_name, $covering_index ) {
+		global $wpdb;
+
+		$covering = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$covering_index
+		) );
+		if ( ! $covering ) {
+			return;
+		}
+
+		$exists = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$index_name
+		) );
+		if ( $exists ) {
+			$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `{$index_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		}
+	}
+
+	/**
+	 * Delete aips_history_log rows whose parent aips_history row no longer exists.
+	 *
+	 * @return void
+	 */
+	private function cleanup_orphaned_history_log() {
+		global $wpdb;
+		$log  = $wpdb->prefix . 'aips_history_log';
+		$hist = $wpdb->prefix . 'aips_history';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $log ) ) !== $log ) {
+			return;
+		}
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $hist ) ) !== $hist ) {
+			return;
+		}
+
+		$deleted = $wpdb->query(
+			"DELETE l FROM `{$log}` l
+			LEFT JOIN `{$hist}` h ON h.id = l.history_id
+			WHERE h.id IS NULL" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		);
+
+		if ( $deleted ) {
+			$this->logger->log( sprintf( 'Migration 3.7.21: Deleted %d orphaned aips_history_log rows.', (int) $deleted ), 'info' );
+		}
 	}
 
 }

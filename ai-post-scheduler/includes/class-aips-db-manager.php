@@ -73,6 +73,14 @@ class AIPS_DB_Manager {
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
+        if ( '' === trim( (string) $charset_collate ) ) {
+            // Some installs report an empty DB_CHARSET, which would otherwise let
+            // dbDelta fall back to the server default (often latin1_swedish_ci) and
+            // silently drop non-latin1 characters on write while forcing collation
+            // conversions on every join to the utf8mb4 core tables. Force utf8mb4 so
+            // new tables always match WordPress core. See migrate_to_3_7_21().
+            $charset_collate = 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci';
+        }
         $tables = self::get_full_table_names();
 
         $table_history = $tables['aips_history'];
@@ -135,13 +143,10 @@ class AIPS_DB_Manager {
             completed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY uuid (uuid),
-            KEY post_id (post_id),
             KEY post_type (post_type),
-            KEY template_id (template_id),
             KEY campaign_id (campaign_id),
             KEY author_id (author_id),
             KEY topic_id (topic_id),
-            KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
@@ -392,11 +397,9 @@ class AIPS_DB_Manager {
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
-            KEY author_id (author_id),
-            KEY status (status),
             KEY claimed_at (claimed_at),
             KEY generated_at (generated_at),
-            KEY author_id_status (author_id, status),
+            KEY author_id_status_score (author_id, status, score),
             KEY status_score_reviewed (status, score, reviewed_at)
         ) $charset_collate;";
 
