@@ -642,6 +642,43 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	}
 
 	/**
+	 * migrate_to_3_7_21() must clear the aips_embeddings cache group from
+	 * aips_cache while leaving other cache groups intact.
+	 */
+	public function test_migrate_to_3_7_21_clears_embeddings_cache() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$cache = $wpdb->prefix . 'aips_cache';
+
+		$wpdb->insert(
+			$cache,
+			array( 'cache_key' => 'vec_post_1', 'cache_group' => 'aips_embeddings', 'value' => '[0.1,0.2]', 'expires_at' => 0, 'updated_at' => 1700000000 ),
+			array( '%s', '%s', '%s', '%d', '%d' )
+		);
+		$wpdb->insert(
+			$cache,
+			array( 'cache_key' => 'keepme', 'cache_group' => 'aips_schedules', 'value' => 'x', 'expires_at' => 0, 'updated_at' => 1700000000 ),
+			array( '%s', '%s', '%s', '%d', '%d' )
+		);
+
+		$this->assertTrue( $this->run_migrate_3_7_21() );
+
+		$this->assertSame(
+			'0',
+			$wpdb->get_var( "SELECT COUNT(*) FROM `{$cache}` WHERE cache_group = 'aips_embeddings'" ),
+			'embeddings cache group should be cleared'
+		);
+		$this->assertSame(
+			'1',
+			$wpdb->get_var( "SELECT COUNT(*) FROM `{$cache}` WHERE cache_group = 'aips_schedules'" ),
+			'other cache groups must be left intact'
+		);
+
+		$wpdb->query( "DELETE FROM `{$cache}` WHERE cache_key IN ('vec_post_1','keepme')" );
+	}
+
+	/**
 	 * migrate_to_3_7_21() must return true and be a safe, idempotent no-op on a
 	 * second run (indexes already consolidated, no embeddings left to strip).
 	 */

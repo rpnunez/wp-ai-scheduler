@@ -1844,6 +1844,9 @@ class AIPS_DB_Migrations {
 	 *      the duplicate/auto-approval pipeline no longer persists (the vector is
 	 *      transient and also lives canonically in aips_embeddings).
 	 *   3. Deletes aips_history_log rows whose parent aips_history row is gone.
+	 *   4. Clears the aips_embeddings cache group out of aips_cache (~42 MB of
+	 *      decoded float arrays that duplicate the compact binary vectors in
+	 *      aips_embeddings; the plugin no longer persists them).
 	 *
 	 * Every step is guarded (covering-index presence / SHOW INDEX / SHOW TABLES)
 	 * so it is a safe, idempotent no-op once applied and on fresh installs.
@@ -1861,8 +1864,37 @@ class AIPS_DB_Migrations {
 		$this->consolidate_author_topic_indexes();
 		$this->strip_author_topic_metadata_embeddings();
 		$this->cleanup_orphaned_history_log();
+		$this->cleanup_embeddings_cache();
 
 		return true;
+	}
+
+	/**
+	 * Drop the decoded-embedding rows from the aips_cache 'aips_embeddings' group.
+	 *
+	 * These cached ~30 KB float arrays duplicate the compact float32 blobs in
+	 * aips_embeddings (~5x larger) and are no longer written by the repository.
+	 * Deleting them reclaims the space immediately; anything still needed is
+	 * regenerated in-memory on demand. Guarded and safe to re-run.
+	 *
+	 * @return void
+	 */
+	private function cleanup_embeddings_cache() {
+		global $wpdb;
+		$cache = $wpdb->prefix . 'aips_cache';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $cache ) ) !== $cache ) {
+			return;
+		}
+
+		$deleted = $wpdb->query( $wpdb->prepare(
+			"DELETE FROM `{$cache}` WHERE cache_group = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'aips_embeddings'
+		) );
+
+		if ( $deleted ) {
+			$this->logger->log( sprintf( 'Migration 3.7.21: Cleared %d decoded-embedding rows from the aips_cache embeddings group.', (int) $deleted ), 'info' );
+		}
 	}
 
 	/**
