@@ -2204,6 +2204,58 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
+     * Delete history records and associated event logs for a given post ID.
+     *
+     * @param int $post_id Post ID.
+     * @return int Number of history container records deleted.
+     */
+    public function delete_by_post_id($post_id) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return 0;
+        }
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $history_ids = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT id FROM {$this->table_name} WHERE post_id = %d",
+                $post_id
+            )
+        );
+
+        if (empty($history_ids)) {
+            return 0;
+        }
+
+        $history_ids  = array_map('absint', $history_ids);
+        $placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
+
+        // Delete detailed event logs first.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE FROM {$this->table_name_log} WHERE history_id IN ($placeholders)",
+                $history_ids
+            )
+        );
+
+        // Delete the history container records.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $result = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE FROM {$this->table_name} WHERE id IN ($placeholders)",
+                $history_ids
+            )
+        );
+
+        if ($result !== false && $result > 0) {
+            $this->invalidate_cache_domain('history', array(), 'history_mutated');
+        }
+
+        return false === $result ? 0 : (int) $result;
+    }
+
+    /**
      * Clear history entries based on filters.
      * 
      * This method provides a centralized way to delete history records

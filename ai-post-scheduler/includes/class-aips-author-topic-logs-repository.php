@@ -140,6 +140,31 @@ class AIPS_Author_Topic_Logs_Repository {
 			'metadata' => $metadata
 		));
 	}
+
+	/**
+	 * Disassociate post ID from topic logs when the post is deleted.
+	 *
+	 * Sets post_id to NULL while keeping the generation log row intact for auditing.
+	 *
+	 * @param int $post_id Post ID to disassociate.
+	 * @return int Number of affected rows.
+	 */
+	public function disassociate_post_id($post_id) {
+		$post_id = absint($post_id);
+		if (!$post_id) {
+			return 0;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->table} SET post_id = NULL WHERE post_id = %d",
+				$post_id
+			)
+		);
+
+		return false === $result ? 0 : (int) $result;
+	}
 	
 	/**
 	 * Log an edit action.

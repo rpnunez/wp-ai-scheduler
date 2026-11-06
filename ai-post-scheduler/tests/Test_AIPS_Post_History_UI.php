@@ -171,5 +171,8 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		public function get_ai_error_by_id($log_id) {
 			return null;
 		}
+		public function delete_by_post_id($post_id) {
+			return 0;
+		}
 	}
 }
