@@ -1828,8 +1828,7 @@ class AIPS_DB_Migrations {
 
 	/**
 	 * Migration to 3.7.21:
-	 * 1. Adds image_prompt, featured_image_unsplash_keywords, and featured_image_media_ids to aips_authors if missing.
-	 * 2. Backfills existing template and author featured image configurations into aips_post_images.
+	 * Adds image_prompt, featured_image_unsplash_keywords, and featured_image_media_ids to aips_authors if missing.
 	 *
 	 * @return bool
 	 */
@@ -1848,76 +1847,6 @@ class AIPS_DB_Migrations {
 				}
 				if ( ! in_array( 'featured_image_media_ids', $author_cols, true ) ) {
 					$wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN featured_image_media_ids text DEFAULT NULL AFTER featured_image_unsplash_keywords" );
-				}
-			}
-		}
-
-		$post_images_table = $wpdb->prefix . 'aips_post_images';
-		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $post_images_table ) ) !== $post_images_table ) {
-			return true;
-		}
-
-		$templates_table = $wpdb->prefix . 'aips_templates';
-		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $templates_table ) ) === $templates_table ) {
-			$templates = $wpdb->get_results( "SELECT id, image_prompt, generate_featured_image, featured_image_source, featured_image_unsplash_keywords, featured_image_media_ids, created_at, updated_at FROM `{$templates_table}`" );
-			if ( ! empty( $templates ) && is_array( $templates ) ) {
-				foreach ( $templates as $template ) {
-					$exists = $wpdb->get_var( $wpdb->prepare(
-						"SELECT id FROM `{$post_images_table}` WHERE entity_type = 'template' AND entity_id = %d AND image_type = 'featured'",
-						$template->id
-					) );
-					if ( ! $exists && ! empty( $template->generate_featured_image ) ) {
-						$wpdb->insert(
-							$post_images_table,
-							array(
-								'entity_type'       => 'template',
-								'entity_id'         => (int) $template->id,
-								'image_type'        => 'featured',
-								'image_order'       => 0,
-								'source'            => ! empty( $template->featured_image_source ) ? $template->featured_image_source : 'ai_prompt',
-								'image_prompt'      => ! empty( $template->image_prompt ) ? $template->image_prompt : '',
-								'unsplash_keywords' => ! empty( $template->featured_image_unsplash_keywords ) ? $template->featured_image_unsplash_keywords : '',
-								'media_ids'         => ! empty( $template->featured_image_media_ids ) ? $template->featured_image_media_ids : '',
-								'placement'         => 'auto',
-								'caption'           => '',
-								'created_at'        => ! empty( $template->created_at ) ? (int) $template->created_at : time(),
-								'updated_at'        => ! empty( $template->updated_at ) ? (int) $template->updated_at : time(),
-							),
-							array( '%s', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
-						);
-					}
-				}
-			}
-		}
-
-		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $authors_table ) ) === $authors_table ) {
-			$authors = $wpdb->get_results( "SELECT id, generate_featured_image, featured_image_source, created_at, updated_at FROM `{$authors_table}`" );
-			if ( ! empty( $authors ) && is_array( $authors ) ) {
-				foreach ( $authors as $author ) {
-					$exists = $wpdb->get_var( $wpdb->prepare(
-						"SELECT id FROM `{$post_images_table}` WHERE entity_type = 'author' AND entity_id = %d AND image_type = 'featured'",
-						$author->id
-					) );
-					if ( ! $exists && ! empty( $author->generate_featured_image ) ) {
-						$wpdb->insert(
-							$post_images_table,
-							array(
-								'entity_type'       => 'author',
-								'entity_id'         => (int) $author->id,
-								'image_type'        => 'featured',
-								'image_order'       => 0,
-								'source'            => ! empty( $author->featured_image_source ) ? $author->featured_image_source : 'ai_prompt',
-								'image_prompt'      => '',
-								'unsplash_keywords' => '',
-								'media_ids'         => '',
-								'placement'         => 'auto',
-								'caption'           => '',
-								'created_at'        => ! empty( $author->created_at ) ? (int) $author->created_at : time(),
-								'updated_at'        => ! empty( $author->updated_at ) ? (int) $author->updated_at : time(),
-							),
-							array( '%s', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
-						);
-					}
 				}
 			}
 		}

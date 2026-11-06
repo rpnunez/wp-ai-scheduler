@@ -181,21 +181,6 @@ class AIPS_Authors_Controller {
 		$this->record_author_event($author_id ? AIPS_History_Event_Type::AUTHOR_UPDATED : AIPS_History_Event_Type::AUTHOR_CREATED, (int) $id, $name, (bool) $result);
 		if ($result) {
 			$post_images_repo = new AIPS_Post_Images_Repository();
-			if ($data['generate_featured_image']) {
-				$post_images_repo->sync_for_entity('author', $id, array(
-					array(
-						'image_type'        => 'featured',
-						'image_order'       => 0,
-						'source'            => $data['featured_image_source'],
-						'image_prompt'      => $data['image_prompt'],
-						'unsplash_keywords' => $data['featured_image_unsplash_keywords'],
-						'media_ids'         => $data['featured_image_media_ids'],
-					)
-				), 'featured');
-			} else {
-				$post_images_repo->delete_for_entity('author', $id, 'featured');
-			}
-
 			$submitted_post_images = isset($_POST['author_post_images']) ? $_POST['author_post_images'] : (isset($_POST['post_images']) ? $_POST['post_images'] : array());
 			$author_post_images = (new AIPS_Post_Images_Service())->normalize_submitted_rows($submitted_post_images);
 			$post_images_repo->sync_for_entity('author', $id, $author_post_images, 'content');
@@ -310,14 +295,6 @@ class AIPS_Authors_Controller {
 		
 		if ($author) {
 			$post_images_repo = new AIPS_Post_Images_Repository();
-			$featured = $post_images_repo->get_featured_for_entity('author', $author_id);
-			if ($featured) {
-				$author->generate_featured_image = 1;
-				$author->featured_image_source = $featured->source;
-				$author->image_prompt = $featured->image_prompt;
-				$author->featured_image_unsplash_keywords = $featured->unsplash_keywords;
-				$author->featured_image_media_ids = $featured->media_ids;
-			}
 			$author->post_images = $post_images_repo->get_content_images_for_entity('author', $author_id);
 			AIPS_Ajax_Response::success(array('author' => $author));
 		} else {

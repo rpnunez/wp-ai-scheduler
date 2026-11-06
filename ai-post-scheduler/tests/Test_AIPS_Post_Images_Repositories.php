@@ -20,8 +20,8 @@ class Test_AIPS_Post_Images_Repositories extends WP_UnitTestCase {
 		$id = $this->post_images_repo->create(array(
 			'entity_type'       => 'template',
 			'entity_id'         => 101,
-			'image_type'        => 'featured',
-			'image_order'       => 0,
+			'image_type'        => 'content',
+			'image_order'       => 1,
 			'source'            => 'ai_prompt',
 			'image_prompt'      => 'A beautiful sunrise',
 			'unsplash_keywords' => '',
@@ -36,12 +36,12 @@ class Test_AIPS_Post_Images_Repositories extends WP_UnitTestCase {
 		$this->assertNotNull($item);
 		$this->assertEquals('template', $item->entity_type);
 		$this->assertEquals(101, (int) $item->entity_id);
-		$this->assertEquals('featured', $item->image_type);
+		$this->assertEquals('content', $item->image_type);
 		$this->assertEquals('A beautiful sunrise', $item->image_prompt);
 
-		$featured = $this->post_images_repo->get_featured_for_entity('template', 101);
-		$this->assertNotNull($featured);
-		$this->assertEquals($id, (int) $featured->id);
+		$content_images = $this->post_images_repo->get_content_images_for_entity('template', 101);
+		$this->assertCount(1, $content_images);
+		$this->assertEquals($id, (int) $content_images[0]->id);
 	}
 
 	public function test_post_images_repo_sync_for_entity() {
@@ -111,26 +111,13 @@ class Test_AIPS_Post_Images_Repositories extends WP_UnitTestCase {
 		$this->post_images_repo->create(array(
 			'entity_type'  => 'template',
 			'entity_id'    => 50,
-			'image_type'   => 'featured',
-			'image_order'  => 0,
-			'source'       => 'ai_prompt',
-			'image_prompt' => 'Template featured',
-		));
-
-		$this->post_images_repo->create(array(
-			'entity_type'  => 'template',
-			'entity_id'    => 50,
 			'image_type'   => 'content',
 			'image_order'  => 1,
 			'source'       => 'unsplash',
 			'image_prompt' => 'Template content 1',
 		));
 
-		$this->post_images_repo->clone_for_entity('template', 50, 51);
-
-		$cloned_featured = $this->post_images_repo->get_featured_for_entity('template', 51);
-		$this->assertNotNull($cloned_featured);
-		$this->assertEquals('Template featured', $cloned_featured->image_prompt);
+		$this->post_images_repo->clone_for_entity('template', 50, 'template', 51);
 
 		$cloned_content = $this->post_images_repo->get_content_images_for_entity('template', 51);
 		$this->assertCount(1, $cloned_content);

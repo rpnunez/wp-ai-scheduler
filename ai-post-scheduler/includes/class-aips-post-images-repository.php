@@ -3,7 +3,8 @@
  * Post Images Repository
  *
  * Repository pattern implementation for entity image configuration data access.
- * Manages featured and post content images for templates and authors in aips_post_images.
+ * Manages post content images for templates and authors in aips_post_images.
+ * Featured image settings live on the template and author records.
  *
  * @package AI_Post_Scheduler
  * @since 3.7.21
@@ -46,21 +47,6 @@ class AIPS_Post_Images_Repository {
 	public function get_for_entity($entity_type, $entity_id) {
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} WHERE entity_type = %s AND entity_id = %d ORDER BY image_type ASC, image_order ASC, id ASC",
-			sanitize_key($entity_type),
-			absint($entity_id)
-		));
-	}
-
-	/**
-	 * Get featured image configuration for an entity.
-	 *
-	 * @param string $entity_type 'template' or 'author'.
-	 * @param int    $entity_id   Entity ID.
-	 * @return object|null Image object or null if not configured.
-	 */
-	public function get_featured_for_entity($entity_type, $entity_id) {
-		return $this->wpdb->get_row($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE entity_type = %s AND entity_id = %d AND image_type = 'featured' LIMIT 1",
 			sanitize_key($entity_type),
 			absint($entity_id)
 		));
@@ -219,7 +205,7 @@ class AIPS_Post_Images_Repository {
 	 *
 	 * @param string      $entity_type 'template' or 'author'.
 	 * @param int         $entity_id   Entity ID.
-	 * @param string|null $image_type  Optional filter ('featured' or 'content').
+	 * @param string|null $image_type  Optional image type filter.
 	 * @return bool
 	 */
 	public function delete_for_entity($entity_type, $entity_id, $image_type = null) {
@@ -245,7 +231,7 @@ class AIPS_Post_Images_Repository {
 	 * @param string $entity_type 'template' or 'author'.
 	 * @param int    $entity_id   Entity ID.
 	 * @param array  $images_data Array of image row data.
-	 * @param string $image_type  'content' or 'featured'.
+	 * @param string $image_type  Image type to synchronize.
 	 * @return array Array of preserved/created image record IDs.
 	 */
 	public function sync_for_entity($entity_type, $entity_id, array $images_data, $image_type = 'content') {

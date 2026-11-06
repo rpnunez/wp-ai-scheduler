@@ -186,21 +186,6 @@ class AIPS_Templates_Controller {
 
         if ($id) {
             $post_images_repo = new AIPS_Post_Images_Repository();
-            if ($data['generate_featured_image']) {
-                $post_images_repo->sync_for_entity('template', $id, array(
-                    array(
-                        'image_type'        => 'featured',
-                        'image_order'       => 0,
-                        'source'            => $data['featured_image_source'],
-                        'image_prompt'      => $data['image_prompt'],
-                        'unsplash_keywords' => $data['featured_image_unsplash_keywords'],
-                        'media_ids'         => $data['featured_image_media_ids'],
-                    )
-                ), 'featured');
-            } else {
-                $post_images_repo->delete_for_entity('template', $id, 'featured');
-            }
-
             $submitted_post_images = isset($_POST['template_post_images']) ? $_POST['template_post_images'] : (isset($_POST['post_images']) ? $_POST['post_images'] : array());
             $template_post_images = (new AIPS_Post_Images_Service())->normalize_submitted_rows($submitted_post_images);
             $post_images_repo->sync_for_entity('template', $id, $template_post_images, 'content');
