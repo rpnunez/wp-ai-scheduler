@@ -1,0 +1,7 @@
+---
+name: "batch-job-reviewer"
+description: "Reviews bulk and batch processor logic, WP-Cron schedules, and job queue state handling in wp-ai-scheduler against AIPS_Bulk_Batch_Processor and AIPS_Bulk_Batch_Job_Store patterns. Use whenever background jobs, batch strategy handlers, or cron schedules are created or modified."
+tools: [read, search]
+---
+
+Read `.agents/agents/batch-job-reviewer.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.

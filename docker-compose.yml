@@ -3,6 +3,33 @@ services:
     image: "${DB_IMAGE:-mariadb:10.6}"
     container_name: "${AIPS_DB_CONTAINER:-wp-ai-scheduler-db}"
     restart: unless-stopped
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-log-bin
+      - --general-log=0
+      - --slow-query-log=1
+      - --slow-query-log-file=/var/lib/mysql/slow-query.log
+      - --long-query-time=2
+      - --max-connections=50
+      - --connect-timeout=10
+      - --wait-timeout=600
+      - --key-buffer-size=16M
+      - --max-allowed-packet=16M
+      - --thread-stack=256K
+      - --thread-cache-size=8
+      - --sort-buffer-size=512K
+      - --net-buffer-length=8K
+      - --myisam-recover-options=BACKUP
+      - --myisam-sort-buffer-size=8M
+      - --innodb-buffer-pool-size=128M
+      - --innodb-log-file-size=64M
+      - --innodb-log-buffer-size=8M
+      - --innodb-flush-log-at-trx-commit=2
+      - --innodb-lock-wait-timeout=50
+      - --innodb-file-per-table=1
+      - --skip-name-resolve
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root}"
       MYSQL_DATABASE: "${MYSQL_DATABASE:-wordpress}"
@@ -11,8 +38,6 @@ services:
     volumes:
       # Use a named Docker volume for database persistence
       - db_data_v2:/var/lib/mysql
-      # Mount custom MariaDB configuration to reduce log sizes and tmp usage
-      - ./mariadb-conf/my.cnf:/etc/mysql/conf.d/my_custom.cnf:ro
     ports:
       # Expose MySQL port for external database tools (e.g., MySQL Workbench, TablePlus)
       - "${MYSQL_PORT:-3307}:3306"
@@ -92,7 +117,7 @@ services:
 
       # Bind-mount development PHP/Xdebug settings so they can be edited
       # locally and applied with an Apache reload instead of a rebuild.
-      - ./dev-php.ini:/usr/local/etc/php/conf.d/zz-dev-php.ini:ro
+      - ./docker/dev-php.ini:/usr/local/etc/php/conf.d/zz-dev-php.ini:ro
 
       # CRITICAL: Mount plugin source for live development
       # This allows you to edit files in your local ai-post-scheduler directory

@@ -47,4 +47,4 @@ Produce a single Markdown report:
 - `AGENTS.md` — canonical security rules
 - `ai-post-scheduler/includes/class-aips-ajax-registry.php` — registry
 - `.claude/agents/ajax-controller-reviewer.md` — per-controller review checklist
-- `.codex/skills/ajax-controller-changes/SKILL.md` — implementation guidance
+- `.agents/skills/ajax-controller-changes/SKILL.md` — implementation guidance

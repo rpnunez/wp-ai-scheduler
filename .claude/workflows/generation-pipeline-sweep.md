@@ -36,4 +36,4 @@ Produce a Markdown report:
 ## Useful references
 - `AGENTS.md` — canonical generation pipeline rules
 - `.claude/agents/generation-pipeline-reviewer.md` — review checklist
-- `.claude/skills/generation-changes/SKILL.md` — implementation guide
+- `.agents/skills/generation-changes/SKILL.md` — implementation guide

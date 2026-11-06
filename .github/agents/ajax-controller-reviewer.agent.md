@@ -1,0 +1,7 @@
+---
+name: "ajax-controller-reviewer"
+description: "Reviews AJAX controller additions or modifications in wp-ai-scheduler for nonce checks, capability checks, sanitization, registry routing, and repository boundary compliance. Use whenever a wp_ajax_* handler or AIPS_Ajax_Registry entry is added or changed."
+tools: [read, search]
+---
+
+Read `.agents/agents/ajax-controller-reviewer.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.
