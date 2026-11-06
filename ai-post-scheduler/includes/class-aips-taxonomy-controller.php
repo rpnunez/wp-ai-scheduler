@@ -151,7 +151,7 @@ class AIPS_Taxonomy_Controller {
 				$result
 			);
 			$history->complete_failure($result->get_error_message(), array('taxonomy_type' => $taxonomy_type));
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::wp_error($result);
 		}
 
 		$history->record('activity', sprintf(__('Generated %d taxonomy items', 'ai-post-scheduler'), count($result)), null, null, array(

@@ -214,7 +214,7 @@
 			var self = this;
 			var req = $.post(aipsAjax.ajaxUrl, data, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.saveFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, aipsSourcesL10n.saveFailed);
 					return;
 				}
 
@@ -254,7 +254,7 @@
 				source_id: id,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.deleteFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, aipsSourcesL10n.deleteFailed);
 					return;
 				}
 
@@ -292,7 +292,7 @@
 				is_active: newStatus,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.toggleFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, aipsSourcesL10n.toggleFailed);
 					return;
 				}
 
@@ -329,7 +329,7 @@
 				data_id: id,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.viewDataFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, aipsSourcesL10n.viewDataFailed);
 					return;
 				}
 
@@ -427,7 +427,7 @@
 			var self = this;
 			var req = $.post(aipsAjax.ajaxUrl, data, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.saveDataFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, aipsSourcesL10n.saveDataFailed);
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
@@ -479,7 +479,7 @@
 				data_id: id,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.deleteDataFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, aipsSourcesL10n.deleteDataFailed);
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
@@ -573,7 +573,7 @@
 				name:   name,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || 'Failed to create group.', 'error');
+					AIPS.Utilities.showAjaxError(response, 'Failed to create group.');
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
@@ -607,7 +607,7 @@
 				term_id: termId,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || 'Failed to delete group.', 'error');
+					AIPS.Utilities.showAjaxError(response, 'Failed to delete group.');
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
@@ -641,7 +641,7 @@
 				source_id: id,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || 'Fetch failed.', 'error');
+					AIPS.Utilities.showAjaxError(response, 'Fetch failed.');
 					return;
 				}
 

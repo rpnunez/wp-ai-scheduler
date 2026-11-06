@@ -165,7 +165,7 @@
 				orphans_only: this.state.orphansOnly ? 1 : 0
 			}).done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.loadError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.loadError);
 					return;
 				}
 				self.renderRows(response.data);
@@ -247,7 +247,7 @@
 			}).done(function(response) {
 				if (!response || !response.success) {
 					$modal.hide();
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.loadError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.loadError);
 					return;
 				}
 				AIPS.LinkReport.renderDetails(response.data);
@@ -312,7 +312,7 @@
 				days: parseInt($('#aips-link-scan-days').val(), 10) || 30
 			}).done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.rebuildError);
 					return;
 				}
 				$('#aips-link-scan-modal').hide();
@@ -332,7 +332,7 @@
 
 			$.post(ajaxurl, { action: action, nonce: l10n.nonce }).done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.rebuildError);
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
@@ -359,7 +359,7 @@
 					action: function() {
 						$.post(ajaxurl, { action: 'aips_link_report_cancel_backfill', nonce: l10n.nonce }).done(function(response) {
 							if (!response || !response.success) {
-								AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
+								AIPS.Utilities.showAjaxError(response, l10n.rebuildError);
 								return;
 							}
 							clearInterval(self.pollTimer);
@@ -446,7 +446,7 @@
 				post_id: this.suggestTarget
 			}).done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.suggestError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.suggestError);
 					return;
 				}
 				self.renderSuggestions(response.data.suggestions);
@@ -470,7 +470,7 @@
 			}).done(function(response) {
 				if (!response || !response.success) {
 					$btn.prop('disabled', false);
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.suggestError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.suggestError);
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
@@ -521,7 +521,7 @@
 				dry_run: $('#aips-autolink-dry-run').is(':checked') ? 1 : 0
 			}).done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.autolinkError);
 					return;
 				}
 				$('#aips-autolink-modal').hide();
@@ -540,7 +540,7 @@
 
 			$.post(ajaxurl, { action: action, nonce: l10n.nonce }).done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.autolinkError);
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
@@ -571,7 +571,7 @@
 					action: function() {
 						$.post(ajaxurl, { action: 'aips_autolink_undo_run', nonce: l10n.nonce, job_id: jobId }).done(function(response) {
 							if (!response || !response.success) {
-								AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+								AIPS.Utilities.showAjaxError(response, l10n.autolinkError);
 								return;
 							}
 							AIPS.Utilities.showToast(response.data.message, 'success');

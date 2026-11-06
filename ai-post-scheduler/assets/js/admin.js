@@ -1062,7 +1062,7 @@
                         AIPS.wizardGoToStep(1, $('#aips-template-modal'));
                         $('#aips-template-modal').show();
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -1112,7 +1112,7 @@
                                     }
                                 });
                             } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                AIPS.Utilities.showAjaxError(response);
                             }
                         },
                         error: function() {
@@ -1157,7 +1157,7 @@
                                     $(this).remove();
                                 });
                             } else {
-                                AIPS.Utilities.showToast(response.data.message || 'Failed to delete template.', 'error');
+                                AIPS.Utilities.showAjaxError(response, 'Failed to delete template.');
                             }
                         },
                         error: function() {
@@ -1239,7 +1239,7 @@
                         AIPS.lastSavedTemplateId = savedId;
                         AIPS.showPostSaveActions(savedId);
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -1325,7 +1325,7 @@
                         }
                         AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -1410,7 +1410,7 @@
 
                         $('#aips-test-result-modal').show();
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsAdminL10n.generationFailed);
                     }
                 },
                 error: function() {
@@ -1452,7 +1452,7 @@
                     if (response.success) {
                         AIPS.showGeneratedPostsModal(response.data);
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -1686,7 +1686,7 @@
                             if (response.success) {
                                 $row.fadeOut(function() { $(this).remove(); });
                             } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                AIPS.Utilities.showAjaxError(response);
                             }
                         }
                     });
@@ -1731,7 +1731,7 @@
                         // Dynamically update the voices table
                         AIPS.refreshContentPanel('.aips-voices-list', '.aips-voices-container');
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -2249,7 +2249,7 @@
                             AIPS.updateScheduleBulkActions();
                         });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -2313,7 +2313,7 @@
                             AIPS.updateScheduleBulkActions();
                         });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -2360,7 +2360,7 @@
                                     $(this).remove();
                                 });
                             } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                AIPS.Utilities.showAjaxError(response);
                             }
                         },
                         error: function() {
@@ -2407,7 +2407,7 @@
 
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsAdminL10n.generationFailed);
                     }
                 },
                 error: function() {
@@ -2519,7 +2519,7 @@
                     $loading.hide();
 
                     if (!response.success) {
-                        AIPS.Utilities.showToast(response.data.message || aipsScheduleL10n.failedToLoadHistory, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsScheduleL10n.failedToLoadHistory);
                         $modal.hide();
                         return;
                     }
@@ -2771,7 +2771,7 @@
                         $('#cb-select-all-schedules').prop('checked', false);
                         AIPS.updateScheduleBulkActions();
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsScheduleL10n.failedToDeleteSchedules, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsScheduleL10n.failedToDeleteSchedules);
                     }
                 },
                 error: function() {
@@ -2835,7 +2835,7 @@
                             $row.data('is-active', isActive);
                         });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || 'Failed to update schedules.', 'error');
+                        AIPS.Utilities.showAjaxError(response, 'Failed to update schedules.');
                     }
                 },
                 error: function() {
@@ -2873,7 +2873,7 @@
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success', { duration: 8000 });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsScheduleL10n.bulkRunFailed, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsScheduleL10n.bulkRunFailed);
                     }
                 },
                 error: function() {
@@ -3276,7 +3276,7 @@
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success', { duration: 8000 });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsAdminL10n.errorOccurred);
                     }
                 },
                 error: function() {
@@ -3463,7 +3463,7 @@
                     } else {
                         // Revert the toggle
                         $toggle.prop('checked', !isActive);
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsAdminL10n.errorOccurred);
                     }
                 },
                 error: function() {
@@ -3556,7 +3556,7 @@
                         }
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsAdminL10n.generationFailed);
                     }
                 },
                 error: function() {
@@ -3613,7 +3613,7 @@
                     $loading.hide();
 
                     if (!response.success) {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
+                        AIPS.Utilities.showAjaxError(response, aipsAdminL10n.errorOccurred);
                         $modal.hide();
                         return;
                     }
@@ -4316,7 +4316,7 @@
                         }
                     }
                 } else {
-                    AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.saveStructureFailed, 'error');
+                    AIPS.Utilities.showAjaxError(response, aipsStructuresL10n.saveStructureFailed);
                 }
             }).fail(function(){
                 AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
@@ -4364,7 +4364,7 @@
                     $('#aips-structure-modal').find('.aips-modal-title').text('Edit Article Structure');
                     $('#aips-structure-modal').show();
                 } else {
-                    AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.loadStructureFailed, 'error');
+                    AIPS.Utilities.showAjaxError(response, aipsStructuresL10n.loadStructureFailed);
                 }
             }).fail(function(){
                 AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
@@ -4391,7 +4391,7 @@
                         if (response.success) {
                             $row.fadeOut(function(){ $(this).remove(); });
                         } else {
-                            AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.deleteStructureFailed, 'error');
+                            AIPS.Utilities.showAjaxError(response, aipsStructuresL10n.deleteStructureFailed);
                         }
                     }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
                 }}
@@ -4488,7 +4488,7 @@
                         }
                     }
                 } else {
-                    AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.saveSectionFailed, 'error');
+                    AIPS.Utilities.showAjaxError(response, aipsStructuresL10n.saveSectionFailed);
                 }
             }).fail(function(){
                 AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
@@ -4523,7 +4523,7 @@
                     $('#aips-section-modal').find('.aips-modal-title').text('Edit Prompt Section');
                     $('#aips-section-modal').show();
                 } else {
-                    AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.loadSectionFailed, 'error');
+                    AIPS.Utilities.showAjaxError(response, aipsStructuresL10n.loadSectionFailed);
                 }
             }).fail(function(){
                 AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
@@ -4550,7 +4550,7 @@
                         if (response.success) {
                             $row.fadeOut(function(){ $(this).remove(); });
                         } else {
-                            AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.deleteSectionFailed, 'error');
+                            AIPS.Utilities.showAjaxError(response, aipsStructuresL10n.deleteSectionFailed);
                         }
                     }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
                 }}
@@ -4685,7 +4685,7 @@
                         $('#aips-template-modal').hide();
                         AIPS.showGeneratedPostsModal(response.data);
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {

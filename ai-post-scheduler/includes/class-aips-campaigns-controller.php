@@ -614,7 +614,7 @@ class AIPS_Campaigns_Controller {
 		));
 
 		if (is_wp_error($response)) {
-			AIPS_Ajax_Response::error($response->get_error_message(), 'ai_generation_failed', 500);
+			AIPS_Ajax_Response::wp_error($response, 500);
 		}
 
 		if (!is_array($response)) {
