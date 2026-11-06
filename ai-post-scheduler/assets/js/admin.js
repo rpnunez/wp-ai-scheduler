@@ -786,6 +786,18 @@
                     $targetTab.find('.aips-tab-content:not(.active)').hide().attr('aria-hidden', 'true');
                     $targetTab.find('.aips-tab-content.active').show().attr('aria-hidden', 'false');
                 }
+
+                // Scroll page back to top when switching tabs in vertical rail layout or settings
+                try {
+                    var prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+                    window.scrollTo({
+                        top: 0,
+                        left: 0,
+                        behavior: prefersReducedMotion ? 'auto' : 'smooth'
+                    });
+                } catch (scrollErr) {
+                    window.scrollTo(0, 0);
+                }
             } else {
                 var $container = $tabNav.parent();
                 var $scopedTabs = $container.children('.aips-tab-content');
