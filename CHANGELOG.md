@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Added
+- **Author Wizard:** Group author setup into Identity, Writing & Audience, Topics & Sources, Scheduling, and Review. Explain settings, review values before creating an author, and jump directly between sections or save from any section while editing. Validation opens the section that needs attention without discarding other settings.
 - **Summarized Notification Digest & Batch Threshold:**
   - Added configurable summarized notification digest in Settings > Notifications to batch frequent generation and review emails (e.g. Post Generated, Post Ready For Review) into a single digest email instead of sending individual emails per post.
   - Exposed customizable batch threshold (clamped 2–50, default 5) to trigger instant digest dispatch when accumulated count is met.

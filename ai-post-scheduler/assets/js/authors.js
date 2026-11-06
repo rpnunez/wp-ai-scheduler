@@ -13,6 +13,7 @@
 		currentAuthorId: null,
 		currentTopicPostsTopicId: null,
 		hasImportedSuggestedAuthor: false,
+		authorWizardStep: 1,
 
 		/**
 		 * Initialise the Authors module by binding all event listeners.
@@ -47,6 +48,18 @@
 
 			// Submit Author Form
 			$('#aips-author-form').on('submit', this.saveAuthor.bind(this));
+			$('#aips-author-form').on('click', '.aips-author-next', () => {
+				if (this.validateAuthorSteps(this.authorWizardStep, this.authorWizardStep)) {
+					this.goToAuthorStep(this.authorWizardStep + 1);
+				}
+			});
+			$('#aips-author-form').on('click', '.aips-author-back', () => this.goToAuthorStep(this.authorWizardStep - 1));
+			$('#aips-author-form').on('click', '.aips-author-step-link, .aips-author-review-edit', (e) => {
+				const step = Number($(e.currentTarget).data('step'));
+				if ($('#author_id').val() || step <= this.authorWizardStep || this.validateAuthorSteps(1, step - 1)) {
+					this.goToAuthorStep(step);
+				}
+			});
 
 			// Toggle Source Groups panel when Include Sources? checkbox changes.
 			$(document).on('change', '#author_include_sources', this.toggleAuthorSourceGroups.bind(this));
@@ -258,6 +271,7 @@
 			$('.aips-author-source-group-cb').prop('checked', false);
 			$('#author-source-groups-selector').hide();
 			$('#aips-author-modal').fadeIn();
+			this.goToAuthorStep(1);
 		},
 
 		/**
@@ -378,6 +392,7 @@
 						authorSgIds.forEach(function(tid) {
 							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
 						});
+						this.goToAuthorStep(1);
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 
@@ -392,8 +407,80 @@
 			});
 		},
 
+		/** Show one Author panel without changing the form's enabled fields or values. */
+		goToAuthorStep: function (step) {
+			const $form = $('#aips-author-form');
+			step = Math.max(1, Math.min(5, step));
+			this.authorWizardStep = step;
+			$form.find('.aips-author-step').hide().attr('aria-hidden', 'true');
+			const $panel = $form.find('.aips-author-step[data-step="' + step + '"]');
+			$panel.show().attr('aria-hidden', 'false');
+			$form.find('.aips-author-step-link').each(function () {
+				const active = Number($(this).data('step')) === step;
+				$(this).toggleClass('active', active);
+				if (active) { $(this).attr('aria-current', 'step'); } else { $(this).removeAttr('aria-current'); }
+			});
+			const editing = Boolean($('#author_id').val());
+			$form.find('.aips-author-back').toggle(step > 1);
+			$form.find('.aips-author-next').toggle(step < 5);
+			$form.find('.aips-author-save').toggle(editing || step === 5).text(editing ? aipsAuthorsL10n.saveChanges : aipsAuthorsL10n.saveAuthor);
+			if (step === 5) { this.updateAuthorReview(); }
+			$panel.find('h3').first().trigger('focus');
+			$('#aips-author-modal .aips-modal-body').scrollTop(0);
+		},
+
+		/** Validate enabled controls even when their wizard panel is hidden. */
+		validateAuthorSteps: function (first, last) {
+			const $form = $('#aips-author-form');
+			$('#author_include_sources')[0].setCustomValidity(
+				$('#author_include_sources').prop('checked') && !$('.aips-author-source-group-cb:checked').length
+					? aipsAuthorsL10n.sourceGroupsRequired : ''
+			);
+			for (let step = first; step <= Math.min(last, 4); step++) {
+				const controls = $form.find('.aips-author-step[data-step="' + step + '"] :input:enabled').get();
+				for (const control of controls) {
+					if (control.required && control.type === 'text') {
+						control.setCustomValidity(control.value.trim() ? '' : aipsAuthorsL10n.requiredField);
+					}
+					if (!control.checkValidity()) {
+						this.goToAuthorStep(step);
+						control.focus();
+						control.reportValidity();
+						return false;
+					}
+				}
+			}
+			return true;
+		},
+
+		/** Build a text-only summary from the live controls, including conditional settings. */
+		updateAuthorReview: function () {
+			const $review = $('#aips-author-review').empty();
+			$('#aips-author-form .aips-author-step').not('[data-step="5"]').each(function () {
+				const $panel = $(this);
+				const $section = $('<section>').addClass('aips-author-review-section');
+				$('<button>', { type: 'button' }).addClass('aips-btn aips-btn-secondary aips-author-review-edit')
+					.attr('data-step', $panel.data('step')).text($panel.find('h3').first().text()).appendTo($section);
+				const $list = $('<dl>').appendTo($section);
+				$panel.find('input, select, textarea').filter(':enabled').each(function () {
+					const $field = $(this);
+					if ($field.hasClass('aips-author-source-group-cb') && !$('#author_include_sources').prop('checked')) { return; }
+					let $label = this.id ? $panel.find('label[for="' + this.id + '"]') : $();
+					if (!$label.length) { $label = $field.closest('label'); }
+					let value = $field.is('select') ? $field.find('option:selected').text() : $field.val();
+					if (this.type === 'checkbox') { value = this.checked ? aipsAuthorsL10n.enabled : aipsAuthorsL10n.disabled; }
+					$('<dt>').text($label.text().replace(/\s*\*\s*$/, '').trim()).appendTo($list);
+					$('<dd>').text(value || aipsAuthorsL10n.notSpecified).appendTo($list);
+				});
+				if ($panel.data('step') === 3 && $('#topic_auto_approval_mode').val() === 'inherit') {
+					$('<p>').text($('#aips-auto-approval-effective-policy').text().trim()).appendTo($section);
+				}
+				$section.appendTo($review);
+			});
+		},
+
 		/**
-		 * Serialize and save the author form via the `aips_save_author` AJAX action.
+		 * Validate all panels and save via the existing `aips_save_author` action.
 		 *
 		 * Disables the submit button while the request is in flight.
 		 * Shows a success toast and reloads the page after 1 second on success,
@@ -403,8 +490,17 @@
 		 */
 		saveAuthor: function (e) {
 			e.preventDefault();
-
+			// This handler owns locking; cancelled validation must not reach the
+			// delegated async-form lock, which has no request to unlock in that case.
+			e.stopPropagation();
 			const $form = $('#aips-author-form');
+			if ($form.data('aips-submitting')) { return; }
+			if (!this.validateAuthorSteps(1, 4)) { return; }
+			if (!$('#author_id').val() && this.authorWizardStep !== 5) {
+				this.goToAuthorStep(5);
+				return;
+			}
+
 			const $submitBtn = $form.find('[type="submit"]');
 			const formData = $form.serialize();
 
