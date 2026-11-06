@@ -105,305 +105,312 @@ $site_ctx = AIPS_Site_Context::get();
 </div>
 
 <!-- Author Edit/Create Modal -->
-<div id="aips-author-modal" class="aips-modal" style="display: none;">
-    <div class="aips-modal-content">
-        <div class="aips-modal-header">
-            <h2 class="aips-modal-title"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></h2>
-            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        </div>
-        <div class="aips-modal-body">
+<div id="aips-author-modal" class="aips-modal aips-author-wizard" role="dialog" aria-modal="true" aria-labelledby="aips-author-modal-title" style="display: none;">
+	<div class="aips-modal-content">
+		<div class="aips-modal-header">
+			<h2 class="aips-modal-title" id="aips-author-modal-title"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body">
 
-        <div id="aips-author-modal-loader" style="display: none; text-align: center; padding: 20px;">
-            <span class="spinner is-active" style="float: none; margin: 0 auto;"></span>
-            <p><?php esc_html_e('Loading author data...', 'ai-post-scheduler'); ?></p>
-        </div>
+		<div id="aips-author-modal-loader" style="display: none; text-align: center; padding: 20px;">
+			<span class="spinner is-active" style="float: none; margin: 0 auto;"></span>
+			<p><?php esc_html_e('Loading author data...', 'ai-post-scheduler'); ?></p>
+		</div>
 
-        <form id="aips-author-form" data-aips-async="true">
-            <input type="hidden" id="author_id" name="author_id" value="">
+		<form id="aips-author-form" data-aips-async="true" novalidate>
+			<input type="hidden" id="author_id" name="author_id" value="">
 
-            <div class="form-group">
-                <label for="author_name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?> *</label>
-                <input type="text" id="author_name" name="name" required>
-            </div>
+			<?php
+			$author_source_groups = get_terms(array(
+				'taxonomy'   => 'aips_source_group',
+				'hide_empty' => false,
+			));
+			if (is_wp_error($author_source_groups)) {
+				$author_source_groups = array();
+			}
+			?>
+			<nav class="aips-wizard-progress aips-author-progress" aria-label="<?php esc_attr_e('Author setup steps', 'ai-post-scheduler'); ?>">
+				<button type="button" class="aips-author-step-link" data-step="1" aria-controls="aips-author-step-1"><span class="aips-step-number">1</span><span class="aips-step-label"><?php esc_html_e('Identity', 'ai-post-scheduler'); ?></span></button>
+				<button type="button" class="aips-author-step-link" data-step="2" aria-controls="aips-author-step-2"><span class="aips-step-number">2</span><span class="aips-step-label"><?php esc_html_e('Writing & Audience', 'ai-post-scheduler'); ?></span></button>
+				<button type="button" class="aips-author-step-link" data-step="3" aria-controls="aips-author-step-3"><span class="aips-step-number">3</span><span class="aips-step-label"><?php esc_html_e('Topics & Sources', 'ai-post-scheduler'); ?></span></button>
+				<button type="button" class="aips-author-step-link" data-step="4" aria-controls="aips-author-step-4"><span class="aips-step-number">4</span><span class="aips-step-label"><?php esc_html_e('Scheduling', 'ai-post-scheduler'); ?></span></button>
+				<button type="button" class="aips-author-step-link" data-step="5" aria-controls="aips-author-step-5"><span class="aips-step-number">5</span><span class="aips-step-label"><?php esc_html_e('Review', 'ai-post-scheduler'); ?></span></button>
+			</nav>
+			<section class="aips-author-step aips-wizard-step-content" id="aips-author-step-1" data-step="1" aria-labelledby="aips-author-heading-1">
+				<h3 id="aips-author-heading-1" tabindex="-1"><?php esc_html_e('Identity', 'ai-post-scheduler'); ?></h3>
+				<p class="description"><?php esc_html_e('Give this author a name and a clear area of expertise.', 'ai-post-scheduler'); ?></p>
+				<div class="form-group">
+					<label for="author_name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?> *</label>
+					<input type="text" id="author_name" name="name" required>
+					<p class="description"><?php esc_html_e('A name to identify this AI author in your author list.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_field_niche"><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?> *</label>
+					<input type="text" id="author_field_niche" name="field_niche" placeholder="<?php esc_attr_e('e.g., PHP Programming', 'ai-post-scheduler'); ?>" required>
+					<p class="description"><?php esc_html_e('The main topic or field this author covers', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></label>
+					<textarea id="author_description" name="description" rows="3"></textarea>
+					<p class="description"><?php esc_html_e('Describe the author persona and background to guide topic relevance.', 'ai-post-scheduler'); ?></p>
+				</div>
+			</section>
+			<section class="aips-author-step aips-wizard-step-content" id="aips-author-step-2" data-step="2" aria-labelledby="aips-author-heading-2" style="display: none;">
+				<h3 id="aips-author-heading-2" tabindex="-1"><?php esc_html_e('Writing & Audience', 'ai-post-scheduler'); ?></h3>
+				<p class="description"><?php esc_html_e('Choose who this author writes for and how their posts should sound.', 'ai-post-scheduler'); ?></p>
+				<div class="form-group">
+					<label for="voice_tone"><?php esc_html_e('Tone', 'ai-post-scheduler'); ?></label>
+					<input type="text" id="voice_tone" name="voice_tone" placeholder="<?php esc_attr_e('e.g., Professional, Witty, Academic', 'ai-post-scheduler'); ?>">
+					<p class="description"><?php esc_html_e('Specify the tone of voice for the generated content', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="writing_style"><?php esc_html_e('Writing Style', 'ai-post-scheduler'); ?></label>
+					<input type="text" id="writing_style" name="writing_style" placeholder="<?php esc_attr_e('e.g., Tutorial, Opinion Piece, Case Study', 'ai-post-scheduler'); ?>">
+					<p class="description"><?php esc_html_e('Specify the writing style for the generated content', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_expertise_level"><?php esc_html_e('Expertise Level', 'ai-post-scheduler'); ?></label>
+					<select id="author_expertise_level" name="expertise_level">
+						<option value=""><?php esc_html_e('— Not specified —', 'ai-post-scheduler'); ?></option>
+						<option value="beginner"><?php esc_html_e('Beginner', 'ai-post-scheduler'); ?></option>
+						<option value="intermediate"><?php esc_html_e('Intermediate', 'ai-post-scheduler'); ?></option>
+						<option value="expert"><?php esc_html_e('Expert', 'ai-post-scheduler'); ?></option>
+						<option value="thought_leader"><?php esc_html_e('Thought Leader', 'ai-post-scheduler'); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e("The author's level of expertise. Influences the depth and complexity of generated content.", 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_target_audience"><?php esc_html_e('Target Audience', 'ai-post-scheduler'); ?></label>
+					<input type="text" id="author_target_audience" name="target_audience" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners', 'ai-post-scheduler'); ?>">
+					<p class="description"><?php esc_html_e('Who this author writes for. Helps the AI tailor topic ideas and content depth.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="article_structure_id"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></label>
+					<select id="article_structure_id" name="article_structure_id">
+						<option value=""><?php esc_html_e('None (use default)', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($article_structures as $structure): ?>
+							<option value="<?php echo esc_attr($structure->id); ?>">
+								<?php echo esc_html($structure->name); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description"><?php esc_html_e('Optional: Select a specific article structure for posts generated from this author', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_preferred_content_length"><?php esc_html_e('Preferred Content Length', 'ai-post-scheduler'); ?></label>
+					<select id="author_preferred_content_length" name="preferred_content_length">
+						<option value=""><?php esc_html_e('— Not specified —', 'ai-post-scheduler'); ?></option>
+						<option value="short"><?php esc_html_e('Short (under 800 words)', 'ai-post-scheduler'); ?></option>
+						<option value="medium"><?php esc_html_e('Medium (800–1,500 words)', 'ai-post-scheduler'); ?></option>
+						<option value="long"><?php esc_html_e('Long (1,500+ words)', 'ai-post-scheduler'); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e('Guides the AI on how long each generated post should be.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_language"><?php esc_html_e('Content Language', 'ai-post-scheduler'); ?></label>
+					<select id="author_language" name="language">
+						<option value="en"><?php esc_html_e('English (default)', 'ai-post-scheduler'); ?></option>
+						<option value="es"><?php esc_html_e('Spanish', 'ai-post-scheduler'); ?></option>
+						<option value="fr"><?php esc_html_e('French', 'ai-post-scheduler'); ?></option>
+						<option value="de"><?php esc_html_e('German', 'ai-post-scheduler'); ?></option>
+						<option value="it"><?php esc_html_e('Italian', 'ai-post-scheduler'); ?></option>
+						<option value="pt"><?php esc_html_e('Portuguese', 'ai-post-scheduler'); ?></option>
+						<option value="nl"><?php esc_html_e('Dutch', 'ai-post-scheduler'); ?></option>
+						<option value="pl"><?php esc_html_e('Polish', 'ai-post-scheduler'); ?></option>
+						<option value="ru"><?php esc_html_e('Russian', 'ai-post-scheduler'); ?></option>
+						<option value="ja"><?php esc_html_e('Japanese', 'ai-post-scheduler'); ?></option>
+						<option value="ko"><?php esc_html_e('Korean', 'ai-post-scheduler'); ?></option>
+						<option value="zh"><?php esc_html_e('Chinese (Simplified)', 'ai-post-scheduler'); ?></option>
+						<option value="ar"><?php esc_html_e('Arabic', 'ai-post-scheduler'); ?></option>
+						<option value="hi"><?php esc_html_e('Hindi', 'ai-post-scheduler'); ?></option>
+						<option value="tr"><?php esc_html_e('Turkish', 'ai-post-scheduler'); ?></option>
+						<option value="sv"><?php esc_html_e('Swedish', 'ai-post-scheduler'); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e('Language for content generated by this author. Overrides the site-wide language setting.', 'ai-post-scheduler'); ?></p>
+				</div>
+			</section>
+			<section class="aips-author-step aips-wizard-step-content" id="aips-author-step-3" data-step="3" aria-labelledby="aips-author-heading-3" style="display: none;">
+				<h3 id="aips-author-heading-3" tabindex="-1"><?php esc_html_e('Topics & Sources', 'ai-post-scheduler'); ?></h3>
+				<p class="description"><?php esc_html_e('Guide topic ideas, choose reference sources, and decide how topics are approved.', 'ai-post-scheduler'); ?></p>
+				<div class="form-group">
+					<label for="author_keywords"><?php esc_html_e('Keywords', 'ai-post-scheduler'); ?></label>
+					<input type="text" id="author_keywords" name="keywords" placeholder="<?php esc_attr_e('e.g., Laravel, Symfony, Composer, PSR', 'ai-post-scheduler'); ?>">
+					<p class="description"><?php esc_html_e('Comma-separated keywords to focus on when generating topics', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_details"><?php esc_html_e('Details', 'ai-post-scheduler'); ?></label>
+					<textarea id="author_details" name="details" rows="4" placeholder="<?php esc_attr_e('Additional context or instructions for topic generation...', 'ai-post-scheduler'); ?>"></textarea>
+					<p class="description"><?php esc_html_e('Additional context that will be included when generating topics', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_content_goals"><?php esc_html_e('Content Goals', 'ai-post-scheduler'); ?></label>
+					<textarea id="author_content_goals" name="content_goals" rows="2" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive conversions, Build community', 'ai-post-scheduler'); ?>"></textarea>
+					<p class="description"><?php esc_html_e('What the content from this author should achieve. Used to steer topic generation.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_excluded_topics"><?php esc_html_e('Excluded Topics', 'ai-post-scheduler'); ?></label>
+					<textarea id="author_excluded_topics" name="excluded_topics" rows="2" placeholder="<?php esc_attr_e('e.g., competitor products, controversial politics', 'ai-post-scheduler'); ?>"></textarea>
+					<p class="description"><?php esc_html_e('Topics this author should never write about. Combined with site-wide exclusions.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label>
+						<input type="checkbox" id="author_include_sources" name="include_sources" value="1">
+						<?php esc_html_e('Include Sources?', 'ai-post-scheduler'); ?>
+					</label>
+					<p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author. Select at least one group. Only successful snapshots matching each source URL are eligible. References do not guarantee that the AI will use or cite them.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div id="author-source-groups-selector" style="display:none;">
+					<div class="form-group">
+						<label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
+						<?php if (!empty($author_source_groups)): ?>
+							<div class="aips-checkbox-group">
+								<?php foreach ($author_source_groups as $asg): ?>
+									<label style="display:block; margin-bottom:4px;">
+										<input type="checkbox"
+											name="source_group_ids[]"
+											class="aips-author-source-group-cb"
+											value="<?php echo esc_attr($asg->term_id); ?>">
+										<?php echo esc_html($asg->name); ?>
+									</label>
+								<?php endforeach; ?>
+							</div>
+							<p class="description"><?php esc_html_e('Select one or more Source Groups whose active sources will be included in the topic generation prompt.', 'ai-post-scheduler'); ?></p>
+						<?php else: ?>
+							<p class="description">
+								<?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
+								<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+							</p>
+						<?php endif; ?>
+					</div>
+				</div>
+				<div class="form-group">
+					<label>
+						<input type="checkbox" id="author_affiliate_links_enabled" name="affiliate_links_enabled" value="1">
+						<?php esc_html_e('Inject Affiliate Links?', 'ai-post-scheduler'); ?>
+					</label>
+					<p class="description">
+						<?php
+						echo wp_kses(
+							sprintf(
+								/* translators: %s: link to Affiliate Links page */
+								__( 'When enabled, affiliate link mappings matching post tags will be injected into posts generated for this author. Manage mappings on the %s page.', 'ai-post-scheduler' ),
+								'<a href="' . esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'affiliate_links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+							),
+							array(
+								'a' => array(
+									'href'   => array(),
+									'target' => array(),
+								),
+							)
+						);
+						?>
+					</p>
+				</div>
+				<div class="form-group">
+					<label for="topic_auto_approval_mode"><?php esc_html_e('Topic Auto-Approval Policy', 'ai-post-scheduler'); ?></label>
+					<select id="topic_auto_approval_mode" name="topic_auto_approval_mode">
+						<option value="inherit" selected><?php esc_html_e('Use Global Settings (Settings > Authors)', 'ai-post-scheduler'); ?></option>
+						<option value="similarity"><?php esc_html_e('Custom Semantic Gate (Relevance + Duplicate Guard)', 'ai-post-scheduler'); ?></option>
+						<option value="score"><?php esc_html_e('Quality Score Threshold', 'ai-post-scheduler'); ?></option>
+						<option value="all"><?php esc_html_e('Auto-Approve All Topics', 'ai-post-scheduler'); ?></option>
+						<option value="manual"><?php esc_html_e('Manual Review (Disabled)', 'ai-post-scheduler'); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e('Configure how generated topics for this author are evaluated for approval or rejection.', 'ai-post-scheduler'); ?></p>
+					<p class="description" id="aips-auto-approval-effective-policy" style="display: none;">
+						<strong><?php esc_html_e('Effective policy:', 'ai-post-scheduler'); ?></strong>
+						<?php echo esc_html(AIPS_Author_Topic_Approval_Policy::describe_global()); ?>
+						(<a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings')); ?>"><?php esc_html_e('Settings > Authors', 'ai-post-scheduler'); ?></a>)
+					</p>
+				</div>
+				<div class="form-group" id="aips-auto-approval-score-group" style="display: none;">
+					<label for="topic_auto_approval_min_score"><?php esc_html_e('Minimum Quality Score for Approval', 'ai-post-scheduler'); ?></label>
+					<input type="number" id="topic_auto_approval_min_score" name="topic_auto_approval_min_score" value="70" min="1" max="100">
+					<p class="description"><?php esc_html_e('Topics with an AI quality score equal to or higher than this value will be auto-approved (1–100).', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group" id="aips-auto-approval-similarity-group" style="display: none;">
+					<label for="topic_auto_approval_min_relevance"><?php esc_html_e('Minimum Niche Relevance (%)', 'ai-post-scheduler'); ?></label>
+					<input type="number" id="topic_auto_approval_min_relevance" name="topic_auto_approval_min_relevance" value="65" min="1" max="100">
+					<p class="description"><?php esc_html_e('Topic must have at least this semantic relevance percentage to this author persona, bio, and published articles (1–100%).', 'ai-post-scheduler'); ?></p>
 
-            <div class="form-group">
-                <label for="author_field_niche"><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?> *</label>
-                <input type="text" id="author_field_niche" name="field_niche" placeholder="<?php esc_attr_e('e.g., PHP Programming', 'ai-post-scheduler'); ?>" required>
-                <p class="description"><?php esc_html_e('The main topic or field this author covers', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_keywords"><?php esc_html_e('Keywords', 'ai-post-scheduler'); ?></label>
-                <input type="text" id="author_keywords" name="keywords" placeholder="<?php esc_attr_e('e.g., Laravel, Symfony, Composer, PSR', 'ai-post-scheduler'); ?>">
-                <p class="description"><?php esc_html_e('Comma-separated keywords to focus on when generating topics', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_details"><?php esc_html_e('Details', 'ai-post-scheduler'); ?></label>
-                <textarea id="author_details" name="details" rows="4" placeholder="<?php esc_attr_e('Additional context or instructions for topic generation...', 'ai-post-scheduler'); ?>"></textarea>
-                <p class="description"><?php esc_html_e('Additional context that will be included when generating topics', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></label>
-                <textarea id="author_description" name="description" rows="3"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="article_structure_id"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></label>
-                <select id="article_structure_id" name="article_structure_id">
-                    <option value=""><?php esc_html_e('None (use default)', 'ai-post-scheduler'); ?></option>
-                    <?php foreach ($article_structures as $structure): ?>
-                        <option value="<?php echo esc_attr($structure->id); ?>">
-                            <?php echo esc_html($structure->name); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <p class="description"><?php esc_html_e('Optional: Select a specific article structure for posts generated from this author', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="voice_tone"><?php esc_html_e('Tone', 'ai-post-scheduler'); ?></label>
-                <input type="text" id="voice_tone" name="voice_tone" placeholder="<?php esc_attr_e('e.g., Professional, Witty, Academic', 'ai-post-scheduler'); ?>">
-                <p class="description"><?php esc_html_e('Specify the tone of voice for the generated content', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="writing_style"><?php esc_html_e('Writing Style', 'ai-post-scheduler'); ?></label>
-                <input type="text" id="writing_style" name="writing_style" placeholder="<?php esc_attr_e('e.g., Tutorial, Opinion Piece, Case Study', 'ai-post-scheduler'); ?>">
-                <p class="description"><?php esc_html_e('Specify the writing style for the generated content', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_target_audience"><?php esc_html_e('Target Audience', 'ai-post-scheduler'); ?></label>
-                <input type="text" id="author_target_audience" name="target_audience" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners', 'ai-post-scheduler'); ?>">
-                <p class="description"><?php esc_html_e('Who this author writes for. Helps the AI tailor topic ideas and content depth.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_expertise_level"><?php esc_html_e('Expertise Level', 'ai-post-scheduler'); ?></label>
-                <select id="author_expertise_level" name="expertise_level">
-                    <option value=""><?php esc_html_e('— Not specified —', 'ai-post-scheduler'); ?></option>
-                    <option value="beginner"><?php esc_html_e('Beginner', 'ai-post-scheduler'); ?></option>
-                    <option value="intermediate"><?php esc_html_e('Intermediate', 'ai-post-scheduler'); ?></option>
-                    <option value="expert"><?php esc_html_e('Expert', 'ai-post-scheduler'); ?></option>
-                    <option value="thought_leader"><?php esc_html_e('Thought Leader', 'ai-post-scheduler'); ?></option>
-                </select>
-                <p class="description"><?php esc_html_e("The author's level of expertise. Influences the depth and complexity of generated content.", 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_content_goals"><?php esc_html_e('Content Goals', 'ai-post-scheduler'); ?></label>
-                <textarea id="author_content_goals" name="content_goals" rows="2" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive conversions, Build community', 'ai-post-scheduler'); ?>"></textarea>
-                <p class="description"><?php esc_html_e('What the content from this author should achieve. Used to steer topic generation.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_excluded_topics"><?php esc_html_e('Excluded Topics', 'ai-post-scheduler'); ?></label>
-                <textarea id="author_excluded_topics" name="excluded_topics" rows="2" placeholder="<?php esc_attr_e('e.g., competitor products, controversial politics', 'ai-post-scheduler'); ?>"></textarea>
-                <p class="description"><?php esc_html_e('Topics this author should never write about. Combined with site-wide exclusions.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_preferred_content_length"><?php esc_html_e('Preferred Content Length', 'ai-post-scheduler'); ?></label>
-                <select id="author_preferred_content_length" name="preferred_content_length">
-                    <option value=""><?php esc_html_e('— Not specified —', 'ai-post-scheduler'); ?></option>
-                    <option value="short"><?php esc_html_e('Short (under 800 words)', 'ai-post-scheduler'); ?></option>
-                    <option value="medium"><?php esc_html_e('Medium (800–1,500 words)', 'ai-post-scheduler'); ?></option>
-                    <option value="long"><?php esc_html_e('Long (1,500+ words)', 'ai-post-scheduler'); ?></option>
-                </select>
-                <p class="description"><?php esc_html_e('Guides the AI on how long each generated post should be.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_language"><?php esc_html_e('Content Language', 'ai-post-scheduler'); ?></label>
-                <select id="author_language" name="language">
-                    <option value="en"><?php esc_html_e('English (default)', 'ai-post-scheduler'); ?></option>
-                    <option value="es"><?php esc_html_e('Spanish', 'ai-post-scheduler'); ?></option>
-                    <option value="fr"><?php esc_html_e('French', 'ai-post-scheduler'); ?></option>
-                    <option value="de"><?php esc_html_e('German', 'ai-post-scheduler'); ?></option>
-                    <option value="it"><?php esc_html_e('Italian', 'ai-post-scheduler'); ?></option>
-                    <option value="pt"><?php esc_html_e('Portuguese', 'ai-post-scheduler'); ?></option>
-                    <option value="nl"><?php esc_html_e('Dutch', 'ai-post-scheduler'); ?></option>
-                    <option value="pl"><?php esc_html_e('Polish', 'ai-post-scheduler'); ?></option>
-                    <option value="ru"><?php esc_html_e('Russian', 'ai-post-scheduler'); ?></option>
-                    <option value="ja"><?php esc_html_e('Japanese', 'ai-post-scheduler'); ?></option>
-                    <option value="ko"><?php esc_html_e('Korean', 'ai-post-scheduler'); ?></option>
-                    <option value="zh"><?php esc_html_e('Chinese (Simplified)', 'ai-post-scheduler'); ?></option>
-                    <option value="ar"><?php esc_html_e('Arabic', 'ai-post-scheduler'); ?></option>
-                    <option value="hi"><?php esc_html_e('Hindi', 'ai-post-scheduler'); ?></option>
-                    <option value="tr"><?php esc_html_e('Turkish', 'ai-post-scheduler'); ?></option>
-                    <option value="sv"><?php esc_html_e('Swedish', 'ai-post-scheduler'); ?></option>
-                </select>
-                <p class="description"><?php esc_html_e('Language for content generated by this author. Overrides the site-wide language setting.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_max_posts_per_topic"><?php esc_html_e('Max Posts per Topic', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="author_max_posts_per_topic" name="max_posts_per_topic" value="1" min="1" max="10">
-                <p class="description"><?php esc_html_e('Maximum number of posts that can be generated from a single approved topic.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_manual_post_generation_quantity"><?php esc_html_e('Manual Posts per Run', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="author_manual_post_generation_quantity" name="manual_post_generation_quantity" value="1" min="1" max="10">
-                <p class="description"><?php esc_html_e('How many posts to generate when you manually run Generate Posts for this author.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="author_scheduled_post_generation_quantity"><?php esc_html_e('Scheduled Posts per Run', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="author_scheduled_post_generation_quantity" name="scheduled_post_generation_quantity" value="1" min="1" max="10">
-                <p class="description"><?php esc_html_e('How many posts to generate each time this author runs via schedule or cron.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="topic_generation_quantity"><?php esc_html_e('Number of Topics to Generate', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="topic_generation_quantity" name="topic_generation_quantity" value="5" min="1" max="20">
-            </div>
-
-            <div class="form-group">
-                <label for="topic_generation_frequency"><?php esc_html_e('Topic Generation Frequency', 'ai-post-scheduler'); ?></label>
-                <select id="topic_generation_frequency" name="topic_generation_frequency">
-                    <option value="daily"><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
-                    <option value="weekly" selected><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
-                    <option value="biweekly"><?php esc_html_e('Bi-weekly', 'ai-post-scheduler'); ?></option>
-                    <option value="monthly"><?php esc_html_e('Monthly', 'ai-post-scheduler'); ?></option>
-                </select>
-            </div>
-
-            <!-- Topic Auto-Approval Settings -->
-            <div class="form-group">
-                <label for="topic_auto_approval_mode"><?php esc_html_e('Topic Auto-Approval Policy', 'ai-post-scheduler'); ?></label>
-                <select id="topic_auto_approval_mode" name="topic_auto_approval_mode">
-                    <option value="inherit" selected><?php esc_html_e('Use Global Settings (Settings > Authors)', 'ai-post-scheduler'); ?></option>
-                    <option value="similarity"><?php esc_html_e('Custom Semantic Gate (Relevance + Duplicate Guard)', 'ai-post-scheduler'); ?></option>
-                    <option value="score"><?php esc_html_e('Quality Score Threshold', 'ai-post-scheduler'); ?></option>
-                    <option value="all"><?php esc_html_e('Auto-Approve All Topics', 'ai-post-scheduler'); ?></option>
-                    <option value="manual"><?php esc_html_e('Manual Review (Disabled)', 'ai-post-scheduler'); ?></option>
-                </select>
-                <p class="description"><?php esc_html_e('Configure how generated topics for this author are evaluated for approval or rejection.', 'ai-post-scheduler'); ?></p>
-                <p class="description" id="aips-auto-approval-effective-policy" style="display: none;">
-                    <strong><?php esc_html_e('Effective policy:', 'ai-post-scheduler'); ?></strong>
-                    <?php echo esc_html(AIPS_Author_Topic_Approval_Policy::describe_global()); ?>
-                    (<a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings')); ?>"><?php esc_html_e('Settings > Authors', 'ai-post-scheduler'); ?></a>)
-                </p>
-            </div>
-
-            <div class="form-group" id="aips-auto-approval-score-group" style="display: none;">
-                <label for="topic_auto_approval_min_score"><?php esc_html_e('Minimum Quality Score for Approval', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="topic_auto_approval_min_score" name="topic_auto_approval_min_score" value="70" min="1" max="100">
-                <p class="description"><?php esc_html_e('Topics with an AI quality score equal to or higher than this value will be auto-approved (1–100).', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group" id="aips-auto-approval-similarity-group" style="display: none;">
-                <label for="topic_auto_approval_min_relevance"><?php esc_html_e('Minimum Niche Relevance (%)', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="topic_auto_approval_min_relevance" name="topic_auto_approval_min_relevance" value="65" min="1" max="100">
-                <p class="description"><?php esc_html_e('Topic must have at least this semantic relevance percentage to this author persona, bio, and published articles (1–100%).', 'ai-post-scheduler'); ?></p>
-
-                <label for="topic_auto_approval_max_similarity" style="margin-top: 12px; display: block;"><?php esc_html_e('Maximum Duplicate Similarity Threshold', 'ai-post-scheduler'); ?></label>
-                <input type="number" id="topic_auto_approval_max_similarity" name="topic_auto_approval_max_similarity" value="0.85" min="0.50" max="0.99" step="0.01">
-                <p class="description"><?php esc_html_e('Topic duplicate similarity against existing published articles and topics must remain below this threshold (e.g. 0.85 = 85%). Topics meeting or exceeding this are auto-rejected.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group" id="aips-auto-approval-fallback-group" style="display: none;">
-                <label for="topic_auto_approval_fallback"><?php esc_html_e('Fallback for Non-Qualifying Topics', 'ai-post-scheduler'); ?></label>
-                <select id="topic_auto_approval_fallback" name="topic_auto_approval_fallback">
-                    <option value="smart_split" selected><?php esc_html_e('Smart Split: Auto-Reject Duplicates, Hold Low Relevance in Pending', 'ai-post-scheduler'); ?></option>
-                    <option value="pending"><?php esc_html_e('Leave All in Pending (Queue for Review)', 'ai-post-scheduler'); ?></option>
-                    <option value="rejected"><?php esc_html_e('Auto-Reject All Non-Qualifying', 'ai-post-scheduler'); ?></option>
-                </select>
-                <p class="description"><?php esc_html_e('Choose how non-qualifying topics should be handled when evaluation thresholds are not satisfied.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div class="form-group">
-                <label for="post_generation_frequency"><?php esc_html_e('Post Generation Frequency', 'ai-post-scheduler'); ?></label>
-                <select id="post_generation_frequency" name="post_generation_frequency">
-                    <option value="hourly"><?php esc_html_e('Hourly', 'ai-post-scheduler'); ?></option>
-                    <option value="daily" selected><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
-                    <option value="weekly"><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="is_active" name="is_active" checked>
-                    <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
-                </label>
-            </div>
-
-            <?php
-            $author_source_groups = get_terms(array(
-                'taxonomy'   => 'aips_source_group',
-                'hide_empty' => false,
-            ));
-            if (is_wp_error($author_source_groups)) {
-                $author_source_groups = array();
-            }
-            ?>
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="author_include_sources" name="include_sources" value="1">
-                    <?php esc_html_e('Include Sources?', 'ai-post-scheduler'); ?>
-                </label>
-                <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author. Select at least one group. Only successful snapshots matching each source URL are eligible. References do not guarantee that the AI will use or cite them.', 'ai-post-scheduler'); ?></p>
-            </div>
-
-            <div id="author-source-groups-selector" style="display:none;">
-                <div class="form-group">
-                    <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
-                    <?php if (!empty($author_source_groups)): ?>
-                        <div class="aips-checkbox-group">
-                            <?php foreach ($author_source_groups as $asg): ?>
-                                <label style="display:block; margin-bottom:4px;">
-                                    <input type="checkbox"
-                                        name="source_group_ids[]"
-                                        class="aips-author-source-group-cb"
-                                        value="<?php echo esc_attr($asg->term_id); ?>">
-                                    <?php echo esc_html($asg->name); ?>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                        <p class="description"><?php esc_html_e('Select one or more Source Groups whose active sources will be included in the topic generation prompt.', 'ai-post-scheduler'); ?></p>
-                    <?php else: ?>
-                        <p class="description">
-                            <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
-                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
-                        </p>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="author_affiliate_links_enabled" name="affiliate_links_enabled" value="1">
-                    <?php esc_html_e('Inject Affiliate Links?', 'ai-post-scheduler'); ?>
-                </label>
-                <p class="description">
-                    <?php
-                    echo wp_kses(
-                        sprintf(
-                            /* translators: %s: link to Affiliate Links page */
-                            __( 'When enabled, affiliate link mappings matching post tags will be injected into posts generated for this author. Manage mappings on the %s page.', 'ai-post-scheduler' ),
-                            '<a href="' . esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'affiliate_links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
-                        ),
-                        array(
-                            'a' => array(
-                                'href'   => array(),
-                                'target' => array(),
-                            ),
-                        )
-                    );
-                    ?>
-                </p>
-            </div>
-
-            <div class="aips-modal-footer">
-                <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
-                <button type="submit" class="aips-btn aips-btn-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
-            </div>
-        </form>
-        </div>
-    </div>
+					<label for="topic_auto_approval_max_similarity" style="margin-top: 12px; display: block;"><?php esc_html_e('Maximum Duplicate Similarity Threshold', 'ai-post-scheduler'); ?></label>
+					<input type="number" id="topic_auto_approval_max_similarity" name="topic_auto_approval_max_similarity" value="0.85" min="0.50" max="0.99" step="0.01">
+					<p class="description"><?php esc_html_e('Topic duplicate similarity against existing published articles and topics must remain below this threshold (e.g. 0.85 = 85%). Topics meeting or exceeding this are auto-rejected.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group" id="aips-auto-approval-fallback-group" style="display: none;">
+					<label for="topic_auto_approval_fallback"><?php esc_html_e('Fallback for Non-Qualifying Topics', 'ai-post-scheduler'); ?></label>
+					<select id="topic_auto_approval_fallback" name="topic_auto_approval_fallback">
+						<option value="smart_split" selected><?php esc_html_e('Smart Split: Auto-Reject Duplicates, Hold Low Relevance in Pending', 'ai-post-scheduler'); ?></option>
+						<option value="pending"><?php esc_html_e('Leave All in Pending (Queue for Review)', 'ai-post-scheduler'); ?></option>
+						<option value="rejected"><?php esc_html_e('Auto-Reject All Non-Qualifying', 'ai-post-scheduler'); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e('Choose how non-qualifying topics should be handled when evaluation thresholds are not satisfied.', 'ai-post-scheduler'); ?></p>
+				</div>
+			</section>
+			<section class="aips-author-step aips-wizard-step-content" id="aips-author-step-4" data-step="4" aria-labelledby="aips-author-heading-4" style="display: none;">
+				<h3 id="aips-author-heading-4" tabindex="-1"><?php esc_html_e('Scheduling', 'ai-post-scheduler'); ?></h3>
+				<p class="description"><?php esc_html_e('Set how often topics and posts are generated and how much each run creates.', 'ai-post-scheduler'); ?></p>
+				<div class="form-group">
+					<label for="topic_generation_frequency"><?php esc_html_e('Topic Generation Frequency', 'ai-post-scheduler'); ?></label>
+					<select id="topic_generation_frequency" name="topic_generation_frequency">
+						<option value="daily"><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
+						<option value="weekly" selected><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
+						<option value="biweekly"><?php esc_html_e('Bi-weekly', 'ai-post-scheduler'); ?></option>
+						<option value="monthly"><?php esc_html_e('Monthly', 'ai-post-scheduler'); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e('How often automatic topic generation runs for this active author.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="topic_generation_quantity"><?php esc_html_e('Number of Topics to Generate', 'ai-post-scheduler'); ?></label>
+					<input type="number" id="topic_generation_quantity" name="topic_generation_quantity" value="5" min="1" max="20">
+					<p class="description"><?php esc_html_e('How many topic ideas to request each time topic generation runs.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="post_generation_frequency"><?php esc_html_e('Post Generation Frequency', 'ai-post-scheduler'); ?></label>
+					<select id="post_generation_frequency" name="post_generation_frequency">
+						<option value="hourly"><?php esc_html_e('Hourly', 'ai-post-scheduler'); ?></option>
+						<option value="daily" selected><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
+						<option value="weekly"><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e('How often automatic post generation runs using approved topics.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_scheduled_post_generation_quantity"><?php esc_html_e('Scheduled Posts per Run', 'ai-post-scheduler'); ?></label>
+					<input type="number" id="author_scheduled_post_generation_quantity" name="scheduled_post_generation_quantity" value="1" min="1" max="10">
+					<p class="description"><?php esc_html_e('How many posts to generate each time this author runs via schedule or cron.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_manual_post_generation_quantity"><?php esc_html_e('Manual Posts per Run', 'ai-post-scheduler'); ?></label>
+					<input type="number" id="author_manual_post_generation_quantity" name="manual_post_generation_quantity" value="1" min="1" max="10">
+					<p class="description"><?php esc_html_e('How many posts to generate when you manually run Generate Posts for this author.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label for="author_max_posts_per_topic"><?php esc_html_e('Max Posts per Topic', 'ai-post-scheduler'); ?></label>
+					<input type="number" id="author_max_posts_per_topic" name="max_posts_per_topic" value="1" min="1" max="10">
+					<p class="description"><?php esc_html_e('Maximum number of posts that can be generated from a single approved topic.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="form-group">
+					<label>
+						<input type="checkbox" id="is_active" name="is_active" checked>
+						<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
+					</label>
+					<p class="description"><?php esc_html_e('Enable automatic topic and post generation for this author. Turn off to pause scheduled runs.', 'ai-post-scheduler'); ?></p>
+				</div>
+			</section>
+			<section class="aips-author-step aips-wizard-step-content" id="aips-author-step-5" data-step="5" aria-labelledby="aips-author-heading-5" style="display: none;">
+				<h3 id="aips-author-heading-5" tabindex="-1"><?php esc_html_e('Review', 'ai-post-scheduler'); ?></h3>
+				<p class="description"><?php esc_html_e('Check your settings before saving. Use a section button to make changes.', 'ai-post-scheduler'); ?></p>
+				<div id="aips-author-review"></div>
+			</section>
+			<div class="aips-modal-footer aips-author-footer">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-btn aips-btn-secondary aips-author-back"><?php esc_html_e('Back', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-btn aips-btn-primary aips-author-next"><?php esc_html_e('Next', 'ai-post-scheduler'); ?></button>
+				<button type="submit" class="aips-btn aips-btn-primary aips-author-save"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
+			</div>
+		</form>
+		</div>
+	</div>
 </div>
 
 <!-- Author Suggestions Modal -->
