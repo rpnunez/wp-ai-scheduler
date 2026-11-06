@@ -1,6 +1,13 @@
 ## [Unreleased]
 
 ### Added
+- **Interactive Cards Redesign for Posts Pending Review:**
+  - Modernized the Content > Pending Review tab from an HTML table into a responsive 3-column card grid with featured image display, fallback banner placeholders, post type badges, and context attribution.
+  - Added instant 1-click publishing without modal confirmation, including smooth card fade-out animation, draft counter synchronization, and toast notification with direct editor links.
+  - Implemented live debounced AJAX filtering for post search and template / post type dropdowns.
+  - Added hybrid infinite scrolling that auto-loads subsequent pages on scroll for the initial pages and presents an explicit "Load More Posts" button with loading spinner for deeper queues.
+  - Hydrated draft post queries with excerpt/content snippets, featured images, and pre-primed thumbnail caches.
+
 - **Summarized Notification Digest & Batch Threshold:**
   - Added configurable summarized notification digest in Settings > Notifications to batch frequent generation and review emails (e.g. Post Generated, Post Ready For Review) into a single digest email instead of sending individual emails per post.
   - Exposed customizable batch threshold (clamped 2–50, default 5) to trigger instant digest dispatch when accumulated count is met.

@@ -61,7 +61,7 @@ class AIPS_Post_Review_Repository {
 	 */
 	public function get_draft_posts($args = array()) {
 		$defaults = array(
-			'per_page' => 20,
+			'per_page' => 12,
 			'page' => 1,
 			'search' => '',
 			'template_id' => 0,
@@ -134,6 +134,8 @@ class AIPS_Post_Review_Repository {
 				p.post_title,
 				p.post_status,
 				p.post_modified,
+				p.post_content,
+				p.post_excerpt,
 				p.post_type as wp_post_type,
 				p.post_author as wp_post_author
 			FROM {$this->table_name} h
@@ -144,6 +146,67 @@ class AIPS_Post_Review_Repository {
 			ORDER BY $orderby_sql
 			LIMIT %d OFFSET %d
 		", $query_args));
+		
+		if (!empty($results)) {
+			$post_ids = array();
+			foreach ($results as $item) {
+				if (!empty($item->post_id)) {
+					$post_ids[] = (int) $item->post_id;
+				}
+			}
+			$post_ids = array_unique($post_ids);
+			if (!empty($post_ids)) {
+				if (function_exists('_prime_post_caches')) {
+					_prime_post_caches($post_ids, false, true);
+				}
+				if (function_exists('update_post_thumbnail_cache')) {
+					$wp_query_fake = new WP_Query();
+					$wp_query_fake->posts = array_map('get_post', $post_ids);
+					update_post_thumbnail_cache($wp_query_fake);
+				}
+			}
+
+			$datetime_format = get_option('date_format') . ' ' . get_option('time_format');
+
+			foreach ($results as $item) {
+				$item->post_id    = (int) $item->post_id;
+				$item->id         = (int) $item->id;
+				$item->post_title = $item->post_title ?: ($item->generated_title ?: __('Untitled', 'ai-post-scheduler'));
+
+				// Post type label
+				$item_post_type = !empty($item->wp_post_type) ? $item->wp_post_type : ($item->post_type ?? 'post');
+				$post_type_obj  = !empty($item_post_type) ? get_post_type_object($item_post_type) : null;
+				$item->post_type_label = $post_type_obj ? $post_type_obj->labels->singular_name : ($item_post_type ?: 'Post');
+
+				// Featured image URL
+				$thumb_id = get_post_thumbnail_id($item->post_id);
+				$item->featured_image = $thumb_id ? (wp_get_attachment_image_url($thumb_id, 'medium_large') ?: wp_get_attachment_image_url($thumb_id, 'full')) : '';
+
+				// Snippet: excerpt if available, otherwise truncated post content (~200 characters)
+				$raw_snippet = !empty($item->post_excerpt) ? $item->post_excerpt : (!empty($item->post_content) ? $item->post_content : '');
+				$clean_snippet = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags($raw_snippet)));
+				if (mb_strlen($clean_snippet) > 200) {
+					$clean_snippet = mb_substr($clean_snippet, 0, 197) . '...';
+				}
+				$item->snippet = $clean_snippet;
+
+				// Edit link & preview link
+				$item->edit_url    = get_edit_post_link($item->post_id) ?: '';
+				$item->preview_url = get_preview_post_link($item->post_id) ?: '';
+
+				// Creation timestamp formatted
+				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format);
+
+				// Source attribution
+				if (!empty($item->template_name)) {
+					$item->source = sprintf(__('Template: %s', 'ai-post-scheduler'), $item->template_name);
+				} elseif (!empty($item->creation_method)) {
+					$item->source = ucfirst(str_replace('_', ' ', (string) $item->creation_method));
+				} else {
+					$item->source = __('Generated', 'ai-post-scheduler');
+				}
+			}
+		}
 		
 		// Query for total count
 		if (!empty($where_args)) {
