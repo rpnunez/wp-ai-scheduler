@@ -360,6 +360,12 @@ class AIPS_Admin_Assets {
 			'colActions'          => __('Actions', 'ai-post-scheduler'),
 			'promptEmpty'         => __('No prompt recorded for this error.', 'ai-post-scheduler'),
 			'optionsEmpty'        => __('No request parameters recorded.', 'ai-post-scheduler'),
+			'copySupportReport'   => __('Copy Support Report', 'ai-post-scheduler'),
+			'pinging'             => __('Testing Connection…', 'ai-post-scheduler'),
+			'pingSuccess'         => __('Connection OK: %dms', 'ai-post-scheduler'),
+			'pingFailed'          => __('Connection Failed', 'ai-post-scheduler'),
+			'exportFailed'        => __('Failed to export error logs.', 'ai-post-scheduler'),
+			'nonce'               => wp_create_nonce('aips_ajax_nonce'),
 		));
 	}
 
