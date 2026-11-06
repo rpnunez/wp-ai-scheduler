@@ -128,7 +128,7 @@ class AIPS_Authors_Controller {
 			'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
 			'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
 			'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
-			'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
+			'featured_image_source' => (new AIPS_Post_Images_Service())->normalize_source(isset($_POST['featured_image_source']) ? wp_unslash($_POST['featured_image_source']) : 'ai_prompt'),
 			'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
 			'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
 			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field(wp_unslash($_POST['voice_tone'])) : '',
@@ -196,11 +196,8 @@ class AIPS_Authors_Controller {
 				$post_images_repo->delete_for_entity('author', $id, 'featured');
 			}
 
-			$author_post_images = isset($_POST['author_post_images']) && is_array($_POST['author_post_images'])
-				? $_POST['author_post_images']
-				: (isset($_POST['post_images']) && is_array($_POST['post_images']) ? $_POST['post_images'] : array());
-			$max_limit = AIPS_Config::get_instance()->get_max_post_images_limit();
-			$author_post_images = array_slice($author_post_images, 0, $max_limit);
+			$submitted_post_images = isset($_POST['author_post_images']) ? $_POST['author_post_images'] : (isset($_POST['post_images']) ? $_POST['post_images'] : array());
+			$author_post_images = (new AIPS_Post_Images_Service())->normalize_submitted_rows($submitted_post_images);
 			$post_images_repo->sync_for_entity('author', $id, $author_post_images, 'content');
 
 			AIPS_Ajax_Response::success(array(
@@ -277,6 +274,9 @@ class AIPS_Authors_Controller {
 		// Delete topics via repository
 		$this->topics_repository->delete_by_author($author_id);
 		
+		// Delete image configuration via repository
+		(new AIPS_Post_Images_Repository())->delete_for_entity('author', $author_id);
+
 		// Delete author
 		$result = $this->repository->delete($author_id);
 		$this->record_author_event(AIPS_History_Event_Type::AUTHOR_DELETED, $author_id, ($author_for_history && !empty($author_for_history->name)) ? (string) $author_for_history->name : '', (bool) $result);

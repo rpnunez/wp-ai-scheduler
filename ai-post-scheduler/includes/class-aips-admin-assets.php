@@ -145,6 +145,7 @@ class AIPS_Admin_Assets {
 		}
 
         if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS)) {
+			wp_enqueue_media();
 			$this->enqueue_authors_assets($hook);
 		}
 
@@ -153,6 +154,7 @@ class AIPS_Admin_Assets {
             || $this->hook_contains($hook, self::PAGE_STUDIO)
             || in_array($page, array(self::PAGE_TEMPLATES, self::PAGE_VOICES, self::PAGE_STRUCTURES, self::PAGE_POST_SLICES), true)
         ) {
+			wp_enqueue_media();
 			$this->enqueue_templates_assets();
 			$this->enqueue_voices_assets();
 			$this->enqueue_structures_assets();
@@ -479,7 +481,6 @@ class AIPS_Admin_Assets {
      * Enqueue global plugin assets.
      */
     private function enqueue_global_assets() {
-        wp_enqueue_media();
 
         // Global Admin Styles and Scripts
 
@@ -1477,6 +1478,9 @@ class AIPS_Admin_Assets {
                 'regenerateAllError' => __('Failed to regenerate all components.', 'ai-post-scheduler'),
                 'regenerateSuccess' => __('Component regenerated successfully!', 'ai-post-scheduler'),
                 'regenerateError' => __('Failed to regenerate component.', 'ai-post-scheduler'),
+                'imageStatusCompleted' => __('Completed', 'ai-post-scheduler'),
+                'imageStatusFailed' => __('Failed', 'ai-post-scheduler'),
+                'imageStatusPending' => __('Pending', 'ai-post-scheduler'),
                 'save' => __('Save Changes', 'ai-post-scheduler'),
                 'saving' => __('Saving...', 'ai-post-scheduler'),
                 'saveSuccess' => __('Post updated successfully!', 'ai-post-scheduler'),

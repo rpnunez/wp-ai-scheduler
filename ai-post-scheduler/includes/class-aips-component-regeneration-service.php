@@ -662,6 +662,11 @@ class AIPS_Component_Regeneration_Service {
 	/**
 	 * Regenerate one or all post content images.
 	 *
+	 * Follows the AI Edit modal's contract: nothing is written to the post here.
+	 * The updated content is returned to the modal and saved with its Save action,
+	 * so 'current_content' in $context should carry the editor's unsaved value.
+	 * A failed attempt leaves any existing image in place.
+	 *
 	 * @param array      $context Generation context array with post_id, history_id, generation_context.
 	 * @param int|string $image_id Specific generated row ID or 'all'.
 	 * @return array|WP_Error Array with regenerated image information and updated post content.
@@ -685,6 +690,7 @@ class AIPS_Component_Regeneration_Service {
 		if (is_wp_error($history_container)) {
 			return $history_container;
 		}
+		$this->record_regeneration_trigger($history_container, $context, __('Post images', 'ai-post-scheduler'), $post_id);
 
 		$generated_repo = new AIPS_Post_Images_Generated_Repository();
 		$existing_generated = $generated_repo->get_by_post_id($post_id);
@@ -702,8 +708,8 @@ class AIPS_Component_Regeneration_Service {
 			}
 		}
 
-		// Fallback: If no existing generated rows were found but context has content images configs
-		if (empty($images_to_regenerate) && $generation_context->has_content_images()) {
+		// Fallback: a post generated before images were configured has no rows yet.
+		if ($image_id === 'all' && empty($images_to_regenerate) && $generation_context->has_content_images()) {
 			$config_images = $generation_context->get_content_images();
 			foreach ($config_images as $idx => $ci) {
 				$new_gen_id = $generated_repo->create(array(
@@ -729,113 +735,120 @@ class AIPS_Component_Regeneration_Service {
 			return new WP_Error('no_images', __('No post content images found to regenerate.', 'ai-post-scheduler'));
 		}
 
+		$total_images = max(count($existing_generated), count($images_to_regenerate));
 		$regenerated_results = array();
 
 		foreach ($images_to_regenerate as $target_row) {
 			$gen_id = (int) $target_row->id;
 			$order = (int) $target_row->image_index;
-			$source = !empty($target_row->image_source) ? $target_row->image_source : 'ai_prompt';
-			$raw_prompt = !empty($target_row->image_prompt) ? $target_row->image_prompt : '';
-			$placement = !empty($target_row->placement) ? $target_row->placement : 'auto';
+			$config = $this->resolve_post_image_config($target_row, $generation_context);
+			$placement = !empty($config->placement) ? $config->placement : 'auto';
 
-			$attachment_id = null;
-			$error_message = '';
-			$resolved_prompt = '';
+			$resolved = $this->generator->resolve_post_image($config, $title, $generation_context->get_topic());
 
-			if ($source === 'unsplash') {
-				if (!$this->image_service->has_unsplash_access_key()) {
-					$error_message = __('Unsplash API key is missing.', 'ai-post-scheduler');
-				} else {
-					$result = $this->image_service->fetch_and_upload_unsplash_image($raw_prompt, $title);
-					if (is_wp_error($result)) {
-						$error_message = $result->get_error_message();
-					} else {
-						$attachment_id = (int) $result;
-					}
-				}
-			} elseif ($source === 'media_library') {
-				$media_ids = !empty($target_row->media_ids) ? $target_row->media_ids : '';
-				$result = $this->image_service->select_media_library_image($media_ids);
-				if (is_wp_error($result)) {
-					$error_message = $result->get_error_message();
-				} else {
-					$attachment_id = (int) $result;
-				}
-			} else {
-				if (empty($raw_prompt)) {
-					$resolved_prompt = sprintf('An illustrative editorial photograph for the article section titled "%s", on the topic "%s"', $title, $generation_context->get_topic());
-				} else {
-					$resolved_prompt = (new AIPS_Template_Processor())->process($raw_prompt, $generation_context->get_topic());
-				}
+			if ($resolved['attachment_id'] <= 0) {
+				// Keep a working image rather than trading it for a placeholder.
+				$has_previous_image = (int) $target_row->attachment_id > 0;
+				$status = $has_previous_image ? 'completed' : 'failed';
 
-				$result = $this->image_service->generate_and_upload_featured_image($resolved_prompt, $title);
-				if (is_wp_error($result)) {
-					$error_message = $result->get_error_message();
-				} else {
-					$attachment_id = (int) $result;
-				}
+				$generated_repo->update($gen_id, array(
+					'status'        => $status,
+					'error_message' => $resolved['error'],
+				));
+
+				$regenerated_results[] = array(
+					'id'            => $gen_id,
+					'image_index'   => $order,
+					'attachment_id' => (int) $target_row->attachment_id,
+					'url'           => (string) $target_row->image_url,
+					'status'        => $status,
+					'error_message' => $resolved['error'],
+				);
+				continue;
 			}
-
-			$is_success = !empty($attachment_id) && empty($error_message);
-			$image_url = $is_success ? wp_get_attachment_url($attachment_id) : '';
 
 			$generated_repo->update($gen_id, array(
-				'attachment_id' => $is_success ? $attachment_id : 0,
-				'image_url'     => $image_url,
-				'status'        => $is_success ? 'completed' : 'failed',
-				'error_message' => $error_message,
+				'attachment_id' => $resolved['attachment_id'],
+				'image_source'  => !empty($config->source) ? $config->source : 'ai_prompt',
+				'image_prompt'  => $resolved['prompt'],
+				'image_url'     => $resolved['image_url'],
+				'placement'     => $placement,
+				'status'        => 'completed',
+				'error_message' => '',
 			));
 
-			// Construct replacement figure
-			if ($is_success) {
-				$alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
-				if (empty($alt)) {
-					$alt = $title;
-				}
-				$caption_html = !empty($target_row->caption) ? sprintf('<figcaption class="wp-element-caption">%s</figcaption>', esc_html($target_row->caption)) : '';
-				$new_markup = sprintf(
-					'<figure class="wp-block-image size-large" data-aips-image-id="%d"><img src="%s" alt="%s" class="wp-image-%d"/>%s</figure>',
-					$gen_id,
-					esc_url($image_url),
-					esc_attr($alt),
-					$attachment_id,
-					$caption_html
-				);
-			} else {
-				$new_markup = sprintf('<!-- aips-image-placeholder id="%d" -->', $gen_id);
-			}
+			$new_markup = $this->generator->build_post_image_markup(
+				$gen_id,
+				$resolved['attachment_id'],
+				$resolved['image_url'],
+				$title,
+				!empty($config->caption) ? $config->caption : ''
+			);
 
 			// Replace existing markup or placeholder in content
 			$figure_pattern = '/<figure[^>]*data-aips-image-id=["\']?' . preg_quote((string) $gen_id, '/') . '["\']?[^>]*>.*?<\/figure>/is';
 			$comment_pattern = '/<!--\s*aips-image-placeholder\s+id=["\']?' . preg_quote((string) $gen_id, '/') . '["\']?\s*-->/i';
+			$replace_with_markup = static function () use ($new_markup) {
+				return $new_markup;
+			};
 
 			if (preg_match($figure_pattern, $content)) {
-				$content = preg_replace($figure_pattern, $new_markup, $content, 1);
+				$content = preg_replace_callback($figure_pattern, $replace_with_markup, $content, 1);
 			} elseif (preg_match($comment_pattern, $content)) {
-				$content = preg_replace($comment_pattern, $new_markup, $content, 1);
+				$content = preg_replace_callback($comment_pattern, $replace_with_markup, $content, 1);
 			} else {
-				$content = $this->generator->inject_single_post_image($content, $order, $placement, $new_markup);
+				$content = $this->generator->inject_single_post_image($content, $order, $placement, $new_markup, $total_images);
 			}
 
 			$regenerated_results[] = array(
 				'id'            => $gen_id,
 				'image_index'   => $order,
-				'attachment_id' => $is_success ? $attachment_id : 0,
-				'url'           => $image_url,
-				'status'        => $is_success ? 'completed' : 'failed',
-				'error_message' => $error_message,
+				'attachment_id' => $resolved['attachment_id'],
+				'url'           => $resolved['image_url'],
+				'status'        => 'completed',
+				'error_message' => '',
 			);
 		}
-
-		// Update post content in database
-		wp_update_post(array(
-			'ID'           => $post_id,
-			'post_content' => $content,
-		));
 
 		return array(
 			'post_images' => $regenerated_results,
 			'content'     => $content,
+		);
+	}
+
+	/**
+	 * Find the configuration behind a generated image row.
+	 *
+	 * The generated row only records what was produced, so keywords, media IDs
+	 * and captions come from the template/author configuration. When that has
+	 * since been removed, fall back to what the row itself recorded.
+	 *
+	 * @param object                  $row                Generated image row.
+	 * @param AIPS_Generation_Context $generation_context Generation context.
+	 * @return object Image configuration.
+	 */
+	private function resolve_post_image_config($row, $generation_context) {
+		if (!empty($row->config_image_id)) {
+			$config = (new AIPS_Post_Images_Repository())->get_by_id((int) $row->config_image_id);
+			if ($config) {
+				return $config;
+			}
+		}
+
+		foreach ($generation_context->get_content_images() as $idx => $image) {
+			$image_order = !empty($image->image_order) ? (int) $image->image_order : ($idx + 1);
+			if ($image_order === (int) $row->image_index) {
+				return $image;
+			}
+		}
+
+		return (object) array(
+			'source'            => $row->image_source,
+			'image_prompt'      => $row->image_prompt,
+			'unsplash_keywords' => $row->image_prompt,
+			'media_ids'         => '',
+			'placement'         => $row->placement,
+			'caption'           => '',
 		);
 	}
 

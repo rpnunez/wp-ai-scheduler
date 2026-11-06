@@ -5546,64 +5546,53 @@
     });
 
     AIPS.PostImages = {
-        getTemplateHtml: function() {
-            var $tmpl = $('#aips-tmpl-post-image-card');
-            return $tmpl.length ? $tmpl.html() : '';
-        },
-
         renderCard: function($container, item, index, prefix) {
             item = item || {};
             prefix = prefix || ($container.data('context') === 'author' ? 'author_post_images' : 'template_post_images');
-            var tmpl = AIPS.PostImages.getTemplateHtml();
-            if (!tmpl) {
-                return;
-            }
 
-            var displayIndex = index + 1;
-            var id = item.id || '';
             var placement = item.placement || 'auto';
             var source = item.source || 'ai_prompt';
-            var prompt = item.image_prompt || '';
-            var unsplashKeywords = item.unsplash_keywords || '';
             var mediaIds = item.media_ids || '';
-            var idPrefix = prefix + '_' + index;
 
             var mediaCount = 0;
             if (mediaIds) {
                 mediaCount = String(mediaIds).split(',').filter(function(x) { return x.trim().length > 0; }).length;
             }
-            var mediaPreviewText = mediaCount > 0 ? (mediaCount === 1 ? '1 image selected' : mediaCount + ' images selected') : 'No images selected.';
 
-            var escapeHtml = function(text) {
-                return $('<div>').text(text || '').html();
-            };
+            var html = AIPS.Templates.render('aips-tmpl-post-image-card', {
+                index: index,
+                displayIndex: index + 1,
+                id: item.id || '',
+                prefix: prefix,
+                idPrefix: prefix + '_' + index,
+                prompt: item.image_prompt || '',
+                unsplashKeywords: item.unsplash_keywords || '',
+                mediaIds: mediaIds,
+                mediaPreviewText: mediaCount > 0 ? (mediaCount === 1 ? '1 image selected' : mediaCount + ' images selected') : 'No images selected.',
+                aiDisplay: source === 'ai_prompt' ? '' : 'display: none;',
+                unsplashDisplay: source === 'unsplash' ? '' : 'display: none;',
+                mediaDisplay: source === 'media_library' ? '' : 'display: none;',
+                selectedPlacementAuto: placement === 'auto' ? 'selected' : '',
+                selectedPlacement1: placement === 'after_section_1' ? 'selected' : '',
+                selectedPlacement2: placement === 'after_section_2' ? 'selected' : '',
+                selectedPlacement3: placement === 'after_section_3' ? 'selected' : '',
+                selectedPlacement4: placement === 'after_section_4' ? 'selected' : '',
+                selectedPlacement5: placement === 'after_section_5' ? 'selected' : '',
+                selectedSourceAi: source === 'ai_prompt' ? 'selected' : '',
+                selectedSourceUnsplash: source === 'unsplash' ? 'selected' : '',
+                selectedSourceMedia: source === 'media_library' ? 'selected' : ''
+            });
 
-            var html = tmpl
-                .replace(/\{\{index\}\}/g, index)
-                .replace(/\{\{displayIndex\}\}/g, displayIndex)
-                .replace(/\{\{id\}\}/g, id)
-                .replace(/\{\{prefix\}\}/g, prefix)
-                .replace(/\{\{idPrefix\}\}/g, idPrefix)
-                .replace(/\{\{prompt\}\}/g, escapeHtml(prompt))
-                .replace(/\{\{unsplashKeywords\}\}/g, escapeHtml(unsplashKeywords))
-                .replace(/\{\{mediaIds\}\}/g, escapeHtml(mediaIds))
-                .replace(/\{\{mediaPreviewText\}\}/g, mediaPreviewText)
-                .replace(/\{\{aiDisplay\}\}/g, source === 'ai_prompt' ? '' : 'display: none;')
-                .replace(/\{\{unsplashDisplay\}\}/g, source === 'unsplash' ? '' : 'display: none;')
-                .replace(/\{\{mediaDisplay\}\}/g, source === 'media_library' ? '' : 'display: none;')
-                .replace(/\{\{selectedPlacementAuto\}\}/g, placement === 'auto' ? 'selected' : '')
-                .replace(/\{\{selectedPlacement1\}\}/g, placement === 'after_section_1' ? 'selected' : '')
-                .replace(/\{\{selectedPlacement2\}\}/g, placement === 'after_section_2' ? 'selected' : '')
-                .replace(/\{\{selectedPlacement3\}\}/g, placement === 'after_section_3' ? 'selected' : '')
-                .replace(/\{\{selectedPlacement4\}\}/g, placement === 'after_section_4' ? 'selected' : '')
-                .replace(/\{\{selectedPlacement5\}\}/g, placement === 'after_section_5' ? 'selected' : '')
-                .replace(/\{\{selectedSourceAi\}\}/g, source === 'ai_prompt' ? 'selected' : '')
-                .replace(/\{\{selectedSourceUnsplash\}\}/g, source === 'unsplash' ? 'selected' : '')
-                .replace(/\{\{selectedSourceMedia\}\}/g, source === 'media_library' ? 'selected' : '');
+            if (!html) {
+                return;
+            }
 
             var $card = $(html);
             $container.append($card);
             $container.find('.aips-post-images-empty-state').hide();
+
+            // A source disabled in Settings has no option, so sync panels to what the select shows.
+            AIPS.toggleFeaturedImageSourceFields($card.find('.aips-image-settings-group'));
         },
 
         reindexCards: function($container, prefix) {

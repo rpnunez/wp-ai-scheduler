@@ -239,7 +239,7 @@ class AIPS_Post_Images_Repository {
 	}
 
 	/**
-	 * Atomically synchronize image configurations for an entity.
+	 * Synchronize image configurations for an entity, preserving row IDs.
 	 * Updates existing records, inserts new ones, and purges removed records.
 	 *
 	 * @param string $entity_type 'template' or 'author'.
@@ -260,8 +260,10 @@ class AIPS_Post_Images_Repository {
 			$image_type
 		));
 
-		$existing_ids = !empty($existing) ? wp_list_pluck($existing, 'id') : array();
+		// $wpdb returns IDs as strings; normalize them for the strict lookup below.
+		$existing_ids = !empty($existing) ? array_map('intval', wp_list_pluck($existing, 'id')) : array();
 		$kept_ids = array();
+		$create_failed = false;
 
 		foreach ($images_data as $index => $row) {
 			$row_id = !empty($row['id']) ? absint($row['id']) : 0;
@@ -287,13 +289,16 @@ class AIPS_Post_Images_Repository {
 				$new_id = $this->create($data);
 				if ($new_id) {
 					$kept_ids[] = $new_id;
+				} else {
+					$create_failed = true;
 				}
 			}
 		}
 
-		// Purge records that were removed
+		// Purge records that were removed. A failed insert may be standing in for
+		// one of them, so keep the old rows rather than lose the configuration.
 		$to_delete = array_diff($existing_ids, $kept_ids);
-		if (!empty($to_delete)) {
+		if (!empty($to_delete) && !$create_failed) {
 			$placeholders = implode(',', array_fill(0, count($to_delete), '%d'));
 			$query = $this->wpdb->prepare(
 				"DELETE FROM {$this->table_name} WHERE id IN ($placeholders)",

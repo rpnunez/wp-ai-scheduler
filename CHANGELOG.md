@@ -5,7 +5,9 @@
   - Extended "Generate featured image" into Author Topic Post Generation flow with identical field options (AI Prompt, Unsplash, Media Library).
   - Extracted featured image options into a reusable partial `image-settings-field.php` and client-side repeater card template `post-image-card-template.php`.
   - Added "Post Images" as a new core post component allowing both Templates and Authors to configure and generate distributed content images up to configurable limit (`aips_max_post_images_limit`).
-  - Added dedicated database tables `aips_post_images` and `aips_post_images_generated` with atomic sync and cloning support.
+  - Added dedicated database tables `aips_post_images` and `aips_post_images_generated` with ID-preserving sync and cloning support.
+  - Posts with content images stay in draft until every image is injected, then move to their intended status; any failed image leaves the post as a draft and is reported as a missing "Post Images" component.
+  - Featured image generation no longer forces posts to draft on its own: the post keeps its intended status unless the image actually fails.
   - Implemented AI-guided placeholder injection (`[post_image index="N"]`) and DOM fallback injection for heading sections (`after_section_N`) and natural paragraph distribution.
   - Integrated Post Content Images into the AI Edit modal for preview, status tracking, and per-image or bulk re-generation with automatic DOM figure replacement.
 

@@ -262,6 +262,9 @@ class AIPS_AI_Edit_Controller {
 				break;
 			case 'post_images':
 				$image_id = isset($_POST['image_id']) ? sanitize_text_field(wp_unslash($_POST['image_id'])) : 'all';
+				if (isset($_POST['current_content'])) {
+					$context['current_content'] = wp_kses_post(wp_unslash($_POST['current_content']));
+				}
 				$result = $this->service->regenerate_post_images($context, $image_id);
 				break;
 		}

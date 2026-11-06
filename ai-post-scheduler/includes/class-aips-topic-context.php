@@ -193,19 +193,16 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			return $this->content_images;
 		}
 
-		if (!empty($this->author->post_images) && is_array($this->author->post_images)) {
-			$this->content_images = $this->author->post_images;
-			return $this->content_images;
-		}
-
+		$images = array();
 		$author_id = isset($this->author->id) ? absint($this->author->id) : 0;
-		if ($author_id > 0) {
-			$repo = new AIPS_Post_Images_Repository();
-			$this->content_images = $repo->get_content_images_for_entity('author', $author_id);
-			return $this->content_images;
+
+		if (!empty($this->author->post_images) && is_array($this->author->post_images)) {
+			$images = $this->author->post_images;
+		} elseif ($author_id > 0) {
+			$images = (new AIPS_Post_Images_Repository())->get_content_images_for_entity('author', $author_id);
 		}
 
-		$this->content_images = array();
+		$this->content_images = array_slice($images, 0, AIPS_Config::get_instance()->get_max_post_images_limit());
 		return $this->content_images;
 	}
 

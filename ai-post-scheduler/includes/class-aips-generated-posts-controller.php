@@ -241,6 +241,7 @@ class AIPS_Generated_Posts_Controller {
 			'post_excerpt' => __('Excerpt', 'ai-post-scheduler'),
 			'post_content' => __('Content', 'ai-post-scheduler'),
 			'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+			'post_images' => __('Post Images', 'ai-post-scheduler'),
 		);
 
 		$decoded = json_decode((string) $component_statuses_json, true);

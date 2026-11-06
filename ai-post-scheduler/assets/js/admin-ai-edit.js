@@ -177,6 +177,11 @@
 				nonce: aipsAIEditL10n.nonce
 			};
 
+			// Images are placed into the editor's current text, including unsaved edits.
+			if (component === 'post_images') {
+				requestData.current_content = $('#aips-component-content').val();
+			}
+
 			if (window.AIPS.shouldCaptureManualRevision(component)) {
 				requestData.current_value = window.AIPS.getAIEditCurrentComponentValue(component);
 				requestData.current_source = 'manual_edit';
@@ -312,13 +317,27 @@
 			if (response.success) {
 				// Update component value
 				window.AIPS.updateAIEditComponentValue(component, response.data.new_value, 'ai_generated');
-				aiEditState.changedComponents.add(component);
-				
-				// Mark section as changed
-				$('[data-component="' + component + '"]').closest('.aips-component-section').addClass('changed');
-				
-				// Show success message
-				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+
+				if (component === 'post_images') {
+					// Image rows are stored server-side; only the content they alter is saved.
+					var failedImages = (response.data.new_value.post_images || []).filter(function(image) {
+						return !!image.error_message;
+					});
+
+					if (failedImages.length) {
+						window.AIPS.showComponentStatus(component, 'error', failedImages[0].error_message);
+					} else {
+						window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+					}
+				} else {
+					aiEditState.changedComponents.add(component);
+
+					// Mark section as changed
+					$('[data-component="' + component + '"]').closest('.aips-component-section').addClass('changed');
+
+					// Show success message
+					window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+				}
 
 				// Ensure revision list reflects the new regeneration snapshot if panel is open.
 				window.AIPS.refreshComponentRevisions(component);
@@ -441,16 +460,28 @@
 					break;
 				case 'post_images':
 					if (value && value.post_images) {
-						window.AIPS.renderAIEditPostImages(value.post_images);
-						aiEditState.components.post_images = value.post_images;
+						// The response only carries the regenerated rows, so merge by ID.
+						var mergedImages = (aiEditState.components.post_images || []).slice();
+						value.post_images.forEach(function(updatedImage) {
+							var existingIndex = mergedImages.findIndex(function(image) {
+								return image.id === updatedImage.id;
+							});
+							if (existingIndex === -1) {
+								mergedImages.push(updatedImage);
+							} else {
+								mergedImages[existingIndex] = $.extend({}, mergedImages[existingIndex], updatedImage);
+							}
+						});
+						aiEditState.components.post_images = mergedImages;
+						window.AIPS.renderAIEditPostImages(mergedImages);
 					}
-					if (value && value.content) {
+					if (value && typeof value.content === 'string' && value.content !== $('#aips-component-content').val()) {
 						$('#aips-component-content').val(value.content);
 						aiEditState.components.content = { value: value.content };
 						window.AIPS.updateAIEditCharCount('content');
 						window.AIPS.setAIEditComponentSource('content', value.content, 'ai_generated');
 						aiEditState.changedComponents.add('content');
-						$('[data-component="content"]').closest('.aips-component-section').addClass('changed');
+						$('.aips-component-section[data-component="content"]').addClass('changed');
 					}
 					break;
 			}
@@ -477,26 +508,28 @@
 			$none.hide();
 			$grid.show();
 
+			var statusLabels = {
+				completed: aipsAIEditL10n.imageStatusCompleted,
+				failed: aipsAIEditL10n.imageStatusFailed,
+				pending: aipsAIEditL10n.imageStatusPending
+			};
+
 			postImages.forEach(function(img) {
-				var statusClass = img.status === 'completed' ? 'success' : 'error';
-				var statusText = img.status === 'completed' ? 'Completed' : (img.status === 'failed' ? 'Failed' : img.status);
-				var thumbHtml = img.url
-					? '<img src="' + img.url + '" alt="Post Image ' + img.image_index + '" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px;" />'
-					: '<div style="width: 100%; height: 120px; background: var(--aips-gray-100, #f0f0f1); display: flex; align-items: center; justify-content: center; color: var(--aips-gray-500, #646970); border-radius: 4px;"><span class="dashicons dashicons-format-image" style="font-size: 32px; width: 32px; height: 32px;"></span></div>';
+				var $card = $(window.AIPS.Templates.render('aips-tmpl-ai-edit-post-image-card', {
+					id: img.id,
+					imageIndex: img.image_index,
+					url: img.url || '',
+					statusClass: img.status === 'completed' ? 'success' : 'error',
+					statusText: statusLabels[img.status] || img.status,
+					errorMessage: img.error_message || ''
+				}));
 
-				var cardHtml = '<div class="aips-ai-edit-image-card" data-image-id="' + img.id + '" style="border: 1px solid var(--aips-gray-300, #dcdcde); border-radius: 6px; padding: 10px; background: #fff; display: flex; flex-direction: column; gap: 8px;">' +
-					thumbHtml +
-					'<div style="display: flex; justify-content: space-between; align-items: center;">' +
-						'<span style="font-weight: 600; font-size: 13px;">Image #' + img.image_index + '</span>' +
-						'<span class="aips-status-badge ' + statusClass + '" style="font-size: 11px; padding: 2px 6px; border-radius: 3px;">' + statusText + '</span>' +
-					'</div>' +
-					(img.error_message ? '<p class="description" style="color: var(--aips-danger, #d63638); font-size: 11px; margin: 0;">' + $('<div>').text(img.error_message).html() + '</p>' : '') +
-					'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post-image-btn" data-component="post_images" data-image-id="' + img.id + '" style="margin-top: auto;">' +
-						'<span class="dashicons dashicons-update"></span> Re-generate' +
-					'</button>' +
-				'</div>';
+				$card.find(img.url ? '.aips-ai-edit-post-image-placeholder' : 'img').remove();
+				if (!img.error_message) {
+					$card.find('.aips-ai-edit-post-image-error').remove();
+				}
 
-				$grid.append(cardHtml);
+				$grid.append($card);
 			});
 		},
 		

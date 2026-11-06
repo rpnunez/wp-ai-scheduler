@@ -525,6 +525,7 @@ if (!defined('ABSPATH')) {
                             <?php
                             $image_field_name_prefix = 'featured_image';
                             $image_field_id_prefix   = 'featured_image';
+                            $image_prompt_field_id   = 'image_prompt';
                             $image_values            = array();
                             $is_post_image           = false;
                             include AIPS_PLUGIN_DIR . 'templates/admin/partials/image-settings-field.php';

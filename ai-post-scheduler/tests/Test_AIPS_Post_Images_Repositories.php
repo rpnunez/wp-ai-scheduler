@@ -89,6 +89,24 @@ class Test_AIPS_Post_Images_Repositories extends WP_UnitTestCase {
 		$this->assertEquals('auto', $new_content_images[0]->placement);
 	}
 
+	public function test_sync_updates_existing_rows_in_place() {
+		$this->post_images_repo->sync_for_entity('template', 303, array(
+			array('image_order' => 1, 'image_prompt' => 'Original'),
+		), 'content');
+
+		$original = $this->post_images_repo->get_content_images_for_entity('template', 303);
+
+		$this->post_images_repo->sync_for_entity('template', 303, array(
+			array('id' => (int) $original[0]->id, 'image_order' => 1, 'image_prompt' => 'Edited'),
+		), 'content');
+
+		$updated = $this->post_images_repo->get_content_images_for_entity('template', 303);
+
+		$this->assertCount(1, $updated);
+		$this->assertSame((int) $original[0]->id, (int) $updated[0]->id);
+		$this->assertSame('Edited', $updated[0]->image_prompt);
+	}
+
 	public function test_post_images_repo_clone_for_entity() {
 		$this->post_images_repo->create(array(
 			'entity_type'  => 'template',

@@ -11,6 +11,8 @@
  * - $image_values            (array|object) Current field values
  * - $is_post_image           (bool) True if this is a post content image repeater row
  * - $allowed_sources         (array) Allowed image source keys
+ * - $image_prompt_field_id   (string) Optional ID for the prompt textarea; existing
+ *                            scripts address the Template modal's field as #image_prompt
  *
  * @package AI_Post_Scheduler
  * @since 3.7.21
@@ -23,6 +25,7 @@ if (!defined('ABSPATH')) {
 $image_field_name_prefix = isset($image_field_name_prefix) ? $image_field_name_prefix : 'featured_image';
 $image_field_id_prefix   = isset($image_field_id_prefix) ? $image_field_id_prefix : 'featured_image';
 $is_post_image           = !empty($is_post_image);
+$image_prompt_field_id   = !empty($image_prompt_field_id) ? $image_prompt_field_id : $image_field_id_prefix . '_image_prompt';
 
 // Normalize values
 $vals = is_object($image_values) ? get_object_vars($image_values) : (is_array($image_values) ? $image_values : array());
@@ -77,8 +80,8 @@ $placement_field_name = "{$image_field_name_prefix}[placement]";
 
 	<!-- AI Prompt Source Panel -->
 	<div class="aips-form-row aips-image-source-panel aips-image-source-panel-ai" style="<?php echo $source === 'ai_prompt' ? '' : 'display: none;'; ?>">
-		<label for="<?php echo esc_attr($image_field_id_prefix); ?>_image_prompt"><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></label>
-		<textarea id="<?php echo esc_attr($image_field_id_prefix); ?>_image_prompt" name="<?php echo esc_attr($prompt_field_name); ?>" rows="3" class="large-text aips-image-prompt-textarea" placeholder="<?php echo $is_post_image ? esc_attr__('Describe the image or leave blank for AI to contextualize from section content...', 'ai-post-scheduler') : esc_attr__('Describe the featured image you want generated...', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($prompt); ?></textarea>
+		<label for="<?php echo esc_attr($image_prompt_field_id); ?>"><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></label>
+		<textarea id="<?php echo esc_attr($image_prompt_field_id); ?>" name="<?php echo esc_attr($prompt_field_name); ?>" rows="3" class="large-text aips-image-prompt-textarea" placeholder="<?php echo $is_post_image ? esc_attr__('Describe the image or leave blank for AI to contextualize from section content...', 'ai-post-scheduler') : esc_attr__('Describe the featured image you want generated...', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($prompt); ?></textarea>
 		<p class="description">
 			<?php if ($is_post_image): ?>
 				<?php esc_html_e('Optional: Enter custom image instructions or template variables ({title}, {topic}). If left empty, AI will generate a prompt tailored to the surrounding section.', 'ai-post-scheduler'); ?>

@@ -12,6 +12,8 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
+
+$post_image_allowed_sources = AIPS_Config::get_instance()->get_allowed_image_sources();
 ?>
 <script type="text/html" id="aips-tmpl-post-image-card">
 	<div class="aips-post-image-card" data-index="{{index}}" data-id="{{id}}">
@@ -46,9 +48,15 @@ if (!defined('ABSPATH')) {
 				<div class="aips-form-row">
 					<label><?php esc_html_e('Image Source', 'ai-post-scheduler'); ?></label>
 					<select name="{{prefix}}[{{index}}][source]" class="aips-image-source-select">
-						<option value="ai_prompt" {{selectedSourceAi}}><?php esc_html_e('Generate with AI Prompt', 'ai-post-scheduler'); ?></option>
-						<option value="unsplash" {{selectedSourceUnsplash}}><?php esc_html_e('Unsplash (keywords)', 'ai-post-scheduler'); ?></option>
-						<option value="media_library" {{selectedSourceMedia}}><?php esc_html_e('Media Library (select images)', 'ai-post-scheduler'); ?></option>
+						<?php if (in_array('ai_prompt', $post_image_allowed_sources, true)): ?>
+							<option value="ai_prompt" {{selectedSourceAi}}><?php esc_html_e('Generate with AI Prompt', 'ai-post-scheduler'); ?></option>
+						<?php endif; ?>
+						<?php if (in_array('unsplash', $post_image_allowed_sources, true)): ?>
+							<option value="unsplash" {{selectedSourceUnsplash}}><?php esc_html_e('Unsplash (keywords)', 'ai-post-scheduler'); ?></option>
+						<?php endif; ?>
+						<?php if (in_array('media_library', $post_image_allowed_sources, true)): ?>
+							<option value="media_library" {{selectedSourceMedia}}><?php esc_html_e('Media Library (select images)', 'ai-post-scheduler'); ?></option>
+						<?php endif; ?>
 					</select>
 				</div>
 

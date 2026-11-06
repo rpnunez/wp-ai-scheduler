@@ -754,6 +754,7 @@ final class AI_Post_Scheduler {
         add_action('before_delete_post', function ($post_id) {
             AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
             AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
+            (new AIPS_Post_Images_Generated_Repository())->delete_by_post_id($post_id);
         });
 
         // Silos: keep the link index and the "In this guide" cache in step with

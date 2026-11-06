@@ -245,6 +245,8 @@ class AIPS_Prompt_Builder_Post_Content {
 			}
 		}
 
+		$images = array_slice($images, 0, AIPS_Config::get_instance()->get_max_post_images_limit());
+
 		if (empty($images)) {
 			return '';
 		}
