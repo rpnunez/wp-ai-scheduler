@@ -29,7 +29,7 @@
 - [x] Reorganize `templates/admin/authors.php`, add help text, and implement navigation/review in `assets/js/authors.js`.
 - [x] Add scoped styles in `assets/css/authors.css`, translations in `includes/class-aips-admin-assets.php`, and root changelog entry.
 - [x] Run PHP/JS syntax checks, headless browser regression, and `make test-session ARGS="tests/AIPS_Authors_Controller_Save_Test.php"`.
-- [ ] Commit, push, create PR, review the full branch, fix findings, update PR and verify CI.
+- [x] Commit, push, create PR, review the full branch, fix findings, update PR and verify CI.
 
 ## Review focus
 
@@ -44,3 +44,4 @@ Hidden invalid fields must receive focus in their own panel; creating after edit
 - Targeted PHPUnit: 5 tests, 23 assertions passed. Corrected the existing test's stale MySQL-string bounds to match the controller's existing integer timestamps using AIPS_DateTime.
 - Browser regression: passed against real modal markup, author script, shared Utilities locking, and styles. Covers create/edit navigation, review escaping, source validation and preservation, hidden invalid controls, duplicate submits, failed-request unlock, reset, keyboard navigation, and mobile progress layout. AJAX is mocked; this is not an authenticated WordPress end-to-end test.
 - Independent review found cancelled submissions bubbling to the global async lock. Reproduced with real Utilities, then fixed by owning submit propagation and checking in-flight form state. Localization review passed; moved markup indentation normalized.
+- Delivery: PR #2335 targets main. Full branch review has no remaining actionable findings. No CI checks were published at the time of verification; full PHPUnit suite and authenticated WordPress browser testing remain outside the completed local checks.
