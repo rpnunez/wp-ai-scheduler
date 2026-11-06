@@ -121,12 +121,15 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	/**
 	 * Get the image prompt for featured image generation.
 	 *
-	 * Uses the topic title as the image prompt.
+	 * Uses the author's configured image prompt if set, falling back to topic title.
 	 *
 	 * @return string|null Image prompt.
 	 */
 	public function get_image_prompt() {
-		return $this->topic->topic_title;
+		if (isset($this->author->image_prompt) && '' !== trim($this->author->image_prompt)) {
+			return $this->author->image_prompt;
+		}
+		return isset($this->topic->topic_title) ? $this->topic->topic_title : null;
 	}
 
 	/**
@@ -150,19 +153,60 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	/**
 	 * Get Unsplash keywords.
 	 *
-	 * @return string Empty string (not applicable for topic context).
+	 * @return string Unsplash keywords.
 	 */
 	public function get_unsplash_keywords() {
-		return '';
+		return isset($this->author->featured_image_unsplash_keywords) ? $this->author->featured_image_unsplash_keywords : '';
 	}
 
 	/**
 	 * Get media library image IDs.
 	 *
-	 * @return string Empty string (not applicable for topic context).
+	 * @return string Media library IDs.
 	 */
 	public function get_media_library_ids() {
-		return '';
+		return isset($this->author->featured_image_media_ids) ? $this->author->featured_image_media_ids : '';
+	}
+
+	/**
+	 * @var array|null Cached content images
+	 */
+	private $content_images = null;
+
+	/**
+	 * Check if post content images are configured.
+	 *
+	 * @return bool
+	 */
+	public function has_content_images() {
+		$images = $this->get_content_images();
+		return !empty($images);
+	}
+
+	/**
+	 * Get post content images configurations for this author.
+	 *
+	 * @return array
+	 */
+	public function get_content_images() {
+		if (null !== $this->content_images) {
+			return $this->content_images;
+		}
+
+		if (!empty($this->author->post_images) && is_array($this->author->post_images)) {
+			$this->content_images = $this->author->post_images;
+			return $this->content_images;
+		}
+
+		$author_id = isset($this->author->id) ? absint($this->author->id) : 0;
+		if ($author_id > 0) {
+			$repo = new AIPS_Post_Images_Repository();
+			$this->content_images = $repo->get_content_images_for_entity('author', $author_id);
+			return $this->content_images;
+		}
+
+		$this->content_images = array();
+		return $this->content_images;
 	}
 
 	/**

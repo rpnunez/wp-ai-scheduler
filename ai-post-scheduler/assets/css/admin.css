@@ -8946,3 +8946,116 @@ tr.aips-row-details > td {
 .aips-ai-error-modal-section {
 	margin-bottom: var(--aips-space-4);
 }
+
+/* ==========================================================================
+   Post Images Configuration & AI Edit Components
+   ========================================================================== */
+.aips-post-images-section-container {
+	margin-top: 24px;
+	padding-top: 20px;
+	border-top: 1px solid var(--aips-gray-200);
+}
+
+.aips-post-images-header-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+.aips-post-images-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.aips-post-image-card {
+	border: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-md);
+	background: var(--aips-white);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+	overflow: hidden;
+}
+
+.aips-post-image-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10px 16px;
+	background: var(--aips-gray-50);
+	border-bottom: 1px solid var(--aips-gray-200);
+}
+
+.aips-post-image-card-title {
+	font-weight: 600;
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-800);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.aips-post-image-card-body {
+	padding: 16px;
+}
+
+.aips-post-images-empty-state {
+	padding: 24px;
+	text-align: center;
+	background: var(--aips-gray-50);
+	border: 1px dashed var(--aips-gray-300);
+	border-radius: var(--aips-radius-md);
+	color: var(--aips-gray-600);
+}
+
+/* AI Edit Component Gallery */
+.aips-ai-edit-post-images-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 16px;
+	margin-top: 12px;
+}
+
+.aips-ai-edit-post-image-item {
+	border: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-md);
+	background: var(--aips-white);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.aips-ai-edit-post-image-preview {
+	height: 140px;
+	background: var(--aips-gray-100);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	overflow: hidden;
+}
+
+.aips-ai-edit-post-image-preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.aips-ai-edit-post-image-info {
+	padding: 10px 12px;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: var(--aips-text-xs);
+}
+
+.aips-ai-edit-post-image-actions {
+	padding: 8px 12px;
+	border-top: 1px solid var(--aips-gray-200);
+	background: var(--aips-gray-50);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}

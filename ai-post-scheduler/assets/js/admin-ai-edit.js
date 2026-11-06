@@ -40,7 +40,7 @@
 		bindAIEditEvents: function() {
 			$(document).on('click', '.aips-ai-edit-btn', window.AIPS.openAIEditModal);
 			$(document).on('click', '#aips-ai-edit-cancel, #aips-ai-edit-close', window.AIPS.closeAIEditModal);
-			$(document).on('click', '.aips-regenerate-btn', window.AIPS.regenerateComponent);
+			$(document).on('click', '.aips-regenerate-btn, .aips-regenerate-post-image-btn', window.AIPS.regenerateComponent);
 			$(document).on('click', '#aips-ai-edit-regenerate-all', window.AIPS.regenerateAllComponents);
 			$(document).on('click', '#aips-ai-edit-save', window.AIPS.saveAIEditChanges);
 			$(document).on('click', '.aips-modal-overlay', window.AIPS.closeAIEditModal);
@@ -145,6 +145,11 @@
 				$('#aips-component-image-none').show();
 			}
 			
+			// Populate post content images
+			var postImages = data.components.post_images || [];
+			aiEditState.components.post_images = postImages;
+			window.AIPS.renderAIEditPostImages(postImages);
+			
 			// Update character counts
 			window.AIPS.updateAIEditCharCount('title');
 			window.AIPS.updateAIEditCharCount('excerpt');
@@ -162,11 +167,13 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var component = $btn.data('component');
+			var imageId = $btn.data('image-id');
 			var requestData = {
 				action: 'aips_regenerate_component',
 				post_id: aiEditState.postId,
 				history_id: aiEditState.historyId,
 				component: component,
+				image_id: imageId,
 				nonce: aipsAIEditL10n.nonce
 			};
 
@@ -432,11 +439,65 @@
 						aiEditState.components.featured_image = null;
 					}
 					break;
+				case 'post_images':
+					if (value && value.post_images) {
+						window.AIPS.renderAIEditPostImages(value.post_images);
+						aiEditState.components.post_images = value.post_images;
+					}
+					if (value && value.content) {
+						$('#aips-component-content').val(value.content);
+						aiEditState.components.content = { value: value.content };
+						window.AIPS.updateAIEditCharCount('content');
+						window.AIPS.setAIEditComponentSource('content', value.content, 'ai_generated');
+						aiEditState.changedComponents.add('content');
+						$('[data-component="content"]').closest('.aips-component-section').addClass('changed');
+					}
+					break;
 			}
 
 			if (source) {
 				window.AIPS.setAIEditComponentSource(component, value, source);
 			}
+		},
+
+		/**
+		 * Render post content images gallery in AI Edit modal
+		 */
+		renderAIEditPostImages: function(postImages) {
+			var $grid = $('#aips-ai-edit-post-images-grid');
+			var $none = $('#aips-component-post-images-none');
+			$grid.empty();
+
+			if (!postImages || postImages.length === 0) {
+				$grid.hide();
+				$none.show();
+				return;
+			}
+
+			$none.hide();
+			$grid.show();
+
+			postImages.forEach(function(img) {
+				var statusClass = img.status === 'completed' ? 'success' : 'error';
+				var statusText = img.status === 'completed' ? 'Completed' : (img.status === 'failed' ? 'Failed' : img.status);
+				var thumbHtml = img.url
+					? '<img src="' + img.url + '" alt="Post Image ' + img.image_index + '" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px;" />'
+					: '<div style="width: 100%; height: 120px; background: var(--aips-gray-100, #f0f0f1); display: flex; align-items: center; justify-content: center; color: var(--aips-gray-500, #646970); border-radius: 4px;"><span class="dashicons dashicons-format-image" style="font-size: 32px; width: 32px; height: 32px;"></span></div>';
+
+				var cardHtml = '<div class="aips-ai-edit-image-card" data-image-id="' + img.id + '" style="border: 1px solid var(--aips-gray-300, #dcdcde); border-radius: 6px; padding: 10px; background: #fff; display: flex; flex-direction: column; gap: 8px;">' +
+					thumbHtml +
+					'<div style="display: flex; justify-content: space-between; align-items: center;">' +
+						'<span style="font-weight: 600; font-size: 13px;">Image #' + img.image_index + '</span>' +
+						'<span class="aips-status-badge ' + statusClass + '" style="font-size: 11px; padding: 2px 6px; border-radius: 3px;">' + statusText + '</span>' +
+					'</div>' +
+					(img.error_message ? '<p class="description" style="color: var(--aips-danger, #d63638); font-size: 11px; margin: 0;">' + $('<div>').text(img.error_message).html() + '</p>' : '') +
+					'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post-image-btn" data-component="post_images" data-image-id="' + img.id + '" style="margin-top: auto;">' +
+						'<span class="dashicons dashicons-update"></span> Re-generate' +
+					'</button>' +
+				'</div>';
+
+				$grid.append(cardHtml);
+			});
 		},
 		
 		/**

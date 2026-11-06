@@ -479,6 +479,7 @@ class AIPS_Admin_Assets {
      * Enqueue global plugin assets.
      */
     private function enqueue_global_assets() {
+        wp_enqueue_media();
 
         // Global Admin Styles and Scripts
 

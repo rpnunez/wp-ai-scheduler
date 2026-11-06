@@ -185,6 +185,29 @@ class AIPS_Templates_Controller {
         $id = $this->templates->save($data);
 
         if ($id) {
+            $post_images_repo = new AIPS_Post_Images_Repository();
+            if ($data['generate_featured_image']) {
+                $post_images_repo->sync_for_entity('template', $id, array(
+                    array(
+                        'image_type'        => 'featured',
+                        'image_order'       => 0,
+                        'source'            => $data['featured_image_source'],
+                        'image_prompt'      => $data['image_prompt'],
+                        'unsplash_keywords' => $data['featured_image_unsplash_keywords'],
+                        'media_ids'         => $data['featured_image_media_ids'],
+                    )
+                ), 'featured');
+            } else {
+                $post_images_repo->delete_for_entity('template', $id, 'featured');
+            }
+
+            $template_post_images = isset($_POST['template_post_images']) && is_array($_POST['template_post_images'])
+                ? $_POST['template_post_images']
+                : (isset($_POST['post_images']) && is_array($_POST['post_images']) ? $_POST['post_images'] : array());
+            $max_limit = AIPS_Config::get_instance()->get_max_post_images_limit();
+            $template_post_images = array_slice($template_post_images, 0, $max_limit);
+            $post_images_repo->sync_for_entity('template', $id, $template_post_images, 'content');
+
             $slicing_notice = $this->maybe_log_template_slicing_notice($id, $data['name'], $data['post_quantity']);
 
             $this->record_template_event($data['id'] ? AIPS_History_Event_Type::TEMPLATE_UPDATED : AIPS_History_Event_Type::TEMPLATE_CREATED, absint($id), $data['name'], true);
@@ -263,6 +286,8 @@ class AIPS_Templates_Controller {
         $template = $this->templates->get($id);
 
         if ($template) {
+            $post_images_repo = new AIPS_Post_Images_Repository();
+            $template->post_images = $post_images_repo->get_content_images_for_entity('template', $id);
             AIPS_Ajax_Response::success(array('template' => $template));
         } else {
             AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
@@ -318,6 +343,9 @@ class AIPS_Templates_Controller {
         if ($new_id) {
             $mappings_repo = new AIPS_Integration_Mappings_Repository();
             $mappings_repo->clone_template_mappings($id, $new_id);
+
+            $post_images_repo = new AIPS_Post_Images_Repository();
+            $post_images_repo->clone_for_entity('template', $id, 'template', $new_id);
 
             $this->record_template_event(AIPS_History_Event_Type::TEMPLATE_CLONED, absint($new_id), $new_data['name'], true, array('cloned_from' => $id));
 

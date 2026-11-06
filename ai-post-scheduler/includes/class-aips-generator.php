@@ -1120,6 +1120,7 @@ class AIPS_Generator {
             'post_title'     => false,
             'post_excerpt'   => false,
             'featured_image' => !$context->should_generate_featured_image(),
+            'post_images'    => !$context->has_content_images(),
             'post_content'   => false,
         );
 
@@ -1262,7 +1263,27 @@ class AIPS_Generator {
         $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content, $resolved_image_prompt);
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
-        $generation_incomplete = in_array(false, $component_statuses, true);
+        // Handle post content images generation/selection.
+        if ($context->has_content_images()) {
+            $post_images_result = $this->generate_and_inject_post_images($context, $post_id, $title, $content);
+            $content = $post_images_result['content'];
+            $component_statuses['post_images'] = $post_images_result['statuses'];
+            wp_update_post(array(
+                'ID'           => $post_id,
+                'post_content' => $content,
+            ));
+        }
+
+        $post_images_failed = false;
+        if (is_array($component_statuses['post_images'])) {
+            $post_images_failed = in_array(false, $component_statuses['post_images'], true);
+        } else {
+            $post_images_failed = ($component_statuses['post_images'] === false);
+        }
+
+        $non_post_images_statuses = $component_statuses;
+        unset($non_post_images_statuses['post_images']);
+        $generation_incomplete = in_array(false, $non_post_images_statuses, true) || $post_images_failed;
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
         // If the featured image failed after post creation and the post was
@@ -1667,6 +1688,166 @@ class AIPS_Generator {
         }
 
         return $featured_image_id;
+    }
+
+    /**
+     * Generate and inject post content images into post content.
+     *
+     * @param AIPS_Generation_Context $context Current generation context.
+     * @param int                     $post_id Post ID.
+     * @param string                  $title   Post title.
+     * @param string                  $content Current post content HTML.
+     * @return array Array with 'content' and 'statuses' keys.
+     */
+    private function generate_and_inject_post_images($context, $post_id, $title, $content) {
+        $images = $context->get_content_images();
+        if (empty($images)) {
+            return array('content' => $content, 'statuses' => true);
+        }
+
+        $generated_repo = new AIPS_Post_Images_Generated_Repository();
+        $history_id = $this->current_history ? $this->current_history->get_id() : 0;
+        $statuses = array();
+
+        foreach ($images as $idx => $img) {
+            $config_id   = !empty($img->id) ? (int) $img->id : 0;
+            $order       = !empty($img->image_order) ? (int) $img->image_order : ($idx + 1);
+            $source      = !empty($img->source) ? $img->source : 'ai_prompt';
+            $placement   = !empty($img->placement) ? $img->placement : 'auto';
+            $raw_prompt  = !empty($img->image_prompt) ? $img->image_prompt : '';
+            $raw_kw      = !empty($img->unsplash_keywords) ? $img->unsplash_keywords : '';
+            $media_ids   = !empty($img->media_ids) ? $img->media_ids : '';
+            $caption     = !empty($img->caption) ? $img->caption : '';
+
+            $attachment_id = null;
+            $error_message = '';
+            $resolved_prompt = '';
+
+            if ($source === 'unsplash') {
+                if (!$this->image_service->has_unsplash_access_key()) {
+                    $error_message = __('Unsplash API key is missing.', 'ai-post-scheduler');
+                } else {
+                    $processed_kw = $this->template_processor->process($raw_kw, $context->get_topic());
+                    $result = $this->image_service->fetch_and_upload_unsplash_image($processed_kw, $title);
+                    if (is_wp_error($result)) {
+                        $error_message = $result->get_error_message();
+                    } else {
+                        $attachment_id = (int) $result;
+                    }
+                }
+            } elseif ($source === 'media_library') {
+                $result = $this->image_service->select_media_library_image($media_ids);
+                if (is_wp_error($result)) {
+                    $error_message = $result->get_error_message();
+                } else {
+                    $attachment_id = (int) $result;
+                }
+            } else {
+                // AI Prompt source
+                if (empty($raw_prompt)) {
+                    $resolved_prompt = sprintf('An illustrative editorial photograph for the article section titled "%s", on the topic "%s"', $title, $context->get_topic());
+                } else {
+                    $resolved_prompt = $this->template_processor->process($raw_prompt, $context->get_topic());
+                }
+
+                $result = $this->image_service->generate_and_upload_featured_image($resolved_prompt, $title);
+                if (is_wp_error($result)) {
+                    $error_message = $result->get_error_message();
+                } else {
+                    $attachment_id = (int) $result;
+                }
+            }
+
+            $is_success = !empty($attachment_id) && empty($error_message);
+            $image_url = $is_success ? wp_get_attachment_url($attachment_id) : '';
+
+            $gen_id = $generated_repo->create(array(
+                'post_id'         => $post_id,
+                'history_id'      => $history_id,
+                'config_image_id' => $config_id,
+                'image_index'     => $order,
+                'attachment_id'   => $is_success ? $attachment_id : 0,
+                'image_source'    => $source,
+                'image_prompt'    => $resolved_prompt ?: $raw_prompt,
+                'image_url'       => $image_url ?: '',
+                'placement'       => $placement,
+                'caption'         => $caption,
+                'status'          => $is_success ? 'completed' : 'failed',
+                'error_message'   => $error_message,
+            ));
+
+            $statuses[$gen_id] = $is_success;
+
+            // Generate replacement markup
+            if ($is_success) {
+                $alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+                if (empty($alt)) {
+                    $alt = $title;
+                }
+                $caption_html = !empty($caption) ? sprintf('<figcaption class="wp-element-caption">%s</figcaption>', esc_html($caption)) : '';
+                $markup = sprintf(
+                    '<figure class="wp-block-image size-large" data-aips-image-id="%d"><img src="%s" alt="%s" class="wp-image-%d"/>%s</figure>',
+                    $gen_id,
+                    esc_url($image_url),
+                    esc_attr($alt),
+                    $attachment_id,
+                    $caption_html
+                );
+            } else {
+                $markup = sprintf('<!-- aips-image-placeholder id="%d" -->', $gen_id);
+            }
+
+            // Inject into content
+            $content = $this->inject_single_post_image($content, $order, $placement, $markup);
+        }
+
+        return array('content' => $content, 'statuses' => $statuses);
+    }
+
+    /**
+     * Inject a single post image markup into content by replacing placeholder or fallback DOM injection.
+     *
+     * @param string $content Post content HTML.
+     * @param int    $order   Image index / order number.
+     * @param string $placement Placement rule ('auto', 'after_section_1', etc.).
+     * @param string $markup  HTML markup to inject.
+     * @return string Updated post content.
+     */
+    public function inject_single_post_image($content, $order, $placement, $markup) {
+        // Pattern for placeholder: [post_image index="N"] or [post_image index=N] or [post_image index='N']
+        $pattern = '/<p>\s*\[post_image\s+index=["\']?' . preg_quote((string) $order, '/') . '["\']?\s*\]\s*<\/p>|\[post_image\s+index=["\']?' . preg_quote((string) $order, '/') . '["\']?\s*\]/i';
+
+        if (preg_match($pattern, $content)) {
+            return preg_replace($pattern, "\n" . $markup . "\n", $content, 1);
+        }
+
+        // Fallback: If placeholder was omitted by LLM, inject based on placement rule
+        if ($placement !== 'auto' && preg_match('/^after_section_(\d+)$/', $placement, $matches)) {
+            $section_num = (int) $matches[1];
+            if (preg_match_all('/<h[2-4][^>]*>.*?<\/h[2-4]>/is', $content, $headings, PREG_OFFSET_CAPTURE)) {
+                if (isset($headings[0][$section_num - 1])) {
+                    $heading_match = $headings[0][$section_num - 1];
+                    $heading_end = $heading_match[1] + strlen($heading_match[0]);
+                    $after_heading = substr($content, $heading_end);
+                    if (preg_match('/<\/p>/i', $after_heading, $p_match, PREG_OFFSET_CAPTURE)) {
+                        $insert_pos = $heading_end + $p_match[0][1] + strlen($p_match[0][0]);
+                        return substr($content, 0, $insert_pos) . "\n" . $markup . "\n" . substr($content, $insert_pos);
+                    }
+                    return substr($content, 0, $heading_end) . "\n" . $markup . "\n" . substr($content, $heading_end);
+                }
+            }
+        }
+
+        // Fallback for 'auto' or when targeted section is not found: distribute among paragraphs
+        if (preg_match_all('/<\/p>/i', $content, $paragraphs, PREG_OFFSET_CAPTURE)) {
+            $total_p = count($paragraphs[0]);
+            $target_p_index = min($total_p - 1, max(0, (int) round(($order / ($order + 1)) * $total_p) - 1));
+            $p_match = $paragraphs[0][$target_p_index];
+            $insert_pos = $p_match[1] + strlen($p_match[0]);
+            return substr($content, 0, $insert_pos) . "\n" . $markup . "\n" . substr($content, $insert_pos);
+        }
+
+        return $content . "\n" . $markup;
     }
 
     /**

@@ -201,6 +201,28 @@ if (!defined('ABSPATH')) {
 						</div>
 					</div>
 				</div>
+				
+				<!-- Post Content Images Component -->
+				<div class="aips-component-section" data-component="post_images">
+					<div class="aips-component-header">
+						<h4 class="aips-component-title"><?php esc_html_e('Post Content Images', 'ai-post-scheduler'); ?></h4>
+						<div class="aips-component-actions">
+							<span class="aips-component-status"></span>
+							<button type="button" class="aips-regenerate-btn" data-component="post_images" data-image-id="all">
+								<span class="dashicons dashicons-update"></span>
+								<span class="button-text"><?php esc_html_e('Re-generate All Images', 'ai-post-scheduler'); ?></span>
+							</button>
+						</div>
+					</div>
+					<div class="aips-component-body">
+						<div id="aips-ai-edit-post-images-grid" class="aips-ai-edit-post-images-grid">
+							<!-- Populated via JS -->
+						</div>
+						<div id="aips-component-post-images-none" class="aips-featured-image-none" style="display: none;">
+							<?php esc_html_e('No post content images generated for this post.', 'ai-post-scheduler'); ?>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 		

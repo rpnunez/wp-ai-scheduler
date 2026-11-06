@@ -143,6 +143,25 @@ class AIPS_AI_Edit_Controller {
 					'attachment_id' => $featured_image_id,
 					'url' => $featured_image_url,
 				),
+				'post_images' => (function() use ($post_id) {
+					$repo = new AIPS_Post_Images_Generated_Repository();
+					$rows = $repo->get_by_post_id($post_id);
+					$list = array();
+					foreach ($rows as $r) {
+						$list[] = array(
+							'id'            => (int) $r->id,
+							'image_index'   => (int) $r->image_index,
+							'attachment_id' => (int) $r->attachment_id,
+							'url'           => !empty($r->image_url) ? $r->image_url : ($r->attachment_id ? wp_get_attachment_url($r->attachment_id) : ''),
+							'source'        => $r->image_source,
+							'image_prompt'  => $r->image_prompt,
+							'placement'     => $r->placement,
+							'status'        => $r->status,
+							'error_message' => $r->error_message,
+						);
+					}
+					return $list;
+				})(),
 			),
 		);
 		
@@ -175,7 +194,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'excerpt', 'content', 'featured_image', 'post_images');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
@@ -240,6 +259,10 @@ class AIPS_AI_Edit_Controller {
 				break;
 			case 'featured_image':
 				$result = $this->service->regenerate_featured_image($context);
+				break;
+			case 'post_images':
+				$image_id = isset($_POST['image_id']) ? sanitize_text_field(wp_unslash($_POST['image_id'])) : 'all';
+				$result = $this->service->regenerate_post_images($context, $image_id);
 				break;
 		}
 		
@@ -468,7 +491,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'excerpt', 'content', 'featured_image', 'post_images');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
@@ -516,7 +539,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'excerpt', 'content', 'featured_image', 'post_images');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}

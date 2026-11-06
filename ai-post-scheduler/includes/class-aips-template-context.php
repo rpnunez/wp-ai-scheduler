@@ -148,6 +148,47 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * @var array|null Cached content images
+	 */
+	private $content_images = null;
+
+	/**
+	 * Check if post content images are configured.
+	 *
+	 * @return bool
+	 */
+	public function has_content_images() {
+		$images = $this->get_content_images();
+		return !empty($images);
+	}
+
+	/**
+	 * Get post content images configurations.
+	 *
+	 * @return array
+	 */
+	public function get_content_images() {
+		if (null !== $this->content_images) {
+			return $this->content_images;
+		}
+
+		if (!empty($this->template->post_images) && is_array($this->template->post_images)) {
+			$this->content_images = $this->template->post_images;
+			return $this->content_images;
+		}
+
+		$template_id = $this->get_id();
+		if ($template_id > 0) {
+			$repo = new AIPS_Post_Images_Repository();
+			$this->content_images = $repo->get_content_images_for_entity('template', $template_id);
+			return $this->content_images;
+		}
+
+		$this->content_images = array();
+		return $this->content_images;
+	}
+
+	/**
 	 * Get post status.
 	 *
 	 * @return string Post status.
