@@ -51,6 +51,8 @@ make test-ci            # = bash scripts/run-wp-tests-docker.sh
 # Claude Code cloud sessions (no Docker)
 make test-cloud ARGS="tests/Test_AIPS_DB_Migrations.php"
 make test-cloud ARGS="--syntax"
+make cloud-site         # live WordPress + plugin on :8080 (admin/admin); real Gemini calls via network secret
+make cloud-site-stop    # stop it when done (ARGS=reset deletes site + DB)
 
 # Directly (when a WP test env is already installed in the shell); run from ai-post-scheduler/
 cd ai-post-scheduler
