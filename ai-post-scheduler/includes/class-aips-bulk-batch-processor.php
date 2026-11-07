@@ -226,6 +226,7 @@ class AIPS_Bulk_Batch_Processor {
 
 		if ( $failed_count > 0 ) {
 			$history->complete_failure(
+				/* translators: %d: failures */
 				sprintf( __( 'Batch slice completed with %d failures', 'ai-post-scheduler' ), $failed_count ),
 				array( 'success_count' => $success_count, 'failed_count' => $failed_count )
 			);
@@ -369,6 +370,7 @@ class AIPS_Bulk_Batch_Processor {
 		$history->record(
 			'activity',
 			sprintf(
+				/* translators: 1: start index, 2: batch size, 3: total */
 				__( 'Processing bulk batch slice: items %1$d–%2$d of %3$d', 'ai-post-scheduler' ),
 				$start_index + 1,
 				min( $start_index + $batch_size, $total_quantity ),
@@ -425,6 +427,7 @@ class AIPS_Bulk_Batch_Processor {
 					$post_result = is_array( $result ) ? $result : (int) $result;
 					$history->record(
 						'activity',
+						/* translators: %s: post ID */
 						sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_result ) ? implode( ',', $post_result ) : $post_result ),
 						null,
 						null,
