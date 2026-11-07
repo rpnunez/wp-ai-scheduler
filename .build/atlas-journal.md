@@ -1466,3 +1466,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting root node creation, quick links creation, notifications creation, and background processes creation into distinct private helper methods. The main `add_toolbar_node` function was reduced to roughly 15 lines serving strictly as the orchestrator.
 **Consequence:** Increased the number of private methods on the class, but vastly improved readability and maintainability. Backwards compatibility for the admin bar remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced. Tests related to AIPS_Admin_Bar all passed.
+
+## 2026-10-30 - Refactor AIPS_Bulk_Batch_Processor God Method
+
+- **Target:** ai-post-scheduler/includes/class-aips-bulk-batch-processor.php::AIPS_Bulk_Batch_Processor::process
+- **Lens:** Friday (God objects / mixed responsibilities → SRP split)
+- **Context:** The `process()` method was a 261 LOC God method handling job status validation, slice requeuing, strategy dispatching, history container creation, item execution, and status completion.
+- **Decision:** Extracted sub-responsibilities into private helper methods (`should_skip_or_requeue_slice`, `create_slice_history`, `execute_items_slice`, `update_job_status_after_slice`), leaving `process()` as a clean 50-line orchestrator.
+- **Backward compatibility:** 100% backward compatible; method signature, options, hooks, and execution behavior remain unchanged.
+- **Consequence:** Improved SRP compliance, readability, and testability.
+- **Tests:** Ran PHPUnit test `tests/Test_AIPS_Background_Process_Adapters.php` (20 tests, 97 assertions pass) and full test suite.
