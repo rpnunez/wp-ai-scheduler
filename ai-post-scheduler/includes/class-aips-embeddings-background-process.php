@@ -55,14 +55,29 @@ abstract class AIPS_Embeddings_Background_Process extends AIPS_Managed_Backgroun
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 	}
 
+	/**
+	 * Whether this background process uses AI calls (subject to AI budget and rate limits).
+	 *
+	 * @return bool
+	 */
 	public function uses_ai(): bool {
 		return true;
 	}
 
+	/**
+	 * Get the batch slice size configured for indexing operations.
+	 *
+	 * @return int
+	 */
 	protected function get_batch_size(): int {
 		return max(1, min(50, (int) $this->config->get_option('aips_indexer_batch_size', 10)));
 	}
 
+	/**
+	 * Check whether provider cooldown or rate limits require the process to pause.
+	 *
+	 * @return array{status:string, retry_at:int, message:string}|null Paused state array, or null if clear to run.
+	 */
 	protected function check_limits(): ?array {
 		$limiter  = $this->embeddings_service->get_rate_limiter();
 		$cooldown = $limiter->get_cooldown_status();
@@ -96,10 +111,20 @@ abstract class AIPS_Embeddings_Background_Process extends AIPS_Managed_Backgroun
 		);
 	}
 
+	/**
+	 * Get the remaining embedding allowance taking the quota reserve ratio into account.
+	 *
+	 * @return int
+	 */
 	protected function get_allowance(): int {
 		return $this->embeddings_service->get_rate_limiter()->get_remaining_allowance($this->get_reserve_ratio());
 	}
 
+	/**
+	 * Count the total number of AI embedding calls recorded in recent limiter history.
+	 *
+	 * @return int
+	 */
 	protected function count_ai_calls(): int {
 		return count($this->embeddings_service->get_rate_limiter()->get_usage_history());
 	}

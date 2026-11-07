@@ -1466,3 +1466,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting root node creation, quick links creation, notifications creation, and background processes creation into distinct private helper methods. The main `add_toolbar_node` function was reduced to roughly 15 lines serving strictly as the orchestrator.
 **Consequence:** Increased the number of private methods on the class, but vastly improved readability and maintainability. Backwards compatibility for the admin bar remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced. Tests related to AIPS_Admin_Bar all passed.
+
+## 2026-11-07 - Standardize DocBlocks on AIPS_Author_Embeddings_Process and Base Process
+
+- **Target:** ai-post-scheduler/includes/class-aips-author-embeddings-process.php, ai-post-scheduler/includes/class-aips-embeddings-background-process.php
+- **Lens:** Saturday - Missing or stale DocBlocks and comments on recently changed code
+- **Context:** Several recently introduced methods in the background process subsystem were missing formal DocBlocks and parameter/return type documentation.
+- **Decision:** Documented all public and protected methods with complete PHPDoc blocks adhering to WordPress coding standards.
+- **Backward compatibility:** 100% backward compatible; documentation-only enhancements with zero runtime behavior changes.
+- **Consequence:** Improved IDE autocomplete, type analysis, and maintainability for developers working on background processes.
+- **Tests:** Ran PHPUnit test suite (tests/Test_AIPS_Background_Process_Adapters.php, tests/Test_AIPS_Background_Process_Manager.php, tests/Test_AIPS_Background_Process_Review_Fixes.php).

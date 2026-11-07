@@ -50,14 +50,29 @@ class AIPS_Author_Embeddings_Process extends AIPS_Embeddings_Background_Process 
 		$this->embeddings_repo = $embeddings_repo ?: $this->embeddings_service->get_embeddings_repository();
 	}
 
+	/**
+	 * Unique identifier key for the background process.
+	 *
+	 * @return string
+	 */
 	public function get_key(): string {
 		return self::KEY;
 	}
 
+	/**
+	 * Human-readable label for display in admin UI.
+	 *
+	 * @return string
+	 */
 	public function get_label(): string {
 		return __('Author Topic Embeddings', 'ai-post-scheduler');
 	}
 
+	/**
+	 * Long description of the process responsibilities and AI requirements.
+	 *
+	 * @return string
+	 */
 	public function get_description(): string {
 		return __('Generates embeddings for author topics that do not have one yet, used for duplicate detection and related-topic suggestions. Uses AI embedding calls and honors the embeddings rate limits.', 'ai-post-scheduler');
 	}
@@ -76,6 +91,11 @@ class AIPS_Author_Embeddings_Process extends AIPS_Embeddings_Background_Process 
 		return parent::start($options);
 	}
 
+	/**
+	 * Check prerequisites before starting or continuing a run.
+	 *
+	 * @return bool|WP_Error True if run can proceed, WP_Error otherwise.
+	 */
 	protected function can_run() {
 		if (!$this->embeddings_service->is_enabled()) {
 			return new WP_Error('aips_bg_embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
@@ -84,10 +104,23 @@ class AIPS_Author_Embeddings_Process extends AIPS_Embeddings_Background_Process 
 		return true;
 	}
 
+	/**
+	 * Count the number of unindexed author topics remaining to process.
+	 *
+	 * @return int
+	 */
 	protected function count_remaining(): int {
 		return $this->embeddings_repo->get_unindexed_topic_count($this->author_id);
 	}
 
+	/**
+	 * Process a single slice of topics for embedding calculation.
+	 *
+	 * @param int   $cursor  Current cursor offset / topic ID.
+	 * @param int   $limit   Maximum topics to process in this slice.
+	 * @param array $options Run options, including author_id if scoped.
+	 * @return array{processed:int, failed:int, cursor:int, done:bool, message?:string, fatal?:WP_Error}
+	 */
 	protected function process_slice(int $cursor, int $limit, array $options): array {
 		$author_id = isset($options['author_id']) ? absint($options['author_id']) : 0;
 		$ids       = $this->embeddings_repo->get_unindexed_topic_ids($limit, $cursor, $author_id);
