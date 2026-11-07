@@ -18,10 +18,14 @@ class AIPS_Editor_Directive_Service {
 	/**
 	 * Preset directive keys.
 	 */
-	const PRESET_PUNCHY     = 'punchy';
-	const PRESET_EXPAND     = 'expand';
-	const PRESET_SIMPLIFY   = 'simplify';
-	const PRESET_TONE_SHIFT = 'tone_shift';
+	const PRESET_PUNCHY         = 'punchy';
+	const PRESET_EXPAND         = 'expand';
+	const PRESET_SIMPLIFY       = 'simplify';
+	const PRESET_TONE_SHIFT     = 'tone_shift';
+	const PRESET_SEO            = 'seo';
+	const PRESET_CONVERSATIONAL = 'conversational';
+	const PRESET_TECHNICAL      = 'technical';
+	const PRESET_SUMMARY        = 'summary';
 
 	/**
 	 * @var AIPS_AI_Service_Interface
@@ -60,10 +64,30 @@ class AIPS_Editor_Directive_Service {
 				'description' => __('Accessible vocabulary, short sentences, and direct clarity.', 'ai-post-scheduler'),
 				'instruction' => 'Simplify the following text. Use clear, accessible language, shorter sentences, and direct explanations. Eliminate passive voice and technical jargon.',
 			),
-			self::PRESET_TONE_SHIFT => array(
+			self::PRESET_TONE_SHIFT     => array(
 				'label'       => __('Tone Polish', 'ai-post-scheduler'),
 				'description' => __('Authoritative, polished, and professional tone.', 'ai-post-scheduler'),
 				'instruction' => 'Refine the tone of the following text to be authoritative, polished, and professional while retaining clarity and natural engagement.',
+			),
+			self::PRESET_SEO            => array(
+				'label'       => __('SEO Focused', 'ai-post-scheduler'),
+				'description' => __('Keyword-prominent, search intent focused phrasing.', 'ai-post-scheduler'),
+				'instruction' => 'Rewrite the following text to optimize for search intent and organic discovery. Make key concepts prominent, clear, and compelling while keeping readability natural.',
+			),
+			self::PRESET_CONVERSATIONAL => array(
+				'label'       => __('Conversational', 'ai-post-scheduler'),
+				'description' => __('Warm, approachable, and direct reader-centric tone.', 'ai-post-scheduler'),
+				'instruction' => 'Rewrite the following text in a warm, approachable, conversational style. Speak directly to the reader with clear, engaging cadence.',
+			),
+			self::PRESET_TECHNICAL      => array(
+				'label'       => __('Technical & Precise', 'ai-post-scheduler'),
+				'description' => __('Rigorous terminology, exact distinctions, and analytical depth.', 'ai-post-scheduler'),
+				'instruction' => 'Rewrite the following text with technical rigor, precise domain terminology, and clear analytical distinctions. Avoid vague generalities.',
+			),
+			self::PRESET_SUMMARY        => array(
+				'label'       => __('Concise Summary', 'ai-post-scheduler'),
+				'description' => __('Distill key takeaways into crisp, high-signal highlights.', 'ai-post-scheduler'),
+				'instruction' => 'Condense the core thesis and critical points into concise, high-signal phrasing without losing essential nuances.',
 			),
 		);
 	}

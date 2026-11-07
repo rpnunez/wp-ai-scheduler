@@ -17,10 +17,15 @@
 
 	var el = wp.element.createElement;
 	var useState = wp.element.useState;
+	var useEffect = wp.element.useEffect;
 	var Fragment = wp.element.Fragment;
 	var Button = wp.components.Button;
 	var Spinner = wp.components.Spinner;
 	var Popover = wp.components.Popover;
+	var SelectControl = wp.components.SelectControl;
+	var RangeControl = wp.components.RangeControl;
+	var TextControl = wp.components.TextControl;
+	var CheckboxControl = wp.components.CheckboxControl;
 	var ToolbarButton = wp.components.ToolbarButton || wp.blockEditor.ToolbarButton;
 	var BlockControls = wp.blockEditor.BlockControls;
 	var PluginDocumentSettingPanel = wp.editPost ? wp.editPost.PluginDocumentSettingPanel : null;
@@ -44,6 +49,8 @@
 	function ComponentAIEditPanel(props) {
 		var component = props.component;
 		var label = props.label;
+		var initialOverrides = (l10n.componentOverrides && l10n.componentOverrides[component]) || {};
+
 		var [isRegenerating, setIsRegenerating] = useState(false);
 		var [regeneratedDraft, setRegeneratedDraft] = useState(null);
 		var [showDiff, setShowDiff] = useState(false);
@@ -52,6 +59,16 @@
 		var [loadingRevisions, setLoadingRevisions] = useState(false);
 		var [variants, setVariants] = useState([]);
 		var [busyVariants, setBusyVariants] = useState(false);
+
+		// Prompt Steering & Creativity state
+		var [showPopover, setShowPopover] = useState(false);
+		var [selectedPreset, setSelectedPreset] = useState('');
+		var [customDirective, setCustomDirective] = useState('');
+		var [showAdvanced, setShowAdvanced] = useState(false);
+		var [modelOverride, setModelOverride] = useState(initialOverrides.model || '');
+		var [temperatureOverride, setTemperatureOverride] = useState(initialOverrides.temperature !== undefined ? parseFloat(initialOverrides.temperature) : 0.7);
+		var [syncDownstream, setSyncDownstream] = useState(true);
+		var [isCustomized, setIsCustomized] = useState(!!initialOverrides.model || (initialOverrides.temperature !== undefined && parseFloat(initialOverrides.temperature) !== 0.7));
 
 		var currentValue = wp.data.useSelect(function (select) {
 			var editor = select('core/editor');
@@ -88,7 +105,7 @@
 			});
 		}
 
-		function handleRegenerate() {
+		function handleRegenerate(isCascade) {
 			setIsRegenerating(true);
 			$.post(l10n.ajaxurl, {
 				action: 'aips_regenerate_component',
@@ -96,14 +113,19 @@
 				post_id: l10n.postId,
 				history_id: l10n.historyId || 0,
 				component: component,
-				current_value: currentValue
+				current_value: currentValue,
+				custom_directive: customDirective,
+				directive_preset: selectedPreset,
+				model_override: modelOverride,
+				temperature_override: temperatureOverride,
+				downstream_cascaded: isCascade ? 'true' : 'false'
 			})
 			.done(function (response) {
 				if (response && response.success && response.data && response.data.new_value) {
 					setRegeneratedDraft(response.data.new_value);
 					setShowDiff(true);
 					loadRevisions();
-					notify('Draft generated for ' + label + '!');
+					notify((isCascade ? 'Cascaded alignment generated' : 'Draft generated') + ' for ' + label + '!');
 				} else {
 					notify((response && response.data && response.data.message) || l10n.labels.actionError, 'error');
 				}
@@ -167,6 +189,15 @@
 			setRegeneratedDraft(null);
 			loadRevisions();
 			notify('Updated ' + label + '!');
+
+			// Trigger downstream cascade if enabled
+			if (syncDownstream) {
+				if ('title' === component || 'content' === component) {
+					window.dispatchEvent(new CustomEvent('aips:regenerate_component', {
+						detail: { component: 'excerpt', source: 'cascade' }
+					}));
+				}
+			}
 		}
 
 		function handleDiscardDiff() {
@@ -228,6 +259,36 @@
 			});
 		}
 
+		function handleResetOverrides() {
+			$.post(l10n.ajaxurl, {
+				action: 'aips_reset_component_overrides',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				component: component
+			}).done(function (res) {
+				if (res && res.success && res.data) {
+					setModelOverride('');
+					var defTemp = parseFloat(res.data.default_temperature) || 0.7;
+					setTemperatureOverride(defTemp);
+					setIsCustomized(false);
+					notify('Component overrides reset to template defaults.');
+				}
+			});
+		}
+
+		// Listen for cascading downstream triggers
+		useEffect(function () {
+			function onCascade(e) {
+				if (e.detail && e.detail.component === component) {
+					handleRegenerate(true);
+				}
+			}
+			window.addEventListener('aips:regenerate_component', onCascade);
+			return function () {
+				window.removeEventListener('aips:regenerate_component', onCascade);
+			};
+		}, [component, currentValue, customDirective, selectedPreset, modelOverride, temperatureOverride]);
+
 		var currentSnippet = typeof currentValue === 'string' ? currentValue : (currentValue ? String(currentValue) : 'Empty');
 		var regenSnippet = '';
 		if (regeneratedDraft) {
@@ -238,20 +299,122 @@
 			}
 		}
 
+		var modelOptions = Object.keys(l10n.models || {}).map(function (k) {
+			return { value: k, label: l10n.models[k] };
+		});
+
+		var presetsList = Object.keys(l10n.presets || {}).map(function (k) {
+			return { key: k, label: l10n.presets[k].label, desc: l10n.presets[k].description };
+		});
+
 		return el('div', { className: 'aips-gutenberg-component-section', style: { padding: '4px 0' } },
-			el('div', { style: { display: 'flex', gap: '6px', marginBottom: '10px' } },
+			// Split Button Header
+			el('div', { style: { display: 'flex', gap: '4px', marginBottom: '8px', alignItems: 'center' } },
 				el(Button, {
 					variant: 'primary',
 					isBusy: isRegenerating,
 					disabled: isRegenerating,
-					onClick: handleRegenerate
+					onClick: function () { handleRegenerate(false); }
 				}, isRegenerating ? (l10n.labels.generating || 'Generating...') : ('Re-generate ' + label)),
+				el(Button, {
+					variant: 'primary',
+					icon: showPopover ? 'arrow-up-alt2' : 'arrow-down-alt2',
+					title: 'Steering & Directives',
+					onClick: function () { setShowPopover(!showPopover); }
+				}),
 				('title' === component || 'excerpt' === component) && el(Button, {
 					variant: 'secondary',
 					isBusy: busyVariants,
 					disabled: busyVariants,
 					onClick: handleGenerateVariants
 				}, '3 Candidates')
+			),
+
+			// Prompt Steering Popover Box
+			showPopover && el('div', { style: { border: '1px solid #dcdcde', borderRadius: '4px', background: '#fff', padding: '10px', marginBottom: '10px' } },
+				el('div', { style: { fontSize: '11px', fontWeight: 'bold', color: '#50575e', marginBottom: '6px', textTransform: 'uppercase' } }, 'Quick Presets'),
+				el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' } },
+					presetsList.map(function (p) {
+						var isSelected = selectedPreset === p.key;
+						return el(Button, {
+							key: p.key,
+							isSmall: true,
+							variant: isSelected ? 'primary' : 'secondary',
+							title: p.desc,
+							onClick: function () {
+								setSelectedPreset(isSelected ? '' : p.key);
+							}
+						}, p.label);
+					})
+				),
+				el(TextControl, {
+					placeholder: 'Custom directive (e.g. punchier, focus on SEO)...',
+					value: customDirective,
+					onChange: setCustomDirective
+				}),
+				el('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '6px' } },
+					el(Button, {
+						isSmall: true,
+						variant: 'tertiary',
+						onClick: function () {
+							setSelectedPreset('');
+							setCustomDirective('');
+						}
+					}, 'Clear'),
+					el(Button, {
+						isSmall: true,
+						variant: 'primary',
+						onClick: function () {
+							setShowPopover(false);
+							handleRegenerate(false);
+						}
+					}, 'Apply & Re-generate')
+				)
+			),
+
+			// Advanced Directives & Model Accordion
+			el('div', { style: { border: '1px solid #dcdcde', borderRadius: '4px', background: '#fdfdfd', marginBottom: '10px' } },
+				el(Button, {
+					variant: 'tertiary',
+					style: { width: '100%', display: 'flex', justifyContent: 'space-between', padding: '6px 8px', fontSize: '12px', fontWeight: '600' },
+					onClick: function () { setShowAdvanced(!showAdvanced); }
+				},
+					el('span', null,
+						'Advanced Directives & Model',
+						isCustomized && el('span', { style: { background: '#2271b1', color: '#fff', fontSize: '9px', padding: '1px 5px', borderRadius: '8px', marginLeft: '6px' } }, 'Customized')
+					),
+					el('span', { className: 'dashicons ' + (showAdvanced ? 'dashicons-arrow-up-alt2' : 'dashicons-arrow-down-alt2'), style: { fontSize: '14px', width: '14px', height: '14px' } })
+				),
+				showAdvanced && el('div', { style: { padding: '8px 10px', borderTop: '1px solid #f0f0f1', background: '#fff' } },
+					el(SelectControl, {
+						label: 'AI Model Override',
+						value: modelOverride,
+						options: modelOptions,
+						onChange: function (val) {
+							setModelOverride(val);
+							setIsCustomized(true);
+						}
+					}),
+					el(RangeControl, {
+						label: 'Creativity / Temperature (' + temperatureOverride.toFixed(2) + ')',
+						value: temperatureOverride,
+						onChange: function (val) {
+							setTemperatureOverride(val);
+							setIsCustomized(true);
+						},
+						min: 0,
+						max: 1,
+						step: 0.05
+					}),
+					el('div', { style: { display: 'flex', justifyContent: 'flex-end', marginTop: '4px' } },
+						el(Button, {
+							variant: 'link',
+							isDestructive: true,
+							style: { fontSize: '11px' },
+							onClick: handleResetOverrides
+						}, 'Reset to Template Default')
+					)
+				)
 			),
 
 			// Side-by-side diff
@@ -267,9 +430,15 @@
 						regenSnippet
 					)
 				),
-				el('div', { style: { display: 'flex', gap: '6px' } },
+				el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' } },
 					el(Button, { variant: 'primary', isSmall: true, onClick: handleAcceptDiff }, 'Accept & Replace'),
-					el(Button, { variant: 'secondary', isSmall: true, onClick: handleDiscardDiff }, 'Discard')
+					el(Button, { variant: 'secondary', isSmall: true, onClick: handleDiscardDiff }, 'Discard'),
+					('title' === component || 'content' === component) && el(CheckboxControl, {
+						label: 'Sync Downstream (Auto-realign Excerpt)',
+						checked: syncDownstream,
+						onChange: setSyncDownstream,
+						style: { marginLeft: 'auto', marginBottom: 0 }
+					})
 				)
 			),
 
