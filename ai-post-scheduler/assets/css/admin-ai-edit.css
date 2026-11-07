@@ -581,8 +581,8 @@
 }
 
 .aips-ai-edit-tab.is-active {
-	background: #2271b1;
-	color: #fff;
+	background: var(--aips-primary);
+	color: var(--aips-white);
 }
 
 .aips-tab-badge {
@@ -599,23 +599,23 @@
 }
 
 .aips-tab-badge.badge-regenerated {
-	background: #00a32a;
-	color: #fff;
+	background: var(--aips-success);
+	color: var(--aips-white);
 }
 
 .aips-tab-badge.badge-modified {
-	background: #e0f2fe;
-	color: #0369a1;
+	background: var(--aips-info-light);
+	color: var(--aips-info-dark);
 }
 
 .aips-ai-edit-tab.is-active .aips-tab-badge.badge-modified {
-	background: #fff;
-	color: #2271b1;
+	background: var(--aips-white);
+	color: var(--aips-primary);
 }
 
 .aips-ai-edit-tab.is-active .aips-tab-badge.badge-regenerated {
-	background: #fff;
-	color: #00a32a;
+	background: var(--aips-white);
+	color: var(--aips-success);
 }
 
 /* Tab Panels */
@@ -667,7 +667,7 @@
 }
 
 .aips-summary-card-status.has-changes {
-	color: #00a32a;
+	color: var(--aips-success);
 	font-weight: 600;
 }
 
@@ -678,7 +678,7 @@
 	border-radius: var(--aips-radius-base);
 	margin-bottom: 16px;
 	overflow: hidden;
-	box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+	box-shadow: var(--aips-shadow-xs);
 }
 
 .aips-diff-header {
@@ -707,12 +707,12 @@
 }
 
 .aips-diff-col-current {
-	background: #fbfbfc;
+	background: var(--aips-gray-tint);
 	border-right: 1px solid var(--aips-gray-200);
 }
 
 .aips-diff-col-regenerated {
-	background: #f0fdf4;
+	background: var(--aips-success-bg);
 }
 
 .aips-diff-col-header {
@@ -725,7 +725,7 @@
 }
 
 .aips-diff-col-regenerated .aips-diff-col-header {
-	color: #15803d;
+	color: var(--aips-success-dark);
 }
 
 .aips-diff-col-body {
@@ -736,15 +736,15 @@
 	word-break: break-word;
 	max-height: 220px;
 	overflow-y: auto;
-	background: #fff;
+	background: var(--aips-white);
 	padding: 8px 10px;
-	border-radius: 6px;
+	border-radius: var(--aips-radius-md);
 	border: 1px solid var(--aips-gray-200);
 }
 
 .aips-diff-col-regenerated .aips-diff-col-body {
-	border-color: #bbf7d0;
-	background: #fafffa;
+	border-color: var(--aips-success-border);
+	background: var(--aips-white);
 }
 
 .aips-diff-footer {
@@ -752,7 +752,7 @@
 	align-items: center;
 	gap: 8px;
 	padding: 10px 14px;
-	background: #fff;
+	background: var(--aips-white);
 }
 
 .aips-field-label {
@@ -771,7 +771,7 @@
 
 /* In-place row flash effect */
 @keyframes aips-row-updated-flash {
-	0% { background-color: #e6ffed; }
+	0% { background-color: var(--aips-success-bg); }
 	100% { background-color: transparent; }
 }
 
