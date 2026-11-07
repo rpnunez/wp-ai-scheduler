@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Performance
+- **AI Prompt Bloat Optimization & Input Token Reduction:**
+  - Pruned redundant `content_format` and `post_slice` diversity blocks in `AIPS_Prompt_Builder_Post_Metadata::append_diversity_blocks()` during metadata follow-up turns on established conversations, saving ~300 input tokens per post.
+  - Eliminated duplicate voice content instructions in `AIPS_Prompt_Builder::build_content_context()` when called for `AIPS_Generation_Context`, avoiding redundant injection across both prompt body and AI Engine context options.
+  - Reduced default article digest size in `AIPS_Prompt_Builder_Post_Title::build_base_prompt()` from 12,000 characters (`DEFAULT_MAX_CHARS`) to 3,000 characters, saving ~1,500–2,500 input tokens per post on stateless title generation requests without compromising headline relevance.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
