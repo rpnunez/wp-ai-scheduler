@@ -1,0 +1,17 @@
+# Scenario: Multi-turn follow-up title prompt generation
+
+Now generate a title for the article you just wrote. Here are your instructions:
+
+Create a captivating headline for Modern Web Performance.
+
+Use this content format for this generation:
+- implementation checklist
+
+Treat this as the primary structure and framing for this piece. Do not default to a generic overview unless this format naturally calls for it.
+
+Use this post style for this generation:
+- beginner onboarding
+
+Treat this as the editorial lens for the piece. Shape the title angle, examples, section emphasis, and framing around this style without simply naming the style in the post.
+
+Respond with ONLY one plain-text title, nothing else.
