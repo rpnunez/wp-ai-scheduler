@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **Interactive Cards Redesign for Posts Pending Review & Floating Bulk Actions (#2334, #2340):**
+  - Modernized the Content > Pending Review tab from an HTML table into a responsive 3-column card grid with featured image display, fallback banner placeholders, post type badges, and context attribution.
+  - Added instant 1-click publishing without modal confirmation, including smooth card fade-out animation, draft counter synchronization, and toast notification with direct editor links.
+  - Added floating bulk actions bar anchored towards the bottom center of the viewport with dynamic selection counters, mass select/unselect all toggle, action selector, and escape key dismissal.
+  - Implemented live debounced AJAX filtering for post search and template / post type dropdowns.
+  - Added hybrid infinite scrolling that auto-loads subsequent pages on scroll for the initial pages and presents an explicit "Load More Posts" button with loading spinner for deeper queues.
+  - Hydrated draft post queries with excerpt/content snippets, featured images, and pre-primed thumbnail caches.
+  - Constrained list table column widths preventing horizontal layout overflow.
 - **Native Post Editor "AI Edit" Integration (Gutenberg & Classic Editor):**
   - Expanded AI Edit beyond the list table modal directly into the native WordPress Post Editor canvas.
   - Added dedicated Gutenberg Document Settings panel (`PluginDocumentSettingPanel`) for post-level Title, Excerpt, and Featured Image variant generation.
@@ -17,8 +25,6 @@
   - Added dynamic in-place DOM row updates on save without requiring a full page reload.
   - Hardened `AIPS_AI_Edit_Controller::ajax_get_post_components()` to resolve generation context via post ID fallback when `history_id` is omitted.
   - Preserved backslashes across saves in `AIPS_AI_Edit_Controller::ajax_save_post_components()` using `wp_slash()`.
-
-### Added
 - **Summarized Notification Digest & Batch Threshold:**
   - Added configurable summarized notification digest in Settings > Notifications to batch frequent generation and review emails (e.g. Post Generated, Post Ready For Review) into a single digest email instead of sending individual emails per post.
   - Exposed customizable batch threshold (clamped 2–50, default 5) to trigger instant digest dispatch when accumulated count is met.
