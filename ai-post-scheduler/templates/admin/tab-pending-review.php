@@ -44,6 +44,10 @@ $review_total = $review_table->get_total_items();
 							</button>
 						</div>
 						<div class="aips-toolbar-right">
+							<?php
+							// View toggle temporarily disabled pending Cards/List synchronization (Issue #2339).
+							if (false):
+							?>
 							<div class="aips-view-toggle" role="group" aria-label="<?php esc_attr_e('View layout', 'ai-post-scheduler'); ?>">
 								<button type="button" class="aips-view-toggle-btn is-active" data-view="cards" title="<?php esc_attr_e('Cards view', 'ai-post-scheduler'); ?>" aria-pressed="true">
 									<span class="dashicons dashicons-grid-view" aria-hidden="true"></span>
@@ -54,6 +58,7 @@ $review_total = $review_table->get_total_items();
 									<span class="aips-view-toggle-text"><?php esc_html_e('List', 'ai-post-scheduler'); ?></span>
 								</button>
 							</div>
+							<?php endif; ?>
 							<div class="aips-pending-count-badge" id="aips-pending-cards-count">
 								<span class="aips-count-text">
 									<?php esc_html_e('Showing', 'ai-post-scheduler'); ?>
@@ -267,5 +272,41 @@ $review_total = $review_table->get_total_items();
 								</a>
 								<?php endif; ?>
 							</div>
+						</div>
+					</div>
+
+					<!-- Floating Bulk Actions Bar (Active when 1+ cards are selected in Grid view) -->
+					<div id="aips-floating-bulk-bar" class="aips-floating-bulk-bar" role="region" aria-label="<?php esc_attr_e('Bulk actions for selected posts', 'ai-post-scheduler'); ?>" aria-hidden="true">
+						<div class="aips-floating-bulk-content">
+							<div class="aips-floating-bulk-select-all">
+								<label class="aips-card-select-all-label">
+									<input type="checkbox" id="aips-floating-select-all" class="aips-checkbox" aria-label="<?php esc_attr_e('Select all posts', 'ai-post-scheduler'); ?>" />
+									<span><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></span>
+								</label>
+							</div>
+
+							<div class="aips-floating-bulk-status">
+								<span class="aips-floating-count-text">
+									<strong id="aips-floating-selected-count">0</strong>
+									<?php esc_html_e('selected / out of', 'ai-post-scheduler'); ?>
+									<strong id="aips-floating-total-count"><?php echo esc_html((string) $review_total); ?></strong>
+									<?php esc_html_e('Posts with Status Pending Review', 'ai-post-scheduler'); ?>
+								</span>
+							</div>
+
+							<div class="aips-floating-bulk-actions">
+								<select name="floating_bulk_action" id="aips-floating-bulk-action" class="aips-form-select">
+									<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+									<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
+									<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+								</select>
+								<button type="button" id="aips-floating-bulk-apply" class="aips-btn aips-btn-sm aips-btn-primary">
+									<?php esc_html_e('Apply', 'ai-post-scheduler'); ?>
+								</button>
+							</div>
+
+							<button type="button" id="aips-floating-clear-selection" class="aips-floating-close-btn" title="<?php esc_attr_e('Clear selection', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear selection', 'ai-post-scheduler'); ?>">
+								<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
+							</button>
 						</div>
 					</div>

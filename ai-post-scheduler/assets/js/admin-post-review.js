@@ -52,6 +52,7 @@
 				savedView = localStorage.getItem('aips_pending_review_view') || 'cards';
 			} catch (e) {}
 			this.setView(savedView);
+			this.updateSelectionState();
 		},
 
 		/**
@@ -87,6 +88,9 @@
 
 			// Bulk actions
 			$(document).on('click', '#aips-bulk-action-btn', this.onBulkAction.bind(this));
+			$(document).on('change', '#aips-floating-select-all', this.onFloatingSelectAllChange.bind(this));
+			$(document).on('click', '#aips-floating-bulk-apply', this.onFloatingBulkApply.bind(this));
+			$(document).on('click', '#aips-floating-clear-selection', this.onClearSelection.bind(this));
 
 			// Reload button
 			$(document).on('click', '#aips-reload-posts-btn', this.onReloadClick.bind(this));
@@ -213,6 +217,30 @@
 		},
 
 		/**
+		 * Synchronize selection state across top toolbar, cards, and floating bulk bar.
+		 *
+		 * @return {void}
+		 */
+		updateSelectionState: function () {
+			var $rows           = this.rowCheckboxes();
+			var checkedCount    = $rows.filter(':checked').length;
+			var totalCount      = parseInt($('#aips-pending-total-count').text(), 10) || $rows.length;
+			var allChecked      = $rows.length > 0 && $rows.length === checkedCount;
+			var isIndeterminate = checkedCount > 0 && !allChecked;
+
+			$('#aips-select-all-cards, input[id^="cb-select-all-"]').prop('checked', allChecked).prop('indeterminate', isIndeterminate);
+			$('#aips-floating-select-all').prop('checked', allChecked).prop('indeterminate', isIndeterminate);
+
+			if (checkedCount > 0) {
+				$('#aips-floating-selected-count').text(checkedCount);
+				$('#aips-floating-total-count').text(totalCount);
+				$('#aips-floating-bulk-bar').addClass('is-active').attr('aria-hidden', 'false');
+			} else {
+				$('#aips-floating-bulk-bar').removeClass('is-active').attr('aria-hidden', 'true');
+			}
+		},
+
+		/**
 		 * Sync all card / row checkboxes when the select-all header checkbox changes.
 		 *
 		 * @param {Event} e Change event.
@@ -220,12 +248,26 @@
 		 */
 		onSelectAllChange: function (e) {
 			var isChecked = $(e.currentTarget).prop('checked');
-			AIPS.PostReview.rowCheckboxes().prop('checked', isChecked);
+			this.rowCheckboxes().prop('checked', isChecked);
 			$('.aips-post-card').toggleClass('is-selected', isChecked);
+			this.updateSelectionState();
 		},
 
 		/**
-		 * Update the select-all checkbox state after an individual row/card checkbox changes.
+		 * Sync all card / row checkboxes when the floating select-all checkbox changes.
+		 *
+		 * @param {Event} e Change event.
+		 * @return {void}
+		 */
+		onFloatingSelectAllChange: function (e) {
+			var isChecked = $(e.currentTarget).prop('checked');
+			this.rowCheckboxes().prop('checked', isChecked);
+			$('.aips-post-card').toggleClass('is-selected', isChecked);
+			this.updateSelectionState();
+		},
+
+		/**
+		 * Update the selection state after an individual row/card checkbox changes.
 		 *
 		 * @param {Event} e Change event.
 		 * @return {void}
@@ -233,9 +275,22 @@
 		onCheckboxChange: function (e) {
 			var $cb = $(e.currentTarget);
 			$cb.closest('.aips-post-card').toggleClass('is-selected', $cb.prop('checked'));
-			var $rows      = AIPS.PostReview.rowCheckboxes();
-			var allChecked = $rows.length > 0 && $rows.length === $rows.filter(':checked').length;
-			$('#aips-select-all-cards, input[id^="cb-select-all-"]').prop('checked', allChecked);
+			this.updateSelectionState();
+		},
+
+		/**
+		 * Clear all card selections and dismiss the floating bulk bar.
+		 *
+		 * @param {Event} [e] Optional click or keyboard event.
+		 * @return {void}
+		 */
+		onClearSelection: function (e) {
+			if (e && e.preventDefault) {
+				e.preventDefault();
+			}
+			this.rowCheckboxes().prop('checked', false);
+			$('.aips-post-card').removeClass('is-selected');
+			this.updateSelectionState();
 		},
 
 		// -----------------------------------------------------------------
@@ -276,6 +331,9 @@
 		onDocumentKeyDown: function (e) {
 			if (e.key === 'Escape') {
 				AIPS.closeAllRowActionMenus();
+				if ($('#aips-floating-bulk-bar').hasClass('is-active')) {
+					this.onClearSelection(e);
+				}
 			}
 		},
 
@@ -447,6 +505,37 @@
 
 			var action = $('#bulk-action-selector-top').val();
 			if (!action) {
+				AIPS.Utilities.showToast(aipsPostReviewL10n.noActionSelected || 'Please select a bulk action.', 'warning');
+				return;
+			}
+
+			var checkedBoxes = this.rowCheckboxes().filter(':checked');
+			if (checkedBoxes.length === 0) {
+				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
+				return;
+			}
+
+			if (action === 'publish') {
+				this.bulkPublish(checkedBoxes);
+			} else if (action === 'delete') {
+				this.bulkDelete(checkedBoxes);
+			} else if (action === 'regenerate') {
+				this.bulkRegenerate(checkedBoxes);
+			}
+		},
+
+		/**
+		 * Dispatch the selected bulk action from the floating toolbar.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onFloatingBulkApply: function (e) {
+			e.preventDefault();
+
+			var action = $('#aips-floating-bulk-action').val();
+			if (!action) {
+				AIPS.Utilities.showToast(aipsPostReviewL10n.noActionSelected || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
@@ -671,6 +760,7 @@
 								$('#aips-empty-actions').html('<a href="admin.php?page=aips-schedules" class="aips-btn aips-btn-secondary"><span class="dashicons dashicons-calendar-alt"></span> Manage Schedules</a>');
 							}
 						}
+						self.updateSelectionState();
 					} else {
 						AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.fetchError || 'Failed to load posts.', 'error');
 					}
@@ -1196,6 +1286,7 @@
 				var $chip = $('.aips-page-header .aips-page-summary-strip .aips-summary-chip-value').first();
 				$chip.text(newTotal);
 			}
+			this.updateSelectionState();
 		},
 
 		/**

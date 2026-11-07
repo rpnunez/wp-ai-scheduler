@@ -156,8 +156,39 @@
 	z-index: 12;
 }
 
+.aips-list-table-wrap .aips-post-review-table {
+	table-layout: fixed;
+	width: 100%;
+}
+
+.aips-list-table-wrap .aips-post-review-table .column-cb {
+	width: 40px;
+}
+
+.aips-list-table-wrap .aips-post-review-table .column-title {
+	width: auto;
+}
+
+.aips-list-table-wrap .aips-post-review-table .column-context {
+	width: 18%;
+	color: var(--aips-text-tertiary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.aips-list-table-wrap .aips-post-review-table .column-type {
+	width: 10%;
+	white-space: nowrap;
+}
+
+.aips-list-table-wrap .aips-post-review-table .column-created {
+	width: 14%;
+	white-space: nowrap;
+}
+
 .aips-list-table-wrap .aips-post-review-table .column-actions {
-	width: 1%;
+	width: 140px;
 	white-space: nowrap;
 	text-align: right;
 }
@@ -167,16 +198,11 @@
 	text-align: left;
 }
 
-.aips-post-review-table .column-created {
-	white-space: nowrap;
-}
-
-.aips-post-review-table .column-context {
-	color: var(--aips-text-tertiary);
-}
-
 .aips-post-review-table .aips-cell-source {
 	margin-top: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 /* Pagination lives in the bulk-actions toolbar, like the History table. */
@@ -737,5 +763,136 @@
 
 	.aips-card-footer-right {
 		align-self: flex-end;
+	}
+}
+
+/* ==========================================================================
+   Floating Bulk Actions Bar (Card view selection)
+   ========================================================================== */
+
+.aips-floating-bulk-bar {
+	position: fixed;
+	bottom: var(--aips-space-6);
+	left: 50%;
+	transform: translate(-50%, 120%);
+	opacity: 0;
+	pointer-events: none;
+	visibility: hidden;
+	z-index: var(--aips-z-fixed);
+	transition: transform var(--aips-transition-slow), opacity var(--aips-transition-slow), visibility var(--aips-transition-slow);
+	max-width: calc(100vw - 48px);
+}
+
+.aips-floating-bulk-bar.is-active {
+	transform: translate(-50%, 0);
+	opacity: 1;
+	pointer-events: auto;
+	visibility: visible;
+}
+
+.aips-floating-bulk-content {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-4);
+	background: var(--aips-white);
+	border: 1px solid var(--aips-border-color);
+	border-radius: var(--aips-radius-full);
+	box-shadow: var(--aips-shadow-lg);
+	padding: var(--aips-space-2) var(--aips-space-5);
+	white-space: nowrap;
+}
+
+.aips-floating-bulk-select-all {
+	display: flex;
+	align-items: center;
+}
+
+.aips-floating-bulk-select-all .aips-card-select-all-label {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-medium);
+	color: var(--aips-text);
+	cursor: pointer;
+	user-select: none;
+}
+
+.aips-floating-bulk-status {
+	font-size: var(--aips-text-xs);
+	color: var(--aips-text-muted);
+	padding: 0 var(--aips-space-3);
+	border-left: 1px solid var(--aips-gray-200);
+	border-right: 1px solid var(--aips-gray-200);
+}
+
+.aips-floating-count-text strong {
+	color: var(--aips-primary);
+	font-weight: var(--aips-font-semibold);
+}
+
+.aips-floating-bulk-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-floating-bulk-actions .aips-form-select {
+	height: var(--aips-control-h-sm);
+	padding: 0 var(--aips-control-px-sm);
+	font-size: var(--aips-text-xs);
+	width: auto;
+}
+
+.aips-floating-bulk-actions .aips-btn {
+	height: var(--aips-control-h-sm);
+	padding: 0 var(--aips-space-3);
+	font-size: var(--aips-text-xs);
+	display: inline-flex;
+	align-items: center;
+}
+
+.aips-floating-close-btn {
+	background: transparent;
+	border: none;
+	padding: 4px;
+	margin-left: calc(-1 * var(--aips-space-1));
+	color: var(--aips-text-tertiary);
+	cursor: pointer;
+	border-radius: var(--aips-radius-full);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: color var(--aips-transition-fast), background var(--aips-transition-fast);
+}
+
+.aips-floating-close-btn:hover,
+.aips-floating-close-btn:focus-visible {
+	color: var(--aips-danger);
+	background: var(--aips-gray-100);
+	outline: none;
+}
+
+@media (max-width: 782px) {
+	.aips-floating-bulk-bar {
+		bottom: var(--aips-space-4);
+		max-width: calc(100vw - 32px);
+	}
+
+	.aips-floating-bulk-content {
+		flex-wrap: wrap;
+		border-radius: var(--aips-radius-lg);
+		padding: var(--aips-space-3);
+		justify-content: center;
+		white-space: normal;
+	}
+
+	.aips-floating-bulk-status {
+		border-left: none;
+		border-right: none;
+		order: -1;
+		width: 100%;
+		text-align: center;
+		padding-bottom: var(--aips-space-2);
 	}
 }
