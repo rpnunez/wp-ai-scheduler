@@ -191,8 +191,8 @@ class AIPS_Post_Review_Repository {
 				$item->snippet = $clean_snippet;
 
 				// Edit link & preview link
-				$item->edit_url    = get_edit_post_link($item->post_id) ?: '';
-				$item->preview_url = get_preview_post_link($item->post_id) ?: '';
+				$item->edit_url    = get_edit_post_link($item->post_id) ?: admin_url('post.php?post=' . $item->post_id . '&action=edit');
+				$item->preview_url = get_preview_post_link($item->post_id) ?: get_permalink($item->post_id);
 
 				// Creation timestamp formatted
 				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format);
