@@ -177,6 +177,11 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 		$this->_column_headers = $this->get_column_info();
 
 		$per_page     = max(1, (int) $this->get_items_per_page(self::PER_PAGE_OPTION, self::PER_PAGE_DEFAULT));
+		// A Cards-to-List switch can include all cards already loaded in the table.
+		// The value is a lower bound; retain a larger Screen Options preference.
+		if (isset($_GET['review_per_page'])) {
+			$per_page = max($per_page, absint(wp_unslash($_GET['review_per_page'])));
+		}
 		$current_page = $this->get_pagenum();
 
 		$search      = isset($_REQUEST['s']) ? sanitize_text_field(wp_unslash($_REQUEST['s'])) : '';

@@ -23,7 +23,7 @@ class Test_AIPS_Pending_Review_List_Table extends WP_UnitTestCase {
 		foreach ($this->history_ids as $history_id) {
 			$wpdb->delete($wpdb->prefix . 'aips_history', array('id' => $history_id), array('%d'));
 		}
-		unset($_REQUEST['paged'], $_GET['paged']);
+		unset($_REQUEST['paged'], $_GET['paged'], $_GET['review_per_page']);
 
 		parent::tearDown();
 	}
@@ -102,6 +102,24 @@ class Test_AIPS_Pending_Review_List_Table extends WP_UnitTestCase {
 		$this->assertCount(2, $table->items, 'Page shows only per_page items.');
 		$this->assertGreaterThanOrEqual(3, $table->get_total_items(), 'Total counts every matching draft.');
 		$this->assertSame(2, (int) $table->get_pagination_arg('total_pages'), '3 drafts at 2/page is 2 pages.');
+	}
+
+	public function test_cards_switch_limit_expands_list_query() {
+		$this->make_review_draft();
+		$this->make_review_draft();
+		$this->make_review_draft();
+
+		$force_two = static function () {
+			return 2;
+		};
+		add_filter(AIPS_Pending_Review_List_Table::PER_PAGE_OPTION, $force_two);
+		$_GET['review_per_page'] = '3';
+		$table = new AIPS_Pending_Review_List_Table();
+		$table->prepare_items();
+		remove_filter(AIPS_Pending_Review_List_Table::PER_PAGE_OPTION, $force_two);
+
+		$this->assertCount(3, $table->items);
+		$this->assertSame(3, (int) $table->get_pagination_arg('per_page'));
 	}
 
 	public function test_row_actions_markup_matches_js_contract() {

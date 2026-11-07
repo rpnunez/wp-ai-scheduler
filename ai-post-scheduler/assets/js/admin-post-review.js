@@ -33,6 +33,12 @@
 		/** @type {number|null} Debounce timer ID for live search */
 		searchTimer: null,
 
+		/** @type {Set<string>} Selected post IDs, shared by both layouts. */
+		selectedPostIds: new Set(),
+
+		/** @type {boolean} The server-rendered List query no longer matches the cards. */
+		listNeedsReload: false,
+
 		/**
 		 * Bootstrap the Post Review page.
 		 *
@@ -46,13 +52,20 @@
 			}
 			this.bindEvents();
 			this.initInfiniteScroll();
+			try {
+				var pendingSelection = sessionStorage.getItem('aips_pending_review_selection');
+				if (pendingSelection) {
+					this.selectedPostIds = new Set(JSON.parse(pendingSelection).map(String));
+					sessionStorage.removeItem('aips_pending_review_selection');
+				}
+			} catch (e) {}
 
 			var savedView = 'cards';
 			try {
 				savedView = localStorage.getItem('aips_pending_review_view') || 'cards';
 			} catch (e) {}
 			this.setView(savedView);
-			this.updateSelectionState();
+			this.syncSelection();
 		},
 
 		/**
@@ -62,6 +75,24 @@
 		 */
 		rowCheckboxes: function () {
 			return $('.aips-pending-posts-grid .aips-post-checkbox, #aips-post-review-form tbody .aips-post-checkbox');
+		},
+
+		/** Return checkboxes from the active layout only. */
+		activeCheckboxes: function () {
+			return this.currentView === 'list'
+				? $('#aips-post-review-form tbody .aips-post-checkbox')
+				: $('.aips-pending-posts-grid .aips-post-checkbox');
+		},
+
+		/** Apply the selected IDs to both rendered layouts. */
+		syncSelection: function () {
+			var selected = this.selectedPostIds;
+			this.rowCheckboxes().each(function () {
+				var checked = selected.has(String($(this).val()));
+				$(this).prop('checked', checked).prop('indeterminate', false);
+				$(this).closest('.aips-post-card').toggleClass('is-selected', checked);
+			});
+			this.updateSelectionState();
 		},
 
 		/**
@@ -170,6 +201,34 @@
 		 * @return {void}
 		 */
 		setView: function (view) {
+			view = view === 'list' ? 'list' : 'cards';
+			var url = new URL(window.location.href);
+			var loaded = $('#aips-pending-posts-grid .aips-post-card').length;
+			var tableLimit = parseInt($('#aips-pending-posts-grid').data('per-page'), 10) || 12;
+			var requestedLimit = parseInt(url.searchParams.get('review_per_page'), 10) || 0;
+			if ((view === 'list' && (loaded > tableLimit || this.listNeedsReload)) || (view === 'cards' && requestedLimit)) {
+				if (view === 'list') {
+					url.searchParams.set('review_per_page', Math.max(loaded, tableLimit));
+					[['template_id', '#aips-filter-template'], ['post_type', '#aips-filter-post-type-review'], ['s', '#aips-post-search-input']].forEach(function (filter) {
+						var value = $(filter[1]).val();
+						if (value) {
+							url.searchParams.set(filter[0], value);
+						} else {
+							url.searchParams.delete(filter[0]);
+						}
+					});
+				} else {
+					url.searchParams.delete('review_per_page');
+				}
+				url.searchParams.delete('paged');
+				try {
+					localStorage.setItem('aips_pending_review_view', view);
+					sessionStorage.setItem('aips_pending_review_selection', JSON.stringify(Array.from(this.selectedPostIds)));
+				} catch (e) {}
+				window.location.href = url.toString();
+				return;
+			}
+			this.currentView = view;
 			$('.aips-view-toggle-btn').removeClass('is-active').attr('aria-pressed', 'false');
 			$('.aips-view-toggle-btn[data-view="' + view + '"]').addClass('is-active').attr('aria-pressed', 'true');
 
@@ -190,6 +249,7 @@
 			try {
 				localStorage.setItem('aips_pending_review_view', view);
 			} catch (e) {}
+			this.syncSelection();
 		},
 
 		// -----------------------------------------------------------------
@@ -222,14 +282,16 @@
 		 * @return {void}
 		 */
 		updateSelectionState: function () {
-			var $rows           = this.rowCheckboxes();
-			var checkedCount    = $rows.filter(':checked').length;
+			var $rows           = this.activeCheckboxes();
+			var checkedCount    = this.selectedPostIds.size;
 			var totalCount      = parseInt($('#aips-pending-total-count').text(), 10) || $rows.length;
-			var allChecked      = $rows.length > 0 && $rows.length === checkedCount;
-			var isIndeterminate = checkedCount > 0 && !allChecked;
+			var visibleChecked  = $rows.filter(':checked').length;
+			var allChecked      = $rows.length > 0 && $rows.length === visibleChecked;
+			var isIndeterminate = visibleChecked > 0 && !allChecked;
 
 			$('#aips-select-all-cards, input[id^="cb-select-all-"]').prop('checked', allChecked).prop('indeterminate', isIndeterminate);
 			$('#aips-floating-select-all').prop('checked', allChecked).prop('indeterminate', isIndeterminate);
+			$('#aips-top-selected-count').text(checkedCount + ' ' + $('#aips-top-selected-count').data('label')).toggle(checkedCount > 0);
 
 			if (checkedCount > 0) {
 				$('#aips-floating-selected-count').text(checkedCount);
@@ -248,9 +310,15 @@
 		 */
 		onSelectAllChange: function (e) {
 			var isChecked = $(e.currentTarget).prop('checked');
-			this.rowCheckboxes().prop('checked', isChecked);
-			$('.aips-post-card').toggleClass('is-selected', isChecked);
-			this.updateSelectionState();
+			this.activeCheckboxes().each(function () {
+				var id = String($(this).val());
+				if (isChecked) {
+					AIPS.PostReview.selectedPostIds.add(id);
+				} else {
+					AIPS.PostReview.selectedPostIds.delete(id);
+				}
+			});
+			this.syncSelection();
 		},
 
 		/**
@@ -260,10 +328,7 @@
 		 * @return {void}
 		 */
 		onFloatingSelectAllChange: function (e) {
-			var isChecked = $(e.currentTarget).prop('checked');
-			this.rowCheckboxes().prop('checked', isChecked);
-			$('.aips-post-card').toggleClass('is-selected', isChecked);
-			this.updateSelectionState();
+			this.onSelectAllChange(e);
 		},
 
 		/**
@@ -274,8 +339,13 @@
 		 */
 		onCheckboxChange: function (e) {
 			var $cb = $(e.currentTarget);
-			$cb.closest('.aips-post-card').toggleClass('is-selected', $cb.prop('checked'));
-			this.updateSelectionState();
+			var id = String($cb.val());
+			if ($cb.prop('checked')) {
+				this.selectedPostIds.add(id);
+			} else {
+				this.selectedPostIds.delete(id);
+			}
+			this.syncSelection();
 		},
 
 		/**
@@ -288,9 +358,8 @@
 			if (e && e.preventDefault) {
 				e.preventDefault();
 			}
-			this.rowCheckboxes().prop('checked', false);
-			$('.aips-post-card').removeClass('is-selected');
-			this.updateSelectionState();
+			this.selectedPostIds.clear();
+			this.syncSelection();
 		},
 
 		// -----------------------------------------------------------------
@@ -509,7 +578,7 @@
 				return;
 			}
 
-			var checkedBoxes = this.rowCheckboxes().filter(':checked');
+			var checkedBoxes = this.activeCheckboxes().filter(':checked');
 			if (checkedBoxes.length === 0) {
 				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
 				return;
@@ -539,7 +608,7 @@
 				return;
 			}
 
-			var checkedBoxes = this.rowCheckboxes().filter(':checked');
+			var checkedBoxes = this.activeCheckboxes().filter(':checked');
 			if (checkedBoxes.length === 0) {
 				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
 				return;
@@ -619,8 +688,23 @@
 		 */
 		applyFilters: function () {
 			this.autoScrollPagesLoaded = 0;
+			this.selectedPostIds.clear();
 			var hasFilters = !!$('#aips-filter-template').val() || !!$('#aips-filter-post-type-review').val() || !!$('#aips-post-search-input').val();
 			$('#aips-pending-clear-filters').toggleClass('aips-hidden', !hasFilters);
+			if (this.currentView === 'list') {
+				var url = new URL(window.location.href);
+				[['template_id', '#aips-filter-template'], ['post_type', '#aips-filter-post-type-review'], ['s', '#aips-post-search-input']].forEach(function (filter) {
+					var value = $(filter[1]).val();
+					if (value) {
+						url.searchParams.set(filter[0], value);
+					} else {
+						url.searchParams.delete(filter[0]);
+					}
+				});
+				url.searchParams.delete('paged');
+				window.location.href = url.toString();
+				return;
+			}
 			this.fetchPosts(1, true);
 		},
 
@@ -676,7 +760,7 @@
 				data: {
 					action:      'aips_get_draft_posts',
 					page:        page,
-					per_page:    12,
+					per_page:    parseInt($grid.data('per-page'), 10) || 12,
 					template_id: templateId,
 					post_type:   postType,
 					search:      search,
@@ -688,6 +772,7 @@
 					self.isLoading = false;
 
 					if (response && response.success && response.data) {
+						self.listNeedsReload = true;
 						var data  = response.data;
 						var items = data.items || [];
 						self.currentPage = parseInt(data.current_page, 10) || page;
@@ -760,7 +845,7 @@
 								$('#aips-empty-actions').html('<a href="admin.php?page=aips-schedules" class="aips-btn aips-btn-secondary"><span class="dashicons dashicons-calendar-alt"></span> Manage Schedules</a>');
 							}
 						}
-						self.updateSelectionState();
+						self.syncSelection();
 					} else {
 						AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.fetchError || 'Failed to load posts.', 'error');
 					}
@@ -898,9 +983,9 @@
 			var menuId           = 'aips-review-row-actions-' + postId;
 			var historyUrl       = 'admin.php?page=aips-generated-posts&tab=history&post_id=' + postId;
 
-			return '<tr id="post-' + postId + '">' +
+			return '<tr id="post-' + postId + '" data-post-id="' + postId + '" data-history-id="' + (item.id || item.history_id || 0) + '">' +
 				'<th scope="row" class="check-column">' +
-					'<input type="checkbox" name="post[]" value="' + postId + '" class="aips-post-checkbox">' +
+					'<input type="checkbox" name="post[]" value="' + postId + '" data-post-id="' + postId + '" data-history-id="' + (item.id || item.history_id || 0) + '" class="aips-post-checkbox">' +
 				'</th>' +
 				'<td class="title column-title has-row-actions column-primary">' +
 					'<strong><a href="#" class="aips-preview-post" data-post-id="' + postId + '" title="Preview post">' + esc(title) + '</a></strong>' +
@@ -957,6 +1042,11 @@
 		 * @return {void}
 		 */
 		refreshList: function (callback) {
+			this.selectedPostIds.clear();
+			if (this.currentView === 'list') {
+				window.location.reload();
+				return;
+			}
 			this.fetchPosts(1, true, callback);
 		},
 
