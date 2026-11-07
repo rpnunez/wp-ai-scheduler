@@ -1,6 +1,10 @@
 ## [Unreleased]
 
 ### Added
+- **Diagnostics → System Info "Totals & Counts" section:**
+  - New section listing lifetime totals: posts generated, generation runs and success rate, generations by method, history containers by kind, authors, author topics and author posts, logged AI requests, AI Assistance requests, background-job AI calls, embeddings, content relationships, internal link suggestions, indexed links, templates/schedules/campaigns, trending topics, sources and fetched source pages, and bulk batch jobs. Included in the "Copy System Report" Markdown.
+  - New per-provider AI call counter (`AIPS_AI_Call_Counter`, non-autoloaded option `aips_ai_call_counters`) recorded by `AIPS_AI_Service`, shown as "AI Calls (WP AI Connector)" and "AI Calls (Meow AI Engine)" with a by-type breakdown. History logs never recorded the provider, so these counts start from the first AI call after upgrading.
+  - Totals come from the new read-only `AIPS_System_Totals_Repository`, cached for 10 minutes.
 - **Interactive Cards Redesign for Posts Pending Review & Floating Bulk Actions (#2334, #2340):**
   - Modernized the Content > Pending Review tab from an HTML table into a responsive 3-column card grid with featured image display, fallback banner placeholders, post type badges, and context attribution.
   - Added instant 1-click publishing without modal confirmation, including smooth card fade-out animation, draft counter synchronization, and toast notification with direct editor links.
