@@ -74,8 +74,17 @@ class AIPS_AI_Edit_Controller {
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
-		if (!$post_id || !$history_id) {
+		if (!$post_id) {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+		}
+
+		if (!$history_id) {
+			$history_record = $this->history_repository->get_by_post_id($post_id);
+			if (is_object($history_record) && !empty($history_record->id)) {
+				$history_id = absint($history_record->id);
+			} else {
+				AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+			}
 		}
 		
 		// Check if user can edit this post
@@ -128,6 +137,8 @@ class AIPS_AI_Edit_Controller {
 		
 		// Build response
 		$response = array(
+			'post_id' => $post_id,
+			'history_id' => $history_id,
 			'context' => $context_display,
 			'components' => array(
 				'title' => array(
@@ -440,6 +451,8 @@ class AIPS_AI_Edit_Controller {
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
 			'updated_components' => $updated_components,
+			'post_id' => $post_id,
+			'title' => isset($post_data['post_title']) ? $post_data['post_title'] : get_the_title($post_id),
 		));
 	}
 	

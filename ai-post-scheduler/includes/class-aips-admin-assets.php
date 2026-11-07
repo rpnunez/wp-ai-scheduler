@@ -134,6 +134,9 @@ class AIPS_Admin_Assets {
         if (!$this->is_plugin_admin_page($hook, $page)) {
             if ($this->is_native_post_admin_page($hook)) {
                 $this->enqueue_history_modal_opener_assets();
+                if ('edit.php' === $hook) {
+                    $this->enqueue_ai_edit_assets();
+                }
             }
 			return;
 		}
@@ -708,6 +711,100 @@ class AIPS_Admin_Assets {
             </div>
         </div>
         <?php
+    }
+
+    /**
+     * Enqueue AI Edit modal assets and register footer scaffold.
+     *
+     * @return void
+     */
+    public function enqueue_ai_edit_assets() {
+        wp_register_style('aips-design-tokens', AIPS_PLUGIN_URL . 'assets/css/design-tokens.css', array(), AIPS_VERSION);
+
+        wp_enqueue_style(
+            'aips-admin-ai-edit',
+            AIPS_PLUGIN_URL . 'assets/css/admin-ai-edit.css',
+            array('dashicons', 'aips-design-tokens'),
+            AIPS_VERSION
+        );
+
+        if (!wp_script_is('aips-utilities-script', 'registered')) {
+            $this->enqueue_history_modal_opener_assets();
+        }
+
+        if (!wp_script_is('aips-admin-script', 'registered')) {
+            wp_register_script(
+                'aips-admin-script',
+                AIPS_PLUGIN_URL . 'assets/js/admin.js',
+                array('jquery', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+            wp_localize_script('aips-admin-script', 'aipsAjax', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('aips_ajax_nonce'),
+            ));
+        }
+
+        wp_enqueue_script(
+            'aips-admin-ai-edit',
+            AIPS_PLUGIN_URL . 'assets/js/admin-ai-edit.js',
+            array('jquery', 'aips-utilities-script', 'aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-admin-ai-edit', 'aipsAIEditL10n', array(
+            'ajaxUrl'              => admin_url('admin-ajax.php'),
+            'nonce'                => wp_create_nonce('aips_ajax_nonce'),
+            'regenerate'           => __('Re-generate', 'ai-post-scheduler'),
+            'regenerating'         => __('Regenerating...', 'ai-post-scheduler'),
+            'regenerateAll'        => __('Regenerate All', 'ai-post-scheduler'),
+            'regeneratingAll'      => __('Regenerating all components...', 'ai-post-scheduler'),
+            'regenerateAllSuccess' => __('Components regenerated successfully.', 'ai-post-scheduler'),
+            'regenerateAllError'   => __('Failed to regenerate all components.', 'ai-post-scheduler'),
+            'regenerateSuccess'    => __('Component regenerated successfully!', 'ai-post-scheduler'),
+            'regenerateError'      => __('Failed to regenerate component.', 'ai-post-scheduler'),
+            'save'                 => __('Save Changes', 'ai-post-scheduler'),
+            'saving'               => __('Saving...', 'ai-post-scheduler'),
+            'saveSuccess'          => __('Post updated successfully!', 'ai-post-scheduler'),
+            'saveError'            => __('Failed to update post.', 'ai-post-scheduler'),
+            'loadError'            => __('Failed to load post components.', 'ai-post-scheduler'),
+            'confirmClose'         => __('You have unsaved changes. Are you sure you want to close?', 'ai-post-scheduler'),
+            'noChanges'            => __('No changes to save.', 'ai-post-scheduler'),
+            'acceptAndReplace'     => __('Accept & Replace', 'ai-post-scheduler'),
+            'discard'              => __('Discard', 'ai-post-scheduler'),
+            'acceptAll'            => __('Accept All Regenerations', 'ai-post-scheduler'),
+            'currentVersion'       => __('Current Version', 'ai-post-scheduler'),
+            'regeneratedVersion'   => __('Regenerated Draft', 'ai-post-scheduler'),
+            'stagedForSave'        => __('Staged for Save', 'ai-post-scheduler'),
+            'regenerated'          => __('Regenerated', 'ai-post-scheduler'),
+            'modified'             => __('Modified', 'ai-post-scheduler'),
+            'revisionAiGenerated'  => __('AI Generated', 'ai-post-scheduler'),
+            'revisionManualEdit'   => __('Manual Edit', 'ai-post-scheduler'),
+            'revisionRestored'     => __('Restored Version', 'ai-post-scheduler'),
+            'revisionUnknown'      => __('Revision', 'ai-post-scheduler'),
+        ));
+
+        static $scaffold_registered = false;
+        if (!$scaffold_registered) {
+            add_action('admin_footer', array($this, 'render_ai_edit_modal_scaffold'));
+            $scaffold_registered = true;
+        }
+    }
+
+    /**
+     * Render the AI Edit modal scaffold HTML in the admin footer.
+     *
+     * @return void
+     */
+    public function render_ai_edit_modal_scaffold() {
+        static $rendered = false;
+        if ($rendered) {
+            return;
+        }
+        $rendered = true;
+        include AIPS_PLUGIN_DIR . 'templates/partials/ai-edit-modal.php';
     }
 
     /**
@@ -1449,51 +1546,15 @@ class AIPS_Admin_Assets {
                 'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
             ));
 
-            // AI Edit Modal (for Generated Posts page)
-            wp_enqueue_script(
-                'aips-admin-ai-edit',
-                AIPS_PLUGIN_URL . 'assets/js/admin-ai-edit.js',
-                array('jquery', 'aips-admin-script'),
-                AIPS_VERSION,
-                true
-            );
-
-            wp_enqueue_style(
-                'aips-admin-ai-edit',
-                AIPS_PLUGIN_URL . 'assets/css/admin-ai-edit.css',
-                array('aips-admin-style'),
-                AIPS_VERSION
-            );
-
-            wp_localize_script('aips-admin-ai-edit', 'aipsAIEditL10n', array(
-                'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('aips_ajax_nonce'),
-                'regenerate' => __('Re-generate', 'ai-post-scheduler'),
-                'regenerating' => __('Regenerating...', 'ai-post-scheduler'),
-                'regenerateAll' => __('Regenerate All', 'ai-post-scheduler'),
-                'regeneratingAll' => __('Regenerating all components...', 'ai-post-scheduler'),
-                'regenerateAllSuccess' => __('Components regenerated successfully.', 'ai-post-scheduler'),
-                'regenerateAllError' => __('Failed to regenerate all components.', 'ai-post-scheduler'),
-                'regenerateSuccess' => __('Component regenerated successfully!', 'ai-post-scheduler'),
-                'regenerateError' => __('Failed to regenerate component.', 'ai-post-scheduler'),
-                'save' => __('Save Changes', 'ai-post-scheduler'),
-                'saving' => __('Saving...', 'ai-post-scheduler'),
-                'saveSuccess' => __('Post updated successfully!', 'ai-post-scheduler'),
-                'saveError' => __('Failed to update post.', 'ai-post-scheduler'),
-                'loadError' => __('Failed to load post components.', 'ai-post-scheduler'),
-                'confirmClose' => __('You have unsaved changes. Are you sure you want to close?', 'ai-post-scheduler'),
-                'noChanges' => __('No changes to save.', 'ai-post-scheduler'),
-                'revisionAiGenerated' => __('AI Generated', 'ai-post-scheduler'),
-                'revisionManualEdit' => __('Manual Edit', 'ai-post-scheduler'),
-                'revisionRestored' => __('Restored Version', 'ai-post-scheduler'),
-                'revisionUnknown' => __('Revision', 'ai-post-scheduler'),
-            ));
+            // AI Edit Modal
+            $this->enqueue_ai_edit_assets();
     }
 
     /**
      * Enqueue assets for the history page.
      */
     private function enqueue_history_assets() {
+            $this->enqueue_ai_edit_assets();
             wp_enqueue_script(
                 'aips-admin-view-session',
                 AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
