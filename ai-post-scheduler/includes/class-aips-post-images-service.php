@@ -3,7 +3,8 @@
  * Post Images Service
  *
  * Validates post image configuration submitted from the Template and Author
- * forms before it reaches the repository.
+ * forms before it reaches the repository, and keeps generated image rows in
+ * step with the post content they describe.
  *
  * @package AI_Post_Scheduler
  * @since 3.7.21
@@ -63,5 +64,56 @@ class AIPS_Post_Images_Service {
 		}
 
 		return !empty($allowed) ? reset($allowed) : 'ai_prompt';
+	}
+
+	/**
+	 * Build the pattern that finds a generated image's figure in post content.
+	 *
+	 * The lookahead ends the ID match, so row 12 cannot match a figure for row 123.
+	 *
+	 * @param int $generated_id Generated image row ID.
+	 * @return string Regular expression.
+	 */
+	public static function get_figure_pattern($generated_id) {
+		return '/<figure\b[^>]*\bdata-aips-image-id=["\']?' . absint($generated_id) . '(?=["\'\s>])[^>]*>.*?<\/figure>/is';
+	}
+
+	/**
+	 * Update generated image rows to match saved post content.
+	 *
+	 * The content decides which image a row points to, so a regeneration only
+	 * takes effect once its figure is saved. The row keeps its recorded source
+	 * and prompt, which the figure does not carry.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $content Saved post content.
+	 * @return void
+	 */
+	public function sync_generated_rows_from_content($post_id, $content) {
+		$generated_repo = new AIPS_Post_Images_Generated_Repository();
+
+		foreach ($generated_repo->get_by_post_id($post_id) as $row) {
+			if (!preg_match(self::get_figure_pattern($row->id), $content, $figure)
+				|| !preg_match('/\bwp-image-(\d+)\b/', $figure[0], $attachment)) {
+				continue;
+			}
+
+			$attachment_id = (int) $attachment[1];
+			if ($attachment_id === (int) $row->attachment_id && 'completed' === $row->status) {
+				continue;
+			}
+
+			$image_url = wp_get_attachment_url($attachment_id);
+			if (!$image_url) {
+				continue;
+			}
+
+			$generated_repo->update($row->id, array(
+				'attachment_id' => $attachment_id,
+				'image_url'     => $image_url,
+				'status'        => 'completed',
+				'error_message' => '',
+			));
+		}
 	}
 }

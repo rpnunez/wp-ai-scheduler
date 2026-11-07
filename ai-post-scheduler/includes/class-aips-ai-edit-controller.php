@@ -460,6 +460,10 @@ class AIPS_AI_Edit_Controller {
 			$sanitized_components['featured_image_id'] = absint($components['featured_image_id']);
 		}
 
+		if (isset($components['content'])) {
+			$this->sync_post_images_with_content($post_id);
+		}
+
 		do_action('aips_post_components_updated', $post_id, $updated_components, $sanitized_components);
 		$this->reconcile_partial_generation_state($post_id);
 		
@@ -645,6 +649,10 @@ class AIPS_AI_Edit_Controller {
 				break;
 		}
 
+		if ('content' === $component) {
+			$this->sync_post_images_with_content($post_id);
+		}
+
 		do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
 		$this->reconcile_partial_generation_state($post_id);
 		
@@ -748,5 +756,18 @@ class AIPS_AI_Edit_Controller {
 	 */
 	private function reconcile_partial_generation_state($post_id) {
 		$this->post_manager->reconcile_generation_status_meta_from_post($post_id);
+	}
+
+	/**
+	 * Bring generated image rows in line with the post's stored content.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private function sync_post_images_with_content($post_id) {
+		(new AIPS_Post_Images_Service())->sync_generated_rows_from_content(
+			$post_id,
+			(string) get_post_field('post_content', $post_id)
+		);
 	}
 }

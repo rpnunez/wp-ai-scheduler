@@ -9,7 +9,7 @@
   - Posts with content images stay in draft until every image is injected, then move to their intended status; any failed image leaves the post as a draft and is reported as a missing "Post Images" component.
   - Featured image generation no longer forces posts to draft on its own: the post keeps its intended status unless the image actually fails.
   - Implemented AI-guided placeholder injection (`[post_image index="N"]`) and DOM fallback injection for heading sections (`after_section_N`) and natural paragraph distribution.
-  - Integrated Post Content Images into the AI Edit modal for preview, status tracking, and per-image or bulk re-generation with automatic DOM figure replacement.
+  - Integrated Post Content Images into the AI Edit modal for preview, status tracking, and per-image or bulk re-generation with automatic DOM figure replacement. Regenerated images take effect on Save, so cancelling the modal leaves the post and its image records unchanged.
 
 - **Summarized Notification Digest & Batch Threshold:**
   - Added configurable summarized notification digest in Settings > Notifications to batch frequent generation and review emails (e.g. Post Generated, Post Ready For Review) into a single digest email instead of sending individual emails per post.

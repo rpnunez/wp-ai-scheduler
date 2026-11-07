@@ -319,7 +319,7 @@
 				window.AIPS.updateAIEditComponentValue(component, response.data.new_value, 'ai_generated');
 
 				if (component === 'post_images') {
-					// Image rows are stored server-side; only the content they alter is saved.
+					// Image rows follow the content on Save, so nothing else needs tracking here.
 					var failedImages = (response.data.new_value.post_images || []).filter(function(image) {
 						return !!image.error_message;
 					});

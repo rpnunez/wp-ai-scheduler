@@ -254,6 +254,74 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 		$this->assertSame($stored_content, get_post_field('post_content', $fixture['post_id']));
 	}
 
+	public function test_regeneration_leaves_the_row_unchanged_until_the_post_is_saved() {
+		$new_attachment_id = $this->create_attachment();
+		$fixture = $this->make_regeneration_fixture(
+			array('image_source' => 'media_library'),
+			$new_attachment_id,
+			array('source' => 'media_library', 'media_ids' => (string) $new_attachment_id)
+		);
+
+		$result = $fixture['service']->regenerate_post_images($fixture['context'], 'all');
+
+		$repo = new AIPS_Post_Images_Generated_Repository();
+		$row  = $repo->get_by_id($fixture['row_id']);
+		$this->assertSame($new_attachment_id, $result['post_images'][0]['attachment_id']);
+		$this->assertSame($fixture['attachment_id'], (int) $row->attachment_id);
+
+		(new AIPS_Post_Images_Service())->sync_generated_rows_from_content($fixture['post_id'], $result['content']);
+
+		$row = $repo->get_by_id($fixture['row_id']);
+		$this->assertSame($new_attachment_id, (int) $row->attachment_id);
+		$this->assertSame(wp_get_attachment_url($new_attachment_id), $row->image_url);
+		$this->assertSame('completed', $row->status);
+	}
+
+	public function test_failed_regeneration_does_not_report_an_image_to_the_modal() {
+		$fixture = $this->make_regeneration_fixture(array('image_source' => 'ai_prompt'), new WP_Error('quota', 'Quota exceeded.'), array('source' => 'ai_prompt'));
+
+		$result = $fixture['service']->regenerate_post_images($fixture['context'], 'all');
+
+		$this->assertArrayNotHasKey('attachment_id', $result['post_images'][0]);
+		$this->assertArrayNotHasKey('url', $result['post_images'][0]);
+	}
+
+	public function test_content_sync_marks_a_failed_row_completed_when_its_figure_is_saved() {
+		$attachment_id = $this->create_attachment();
+		$repo          = new AIPS_Post_Images_Generated_Repository();
+		$post_id       = self::factory()->post->create();
+		$row_id        = $repo->create(array('post_id' => $post_id, 'status' => 'failed', 'error_message' => 'Quota exceeded.'));
+
+		$content = '<figure data-aips-image-id="' . $row_id . '"><img src="new.jpg" class="wp-image-' . $attachment_id . '"/></figure>';
+		(new AIPS_Post_Images_Service())->sync_generated_rows_from_content($post_id, $content);
+
+		$row = $repo->get_by_id($row_id);
+		$this->assertSame($attachment_id, (int) $row->attachment_id);
+		$this->assertSame('completed', $row->status);
+		$this->assertSame('', (string) $row->error_message);
+	}
+
+	public function test_content_sync_ignores_rows_without_a_usable_figure() {
+		$attachment_id = $this->create_attachment();
+		$repo          = new AIPS_Post_Images_Generated_Repository();
+		$post_id       = self::factory()->post->create();
+		$missing_id    = $repo->create(array('post_id' => $post_id, 'attachment_id' => $attachment_id));
+		$deleted_id    = $repo->create(array('post_id' => $post_id, 'attachment_id' => $attachment_id));
+
+		$content = '<figure data-aips-image-id="' . $deleted_id . '"><img src="gone.jpg" class="wp-image-999999"/></figure>';
+		(new AIPS_Post_Images_Service())->sync_generated_rows_from_content($post_id, $content);
+
+		$this->assertSame($attachment_id, (int) $repo->get_by_id($missing_id)->attachment_id);
+		$this->assertSame($attachment_id, (int) $repo->get_by_id($deleted_id)->attachment_id);
+	}
+
+	public function test_figure_pattern_does_not_match_a_longer_row_id() {
+		$content = '<figure data-aips-image-id="123"><img src="a.jpg"/></figure>';
+
+		$this->assertSame(0, preg_match(AIPS_Post_Images_Service::get_figure_pattern(12), $content));
+		$this->assertSame(1, preg_match(AIPS_Post_Images_Service::get_figure_pattern(123), $content));
+	}
+
 	public function test_regeneration_selects_from_config_media_ids() {
 		$attachment_id = $this->create_attachment();
 		$fixture = $this->make_regeneration_fixture(

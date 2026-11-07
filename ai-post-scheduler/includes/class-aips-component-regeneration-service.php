@@ -665,6 +665,9 @@ class AIPS_Component_Regeneration_Service {
 	 * Follows the AI Edit modal's contract: nothing is written to the post here.
 	 * The updated content is returned to the modal and saved with its Save action,
 	 * so 'current_content' in $context should carry the editor's unsaved value.
+	 * Generated rows keep describing the stored post until that save, when
+	 * AIPS_Post_Images_Service::sync_generated_rows_from_content() updates them,
+	 * so cancelling the modal leaves rows and post in step.
 	 * A failed attempt leaves any existing image in place.
 	 *
 	 * @param array      $context Generation context array with post_id, history_id, generation_context.
@@ -759,23 +762,11 @@ class AIPS_Component_Regeneration_Service {
 				$regenerated_results[] = array(
 					'id'            => $gen_id,
 					'image_index'   => $order,
-					'attachment_id' => (int) $target_row->attachment_id,
-					'url'           => (string) $target_row->image_url,
 					'status'        => $status,
 					'error_message' => $resolved['error'],
 				);
 				continue;
 			}
-
-			$generated_repo->update($gen_id, array(
-				'attachment_id' => $resolved['attachment_id'],
-				'image_source'  => !empty($config->source) ? $config->source : 'ai_prompt',
-				'image_prompt'  => $resolved['prompt'],
-				'image_url'     => $resolved['image_url'],
-				'placement'     => $placement,
-				'status'        => 'completed',
-				'error_message' => '',
-			));
 
 			$new_markup = $this->generator->build_post_image_markup(
 				$gen_id,
@@ -786,7 +777,7 @@ class AIPS_Component_Regeneration_Service {
 			);
 
 			// Replace existing markup or placeholder in content
-			$figure_pattern = '/<figure[^>]*data-aips-image-id=["\']?' . preg_quote((string) $gen_id, '/') . '["\']?[^>]*>.*?<\/figure>/is';
+			$figure_pattern = AIPS_Post_Images_Service::get_figure_pattern($gen_id);
 			$comment_pattern = '/<!--\s*aips-image-placeholder\s+id=["\']?' . preg_quote((string) $gen_id, '/') . '["\']?\s*-->/i';
 			$replace_with_markup = static function () use ($new_markup) {
 				return $new_markup;
