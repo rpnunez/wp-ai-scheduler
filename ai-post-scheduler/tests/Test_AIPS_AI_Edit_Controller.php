@@ -146,6 +146,77 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		ob_end_clean();
 		$this->fail('Should have thrown WPAjaxDieContinueException');
 	}
+
+	/**
+	 * Test get_post_components resolves history_id via repository when omitted in request.
+	 */
+	public function test_get_post_components_resolves_history_id_when_omitted() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Auto Resolved Post',
+			'post_content' => 'Auto resolved content',
+			'post_excerpt' => 'Auto resolved excerpt',
+		));
+
+		$template = (object) array(
+			'id' => 2,
+			'name' => 'Auto Template',
+			'prompt_template' => 'Prompt template',
+			'title_prompt' => 'Title prompt',
+			'post_status' => 'draft',
+			'post_type' => 'post',
+			'post_category' => 0,
+			'post_author' => get_current_user_id(),
+		);
+
+		$mock_service = $this->getMockBuilder('AIPS_Component_Regeneration_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_generation_context'))
+			->getMock();
+
+		$mock_service->method('get_generation_context')
+			->with(303)
+			->willReturn(
+				array(
+					'history_id' => 303,
+					'post_id' => $post_id,
+					'context_type' => 'template',
+					'context_name' => 'Auto Template',
+					'generation_context' => new AIPS_Template_Context($template, null, 'Auto Topic'),
+				)
+			);
+
+		$mock_repo = $this->createMock('AIPS_History_Repository_Interface');
+		$mock_repo->method('get_by_post_id')
+			->with($post_id)
+			->willReturn((object) array('id' => 303, 'post_id' => $post_id));
+
+		$controller = new AIPS_AI_Edit_Controller($mock_service, $mock_repo);
+
+		$_POST = array(
+			'action' => 'aips_get_post_components',
+			'post_id' => $post_id,
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$controller->ajax_get_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			$output = ob_get_clean();
+			$response = json_decode($output, true);
+
+			$this->assertTrue($response['success']);
+			$this->assertSame(303, $response['data']['history_id']);
+			$this->assertSame($post_id, $response['data']['post_id']);
+			return;
+		} catch (Exception $e) {
+			ob_end_clean();
+			$this->fail('Should not throw exception: ' . $e->getMessage());
+		}
+		ob_end_clean();
+		$this->fail('Should have thrown WPAjaxDieContinueException');
+	}
 	
 	/**
 	 * Test regenerate_component validates component type
@@ -420,12 +491,20 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'status' => 'completed',
 		));
 
-		$revision_id = $this->history_repository->add_component_revision(
-			$post_id,
+		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'content',
-			$backslash_content,
-			'ai_regeneration'
+			array(
+				'log_subtype' => 'ai_response',
+				'message' => 'Content Snapshot',
+				'output' => array(
+					'value' => $backslash_content,
+				),
+				'context' => array(
+					'component' => 'content',
+					'post_id' => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
 		);
 
 		$_POST = array(
@@ -525,8 +604,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'ai_response',
 			array(
+				'log_subtype' => 'ai_response',
 				'message' => 'Title Snapshot',
 				'output' => array(
 					'value' => 'Restored Title',
