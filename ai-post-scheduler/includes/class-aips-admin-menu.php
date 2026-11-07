@@ -34,7 +34,7 @@ class AIPS_Admin_Menu {
      */
     public function add_menu_pages() {
         // Main menu page
-        add_menu_page(
+        $dashboard_hook = add_menu_page(
             __('AI Post Scheduler', 'ai-post-scheduler'),
             __('AI Post Scheduler', 'ai-post-scheduler'),
             'manage_options',
@@ -45,7 +45,7 @@ class AIPS_Admin_Menu {
         );
 
         // 1. Dashboard
-        add_submenu_page(
+        $dashboard_sub_hook = add_submenu_page(
             'ai-post-scheduler',
             __('Dashboard', 'ai-post-scheduler'),
             __('Dashboard', 'ai-post-scheduler'),
@@ -53,6 +53,13 @@ class AIPS_Admin_Menu {
             'ai-post-scheduler',
             array($this, 'render_dashboard_page')
         );
+
+        if ($dashboard_hook) {
+            add_action("load-{$dashboard_hook}", array($this, 'setup_dashboard_screen_options'));
+        }
+        if ($dashboard_sub_hook && $dashboard_sub_hook !== $dashboard_hook) {
+            add_action("load-{$dashboard_sub_hook}", array($this, 'setup_dashboard_screen_options'));
+        }
 
         // 2. Automations
         $automations_hook = add_submenu_page(
@@ -384,6 +391,20 @@ class AIPS_Admin_Menu {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Setup screen options and meta boxes for the Dashboard screen.
+     *
+     * @return void
+     */
+    public function setup_dashboard_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        AIPS_Dashboard_Controller::register_meta_boxes($screen->id);
     }
 
     /**
