@@ -1,6 +1,16 @@
 ## [Unreleased]
 
 ### Added
+- **Comprehensive Post Lifecycle Deletion Cleanup:**
+  - Added `AIPS_Post_Cleanup_Service` orchestrated via WordPress `before_delete_post` hook to reliably clean up plugin data when posts are permanently deleted.
+  - Purges embedding vectors in `wp_aips_embeddings` and bidirectional relationship pairings in `wp_aips_relationships`.
+  - Purges internal link suggestions in `wp_aips_internal_links`, link index records in `wp_aips_link_index`, and link click counts in `wp_aips_link_clicks`.
+  - Purges history containers in `wp_aips_history` and detailed event logs in `wp_aips_history_log`, with automatic history cache invalidation.
+  - Deactivates pointing redirect rules in `wp_aips_redirects` (`enabled = 0`, `target_post_id = 0`) to prevent 404 redirection loops, and deletes origin redirects.
+  - Disassociates author topic generation logs (`wp_aips_author_topic_logs.post_id = NULL`) to preserve audit trails without automatically re-queuing the topic.
+  - Introduced `AIPS_Post_Cleanup_Service::without_history_deletion()` and pre-disassociation in Review Queue post regeneration flows to protect active history containers during regeneration deletions.
+  - Added revision and autosave guards (`wp_is_post_revision`, `wp_is_post_autosave`) to prevent premature cleanup when editing posts.
+  - Added extensibility hooks `aips_before_post_cleanup`, `aips_post_cleanup_executed`, and filter `aips_should_cleanup_post`.
 - **Summarized Notification Digest & Batch Threshold:**
   - Added configurable summarized notification digest in Settings > Notifications to batch frequent generation and review emails (e.g. Post Generated, Post Ready For Review) into a single digest email instead of sending individual emails per post.
   - Exposed customizable batch threshold (clamped 2–50, default 5) to trigger instant digest dispatch when accumulated count is met.

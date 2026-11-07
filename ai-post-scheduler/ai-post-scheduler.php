@@ -607,6 +607,34 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Post_Insights_Controller::class, function( $container ) {
             return new AIPS_Post_Insights_Controller();
         });
+
+        // Register repositories needed for post lifecycle operations
+        $container->singleton(AIPS_Internal_Links_Repository::class, function( $container ) {
+            return new AIPS_Internal_Links_Repository();
+        });
+
+        $container->singleton(AIPS_Author_Topic_Logs_Repository::class, function( $container ) {
+            return new AIPS_Author_Topic_Logs_Repository();
+        });
+
+        $container->singleton(AIPS_Redirects_Repository::class, function( $container ) {
+            return new AIPS_Redirects_Repository();
+        });
+
+        // Register AIPS_Post_Cleanup_Service
+        $container->singleton(AIPS_Post_Cleanup_Service::class, function( $container ) {
+            return new AIPS_Post_Cleanup_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Internal_Links_Repository::class),
+                $container->make(AIPS_Link_Index_Service::class),
+                $container->make(AIPS_Link_Click_Tracking_Service::class),
+                $container->make(AIPS_History_Repository::class),
+                $container->make(AIPS_Redirects_Service::class),
+                $container->make(AIPS_Author_Topic_Logs_Repository::class),
+                $container->make(AIPS_Logger::class)
+            );
+        });
     }
 
     /**
@@ -752,8 +780,7 @@ final class AI_Post_Scheduler {
         }, 20, 2);
 
         add_action('before_delete_post', function ($post_id) {
-            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
-            AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
+            AIPS_Container::get_instance()->make(AIPS_Post_Cleanup_Service::class)->on_before_delete_post($post_id);
         });
 
         // Silos: keep the link index and the "In this guide" cache in step with

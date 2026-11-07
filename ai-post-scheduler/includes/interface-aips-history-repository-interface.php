@@ -150,4 +150,12 @@ interface AIPS_History_Repository_Interface {
 	 * @return array|null
 	 */
 	public function get_ai_error_by_id($log_id);
+
+	/**
+	 * Delete history records and associated logs for a given post ID.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return int Number of history container records deleted.
+	 */
+	public function delete_by_post_id($post_id);
 }

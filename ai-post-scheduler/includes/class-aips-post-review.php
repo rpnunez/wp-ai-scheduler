@@ -516,21 +516,30 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
 		}
 		
-		// Delete the existing post if it exists
+		// Pre-disassociate history record and delete the existing post under bypass guard
 		if ($history_item->post_id) {
 			// Verify per-post capability before deleting
 			if (!current_user_can('delete_post', $history_item->post_id)) {
 				AIPS_Ajax_Response::error(__('You do not have permission to regenerate this post.', 'ai-post-scheduler'));
 			}
-			wp_delete_post($history_item->post_id, true);
+
+			$this->history_service->update_history_record($history_id, array(
+				'status'        => 'pending',
+				'post_id'       => null,
+				'error_message' => null,
+			));
+
+			AIPS_Post_Cleanup_Service::without_history_deletion(function () use ($history_item) {
+				wp_delete_post($history_item->post_id, true);
+			});
+		} else {
+			// Update history status to pending for regeneration
+			$this->history_service->update_history_record($history_id, array(
+				'status'        => 'pending',
+				'post_id'       => null,
+				'error_message' => null,
+			));
 		}
-		
-		// Update history status to pending for regeneration
-		$this->history_service->update_history_record($history_id, array(
-			'status' => 'pending',
-			'post_id' => null,
-			'error_message' => null,
-		));
 		
 		// Trigger regeneration using the generator (same API as history retry)
 		$generator = new AIPS_Generator();
@@ -701,7 +710,18 @@ class AIPS_Post_Review {
 					);
 				}
 
-				if (!wp_delete_post($post_id, true)) {
+				// Pre-disassociate history record from post before deleting old post draft
+				$history_service->update_history_record($history_id, array(
+					'status'        => 'pending',
+					'post_id'       => null,
+					'error_message' => null,
+				));
+
+				$delete_success = AIPS_Post_Cleanup_Service::without_history_deletion(function () use ($post_id) {
+					return wp_delete_post($post_id, true);
+				});
+
+				if (!$delete_success) {
 					return new WP_Error(
 						'delete_failed',
 						sprintf(
@@ -711,12 +731,6 @@ class AIPS_Post_Review {
 						)
 					);
 				}
-
-				$history_service->update_history_record($history_id, array(
-					'status'        => 'pending',
-					'post_id'       => null,
-					'error_message' => null,
-				));
 
 				$regen_result = $generator->generate_post($template, null, null, array(
 					'creation_method' => 'regenerate',
