@@ -195,6 +195,45 @@ class AIPS_Author_Topic_Logs_Repository {
 	 * @param int $author_id Author ID.
 	 * @return int Number of generated posts.
 	 */
+	/**
+	 * Get generated-post counts for a list of author IDs.
+	 *
+	 * Returns an associative array of author_id => count for the specified author IDs.
+	 * Batches the query using `WHERE at.author_id IN (...)` to prevent N+1 queries.
+	 *
+	 * @param array $author_ids Array of author IDs.
+	 * @return array<int, int> Map of author_id => post count.
+	 */
+	public function get_post_generation_counts_bulk( array $author_ids ) {
+		$sanitized_ids = array_values( array_unique( array_filter( array_map( 'absint', (array) $author_ids ) ) ) );
+		if ( empty( $sanitized_ids ) ) {
+			return array();
+		}
+
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$placeholders = implode( ',', array_fill( 0, count( $sanitized_ids ), '%d' ) );
+
+		$results = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT at.author_id, COUNT(*) AS cnt
+				 FROM {$this->table_name} atl
+				 INNER JOIN {$topics_table} at ON atl.author_topic_id = at.id
+				 WHERE atl.action = 'post_generated'
+				 AND atl.post_id IS NOT NULL
+				 AND at.author_id IN ({$placeholders})
+				 GROUP BY at.author_id",
+				$sanitized_ids
+			)
+		);
+
+		$counts = array_fill_keys( $sanitized_ids, 0 );
+		foreach ( $results as $row ) {
+			$counts[ (int) $row->author_id ] = (int) $row->cnt;
+		}
+
+		return $counts;
+	}
+
 	public function count_generated_posts_by_author($author_id) {
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 
