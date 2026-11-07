@@ -43,6 +43,8 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **Preserve Backslashes on AI Edit Save:**
+  - Resolved an issue in `AIPS_AI_Edit_Controller::ajax_save_post_components()` and `ajax_restore_component_revision()` where post components had their backslashes stripped when saved via `wp_update_post()`, because sanitized components were unslashed and `wp_update_post()` expects slashed data.
 - **Settings Navigation Page Scroll:**
   - Fixed page scroll position not resetting to top when clicking Settings tabs from the left-hand navigation rail.
 - **Stress Test Modal & History UI Refinements:**
