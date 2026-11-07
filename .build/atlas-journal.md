@@ -1466,3 +1466,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting root node creation, quick links creation, notifications creation, and background processes creation into distinct private helper methods. The main `add_toolbar_node` function was reduced to roughly 15 lines serving strictly as the orchestrator.
 **Consequence:** Increased the number of private methods on the class, but vastly improved readability and maintainability. Backwards compatibility for the admin bar remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced. Tests related to AIPS_Admin_Bar all passed.
+
+## 2026-11-07 - Add missing DocBlocks to AIPS_Logger methods
+
+- **Target:** ai-post-scheduler/includes/class-aips-logger.php::AIPS_Logger
+- **Lens:** Saturday (Missing or stale DocBlocks and comments on recently changed code)
+- **Context:** `AIPS_Logger` had multiple public methods (`__construct`, `log`, `warning`, `error`, `addSeparator`) without PHPDoc docblocks.
+- **Decision:** Added standard PHPDoc documentation defining parameter types, descriptions, and return annotations for all undocumented methods.
+- **Backward compatibility:** Preserved method signatures, parameter names, and default values.
+- **Consequence:** Improved IDE autocompletion, type safety documentation, and codebase maintainability with zero runtime impact.
+- **Tests:** Added tests for warning, error, and addSeparator in `Test_AIPS_Logger_Performance.php`. Ran focused suite `Test_AIPS_Logger` and full phpunit test suite.

@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Documentation & Maintenance
+- **AIPS_Logger DocBlocks & Verification**:
+  - Added comprehensive PHPDoc DocBlocks to `__construct()`, `log()`, `warning()`, `error()`, and `addSeparator()` in `AIPS_Logger`.
+  - Added unit test coverage for logger level methods and separators in `Test_AIPS_Logger_Performance`.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.

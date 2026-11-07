@@ -25,7 +25,12 @@ class AIPS_Logger implements AIPS_Logger_Interface {
     private $log_file;
     private $enabled;
     private $dir_checked = false;
-    
+
+    /**
+     * Constructor.
+     *
+     * Resolves the secure log file destination and checks whether logging is enabled.
+     */
     public function __construct() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
@@ -88,6 +93,14 @@ class AIPS_Logger implements AIPS_Logger_Interface {
         }
     }
     
+    /**
+     * Write an entry to the log file.
+     *
+     * @param string $message The message string to log.
+     * @param string $level   The log severity level (e.g. 'info', 'warning', 'error'). Default 'info'.
+     * @param array  $context Optional structured contextual data.
+     * @return void
+     */
     public function log($message, $level = 'info', $context = array()) {
         if (!$this->enabled) {
             return;
@@ -119,14 +132,34 @@ class AIPS_Logger implements AIPS_Logger_Interface {
         }
     }
 
+    /**
+     * Write a warning level entry to the log.
+     *
+     * @param string $message The warning message.
+     * @param array  $context Optional structured contextual data.
+     * @return void
+     */
     public function warning($message, $context = array()) {
         $this->log($message, 'warning', $context);
     }
 
+    /**
+     * Write an error level entry to the log.
+     *
+     * @param string $message The error message.
+     * @param array  $context Optional structured contextual data.
+     * @return void
+     */
     public function error($message, $context = array()) {
         $this->log($message, 'error', $context);
     }
 
+    /**
+     * Write a visual section separator entry to the log.
+     *
+     * @param string $text Optional text to display inside the separator.
+     * @return void
+     */
     public function addSeparator($text) {
         $separator = str_repeat('-', 20);
         if (!empty($text)) {

@@ -67,4 +67,30 @@ class Test_AIPS_Logger_Performance extends WP_UnitTestCase {
         $this->assertCount(10, $logs);
         $this->assertStringContainsString("Line 1000", end($logs));
     }
+
+    public function test_warning_logging() {
+        $this->logger->warning("Test warning message", array("source" => "unit-test"));
+        $logs = $this->logger->get_logs(5);
+        $this->assertNotEmpty($logs);
+        $last_log = implode(" ", $logs);
+        $this->assertStringContainsString("[WARNING]", $last_log);
+        $this->assertStringContainsString("Test warning message", $last_log);
+    }
+
+    public function test_error_logging() {
+        $this->logger->error("Test error message", array("code" => 500));
+        $logs = $this->logger->get_logs(5);
+        $this->assertNotEmpty($logs);
+        $last_log = implode(" ", $logs);
+        $this->assertStringContainsString("[ERROR]", $last_log);
+        $this->assertStringContainsString("Test error message", $last_log);
+    }
+
+    public function test_add_separator() {
+        $this->logger->addSeparator("SECTION START");
+        $logs = $this->logger->get_logs(5);
+        $this->assertNotEmpty($logs);
+        $last_log = end($logs);
+        $this->assertStringContainsString("-------------------- SECTION START --------------------", $last_log);
+    }
 }
