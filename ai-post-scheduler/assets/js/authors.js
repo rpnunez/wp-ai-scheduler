@@ -173,9 +173,16 @@
 
 						Promise.allSettled(requests).then((results) => {
 							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
+							const rateLimited = results.find((r) => r.status === 'fulfilled' && r.value && !r.value.success && r.value.data && r.value.data.code === 'rate_limit_exceeded');
 							if (successCount > 0) {
 								AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
-								if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 800); } else { setTimeout(() => location.reload(), 800); }
+								if (rateLimited) {
+									setTimeout(() => AIPS.Utilities.showToast(rateLimited.value.data.message || AIPS.Utilities.buildRateLimitMessage(rateLimited.value.data.retry_after), 'warning'), 1200);
+								}
+								const refreshDelay = rateLimited ? 4000 : 800;
+								if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), refreshDelay); } else { setTimeout(() => location.reload(), refreshDelay); }
+							} else if (rateLimited) {
+								AIPS.Utilities.showToast(rateLimited.value.data.message || AIPS.Utilities.buildRateLimitMessage(rateLimited.value.data.retry_after), 'warning');
 							} else {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
 							}
@@ -379,7 +386,7 @@
 							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
 						});
 					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
+						AIPS.Utilities.showAjaxError(response, aipsAuthorsL10n.errorLoading);
 
 						$('#aips-author-modal').fadeOut();
 					}
@@ -418,7 +425,7 @@
 
 						if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 1000); } else { setTimeout(() => location.reload(), 1000); }
 					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
+						AIPS.Utilities.showAjaxError(response, aipsAuthorsL10n.errorSaving);
 					}
 				},
 				error: () => {
@@ -510,10 +517,7 @@
 									AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
 									if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 1000); } else { setTimeout(() => location.reload(), 1000); }
 								} else {
-									AIPS.Utilities.showToast(
-										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating,
-										'error'
-									);
+									AIPS.Utilities.showAjaxError(response, aipsAuthorsL10n.errorGenerating);
 								}
 							},
 							error: () => {
@@ -1460,7 +1464,7 @@
 							window.location.reload();
 						}
 					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
+						AIPS.Utilities.showAjaxError(response, aipsAuthorsL10n.errorSaving);
 					}
 				},
 				error: () => {
@@ -2628,7 +2632,7 @@
 			AIPS.Utilities.withLock($btn, req, { loadingText: aipsAuthorsL10n.importingAuthor || 'Importing...' });
 		}
 	};
-	
+
 	// Generation Queue Module
 	const GenerationQueueModule = {
 		queueTopics: [],

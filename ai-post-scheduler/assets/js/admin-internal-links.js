@@ -970,7 +970,7 @@
 			}, function (response) {
 				if (!response.success) {
 					self.updateBulkBar();
-					AIPS.Utilities.showToast((response.data && response.data.message) || l10n.bulkFailed, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.bulkFailed);
 					return;
 				}
 

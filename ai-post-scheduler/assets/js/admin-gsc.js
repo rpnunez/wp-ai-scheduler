@@ -29,7 +29,7 @@
 		post: function($button, action, onSuccess) {
 			var req = $.post(ajaxurl, { action: action, nonce: l10n.nonce }).done(function(response) {
 				if (!response || !response.success) {
-					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.error, 'error');
+					AIPS.Utilities.showAjaxError(response, l10n.error);
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');

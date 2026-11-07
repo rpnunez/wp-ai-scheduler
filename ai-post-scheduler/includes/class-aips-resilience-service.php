@@ -301,7 +301,7 @@ class AIPS_Resilience_Service {
         // Check rate limiting, waiting (bounded) for capacity to free up rather than
         // failing a burst of calls (e.g. title/content/excerpt for one post) outright.
         if (!$this->wait_for_rate_limit_capacity($type)) {
-            return new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            return new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'), array('retry_after' => $this->get_rate_limit_retry_after()));
         }
 
         // Execute with retry logic
@@ -708,6 +708,15 @@ class AIPS_Resilience_Service {
             'period' => $period,
             'remaining' => max(0, $rl_config['requests'] - count($recent_requests)),
         );
+    }
+
+    /**
+     * Get the number of seconds until the next rate-limit slot opens.
+     *
+     * @return int Seconds until a request slot becomes available (0 if under limit).
+     */
+    public function get_rate_limit_retry_after() {
+        return $this->seconds_until_rate_limit_slot_frees();
     }
 
     /**
