@@ -57,6 +57,11 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **Capture Original & Current Post Component Values in AI Edit Revisions:**
+  - Resolved an issue in the AI Edit component regeneration flow where the pre-regeneration state (original/current post value) was not recorded as a revision snapshot, leaving only the newly generated draft in "View Revisions".
+  - Updated `AIPS_AI_Edit_Controller::ajax_regenerate_component()` and `ajax_regenerate_all_components()` to capture the current component state (from client payload or falling back to `$post`) before invoking AI regeneration, with intelligent deduplication against recent revisions to avoid duplicate snapshots across multiple regenerations.
+  - Updated `AIPS_Generator::generate_and_resolve_metadata()` to record baseline `ai_response` history entries for `title` and `excerpt` during initial post generation.
+  - Enhanced `admin-ai-edit.js` to transmit `current_value` and `current_source` across single and batch regenerations, refreshed revision panels on regeneration, and added localized "Original Version" revision labels.
 - **Preserve Backslashes on AI Edit Save:**
   - Resolved an issue in `AIPS_AI_Edit_Controller::ajax_save_post_components()` and `ajax_restore_component_revision()` where post components had their backslashes stripped when saved via `wp_update_post()`, because sanitized components were unslashed and `wp_update_post()` expects slashed data.
 - **Settings Navigation Page Scroll:**
