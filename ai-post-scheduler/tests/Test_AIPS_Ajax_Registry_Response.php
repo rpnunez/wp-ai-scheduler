@@ -245,6 +245,38 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 	}
 
 	/**
+	 * AIPS_Ajax_Response::error() must accept a WP_Error directly and
+	 * extract its code and message.
+	 */
+	public function test_ajax_response_error_accepts_wp_error() {
+		$response = $this->capture_ajax_response( function() {
+			AIPS_Ajax_Response::error( new WP_Error( 'aips_test_error', 'From a WP_Error.' ) );
+		} );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'From a WP_Error.', $response['data']['message'] );
+		$this->assertSame( 'aips_test_error', $response['data']['code'] );
+	}
+
+	/**
+	 * AIPS_Ajax_Response::error() must merge a WP_Error's attached data into
+	 * the response, and use an 'http_status' entry in that data as the HTTP
+	 * status code rather than echoing it into the response body.
+	 */
+	public function test_ajax_response_error_wp_error_with_data() {
+		$response = $this->capture_ajax_response( function() {
+			AIPS_Ajax_Response::error(
+				new WP_Error( 'http_error', 'HTTP 404', array( 'http_status' => 404, 'source_id' => 7 ) )
+			);
+		} );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'http_error', $response['data']['code'] );
+		$this->assertSame( 7, $response['data']['source_id'] );
+		$this->assertArrayNotHasKey( 'http_status', $response['data'] );
+	}
+
+	/**
 	 * AIPS_Ajax_Response::permission_denied() must emit a 403-like error
 	 * with code 'permission_denied'.
 	 */

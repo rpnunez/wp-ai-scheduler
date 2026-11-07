@@ -192,22 +192,20 @@ class AIPS_Sources_Cron {
 			try {
 				$result = $this->fetcher->fetch( $source );
 			} catch ( Throwable $error ) {
-				$result = array( 'success' => false, 'error' => $error->getMessage() );
+				$result = new WP_Error( 'fetch_exception', $error->getMessage() );
 				$this->sources_repo->update_after_fetch( $source->id, false, $error->getMessage() );
 			}
 
-			if ( ! empty( $result['success'] ) ) {
+			if ( ! is_wp_error( $result ) ) {
 				$fetched_ids[] = (int) $source->id;
 			} else {
-				$failed[ (int) $source->id ] = (string) ( $result['error'] ?? '' );
-			}
+				$failed[ (int) $source->id ] = $result->get_error_message();
 
-			if ( ! $result['success'] ) {
 				$this->logger->log(
 					sprintf(
 						'AIPS_Sources_Cron: fetch failed for source #%d — %s',
 						(int) $source->id,
-						$result['error']
+						$result->get_error_message()
 					),
 					'warning'
 				);
