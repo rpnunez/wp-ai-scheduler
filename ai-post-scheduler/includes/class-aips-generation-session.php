@@ -7,9 +7,8 @@
  * - Runtime session tracking (ephemeral, in-memory)
  * - Persistent history records (stored in database via AIPS_History_Repository)
  *
- * The session tracker captures detailed information about the generation process,
- * including all AI calls, errors, timing, and results. This data can be serialized
- * and stored in the History database table's `generation_log` JSON field.
+ * The session tracker captures information about the generation process,
+ * including generation context, AI calls, errors, timing, and results.
  *
  * @package AI_Post_Scheduler
  * @since 1.6.0
@@ -23,19 +22,18 @@ if (!defined('ABSPATH')) {
  * Class AIPS_Generation_Session
  *
  * Tracks the lifecycle and details of a single post generation attempt.
- * 
+ *
  * Lifecycle:
  * 1. Created at the start of generation
- * 2. Populated with template, voice, AI calls, and errors during generation
+ * 2. Populated with context, AI calls, and errors during generation
  * 3. Completed with final result
- * 4. Serialized to JSON and stored in History database
- * 5. Discarded after generation completes
+ * 4. Discarded after generation completes
  *
  * Key Differences from History:
  * - Session: Ephemeral runtime tracker (exists during one request)
  * - History: Persistent database record (exists across all requests)
- * - Session: Contains all detailed diagnostic data
- * - History: Contains summary + serialized session as JSON
+ * - Session: Contains runtime operational metrics (AI calls, errors, duration)
+ * - History: Contains persistent record + log entries
  */
 class AIPS_Generation_Session {
 
@@ -48,16 +46,6 @@ class AIPS_Generation_Session {
 	 * @var string|null Timestamp when generation completed (MySQL format)
 	 */
 	private $completed_at;
-
-	/**
-	 * @var array|null Template configuration used for generation (deprecated)
-	 */
-	private $template;
-
-	/**
-	 * @var array|null Voice configuration used for generation (deprecated)
-	 */
-	private $voice;
 
 	/**
 	 * @var array|null Generation context data (type, id, name, etc.)
@@ -75,11 +63,6 @@ class AIPS_Generation_Session {
 	private $error_count;
 
 	/**
-	 * @var array|null Final result of the generation (success/failure + data)
-	 */
-	private $result;
-
-	/**
 	 * Initialize a new generation session.
 	 */
 	public function __construct() {
@@ -94,12 +77,9 @@ class AIPS_Generation_Session {
 	private function reset() {
 		$this->started_at = null;
 		$this->completed_at = null;
-		$this->template = null;
-		$this->voice = null;
 		$this->context = null;
 		$this->ai_call_count = 0;
 		$this->error_count = 0;
-		$this->result = null;
 	}
 
 	/**
@@ -108,87 +88,27 @@ class AIPS_Generation_Session {
 	 * Supports both legacy template-based calls and new context-based calls.
 	 *
 	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
-	 * @param object|null $voice    Optional voice object (legacy, ignored if context is provided).
+	 * @param object|null $voice Optional voice object (legacy, ignored if context is provided).
 	 * @return void
 	 */
 	public function start($template_or_context, $voice = null) {
 		$this->reset();
 		$this->started_at = AIPS_DateTime::now()->toMysql();
 
-		// Check if we're using the new context-based approach
+		// Check if we're using the context-based approach
 		if ($template_or_context instanceof AIPS_Generation_Context) {
-			// New context-based approach
 			$this->context = $template_or_context->to_array();
-			
-			// For backward compatibility, still populate template/voice if it's a template context
-			if ($template_or_context->get_type() === 'template') {
-				$template = $template_or_context->get_template();
-				$voice_obj = $template_or_context->get_voice();
-				
-				$this->template = array(
-					'id' => $template->id,
-					'name' => $template->name,
-					'prompt_template' => $template->prompt_template,
-					'title_prompt' => isset($template->title_prompt) ? $template->title_prompt : '',
-					'post_status' => $template->post_status,
-					'post_type' => isset($template->post_type) ? $template->post_type : 'post',
-					'post_category' => $template->post_category,
-					'post_tags' => isset($template->post_tags) ? $template->post_tags : '',
-					'post_author' => isset($template->post_author) ? $template->post_author : '',
-					'post_quantity' => isset($template->post_quantity) ? $template->post_quantity : 1,
-					'generate_featured_image' => isset($template->generate_featured_image) ? $template->generate_featured_image : 0,
-					'image_prompt' => isset($template->image_prompt) ? $template->image_prompt : '',
-				);
-				
-				if ($voice_obj) {
-					$this->voice = array(
-						'id' => $voice_obj->id,
-						'name' => $voice_obj->name,
-						'title_prompt' => isset($voice_obj->title_prompt) ? $voice_obj->title_prompt : '',
-						'content_instructions' => isset($voice_obj->content_instructions) ? $voice_obj->content_instructions : '',
-						'excerpt_instructions' => isset($voice_obj->excerpt_instructions) ? $voice_obj->excerpt_instructions : '',
-					);
-				}
-			}
 		} else {
 			// Legacy template-based approach (for backward compatibility)
 			$template = $template_or_context;
-			
-			// Store template configuration
-			$this->template = array(
-				'id' => $template->id,
-				'name' => $template->name,
-				'prompt_template' => $template->prompt_template,
-				'title_prompt' => isset($template->title_prompt) ? $template->title_prompt : '',
-				'post_status' => $template->post_status,
-				'post_type' => isset($template->post_type) ? $template->post_type : 'post',
-				'post_category' => $template->post_category,
-				'post_tags' => isset($template->post_tags) ? $template->post_tags : '',
-				'post_author' => isset($template->post_author) ? $template->post_author : '',
-				'post_quantity' => isset($template->post_quantity) ? $template->post_quantity : 1,
-				'generate_featured_image' => isset($template->generate_featured_image) ? $template->generate_featured_image : 0,
-				'image_prompt' => isset($template->image_prompt) ? $template->image_prompt : '',
-			);
 
-			// Store voice configuration if provided
-			if ($voice) {
-				$this->voice = array(
-					'id' => $voice->id,
-					'name' => $voice->name,
-					'title_prompt' => isset($voice->title_prompt) ? $voice->title_prompt : '',
-					'content_instructions' => isset($voice->content_instructions) ? $voice->content_instructions : '',
-					'excerpt_instructions' => isset($voice->excerpt_instructions) ? $voice->excerpt_instructions : '',
-				);
-			}
-			
-			// Build context from template for consistency
 			$this->context = array(
 				'type' => 'template',
-				'id' => $template->id,
-				'name' => $template->name,
+				'id'   => isset($template->id) ? $template->id : null,
+				'name' => isset($template->name) ? $template->name : '',
 			);
-			
-			if ($voice) {
+
+			if ($voice && isset($voice->id)) {
 				$this->context['voice_id'] = $voice->id;
 			}
 		}
@@ -218,15 +138,14 @@ class AIPS_Generation_Session {
 	 * @param array $result Final result data (success/failure + metadata).
 	 * @return void
 	 */
-	public function complete($result) {
+	public function complete($result = array()) {
 		$this->completed_at = AIPS_DateTime::now()->toMysql();
-		$this->result = $result;
 	}
 
 	/**
-	 * Get the session data as an array.
+	 * Get the duration of the generation session in seconds.
 	 *
-	 * @return array Session data structure.
+	 * @return int|null Duration in seconds or null if not completed.
 	 */
 	public function get_duration() {
 		if (!$this->started_at || !$this->completed_at) {
@@ -259,51 +178,6 @@ class AIPS_Generation_Session {
 	 */
 	public function get_error_count() {
 		return $this->error_count;
-	}
-
-	/**
-	 * Get the template configuration used.
-	 *
-	 * @return array|null Template configuration or null if not started.
-	 */
-	public function get_template() {
-		return $this->template;
-	}
-
-	/**
-	 * Get the voice configuration used.
-	 *
-	 * @return array|null Voice configuration or null if not used.
-	 */
-	public function get_voice() {
-		return $this->voice;
-	}
-
-	/**
-	 * Get the result of the generation.
-	 *
-	 * @return array|null Result data or null if not completed.
-	 */
-	public function get_result() {
-		return $this->result;
-	}
-
-	/**
-	 * Get the start timestamp.
-	 *
-	 * @return string|null MySQL timestamp or null if not started.
-	 */
-	public function get_started_at() {
-		return $this->started_at;
-	}
-
-	/**
-	 * Get the completion timestamp.
-	 *
-	 * @return string|null MySQL timestamp or null if not completed.
-	 */
-	public function get_completed_at() {
-		return $this->completed_at;
 	}
 
 	/**

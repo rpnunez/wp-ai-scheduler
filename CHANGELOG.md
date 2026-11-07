@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Removed
+- **Unused Template and Voice Snapshot in `AIPS_Generation_Session` (#2317):**
+  - Removed dead `$template` and `$voice` properties along with their initializations from `AIPS_Generation_Session`.
+  - Removed redundant template/voice array copying in `AIPS_Generation_Session::start()`, keeping `$this->context` and standard context population for legacy callers.
+  - Removed unused dead getters from `AIPS_Generation_Session`: `get_template()`, `get_voice()`, `get_started_at()`, `get_completed_at()`, and `get_result()`.
+  - Removed unused dead method `AIPS_History_Container::get_session()`.
+
 ### Added
 - **Interactive Cards Redesign for Posts Pending Review & Floating Bulk Actions (#2334, #2340):**
   - Modernized the Content > Pending Review tab from an HTML table into a responsive 3-column card grid with featured image display, fallback banner placeholders, post type badges, and context attribution.
