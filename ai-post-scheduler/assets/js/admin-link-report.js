@@ -81,6 +81,21 @@
 			$(document).on('click', '.aips-link-suggestion-apply', this.onSuggestionAction.bind(this, 'aips_link_report_apply_suggestion'));
 			$(document).on('click', '.aips-link-suggestion-revert', this.onSuggestionAction.bind(this, 'aips_link_report_revert_suggestion'));
 			$(document).on('click', '.aips-link-suggestion-dismiss', this.onSuggestionAction.bind(this, 'aips_link_report_dismiss_suggestion'));
+
+			// WordPress Core Heartbeat API integration
+			var self = this;
+			$(document).on('heartbeat-send.aips-link-report', function(e, data) {
+				if (self.isPolling) {
+					data['aips_link_report_backfill'] = true;
+				}
+			});
+
+			$(document).on('heartbeat-tick.aips-link-report', function(e, data) {
+				if (!self.isPolling || !data || !data['aips_link_report_backfill']) {
+					return;
+				}
+				self.handleHeartbeatTick(data['aips_link_report_backfill']);
+			});
 		},
 
 		onTabShown: function() {
@@ -340,7 +355,7 @@
 				if (response.data.backfill && response.data.backfill.status === 'processing') {
 					self.startPolling();
 				} else {
-					clearInterval(self.pollTimer);
+					self.stopPolling();
 				}
 			}).fail(function() {
 				AIPS.Utilities.showToast(l10n.rebuildError, 'error');
@@ -362,7 +377,7 @@
 								AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
 								return;
 							}
-							clearInterval(self.pollTimer);
+							self.stopPolling();
 							AIPS.Utilities.showToast(response.data.message, 'success');
 							self.renderBackfill(response.data.backfill);
 							self.renderSummary(response.data.summary);
@@ -376,10 +391,57 @@
 		startPolling: function() {
 			var self = this;
 			clearInterval(this.pollTimer);
+			this.isPolling = true;
 			$('#aips-link-report-rebuild').prop('disabled', true);
+
+			// Accelerate native WordPress Heartbeat interval to 5s while backfill is running
+			if (window.wp && wp.heartbeat) {
+				wp.heartbeat.interval('fast');
+			}
+
+			// Fire an immediate poll check
+			this.poll();
+
+			// Fallback polling timer in case Heartbeat is paused or inactive
 			this.pollTimer = setInterval(function() {
+				if (!self.isPolling) {
+					clearInterval(self.pollTimer);
+					return;
+				}
 				self.poll();
 			}, 5000);
+		},
+
+		stopPolling: function() {
+			this.isPolling = false;
+			clearInterval(this.pollTimer);
+			this.pollTimer = null;
+
+			// Restore standard Heartbeat interval
+			if (window.wp && wp.heartbeat) {
+				wp.heartbeat.interval('standard');
+			}
+		},
+
+		handleHeartbeatTick: function(payload) {
+			if (!payload) {
+				return;
+			}
+			var l10n = aipsLinkReportL10n;
+			var backfill = payload.backfill;
+
+			if (payload.summary) {
+				this.renderSummary(payload.summary);
+			}
+			this.renderBackfill(backfill);
+
+			if (!backfill || backfill.status !== 'processing') {
+				this.stopPolling();
+				if (backfill && backfill.status === 'completed') {
+					AIPS.Utilities.showToast(l10n.rebuildDone, 'success');
+				}
+				this.load();
+			}
 		},
 
 		poll: function() {
@@ -399,7 +461,7 @@
 				self.renderBackfill(backfill);
 
 				if (!backfill || backfill.status !== 'processing') {
-					clearInterval(self.pollTimer);
+					self.stopPolling();
 					if (backfill && backfill.status === 'completed') {
 						AIPS.Utilities.showToast(l10n.rebuildDone, 'success');
 					}
