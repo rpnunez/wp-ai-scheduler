@@ -40,7 +40,7 @@
 		bindAIEditEvents: function() {
 			$(document).on('click', '.aips-ai-edit-btn', window.AIPS.openAIEditModal);
 			$(document).on('click', '#aips-ai-edit-cancel, #aips-ai-edit-close', window.AIPS.closeAIEditModal);
-			$(document).on('click', '.aips-regenerate-btn', window.AIPS.regenerateComponent);
+			$(document).on('click', '.aips-regenerate-btn, .aips-regenerate-post-image-btn', window.AIPS.regenerateComponent);
 			$(document).on('click', '#aips-ai-edit-regenerate-all', window.AIPS.regenerateAllComponents);
 			$(document).on('click', '#aips-ai-edit-save', window.AIPS.saveAIEditChanges);
 			$(document).on('click', '.aips-modal-overlay', window.AIPS.closeAIEditModal);
@@ -145,6 +145,11 @@
 				$('#aips-component-image-none').show();
 			}
 			
+			// Populate post content images
+			var postImages = data.components.post_images || [];
+			aiEditState.components.post_images = postImages;
+			window.AIPS.renderAIEditPostImages(postImages);
+			
 			// Update character counts
 			window.AIPS.updateAIEditCharCount('title');
 			window.AIPS.updateAIEditCharCount('excerpt');
@@ -162,13 +167,20 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var component = $btn.data('component');
+			var imageId = $btn.data('image-id');
 			var requestData = {
 				action: 'aips_regenerate_component',
 				post_id: aiEditState.postId,
 				history_id: aiEditState.historyId,
 				component: component,
+				image_id: imageId,
 				nonce: aipsAIEditL10n.nonce
 			};
+
+			// Images are placed into the editor's current text, including unsaved edits.
+			if (component === 'post_images') {
+				requestData.current_content = $('#aips-component-content').val();
+			}
 
 			if (window.AIPS.shouldCaptureManualRevision(component)) {
 				requestData.current_value = window.AIPS.getAIEditCurrentComponentValue(component);
@@ -305,13 +317,27 @@
 			if (response.success) {
 				// Update component value
 				window.AIPS.updateAIEditComponentValue(component, response.data.new_value, 'ai_generated');
-				aiEditState.changedComponents.add(component);
-				
-				// Mark section as changed
-				$('[data-component="' + component + '"]').closest('.aips-component-section').addClass('changed');
-				
-				// Show success message
-				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+
+				if (component === 'post_images') {
+					// Image rows follow the content on Save, so nothing else needs tracking here.
+					var failedImages = (response.data.new_value.post_images || []).filter(function(image) {
+						return !!image.error_message;
+					});
+
+					if (failedImages.length) {
+						window.AIPS.showComponentStatus(component, 'error', failedImages[0].error_message);
+					} else {
+						window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+					}
+				} else {
+					aiEditState.changedComponents.add(component);
+
+					// Mark section as changed
+					$('[data-component="' + component + '"]').closest('.aips-component-section').addClass('changed');
+
+					// Show success message
+					window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+				}
 
 				// Ensure revision list reflects the new regeneration snapshot if panel is open.
 				window.AIPS.refreshComponentRevisions(component);
@@ -432,11 +458,79 @@
 						aiEditState.components.featured_image = null;
 					}
 					break;
+				case 'post_images':
+					if (value && value.post_images) {
+						// The response only carries the regenerated rows, so merge by ID.
+						var mergedImages = (aiEditState.components.post_images || []).slice();
+						value.post_images.forEach(function(updatedImage) {
+							var existingIndex = mergedImages.findIndex(function(image) {
+								return image.id === updatedImage.id;
+							});
+							if (existingIndex === -1) {
+								mergedImages.push(updatedImage);
+							} else {
+								mergedImages[existingIndex] = $.extend({}, mergedImages[existingIndex], updatedImage);
+							}
+						});
+						aiEditState.components.post_images = mergedImages;
+						window.AIPS.renderAIEditPostImages(mergedImages);
+					}
+					if (value && typeof value.content === 'string' && value.content !== $('#aips-component-content').val()) {
+						$('#aips-component-content').val(value.content);
+						aiEditState.components.content = { value: value.content };
+						window.AIPS.updateAIEditCharCount('content');
+						window.AIPS.setAIEditComponentSource('content', value.content, 'ai_generated');
+						aiEditState.changedComponents.add('content');
+						$('.aips-component-section[data-component="content"]').addClass('changed');
+					}
+					break;
 			}
 
 			if (source) {
 				window.AIPS.setAIEditComponentSource(component, value, source);
 			}
+		},
+
+		/**
+		 * Render post content images gallery in AI Edit modal
+		 */
+		renderAIEditPostImages: function(postImages) {
+			var $grid = $('#aips-ai-edit-post-images-grid');
+			var $none = $('#aips-component-post-images-none');
+			$grid.empty();
+
+			if (!postImages || postImages.length === 0) {
+				$grid.hide();
+				$none.show();
+				return;
+			}
+
+			$none.hide();
+			$grid.show();
+
+			var statusLabels = {
+				completed: aipsAIEditL10n.imageStatusCompleted,
+				failed: aipsAIEditL10n.imageStatusFailed,
+				pending: aipsAIEditL10n.imageStatusPending
+			};
+
+			postImages.forEach(function(img) {
+				var $card = $(window.AIPS.Templates.render('aips-tmpl-ai-edit-post-image-card', {
+					id: img.id,
+					imageIndex: img.image_index,
+					url: img.url || '',
+					statusClass: img.status === 'completed' ? 'success' : 'error',
+					statusText: statusLabels[img.status] || img.status,
+					errorMessage: img.error_message || ''
+				}));
+
+				$card.find(img.url ? '.aips-ai-edit-post-image-placeholder' : 'img').remove();
+				if (!img.error_message) {
+					$card.find('.aips-ai-edit-post-image-error').remove();
+				}
+
+				$grid.append($card);
+			});
 		},
 		
 		/**

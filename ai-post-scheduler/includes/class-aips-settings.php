@@ -297,6 +297,23 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_unsplash_access_key'],
 			),
+			'aips_max_post_images_limit' => array(
+				'sanitize_callback' => static function ($val) {
+					return max(0, min(20, absint($val)));
+				},
+				'default'           => $defaults['aips_max_post_images_limit'],
+			),
+			'aips_allowed_image_sources' => array(
+				'sanitize_callback' => static function ($val) {
+					if (!is_array($val)) {
+						return array('ai_prompt');
+					}
+					$allowed_valid = array('ai_prompt', 'unsplash', 'media_library');
+					$filtered = array_values(array_intersect($val, $allowed_valid));
+					return !empty($filtered) ? $filtered : array('ai_prompt');
+				},
+				'default'           => $defaults['aips_allowed_image_sources'],
+			),
 			'aips_gsc_service_account' => array(
 				'sanitize_callback' => array('AIPS_GSC_Client', 'sanitize_credentials'),
 				'default'           => $defaults['aips_gsc_service_account'],
@@ -837,6 +854,32 @@ class AIPS_Settings {
 			'aips-settings',
 			'aips_general_section'
 		);
+
+        // -----------------------------------------------------------------------
+        // Post Images Generation Section
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_post_images_section',
+            __('Post Content Images Generation', 'ai-post-scheduler'),
+            array($this->ui, 'post_images_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_max_post_images_limit',
+            __('Max Possible Post Images per Post', 'ai-post-scheduler'),
+            array($this->ui, 'max_post_images_limit_field_callback'),
+            'aips-settings',
+            'aips_post_images_section'
+        );
+
+        add_settings_field(
+            'aips_allowed_image_sources',
+            __('Allowed Image Sources', 'ai-post-scheduler'),
+            array($this->ui, 'allowed_image_sources_field_callback'),
+            'aips-settings',
+            'aips_post_images_section'
+        );
 
         // Card 1: Content Generation AI Provider
         // -----------------------------------------------------------------------

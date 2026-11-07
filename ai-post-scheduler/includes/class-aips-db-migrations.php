@@ -271,6 +271,12 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.7.21', '<' ) && ! $this->migrate_to_3_7_21() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Post images migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1815,6 +1821,34 @@ class AIPS_DB_Migrations {
 		);
 		if ( ! $has_index ) {
 			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_type_ts (history_type_id, timestamp)" );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Migration to 3.7.21:
+	 * Adds image_prompt, featured_image_unsplash_keywords, and featured_image_media_ids to aips_authors if missing.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_21() {
+		global $wpdb;
+
+		$authors_table = $wpdb->prefix . 'aips_authors';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $authors_table ) ) === $authors_table ) {
+			$author_cols = $wpdb->get_col( "SHOW COLUMNS FROM `{$authors_table}`" );
+			if ( is_array( $author_cols ) ) {
+				if ( ! in_array( 'image_prompt', $author_cols, true ) ) {
+					$wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN image_prompt text DEFAULT NULL AFTER post_author" );
+				}
+				if ( ! in_array( 'featured_image_unsplash_keywords', $author_cols, true ) ) {
+					$wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN featured_image_unsplash_keywords text DEFAULT NULL AFTER featured_image_source" );
+				}
+				if ( ! in_array( 'featured_image_media_ids', $author_cols, true ) ) {
+					$wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN featured_image_media_ids text DEFAULT NULL AFTER featured_image_unsplash_keywords" );
+				}
+			}
 		}
 
 		return true;

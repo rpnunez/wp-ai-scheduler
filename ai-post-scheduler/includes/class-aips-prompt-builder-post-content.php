@@ -135,6 +135,11 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
+		$post_images_block = $this->build_post_images_block($context);
+		if (!empty($post_images_block)) {
+			$processed_prompt .= "\n\n" . $post_images_block;
+		}
+
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic, $this);
@@ -177,6 +182,11 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
+		$post_images_block = $this->build_post_images_block($template);
+		if (!empty($post_images_block)) {
+			$processed_prompt .= "\n\n" . $post_images_block;
+		}
+
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic, $this);
@@ -212,5 +222,54 @@ class AIPS_Prompt_Builder_Post_Content {
 		}
 
 		return $prompt . "\n\n" . $rel_context;
+	}
+
+	/**
+	 * Build post content images instructions block.
+	 *
+	 * @param object|AIPS_Generation_Context $template_or_context
+	 * @return string
+	 */
+	private function build_post_images_block($template_or_context) {
+		$images = array();
+		if ($template_or_context instanceof AIPS_Generation_Context) {
+			if ($template_or_context->has_content_images()) {
+				$images = $template_or_context->get_content_images();
+			}
+		} elseif (is_object($template_or_context)) {
+			if (!empty($template_or_context->post_images) && is_array($template_or_context->post_images)) {
+				$images = $template_or_context->post_images;
+			} elseif (!empty($template_or_context->id)) {
+				$repo = new AIPS_Post_Images_Repository();
+				$images = $repo->get_content_images_for_entity('template', (int) $template_or_context->id);
+			}
+		}
+
+		$images = array_slice($images, 0, AIPS_Config::get_instance()->get_max_post_images_limit());
+
+		if (empty($images)) {
+			return '';
+		}
+
+		$lines = array(
+			'Image Placement Instructions:',
+			'You must include the following image placeholders on their own line between paragraphs or sections in the article body:'
+		);
+
+		foreach ($images as $idx => $img) {
+			$img_order = !empty($img->image_order) ? (int) $img->image_order : ($idx + 1);
+			$placement = !empty($img->placement) ? $img->placement : 'auto';
+			$desc = "Placeholder: [post_image index=\"{$img_order}\"]";
+			if ($placement !== 'auto' && preg_match('/^after_section_(\d+)$/', $placement, $m)) {
+				$desc .= " (place immediately after Section {$m[1]} / Heading {$m[1]})";
+			} else {
+				$desc .= " (place naturally where most relevant within the article)";
+			}
+			$lines[] = "- {$desc}";
+		}
+
+		$lines[] = 'Do not wrap these placeholders in code blocks, quotes, or markdown formatting. Place each on its own separate line.';
+
+		return implode("\n", $lines);
 	}
 }

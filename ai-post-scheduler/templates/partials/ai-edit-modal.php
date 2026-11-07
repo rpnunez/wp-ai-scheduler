@@ -201,6 +201,47 @@ if (!defined('ABSPATH')) {
 						</div>
 					</div>
 				</div>
+				
+				<!-- Post Content Images Component -->
+				<div class="aips-component-section" data-component="post_images">
+					<div class="aips-component-header">
+						<h4 class="aips-component-title"><?php esc_html_e('Post Content Images', 'ai-post-scheduler'); ?></h4>
+						<div class="aips-component-actions">
+							<span class="aips-component-status"></span>
+							<button type="button" class="aips-regenerate-btn" data-component="post_images" data-image-id="all">
+								<span class="dashicons dashicons-update"></span>
+								<span class="button-text"><?php esc_html_e('Re-generate All Images', 'ai-post-scheduler'); ?></span>
+							</button>
+						</div>
+					</div>
+					<div class="aips-component-body">
+						<div id="aips-ai-edit-post-images-grid" class="aips-ai-edit-post-images-grid">
+							<!-- Populated via JS -->
+						</div>
+						<div id="aips-component-post-images-none" class="aips-featured-image-none" style="display: none;">
+							<?php esc_html_e('No post content images generated for this post.', 'ai-post-scheduler'); ?>
+						</div>
+						<script type="text/html" id="aips-tmpl-ai-edit-post-image-card">
+							<div class="aips-ai-edit-post-image-item" data-image-id="{{id}}">
+								<div class="aips-ai-edit-post-image-preview">
+									<img src="{{url}}" alt="<?php esc_attr_e('Post Image', 'ai-post-scheduler'); ?> {{imageIndex}}" />
+									<span class="dashicons dashicons-format-image aips-ai-edit-post-image-placeholder"></span>
+								</div>
+								<div class="aips-ai-edit-post-image-info">
+									<strong><?php esc_html_e('Image', 'ai-post-scheduler'); ?> #{{imageIndex}}</strong>
+									<span class="aips-status-badge {{statusClass}}">{{statusText}}</span>
+									<p class="description aips-ai-edit-post-image-error">{{errorMessage}}</p>
+								</div>
+								<div class="aips-ai-edit-post-image-actions">
+									<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-regenerate-post-image-btn" data-component="post_images" data-image-id="{{id}}">
+										<span class="dashicons dashicons-update"></span>
+										<?php esc_html_e('Re-generate', 'ai-post-scheduler'); ?>
+									</button>
+								</div>
+							</div>
+						</script>
+					</div>
+				</div>
 			</div>
 		</div>
 		

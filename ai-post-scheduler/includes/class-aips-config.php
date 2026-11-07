@@ -170,6 +170,8 @@ class AIPS_Config {
             'aips_bulk_publish_async_threshold' => 30,
             // General
             'aips_unsplash_access_key' => '',
+            'aips_max_post_images_limit' => 5,
+            'aips_allowed_image_sources' => array('ai_prompt', 'unsplash', 'media_library'),
             'aips_gsc_service_account' => '',
             'aips_gsc_property'        => '',
             'aips_gsc_anchor_enabled'  => true,
@@ -813,8 +815,29 @@ class AIPS_Config {
         return array(
             'developer_mode'           => (bool) $this->get_option('aips_developer_mode'),
             'unsplash_access_key'      => (string) $this->get_option('aips_unsplash_access_key'),
+            'max_post_images_limit'    => $this->get_max_post_images_limit(),
+            'allowed_image_sources'    => $this->get_allowed_image_sources(),
             'topic_similarity_threshold' => (float) $this->get_option('aips_topic_similarity_threshold'),
         );
+    }
+
+    /**
+     * Get maximum possible post images that can be generated for a post.
+     *
+     * @return int
+     */
+    public function get_max_post_images_limit(): int {
+        return max(0, min(20, (int) $this->get_option('aips_max_post_images_limit', 5)));
+    }
+
+    /**
+     * Get allowed image sources for post images.
+     *
+     * @return array
+     */
+    public function get_allowed_image_sources(): array {
+        $allowed = $this->get_option('aips_allowed_image_sources', array('ai_prompt', 'unsplash', 'media_library'));
+        return is_array($allowed) ? $allowed : array('ai_prompt', 'unsplash', 'media_library');
     }
 
     /**

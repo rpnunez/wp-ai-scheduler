@@ -659,4 +659,188 @@ class AIPS_Component_Regeneration_Service {
 		return '';
 	}
 
+	/**
+	 * Regenerate one or all post content images.
+	 *
+	 * Follows the AI Edit modal's contract: nothing is written to the post here.
+	 * The updated content is returned to the modal and saved with its Save action,
+	 * so 'current_content' in $context should carry the editor's unsaved value.
+	 * Generated rows keep describing the stored post until that save, when
+	 * AIPS_Post_Images_Service::sync_generated_rows_from_content() updates them,
+	 * so cancelling the modal leaves rows and post in step.
+	 * A failed attempt leaves any existing image in place.
+	 *
+	 * @param array      $context Generation context array with post_id, history_id, generation_context.
+	 * @param int|string $image_id Specific generated row ID or 'all'.
+	 * @return array|WP_Error Array with regenerated image information and updated post content.
+	 */
+	public function regenerate_post_images($context, $image_id = 'all') {
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
+		}
+
+		if (!isset($context['post_id'])) {
+			return new WP_Error('missing_post_id', __('Post ID is required.', 'ai-post-scheduler'));
+		}
+
+		$post_id = absint($context['post_id']);
+		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
+		$generation_context = $context['generation_context'];
+		$title = isset($context['current_title']) ? $context['current_title'] : get_the_title($post_id);
+		$content = isset($context['current_content']) ? $context['current_content'] : (string) get_post_field('post_content', $post_id);
+
+		$history_container = $this->resolve_history_container($context, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
+		}
+		$this->record_regeneration_trigger($history_container, $context, __('Post images', 'ai-post-scheduler'), $post_id);
+
+		$generated_repo = new AIPS_Post_Images_Generated_Repository();
+		$existing_generated = $generated_repo->get_by_post_id($post_id);
+
+		$images_to_regenerate = array();
+		if ($image_id === 'all') {
+			$images_to_regenerate = $existing_generated;
+		} else {
+			$target_id = absint($image_id);
+			foreach ($existing_generated as $eg) {
+				if ((int) $eg->id === $target_id) {
+					$images_to_regenerate[] = $eg;
+					break;
+				}
+			}
+		}
+
+		// Fallback: a post generated before images were configured has no rows yet.
+		if ($image_id === 'all' && empty($images_to_regenerate) && $generation_context->has_content_images()) {
+			$config_images = $generation_context->get_content_images();
+			foreach ($config_images as $idx => $ci) {
+				$new_gen_id = $generated_repo->create(array(
+					'post_id'         => $post_id,
+					'history_id'      => $history_id,
+					'config_image_id' => !empty($ci->id) ? (int) $ci->id : 0,
+					'image_index'     => !empty($ci->image_order) ? (int) $ci->image_order : ($idx + 1),
+					'attachment_id'   => 0,
+					'image_source'    => !empty($ci->source) ? $ci->source : 'ai_prompt',
+					'image_prompt'    => !empty($ci->image_prompt) ? $ci->image_prompt : '',
+					'image_url'       => '',
+					'placement'       => !empty($ci->placement) ? $ci->placement : 'auto',
+					'status'          => 'pending',
+				));
+				$row = $generated_repo->get_by_id($new_gen_id);
+				if ($row) {
+					$images_to_regenerate[] = $row;
+				}
+			}
+		}
+
+		if (empty($images_to_regenerate)) {
+			return new WP_Error('no_images', __('No post content images found to regenerate.', 'ai-post-scheduler'));
+		}
+
+		$total_images = max(count($existing_generated), count($images_to_regenerate));
+		$regenerated_results = array();
+
+		foreach ($images_to_regenerate as $target_row) {
+			$gen_id = (int) $target_row->id;
+			$order = (int) $target_row->image_index;
+			$config = $this->resolve_post_image_config($target_row, $generation_context);
+			$placement = !empty($config->placement) ? $config->placement : 'auto';
+
+			$resolved = $this->generator->resolve_post_image($config, $title, $generation_context->get_topic());
+
+			if ($resolved['attachment_id'] <= 0) {
+				// Keep a working image rather than trading it for a placeholder.
+				$has_previous_image = (int) $target_row->attachment_id > 0;
+				$status = $has_previous_image ? 'completed' : 'failed';
+
+				$generated_repo->update($gen_id, array(
+					'status'        => $status,
+					'error_message' => $resolved['error'],
+				));
+
+				$regenerated_results[] = array(
+					'id'            => $gen_id,
+					'image_index'   => $order,
+					'status'        => $status,
+					'error_message' => $resolved['error'],
+				);
+				continue;
+			}
+
+			$new_markup = $this->generator->build_post_image_markup(
+				$gen_id,
+				$resolved['attachment_id'],
+				$resolved['image_url'],
+				$title,
+				!empty($config->caption) ? $config->caption : ''
+			);
+
+			// Replace existing markup or placeholder in content
+			$figure_pattern = AIPS_Post_Images_Service::get_figure_pattern($gen_id);
+			$comment_pattern = '/<!--\s*aips-image-placeholder\s+id=["\']?' . preg_quote((string) $gen_id, '/') . '["\']?\s*-->/i';
+			$replace_with_markup = static function () use ($new_markup) {
+				return $new_markup;
+			};
+
+			if (preg_match($figure_pattern, $content)) {
+				$content = preg_replace_callback($figure_pattern, $replace_with_markup, $content, 1);
+			} elseif (preg_match($comment_pattern, $content)) {
+				$content = preg_replace_callback($comment_pattern, $replace_with_markup, $content, 1);
+			} else {
+				$content = $this->generator->inject_single_post_image($content, $order, $placement, $new_markup, $total_images);
+			}
+
+			$regenerated_results[] = array(
+				'id'            => $gen_id,
+				'image_index'   => $order,
+				'attachment_id' => $resolved['attachment_id'],
+				'url'           => $resolved['image_url'],
+				'status'        => 'completed',
+				'error_message' => '',
+			);
+		}
+
+		return array(
+			'post_images' => $regenerated_results,
+			'content'     => $content,
+		);
+	}
+
+	/**
+	 * Find the configuration behind a generated image row.
+	 *
+	 * The generated row only records what was produced, so keywords, media IDs
+	 * and captions come from the template/author configuration. When that has
+	 * since been removed, fall back to what the row itself recorded.
+	 *
+	 * @param object                  $row                Generated image row.
+	 * @param AIPS_Generation_Context $generation_context Generation context.
+	 * @return object Image configuration.
+	 */
+	private function resolve_post_image_config($row, $generation_context) {
+		if (!empty($row->config_image_id)) {
+			$config = (new AIPS_Post_Images_Repository())->get_by_id((int) $row->config_image_id);
+			if ($config) {
+				return $config;
+			}
+		}
+
+		foreach ($generation_context->get_content_images() as $idx => $image) {
+			$image_order = !empty($image->image_order) ? (int) $image->image_order : ($idx + 1);
+			if ($image_order === (int) $row->image_index) {
+				return $image;
+			}
+		}
+
+		return (object) array(
+			'source'            => $row->image_source,
+			'image_prompt'      => $row->image_prompt,
+			'unsplash_keywords' => $row->image_prompt,
+			'media_ids'         => '',
+			'placement'         => $row->placement,
+			'caption'           => '',
+		);
+	}
+
 }

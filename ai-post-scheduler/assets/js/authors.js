@@ -48,6 +48,9 @@
 			// Submit Author Form
 			$('#aips-author-form').on('submit', this.saveAuthor.bind(this));
 
+			// Toggle Featured Image options
+			$(document).on('change', '#author_generate_featured_image', this.toggleAuthorFeaturedImage.bind(this));
+
 			// Toggle Source Groups panel when Include Sources? checkbox changes.
 			$(document).on('change', '#author_include_sources', this.toggleAuthorSourceGroups.bind(this));
 
@@ -257,7 +260,35 @@
 			$('#author_include_sources').prop('checked', false);
 			$('.aips-author-source-group-cb').prop('checked', false);
 			$('#author-source-groups-selector').hide();
+
+			// Reset image settings
+			$('#author_generate_featured_image').prop('checked', false);
+			$('.aips-author-featured-image-settings').hide();
+			$('#author_featured_image_source').val('ai_prompt');
+			$('#author_featured_image_image_prompt').val('');
+			$('#author_featured_image_unsplash_keywords').val('');
+			$('#author_featured_image_media_ids').val('');
+			$('.aips-author-featured-image-settings .aips-media-preview-container').text('No images selected.');
+			if (typeof AIPS !== 'undefined' && typeof AIPS.toggleFeaturedImageSourceFields === 'function') {
+				AIPS.toggleFeaturedImageSourceFields($('.aips-author-featured-image-settings .aips-image-settings-group'));
+			}
+			$('#aips-author-post-images-list .aips-post-image-card').remove();
+			$('#aips-author-post-images-list .aips-post-images-empty-state').show();
+
 			$('#aips-author-modal').fadeIn();
+		},
+
+		/**
+		 * Show or hide the Author Featured Image settings panel.
+		 *
+		 * @param {Event} e - Change event from `#author_generate_featured_image`.
+		 */
+		toggleAuthorFeaturedImage: function (e) {
+			const isChecked = $(e.currentTarget).is(':checked');
+			$('.aips-author-featured-image-settings').toggle(isChecked);
+			if (isChecked && typeof AIPS !== 'undefined' && typeof AIPS.toggleFeaturedImageSourceFields === 'function') {
+				AIPS.toggleFeaturedImageSourceFields($('.aips-author-featured-image-settings .aips-image-settings-group'));
+			}
 		},
 
 		/**
@@ -378,6 +409,34 @@
 						authorSgIds.forEach(function(tid) {
 							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
 						});
+
+						// Restore Featured Image options
+						var hasFeatured = parseInt(author.generate_featured_image, 10) === 1;
+						$('#author_generate_featured_image').prop('checked', hasFeatured);
+						$('.aips-author-featured-image-settings').toggle(hasFeatured);
+						$('#author_featured_image_source').val(author.featured_image_source || 'ai_prompt');
+						$('#author_featured_image_image_prompt').val(author.image_prompt || '');
+						$('#author_featured_image_unsplash_keywords').val(author.featured_image_unsplash_keywords || '');
+						$('#author_featured_image_media_ids').val(author.featured_image_media_ids || '');
+						var mediaIdsStr = author.featured_image_media_ids ? String(author.featured_image_media_ids) : '';
+						var authorMediaCount = mediaIdsStr.split(',').filter(function(x) { return x.trim().length > 0; }).length;
+						$('.aips-author-featured-image-settings .aips-media-preview-container').text(
+							authorMediaCount > 0 ? (authorMediaCount === 1 ? '1 image selected' : authorMediaCount + ' images selected') : 'No images selected.'
+						);
+						if (typeof AIPS !== 'undefined' && typeof AIPS.toggleFeaturedImageSourceFields === 'function') {
+							AIPS.toggleFeaturedImageSourceFields($('.aips-author-featured-image-settings .aips-image-settings-group'));
+						}
+
+						// Restore Post Content Images
+						$('#aips-author-post-images-list .aips-post-image-card').remove();
+						if (author.post_images && author.post_images.length && typeof AIPS !== 'undefined' && AIPS.PostImages) {
+							$('#aips-author-post-images-list .aips-post-images-empty-state').hide();
+							author.post_images.forEach(function(img, idx) {
+								AIPS.PostImages.renderCard($('#aips-author-post-images-list'), img, idx, 'author_post_images');
+							});
+						} else {
+							$('#aips-author-post-images-list .aips-post-images-empty-state').show();
+						}
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 
