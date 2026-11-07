@@ -32,7 +32,7 @@ Saved multi-agent workflows live in `.claude/workflows/`:
 
 ## Commands
 
-Run PHPUnit ONLY as specified in the "Agent test protocol" in `TESTING.md`: `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` (all files in one invocation; stops the containers it started). Do not use PowerShell/`bash.exe -lc` wrappers, `scripts/run-docker-test.sh` directly, `&&`/`;` chains or `grep`/`head`/`tail` pipes, and do not run `./start-dev.sh` just to test. Run `make composer-install` once for the dev dependencies. Clean up: stop any containers you started (never `make down`/`-v`), delete scratch files, and report what you started/stopped.
+Run PHPUnit ONLY as specified in the "Agent test protocol" in `TESTING.md`: `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` (all files in one invocation; stops the containers it started). Do not use PowerShell/`bash.exe -lc` wrappers, `scripts/run-docker-test.sh` directly, `&&`/`;` chains or `grep`/`head`/`tail` pipes, and do not run `./start-dev.sh` just to test. Run `make composer-install` once for the dev dependencies. **Cloud sessions (claude.ai/code) have no Docker:** run `make test-cloud ARGS="tests/Test_A.php tests/Test_B.php"` (WordPress suite on the session's MariaDB, started by the SessionStart hook) or `make test-cloud ARGS="--syntax"` (php -l + repository-boundary lint); `AIPS_CLOUD_TEST_MODE=full|syntax` sets the default. See "Claude Code cloud sessions" in `TESTING.md`. Clean up: stop any containers you started (never `make down`/`-v`), delete scratch files, and report what you started/stopped.
 
 ```bash
 # Tests in the web container, against a separate wp_tests DB
@@ -47,6 +47,10 @@ bash scripts/run-docker-test.sh tests/Test_AIPS_DB_Migrations.php
 
 # CI-parity host runner (needs host PHP + Composer)
 make test-ci            # = bash scripts/run-wp-tests-docker.sh
+
+# Claude Code cloud sessions (no Docker)
+make test-cloud ARGS="tests/Test_AIPS_DB_Migrations.php"
+make test-cloud ARGS="--syntax"
 
 # Directly (when a WP test env is already installed in the shell); run from ai-post-scheduler/
 cd ai-post-scheduler
