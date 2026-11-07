@@ -497,28 +497,28 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
-			'aips-datetime-script',
-			AIPS_PLUGIN_URL . 'assets/js/datetime.js',
-			array('jquery'),
-			AIPS_VERSION,
-			true
-		);
+          'aips-datetime-script',
+          AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+          array('jquery'),
+          AIPS_VERSION,
+          true
+        );
 
-		wp_enqueue_script(
-			'aips-templates-script',
-			AIPS_PLUGIN_URL . 'assets/js/templates.js',
-			array('jquery'),
-			AIPS_VERSION,
-			true
-		);
+        wp_enqueue_script(
+          'aips-templates-script',
+          AIPS_PLUGIN_URL . 'assets/js/templates.js',
+          array('jquery'),
+          AIPS_VERSION,
+          true
+        );
 
-		wp_enqueue_script(
-			'aips-utilities-script',
-			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-			array('jquery', 'aips-datetime-script', 'aips-templates-script'),
-			AIPS_VERSION,
-			true
-		);
+        wp_enqueue_script(
+          'aips-utilities-script',
+          AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+          array('jquery', 'aips-datetime-script', 'aips-templates-script', 'wp-a11y'),
+          AIPS_VERSION,
+          true
+        );
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
