@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **Per-Component AI Edit Meta Boxes & Gutenberg Document Panels:**
+  - Redesigned the Edit Post screen (Classic Editor and Gutenberg Block Editor) with dedicated per-component AI Edit widgets/panels for Title, Excerpt, Content, and Featured Image, replacing the disconnected candidate-only workflow.
+  - Implemented the canonical AI Edit interface across every component: Re-generate action, Side-by-Side comparison slot (Current Version vs Newly Regenerated Draft) with 1-click Accept & Replace and Discard, editable view/preview, and collapsible View Revisions drawer with instant restore.
+  - Retained optional multi-candidate generation ("3 Candidates") for Title and Excerpt.
+- **AI Edit History & Timeline Logging Integrity:**
+  - Resolved and associated post history containers across all AI Edit generation and editing operations, automatically recording discrete `ai_request` and `ai_response` logs so they appear in the post's History modal under "Technical" and "AI Calls" tabs.
+  - Automatically record a `"Post {Component} regenerated via AI Edit"` timeline event upon saving or restoring any component revision, cleanly displayed in the History container "Timeline" tab as `"Post {Component} regenerated"`.
+  - Added graceful fallback resolution in `AIPS_Generation_Context_Factory` for posts without explicit template or author/topic context.
 - **Interactive Cards Redesign for Posts Pending Review & Floating Bulk Actions (#2334, #2340):**
   - Modernized the Content > Pending Review tab from an HTML table into a responsive 3-column card grid with featured image display, fallback banner placeholders, post type badges, and context attribution.
   - Added instant 1-click publishing without modal confirmation, including smooth card fade-out animation, draft counter synchronization, and toast notification with direct editor links.

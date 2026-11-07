@@ -39,28 +39,71 @@
 	}
 
 	/* ==========================================================================
-	   1. Document Settings Panel (Post-level: Title, Excerpt Variants)
+	   1. Document Settings Panels (Per-Component AI Edit Widgets)
 	   ========================================================================== */
-	function DocumentPanel() {
-		var [titleVariants, setTitleVariants] = useState([]);
-		var [excerptVariants, setExcerptVariants] = useState([]);
-		var [busyComponent, setBusyComponent] = useState(null);
+	function ComponentAIEditPanel(props) {
+		var component = props.component;
+		var label = props.label;
+		var [isRegenerating, setIsRegenerating] = useState(false);
+		var [regeneratedDraft, setRegeneratedDraft] = useState(null);
+		var [showDiff, setShowDiff] = useState(false);
+		var [showRevisions, setShowRevisions] = useState(false);
+		var [revisions, setRevisions] = useState([]);
+		var [loadingRevisions, setLoadingRevisions] = useState(false);
+		var [variants, setVariants] = useState([]);
+		var [busyVariants, setBusyVariants] = useState(false);
 
-		function generateVariants(component) {
-			setBusyComponent(component);
+		var currentValue = wp.data.useSelect(function (select) {
+			var editor = select('core/editor');
+			if (!editor) {
+				return '';
+			}
+			if ('title' === component) {
+				return editor.getEditedPostAttribute('title') || '';
+			} else if ('excerpt' === component) {
+				return editor.getEditedPostAttribute('excerpt') || '';
+			} else if ('content' === component) {
+				return editor.getEditedPostAttribute('content') || '';
+			} else if ('featured_image' === component) {
+				return editor.getEditedPostAttribute('featured_media') || 0;
+			}
+			return '';
+		}, [component]);
+
+		function loadRevisions() {
+			setLoadingRevisions(true);
 			$.post(l10n.ajaxurl, {
-				action: 'aips_editor_generate_component_variants',
+				action: 'aips_get_component_revisions',
 				nonce: l10n.nonce,
 				post_id: l10n.postId,
 				component: component
 			})
 			.done(function (response) {
-				if (response && response.success && response.data && response.data.variants) {
-					if ('title' === component) {
-						setTitleVariants(response.data.variants);
-					} else {
-						setExcerptVariants(response.data.variants);
-					}
+				if (response && response.success && response.data) {
+					setRevisions(response.data.revisions || []);
+				}
+			})
+			.always(function () {
+				setLoadingRevisions(false);
+			});
+		}
+
+		function handleRegenerate() {
+			setIsRegenerating(true);
+			$.post(l10n.ajaxurl, {
+				action: 'aips_regenerate_component',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				history_id: l10n.historyId || 0,
+				component: component,
+				current_value: currentValue
+			})
+			.done(function (response) {
+				if (response && response.success && response.data && response.data.new_value) {
+					setRegeneratedDraft(response.data.new_value);
+					setShowDiff(true);
+					loadRevisions();
+					notify('Draft generated for ' + label + '!');
 				} else {
 					notify((response && response.data && response.data.message) || l10n.labels.actionError, 'error');
 				}
@@ -69,68 +112,253 @@
 				notify(l10n.labels.actionError, 'error');
 			})
 			.always(function () {
-				setBusyComponent(null);
+				setIsRegenerating(false);
 			});
 		}
 
-		function applyToPost(component, value) {
+		function applyToGutenberg(val) {
+			var dispatch = wp.data.dispatch('core/editor');
 			if ('title' === component) {
-				wp.data.dispatch('core/editor').editPost({ title: value });
+				var textVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
+				dispatch.editPost({ title: textVal });
 			} else if ('excerpt' === component) {
-				wp.data.dispatch('core/editor').editPost({ excerpt: value });
+				var textVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
+				dispatch.editPost({ excerpt: textVal });
+			} else if ('content' === component) {
+				var textVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
+				if (wp.blocks && wp.blocks.parse) {
+					dispatch.resetBlocks(wp.blocks.parse(textVal));
+				} else {
+					dispatch.editPost({ content: textVal });
+				}
+			} else if ('featured_image' === component) {
+				var attachmentId = typeof val === 'object' && val !== null ? (val.attachment_id || val.id || 0) : parseInt(val, 10);
+				if (attachmentId > 0) {
+					dispatch.editPost({ featured_media: attachmentId });
+				}
 			}
-			notify(l10n.labels.success || 'Updated post ' + component + '!');
 		}
 
-		function renderVariantList(component, list) {
-			if (!list || !list.length) {
-				return null;
+		function handleAcceptDiff() {
+			if (!regeneratedDraft) {
+				return;
 			}
-			return el('div', { key: component + '-list', className: 'aips-variant-carousel' },
-				list.map(function (variantText, idx) {
-					return el('div', { key: idx, className: 'aips-variant-card' },
-						el('div', { className: 'aips-variant-card-header' }, 'Variant ' + (idx + 1)),
-						el('div', { className: 'aips-variant-card-body' }, variantText),
+			applyToGutenberg(regeneratedDraft);
+
+			var payloadComponents = {};
+			if ('title' === component) {
+				payloadComponents.title = typeof regeneratedDraft === 'object' ? regeneratedDraft.value : regeneratedDraft;
+			} else if ('excerpt' === component) {
+				payloadComponents.excerpt = typeof regeneratedDraft === 'object' ? regeneratedDraft.value : regeneratedDraft;
+			} else if ('content' === component) {
+				payloadComponents.content = typeof regeneratedDraft === 'object' ? regeneratedDraft.value : regeneratedDraft;
+			} else if ('featured_image' === component) {
+				payloadComponents.featured_image_id = typeof regeneratedDraft === 'object' ? regeneratedDraft.attachment_id : regeneratedDraft;
+			}
+
+			$.post(l10n.ajaxurl, {
+				action: 'aips_save_post_components',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				components: payloadComponents
+			});
+
+			setShowDiff(false);
+			setRegeneratedDraft(null);
+			loadRevisions();
+			notify('Updated ' + label + '!');
+		}
+
+		function handleDiscardDiff() {
+			setShowDiff(false);
+			setRegeneratedDraft(null);
+		}
+
+		function handleToggleRevisions() {
+			var nextState = !showRevisions;
+			setShowRevisions(nextState);
+			if (nextState) {
+				loadRevisions();
+			}
+		}
+
+		function handleRestore(rev) {
+			$.post(l10n.ajaxurl, {
+				action: 'aips_restore_component_revision',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				component: component,
+				revision_id: rev.id
+			})
+			.done(function (response) {
+				if (response && response.success) {
+					var restoredVal = response.data.value !== undefined ? response.data.value : rev.value;
+					applyToGutenberg(restoredVal);
+					loadRevisions();
+					notify('Revision restored!');
+				} else {
+					notify((response && response.data && response.data.message) || l10n.labels.actionError, 'error');
+				}
+			})
+			.fail(function () {
+				notify(l10n.labels.actionError, 'error');
+			});
+		}
+
+		function handleGenerateVariants() {
+			setBusyVariants(true);
+			$.post(l10n.ajaxurl, {
+				action: 'aips_editor_generate_component_variants',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				component: component
+			})
+			.done(function (response) {
+				if (response && response.success && response.data && response.data.variants) {
+					setVariants(response.data.variants);
+				} else {
+					notify((response && response.data && response.data.message) || l10n.labels.actionError, 'error');
+				}
+			})
+			.fail(function () {
+				notify(l10n.labels.actionError, 'error');
+			})
+			.always(function () {
+				setBusyVariants(false);
+			});
+		}
+
+		var currentSnippet = typeof currentValue === 'string' ? currentValue : (currentValue ? String(currentValue) : 'Empty');
+		var regenSnippet = '';
+		if (regeneratedDraft) {
+			if (typeof regeneratedDraft === 'string') {
+				regenSnippet = regeneratedDraft;
+			} else if (typeof regeneratedDraft === 'object') {
+				regenSnippet = regeneratedDraft.url || regeneratedDraft.value || JSON.stringify(regeneratedDraft);
+			}
+		}
+
+		return el('div', { className: 'aips-gutenberg-component-section', style: { padding: '4px 0' } },
+			el('div', { style: { display: 'flex', gap: '6px', marginBottom: '10px' } },
+				el(Button, {
+					variant: 'primary',
+					isBusy: isRegenerating,
+					disabled: isRegenerating,
+					onClick: handleRegenerate
+				}, isRegenerating ? (l10n.labels.generating || 'Generating...') : ('Re-generate ' + label)),
+				('title' === component || 'excerpt' === component) && el(Button, {
+					variant: 'secondary',
+					isBusy: busyVariants,
+					disabled: busyVariants,
+					onClick: handleGenerateVariants
+				}, '3 Candidates')
+			),
+
+			// Side-by-side diff
+			showDiff && el('div', { className: 'aips-diff-wrapper', style: { border: '1px solid #dcdcde', borderRadius: '4px', background: '#f6f7f7', padding: '8px', marginBottom: '12px' } },
+				el('div', { style: { fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', marginBottom: '6px' } }, 'Side-by-Side Comparison'),
+				el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' } },
+					el('div', { style: { background: '#fff', border: '1px solid #dcdcde', borderRadius: '4px', padding: '6px', fontSize: '12px', maxHeight: '140px', overflowY: 'auto' } },
+						el('div', { style: { fontSize: '10px', fontWeight: 'bold', color: '#646970', marginBottom: '4px' } }, 'CURRENT VERSION'),
+						currentSnippet
+					),
+					el('div', { style: { background: '#edfaef', border: '1px solid #68de7c', borderRadius: '4px', padding: '6px', fontSize: '12px', maxHeight: '140px', overflowY: 'auto' } },
+						el('div', { style: { fontSize: '10px', fontWeight: 'bold', color: '#007017', marginBottom: '4px' } }, 'NEWLY REGENERATED DRAFT'),
+						regenSnippet
+					)
+				),
+				el('div', { style: { display: 'flex', gap: '6px' } },
+					el(Button, { variant: 'primary', isSmall: true, onClick: handleAcceptDiff }, 'Accept & Replace'),
+					el(Button, { variant: 'secondary', isSmall: true, onClick: handleDiscardDiff }, 'Discard')
+				)
+			),
+
+			// Candidates carousel
+			variants.length > 0 && el('div', { className: 'aips-variant-carousel', style: { marginBottom: '12px' } },
+				variants.map(function (variantText, idx) {
+					return el('div', { key: idx, className: 'aips-variant-card', style: { background: '#f6f7f7', border: '1px solid #dcdcde', borderRadius: '4px', padding: '6px', marginBottom: '6px' } },
+						el('div', { style: { fontSize: '11px', color: '#646970', fontWeight: '600', marginBottom: '4px' } }, 'Candidate ' + (idx + 1)),
+						el('div', { style: { fontSize: '12px', marginBottom: '6px' } }, variantText),
 						el(Button, {
 							variant: 'primary',
 							isSmall: true,
-							onClick: function () { applyToPost(component, variantText); }
-						}, l10n.labels.insert || 'Apply')
+							onClick: function () {
+								applyToGutenberg(variantText);
+								notify('Applied candidate to ' + label + '!');
+							}
+						}, 'Apply')
 					);
 				})
-			);
-		}
+			),
 
-		return el(PluginDocumentSettingPanel, {
-			name: 'aips-editor-post-panel',
-			title: l10n.panelTitle || 'AI Edit & Directives',
-			icon: 'update',
-			className: 'aips-editor-gutenberg-panel'
-		},
-			el('div', { className: 'aips-editor-component-actions' },
+			// Revisions drawer toggle
+			el('div', { style: { borderTop: '1px solid #f0f0f1', paddingTop: '8px' } },
 				el(Button, {
 					variant: 'secondary',
-					isBusy: 'title' === busyComponent,
-					disabled: !!busyComponent,
-					onClick: function () { generateVariants('title'); }
-				}, l10n.labels.titleVariants || 'Generate 3 Title Candidates'),
-				renderVariantList('title', titleVariants),
-
-				el(Button, {
-					variant: 'secondary',
-					isBusy: 'excerpt' === busyComponent,
-					disabled: !!busyComponent,
-					style: { marginTop: '10px' },
-					onClick: function () { generateVariants('excerpt'); }
-				}, l10n.labels.excerptVariants || 'Generate 3 Excerpt Candidates'),
-				renderVariantList('excerpt', excerptVariants)
+					isSmall: true,
+					onClick: handleToggleRevisions
+				}, showRevisions ? 'Hide Revisions' : 'View Revisions' + (revisions.length ? ' (' + revisions.length + ')' : '')),
+				showRevisions && el('div', { style: { marginTop: '8px' } },
+					loadingRevisions && el(Spinner, null),
+					!loadingRevisions && revisions.length === 0 && el('p', { style: { color: '#646970', fontSize: '12px' } }, 'No revisions recorded.'),
+					!loadingRevisions && revisions.length > 0 && el('div', null,
+						revisions.map(function (rev, rIdx) {
+							var revSnippet = typeof rev.value === 'string' ? rev.value.substring(0, 70) : JSON.stringify(rev.value);
+							var revTime = rev.timestamp ? (new Date(rev.timestamp * 1000)).toLocaleTimeString() : '';
+							return el('div', { key: rIdx, style: { background: '#fff', border: '1px solid #dcdcde', borderRadius: '4px', padding: '6px', marginBottom: '6px' } },
+								el('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#646970', marginBottom: '4px' } },
+									el('span', null, (rev.source === 'manual_edit' ? 'Manual' : 'AI') + ' ' + revTime),
+									el(Button, { variant: 'link', isSmall: true, onClick: function () { handleRestore(rev); } }, 'Restore')
+								),
+								el('div', { style: { fontSize: '12px' } }, revSnippet)
+							);
+						})
+					)
+				)
 			)
 		);
 	}
 
+	// Register individual component panels in the Block Editor
 	if (PluginDocumentSettingPanel) {
-		wp.plugins.registerPlugin('aips-editor-panel', {
-			render: DocumentPanel
+		wp.plugins.registerPlugin('aips-editor-title-panel', {
+			render: function () {
+				return el(PluginDocumentSettingPanel, {
+					name: 'aips-editor-title-panel',
+					title: 'AI Edit: Post Title',
+					icon: 'heading'
+				}, el(ComponentAIEditPanel, { component: 'title', label: 'Title' }));
+			}
+		});
+
+		wp.plugins.registerPlugin('aips-editor-excerpt-panel', {
+			render: function () {
+				return el(PluginDocumentSettingPanel, {
+					name: 'aips-editor-excerpt-panel',
+					title: 'AI Edit: Post Excerpt',
+					icon: 'text'
+				}, el(ComponentAIEditPanel, { component: 'excerpt', label: 'Excerpt' }));
+			}
+		});
+
+		wp.plugins.registerPlugin('aips-editor-content-panel', {
+			render: function () {
+				return el(PluginDocumentSettingPanel, {
+					name: 'aips-editor-content-panel',
+					title: 'AI Edit: Post Content',
+					icon: 'editor-alignleft'
+				}, el(ComponentAIEditPanel, { component: 'content', label: 'Content' }));
+			}
+		});
+
+		wp.plugins.registerPlugin('aips-editor-image-panel', {
+			render: function () {
+				return el(PluginDocumentSettingPanel, {
+					name: 'aips-editor-image-panel',
+					title: 'AI Edit: Featured Image',
+					icon: 'format-image'
+				}, el(ComponentAIEditPanel, { component: 'featured_image', label: 'Featured Image' }));
+			}
 		});
 	}
 

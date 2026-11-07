@@ -1177,4 +1177,117 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertArrayHasKey('content', $captured_components);
 		$this->assertEquals('All Components Original Content', $captured_components['content']);
 	}
+
+	/**
+	 * Test ajax_save_post_components records timeline activity events in history container.
+	 */
+	public function test_ajax_save_post_components_records_timeline_activity_events() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Before Title',
+			'post_excerpt' => 'Before Excerpt',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		));
+
+		$_POST = array(
+			'action'     => 'aips_save_post_components',
+			'post_id'    => $post_id,
+			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
+			'components' => array(
+				'title'   => 'Regenerated Title Via AI Edit',
+				'excerpt' => 'Regenerated Excerpt Via AI Edit',
+			),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+
+		// Verify timeline activity events are recorded in history log
+		$logs = $this->history_repository->get_logs_by_history_id($history_id);
+		$this->assertNotEmpty($logs);
+
+		$timeline_messages = array();
+		foreach ($logs as $log) {
+			if ((int) $log->history_type_id === AIPS_History_Type::ACTIVITY) {
+				$details = json_decode($log->details, true);
+				if (isset($details['message'])) {
+					$timeline_messages[] = $details['message'];
+				}
+			}
+		}
+
+		$this->assertContains('Post Title regenerated via AI Edit', $timeline_messages);
+		$this->assertContains('Post Excerpt regenerated via AI Edit', $timeline_messages);
+	}
+
+	/**
+	 * Test ajax_restore_component_revision records timeline activity event.
+	 */
+	public function test_ajax_restore_component_revision_records_timeline_activity_event() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Current Title',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		));
+
+		$revision_id = $this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'ai_response',
+				'message'     => 'Title Revision Snapshot',
+				'output'      => array('value' => 'Restored Title Value'),
+				'context'     => array('component' => 'title', 'post_id' => $post_id),
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+
+		$_POST = array(
+			'action'      => 'aips_restore_component_revision',
+			'post_id'     => $post_id,
+			'component'   => 'title',
+			'revision_id' => $revision_id,
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_restore_component_revision();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+
+		// Verify timeline activity log
+		$logs = $this->history_repository->get_logs_by_history_id($history_id);
+		$found = false;
+		foreach ($logs as $log) {
+			if ((int) $log->history_type_id === AIPS_History_Type::ACTIVITY) {
+				$details = json_decode($log->details, true);
+				if (isset($details['message']) && strpos($details['message'], 'Post Title regenerated via AI Edit') !== false) {
+					$found = true;
+					break;
+				}
+			}
+		}
+		$this->assertTrue($found, 'Timeline activity log for restored revision was not found.');
+	}
 }

@@ -18,7 +18,11 @@ class AIPS_Editor_Assets {
 	/**
 	 * Meta box ID for the Classic Editor.
 	 */
-	const METABOX_ID = 'aips_classic_ai_edit_metabox';
+	const METABOX_ID          = 'aips_classic_ai_edit_metabox';
+	const METABOX_ID_TITLE    = 'aips_ai_edit_title_metabox';
+	const METABOX_ID_EXCERPT  = 'aips_ai_edit_excerpt_metabox';
+	const METABOX_ID_CONTENT  = 'aips_ai_edit_content_metabox';
+	const METABOX_ID_IMAGE    = 'aips_ai_edit_featured_image_metabox';
 
 	/**
 	 * @var AIPS_Editor_Directive_Service
@@ -65,6 +69,48 @@ class AIPS_Editor_Assets {
 			return;
 		}
 
+		// Register per-component AI Edit widgets
+		add_meta_box(
+			self::METABOX_ID_TITLE,
+			__('AI Edit: Post Title', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'side',
+			'high',
+			array('component' => 'title', 'label' => __('Title', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_EXCERPT,
+			__('AI Edit: Post Excerpt', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'side',
+			'default',
+			array('component' => 'excerpt', 'label' => __('Excerpt', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_CONTENT,
+			__('AI Edit: Post Content', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'normal',
+			'default',
+			array('component' => 'content', 'label' => __('Content', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_IMAGE,
+			__('AI Edit: Featured Image', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'side',
+			'default',
+			array('component' => 'featured_image', 'label' => __('Featured Image', 'ai-post-scheduler'))
+		);
+
+		// Keep existing quick directive meta box
 		add_meta_box(
 			self::METABOX_ID,
 			__('AI Edit & Directives', 'ai-post-scheduler'),
@@ -74,6 +120,22 @@ class AIPS_Editor_Assets {
 			'default',
 			array('__back_compat_meta_box' => true)
 		);
+	}
+
+	/**
+	 * Render a per-component Classic Editor meta box template.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @param array   $args Meta box registration arguments.
+	 * @return void
+	 */
+	public function render_classic_component_metabox($post, array $args = array()): void {
+		$component       = isset($args['args']['component']) ? sanitize_key($args['args']['component']) : 'title';
+		$component_label = isset($args['args']['label']) ? $args['args']['label'] : ucfirst($component);
+		$template_path   = AIPS_PLUGIN_DIR . 'templates/admin/classic-ai-edit-component-metabox.php';
+		if (file_exists($template_path)) {
+			include $template_path;
+		}
 	}
 
 	/**
@@ -166,9 +228,16 @@ class AIPS_Editor_Assets {
 		}
 
 		wp_register_style(
+			'aips-ai-edit-style',
+			AIPS_PLUGIN_URL . 'assets/css/admin-ai-edit.css',
+			array('aips-design-tokens'),
+			AIPS_VERSION
+		);
+
+		wp_register_style(
 			'aips-editor-style',
 			AIPS_PLUGIN_URL . 'assets/css/admin-editor.css',
-			array('aips-design-tokens'),
+			array('aips-design-tokens', 'aips-ai-edit-style'),
 			AIPS_VERSION
 		);
 	}
@@ -202,10 +271,23 @@ class AIPS_Editor_Assets {
 	 * @return array
 	 */
 	public function get_l10n(int $post_id = 0): array {
+		$history_id = 0;
+		if ($post_id > 0) {
+			$container = AIPS_Container::get_instance();
+			if ($container->has(AIPS_History_Repository_Interface::class)) {
+				$repo = $container->make(AIPS_History_Repository_Interface::class);
+				$rec  = $repo->get_by_post_id($post_id);
+				if ($rec && isset($rec->id)) {
+					$history_id = (int) $rec->id;
+				}
+			}
+		}
+
 		return array(
 			'ajaxurl'    => admin_url('admin-ajax.php'),
 			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
 			'postId'     => $post_id,
+			'historyId'  => $history_id,
 			'presets'    => $this->directive_service->get_standard_presets(),
 			'panelTitle' => __('AI Edit & Directives', 'ai-post-scheduler'),
 			'labels'     => array(

@@ -83,7 +83,12 @@ class AIPS_AI_Edit_Controller {
 			if (is_object($history_record) && !empty($history_record->id)) {
 				$history_id = absint($history_record->id);
 			} else {
-				AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+				$history_container = AIPS_History_Container::resolve_or_create($this->history_repository, $post_id, 0);
+				if (!is_wp_error($history_container) && $history_container->get_id()) {
+					$history_id = $history_container->get_id();
+				} else {
+					AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+				}
 			}
 		}
 		
@@ -181,7 +186,23 @@ class AIPS_AI_Edit_Controller {
 		$current_source = isset($_POST['current_source']) ? sanitize_key(wp_unslash($_POST['current_source'])) : '';
 		$current_reason = isset($_POST['current_reason']) ? sanitize_key(wp_unslash($_POST['current_reason'])) : '';
 		
-		if (!$post_id || !$history_id || !$component) {
+		if (!$post_id || !$component) {
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+		}
+
+		if (!$history_id && $post_id) {
+			$history_record = $this->history_repository->get_by_post_id($post_id);
+			if (is_object($history_record) && !empty($history_record->id)) {
+				$history_id = absint($history_record->id);
+			} else {
+				$history_container = AIPS_History_Container::resolve_or_create($this->history_repository, $post_id, 0);
+				if (!is_wp_error($history_container) && $history_container->get_id()) {
+					$history_id = $history_container->get_id();
+				}
+			}
+		}
+
+		if (!$history_id) {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
@@ -485,6 +506,25 @@ class AIPS_AI_Edit_Controller {
 
 		do_action('aips_post_components_updated', $post_id, $updated_components, $sanitized_components);
 		$this->reconcile_partial_generation_state($post_id);
+
+		// Record timeline activity events for each saved/regenerated component
+		$history_container = AIPS_History_Container::resolve_or_create($this->history_repository, $post_id);
+		if ($history_container && !is_wp_error($history_container)) {
+			foreach ($updated_components as $comp) {
+				$comp_label = ucfirst(str_replace('_', ' ', $comp));
+				$saved_val = isset($sanitized_components[$comp]) ? $sanitized_components[$comp] : '';
+				if (is_array($saved_val) || is_object($saved_val)) {
+					$saved_val = wp_json_encode($saved_val);
+				}
+				$history_container->record(
+					'activity',
+					sprintf(__('Post %s regenerated via AI Edit', 'ai-post-scheduler'), $comp_label),
+					null,
+					$saved_val,
+					array('component' => $comp, 'post_id' => $post_id, 'action' => 'save_component')
+				);
+			}
+		}
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
@@ -672,6 +712,20 @@ class AIPS_AI_Edit_Controller {
 
 		do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
 		$this->reconcile_partial_generation_state($post_id);
+
+		// Record timeline activity event for restored revision
+		$history_container = AIPS_History_Container::resolve_or_create($this->history_repository, $post_id);
+		if ($history_container && !is_wp_error($history_container)) {
+			$comp_label = ucfirst(str_replace('_', ' ', $component));
+			$saved_val  = is_array($restored_value) || is_object($restored_value) ? wp_json_encode($restored_value) : (string) $restored_value;
+			$history_container->record(
+				'activity',
+				sprintf(__('Post %s regenerated via AI Edit', 'ai-post-scheduler'), $comp_label),
+				null,
+				$saved_val,
+				array('component' => $component, 'post_id' => $post_id, 'action' => 'restore_revision', 'revision_id' => $revision_id)
+			);
+		}
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),

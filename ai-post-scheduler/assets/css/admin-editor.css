@@ -196,3 +196,111 @@
 .aips-classic-variants-list {
 	margin-top: var(--aips-space-2);
 }
+
+/* ==========================================================================
+   Per-Component Classic Editor Widgets & Gutenberg Panels
+   ========================================================================== */
+.aips-classic-component-widget {
+	padding: 4px 0;
+}
+
+.aips-classic-component-widget .aips-component-header {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.aips-classic-component-widget .aips-component-actions {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+
+.aips-classic-component-widget .aips-regenerate-btn.regenerating .dashicons {
+	animation: aips-spin 1s linear infinite;
+}
+
+.aips-classic-component-widget .aips-diff-wrapper {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.aips-classic-component-widget .aips-diff-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 10px;
+	background: #f0f0f1;
+	border-bottom: 1px solid #dcdcde;
+	font-size: 11px;
+	font-weight: 600;
+	color: #50575e;
+}
+
+.aips-classic-component-widget .aips-diff-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.aips-classic-component-widget .aips-diff-col {
+	padding: 8px 10px;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.aips-classic-component-widget .aips-diff-col-current {
+	background: #fdfdfd;
+	border-right: 1px solid #dcdcde;
+}
+
+.aips-classic-component-widget .aips-diff-col-regenerated {
+	background: #edfaef;
+}
+
+.aips-classic-component-widget .aips-diff-col-header {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 6px;
+	color: #646970;
+}
+
+.aips-classic-component-widget .aips-diff-col-regenerated .aips-diff-col-header {
+	color: #007017;
+}
+
+.aips-classic-component-widget .aips-diff-col-body {
+	font-size: 12px;
+	line-height: 1.45;
+	color: #1d2327;
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-height: 160px;
+	overflow-y: auto;
+	background: #fff;
+	padding: 6px 8px;
+	border-radius: 3px;
+	border: 1px solid #dcdcde;
+}
+
+.aips-classic-component-widget .aips-diff-col-regenerated .aips-diff-col-body {
+	border-color: #68de7c;
+}
+
+.aips-classic-component-widget .aips-diff-footer {
+	display: flex;
+	align-items: center;
+	padding: 8px 10px;
+	background: #fff;
+}
+
+.aips-gutenberg-component-section .aips-diff-wrapper {
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}

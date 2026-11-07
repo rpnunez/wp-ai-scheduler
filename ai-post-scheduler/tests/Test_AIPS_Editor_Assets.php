@@ -85,4 +85,28 @@ class Test_AIPS_Editor_Assets extends WP_UnitTestCase {
 		$this->assertArrayHasKey(AIPS_Editor_Directive_Service::PRESET_SIMPLIFY, $l10n['presets']);
 		$this->assertArrayHasKey(AIPS_Editor_Directive_Service::PRESET_TONE_SHIFT, $l10n['presets']);
 	}
+
+	public function test_register_classic_metabox_registers_per_component_boxes() {
+		global $wp_meta_boxes;
+
+		$this->assets->register_classic_metabox('post');
+
+		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_TITLE, $wp_meta_boxes['post']['side']['high']);
+		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_EXCERPT, $wp_meta_boxes['post']['side']['default']);
+		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_CONTENT, $wp_meta_boxes['post']['normal']['default']);
+		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_IMAGE, $wp_meta_boxes['post']['side']['default']);
+	}
+
+	public function test_render_classic_component_metabox_outputs_html() {
+		$post_id = $this->factory->post->create(array('post_title' => 'Widget Post'));
+		$post    = get_post($post_id);
+
+		ob_start();
+		$this->assets->render_classic_component_metabox($post, array('args' => array('component' => 'title', 'label' => 'Title')));
+		$html = ob_get_clean();
+
+		$this->assertStringContainsString('data-component="title"', $html);
+		$this->assertStringContainsString('aips-regenerate-btn', $html);
+		$this->assertStringContainsString('aips-view-revisions-btn', $html);
+	}
 }

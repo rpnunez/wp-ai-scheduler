@@ -189,6 +189,41 @@ class AIPS_History_Container {
 
 		return $history_container;
 	}
+
+	/**
+	 * Resolve an existing History Container, or create one for the post if none exists.
+	 *
+	 * @param AIPS_History_Repository_Interface $repository Repository instance.
+	 * @param int                               $post_id    Post ID.
+	 * @param int                               $history_id Optional history ID.
+	 * @return AIPS_History_Container|WP_Error Container on success, WP_Error on failure.
+	 */
+	public static function resolve_or_create(AIPS_History_Repository_Interface $repository, $post_id = 0, $history_id = 0) {
+		$container = self::resolve_existing($repository, $post_id, $history_id);
+		if (!is_wp_error($container)) {
+			return $container;
+		}
+
+		$post_id = absint($post_id);
+		if ($post_id <= 0) {
+			return $container;
+		}
+
+		$post = get_post($post_id);
+		$metadata = array(
+			'post_id'         => $post_id,
+			'post_type'       => $post ? $post->post_type : 'post',
+			'generated_title' => $post ? $post->post_title : '',
+			'creation_method' => 'ai_edit',
+		);
+
+		$new_container = new self($repository, 'post_generation', $metadata);
+		if ($new_container->get_id()) {
+			return $new_container;
+		}
+
+		return $container;
+	}
 	
 	/**
 	 * Persist this history container to the database
@@ -300,6 +335,10 @@ class AIPS_History_Container {
 		}
 		
 		// Merge additional context
+		if (!empty($this->metadata['post_id']) && !isset($context['post_id'])) {
+			$context['post_id'] = absint($this->metadata['post_id']);
+		}
+
 		if (!empty($context)) {
 			$details['context'] = $context;
 		}

@@ -556,6 +556,10 @@ class AIPS_History {
                 $message = $log['sections'][0]['label'];
             }
 
+            if (preg_match('/Post\s+([A-Za-z\s]+)\s+regenerated/i', $message, $matches)) {
+                $type_label = sprintf(__('Post %s regenerated', 'ai-post-scheduler'), trim($matches[1]));
+            }
+
             if (empty($warning_text) && in_array('warning', (array) ($log['type_ids'] ?? array()), true)) {
                 $warning_text = wp_strip_all_tags($message);
             }
