@@ -74,8 +74,17 @@ class AIPS_AI_Edit_Controller {
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
-		if (!$post_id || !$history_id) {
+		if (!$post_id) {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+		}
+
+		if (!$history_id) {
+			$history_record = $this->history_repository->get_by_post_id($post_id);
+			if (is_object($history_record) && !empty($history_record->id)) {
+				$history_id = absint($history_record->id);
+			} else {
+				AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+			}
 		}
 		
 		// Check if user can edit this post
@@ -128,6 +137,8 @@ class AIPS_AI_Edit_Controller {
 		
 		// Build response
 		$response = array(
+			'post_id' => $post_id,
+			'history_id' => $history_id,
 			'context' => $context_display,
 			'components' => array(
 				'title' => array(
@@ -400,8 +411,8 @@ class AIPS_AI_Edit_Controller {
 			$updated_components[] = 'content';
 		}
 		
-		// Update post
-		$result = wp_update_post($post_data, true);
+		// Update post (re-slash post data because wp_update_post expects slashed data)
+		$result = wp_update_post(wp_slash($post_data), true);
 		
 		if (is_wp_error($result)) {
 			$this->log_wp_error($result, __METHOD__);
@@ -421,14 +432,14 @@ class AIPS_AI_Edit_Controller {
 
 		// Security: Create a sanitized array of components for the action hook to prevent passing raw POST data
 		$sanitized_components = array();
-		if (isset($components['title'])) {
-			$sanitized_components['title'] = sanitize_text_field(wp_unslash($components['title']));
+		if (isset($post_data['post_title'])) {
+			$sanitized_components['title'] = $post_data['post_title'];
 		}
-		if (isset($components['excerpt'])) {
-			$sanitized_components['excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
+		if (isset($post_data['post_excerpt'])) {
+			$sanitized_components['excerpt'] = $post_data['post_excerpt'];
 		}
-		if (isset($components['content'])) {
-			$sanitized_components['content'] = wp_kses_post(wp_unslash($components['content']));
+		if (isset($post_data['post_content'])) {
+			$sanitized_components['content'] = $post_data['post_content'];
 		}
 		if (isset($components['featured_image_id'])) {
 			$sanitized_components['featured_image_id'] = absint($components['featured_image_id']);
@@ -440,6 +451,8 @@ class AIPS_AI_Edit_Controller {
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
 			'updated_components' => $updated_components,
+			'post_id' => $post_id,
+			'title' => isset($post_data['post_title']) ? $post_data['post_title'] : get_the_title($post_id),
 		));
 	}
 	
@@ -593,7 +606,7 @@ class AIPS_AI_Edit_Controller {
 		
 		// Update post (unless it's featured image which was already set)
 		if ($component !== 'featured_image') {
-			$result = wp_update_post($post_data, true);
+			$result = wp_update_post(wp_slash($post_data), true);
 			
 			if (is_wp_error($result)) {
 				$this->log_wp_error($result, __METHOD__);

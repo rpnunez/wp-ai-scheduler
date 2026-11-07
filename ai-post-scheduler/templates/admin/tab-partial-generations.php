@@ -187,8 +187,8 @@ if (!defined('ABSPATH')) {
 											<button type="button" class="aips-row-action-item aips-ai-edit-btn"
 												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-												title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-admin-customizer"></span>
+												title="<?php esc_attr_e('AI Edit — Regenerate post components (title, excerpt, content, image) with AI', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-update"></span>
 												<span><?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?></span>
 											</button>
 											<button type="button" class="aips-row-action-item aips-view-session"

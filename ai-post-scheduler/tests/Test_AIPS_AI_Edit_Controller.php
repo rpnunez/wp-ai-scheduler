@@ -146,6 +146,77 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		ob_end_clean();
 		$this->fail('Should have thrown WPAjaxDieContinueException');
 	}
+
+	/**
+	 * Test get_post_components resolves history_id via repository when omitted in request.
+	 */
+	public function test_get_post_components_resolves_history_id_when_omitted() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Auto Resolved Post',
+			'post_content' => 'Auto resolved content',
+			'post_excerpt' => 'Auto resolved excerpt',
+		));
+
+		$template = (object) array(
+			'id' => 2,
+			'name' => 'Auto Template',
+			'prompt_template' => 'Prompt template',
+			'title_prompt' => 'Title prompt',
+			'post_status' => 'draft',
+			'post_type' => 'post',
+			'post_category' => 0,
+			'post_author' => get_current_user_id(),
+		);
+
+		$mock_service = $this->getMockBuilder('AIPS_Component_Regeneration_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_generation_context'))
+			->getMock();
+
+		$mock_service->method('get_generation_context')
+			->with(303)
+			->willReturn(
+				array(
+					'history_id' => 303,
+					'post_id' => $post_id,
+					'context_type' => 'template',
+					'context_name' => 'Auto Template',
+					'generation_context' => new AIPS_Template_Context($template, null, 'Auto Topic'),
+				)
+			);
+
+		$mock_repo = $this->createMock('AIPS_History_Repository_Interface');
+		$mock_repo->method('get_by_post_id')
+			->with($post_id)
+			->willReturn((object) array('id' => 303, 'post_id' => $post_id));
+
+		$controller = new AIPS_AI_Edit_Controller($mock_service, $mock_repo);
+
+		$_POST = array(
+			'action' => 'aips_get_post_components',
+			'post_id' => $post_id,
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$controller->ajax_get_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			$output = ob_get_clean();
+			$response = json_decode($output, true);
+
+			$this->assertTrue($response['success']);
+			$this->assertSame(303, $response['data']['history_id']);
+			$this->assertSame($post_id, $response['data']['post_id']);
+			return;
+		} catch (Exception $e) {
+			ob_end_clean();
+			$this->fail('Should not throw exception: ' . $e->getMessage());
+		}
+		ob_end_clean();
+		$this->fail('Should have thrown WPAjaxDieContinueException');
+	}
 	
 	/**
 	 * Test regenerate_component validates component type
@@ -308,6 +379,159 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test save_post_components preserves backslashes in title, excerpt, and content
+	 */
+	public function test_save_post_components_preserves_backslashes() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Initial Title',
+			'post_excerpt' => 'Initial excerpt',
+			'post_content' => 'Initial content',
+		));
+
+		$backslash_title = 'Title with \\path\\to\\file and LaTeX \\alpha';
+		$backslash_excerpt = 'Excerpt with C:\\Windows\\System32 and \\n newline symbol';
+		$backslash_content = '<p>Formula $\\frac{a}{b}$ and directory C:\\xampp\\htdocs and \\\\escaped</p>';
+
+		// In WordPress runtime, $_POST is magic-quoted (slashed) by wp_magic_quotes().
+		// We simulate the real POST payload by passing wp_slash().
+		$_POST = array(
+			'action' => 'aips_save_post_components',
+			'post_id' => $post_id,
+			'components' => wp_slash(array(
+				'title' => $backslash_title,
+				'excerpt' => $backslash_excerpt,
+				'content' => $backslash_content,
+			)),
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		$hook_called = false;
+		$captured_sanitized = array();
+		add_action('aips_post_components_updated', function($id, $components, $sanitized) use (&$hook_called, &$captured_sanitized) {
+			$hook_called = true;
+			$captured_sanitized = $sanitized;
+		}, 10, 3);
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected exception from wp_send_json_success
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+
+		$updated_post = get_post($post_id);
+		$this->assertEquals($backslash_title, $updated_post->post_title);
+		$this->assertEquals($backslash_excerpt, $updated_post->post_excerpt);
+		$this->assertEquals($backslash_content, $updated_post->post_content);
+
+		$this->assertTrue($hook_called);
+		$this->assertEquals($backslash_title, $captured_sanitized['title']);
+		$this->assertEquals($backslash_excerpt, $captured_sanitized['excerpt']);
+		$this->assertEquals($backslash_content, $captured_sanitized['content']);
+	}
+
+	/**
+	 * Test save_post_components preserves backslashes across repeated saves
+	 */
+	public function test_save_post_components_preserves_backslashes_across_multiple_saves() {
+		$post_id = $this->factory->post->create();
+
+		$backslash_title = 'Regex \\d+\\.\\w+';
+		$backslash_excerpt = 'Path C:\\Projects\\AI';
+		$backslash_content = '<p>JSON snippet: {\\"key\\": \\"value\\"} and LaTeX: \\sum_{i=1}^n</p>';
+
+		for ($i = 0; $i < 3; $i++) {
+			$_POST = array(
+				'action' => 'aips_save_post_components',
+				'post_id' => $post_id,
+				'components' => wp_slash(array(
+					'title' => $backslash_title,
+					'excerpt' => $backslash_excerpt,
+					'content' => $backslash_content,
+				)),
+				'nonce' => wp_create_nonce('aips_ajax_nonce'),
+			);
+			$this->sync_request_from_post();
+
+			ob_start();
+			try {
+				$this->controller->ajax_save_post_components();
+			} catch (WPAjaxDieContinueException $e) {
+				// Expected
+			}
+			$output = ob_get_clean();
+			$response = json_decode($output, true);
+			$this->assertTrue($response['success']);
+
+			$saved = get_post($post_id);
+			$this->assertEquals($backslash_title, $saved->post_title);
+			$this->assertEquals($backslash_excerpt, $saved->post_excerpt);
+			$this->assertEquals($backslash_content, $saved->post_content);
+		}
+	}
+
+	/**
+	 * Test restore_component_revision preserves backslashes
+	 */
+	public function test_restore_component_revision_preserves_backslashes() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Original Title',
+			'post_content' => 'Original content',
+		));
+
+		$backslash_content = '<p>Math: $\\sqrt{x^2 + y^2}$ and path C:\\Windows</p>';
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status' => 'completed',
+		));
+
+		$revision_id = $this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'ai_response',
+				'message' => 'Content Snapshot',
+				'output' => array(
+					'value' => $backslash_content,
+				),
+				'context' => array(
+					'component' => 'content',
+					'post_id' => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+
+		$_POST = array(
+			'action' => 'aips_restore_component_revision',
+			'post_id' => $post_id,
+			'component' => 'content',
+			'revision_id' => $revision_id,
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_restore_component_revision();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected exception from wp_send_json_success
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+
+		$updated_post = get_post($post_id);
+		$this->assertEquals($backslash_content, $updated_post->post_content);
+	}
+
+	/**
 	 * Test get_component_revisions supports legacy component_type payload.
 	 */
 	public function test_get_component_revisions_accepts_component_type() {
@@ -380,8 +604,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'ai_response',
 			array(
+				'log_subtype' => 'ai_response',
 				'message' => 'Title Snapshot',
 				'output' => array(
 					'value' => 'Restored Title',

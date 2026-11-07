@@ -336,6 +336,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 								</div>
 
 								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Summarized Notification Digest', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_notifications_summarized_digest_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
 									<h3 class="aips-settings-card-title"><?php esc_html_e('Scheduled Activity Digests & Reports', 'ai-post-scheduler'); ?></h3>
 									<table class="form-table" role="presentation">
 										<?php do_settings_fields('aips-settings', 'aips_notifications_digests_section'); ?>
