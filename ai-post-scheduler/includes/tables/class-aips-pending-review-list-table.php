@@ -37,7 +37,7 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 	 *
 	 * @var int
 	 */
-	const PER_PAGE_DEFAULT = 20;
+	const PER_PAGE_DEFAULT = 12;
 
 	/**
 	 * @var AIPS_Post_Review_Repository
