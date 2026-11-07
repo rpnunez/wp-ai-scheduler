@@ -46,6 +46,12 @@
 			}
 			this.bindEvents();
 			this.initInfiniteScroll();
+
+			var savedView = 'cards';
+			try {
+				savedView = localStorage.getItem('aips_pending_review_view') || 'cards';
+			} catch (e) {}
+			this.setView(savedView);
 		},
 
 		/**
@@ -97,6 +103,9 @@
 			});
 			$(document).on('click', '#aips-pending-clear-filters', this.onClearFilters.bind(this));
 
+			// View toggle (cards vs list)
+			$(document).on('click', '.aips-view-toggle-btn', this.onViewToggleClick.bind(this));
+
 			// Close preview modal
 			$(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', this.closePreviewModal.bind(this));
 
@@ -134,6 +143,49 @@
 					self.fetchPosts(self.currentPage + 1, false);
 				}
 			});
+		},
+
+		/**
+		 * Handle click on layout view toggle (cards vs list).
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onViewToggleClick: function (e) {
+			e.preventDefault();
+			var view = $(e.currentTarget).data('view');
+			if (view) {
+				this.setView(view);
+			}
+		},
+
+		/**
+		 * Switch between cards and list views.
+		 *
+		 * @param {string} view 'cards' or 'list'.
+		 * @return {void}
+		 */
+		setView: function (view) {
+			$('.aips-view-toggle-btn').removeClass('is-active').attr('aria-pressed', 'false');
+			$('.aips-view-toggle-btn[data-view="' + view + '"]').addClass('is-active').attr('aria-pressed', 'true');
+
+			if (view === 'list') {
+				$('#aips-pending-posts-wrap').hide();
+				$('#aips-pending-list-wrap').show();
+				$('#aips-pending-cards-count').hide();
+				$('#aips-pending-list-pagination').show();
+				$('#aips-select-all-cards-wrap').hide();
+			} else {
+				$('#aips-pending-list-wrap').hide();
+				$('#aips-pending-posts-wrap').show();
+				$('#aips-pending-list-pagination').hide();
+				$('#aips-pending-cards-count').show();
+				$('#aips-select-all-cards-wrap').show();
+			}
+
+			try {
+				localStorage.setItem('aips_pending_review_view', view);
+			} catch (e) {}
 		},
 
 		// -----------------------------------------------------------------
@@ -554,15 +606,19 @@
 						var totalItems   = parseInt(data.total, 10) || 0;
 
 						var cardsHtml = '';
+						var rowsHtml  = '';
 						for (var i = 0; i < items.length; i++) {
 							cardsHtml += self.renderCardHtml(items[i]);
+							rowsHtml  += self.renderTableRowHtml(items[i]);
 						}
 
 						if (reset) {
 							$grid.html(cardsHtml);
+							$('#aips-post-review-form tbody').html(rowsHtml);
 							$('input[id^="cb-select-all-"], #aips-select-all-cards').prop('checked', false);
 						} else {
 							$grid.append(cardsHtml);
+							$('#aips-post-review-form tbody').append(rowsHtml);
 						}
 
 						var currentLoaded = $grid.find('.aips-post-card').length;
@@ -572,7 +628,20 @@
 						$('#aips-pending-review-tab .aips-filter-bar').data('total', totalItems);
 
 						if (totalItems > 0 && currentLoaded > 0) {
-							$postsWrap.show();
+							var currentView = 'cards';
+							try {
+								currentView = localStorage.getItem('aips_pending_review_view') || 'cards';
+							} catch (e) {}
+
+							if (currentView === 'list') {
+								$('#aips-pending-list-wrap').show();
+								$postsWrap.hide();
+								$('#aips-select-all-cards-wrap').hide();
+							} else {
+								$postsWrap.show();
+								$('#aips-pending-list-wrap').hide();
+								$('#aips-select-all-cards-wrap').show();
+							}
 							$toolbar.show();
 							$emptyWrap.hide();
 							if (self.currentPage < self.totalPages) {
@@ -582,6 +651,7 @@
 							}
 						} else {
 							$postsWrap.hide();
+							$('#aips-pending-list-wrap').hide();
 							$toolbar.hide();
 							$emptyWrap.show();
 							$loadMoreWrap.hide();
@@ -717,6 +787,77 @@
 					'</div>' +
 				'</div>' +
 			'</div>';
+		},
+
+		/**
+		 * Render a single table row HTML from item object.
+		 *
+		 * @param {Object} item Draft post item.
+		 * @return {string} Table row HTML string.
+		 */
+		renderTableRowHtml: function (item) {
+			var esc = (AIPS.Templates && AIPS.Templates.escape) ? AIPS.Templates.escape : function (s) { return $('<div>').text(s || '').html(); };
+
+			var postId           = parseInt(item.post_id, 10);
+			var historyId        = parseInt(item.id, 10);
+			var title            = item.post_title || item.generated_title || 'Untitled';
+			var source           = item.source || (item.template_name ? ('Template: ' + item.template_name) : '');
+			var postTypeLabel    = item.post_type_label || item.wp_post_type || 'Post';
+			var createdFormatted = item.created_at_formatted || '';
+			var editUrl          = item.edit_url || ('post.php?post=' + postId + '&action=edit');
+			var menuId           = 'aips-review-row-actions-' + postId;
+			var historyUrl       = 'admin.php?page=aips-generated-posts&tab=history&post_id=' + postId;
+
+			return '<tr id="post-' + postId + '">' +
+				'<th scope="row" class="check-column">' +
+					'<input type="checkbox" name="post[]" value="' + postId + '" class="aips-post-checkbox">' +
+				'</th>' +
+				'<td class="title column-title has-row-actions column-primary">' +
+					'<strong><a href="#" class="aips-preview-post" data-post-id="' + postId + '" title="Preview post">' + esc(title) + '</a></strong>' +
+					(source ? '<span class="aips-cell-source">' + esc(source) + '</span>' : '') +
+				'</td>' +
+				'<td class="context column-context">' +
+					(source ? '<span class="aips-cell-source">' + esc(source) + '</span>' : '') +
+				'</td>' +
+				'<td class="type column-type">' +
+					'<span class="aips-badge aips-badge-neutral">' + esc(postTypeLabel) + '</span>' +
+				'</td>' +
+				'<td class="created column-created">' +
+					'<div class="cell-meta">' + esc(createdFormatted) + '</div>' +
+				'</td>' +
+				'<td class="actions column-actions">' +
+					'<div class="cell-actions">' +
+						'<div class="aips-row-action-group">' +
+							'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-post" data-post-id="' + postId + '" title="Publish this post">' +
+								'<span class="dashicons dashicons-upload"></span> ' + (aipsPostReviewL10n.publish || 'Publish') +
+							'</button>' +
+							'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="' + menuId + '" title="More actions">' +
+								'<span class="screen-reader-text">More actions</span>' +
+							'</button>' +
+						'</div>' +
+						'<div id="' + menuId + '" class="aips-row-action-menu" hidden>' +
+							'<button type="button" class="aips-row-action-item aips-edit-post" data-edit-url="' + esc(editUrl) + '" title="Edit this post">' +
+								'<span class="dashicons dashicons-edit"></span> <span>Edit</span>' +
+							'</button>' +
+							'<button type="button" class="aips-row-action-item aips-preview-post" data-post-id="' + postId + '" title="Preview this post">' +
+								'<span class="dashicons dashicons-visibility"></span> <span>Preview</span>' +
+							'</button>' +
+							'<button type="button" class="aips-row-action-item aips-ai-edit-btn" data-post-id="' + postId + '" data-history-id="' + historyId + '" title="AI Edit - Regenerate components">' +
+								'<span class="dashicons dashicons-admin-customizer"></span> <span>AI Edit</span>' +
+							'</button>' +
+							'<a class="aips-row-action-item aips-open-history-modal" href="' + esc(historyUrl) + '" data-history-id="' + historyId + '" data-post-id="' + postId + '" title="View history for this post">' +
+								'<span class="dashicons dashicons-backup"></span> <span>View History</span>' +
+							'</a>' +
+							'<button type="button" class="aips-row-action-item aips-regenerate-post" data-history-id="' + historyId + '" data-post-id="' + postId + '" title="Regenerate this post">' +
+								'<span class="dashicons dashicons-update"></span> <span>Re-generate</span>' +
+							'</button>' +
+							'<button type="button" class="aips-row-action-item aips-delete-post aips-danger-action" data-post-id="' + postId + '" data-history-id="' + historyId + '" title="Delete this draft post">' +
+								'<span class="dashicons dashicons-trash"></span> <span>Delete</span>' +
+							'</button>' +
+						'</div>' +
+					'</div>' +
+				'</td>' +
+			'</tr>';
 		},
 
 		/**
@@ -1098,6 +1239,7 @@
 				}
 
 				$('#aips-pending-posts-wrap').hide();
+				$('#aips-pending-list-wrap').hide();
 				$('.aips-pending-toolbar').hide();
 				$('#aips-pending-empty-state-wrap').show();
 			}

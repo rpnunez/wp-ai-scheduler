@@ -26,10 +26,12 @@ $review_total = $review_table->get_total_items();
 					<!-- Bulk Actions & Cards Toolbar -->
 					<div class="aips-panel-toolbar aips-pending-toolbar" <?php if (!$review_table->has_items()): ?>style="display:none;"<?php endif; ?>>
 						<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-							<label class="aips-card-select-all-label">
-								<input type="checkbox" id="aips-select-all-cards" class="aips-checkbox" aria-label="<?php esc_attr_e('Select all posts', 'ai-post-scheduler'); ?>" />
-								<span><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></span>
-							</label>
+							<span id="aips-select-all-cards-wrap">
+								<label class="aips-card-select-all-label">
+									<input type="checkbox" id="aips-select-all-cards" class="aips-checkbox" aria-label="<?php esc_attr_e('Select all posts', 'ai-post-scheduler'); ?>" />
+									<span><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></span>
+								</label>
+							</span>
 							<select name="bulk_action" id="bulk-action-selector-top" class="aips-form-select" style="width: auto;">
 								<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 								<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
@@ -41,14 +43,29 @@ $review_total = $review_table->get_total_items();
 								<?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
 							</button>
 						</div>
-						<div class="aips-toolbar-right aips-pending-count-badge">
-							<span class="aips-count-text">
-								<?php esc_html_e('Showing', 'ai-post-scheduler'); ?>
-								<strong id="aips-pending-loaded-count"><?php echo count($review_table->items); ?></strong>
-								<?php esc_html_e('of', 'ai-post-scheduler'); ?>
-								<strong id="aips-pending-total-count"><?php echo esc_html((string) $review_total); ?></strong>
-								<?php esc_html_e('pending posts', 'ai-post-scheduler'); ?>
-							</span>
+						<div class="aips-toolbar-right">
+							<div class="aips-view-toggle" role="group" aria-label="<?php esc_attr_e('View layout', 'ai-post-scheduler'); ?>">
+								<button type="button" class="aips-view-toggle-btn is-active" data-view="cards" title="<?php esc_attr_e('Cards view', 'ai-post-scheduler'); ?>" aria-pressed="true">
+									<span class="dashicons dashicons-grid-view" aria-hidden="true"></span>
+									<span class="aips-view-toggle-text"><?php esc_html_e('Cards', 'ai-post-scheduler'); ?></span>
+								</button>
+								<button type="button" class="aips-view-toggle-btn" data-view="list" title="<?php esc_attr_e('List view', 'ai-post-scheduler'); ?>" aria-pressed="false">
+									<span class="dashicons dashicons-list-view" aria-hidden="true"></span>
+									<span class="aips-view-toggle-text"><?php esc_html_e('List', 'ai-post-scheduler'); ?></span>
+								</button>
+							</div>
+							<div class="aips-pending-count-badge" id="aips-pending-cards-count">
+								<span class="aips-count-text">
+									<?php esc_html_e('Showing', 'ai-post-scheduler'); ?>
+									<strong id="aips-pending-loaded-count"><?php echo count($review_table->items); ?></strong>
+									<?php esc_html_e('of', 'ai-post-scheduler'); ?>
+									<strong id="aips-pending-total-count"><?php echo esc_html((string) $review_total); ?></strong>
+									<?php esc_html_e('pending posts', 'ai-post-scheduler'); ?>
+								</span>
+							</div>
+							<div class="aips-review-pagination" id="aips-pending-list-pagination" style="display: none;">
+								<?php $review_table->pagination('top'); ?>
+							</div>
 						</div>
 					</div>
 
@@ -216,6 +233,14 @@ $review_total = $review_table->get_total_items();
 								<span class="aips-load-more-text"><?php esc_html_e('Load More Posts', 'ai-post-scheduler'); ?></span>
 							</button>
 						</div>
+					</div>
+
+					<div id="aips-pending-list-wrap" class="aips-pending-list-wrap aips-panel-body no-padding" style="display:none;">
+						<form id="aips-post-review-form" method="post">
+							<div class="aips-list-table-wrap">
+								<?php $review_table->display(); ?>
+							</div>
+						</form>
 					</div>
 
 					<div class="aips-panel-body aips-pending-empty-state-wrap" id="aips-pending-empty-state-wrap" <?php if ($review_table->has_items()): ?>style="display:none;"<?php endif; ?>>
