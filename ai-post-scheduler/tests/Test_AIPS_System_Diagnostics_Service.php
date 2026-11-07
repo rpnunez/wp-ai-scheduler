@@ -32,14 +32,25 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			? $overrides['date_time_db_repair']
 			: $this->mock_date_time_db_repair();
 
-		return new AIPS_System_Diagnostics_Service(
-			$history_repository,
-			$bulk_batch_job_store,
-			$resilience_service,
-			$cache_monitor_service,
-			$notifications_repository,
-			$date_time_db_repair
-		);
+		// clear_embeddings_cache() builds its own embeddings repository and
+		// deletes transients via $wpdb, so stub it to keep the service isolated.
+		$service = $this->getMockBuilder('AIPS_System_Diagnostics_Service')
+			->setConstructorArgs(array(
+				$history_repository,
+				$bulk_batch_job_store,
+				$resilience_service,
+				$cache_monitor_service,
+				$notifications_repository,
+				$date_time_db_repair,
+			))
+			->onlyMethods(array('clear_embeddings_cache'))
+			->getMock();
+		$service->method('clear_embeddings_cache')->willReturn(array(
+			'success' => true,
+			'message' => 'Embeddings cache cleared.',
+		));
+
+		return $service;
 	}
 
 	private function mock_history_repository() {
@@ -121,12 +132,13 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			'retry_failed_slices',
 			'reset_resilience',
 			'rebuild_caches',
+			'clear_embeddings_cache',
 		);
 
 		$this->assertSame($expected_order, wp_list_pluck($result['steps'], 'step'));
-		$this->assertSame(11, $result['succeeded']);
+		$this->assertSame(12, $result['succeeded']);
 		$this->assertSame(0, $result['failed']);
-		$this->assertStringContainsString('11 of 11', $result['message']);
+		$this->assertStringContainsString('12 of 12', $result['message']);
 
 		foreach ($result['steps'] as $step) {
 			$this->assertTrue($step['success'], $step['step']);
@@ -173,8 +185,8 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 
 		$result = $service->refresh_system();
 
-		$this->assertCount(11, $result['steps']);
-		$this->assertSame(10, $result['succeeded']);
+		$this->assertCount(12, $result['steps']);
+		$this->assertSame(11, $result['succeeded']);
 		$this->assertSame(1, $result['failed']);
 
 		$first_step = $result['steps'][0];
