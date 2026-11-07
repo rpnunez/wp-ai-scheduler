@@ -1218,6 +1218,9 @@ final class AI_Post_Scheduler {
         // "Internal Links" panel in the Classic and Block editors.
         new AIPS_Internal_Links_Editor_Panel();
 
+        // Native "AI Edit" in the Classic and Block editors.
+        new AIPS_Editor_Assets();
+
         // Keep the duplicate scan cron event in line with its setting.
         (new AIPS_Duplicate_Group_Service())->ensure_schedule();
 

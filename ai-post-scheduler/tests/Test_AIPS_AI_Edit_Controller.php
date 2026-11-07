@@ -420,12 +420,20 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'status' => 'completed',
 		));
 
-		$revision_id = $this->history_repository->add_component_revision(
-			$post_id,
+		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'content',
-			$backslash_content,
-			'ai_regeneration'
+			array(
+				'log_subtype' => 'ai_response',
+				'message' => 'Content Snapshot',
+				'output' => array(
+					'value' => $backslash_content,
+				),
+				'context' => array(
+					'component' => 'content',
+					'post_id' => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
 		);
 
 		$_POST = array(
@@ -525,8 +533,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'ai_response',
 			array(
+				'log_subtype' => 'ai_response',
 				'message' => 'Title Snapshot',
 				'output' => array(
 					'value' => 'Restored Title',
