@@ -387,6 +387,12 @@ class AIPS_Component_Regeneration_Service {
 		$title = $this->regenerate_title($context);
 		if (is_wp_error($title)) {
 			$result['errors']['title'] = $title->get_error_message();
+			if (AIPS_AI_Service::is_unrecoverable_error($title)) {
+				$result['skipped']['content'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
+				$result['skipped']['excerpt'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
+				$result['skipped']['featured_image'] = __('Skipped due to provider failure during title generation.', 'ai-post-scheduler');
+				return $result;
+			}
 		} else {
 			$result['regenerated']['title'] = $title;
 			$context['current_title'] = $title;
@@ -395,6 +401,11 @@ class AIPS_Component_Regeneration_Service {
 		$content = $this->regenerate_content($context);
 		if (is_wp_error($content)) {
 			$result['errors']['content'] = $content->get_error_message();
+			if (AIPS_AI_Service::is_unrecoverable_error($content)) {
+				$result['skipped']['excerpt'] = __('Skipped due to provider failure during content generation.', 'ai-post-scheduler');
+				$result['skipped']['featured_image'] = __('Skipped due to provider failure during content generation.', 'ai-post-scheduler');
+				return $result;
+			}
 		} else {
 			$result['regenerated']['content'] = $content;
 			$context['current_content'] = $content;
@@ -403,6 +414,10 @@ class AIPS_Component_Regeneration_Service {
 		$excerpt = $this->regenerate_excerpt($context);
 		if (is_wp_error($excerpt)) {
 			$result['errors']['excerpt'] = $excerpt->get_error_message();
+			if (AIPS_AI_Service::is_unrecoverable_error($excerpt)) {
+				$result['skipped']['featured_image'] = __('Skipped due to provider failure during excerpt generation.', 'ai-post-scheduler');
+				return $result;
+			}
 		} else {
 			$result['regenerated']['excerpt'] = $excerpt;
 		}

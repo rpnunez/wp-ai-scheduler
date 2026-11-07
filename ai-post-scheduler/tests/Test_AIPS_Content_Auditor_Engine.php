@@ -234,4 +234,16 @@ class Test_AIPS_Content_Auditor_Engine extends WP_UnitTestCase {
 		$this->assertSame('fresh', $result['health_status']);
 		$this->assertEmpty($result['recommendations']);
 	}
+
+	public function test_analyze_topic_gaps_handles_error_without_duplicate_call() {
+		$stub = new AIPS_Stub_AI_Provider();
+		$stub->available = false; // Triggers ai_unavailable WP_Error
+		$ai_service = new AIPS_AI_Service(null, $stub);
+		$engine = new AIPS_Content_Auditor_Engine($ai_service);
+
+		$result = $engine->analyze_topic_gaps('Technology', array(), array());
+		$this->assertIsArray($result);
+		$this->assertSame(0, $result['gap_count']);
+		$this->assertEmpty($result['gaps']);
+	}
 }

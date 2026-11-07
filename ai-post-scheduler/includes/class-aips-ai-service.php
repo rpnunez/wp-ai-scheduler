@@ -33,6 +33,27 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 	 */
 	private const SHORT_FORM_MIN_TOKENS = 1200;
 
+	/**
+	 * List of unrecoverable global provider error codes that should abort retries.
+	 */
+	public const UNRECOVERABLE_ERROR_CODES = array(
+		'rate_limit_exceeded',
+		'circuit_breaker_open',
+		'ai_unavailable',
+		'invalid_api_key',
+	);
+
+	/**
+	 * Check if a WP_Error or error code represents an unrecoverable provider error.
+	 *
+	 * @param WP_Error|string $error WP_Error instance or error code string.
+	 * @return bool True if unrecoverable, false otherwise.
+	 */
+	public static function is_unrecoverable_error($error): bool {
+		$code = is_wp_error($error) ? $error->get_error_code() : (string) $error;
+		return in_array($code, self::UNRECOVERABLE_ERROR_CODES, true);
+	}
+
     /**
      * @var AIPS_AI_Provider_Interface Active AI transport provider
      */

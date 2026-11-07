@@ -557,4 +557,46 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			(is_array($result) && isset($result['attachment_id'])) || is_wp_error($result)
 		);
 	}
+
+	public function test_regenerate_all_components_aborts_early_on_unrecoverable_error() {
+		$stub = new AIPS_Stub_AI_Provider();
+		$stub->available = false; // Triggers ai_unavailable WP_Error
+		$ai_service = new AIPS_AI_Service(null, $stub);
+
+		$service = new AIPS_Component_Regeneration_Service(null, $ai_service);
+
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Sample Title',
+			'post_content' => 'Sample Content',
+		));
+
+		$history_repo = new AIPS_History_Repository();
+		$history = (new AIPS_History_Service($history_repo))->create('post_generation', array(
+			'creation_method' => 'manual',
+		));
+		$history_id = $history->get_id();
+
+		$template = (object) array(
+			'id'                      => 1,
+			'name'                    => 'Test Template',
+			'generate_featured_image' => 0,
+			'prompt_template'         => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$context = array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+			'history_id'         => $history_id,
+		);
+
+		$result = $service->regenerate_all_components($context);
+
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('errors', $result);
+		$this->assertArrayHasKey('title', $result['errors']);
+		$this->assertArrayHasKey('skipped', $result);
+		$this->assertArrayHasKey('content', $result['skipped']);
+		$this->assertArrayHasKey('excerpt', $result['skipped']);
+	}
 }
