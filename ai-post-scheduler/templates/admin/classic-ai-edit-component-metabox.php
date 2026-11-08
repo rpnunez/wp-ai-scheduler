@@ -53,7 +53,7 @@ $available_models  = array(
 					<span class="dashicons dashicons-arrow-down-alt2"></span>
 				</button>
 			</div>
-			<?php if (in_array($component, array('title', 'excerpt'), true)): ?>
+			<?php if (in_array($component, array('title', 'excerpt', 'slug'), true)): ?>
 				<button type="button" class="button button-secondary aips-gen-variants-btn" data-component="<?php echo esc_attr($component); ?>" title="<?php esc_attr_e('Generate 3 Candidate Variations', 'ai-post-scheduler'); ?>">
 					<span class="dashicons dashicons-list-view"></span>
 					<?php esc_html_e('3 Candidates', 'ai-post-scheduler'); ?>
@@ -177,6 +177,12 @@ $available_models  = array(
 		<?php if ('title' === $component): ?>
 			<label class="aips-field-label" for="aips-editor-input-title"><?php esc_html_e('Editable Title:', 'ai-post-scheduler'); ?></label>
 			<input type="text" id="aips-editor-input-title" class="aips-component-input widefat" value="<?php echo esc_attr($post->post_title); ?>" />
+			<div class="aips-component-meta">
+				<span class="aips-char-count"></span>
+			</div>
+		<?php elseif ('slug' === $component): ?>
+			<label class="aips-field-label" for="aips-editor-input-slug"><?php esc_html_e('Editable Post Slug:', 'ai-post-scheduler'); ?></label>
+			<input type="text" id="aips-editor-input-slug" class="aips-component-input widefat" value="<?php echo esc_attr($post->post_name); ?>" />
 			<div class="aips-component-meta">
 				<span class="aips-char-count"></span>
 			</div>

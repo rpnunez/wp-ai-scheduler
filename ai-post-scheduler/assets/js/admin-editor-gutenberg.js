@@ -79,6 +79,8 @@
 				return editor.getEditedPostAttribute('title') || '';
 			} else if ('excerpt' === component) {
 				return editor.getEditedPostAttribute('excerpt') || '';
+			} else if ('slug' === component) {
+				return editor.getEditedPostAttribute('slug') || '';
 			} else if ('content' === component) {
 				return editor.getEditedPostAttribute('content') || '';
 			} else if ('featured_image' === component) {
@@ -152,6 +154,9 @@
 			if ('title' === component) {
 				var textVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
 				dispatch.editPost({ title: textVal });
+			} else if ('slug' === component) {
+				var slugVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
+				dispatch.editPost({ slug: slugVal });
 			} else if ('excerpt' === component) {
 				var textVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
 				dispatch.editPost({ excerpt: textVal });
@@ -181,6 +186,8 @@
 				payloadComponents.title = typeof regeneratedDraft === 'object' ? regeneratedDraft.value : regeneratedDraft;
 			} else if ('excerpt' === component) {
 				payloadComponents.excerpt = typeof regeneratedDraft === 'object' ? regeneratedDraft.value : regeneratedDraft;
+			} else if ('slug' === component) {
+				payloadComponents.slug = typeof regeneratedDraft === 'object' ? regeneratedDraft.value : regeneratedDraft;
 			} else if ('content' === component) {
 				payloadComponents.content = typeof regeneratedDraft === 'object' ? regeneratedDraft.value : regeneratedDraft;
 			} else if ('featured_image' === component) {
@@ -329,6 +336,13 @@
 		});
 
 		return el('div', { className: 'aips-gutenberg-component-section', style: { padding: '4px 0' } },
+			'slug' === component && el(TextControl, {
+				label: 'Permalink slug',
+				value: currentValue || '',
+				onChange: function (val) {
+					wp.data.dispatch('core/editor').editPost({ slug: val });
+				}
+			}),
 			// Split Button Header
 			el('div', { style: { display: 'flex', gap: '4px', marginBottom: '8px', alignItems: 'center' } },
 				el(Button, {
@@ -343,7 +357,7 @@
 					title: 'Steering & Directives',
 					onClick: function () { setShowPopover(!showPopover); }
 				}),
-				('title' === component || 'excerpt' === component) && el(Button, {
+				('title' === component || 'excerpt' === component || 'slug' === component) && el(Button, {
 					variant: 'secondary',
 					isBusy: busyVariants,
 					disabled: busyVariants,
@@ -518,6 +532,16 @@
 					title: 'AI Edit: Post Title',
 					icon: 'heading'
 				}, el(ComponentAIEditPanel, { component: 'title', label: 'Title' }));
+			}
+		});
+
+		wp.plugins.registerPlugin('aips-editor-slug-panel', {
+			render: function () {
+				return el(PluginDocumentSettingPanel, {
+					name: 'aips-editor-slug-panel',
+					title: 'AI Edit: Post Slug',
+					icon: 'admin-links'
+				}, el(ComponentAIEditPanel, { component: 'slug', label: 'Slug' }));
 			}
 		});
 

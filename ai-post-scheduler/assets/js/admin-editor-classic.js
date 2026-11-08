@@ -40,6 +40,16 @@
 		}
 	}
 
+	function notifyEditor(message, type) {
+		if (window.AIPS && window.AIPS.Utilities && typeof window.AIPS.Utilities.showToast === 'function') {
+			window.AIPS.Utilities.showToast(message, type || 'error');
+			return;
+		}
+		if (typeof window['alert'] === 'function') {
+			window['alert'](message);
+		}
+	}
+
 	function escapeHtml(str) {
 		if (typeof str !== 'string') {
 			return '';
@@ -55,15 +65,15 @@
 	function getCurrentComponentValue(component) {
 		if ('title' === component) {
 			var $titleInput = $('#title');
-			if ($titleInput.length && $titleInput.val()) {
-				return $titleInput.val();
+			if ($titleInput.length) {
+				return $titleInput.val() || '';
 			}
 			return $('#aips-editor-input-title').val() || '';
 		}
 		if ('excerpt' === component) {
 			var $excerptArea = $('#excerpt');
-			if ($excerptArea.length && $excerptArea.val()) {
-				return $excerptArea.val();
+			if ($excerptArea.length) {
+				return $excerptArea.val() || '';
 			}
 			return $('#aips-editor-input-excerpt').val() || '';
 		}
@@ -118,7 +128,8 @@
 				window.tinymce.get('content').setContent(htmlVal);
 			}
 			$('#content').val(htmlVal).trigger('change');
-			$('.aips-classic-component-widget[data-component="content"] .aips-content-preview').html(htmlVal.substring(0, 300) + '…');
+			var previewText = htmlVal.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 300);
+			$('.aips-classic-component-widget[data-component="content"] .aips-content-preview').text(previewText);
 		} else if ('featured_image' === component) {
 			var attachmentId = 0;
 			var imgUrl = '';
@@ -136,7 +147,7 @@
 				}
 				if (imgUrl) {
 					var $preview = $('.aips-classic-component-widget[data-component="featured_image"] .aips-featured-image-preview');
-					$preview.html('<img src="' + escapeHtml(imgUrl) + '" alt="" />');
+					$preview.empty().append($('<img>', { src: imgUrl, alt: '' }));
 				}
 			}
 		}
@@ -255,6 +266,21 @@
 				});
 				$('#excerpt').on('input change', function () {
 					$excerptInput.val($(this).val());
+					updateCharCount($widget, $(this).val());
+				});
+			} else if ('slug' === component) {
+				var $slugInput = $('#aips-editor-input-slug');
+				updateCharCount($widget, $slugInput.val());
+				$slugInput.on('input', function () {
+					updateCharCount($widget, $(this).val());
+					$('#post_name').val($(this).val());
+					$('#editable-post-name, #editable-post-name-full').text($(this).val());
+					if ($('#new-post-slug').length) {
+						$('#new-post-slug').val($(this).val());
+					}
+				});
+				$('#post_name, #new-post-slug').on('input change', function () {
+					$slugInput.val($(this).val());
 					updateCharCount($widget, $(this).val());
 				});
 			}
@@ -398,9 +424,19 @@
 
 						if ('featured_image' === component) {
 							var currentThumb = $widget.find('.aips-featured-image-preview img').attr('src') || '';
-							$currentCol.html(currentThumb ? '<img src="' + escapeHtml(currentThumb) + '" />' : '<em>No current image</em>');
+							$currentCol.empty();
+							if (currentThumb) {
+								$currentCol.append($('<img>', { src: currentThumb, alt: '' }));
+							} else {
+								$currentCol.append($('<em></em>').text(l10n.labels.noImage || 'No current image'));
+							}
 							var newThumb = typeof newVal === 'object' && newVal.url ? newVal.url : '';
-							$regenCol.html(newThumb ? '<img src="' + escapeHtml(newThumb) + '" />' : '<em>Image generated</em>');
+							$regenCol.empty();
+							if (newThumb) {
+								$regenCol.append($('<img>', { src: newThumb, alt: '' }));
+							} else {
+								$regenCol.append($('<em></em>').text(l10n.labels.imageGenerated || 'Image generated'));
+							}
 						} else {
 							$currentCol.text(typeof currentVal === 'string' ? currentVal : JSON.stringify(currentVal));
 							$regenCol.text(typeof newVal === 'string' ? newVal : (newVal.value || JSON.stringify(newVal)));
@@ -410,11 +446,11 @@
 						loadRevisions($widget, component);
 					} else {
 						var msg = (response && response.data && response.data.message) || l10n.labels.actionError;
-						alert(msg);
+						notifyEditor(msg);
 					}
 				})
 				.fail(function () {
-					alert(l10n.labels.actionError || 'Error regenerating component.');
+					notifyEditor(l10n.labels.actionError || 'Error regenerating component.');
 				})
 				.always(function () {
 					$btn.prop('disabled', false).removeClass('regenerating').html(originalHtml);
@@ -442,6 +478,8 @@
 					payloadComponents.title = typeof newVal === 'object' ? newVal.value : newVal;
 				} else if ('excerpt' === component) {
 					payloadComponents.excerpt = typeof newVal === 'object' ? newVal.value : newVal;
+				} else if ('slug' === component) {
+					payloadComponents.slug = typeof newVal === 'object' ? newVal.value : newVal;
 				} else if ('content' === component) {
 					payloadComponents.content = typeof newVal === 'object' ? newVal.value : newVal;
 				} else if ('featured_image' === component) {
@@ -472,7 +510,7 @@
 				if (downstreamTargets.length > 0) {
 					saveRequest.done(function (response) {
 						if (!response || !response.success) {
-							alert((response && response.data && response.data.message) || l10n.labels.actionError || 'Error saving component.');
+							notifyEditor((response && response.data && response.data.message) || l10n.labels.actionError || 'Error saving component.');
 							return;
 						}
 						$.each(downstreamTargets, function (i, targetComp) {
@@ -486,7 +524,7 @@
 							}
 						});
 					}).fail(function () {
-						alert(l10n.labels.actionError || 'Error saving component.');
+						notifyEditor(l10n.labels.actionError || 'Error saving component.');
 					});
 				}
 			});
@@ -530,11 +568,11 @@
 						applyComponentValue(component, restoredVal);
 						loadRevisions($widget, component);
 					} else {
-						alert((response && response.data && response.data.message) || l10n.labels.actionError);
+						notifyEditor((response && response.data && response.data.message) || l10n.labels.actionError);
 					}
 				})
 				.fail(function () {
-					alert(l10n.labels.actionError);
+					notifyEditor(l10n.labels.actionError);
 				})
 				.always(function () {
 					$btn.prop('disabled', false);
@@ -578,11 +616,11 @@
 							$carousel.append($card);
 						});
 					} else {
-						alert((response && response.data && response.data.message) || l10n.labels.actionError);
+						notifyEditor((response && response.data && response.data.message) || l10n.labels.actionError);
 					}
 				})
 				.fail(function () {
-					alert(l10n.labels.actionError);
+					notifyEditor(l10n.labels.actionError);
 				})
 				.always(function () {
 					$btn.prop('disabled', false).html(originalHtml);
@@ -635,11 +673,11 @@
 						$variantsList.append($card);
 					});
 				} else {
-					alert((response && response.data && response.data.message) || l10n.labels.actionError);
+					notifyEditor((response && response.data && response.data.message) || l10n.labels.actionError);
 				}
 			})
 			.fail(function () {
-				alert(l10n.labels.actionError);
+				notifyEditor(l10n.labels.actionError);
 			})
 			.always(function () {
 				$btn.prop('disabled', false).html(originalHtml);

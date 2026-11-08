@@ -110,7 +110,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string[]
      */
     public static function generation_run_creation_methods() {
-        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate', 'post_generation', 'author_post_gen');
+        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate', 'post_generation', 'author_post_gen', 'ai_edit');
 
         /**
          * Filters the creation_method values classified as post-generation runs when a

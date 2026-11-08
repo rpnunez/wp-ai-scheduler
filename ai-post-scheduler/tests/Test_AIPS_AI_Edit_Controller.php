@@ -1658,4 +1658,194 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertNotSame('', $image_output);
 		$this->assertStringContainsString((string) $attachment_id, $image_output);
 	}
+
+	public function test_save_slug_sanitizes_and_logs_on_one_generation_container() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Needs a slug',
+			'post_name'  => 'needs-a-slug',
+		));
+
+		$_POST = array(
+			'action'     => 'aips_save_post_components',
+			'post_id'    => $post_id,
+			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
+			'components' => array(
+				'slug' => 'Hello World Slug!',
+			),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('hello-world-slug', get_post($post_id)->post_name);
+		$this->assertContains('slug', $response['data']['updated_components']);
+
+		$record = $this->history_repository->get_by_post_id($post_id);
+		$this->assertNotNull($record);
+		$this->assertSame('ai_edit', $record->creation_method);
+		$this->assertSame(AIPS_History_Record_Kind::GENERATION, $record->record_kind);
+
+		$logs = $this->history_repository->get_logs_by_history_id($record->id);
+		$found = false;
+		foreach ($logs as $log) {
+			$details = json_decode($log->details, true);
+			if (is_array($details) && !empty($details['message']) && false !== strpos($details['message'], 'Post Slug regenerated via AI Edit')) {
+				$found = true;
+			}
+		}
+		$this->assertTrue($found);
+
+		$_POST['components'] = array('slug' => 'second-slug');
+		$this->sync_request_from_post();
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		ob_end_clean();
+
+		$again = $this->history_repository->get_by_post_id($post_id);
+		$this->assertSame((int) $record->id, (int) $again->id);
+		$this->assertSame('second-slug', get_post($post_id)->post_name);
+	}
+
+	public function test_restore_component_revision_restores_slug() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Restore slug',
+			'post_name'  => 'current-slug',
+		));
+		$history_id = $this->history_repository->create(array(
+			'post_id'         => $post_id,
+			'creation_method' => 'ai_edit',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+			'status'          => 'completed',
+		));
+		$container = AIPS_History_Container::load_existing($this->history_repository, $history_id);
+		$revision_id = $container->record(
+			'ai_response',
+			'Captured revision snapshot for slug before regeneration',
+			null,
+			'restored-slug',
+			array(
+				'component' => 'slug',
+				'post_id'   => $post_id,
+				'source'    => 'ai_generated',
+			)
+		);
+
+		$_POST = array(
+			'action'      => 'aips_restore_component_revision',
+			'post_id'     => $post_id,
+			'component'   => 'slug',
+			'revision_id' => $revision_id,
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_restore_component_revision();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('restored-slug', get_post($post_id)->post_name);
+		$this->assertSame('restored-slug', $response['data']['value']);
+	}
+
+	public function test_save_preserves_gutenberg_block_comments_and_strips_scripts() {
+		$post_id = $this->factory->post->create();
+		$content = "<!-- wp:paragraph -->\n<p>Hello</p>\n<!-- /wp:paragraph --><script>alert(1)</script>";
+
+		$_POST = array(
+			'action'     => 'aips_save_post_components',
+			'post_id'    => $post_id,
+			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
+			'components' => array(
+				'content' => $content,
+			),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		ob_end_clean();
+
+		$saved = get_post($post_id)->post_content;
+		$this->assertStringContainsString('<!-- wp:paragraph -->', $saved);
+		$this->assertStringContainsString('<!-- /wp:paragraph -->', $saved);
+		$this->assertStringContainsString('<p>Hello</p>', $saved);
+		$this->assertStringNotContainsString('<script>', $saved);
+	}
+
+	public function test_save_rejects_non_array_components_and_non_image_thumbnail() {
+		$post_id = $this->factory->post->create(array('post_title' => 'Guarded'));
+
+		$_POST = array(
+			'action'     => 'aips_save_post_components',
+			'post_id'    => $post_id,
+			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
+			'components' => 'not-an-array',
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+		$this->assertFalse($response['success']);
+
+		$page_id = $this->factory->post->create(array('post_type' => 'page', 'post_title' => 'Not an image'));
+		$_POST['components'] = array('featured_image_id' => (string) $page_id);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+		$this->assertFalse($response['success']);
+		$this->assertSame(0, (int) get_post_thumbnail_id($post_id));
+	}
+
+	public function test_reset_component_overrides_rejects_unknown_component() {
+		$post_id = $this->factory->post->create();
+		$_POST = array(
+			'action'    => 'aips_reset_component_overrides',
+			'post_id'   => $post_id,
+			'component' => 'not_a_component',
+			'nonce'     => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_reset_component_overrides();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+		$this->assertFalse($response['success']);
+	}
 }

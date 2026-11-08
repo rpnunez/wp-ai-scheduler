@@ -635,4 +635,46 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		// Returns string or WP_Error
 		$this->assertTrue(is_string($result) || is_wp_error($result));
 	}
+
+	public function test_regenerate_all_skips_slug_when_template_disables_it() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'No Slug Template',
+			'generate_slug'   => 0,
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+		$this->assertFalse($generation_context->should_generate_slug());
+
+		$post_id = $this->factory->post->create(array('post_title' => 'Skip slug'));
+		$result = $this->service->regenerate_all_components(array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+			'history_id'         => 1,
+		));
+
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('slug', $result['skipped']);
+		$this->assertArrayNotHasKey('slug', $result['regenerated']);
+	}
+
+	public function test_regenerate_slug_explicit_call_ignores_disabled_setting() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Slug Off',
+			'generate_slug'   => 0,
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+		$result = $this->service->regenerate_slug(array(
+			'generation_context' => $generation_context,
+			'current_title'      => 'A Test Post Title',
+			'current_content'    => 'Article body',
+		));
+
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+		if (is_wp_error($result)) {
+			$this->assertNotSame('slug_disabled', $result->get_error_code());
+		}
+	}
 }

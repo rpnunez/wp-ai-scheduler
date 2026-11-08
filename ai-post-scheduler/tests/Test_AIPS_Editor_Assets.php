@@ -96,6 +96,7 @@ class Test_AIPS_Editor_Assets extends WP_UnitTestCase {
 		$this->assets->register_classic_metabox('post');
 
 		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_TITLE, $wp_meta_boxes['post']['side']['high']);
+		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_SLUG, $wp_meta_boxes['post']['side']['high']);
 		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_EXCERPT, $wp_meta_boxes['post']['side']['default']);
 		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_CONTENT, $wp_meta_boxes['post']['normal']['default']);
 		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_IMAGE, $wp_meta_boxes['post']['side']['default']);
@@ -112,5 +113,41 @@ class Test_AIPS_Editor_Assets extends WP_UnitTestCase {
 		$this->assertStringContainsString('data-component="title"', $html);
 		$this->assertStringContainsString('aips-regenerate-btn', $html);
 		$this->assertStringContainsString('aips-view-revisions-btn', $html);
+	}
+
+	public function test_render_classic_slug_metabox_outputs_permalink_field() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Slug Widget Post',
+			'post_name'  => 'slug-widget-post',
+		));
+		$post = get_post($post_id);
+
+		ob_start();
+		$this->assets->render_classic_component_metabox($post, array('args' => array('component' => 'slug', 'label' => 'Slug')));
+		$html = ob_get_clean();
+
+		$this->assertStringContainsString('data-component="slug"', $html);
+		$this->assertStringContainsString('id="aips-editor-input-slug"', $html);
+		$this->assertStringContainsString('slug-widget-post', $html);
+		$this->assertStringContainsString('aips-accept-diff-btn', $html);
+		$this->assertStringContainsString('aips-view-revisions-btn', $html);
+		$this->assertStringContainsString('aips-gen-variants-btn', $html);
+	}
+
+	public function test_editor_scripts_sync_slug_with_wordpress_fields() {
+		$classic = file_get_contents(AIPS_PLUGIN_DIR . 'assets/js/admin-editor-classic.js');
+		$gutenberg = file_get_contents(AIPS_PLUGIN_DIR . 'assets/js/admin-editor-gutenberg.js');
+
+		$this->assertStringContainsString("editPost({ slug: slugVal })", $gutenberg);
+		$this->assertStringContainsString("getEditedPostAttribute('slug')", $gutenberg);
+		$this->assertStringContainsString("component: 'slug'", $gutenberg);
+		$this->assertStringContainsString('aips-editor-slug-panel', $gutenberg);
+		$this->assertStringContainsString("payloadComponents.slug", $gutenberg);
+
+		$this->assertStringContainsString("'slug' === component", $classic);
+		$this->assertStringContainsString("payloadComponents.slug", $classic);
+		$this->assertStringContainsString("#post_name", $classic);
+		$this->assertStringContainsString('#aips-editor-input-slug', $classic);
+		$this->assertStringContainsString('#editable-post-name', $classic);
 	}
 }

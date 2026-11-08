@@ -215,6 +215,11 @@ class AIPS_History_Container {
 			'post_type'       => $post ? $post->post_type : 'post',
 			'generated_title' => $post ? $post->post_title : '',
 			'creation_method' => 'ai_edit',
+			// A generation row is what get_by_post_id() returns. An unclassified
+			// ai_edit container is stored as an event and the next save cannot
+			// find it, so each AI Edit would open a new orphan container.
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+			'status'          => 'completed',
 		);
 
 		$new_container = new self($repository, 'post_generation', $metadata);

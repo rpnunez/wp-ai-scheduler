@@ -241,15 +241,24 @@ class AIPS_Component_Regeneration_Service {
 			$content = get_post_field('post_content', $post_id);
 		}
 
+		$options = $this->extract_ai_options($context);
+		$directive = $this->build_directive_instruction($context);
+		if ($directive !== '') {
+			$options['custom_directive'] = $directive;
+		}
+
+		// Explicit AI Edit calls regenerate even when the template or author has
+		// generate_slug turned off. regenerate_all_components() is the path that
+		// honors should_generate_slug() and records a skip.
 		$conversation = $this->build_conversation($generation_context, $post_id, true);
 		if ($conversation !== null) {
 			$this->generator->set_conversation($conversation);
 			$success = false;
-			$result  = $this->generator->generate_slug_from_context($generation_context, '', $title, array(), $success);
+			$result  = $this->generator->generate_slug_from_context($generation_context, '', $title, $options, $success);
 			$this->generator->set_conversation(null);
 		} else {
 			$success = false;
-			$result  = $this->generator->generate_slug_from_context($generation_context, $content, $title, array(), $success);
+			$result  = $this->generator->generate_slug_from_context($generation_context, $content, $title, $options, $success);
 		}
 
 		if (is_wp_error($result)) {

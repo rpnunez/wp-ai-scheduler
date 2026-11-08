@@ -20,6 +20,7 @@ class AIPS_Editor_Assets {
 	 */
 	const METABOX_ID          = 'aips_classic_ai_edit_metabox';
 	const METABOX_ID_TITLE    = 'aips_ai_edit_title_metabox';
+	const METABOX_ID_SLUG     = 'aips_ai_edit_slug_metabox';
 	const METABOX_ID_EXCERPT  = 'aips_ai_edit_excerpt_metabox';
 	const METABOX_ID_CONTENT  = 'aips_ai_edit_content_metabox';
 	const METABOX_ID_IMAGE    = 'aips_ai_edit_featured_image_metabox';
@@ -78,6 +79,16 @@ class AIPS_Editor_Assets {
 			'side',
 			'high',
 			array('component' => 'title', 'label' => __('Title', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_SLUG,
+			__('AI Edit: Post Slug', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'side',
+			'high',
+			array('component' => 'slug', 'label' => __('Slug', 'ai-post-scheduler'))
 		);
 
 		add_meta_box(
@@ -188,10 +199,21 @@ class AIPS_Editor_Assets {
 		}
 		wp_enqueue_script('aips-templates-script');
 
+		if (!wp_script_is('aips-utilities-script', 'registered')) {
+			wp_register_script(
+				'aips-utilities-script',
+				AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+				array('jquery'),
+				AIPS_VERSION,
+				true
+			);
+		}
+		wp_enqueue_script('aips-utilities-script');
+
 		wp_enqueue_script(
 			'aips-editor-classic',
 			AIPS_PLUGIN_URL . 'assets/js/admin-editor-classic.js',
-			array('jquery', 'aips-templates-script'),
+			array('jquery', 'aips-templates-script', 'aips-utilities-script'),
 			AIPS_VERSION,
 			true
 		);
