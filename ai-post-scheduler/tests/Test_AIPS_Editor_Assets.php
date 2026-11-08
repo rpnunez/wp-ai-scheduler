@@ -84,5 +84,6 @@ class Test_AIPS_Editor_Assets extends WP_UnitTestCase {
 		$this->assertArrayHasKey(AIPS_Editor_Directive_Service::PRESET_EXPAND, $l10n['presets']);
 		$this->assertArrayHasKey(AIPS_Editor_Directive_Service::PRESET_SIMPLIFY, $l10n['presets']);
 		$this->assertArrayHasKey(AIPS_Editor_Directive_Service::PRESET_TONE_SHIFT, $l10n['presets']);
+		$this->assertArrayHasKey('slugVariants', $l10n['labels']);
 	}
 }

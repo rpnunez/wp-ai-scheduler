@@ -397,6 +397,7 @@
             $(document).on('click', '.aips-run-now', this.runNow);
             $(document).on('click', '.aips-quick-preview-post', this.openGeneratedPostPreview);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
+            $(document).on('change', '#generate_slug', this.toggleSlugPrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
             $(document).on('change', '.aips-image-source-select', function() {
                 AIPS.toggleFeaturedImageSourceFields($(this).closest('.aips-image-settings-group'));
@@ -965,6 +966,9 @@
             AIPS.toggleImagePrompt();
             $('#aips-template-post-images-list .aips-post-image-card').remove();
             $('#aips-template-post-images-list .aips-post-images-empty-state').show();
+            $('#generate_slug').prop('checked', false);
+            $('#slug_prompt').val('');
+            AIPS.toggleSlugPrompt();
             // Reset AI Variables panel
             AIPS.updateAIVariablesPanel([]);
             // Reset source groups
@@ -1041,6 +1045,9 @@
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);
+                        $('#generate_slug').prop('checked', t.generate_slug == 1);
+                        $('#slug_prompt').val(t.slug_prompt || '');
+                        AIPS.toggleSlugPrompt();
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
 
@@ -3796,6 +3803,16 @@
         },
 
         /**
+         * Show or hide the slug settings panel based on the state of `#generate_slug`.
+         *
+         * @param {Event} [e] - Change event.
+         */
+        toggleSlugPrompt: function(e) {
+            var isChecked = $('#generate_slug').is(':checked');
+            $('.aips-slug-settings').toggle(isChecked);
+        },
+
+        /**
          * Show the correct image source sub-panel based on the current
          * value of the image source select within the group.
          *
@@ -5122,6 +5139,14 @@
                 $modal.find('#summary_featured_image').text(aipsTemplatesL10n.featuredImageYes.replace('%s', source));
             } else {
                 $modal.find('#summary_featured_image').text(aipsTemplatesL10n.featuredImageNo);
+            }
+
+            var generateSlug = $('#generate_slug').is(':checked');
+            if (generateSlug) {
+                var slugPrompt = $('#slug_prompt').val();
+                $modal.find('#summary_generate_slug').text(slugPrompt ? (aipsTemplatesL10n.slugYesCustom || 'Yes (Custom Prompt)') : (aipsTemplatesL10n.slugYesStandard || 'Yes (SEO Standard)'));
+            } else {
+                $modal.find('#summary_generate_slug').text(aipsTemplatesL10n.slugNo || 'No');
             }
         },
 

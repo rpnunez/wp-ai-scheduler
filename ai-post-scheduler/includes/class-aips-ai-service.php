@@ -539,9 +539,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      *
      * @param string     $prompt Unused; retained so the signature stays compatible
      *                           with callers and the request-type dispatch below.
-     * @param string|int $type   Request type: 'title', 'excerpt', 'content', or a
+     * @param string|int $type   Request type: 'title', 'slug', 'excerpt', 'content', or a
      *                           custom integer expected-output token count. Unknown
-     *                           string types fall back to 'content' sizing.
+     *                           string types fall back to 'content' sizing. Slug uses
+     *                           the title token budget.
      * @return int The calculated maxTokens value (always >= 1).
      */
     private function calculate_max_tokens($prompt, $type = 'content') {
@@ -555,6 +556,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $config = AIPS_Config::get_instance();
             switch ($type) {
                 case 'title':
+                case 'slug':
                     // Short titles: ~10-20 words.
                     $output_tokens = (int) $config->get_option('aips_max_tokens_title');
 					$minimum_tokens = self::SHORT_FORM_MIN_TOKENS;

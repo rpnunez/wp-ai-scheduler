@@ -195,9 +195,10 @@
 	 */
 	function renderAICalls(ai_calls, componentRevisions) {
 		var aiHtml = '';
-		var componentOrder = ['title', 'excerpt', 'content', 'featured_image', 'post_images'];
+		var componentOrder = ['title', 'slug', 'excerpt', 'content', 'featured_image', 'post_images'];
 		var componentLabels = {
 			title: 'Title',
+			slug: 'Post Slug',
 			excerpt: 'Excerpt',
 			content: 'Content',
 			featured_image: 'Featured Image',

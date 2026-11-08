@@ -4,7 +4,7 @@
 
 The AI Edit feature allows you to regenerate individual components of AI-generated posts without regenerating the entire post. This provides granular control over your content while maintaining consistency with the original generation context.
 
-> **Not to be confused with:** this feature is unrelated to **AI Assistance** — the per-field ✨ "AI Suggest" / 🕐 history widget available on forms such as Add/Edit Author. AI Edit operates only on already-generated posts (title/excerpt/content/featured image) using their original generation context; it does not use the AI Assistance controller, service, or field maps. See `docs/features/ai-assistance/AI_ASSISTANCE_DEV_GUIDE.md` for that feature.
+> **Not to be confused with:** this feature is unrelated to **AI Assistance** — the per-field ✨ "AI Suggest" / 🕐 history widget available on forms such as Add/Edit Author. AI Edit operates only on already-generated posts (title, post slug, excerpt, content, and featured image) using their original generation context; it does not use the AI Assistance controller, service, or field maps. See `docs/features/ai-assistance/AI_ASSISTANCE_DEV_GUIDE.md` for that feature.
 
 ## Accessing AI Edit
 
@@ -27,7 +27,7 @@ When you click "AI Edit", a tabbed modal window will open showing:
 
 ### Tabbed Editable Components
 
-Navigate through tabs for **Title**, **Excerpt**, **Content**, **Featured Image**, and **Post Images**:
+Navigate through tabs for **Title**, **Post Slug**, **Excerpt**, **Content**, **Featured Image**, and **Post Images**:
 - Each tab displays the editable field and revision history.
 - **Post Images** lists every content image separately from the featured image. Each image has its own Re-generate button, side-by-side comparison, and View Revisions list. Accept a draft or restore a revision, then Save Changes. Cancelling the modal leaves the post unchanged.
 - Clicking **Re-generate** generates new AI content and opens a **Side-by-Side Comparison** (Current Version vs. Newly Regenerated Draft).
@@ -86,7 +86,7 @@ Actual times may vary based on:
 
 ## Best Practices
 
-1. **Regenerate in Order**: Start with title, then excerpt, then content for best context flow
+1. **Regenerate in Order**: Start with title, then post slug, then excerpt, then content for best context flow
 2. **Multiple Attempts**: Don't hesitate to regenerate if the first result isn't perfect
 3. **Manual Touch-ups**: Combine AI regeneration with manual editing for best results
 4. **Save Frequently**: Changes are only saved when you click "Save Changes"

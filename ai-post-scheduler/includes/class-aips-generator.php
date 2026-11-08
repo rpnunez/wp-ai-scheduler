@@ -44,6 +44,7 @@ class AIPS_Generator {
     private $prompt_builder;
     private $post_content_prompt_builder;
     private $post_title_prompt_builder;
+    private $post_slug_prompt_builder;
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
     private $post_metadata_prompt_builder;
@@ -108,6 +109,7 @@ class AIPS_Generator {
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
+        $this->post_slug_prompt_builder = $this->prompt_builder->get_post_slug_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
 
@@ -397,14 +399,16 @@ class AIPS_Generator {
     /**
      * Resolve AI Variables from a generation context.
      *
-     * Extracts AI Variables from the title prompt and uses AI to generate
-     * appropriate values based on the content context.
+     * Extracts AI Variables from the title prompt and optional component
+     * instructions, then uses AI to generate appropriate values based on the
+     * content context.
      *
      * @param AIPS_Generation_Context $context Generation context.
-     * @param string                  $content Generated article content for context.
+     * @param string                  $content                 Generated article content for context.
+     * @param string                  $additional_instructions Optional component instructions that can contain AI variables.
      * @return array Associative array of resolved AI variable values.
      */
-    private function resolve_ai_variables_from_context($context, $content) {
+    private function resolve_ai_variables_from_context($context, $content, $additional_instructions = '') {
         // Get the title prompt from context
         $title_prompt = $context->get_title_prompt();
 
@@ -423,6 +427,12 @@ class AIPS_Generator {
         }
 
         $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
+        if ($additional_instructions !== '') {
+            $ai_variables = array_values(array_unique(array_merge(
+                $ai_variables,
+                $this->template_processor->extract_ai_variables($additional_instructions)
+            )));
+        }
         if (empty($ai_variables)) {
             return array();
         }
@@ -441,7 +451,11 @@ class AIPS_Generator {
             $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
         }
 
-        return $this->resolve_ai_variables_for_template_string($title_prompt, $context_str, 'ai_variables');
+        return $this->resolve_ai_variables_for_template_string(
+            $title_prompt . "\n" . $additional_instructions,
+            $context_str,
+            'ai_variables'
+        );
     }
 
     /**
@@ -853,24 +867,24 @@ class AIPS_Generator {
             $image_prompt_template = (string) $this->post_featured_image_prompt_builder->build($context, $context->get_topic());
         }
 
-        // Collect the placeholders appearing across both templates so the model
-        // resolves them once, in the same turn that consumes them. The title
-        // instructions are read through the builder so a voice override — which may
-        // carry different placeholders than the template's own title prompt — is
-        // the string actually scanned.
+        // Collect the placeholders appearing across templates so the model
+        // resolves them once, in the same turn that consumes them.
         $ai_variables = array();
+        $include_slug = method_exists($context, 'should_generate_slug') && $context->should_generate_slug();
 
         if (method_exists($this->template_processor, 'extract_ai_variables')) {
             $title_instructions = $this->get_post_metadata_prompt_builder()->resolve_title_instructions($context, $context->get_topic());
+            $slug_instructions  = $include_slug ? $this->post_slug_prompt_builder->resolve_slug_instructions($context, $context->get_topic()) : '';
 
             $ai_variables = array_values(array_unique(array_merge(
                 (array) $this->template_processor->extract_ai_variables($title_instructions),
+                (array) $this->template_processor->extract_ai_variables($slug_instructions),
                 (array) $this->template_processor->extract_ai_variables($image_prompt_template)
             )));
         }
 
-        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template);
-        $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '');
+        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template, $include_slug);
+        $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '', $include_slug);
 
         if ($this->current_history) {
             $this->current_history->record(
@@ -946,9 +960,11 @@ class AIPS_Generator {
         }
 
         $image_prompt = isset($result['image_prompt']) ? trim((string) $result['image_prompt']) : '';
+        $slug         = isset($result['slug']) ? trim((string) $result['slug']) : '';
 
         return array(
             'title'        => preg_replace('/^["\']|["\']$/', '', $title),
+            'slug'         => preg_replace('/^["\']|["\']$/', '', $slug),
             'excerpt'      => $excerpt,
             'image_prompt' => $image_prompt !== '' ? $this->remove_unresolved_template_placeholders($image_prompt) : '',
             'ai_variables' => $ai_variable_values,
@@ -1118,6 +1134,7 @@ class AIPS_Generator {
         $generation_start = microtime(true);
         $component_statuses = array(
             'post_title'     => false,
+            'post_slug'      => true, // Optional: a failed slug falls back to WordPress's title-based slug.
             'post_excerpt'   => false,
             'featured_image' => !$context->should_generate_featured_image(),
             'post_images'    => !$context->has_content_images(),
@@ -1177,6 +1194,7 @@ class AIPS_Generator {
 
 		$metadata_result = $this->generate_and_resolve_metadata($context, $content);
 		$title                 = $metadata_result['title'];
+		$slug                  = $metadata_result['slug'];
 		$excerpt               = $metadata_result['excerpt'];
 		$resolved_image_prompt = $metadata_result['resolved_image_prompt'];
 
@@ -1220,6 +1238,7 @@ class AIPS_Generator {
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
             'title' => $title,
+            'slug' => $slug,
             'content' => $content,
             'excerpt' => $excerpt,
             'context' => $context,
@@ -2054,15 +2073,122 @@ class AIPS_Generator {
 		$metadata = $this->use_metadata_turn() ? $this->generate_metadata_turn($context) : null;
 
 		$title_result   = $this->resolve_generated_title($context, $content, $metadata);
+		$slug_result    = $this->resolve_generated_slug($title_result['title'], $content, $context, $metadata);
 		$excerpt_result = $this->resolve_generated_excerpt($title_result['title'], $content, $context, $metadata);
 
 		return array(
 			'title'                 => $title_result['title'],
 			'title_success'         => $title_result['success'],
+			'slug'                  => $slug_result['slug'],
+			'slug_success'          => $slug_result['success'],
 			'excerpt'               => $excerpt_result['excerpt'],
 			'excerpt_success'       => $excerpt_result['success'],
 			'resolved_image_prompt' => $metadata !== null ? $metadata['image_prompt'] : null,
 		);
+	}
+
+	/**
+	 * Resolves the generated slug and its component status.
+	 *
+	 * @param string                  $title    Resolved post title.
+	 * @param string                  $content  Generated post content.
+	 * @param AIPS_Generation_Context $context  Generation context.
+	 * @param array|null              $metadata Combined metadata response, when available.
+	 * @return array
+	 */
+	private function resolve_generated_slug($title, $content, $context, $metadata) {
+		if (!method_exists($context, 'should_generate_slug') || !$context->should_generate_slug()) {
+			return array(
+				'slug'    => '',
+				'success' => true,
+			);
+		}
+
+		$slug_success = false;
+
+		$slug = '';
+
+		if ($metadata !== null) {
+			// The metadata turn already answered; do not spend another AI call if it left the slug blank.
+			$slug         = isset($metadata['slug']) ? sanitize_title((string) $metadata['slug']) : '';
+			$slug_success = ($slug !== '');
+		} else {
+			$slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
+			if (is_wp_error($slug)) {
+				$slug         = '';
+				$slug_success = false;
+			} else {
+				$slug_success = $slug_success && ($slug !== '');
+			}
+		}
+
+		if ($slug_success) {
+			if ($this->current_history) {
+				$this->current_history->record(
+					'info',
+					'Post slug generated',
+					array('slug' => $slug),
+					null,
+					array('component' => 'post_slug')
+				);
+			}
+		} else {
+			if ($this->current_history) {
+				$this->current_history->record(
+					'error',
+					'Post slug generation failed',
+					array(),
+					null,
+					array('component' => 'post_slug')
+				);
+			}
+		}
+
+		return array(
+			'slug'    => $slug,
+			'success' => (bool) $slug_success,
+		);
+	}
+
+	/**
+	 * Generate a post slug from a generation context.
+	 *
+	 * @param AIPS_Generation_Context $context            Generation context.
+	 * @param string                  $content            Generated article content.
+	 * @param string                  $title              Generated article title.
+	 * @param array                   $options            AI options.
+	 * @param bool|null               $generation_success Output parameter. Set to true on success, false on failure.
+	 * @return string|WP_Error Generated slug string or WP_Error on failure.
+	 */
+	public function generate_slug_from_context($context, $content = '', $title = '', $options = array(), &$generation_success = null) {
+		if ($this->conversation !== null) {
+			$slug_prompt = $this->post_slug_prompt_builder->build_followup($context, $title);
+		} else {
+			$slug_prompt = $this->post_slug_prompt_builder->build($context, null, null, $content, $title);
+		}
+
+		$slug_instructions = $this->post_slug_prompt_builder->resolve_slug_instructions($context, $context->get_topic(), $title);
+		$ai_variables      = $this->resolve_ai_variables_from_context($context, $content, $slug_instructions);
+		if (!empty($ai_variables)) {
+			$slug_prompt = $this->template_processor->process_with_ai_variables(
+				$slug_prompt,
+				$context->get_topic(),
+				$ai_variables
+			);
+		}
+
+		$result = $this->generate_content($slug_prompt, $options, 'slug');
+
+		if (is_wp_error($result)) {
+			$generation_success = false;
+			return $result;
+		}
+
+		$generation_success = true;
+		$slug = trim($result);
+		$slug = preg_replace('/^["\']|["\']$/', '', $slug);
+
+		return sanitize_title($slug);
 	}
 
 	/**

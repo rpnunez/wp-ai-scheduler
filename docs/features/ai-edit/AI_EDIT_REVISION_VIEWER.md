@@ -2,7 +2,7 @@
 
 ## Overview
 
-The AI Edit feature includes a Revision Viewer that allows users to view and restore previous versions of post components (title, excerpt, content, featured image, and each post image).
+The AI Edit feature includes a Revision Viewer that allows users to view and restore previous versions of post components (title, post slug, excerpt, content, featured image, and each post image).
 
 > **Not to be confused with:** this is unrelated to the **AI Assistance** per-field ✨/🕐 widget (see `docs/features/ai-assistance/AI_ASSISTANCE_DEV_GUIDE.md`). The revision viewer described here is part of AI Edit's post-component regeneration flow, with its own controller, service, and runtime files (listed below).
 
@@ -175,7 +175,7 @@ $(document).on('click', '.aips-restore-revision-btn', window.AIPS.restoreRevisio
 - **Action:** `aips_get_component_revisions`
 - **Parameters:**
   - `post_id` - WordPress post ID
-  - `component_type` - title, excerpt, content, featured_image
+  - `component_type` - title, slug, excerpt, content, featured_image
   - `history_id` - History container ID
 - **Response:**
   ```json
@@ -284,7 +284,7 @@ Every action has visual feedback:
 - [ ] Loading states work correctly
 - [ ] Mobile responsive design
 - [ ] Keyboard navigation works
-- [ ] Works for all component types (title, excerpt, content, image)
+- [ ] Works for all component types (title, post slug, excerpt, content, image)
 
 ## Related Files
 

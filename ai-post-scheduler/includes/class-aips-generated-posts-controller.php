@@ -365,7 +365,7 @@ class AIPS_Generated_Posts_Controller {
 		// Collect regenerations / revisions per component
 		$component_revisions = array();
 		if ($history_item->post_id) {
-			$components = array('title', 'excerpt', 'content', 'featured_image', 'post_images');
+			$components = array('title', 'slug', 'excerpt', 'content', 'featured_image', 'post_images');
 			$post_id = absint($history_item->post_id);
 			foreach ((new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id) as $image_row) {
 				$components[] = 'post_image_' . (int) $image_row->id;

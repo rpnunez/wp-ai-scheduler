@@ -232,6 +232,35 @@ class Test_AIPS_Editor_Controller extends WP_UnitTestCase {
 		$this->assertCount(3, $response['data']['variants']);
 	}
 
+	public function test_generate_component_variants_returns_sanitized_slug_candidates() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Base Title',
+			'post_name'    => 'base-title',
+			'post_content' => 'Some descriptive content.',
+		));
+
+		$_POST = array(
+			'action'    => 'aips_editor_generate_component_variants',
+			'nonce'     => wp_create_nonce('aips_ajax_nonce'),
+			'post_id'   => $post_id,
+			'component' => 'slug',
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_generate_component_variants();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected
+		}
+		$output   = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('slug', $response['data']['component']);
+		$this->assertSame(array('candidate-1', 'candidate-2', 'candidate-3'), $response['data']['variants']);
+	}
+
 	public function test_generate_component_variants_rejects_invalid_component() {
 		$post_id = $this->factory->post->create();
 

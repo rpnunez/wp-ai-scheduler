@@ -54,6 +54,9 @@
 			// Toggle Source Groups panel when Include Sources? checkbox changes.
 			$(document).on('change', '#author_include_sources', this.toggleAuthorSourceGroups.bind(this));
 
+			// Toggle Slug Prompt when Generate Post Slug checkbox changes.
+			$(document).on('change', '#author_generate_slug', this.toggleAuthorSlugPrompt.bind(this));
+
 			// Toggle Topic Auto-Approval fields when policy changes.
 			$(document).on('change', '#topic_auto_approval_mode', this.toggleAutoApprovalFields.bind(this));
 
@@ -261,6 +264,11 @@
 			$('.aips-author-source-group-cb').prop('checked', false);
 			$('#author-source-groups-selector').hide();
 
+			// Reset slug fields.
+			$('#author_generate_slug').prop('checked', false);
+			$('#author_slug_prompt').val('');
+			$('#author-slug-prompt-group').hide();
+
 			// Reset image settings
 			$('#author_generate_featured_image').prop('checked', false);
 			$('.aips-author-featured-image-settings').hide();
@@ -289,6 +297,15 @@
 			if (isChecked && typeof AIPS !== 'undefined' && typeof AIPS.toggleFeaturedImageSourceFields === 'function') {
 				AIPS.toggleFeaturedImageSourceFields($('.aips-author-featured-image-settings .aips-image-settings-group'));
 			}
+		},
+
+		/**
+		 * Show or hide the Author Slug Prompt input.
+		 *
+		 * @param {Event} e - Change event from `#author_generate_slug`.
+		 */
+		toggleAuthorSlugPrompt: function (e) {
+			$('#author-slug-prompt-group').toggle($(e.currentTarget).is(':checked'));
 		},
 
 		/**
@@ -409,6 +426,12 @@
 						authorSgIds.forEach(function(tid) {
 							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
 						});
+
+						// Restore slug settings.
+						var generateSlug = author.generate_slug == 1;
+						$('#author_generate_slug').prop('checked', generateSlug);
+						$('#author_slug_prompt').val(author.slug_prompt || '');
+						$('#author-slug-prompt-group').toggle(generateSlug);
 
 						// Restore Featured Image options
 						var hasFeatured = parseInt(author.generate_featured_image, 10) === 1;
