@@ -140,6 +140,7 @@ class AIPS_Generated_Posts_Controller {
 			$scheduled_timestamp = ('future' === $post->post_status) ? $post_timestamp : null;
 			
 			$posts_data[] = array(
+				'id' => $item->post_id,
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'post_type' => $post->post_type,
@@ -192,6 +193,7 @@ class AIPS_Generated_Posts_Controller {
 			}
 
 			$partial_posts_data[] = array(
+				'id' => $item->post_id,
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'post_type' => $post->post_type,
@@ -244,6 +246,7 @@ class AIPS_Generated_Posts_Controller {
 			'post_excerpt' => __('Excerpt', 'ai-post-scheduler'),
 			'post_content' => __('Content', 'ai-post-scheduler'),
 			'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+			'post_images' => __('Post Images', 'ai-post-scheduler'),
 		);
 
 		$decoded = json_decode((string) $component_statuses_json, true);
@@ -307,7 +310,18 @@ class AIPS_Generated_Posts_Controller {
 		
 		foreach ($history_item->log as $log_entry) {
 			$details = json_decode($log_entry->details, true);
-			
+
+			// Decode any legacy base64-encoded output up front so every branch below
+			// (AI response, generic logs, debug) shows the real text. New rows are
+			// stored unencoded, so this only touches historical rows.
+			if (is_array($details) && isset($details['output']) && !empty($details['output_encoded']) && is_string($details['output'])) {
+				$decoded = base64_decode($details['output'], true);
+				if ($decoded !== false) {
+					$details['output'] = $decoded;
+					unset($details['output_encoded']);
+				}
+			}
+
 			// Categorize based on history_type_id
 			$type_id = isset($log_entry->history_type_id) ? (int) $log_entry->history_type_id : AIPS_History_Type::LOG;
 			
@@ -329,10 +343,7 @@ class AIPS_Generated_Posts_Controller {
 					if ($type_id === AIPS_History_Type::AI_REQUEST) {
 						$ai_calls[$component_type]['request'] = $details;
 					} else {
-						// Decode base64-encoded AI output if flagged
-						if (isset($details['output']) && !empty($details['output_encoded'])) {
-							$details['output'] = base64_decode($details['output']);
-						}
+						// Output already decoded at the top of the loop (legacy base64).
 						$ai_calls[$component_type]['response'] = $details;
 					}
 					break;
@@ -359,10 +370,14 @@ class AIPS_Generated_Posts_Controller {
 		// Collect regenerations / revisions per component
 		$component_revisions = array();
 		if ($history_item->post_id) {
-			$components = array('title', 'excerpt', 'content', 'featured_image');
+			$components = array('title', 'slug', 'excerpt', 'content', 'featured_image', 'post_images');
+			$post_id = absint($history_item->post_id);
+			foreach ((new AIPS_Post_Images_Generated_Repository())->get_for_post_history($post_id, (int) $history_item->id) as $image_row) {
+				$components[] = 'post_image_' . (int) $image_row->id;
+			}
 			foreach ($components as $component) {
 				$component_revisions[$component] = $this->history_repository->get_component_revisions(
-					absint($history_item->post_id),
+					$post_id,
 					$component,
 					20
 				);

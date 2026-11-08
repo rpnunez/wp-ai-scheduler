@@ -778,7 +778,10 @@ class AIPS_Admin_Menu {
      */
     public function render_history_page() {
         AIPS_Admin_Menu_Helper::safe_render(function() {
-            $history_handler = new AIPS_History();
+            $container = AIPS_Container::get_instance();
+            $history_handler = $container->has(AIPS_History::class)
+                ? $container->make(AIPS_History::class)
+                : new AIPS_History();
             $history_handler->render_page();
         }, __('History', 'ai-post-scheduler'));
     }

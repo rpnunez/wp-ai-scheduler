@@ -128,6 +128,26 @@ class AIPS_Generation_Context_Factory {
 			$context['context_type'] = 'topic';
 			$context['context_name'] = $author->name . ': ' . $topic->topic_title;
 
+		} elseif (!empty($history->post_id)) {
+			// Fallback: build a lightweight context from the post itself
+			$post = get_post($history->post_id);
+			if ($post) {
+				$template_obj = (object) array(
+					'id'             => 0,
+					'name'           => $post->post_title ? $post->post_title : __('Standard Post', 'ai-post-scheduler'),
+					'article_prompt' => '',
+					'title_prompt'   => '',
+					'excerpt_prompt' => '',
+					'image_prompt'   => '',
+					'system_prompt'  => '',
+					'model'          => '',
+				);
+				$context['generation_context'] = new AIPS_Template_Context($template_obj, null, $post->post_title);
+				$context['context_type']       = 'post';
+				$context['context_name']       = $post->post_title ? $post->post_title : __('Post Context', 'ai-post-scheduler');
+			} else {
+				return new WP_Error('invalid_context', __('Unable to determine generation context type.', 'ai-post-scheduler'));
+			}
 		} else {
 			return new WP_Error('invalid_context', __('Unable to determine generation context type.', 'ai-post-scheduler'));
 		}

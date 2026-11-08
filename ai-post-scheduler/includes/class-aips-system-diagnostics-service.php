@@ -850,6 +850,29 @@ class AIPS_System_Diagnostics_Service {
 	}
 
 	/**
+	 * Prune old AI error logs.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function prune_ai_errors() {
+		$result    = $this->db_prune_service->prune_ai_error_logs();
+		$deleted   = isset($result['deleted']) ? (int) $result['deleted'] : 0;
+		$optimized = !empty($result['optimized']);
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('AI Error logs prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
+				$deleted,
+				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
+			),
+			'deleted'   => $deleted,
+			'optimized' => $optimized,
+			'tables'    => array_filter(array($this->db_prune_service->get_table_status('aips_history_log'))),
+		);
+	}
+
+	/**
 	 * Clean orphaned embeddings associated with deleted posts.
 	 *
 	 * @return array<string, mixed>

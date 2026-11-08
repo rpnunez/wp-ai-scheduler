@@ -353,6 +353,9 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 
 	/** Preserve diagnostics and provenance for successful and failed topic requests. */
 	private function record_sources_selection_history($history) {
+		if (!$this->topics_generator || !method_exists($this->topics_generator, 'get_last_sources_selection')) {
+			return;
+		}
 		$selection = $this->topics_generator->get_last_sources_selection();
 		foreach ($selection['diagnostics'] ?? array() as $diagnostic) {
 			$history->record('warning', __('Source selection needs attention.', 'ai-post-scheduler'), $diagnostic, null, array(

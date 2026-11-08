@@ -129,6 +129,14 @@ class AIPS_DB_Datetime_Migrator {
 			'aips_telemetry' => array(
 				array( 'inserted_at', false ),
 			),
+			'aips_post_images' => array(
+				array( 'created_at', false ),
+				array( 'updated_at', false ),
+			),
+			'aips_post_images_generated' => array(
+				array( 'created_at', false ),
+				array( 'updated_at', false ),
+			),
 		);
 	}
 

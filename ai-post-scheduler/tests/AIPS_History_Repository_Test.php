@@ -539,6 +539,67 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		$this->assertSame('page', $item->post_type);
 	}
 
+	/**
+	 * A failed child-log delete must not remove the parent container or report success.
+	 */
+	public function test_delete_by_post_id_stops_when_child_log_delete_fails() {
+		global $wpdb;
+
+		if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('Requires the full WordPress test library and a real database.');
+		}
+
+		$post_id = self::factory()->post->create(array(
+			'post_title'  => 'History log delete failure',
+			'post_status' => 'draft',
+		));
+
+		$history_id = $this->repository->create(array(
+			'post_id'         => $post_id,
+			'template_id'     => $this->test_template_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+			'generated_title' => 'Keep this container',
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+		));
+		$this->test_history_ids[] = $history_id;
+		$this->assertNotEmpty($history_id);
+
+		$log_id = $this->repository->add_log_entry($history_id, 'child log that must survive');
+		$this->assertNotEmpty($log_id);
+
+		$filter = function ($query) use ($wpdb) {
+			if (!is_string($query)) {
+				return $query;
+			}
+			if (false === stripos($query, 'DELETE') || false === strpos($query, $wpdb->prefix . 'aips_history_log')) {
+				return $query;
+			}
+			return 'DELETE FROM `' . $wpdb->prefix . 'aips_history_log_missing` WHERE 1=1';
+		};
+
+		add_filter('query', $filter);
+		$suppress = $wpdb->suppress_errors(true);
+
+		try {
+			$result = $this->repository->delete_by_post_id($post_id);
+
+			$this->assertFalse($result, 'A failed child-log delete must propagate as false.');
+			$this->assertNotNull($this->repository->get_by_id($history_id), 'The parent history container must stay when log deletion fails.');
+
+			$remaining_logs = (int) $wpdb->get_var($wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}aips_history_log WHERE history_id = %d",
+				$history_id
+			));
+			$this->assertSame(1, $remaining_logs, 'Child logs must not be orphaned or removed when their delete fails.');
+		} finally {
+			remove_filter('query', $filter);
+			$wpdb->suppress_errors($suppress);
+			$wpdb->last_error = '';
+			wp_delete_post($post_id, true);
+		}
+	}
+
 	public function test_get_history_filters_by_post_type() {
 		$matching_id = $this->repository->create(array(
 			'status' => 'completed',
@@ -561,5 +622,63 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		$ids = array_map('intval', wp_list_pluck($results['items'], 'id'));
 		$this->assertContains((int) $matching_id, $ids);
 		$this->assertNotContains((int) $other_id, $ids);
+	}
+
+	/**
+	 * Deleting a history row must cascade to its aips_history_log child rows so
+	 * they do not become orphans.
+	 */
+	public function test_delete_cascades_to_history_log() {
+		global $wpdb;
+		$log_table = $wpdb->prefix . 'aips_history_log';
+
+		$id = $this->repository->create(array(
+			'status'          => 'completed',
+			'post_type'       => 'post',
+			'creation_method' => 'manual',
+			'created_at'      => time(),
+		));
+		$wpdb->insert(
+			$log_table,
+			array( 'history_id' => (int) $id, 'timestamp' => time() ),
+			array( '%d', '%d' )
+		);
+		$this->assertGreaterThan( 0, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$log_table}` WHERE history_id = %d", (int) $id ) ) );
+
+		$this->repository->delete( $id );
+
+		$this->assertSame(
+			'0',
+			$wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$log_table}` WHERE history_id = %d", (int) $id ) ),
+			'history_log rows must be deleted with their parent history row'
+		);
+	}
+
+	/**
+	 * delete_bulk() must likewise cascade to aips_history_log.
+	 */
+	public function test_delete_bulk_cascades_to_history_log() {
+		global $wpdb;
+		$log_table = $wpdb->prefix . 'aips_history_log';
+
+		$id = $this->repository->create(array(
+			'status'          => 'completed',
+			'post_type'       => 'post',
+			'creation_method' => 'manual',
+			'created_at'      => time(),
+		));
+		$wpdb->insert(
+			$log_table,
+			array( 'history_id' => (int) $id, 'timestamp' => time() ),
+			array( '%d', '%d' )
+		);
+
+		$this->repository->delete_bulk( array( (int) $id ) );
+
+		$this->assertSame(
+			'0',
+			$wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$log_table}` WHERE history_id = %d", (int) $id ) ),
+			'delete_bulk() must remove child history_log rows'
+		);
 	}
 }

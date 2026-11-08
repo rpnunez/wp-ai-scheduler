@@ -566,6 +566,30 @@ class AIPS_Post_History_UI {
 		$history = $this->get_cached_history($post_id);
 		$history_id = (is_object($history) && !empty($history->id)) ? absint($history->id) : 0;
 
+		if ($history_id && current_user_can('edit_post', $post_id)) {
+			$ai_edit_link = sprintf(
+				'<a href="#" class="aips-ai-edit-btn" data-history-id="%1$s" data-post-id="%2$s" title="%3$s">%4$s</a>',
+				esc_attr((string) $history_id),
+				esc_attr((string) $post_id),
+				esc_attr__('AI Edit — Regenerate post components (title, excerpt, content, image) with AI', 'ai-post-scheduler'),
+				esc_html__('AI Edit', 'ai-post-scheduler')
+			);
+
+			$new_actions = array();
+			$inserted    = false;
+			foreach ($actions as $key => $action) {
+				$new_actions[$key] = $action;
+				if ($key === 'edit') {
+					$new_actions['aips_ai_edit'] = $ai_edit_link;
+					$inserted = true;
+				}
+			}
+			if (!$inserted) {
+				$new_actions['aips_ai_edit'] = $ai_edit_link;
+			}
+			$actions = $new_actions;
+		}
+
 		if ($history_id) {
 			$history_url = $this->get_post_history_url($post_id);
 
@@ -693,6 +717,13 @@ class AIPS_Post_History_UI {
 			'nonce'   => wp_create_nonce('aips_insights_nonce'),
 			'ajaxurl' => admin_url('admin-ajax.php'),
 		));
+
+		if ($hook_suffix === 'edit.php') {
+			$container = AIPS_Container::get_instance();
+			if ($container->has(AIPS_Admin_Assets::class)) {
+				$container->make(AIPS_Admin_Assets::class)->enqueue_ai_edit_assets();
+			}
+		}
 	}
 
 	/**

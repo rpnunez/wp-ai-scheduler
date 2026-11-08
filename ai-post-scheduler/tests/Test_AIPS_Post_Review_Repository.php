@@ -86,6 +86,14 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		$this->assertArrayHasKey('total', $result);
 		$this->assertGreaterThanOrEqual(2, $result['total']);
 		$this->assertGreaterThanOrEqual(2, count($result['items']));
+
+		$first_item = $result['items'][0];
+		$this->assertTrue(property_exists($first_item, 'snippet'));
+		$this->assertTrue(property_exists($first_item, 'featured_image'));
+		$this->assertTrue(property_exists($first_item, 'created_at_formatted'));
+		$this->assertTrue(property_exists($first_item, 'post_type_label'));
+		$this->assertTrue(property_exists($first_item, 'edit_url'));
+		$this->assertSame('Test content', $first_item->snippet);
 	}
 	
 	/**
