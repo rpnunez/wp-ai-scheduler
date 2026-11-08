@@ -9,6 +9,10 @@
   - Resolved and associated post history containers across all AI Edit generation and editing operations, automatically recording discrete `ai_request` and `ai_response` logs so they appear in the post's History modal under "Technical" and "AI Calls" tabs.
   - Automatically record a `"Post {Component} regenerated via AI Edit"` timeline event upon saving or restoring any component revision, cleanly displayed in the History container "Timeline" tab as `"Post {Component} regenerated"`.
   - Added graceful fallback resolution in `AIPS_Generation_Context_Factory` for posts without explicit template or author/topic context.
+- **Diagnostics → System Info "Totals & Counts" section:**
+  - New section listing lifetime totals: posts generated, generation runs and success rate, generations by method, history containers by kind, authors, author topics and author posts, logged AI requests, AI Assistance requests, background-job AI calls, embeddings, content relationships, internal link suggestions, indexed links, templates/schedules/campaigns, trending topics, sources and fetched source pages, and bulk batch jobs. Included in the "Copy System Report" Markdown.
+  - New per-provider AI call counter (`AIPS_AI_Call_Counter`, non-autoloaded option `aips_ai_call_counters`) recorded by `AIPS_AI_Service`, shown as "AI Calls (WP AI Connector)" and "AI Calls (Meow AI Engine)" with a by-type breakdown. History logs never recorded the provider, so these counts start from the first AI call after upgrading.
+  - Totals come from the new read-only `AIPS_System_Totals_Repository`, cached for 10 minutes.
 - **Interactive Cards Redesign for Posts Pending Review & Floating Bulk Actions (#2334, #2340):**
   - Modernized the Content > Pending Review tab from an HTML table into a responsive 3-column card grid with featured image display, fallback banner placeholders, post type badges, and context attribution.
   - Added instant 1-click publishing without modal confirmation, including smooth card fade-out animation, draft counter synchronization, and toast notification with direct editor links.
@@ -40,6 +44,10 @@
   - Added "Send Pending Digest Now" admin action for immediate manual queue testing and flush.
   - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
 
+
+### Fixed
+- Pending Review selection count and bulk publish/delete now use the same posts: after Cards → expanded List → Cards, IDs that are no longer rendered are dropped instead of being counted and then skipped.
+- Capped Pending Review `review_per_page` and the cards draft-list AJAX `per_page` at 100. Screen Options above the old 50 limit are still honored up to that ceiling.
 
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.

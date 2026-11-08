@@ -325,10 +325,16 @@ class AIPS_History_Container {
 		
 		// Add output if provided
 		if ($output !== null) {
-			// Base64 encode if it's a large string (likely AI response)
 			if (is_string($output) && strlen($output) > 500) {
-				$details['output'] = base64_encode($output);
-				$details['output_encoded'] = true;
+				// Store the real AI response text. This used to be base64-encoded,
+				// which inflated the row ~33% and rendered as an unreadable Base64 blob
+				// in the History "AI Response" view. We only sanitize to valid UTF-8 so
+				// wp_json_encode() of details can never fail on stray bytes. Legacy rows
+				// that still carry base64 (with the output_encoded flag) are decoded on
+				// read by the display layer.
+				$details['output'] = function_exists('wp_check_invalid_utf8')
+					? wp_check_invalid_utf8($output, true)
+					: $output;
 			} else {
 				$details['output'] = is_array($output) || is_object($output) ? $output : array('value' => $output);
 			}
