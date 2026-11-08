@@ -937,6 +937,42 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
+	 * Assign the pillar post only while the campaign does not have one.
+	 *
+	 * The predicate is in the UPDATE so two generations that both observed an
+	 * empty pillar cannot overwrite each other. The first committed claim wins;
+	 * a later claim matches zero rows and leaves the stored post in place.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $post_id     Post ID to store as the pillar.
+	 * @return bool True when this call claimed the pillar.
+	 */
+	public function claim_pillar_post_if_unset($campaign_id, $post_id) {
+		$campaign_id = absint($campaign_id);
+		$post_id = absint($post_id);
+		if (!$campaign_id || !$post_id) {
+			return false;
+		}
+
+		$updated = $this->wpdb->query($this->wpdb->prepare(
+			"UPDATE {$this->campaigns_table}
+			SET pillar_post_id = %d, updated_at = %d
+			WHERE id = %d AND (pillar_post_id IS NULL OR pillar_post_id = 0)",
+			$post_id,
+			AIPS_DateTime::now()->timestamp(),
+			$campaign_id
+		));
+
+		if (false === $updated || (int) $updated < 1) {
+			return false;
+		}
+
+		$this->invalidate_cache_domain('campaign', array('campaign_id' => $campaign_id), 'campaign_updated');
+
+		return true;
+	}
+
+	/**
 	 * Get linked templates by campaign.
 	 *
 	 * @param int $campaign_id Campaign ID.

@@ -428,6 +428,35 @@ class AIPS_Campaign_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Check whether sources should be injected into the content prompt.
+	 *
+	 * @return bool
+	 */
+	public function get_include_sources() {
+		return (bool) $this->inner_context->get_include_sources();
+	}
+
+	/**
+	 * Get the source group term IDs whose sources should be injected.
+	 *
+	 * @return int[]
+	 */
+	public function get_source_group_ids() {
+		$ids = $this->inner_context->get_source_group_ids();
+
+		return is_array($ids) ? array_map('intval', $ids) : array();
+	}
+
+	/**
+	 * Whether affiliate links should be injected into generated content.
+	 *
+	 * @return bool
+	 */
+	public function get_affiliate_links_enabled() {
+		return (bool) $this->inner_context->get_affiliate_links_enabled();
+	}
+
+	/**
 	 * Get trigger context.
 	 *
 	 * @return array<string,mixed>

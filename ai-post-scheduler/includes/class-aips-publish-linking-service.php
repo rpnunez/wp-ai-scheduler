@@ -284,22 +284,16 @@ class AIPS_Publish_Linking_Service {
 	/**
 	 * Queue an inbound link suggestion from the Campaign Pillar post to this newly published spoke post.
 	 *
+	 * The campaign is taken only from `_aips_campaign_id`, written when the post
+	 * is generated inside a campaign. Template membership is not provenance: a
+	 * template can belong to several campaigns, and a post generated outside
+	 * those campaigns must not be linked to an arbitrary pillar.
+	 *
 	 * @param int $post_id Published spoke post ID.
 	 * @return void
 	 */
 	private function maybe_queue_campaign_silo_inbound(int $post_id): void {
 		$campaign_id = (int) get_post_meta($post_id, '_aips_campaign_id', true);
-		if ($campaign_id <= 0 && class_exists('AIPS_Campaigns_Repository')) {
-			$campaigns_repo = AIPS_Campaigns_Repository::instance();
-			$template_id = (int) get_post_meta($post_id, '_aips_template_id', true);
-			if ($template_id > 0) {
-				$c_ids = $campaigns_repo->get_campaign_ids_by_template($template_id);
-				if (!empty($c_ids)) {
-					$campaign_id = (int) $c_ids[0];
-				}
-			}
-		}
-
 		if ($campaign_id <= 0 || !class_exists('AIPS_Campaigns_Repository')) {
 			return;
 		}

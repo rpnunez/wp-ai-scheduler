@@ -350,6 +350,29 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertStringContainsString('aips_campaign_templates', $this->wpdb_stub->last_get_results_query);
 	}
 
+	public function test_claim_pillar_post_if_unset_updates_only_while_pillar_is_empty() {
+		$repository = $this->new_repository();
+
+		$this->assertFalse($repository->claim_pillar_post_if_unset(0, 900));
+		$this->assertFalse($repository->claim_pillar_post_if_unset(42, 0));
+		$this->assertSame(array(), $this->wpdb_stub->queries);
+
+		$this->assertTrue($repository->claim_pillar_post_if_unset(42, 900));
+		$claim_sql = '';
+		foreach ($this->wpdb_stub->queries as $query) {
+			if (false !== strpos($query, 'SET pillar_post_id = 900')) {
+				$claim_sql = $query;
+			}
+		}
+		$this->assertNotSame('', $claim_sql);
+		$this->assertStringContainsString('UPDATE wp_aips_campaigns', $claim_sql);
+		$this->assertStringContainsString('WHERE id = 42 AND (pillar_post_id IS NULL OR pillar_post_id = 0)', $claim_sql);
+		$this->assertNull($this->wpdb_stub->last_update_call);
+
+		$this->wpdb_stub->query_return_value = 0;
+		$this->assertFalse($repository->claim_pillar_post_if_unset(42, 901));
+	}
+
 	public function test_get_campaign_ids_by_template_returns_array_of_ids() {
 		$this->wpdb_stub->results_to_return = array(
 			(object) array('campaign_id' => '10'),
@@ -457,6 +480,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public $delete_return_value = 1;
 
+	public $query_return_value = true;
+
 	public $last_error = '';
 
 	public function prepare($query, ...$args) {
@@ -510,7 +535,7 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public function query($query) {
 		$this->queries[] = preg_replace('/\s+/', ' ', trim($query));
-		return true;
+		return $this->query_return_value;
 	}
 
 	public function suppress_errors($suppress = true) {
