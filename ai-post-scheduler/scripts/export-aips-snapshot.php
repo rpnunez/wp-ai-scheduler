@@ -80,9 +80,11 @@ class AIPS_Snapshot_Exporter {
 	);
 
 	/**
-	 * Number of seconds covered by the statistics queries.
+	 * Statistics window in days and seconds. Keep these class constants
+	 * independent of WordPress runtime constants.
 	 */
-	private const STATS_WINDOW = 90 * DAY_IN_SECONDS;
+	private const STATS_WINDOW_DAYS = 90;
+	private const STATS_WINDOW = self::STATS_WINDOW_DAYS * 86400;
 
 	/** @var wpdb */
 	private $wpdb;
@@ -191,7 +193,7 @@ class AIPS_Snapshot_Exporter {
 			'aips_version'    => $plugin_version,
 			'aips_db_version' => get_option('aips_db_version'),
 			'active_theme'    => wp_get_theme()->get('Name'),
-			'stats_window_days' => self::STATS_WINDOW / DAY_IN_SECONDS,
+			'stats_window_days' => self::STATS_WINDOW_DAYS,
 		);
 
 		$this->write_json('00_environment.json', $data);
@@ -406,7 +408,7 @@ class AIPS_Snapshot_Exporter {
 		);
 
 		$this->write_json('41_history_stats.json', array(
-			'window_days'           => self::STATS_WINDOW / DAY_IN_SECONDS,
+			'window_days'           => self::STATS_WINDOW_DAYS,
 			'by_template_author'    => (array) $by_source,
 			'by_week'               => (array) $by_week,
 			'top_errors'            => (array) $errors,
