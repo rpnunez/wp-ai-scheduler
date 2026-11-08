@@ -38,16 +38,13 @@ $review_total = $review_table->get_total_items();
 								<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 							</select>
 							<button type="button" id="aips-bulk-action-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+							<span id="aips-top-selected-count" data-label="<?php esc_attr_e('selected', 'ai-post-scheduler'); ?>" aria-live="polite" style="display:none;"></span>
 							<button type="button" id="aips-reload-posts-btn" class="aips-btn aips-btn-sm aips-btn-secondary" title="<?php esc_attr_e('Reload posts', 'ai-post-scheduler'); ?>">
 								<span class="dashicons dashicons-update" aria-hidden="true"></span>
 								<?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
 							</button>
 						</div>
 						<div class="aips-toolbar-right">
-							<?php
-							// View toggle temporarily disabled pending Cards/List synchronization (Issue #2339).
-							if (false):
-							?>
 							<div class="aips-view-toggle" role="group" aria-label="<?php esc_attr_e('View layout', 'ai-post-scheduler'); ?>">
 								<button type="button" class="aips-view-toggle-btn is-active" data-view="cards" title="<?php esc_attr_e('Cards view', 'ai-post-scheduler'); ?>" aria-pressed="true">
 									<span class="dashicons dashicons-grid-view" aria-hidden="true"></span>
@@ -58,7 +55,6 @@ $review_total = $review_table->get_total_items();
 									<span class="aips-view-toggle-text"><?php esc_html_e('List', 'ai-post-scheduler'); ?></span>
 								</button>
 							</div>
-							<?php endif; ?>
 							<div class="aips-pending-count-badge" id="aips-pending-cards-count">
 								<span class="aips-count-text">
 									<?php esc_html_e('Showing', 'ai-post-scheduler'); ?>
@@ -123,7 +119,8 @@ $review_total = $review_table->get_total_items();
 						<div id="aips-pending-posts-grid" class="aips-pending-posts-grid"
 							data-total-pages="<?php echo esc_attr((int) $review_table->get_pagination_arg('total_pages')); ?>"
 							data-current-page="<?php echo esc_attr((int) $review_table->get_pagenum()); ?>"
-							data-per-page="<?php echo esc_attr((int) $review_table->get_pagination_arg('per_page')); ?>">
+							data-per-page="<?php echo esc_attr((int) $review_table->get_pagination_arg('per_page')); ?>"
+							data-per-page-max="<?php echo esc_attr((string) AIPS_Pending_Review_List_Table::PER_PAGE_MAX); ?>">
 							<?php foreach ($review_table->items as $item): ?>
 							<div class="aips-post-card" data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
 								<div class="aips-card-banner">
