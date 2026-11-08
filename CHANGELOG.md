@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Performance
+- **AI Prompt Bloat Optimization & Input Token Reduction:**
+  - Pruned redundant `content_format` and `post_slice` diversity blocks in `AIPS_Prompt_Builder_Post_Metadata::append_diversity_blocks()` during metadata follow-up turns on established conversations, saving ~300 input tokens per post.
+  - Eliminated duplicate voice content instructions in `AIPS_Prompt_Builder::build_content_context()` when called for `AIPS_Generation_Context`, avoiding redundant injection across both prompt body and AI Engine context options.
+  - Reduced default article digest size in `AIPS_Prompt_Builder_Post_Title::build_base_prompt()` from 12,000 characters (`DEFAULT_MAX_CHARS`) to 3,000 characters, saving ~1,500–2,500 input tokens per post on stateless title generation requests without compromising headline relevance.
+
 ### Added
 - **Comprehensive Post Lifecycle Deletion Cleanup:**
   - Added `AIPS_Post_Cleanup_Service` orchestrated via WordPress `before_delete_post` hook to reliably clean up plugin data when posts are permanently deleted.
