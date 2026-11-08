@@ -150,4 +150,15 @@ interface AIPS_History_Repository_Interface {
 	 * @return array|null
 	 */
 	public function get_ai_error_by_id($log_id);
+
+	/**
+	 * Delete history records and associated logs for a given post ID.
+	 *
+	 * Child logs are removed first. A failed child delete leaves the parent
+	 * containers in place.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return int|false Number of history container records deleted, or false on failure.
+	 */
+	public function delete_by_post_id($post_id);
 }
