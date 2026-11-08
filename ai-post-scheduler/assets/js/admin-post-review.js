@@ -36,8 +36,17 @@
 		/** @type {Set<string>} Selected post IDs, shared by both layouts. */
 		selectedPostIds: new Set(),
 
+		/** @type {string} Active layout. Bulk actions only see this layout's checkboxes. */
+		currentView: 'cards',
+
 		/** @type {boolean} The server-rendered List query no longer matches the cards. */
 		listNeedsReload: false,
+
+		/**
+		 * Fallback when the grid has no data-per-page-max attribute.
+		 * Keep this equal to AIPS_Pending_Review_List_Table::PER_PAGE_MAX.
+		 */
+		perPageMaxFallback: 100,
 
 		/**
 		 * Bootstrap the Post Review page.
@@ -84,8 +93,78 @@
 				: $('.aips-pending-posts-grid .aips-post-checkbox');
 		},
 
+		/**
+		 * IDs that are both selected and rendered in the active layout.
+		 * The selection count and bulk actions share this list.
+		 *
+		 * @param {Iterable<string>} selectedIds Shared selection.
+		 * @param {Iterable<string>} activeIds   Checkbox values in the active layout.
+		 * @return {string[]}
+		 */
+		actionableIds: function (selectedIds, activeIds) {
+			var active = {};
+			var kept = [];
+			Array.from(activeIds || []).forEach(function (id) {
+				active[String(id)] = true;
+			});
+			Array.from(selectedIds || []).forEach(function (id) {
+				id = String(id);
+				if (active[id]) {
+					kept.push(id);
+				}
+			});
+			return kept;
+		},
+
+		/** Values of the checkboxes rendered in the active layout. */
+		activeCheckboxIds: function () {
+			var ids = [];
+			this.activeCheckboxes().each(function () {
+				ids.push(String($(this).val()));
+			});
+			return ids;
+		},
+
+		/**
+		 * Drop selected IDs that have no checkbox in the active layout.
+		 * A Cards → expanded List → Cards round trip restores every ID, including
+		 * rows that the smaller Cards page no longer renders. Those IDs are not
+		 * actionable: publish and delete only read the active checkboxes.
+		 *
+		 * @return {string[]} IDs still selected.
+		 */
+		pruneSelectionToActive: function () {
+			var kept = this.actionableIds(this.selectedPostIds, this.activeCheckboxIds());
+			var keep = {};
+			kept.forEach(function (id) {
+				keep[id] = true;
+			});
+			Array.from(this.selectedPostIds).forEach(function (id) {
+				if (!keep[String(id)]) {
+					AIPS.PostReview.selectedPostIds.delete(id);
+				}
+			});
+			return kept;
+		},
+
+		/**
+		 * Active-layout checkboxes whose posts are still selected.
+		 *
+		 * @return {jQuery}
+		 */
+		selectedActionCheckboxes: function () {
+			var allowed = {};
+			this.pruneSelectionToActive().forEach(function (id) {
+				allowed[id] = true;
+			});
+			return this.activeCheckboxes().filter(function () {
+				return !!allowed[String($(this).val())];
+			});
+		},
+
 		/** Apply the selected IDs to both rendered layouts. */
 		syncSelection: function () {
+			this.pruneSelectionToActive();
 			var selected = this.selectedPostIds;
 			this.rowCheckboxes().each(function () {
 				var checked = selected.has(String($(this).val()));
@@ -205,10 +284,11 @@
 			var url = new URL(window.location.href);
 			var loaded = $('#aips-pending-posts-grid .aips-post-card').length;
 			var tableLimit = parseInt($('#aips-pending-posts-grid').data('per-page'), 10) || 12;
+			var perPageMax = parseInt($('#aips-pending-posts-grid').data('per-page-max'), 10) || this.perPageMaxFallback;
 			var requestedLimit = parseInt(url.searchParams.get('review_per_page'), 10) || 0;
 			if ((view === 'list' && (loaded > tableLimit || this.listNeedsReload)) || (view === 'cards' && requestedLimit)) {
 				if (view === 'list') {
-					url.searchParams.set('review_per_page', Math.max(loaded, tableLimit));
+					url.searchParams.set('review_per_page', Math.min(perPageMax, Math.max(loaded, tableLimit)));
 					[['template_id', '#aips-filter-template'], ['post_type', '#aips-filter-post-type-review'], ['s', '#aips-post-search-input']].forEach(function (filter) {
 						var value = $(filter[1]).val();
 						if (value) {
@@ -282,8 +362,9 @@
 		 * @return {void}
 		 */
 		updateSelectionState: function () {
+			var $actionable     = this.selectedActionCheckboxes();
 			var $rows           = this.activeCheckboxes();
-			var checkedCount    = this.selectedPostIds.size;
+			var checkedCount    = $actionable.length;
 			var totalCount      = parseInt($('#aips-pending-total-count').text(), 10) || $rows.length;
 			var visibleChecked  = $rows.filter(':checked').length;
 			var allChecked      = $rows.length > 0 && $rows.length === visibleChecked;
@@ -578,7 +659,7 @@
 				return;
 			}
 
-			var checkedBoxes = this.activeCheckboxes().filter(':checked');
+			var checkedBoxes = this.selectedActionCheckboxes();
 			if (checkedBoxes.length === 0) {
 				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
 				return;
@@ -608,7 +689,7 @@
 				return;
 			}
 
-			var checkedBoxes = this.activeCheckboxes().filter(':checked');
+			var checkedBoxes = this.selectedActionCheckboxes();
 			if (checkedBoxes.length === 0) {
 				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
 				return;

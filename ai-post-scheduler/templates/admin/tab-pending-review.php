@@ -119,7 +119,8 @@ $review_total = $review_table->get_total_items();
 						<div id="aips-pending-posts-grid" class="aips-pending-posts-grid"
 							data-total-pages="<?php echo esc_attr((int) $review_table->get_pagination_arg('total_pages')); ?>"
 							data-current-page="<?php echo esc_attr((int) $review_table->get_pagenum()); ?>"
-							data-per-page="<?php echo esc_attr((int) $review_table->get_pagination_arg('per_page')); ?>">
+							data-per-page="<?php echo esc_attr((int) $review_table->get_pagination_arg('per_page')); ?>"
+							data-per-page-max="<?php echo esc_attr((string) AIPS_Pending_Review_List_Table::PER_PAGE_MAX); ?>">
 							<?php foreach ($review_table->items as $item): ?>
 							<div class="aips-post-card" data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
 								<div class="aips-card-banner">

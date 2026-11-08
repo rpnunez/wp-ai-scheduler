@@ -122,6 +122,122 @@ class Test_AIPS_Pending_Review_List_Table extends WP_UnitTestCase {
 		$this->assertSame(3, (int) $table->get_pagination_arg('per_page'));
 	}
 
+	public function test_bounded_per_page_keeps_values_above_the_old_cap_and_rejects_the_rest() {
+		$this->assertSame(1, AIPS_Pending_Review_List_Table::bounded_per_page(0));
+		$this->assertSame(12, AIPS_Pending_Review_List_Table::bounded_per_page(12));
+		$this->assertSame(80, AIPS_Pending_Review_List_Table::bounded_per_page(80));
+		$this->assertSame(
+			AIPS_Pending_Review_List_Table::PER_PAGE_MAX,
+			AIPS_Pending_Review_List_Table::bounded_per_page(AIPS_Pending_Review_List_Table::PER_PAGE_MAX)
+		);
+		$this->assertSame(
+			AIPS_Pending_Review_List_Table::PER_PAGE_MAX,
+			AIPS_Pending_Review_List_Table::bounded_per_page(999999)
+		);
+	}
+
+	public function test_review_per_page_query_is_capped() {
+		$force_eighty = static function () {
+			return 80;
+		};
+		add_filter(AIPS_Pending_Review_List_Table::PER_PAGE_OPTION, $force_eighty);
+
+		try {
+			$table = new AIPS_Pending_Review_List_Table();
+			$table->prepare_items();
+			$this->assertSame(80, (int) $table->get_pagination_arg('per_page'), 'Screen Options above 50 are kept.');
+
+			$_GET['review_per_page'] = '90';
+			$table = new AIPS_Pending_Review_List_Table();
+			$table->prepare_items();
+			$this->assertSame(90, (int) $table->get_pagination_arg('per_page'), 'A larger Cards-to-List page size is kept under the cap.');
+
+			$_GET['review_per_page'] = '999999';
+			$table = new AIPS_Pending_Review_List_Table();
+			$table->prepare_items();
+			$this->assertSame(
+				AIPS_Pending_Review_List_Table::PER_PAGE_MAX,
+				(int) $table->get_pagination_arg('per_page'),
+				'review_per_page cannot raise the SQL limit without a ceiling.'
+			);
+		} finally {
+			remove_filter(AIPS_Pending_Review_List_Table::PER_PAGE_OPTION, $force_eighty);
+			unset($_GET['review_per_page']);
+		}
+
+		$force_huge = static function () {
+			return 5000;
+		};
+		add_filter(AIPS_Pending_Review_List_Table::PER_PAGE_OPTION, $force_huge);
+		try {
+			$table = new AIPS_Pending_Review_List_Table();
+			$table->prepare_items();
+			$this->assertSame(AIPS_Pending_Review_List_Table::PER_PAGE_MAX, (int) $table->get_pagination_arg('per_page'));
+		} finally {
+			remove_filter(AIPS_Pending_Review_List_Table::PER_PAGE_OPTION, $force_huge);
+		}
+	}
+
+	public function test_ajax_per_page_uses_the_same_cap() {
+		$admin_id = $this->factory->user->create(array('role' => 'administrator'));
+		wp_set_current_user($admin_id);
+
+		$review = AIPS_Post_Review::instance();
+		$property = new ReflectionProperty($review, 'repository');
+		$property->setAccessible(true);
+		$original = $property->getValue($review);
+		$spy = new class extends AIPS_Post_Review_Repository {
+			/** @var int|null */
+			public $last_per_page = null;
+
+			public function get_draft_posts($args = array()) {
+				$this->last_per_page = isset($args['per_page']) ? (int) $args['per_page'] : null;
+				return array(
+					'items'        => array(),
+					'total'        => 0,
+					'pages'        => 1,
+					'current_page' => 1,
+				);
+			}
+		};
+		$property->setValue($review, $spy);
+
+		try {
+			$this->request_draft_page('80');
+			$this->assertSame(80, $spy->last_per_page, 'Cards AJAX still honors a Screen Options size above 50.');
+
+			$this->request_draft_page('999999');
+			$this->assertSame(AIPS_Pending_Review_List_Table::PER_PAGE_MAX, $spy->last_per_page);
+		} finally {
+			$property->setValue($review, $original);
+			wp_set_current_user(0);
+			unset($_POST['nonce'], $_POST['per_page'], $_POST['page'], $_REQUEST['nonce'], $_REQUEST['per_page'], $_REQUEST['page']);
+		}
+	}
+
+	/**
+	 * Invoke the draft-list AJAX handler and swallow the JSON wp_die.
+	 *
+	 * @param string $per_page Requested page size.
+	 * @return void
+	 */
+	private function request_draft_page($per_page) {
+		$_POST['nonce'] = $_REQUEST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['page'] = $_REQUEST['page'] = '1';
+		$_POST['per_page'] = $_REQUEST['per_page'] = $per_page;
+
+		ob_start();
+		try {
+			AIPS_Post_Review::instance()->ajax_get_draft_posts();
+		} catch (WPDieException $e) {
+			// wp_send_json_success exits through wp_die.
+		} finally {
+			if (ob_get_level() > 0) {
+				ob_end_clean();
+			}
+		}
+	}
+
 	public function test_row_actions_markup_matches_js_contract() {
 		$table  = new AIPS_Pending_Review_List_Table();
 		$method = new ReflectionMethod($table, 'column_actions');
