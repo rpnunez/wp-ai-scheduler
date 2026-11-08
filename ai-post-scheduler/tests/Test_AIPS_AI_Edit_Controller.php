@@ -135,6 +135,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			$this->assertTrue($response['success']);
 			$this->assertArrayHasKey('components', $response['data']);
 			$this->assertArrayHasKey('title', $response['data']['components']);
+			$this->assertArrayHasKey('slug', $response['data']['components']);
 			$this->assertArrayHasKey('excerpt', $response['data']['components']);
 			$this->assertArrayHasKey('content', $response['data']['components']);
 			$this->assertArrayHasKey('featured_image', $response['data']['components']);
@@ -237,7 +238,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
 		$this->sync_request_from_post();
-		
+
 		ob_start();
 		try {
 			$this->controller->ajax_regenerate_component();
@@ -267,7 +268,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
 		$this->sync_request_from_post();
-		
+
 		ob_start();
 		try {
 			$this->controller->ajax_save_post_components();
@@ -307,10 +308,19 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 				'title' => 'AI Generated Post: New Title',
 				'excerpt' => 'New excerpt',
 				'content' => 'New content',
+				'slug' => 'brand-new-slug',
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
 		$this->sync_request_from_post();
+
+		$hook_components = array();
+		$hook_callback = function($updated_post_id, $updated_components, $sanitized_components) use (&$hook_components, $post_id) {
+			$this->assertSame($post_id, $updated_post_id);
+			$this->assertContains('slug', $updated_components);
+			$hook_components = $sanitized_components;
+		};
+		add_action('aips_post_components_updated', $hook_callback, 10, 3);
 		
 		ob_start();
 		try {
@@ -319,6 +329,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			// Expected exception from wp_send_json_success
 		}
 		$output = ob_get_clean();
+		remove_action('aips_post_components_updated', $hook_callback, 10);
 		$response = json_decode($output, true);
 		
 		$this->assertTrue($response['success']);
@@ -328,6 +339,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertEquals('AI Generated Post: New Title', $updated_post->post_title);
 		$this->assertEquals('New excerpt', $updated_post->post_excerpt);
 		$this->assertEquals('New content', $updated_post->post_content);
+		$this->assertEquals('brand-new-slug', $updated_post->post_name);
+		$this->assertSame('brand-new-slug', $hook_components['slug']);
 		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
 		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
 
@@ -337,6 +350,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertTrue($statuses['post_excerpt']);
 		$this->assertTrue($statuses['post_content']);
 		$this->assertTrue($statuses['featured_image']);
+		$this->assertTrue($statuses['post_slug']);
 	}
 	
 	/**
@@ -352,6 +366,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 				'title' => '<script>alert("xss")</script>Safe Title',
 				'excerpt' => '<script>alert("xss")</script>Safe excerpt',
 				'content' => '<p>Safe content</p><script>alert("xss")</script>',
+				'slug' => '<script>alert("xss")</script>Safe Slug!',
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
@@ -376,6 +391,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		// Content should allow safe HTML
 		$this->assertStringContainsString('<p>Safe content</p>', $updated_post->post_content);
 		$this->assertStringNotContainsString('<script>', $updated_post->post_content);
+		$this->assertEquals('safe-slug', $updated_post->post_name);
 	}
 
 	/**
