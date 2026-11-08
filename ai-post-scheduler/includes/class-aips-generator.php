@@ -1107,6 +1107,39 @@ class AIPS_Generator {
     }
 
     /**
+     * Designate this post as the campaign pillar when its template is the
+     * pillar template and no pillar has been stored yet.
+     *
+     * The context snapshot can be stale: two generations may both observe an
+     * empty pillar. The repository writes pillar_post_id only while it is
+     * still unset, so the first committed claim wins.
+     *
+     * @param AIPS_Campaign_Context $context Campaign generation context.
+     * @param int                   $post_id Created post ID.
+     * @return void
+     */
+    private function maybe_claim_campaign_pillar(AIPS_Campaign_Context $context, $post_id) {
+        if (!$context->is_silo_enabled() || $context->get_pillar_post_id()) {
+            return;
+        }
+
+        $pillar_template_id = (int) $context->get_pillar_template_id();
+        $template_id = (int) $context->get_id();
+        if ($pillar_template_id <= 0 || $pillar_template_id !== $template_id) {
+            return;
+        }
+
+        if (!class_exists('AIPS_Campaigns_Repository')) {
+            return;
+        }
+
+        AIPS_Campaigns_Repository::instance()->claim_pillar_post_if_unset(
+            (int) $context->get_campaign_id(),
+            (int) $post_id
+        );
+    }
+
+    /**
      * Generate a post from a Generation Context.
      *
      * This is the core implementation that works with any context type.
@@ -1301,7 +1334,17 @@ class AIPS_Generator {
             $this->current_history->complete_success($completion_data);
         }
 
-        if ($context instanceof AIPS_Template_Context) {
+        if ($context instanceof AIPS_Campaign_Context && $context->get_campaign_id()) {
+            $campaign_id = $context->get_campaign_id();
+            update_post_meta($post_id, '_aips_campaign_id', $campaign_id);
+            if (class_exists('AIPS_Campaigns_Repository')) {
+                $campaigns_repo = AIPS_Campaigns_Repository::instance();
+                if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
+                    $campaigns_repo->flush_campaign_cache($campaign_id);
+                }
+                $this->maybe_claim_campaign_pillar($context, $post_id);
+            }
+        } elseif ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();
             if ($template && !empty($template->campaign_id) && class_exists('AIPS_Campaigns_Repository')) {
                 $campaigns_repo = AIPS_Campaigns_Repository::instance();

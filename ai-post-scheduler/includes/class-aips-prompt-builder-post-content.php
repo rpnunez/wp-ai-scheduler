@@ -131,6 +131,22 @@ class AIPS_Prompt_Builder_Post_Content {
 				$campaign_lines[] = 'Directives: ' . $campaign_directives;
 			}
 
+			if (method_exists($context, 'is_silo_enabled') && $context->is_silo_enabled()) {
+				$pillar_id = method_exists($context, 'get_pillar_post_id') ? $context->get_pillar_post_id() : null;
+				if ($pillar_id && ($pillar_post = get_post($pillar_id))) {
+					$pillar_title = get_the_title($pillar_post);
+					$pillar_url   = get_permalink($pillar_post);
+					$keywords     = method_exists($context, 'get_pillar_anchor_keywords') ? $context->get_pillar_anchor_keywords() : array();
+					$kw_str       = !empty($keywords) ? implode(', ', $keywords) : $pillar_title;
+					$campaign_lines[] = sprintf(
+						'SEO Topic Hub: This article is part of a topic cluster around the cornerstone pillar "%s" (%s). Contextually reference or transition to this pillar subject, naturally targeting phrases such as: %s.',
+						$pillar_title,
+						$pillar_url,
+						$kw_str
+					);
+				}
+			}
+
 			if (!empty($campaign_lines)) {
 				$campaign_block   = "[CAMPAIGN STRATEGY & DIRECTIVES]\n" . implode("\n", $campaign_lines);
 				$processed_prompt = $campaign_block . "\n\n" . $processed_prompt;

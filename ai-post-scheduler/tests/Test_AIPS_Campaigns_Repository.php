@@ -175,6 +175,47 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertNull($this->wpdb_stub->last_update_call);
 	}
 
+	public function test_create_campaign_persists_silo_fields() {
+		$repository = $this->new_repository();
+		$this->wpdb_stub->insert_id = 99;
+
+		$id = $repository->create_campaign(array(
+			'name'                   => 'Silo Campaign',
+			'content_goal'           => 'Rank for Solar',
+			'silo_enabled'           => 1,
+			'pillar_post_id'         => 301,
+			'pillar_template_id'     => 15,
+			'pillar_anchor_keywords' => 'best solar, residential solar',
+		));
+
+		$this->assertSame(99, $id);
+		$this->assertNotNull($this->wpdb_stub->last_insert_call);
+		$data = $this->wpdb_stub->last_insert_call['data'];
+		$this->assertSame(1, $data['silo_enabled']);
+		$this->assertSame(301, $data['pillar_post_id']);
+		$this->assertSame(15, $data['pillar_template_id']);
+		$this->assertSame('best solar, residential solar', $data['pillar_anchor_keywords']);
+	}
+
+	public function test_update_campaign_persists_silo_fields() {
+		$repository = $this->new_repository();
+
+		$result = $repository->update_campaign(42, array(
+			'silo_enabled'           => 1,
+			'pillar_post_id'         => 505,
+			'pillar_template_id'     => 22,
+			'pillar_anchor_keywords' => 'keyword one, keyword two',
+		));
+
+		$this->assertTrue($result);
+		$this->assertNotNull($this->wpdb_stub->last_update_call);
+		$data = $this->wpdb_stub->last_update_call['data'];
+		$this->assertSame(1, $data['silo_enabled']);
+		$this->assertSame(505, $data['pillar_post_id']);
+		$this->assertSame(22, $data['pillar_template_id']);
+		$this->assertSame('keyword one, keyword two', $data['pillar_anchor_keywords']);
+	}
+
 	public function test_get_campaign_health_returns_expected_metrics_and_query_shapes() {
 		$this->wpdb_stub->rows_to_return = array(
 			(object) array(
@@ -309,6 +350,29 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertStringContainsString('aips_campaign_templates', $this->wpdb_stub->last_get_results_query);
 	}
 
+	public function test_claim_pillar_post_if_unset_updates_only_while_pillar_is_empty() {
+		$repository = $this->new_repository();
+
+		$this->assertFalse($repository->claim_pillar_post_if_unset(0, 900));
+		$this->assertFalse($repository->claim_pillar_post_if_unset(42, 0));
+		$this->assertSame(array(), $this->wpdb_stub->queries);
+
+		$this->assertTrue($repository->claim_pillar_post_if_unset(42, 900));
+		$claim_sql = '';
+		foreach ($this->wpdb_stub->queries as $query) {
+			if (false !== strpos($query, 'SET pillar_post_id = 900')) {
+				$claim_sql = $query;
+			}
+		}
+		$this->assertNotSame('', $claim_sql);
+		$this->assertStringContainsString('UPDATE wp_aips_campaigns', $claim_sql);
+		$this->assertStringContainsString('WHERE id = 42 AND (pillar_post_id IS NULL OR pillar_post_id = 0)', $claim_sql);
+		$this->assertNull($this->wpdb_stub->last_update_call);
+
+		$this->wpdb_stub->query_return_value = 0;
+		$this->assertFalse($repository->claim_pillar_post_if_unset(42, 901));
+	}
+
 	public function test_get_campaign_ids_by_template_returns_array_of_ids() {
 		$this->wpdb_stub->results_to_return = array(
 			(object) array('campaign_id' => '10'),
@@ -416,6 +480,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public $delete_return_value = 1;
 
+	public $query_return_value = true;
+
 	public $last_error = '';
 
 	public function prepare($query, ...$args) {
@@ -469,7 +535,7 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public function query($query) {
 		$this->queries[] = preg_replace('/\s+/', ' ', trim($query));
-		return true;
+		return $this->query_return_value;
 	}
 
 	public function suppress_errors($suppress = true) {
@@ -481,6 +547,11 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	}
 
 	public function insert($table, $data, $format = null) {
+		$this->last_insert_call = array(
+			'table' => $table,
+			'data' => $data,
+			'format' => $format,
+		);
 		if (!empty($this->insert_return_values)) {
 			return array_shift($this->insert_return_values);
 		}

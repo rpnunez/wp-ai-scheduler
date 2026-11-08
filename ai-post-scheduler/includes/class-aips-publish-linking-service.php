@@ -204,6 +204,8 @@ class AIPS_Publish_Linking_Service {
 		 * @param array $run      Inbound run summary (applied, review, skipped, job_id).
 		 * @param int   $outbound Outbound suggestions queued for review.
 		 */
+		$this->maybe_queue_campaign_silo_inbound($post_id);
+
 		do_action('aips_publish_linking_completed', $post_id, $run, $outbound);
 
 		return array(
@@ -277,5 +279,51 @@ class AIPS_Publish_Linking_Service {
 	 */
 	private function run_service(): AIPS_Autolink_Run_Service {
 		return AIPS_Container::get_instance()->make(AIPS_Autolink_Run_Service::class);
+	}
+
+	/**
+	 * Queue an inbound link suggestion from the Campaign Pillar post to this newly published spoke post.
+	 *
+	 * The campaign is taken only from `_aips_campaign_id`, written when the post
+	 * is generated inside a campaign. Template membership is not provenance: a
+	 * template can belong to several campaigns, and a post generated outside
+	 * those campaigns must not be linked to an arbitrary pillar.
+	 *
+	 * @param int $post_id Published spoke post ID.
+	 * @return void
+	 */
+	private function maybe_queue_campaign_silo_inbound(int $post_id): void {
+		$campaign_id = (int) get_post_meta($post_id, '_aips_campaign_id', true);
+		if ($campaign_id <= 0 || !class_exists('AIPS_Campaigns_Repository')) {
+			return;
+		}
+
+		$campaign = AIPS_Campaigns_Repository::instance()->get_campaign_by_id($campaign_id);
+		if (!$campaign || empty($campaign->silo_enabled) || empty($campaign->pillar_post_id)) {
+			return;
+		}
+
+		$pillar_id = (int) $campaign->pillar_post_id;
+		if ($pillar_id <= 0 || $pillar_id === $post_id) {
+			return;
+		}
+
+		if (get_post_status($pillar_id) !== 'publish') {
+			return;
+		}
+
+		$links_repo = new AIPS_Internal_Links_Repository();
+		$post_title = get_the_title($post_id);
+
+		$links_repo->save_suggestion(array(
+			'source_post_id'   => $pillar_id,
+			'target_post_id'   => $post_id,
+			'similarity_score' => 0.95,
+			'confidence'       => 0.90,
+			'anchor_text'      => $post_title,
+			'anchor_source'    => 'campaign_silo',
+			'origin'           => 'inbound',
+			'match_context'    => sprintf(__('Campaign "%s" spoke article backlink suggestion', 'ai-post-scheduler'), $campaign->name),
+		));
 	}
 }

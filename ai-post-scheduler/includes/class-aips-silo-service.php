@@ -161,15 +161,58 @@ class AIPS_Silo_Service {
 	 *
 	 * @return array{silos:array[], candidates:array[], has_clusters:bool}
 	 */
-	public function get_overview(): array {
+	public function get_overview(?int $campaign_id = null): array {
 		$silos      = array();
 		$candidates = array();
 
+		$campaign_post_ids = array();
+		$campaign          = null;
+		if ($campaign_id && $campaign_id > 0 && class_exists('AIPS_Campaigns_Repository')) {
+			$campaign = AIPS_Campaigns_Repository::instance()->get_campaign_by_id($campaign_id);
+			global $wpdb;
+			$history_table = $wpdb->prefix . 'aips_history';
+			$rows          = $wpdb->get_col($wpdb->prepare(
+				"SELECT DISTINCT post_id FROM `{$history_table}` WHERE campaign_id = %d AND post_id IS NOT NULL",
+				$campaign_id
+			));
+			$campaign_post_ids = array_values(array_filter(array_map('intval', (array) $rows)));
+			if ($campaign && !empty($campaign->pillar_post_id)) {
+				$campaign_post_ids[] = (int) $campaign->pillar_post_id;
+			}
+			$campaign_post_ids = array_unique($campaign_post_ids);
+		}
+
 		foreach ($this->get_clusters() as $cluster) {
+			if ($campaign_id && $campaign_id > 0) {
+				$members         = $this->member_ids($cluster);
+				$pillar          = isset($cluster['pillar_id']) ? (int) $cluster['pillar_id'] : 0;
+				$matches_pillar  = $campaign && !empty($campaign->pillar_post_id) && ((int) $campaign->pillar_post_id === $pillar);
+				$matches_members = !empty(array_intersect($members, $campaign_post_ids));
+
+				if (!$matches_pillar && !$matches_members) {
+					continue;
+				}
+			}
+
 			if (!empty($cluster['pillar_confirmed']) && get_post_status((int) $cluster['pillar_id']) === 'publish') {
 				$silos[] = $this->build_silo($cluster);
 			} else {
 				$candidates[] = $this->build_candidate($cluster);
+			}
+		}
+
+		// If filtering by campaign with a designated pillar post, but no vector cluster exists yet:
+		if ($campaign_id && $campaign_id > 0 && empty($silos) && $campaign && !empty($campaign->pillar_post_id)) {
+			$pillar_id = (int) $campaign->pillar_post_id;
+			if (get_post_status($pillar_id) === 'publish') {
+				$synthetic_cluster = array(
+					'id'               => 'campaign_' . $campaign_id,
+					'name'             => (string) $campaign->name,
+					'pillar_id'        => $pillar_id,
+					'pillar_confirmed' => true,
+					'member_ids'       => array_values(array_unique(array_merge(array($pillar_id), $campaign_post_ids))),
+				);
+				$silos[] = $this->build_silo($synthetic_cluster);
 			}
 		}
 

@@ -791,13 +791,17 @@ class AIPS_Campaigns_Repository {
 				'default_author_id'            => !empty($data['default_author_id']) ? absint($data['default_author_id']) : null,
 				'default_categories'           => isset($data['default_categories']) ? sanitize_text_field($data['default_categories']) : null,
 				'default_tags'                 => isset($data['default_tags']) ? sanitize_text_field($data['default_tags']) : null,
+				'silo_enabled'                 => !empty($data['silo_enabled']) ? 1 : 0,
+				'pillar_post_id'               => !empty($data['pillar_post_id']) ? absint($data['pillar_post_id']) : null,
+				'pillar_template_id'           => !empty($data['pillar_template_id']) ? absint($data['pillar_template_id']) : null,
+				'pillar_anchor_keywords'       => isset($data['pillar_anchor_keywords']) ? sanitize_textarea_field($data['pillar_anchor_keywords']) : null,
 				'campaign_mode'                => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
 				'is_active'                    => isset($data['is_active']) ? absint($data['is_active']) : 1,
 				'is_archived'                  => isset($data['is_archived']) ? absint($data['is_archived']) : 0,
 				'created_at'                   => $now,
 				'updated_at'                   => $now,
 			),
-			array('%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d')
+			array('%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%d')
 		);
 
 		if (!$result) {
@@ -871,6 +875,26 @@ class AIPS_Campaigns_Repository {
 			$format[] = '%s';
 		}
 
+		if (array_key_exists('silo_enabled', $data)) {
+			$update_data['silo_enabled'] = !empty($data['silo_enabled']) ? 1 : 0;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('pillar_post_id', $data)) {
+			$update_data['pillar_post_id'] = !empty($data['pillar_post_id']) ? absint($data['pillar_post_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('pillar_template_id', $data)) {
+			$update_data['pillar_template_id'] = !empty($data['pillar_template_id']) ? absint($data['pillar_template_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (array_key_exists('pillar_anchor_keywords', $data)) {
+			$update_data['pillar_anchor_keywords'] = !empty($data['pillar_anchor_keywords']) ? sanitize_textarea_field($data['pillar_anchor_keywords']) : null;
+			$format[] = '%s';
+		}
+
 		if (isset($data['campaign_mode'])) {
 			$update_data['campaign_mode'] = sanitize_key($data['campaign_mode']);
 			$format[] = '%s';
@@ -908,6 +932,42 @@ class AIPS_Campaigns_Repository {
 		if ($updated !== false) {
 			$this->invalidate_cache_domain( 'campaign', array( 'campaign_id' => absint( $campaign_id ) ), 'campaign_updated' );
 		}
+
+		return true;
+	}
+
+	/**
+	 * Assign the pillar post only while the campaign does not have one.
+	 *
+	 * The predicate is in the UPDATE so two generations that both observed an
+	 * empty pillar cannot overwrite each other. The first committed claim wins;
+	 * a later claim matches zero rows and leaves the stored post in place.
+	 *
+	 * @param int $campaign_id Campaign ID.
+	 * @param int $post_id     Post ID to store as the pillar.
+	 * @return bool True when this call claimed the pillar.
+	 */
+	public function claim_pillar_post_if_unset($campaign_id, $post_id) {
+		$campaign_id = absint($campaign_id);
+		$post_id = absint($post_id);
+		if (!$campaign_id || !$post_id) {
+			return false;
+		}
+
+		$updated = $this->wpdb->query($this->wpdb->prepare(
+			"UPDATE {$this->campaigns_table}
+			SET pillar_post_id = %d, updated_at = %d
+			WHERE id = %d AND (pillar_post_id IS NULL OR pillar_post_id = 0)",
+			$post_id,
+			AIPS_DateTime::now()->timestamp(),
+			$campaign_id
+		));
+
+		if (false === $updated || (int) $updated < 1) {
+			return false;
+		}
+
+		$this->invalidate_cache_domain('campaign', array('campaign_id' => $campaign_id), 'campaign_updated');
 
 		return true;
 	}
@@ -1260,6 +1320,10 @@ class AIPS_Campaigns_Repository {
 		$row->active_schedule_count = (int) $row->active_schedule_count;
 		$row->primary_template_id = !empty($row->primary_template_id) ? (int) $row->primary_template_id : null;
 		$row->primary_schedule_id = !empty($row->primary_schedule_id) ? (int) $row->primary_schedule_id : null;
+		$row->silo_enabled = !empty($row->silo_enabled) ? 1 : 0;
+		$row->pillar_post_id = !empty($row->pillar_post_id) ? (int) $row->pillar_post_id : null;
+		$row->pillar_template_id = !empty($row->pillar_template_id) ? (int) $row->pillar_template_id : null;
+		$row->pillar_anchor_keywords = isset($row->pillar_anchor_keywords) ? (string) $row->pillar_anchor_keywords : '';
 		$row->can_delete = 0 === $row->generated_posts_count;
 	}
 

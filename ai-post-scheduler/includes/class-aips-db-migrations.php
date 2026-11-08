@@ -277,6 +277,12 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.8.1', '<' ) && ! $this->migrate_to_3_8_1() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Campaign topic silo migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1897,6 +1903,48 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'migrate_to_3_8_0: campaign container schema migration complete', 'info' );
+		return true;
+	}
+
+	/**
+	 * Migrate to 3.8.1:
+	 * Adds silo_enabled, pillar_post_id, pillar_template_id, and pillar_anchor_keywords to aips_campaigns.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_8_1() {
+		global $wpdb;
+		$campaigns_table = $wpdb->prefix . 'aips_campaigns';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $campaigns_table ) ) !== $campaigns_table ) {
+			return true;
+		}
+
+		$cols = array(
+			'silo_enabled'           => 'tinyint(1) NOT NULL DEFAULT 0',
+			'pillar_post_id'         => 'bigint(20) DEFAULT NULL',
+			'pillar_template_id'     => 'bigint(20) DEFAULT NULL',
+			'pillar_anchor_keywords' => 'text DEFAULT NULL',
+		);
+
+		foreach ( $cols as $col => $definition ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$campaigns_table}` LIKE %s", $col ) );
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD COLUMN `{$col}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return false;
+			}
+		}
+
+		$has_silo_idx = $wpdb->get_row( "SHOW INDEX FROM `{$campaigns_table}` WHERE Key_name = 'silo_enabled'" );
+		if ( ! $has_silo_idx ) {
+			$wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD KEY silo_enabled (silo_enabled)" );
+		}
+
+		$has_pillar_idx = $wpdb->get_row( "SHOW INDEX FROM `{$campaigns_table}` WHERE Key_name = 'pillar_post_id'" );
+		if ( ! $has_pillar_idx ) {
+			$wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD KEY pillar_post_id (pillar_post_id)" );
+		}
+
+		$this->logger->log( 'migrate_to_3_8_1: campaign topic silo columns migration complete', 'info' );
 		return true;
 	}
 
