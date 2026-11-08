@@ -65,6 +65,10 @@ class AIPS_Settings_Field_Renderer {
 				self::render_checkbox($id, $name, $value, $args);
 				break;
 
+			case 'checkboxes':
+				self::render_checkboxes($id, $name, $value, $args);
+				break;
+
 			case 'toggle':
 				self::render_toggle($id, $name, $value, $args);
 				break;
@@ -195,6 +199,43 @@ class AIPS_Settings_Field_Renderer {
 			echo esc_html($label);
 		}
 		echo '</label>';
+	}
+
+	/**
+	 * Render a checkbox group for array options.
+	 *
+	 * @param string               $id    Field ID prefix.
+	 * @param string               $name  Field name (without []).
+	 * @param mixed                $value Current selected values.
+	 * @param array<string, mixed> $args  Arguments including options.
+	 * @return void
+	 */
+	private static function render_checkboxes($id, $name, $value, $args) {
+		$options      = isset($args['options']) && is_array($args['options']) ? $args['options'] : array();
+		$values_array = is_array($value) ? $value : (array) $value;
+		$legend       = isset($args['label']) ? $args['label'] : $name;
+
+		echo '<fieldset>';
+		echo '<legend class="screen-reader-text"><span>' . esc_html($legend) . '</span></legend>';
+		foreach ($options as $opt_val => $opt_label) {
+			$checkbox_id = $id . '_' . sanitize_key((string) $opt_val);
+			$is_checked  = in_array((string) $opt_val, array_map('strval', $values_array), true);
+			$label_text  = $opt_label;
+			$desc_text   = '';
+			if (is_array($opt_label)) {
+				$label_text = isset($opt_label['label']) ? $opt_label['label'] : (string) $opt_val;
+				$desc_text  = isset($opt_label['description']) ? $opt_label['description'] : '';
+			}
+
+			echo '<label for="' . esc_attr($checkbox_id) . '" class="aips-checkbox-label-block">';
+			echo '<input type="checkbox" id="' . esc_attr($checkbox_id) . '" name="' . esc_attr($name) . '[]" value="' . esc_attr((string) $opt_val) . '" ' . checked($is_checked, true, false) . ' /> ';
+			echo '<strong>' . esc_html($label_text) . '</strong>';
+			if ('' !== $desc_text) {
+				echo ' <span class="description aips-checkbox-label-desc">&mdash; ' . esc_html($desc_text) . '</span>';
+			}
+			echo '</label>';
+		}
+		echo '</fieldset>';
 	}
 
 	/**

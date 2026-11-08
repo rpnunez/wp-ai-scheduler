@@ -72,6 +72,8 @@ class AIPS_Settings_AJAX {
 				'aips_wp_ai_connector_ids',
 				'aips_indexer_post_types',
 				'aips_research_niches',
+				'aips_allowed_image_sources',
+				'aips_notif_digest_types',
 			);
 
 			if (is_array($raw_value) && !in_array($option_name, $array_settings, true)) {

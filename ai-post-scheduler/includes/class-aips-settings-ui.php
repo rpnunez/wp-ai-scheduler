@@ -476,12 +476,14 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function unsplash_access_key_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_unsplash_access_key');
-        ?>
-        <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
-        <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function unsplash_access_key_field_callback($args = array()) {
+        $defaults = array(
+            'type'          => 'text',
+            'option_name'   => 'aips_unsplash_access_key',
+            'autocomplete'  => 'new-password',
+            'description'   => __('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -494,36 +496,36 @@ class AIPS_Settings_UI {
     /**
      * Render Max Post Images Limit field.
      */
-    public function max_post_images_limit_field_callback() {
-        $value = AIPS_Config::get_instance()->get_max_post_images_limit();
-        ?>
-        <input type="number" name="aips_max_post_images_limit" id="aips_max_post_images_limit" value="<?php echo esc_attr($value); ?>" min="0" max="20" class="small-text">
-        <p class="description"><?php esc_html_e('Maximum number of post images that can be added and generated for a single post (0 to 20). Defaults to 5.', 'ai-post-scheduler'); ?></p>
-        <?php
+    public function max_post_images_limit_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'number',
+            'option_name' => 'aips_max_post_images_limit',
+            'value'       => AIPS_Config::get_instance()->get_max_post_images_limit(),
+            'min'         => 0,
+            'max'         => 20,
+            'step'        => 1,
+            'description' => __('Maximum number of post images that can be added and generated for a single post (0 to 20). Defaults to 5.', 'ai-post-scheduler'),
+        );
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
      * Render Allowed Image Sources field.
      */
-    public function allowed_image_sources_field_callback() {
-        $allowed = AIPS_Config::get_instance()->get_allowed_image_sources();
-        $sources = array(
-            'ai_prompt'     => __('AI Prompt Generation', 'ai-post-scheduler'),
-            'unsplash'      => __('Unsplash (keyword search)', 'ai-post-scheduler'),
-            'media_library' => __('WordPress Media Library', 'ai-post-scheduler'),
+    public function allowed_image_sources_field_callback($args = array()) {
+        $defaults = array(
+            'type'        => 'checkboxes',
+            'option_name' => 'aips_allowed_image_sources',
+            'label'       => __('Allowed Image Sources', 'ai-post-scheduler'),
+            'value'       => AIPS_Config::get_instance()->get_allowed_image_sources(),
+            'options'     => array(
+                'ai_prompt'     => __('AI Prompt Generation', 'ai-post-scheduler'),
+                'unsplash'      => __('Unsplash (keyword search)', 'ai-post-scheduler'),
+                'media_library' => __('WordPress Media Library', 'ai-post-scheduler'),
+            ),
+            'description' => __('Controls which image sources are available when configuring Featured Image and Post Images on Templates and Authors.', 'ai-post-scheduler'),
         );
-        ?>
-        <fieldset>
-            <legend class="screen-reader-text"><?php esc_html_e('Allowed Image Sources', 'ai-post-scheduler'); ?></legend>
-            <?php foreach ($sources as $key => $label): ?>
-                <label style="display: block; margin-bottom: 6px;">
-                    <input type="checkbox" name="aips_allowed_image_sources[]" value="<?php echo esc_attr($key); ?>" <?php checked(in_array($key, $allowed, true)); ?>>
-                    <?php echo esc_html($label); ?>
-                </label>
-            <?php endforeach; ?>
-            <p class="description"><?php esc_html_e('Controls which image sources are available when configuring Featured Image and Post Images on Templates and Authors.', 'ai-post-scheduler'); ?></p>
-        </fieldset>
-        <?php
+        AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
     }
 
     /**
@@ -1000,15 +1002,14 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function notif_digest_enabled_field_callback() {
-		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_notif_digest_enabled');
-		?>
-		<label for="aips_notif_digest_enabled">
-			<input type="checkbox" id="aips_notif_digest_enabled" name="aips_notif_digest_enabled" value="1" <?php checked($enabled, true); ?>>
-			<?php esc_html_e('Enable summarized activity digest', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description"><?php esc_html_e('Batch frequent generation and review email notifications into a single digest instead of sending separate emails for each post.', 'ai-post-scheduler'); ?></p>
-		<?php
+	public function notif_digest_enabled_field_callback($args = array()) {
+		$defaults = array(
+			'type'        => 'checkbox',
+			'option_name' => 'aips_notif_digest_enabled',
+			'label'       => __('Enable summarized activity digest', 'ai-post-scheduler'),
+			'description' => __('Batch frequent generation and review email notifications into a single digest instead of sending separate emails for each post.', 'ai-post-scheduler'),
+		);
+		AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
 	}
 
 	/**
@@ -1016,15 +1017,21 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function notif_digest_threshold_field_callback() {
+	public function notif_digest_threshold_field_callback($args = array()) {
 		$threshold = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_threshold', 5));
 		if ($threshold < 2) {
 			$threshold = 5;
 		}
-		?>
-		<input type="number" id="aips_notif_digest_threshold" name="aips_notif_digest_threshold" value="<?php echo esc_attr($threshold); ?>" min="2" max="50" step="1" class="small-text">
-		<p class="description"><?php esc_html_e('Number of notifications that triggers an immediate digest email (2–50).', 'ai-post-scheduler'); ?></p>
-		<?php
+		$defaults = array(
+			'type'        => 'number',
+			'option_name' => 'aips_notif_digest_threshold',
+			'value'       => $threshold,
+			'min'         => 2,
+			'max'         => 50,
+			'step'        => 1,
+			'description' => __('Number of notifications that triggers an immediate digest email (2–50).', 'ai-post-scheduler'),
+		);
+		AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
 	}
 
 	/**
@@ -1032,23 +1039,20 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function notif_digest_max_delay_field_callback() {
-		$selected = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_max_delay', 3600));
-		$options = array(
-			900   => __('15 minutes', 'ai-post-scheduler'),
-			1800  => __('30 minutes', 'ai-post-scheduler'),
-			3600  => __('1 hour (default)', 'ai-post-scheduler'),
-			7200  => __('2 hours', 'ai-post-scheduler'),
-			21600 => __('6 hours', 'ai-post-scheduler'),
+	public function notif_digest_max_delay_field_callback($args = array()) {
+		$defaults = array(
+			'type'        => 'select',
+			'option_name' => 'aips_notif_digest_max_delay',
+			'options'     => array(
+				900   => __('15 minutes', 'ai-post-scheduler'),
+				1800  => __('30 minutes', 'ai-post-scheduler'),
+				3600  => __('1 hour (default)', 'ai-post-scheduler'),
+				7200  => __('2 hours', 'ai-post-scheduler'),
+				21600 => __('6 hours', 'ai-post-scheduler'),
+			),
+			'description' => __('Maximum wait time before dispatching queued notifications, even if the count threshold has not been reached.', 'ai-post-scheduler'),
 		);
-		?>
-		<select id="aips_notif_digest_max_delay" name="aips_notif_digest_max_delay">
-			<?php foreach ($options as $seconds => $label) : ?>
-				<option value="<?php echo esc_attr($seconds); ?>" <?php selected($selected, $seconds); ?>><?php echo esc_html($label); ?></option>
-			<?php endforeach; ?>
-		</select>
-		<p class="description"><?php esc_html_e('Maximum wait time before dispatching queued notifications, even if the count threshold has not been reached.', 'ai-post-scheduler'); ?></p>
-		<?php
+		AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
 	}
 
 	/**
@@ -1056,22 +1060,24 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function notif_digest_types_field_callback() {
-		$selected_types = (array) AIPS_Config::get_instance()->get_option('aips_notif_digest_types', array('post_generated', 'post_ready_for_review'));
+	public function notif_digest_types_field_callback($args = array()) {
 		$eligible_types = AIPS_Notification_Registry::get_digest_eligible_types();
-		?>
-		<fieldset>
-			<legend class="screen-reader-text"><span><?php esc_html_e('Eligible Notification Types', 'ai-post-scheduler'); ?></span></legend>
-			<?php foreach ($eligible_types as $type_key => $meta) : ?>
-				<label class="aips-checkbox-label-block">
-					<input type="checkbox" name="aips_notif_digest_types[]" value="<?php echo esc_attr($type_key); ?>" <?php checked(in_array($type_key, $selected_types, true)); ?>>
-					<strong><?php echo esc_html($meta['label']); ?></strong>
-					<span class="description aips-checkbox-label-desc">&mdash; <?php echo esc_html($meta['description']); ?></span>
-				</label>
-			<?php endforeach; ?>
-		</fieldset>
-		<p class="description"><?php esc_html_e('Select which notification types are intercepted into the digest. Critical errors and system resilience alerts are never batched.', 'ai-post-scheduler'); ?></p>
-		<?php
+		$options        = array();
+		foreach ($eligible_types as $type_key => $meta) {
+			$options[$type_key] = array(
+				'label'       => isset($meta['label']) ? $meta['label'] : $type_key,
+				'description' => isset($meta['description']) ? $meta['description'] : '',
+			);
+		}
+		$defaults = array(
+			'type'        => 'checkboxes',
+			'option_name' => 'aips_notif_digest_types',
+			'label'       => __('Eligible Notification Types', 'ai-post-scheduler'),
+			'value'       => (array) AIPS_Config::get_instance()->get_option('aips_notif_digest_types', array('post_generated', 'post_ready_for_review')),
+			'options'     => $options,
+			'description' => __('Select which notification types are intercepted into the digest. Critical errors and system resilience alerts are never batched.', 'ai-post-scheduler'),
+		);
+		AIPS_Settings_Field_Renderer::render(wp_parse_args($args, $defaults));
 	}
 
 	/**

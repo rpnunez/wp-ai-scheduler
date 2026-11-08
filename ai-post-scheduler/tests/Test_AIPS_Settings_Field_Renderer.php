@@ -230,4 +230,31 @@ class Test_AIPS_Settings_Field_Renderer extends WP_UnitTestCase {
 		$this->assertStringContainsString('<div class="custom-output">Custom Payload</div>', $output);
 		$this->assertStringContainsString('Custom footer', $output);
 	}
+
+	/**
+	 * Test checkbox group rendering for array options.
+	 */
+	public function test_render_checkboxes() {
+		ob_start();
+		AIPS_Settings_Field_Renderer::render(array(
+			'type'        => 'checkboxes',
+			'option_name' => 'aips_allowed_image_sources',
+			'label'       => 'Allowed Image Sources',
+			'value'       => array('ai_prompt', 'unsplash'),
+			'options'     => array(
+				'ai_prompt'     => 'AI Prompt Generation',
+				'unsplash'      => 'Unsplash (keyword search)',
+				'media_library' => array(
+					'label'       => 'WordPress Media Library',
+					'description' => 'Pick from the media library',
+				),
+			),
+		));
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('name="aips_allowed_image_sources[]"', $output);
+		$this->assertStringContainsString('value="ai_prompt"', $output);
+		$this->assertStringContainsString('value="unsplash"', $output);
+		$this->assertStringContainsString('Pick from the media library', $output);
+	}
 }
