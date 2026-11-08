@@ -175,6 +175,8 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 		)));
 
 		$this->assertSame('publish', $manager->created_post_data['post_status']);
+		$this->assertSame($image->featured_image_id, $manager->featured_image_id);
+		$this->assertGreaterThan(0, $manager->featured_image_id);
 	}
 
 	public function test_saved_content_keeps_backslashes() {
@@ -229,6 +231,8 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 
 		$row = (new AIPS_Post_Images_Generated_Repository())->get_by_id($fixture['row_id']);
 		$this->assertSame($fixture['attachment_id'], (int) $row->attachment_id);
+		$this->assertSame('completed', $row->status);
+		$this->assertSame('', (string) $row->error_message);
 	}
 
 	public function test_regeneration_uses_config_keywords_and_does_not_save_the_post() {
@@ -416,6 +420,7 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 
 		$row_id = (new AIPS_Post_Images_Generated_Repository())->create(array_merge(array(
 			'post_id'         => $post_id,
+			'history_id'      => $history_id,
 			'config_image_id' => $config_id,
 			'image_index'     => 1,
 			'attachment_id'   => $attachment_id,
@@ -442,6 +447,343 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 		return compact('service', 'context', 'post_id', 'row_id', 'attachment_id', 'image_service');
 	}
 
+	public function test_zero_based_orders_are_numbered_as_the_nth_image() {
+		$template = (object) array(
+			'id'              => 0,
+			'prompt_template' => 'Write an article.',
+			'post_images'     => array(
+				(object) array('image_order' => 0, 'placement' => 'auto'),
+				(object) array('image_order' => 1, 'placement' => 'auto'),
+				(object) array('image_order' => 2, 'placement' => 'after_section_2'),
+			),
+		);
+
+		$prompt = $this->prompt_builder->build($template, 'Indexing');
+
+		$this->assertSame(1, substr_count($prompt, '[post_image index="1"]'));
+		$this->assertSame(1, substr_count($prompt, '[post_image index="2"]'));
+		$this->assertSame(1, substr_count($prompt, '[post_image index="3"]'));
+		$this->assertStringContainsString('after Section 2', $prompt);
+	}
+
+	public function test_generation_stores_the_nth_image_not_a_shifted_order() {
+		$attachment_id = $this->create_attachment();
+		$post_id       = self::factory()->post->create();
+		$manager       = new AIPS_Test_Post_Images_Post_Manager($post_id);
+		$generator     = $this->make_generator(
+			new AIPS_Test_Post_Image_Service(array('media' => $attachment_id)),
+			$manager,
+			array(
+				'<p>[post_image index="1"]</p><p>[post_image index="2"]</p><p>[post_image index="3"]</p><p>[post_image index="9"]</p>',
+				'Title',
+				'Excerpt',
+			)
+		);
+
+		$generator->generate_post($this->make_context(array(
+			'post_images' => array(
+				(object) array('id' => 10, 'image_order' => 0, 'source' => 'media_library', 'media_ids' => (string) $attachment_id),
+				(object) array('id' => 11, 'image_order' => 1, 'source' => 'media_library', 'media_ids' => (string) $attachment_id),
+				(object) array('id' => 12, 'image_order' => 2, 'source' => 'media_library', 'media_ids' => (string) $attachment_id),
+			),
+		)));
+
+		$rows = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
+		$this->assertSame(array(1, 2, 3), array_map(static function ($row) {
+			return (int) $row->image_index;
+		}, $rows));
+
+		$content = get_post_field('post_content', $post_id);
+		$this->assertStringNotContainsString('[post_image', $content);
+		$this->assertLessThan(
+			strpos($content, 'data-aips-image-id="' . $rows[2]->id . '"'),
+			strpos($content, 'data-aips-image-id="' . $rows[1]->id . '"')
+		);
+		$this->assertSame(0, (int) get_post_thumbnail_id($post_id));
+	}
+
+	public function test_after_section_two_is_the_second_heading() {
+		$content = "<h2>H1</h2>\n<p>A</p>\n<h2>H2</h2>\n<p>B</p>\n<h2>H3</h2>\n<p>C</p>";
+		$result  = $this->generator->inject_single_post_image($content, 2, 'after_section_2', '<figure id="s2"></figure>', 3);
+
+		$this->assertGreaterThan(strpos($result, 'H2'), strpos($result, 'id="s2"'));
+		$this->assertLessThan(strpos($result, 'H3'), strpos($result, 'id="s2"'));
+		$this->assertGreaterThan(strpos($result, '>B<'), strpos($result, 'id="s2"'));
+	}
+
+	public function test_even_distribution_keeps_image_two_ahead_of_image_three() {
+		$content = '';
+		for ($i = 1; $i <= 9; $i++) {
+			$content .= "<p>P{$i}</p>\n";
+		}
+
+		foreach (array(1, 2, 3) as $order) {
+			$content = $this->generator->inject_single_post_image($content, $order, 'auto', "<figure id=\"img-{$order}\"></figure>", 3);
+		}
+
+		$this->assertLessThan(strpos($content, 'id="img-2"'), strpos($content, 'id="img-1"'));
+		$this->assertLessThan(strpos($content, 'id="img-3"'), strpos($content, 'id="img-2"'));
+		$this->assertGreaterThan(strpos($content, 'P4'), strpos($content, 'id="img-2"'));
+		$this->assertLessThan(strpos($content, 'P6'), strpos($content, 'id="img-2"'));
+		$this->assertGreaterThan(strpos($content, 'P7'), strpos($content, 'id="img-3"'));
+	}
+
+	public function test_regenerating_the_second_image_uses_the_second_config_and_figure() {
+		update_option('aips_unsplash_access_key', 'test-key');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$template_id = (new AIPS_Template_Repository())->create(array(
+			'name'            => 'Index Mapping',
+			'prompt_template' => 'Prompt',
+			'post_status'     => 'draft',
+			'post_category'   => 0,
+			'is_active'       => 1,
+		));
+		$repo = new AIPS_Post_Images_Repository();
+		$keywords = array('alpha dawn', 'beta harbor', 'gamma peak');
+		foreach ($keywords as $index => $keyword) {
+			$repo->create(array(
+				'entity_type'       => 'template',
+				'entity_id'         => $template_id,
+				'image_order'       => $index,
+				'source'            => 'unsplash',
+				'unsplash_keywords' => $keyword,
+			));
+		}
+
+		$post_id    = self::factory()->post->create(array('post_title' => 'Indexed Post'));
+		$history_id = (new AIPS_History_Repository())->create(array(
+			'template_id' => $template_id,
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+		));
+		$generated = new AIPS_Post_Images_Generated_Repository();
+		$other_history = (new AIPS_History_Repository())->create(array(
+			'template_id' => $template_id,
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+		));
+		$row_ids = array();
+		foreach (array(1, 2, 3) as $image_index) {
+			$row_ids[] = $generated->create(array(
+				'post_id'       => $post_id,
+				'history_id'    => $history_id,
+				'image_index'   => $image_index,
+				'attachment_id' => $this->create_attachment(),
+				'image_source'  => 'unsplash',
+				'image_url'     => 'http://example.org/old-' . $image_index . '.jpg',
+				'status'        => 'completed',
+			));
+		}
+		$foreign_id = $generated->create(array(
+			'post_id'       => $post_id,
+			'history_id'    => $other_history,
+			'image_index'   => 2,
+			'attachment_id' => $this->create_attachment(),
+			'image_source'  => 'unsplash',
+			'status'        => 'completed',
+		));
+
+		$new_attachment = $this->create_attachment();
+		$image_service  = new AIPS_Test_Post_Image_Service(array(
+			'unsplash' => $new_attachment,
+		));
+		$service  = new AIPS_Component_Regeneration_Service();
+		$property = new ReflectionProperty(AIPS_Component_Regeneration_Service::class, 'generator');
+		$property->setAccessible(true);
+		$property->setValue($service, new AIPS_Generator(null, null, null, $image_service));
+
+		$context = $service->get_generation_context($history_id);
+		$context['post_id']         = $post_id;
+		$context['history_id']      = $history_id;
+		$context['current_title']   = 'Indexed Post';
+		$context['current_content'] = '<p>Unsaved</p>'
+			. '<figure data-aips-image-id="' . $row_ids[0] . '"><img src="first.jpg"/></figure>'
+			. '<figure data-aips-image-id="' . $row_ids[1] . '"><img src="second.jpg"/></figure>'
+			. '<figure data-aips-image-id="' . $row_ids[2] . '"><img src="third.jpg"/></figure>';
+
+		$result = $service->regenerate_post_images($context, $row_ids[1]);
+
+		delete_option('aips_unsplash_access_key');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$this->assertSame('beta harbor', $image_service->last_keywords);
+		$this->assertStringContainsString('first.jpg', $result['content']);
+		$this->assertStringContainsString('third.jpg', $result['content']);
+		$this->assertStringContainsString('data-aips-image-id="' . $row_ids[1] . '"', $result['content']);
+		$this->assertStringContainsString('wp-image-' . $new_attachment, $result['post_images'][0]['content']);
+		$this->assertStringContainsString('first.jpg', $result['post_images'][0]['content']);
+		$this->assertStringContainsString('third.jpg', $result['post_images'][0]['content']);
+		$this->assertStringNotContainsString('second.jpg', $result['post_images'][0]['content']);
+		$this->assertSame($foreign_id, (int) $generated->get_by_id($foreign_id)->id);
+		$this->assertNotSame($new_attachment, (int) $generated->get_by_id($row_ids[1])->attachment_id);
+
+		$foreign = $service->regenerate_post_images($context, $foreign_id);
+		$this->assertWPError($foreign);
+	}
+
+	public function test_bulk_regeneration_isolates_each_accepted_figure() {
+		update_option('aips_unsplash_access_key', 'test-key');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$first = $this->make_regeneration_fixture(
+			array('image_source' => 'unsplash', 'image_index' => 1),
+			$this->create_attachment(),
+			array('source' => 'unsplash', 'unsplash_keywords' => 'first sunrise', 'image_order' => 1)
+		);
+		$second_config = (new AIPS_Post_Images_Repository())->create(array(
+			'entity_type'       => 'template',
+			'entity_id'         => (int) $first['context']['generation_context']->get_id(),
+			'image_order'       => 2,
+			'source'            => 'unsplash',
+			'unsplash_keywords' => 'second harbor',
+		));
+		$second_attachment = $first['attachment_id'];
+		$second_id = (new AIPS_Post_Images_Generated_Repository())->create(array(
+			'post_id'         => $first['post_id'],
+			'history_id'      => $first['context']['history_id'],
+			'config_image_id' => $second_config,
+			'image_index'     => 2,
+			'attachment_id'   => $second_attachment,
+			'image_source'    => 'unsplash',
+			'image_url'       => 'http://example.org/second.jpg',
+			'status'          => 'completed',
+		));
+		$first['context']['current_content'] = '<figure data-aips-image-id="' . $first['row_id'] . '"><img src="first.jpg"/></figure>'
+			. '<figure data-aips-image-id="' . $second_id . '"><img src="second.jpg"/></figure>';
+
+		$result = $first['service']->regenerate_post_images($first['context'], 'all');
+
+		delete_option('aips_unsplash_access_key');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$by_id = array();
+		foreach ($result['post_images'] as $image) {
+			$by_id[$image['id']] = $image;
+		}
+
+		$this->assertStringContainsString('second.jpg', $by_id[$first['row_id']]['content']);
+		$this->assertStringNotContainsString('first.jpg', $by_id[$first['row_id']]['content']);
+		$this->assertStringContainsString('first.jpg', $by_id[$second_id]['content']);
+		$this->assertStringNotContainsString('second.jpg', $by_id[$second_id]['content']);
+		$this->assertStringNotContainsString('first.jpg', $result['content']);
+		$this->assertStringNotContainsString('second.jpg', $result['content']);
+	}
+
+	public function test_sync_does_not_adopt_another_posts_figure_or_a_non_image() {
+		$repo    = new AIPS_Post_Images_Generated_Repository();
+		$post_a  = self::factory()->post->create();
+		$post_b  = self::factory()->post->create();
+		$image   = $this->create_attachment();
+		$pdf     = self::factory()->attachment->create_object('file.pdf', 0, array('post_mime_type' => 'application/pdf'));
+		$row_a   = $repo->create(array('post_id' => $post_a, 'attachment_id' => $image, 'status' => 'completed'));
+		$row_b   = $repo->create(array('post_id' => $post_b, 'attachment_id' => $image, 'status' => 'completed'));
+		$service = new AIPS_Post_Images_Service();
+
+		$service->sync_generated_rows_from_content(
+			$post_a,
+			'<figure data-aips-image-id="' . $row_b . '"><img class="wp-image-' . $this->create_attachment() . '" src="stolen.jpg"/></figure>'
+			. '<figure data-aips-image-id="' . $row_a . '"><img class="wp-image-' . $pdf . '" src="file.pdf"/></figure>'
+		);
+
+		$this->assertSame($image, (int) $repo->get_by_id($row_b)->attachment_id);
+		$this->assertSame($image, (int) $repo->get_by_id($row_a)->attachment_id);
+	}
+
+	public function test_kses_keeps_the_generated_image_marker() {
+		$this->assertNotFalse(has_filter('wp_kses_allowed_html', array('AIPS_Post_Images_Service', 'allow_figure_attributes')));
+
+		$html = wp_kses_post('<figure class="wp-block-image" data-aips-image-id="5"><img src="http://example.com/a.jpg" alt="A" class="wp-image-5" /></figure>');
+
+		$this->assertStringContainsString('data-aips-image-id="5"', $html);
+	}
+
+	public function test_topic_context_uses_author_images_and_template_context_uses_template_images() {
+		$author = (object) array(
+			'id'                              => 0,
+			'name'                            => 'Ada',
+			'featured_image_source'           => 'unsplash',
+			'featured_image_unsplash_keywords' => 'author keywords',
+			'image_prompt'                    => 'author featured prompt',
+			'post_images'                     => array(
+				(object) array('image_order' => 2, 'image_prompt' => 'author content', 'source' => 'media_library'),
+			),
+		);
+		$topic = new AIPS_Topic_Context($author, (object) array('id' => 7, 'topic_title' => 'Topic'));
+
+		$this->assertSame('unsplash', $topic->get_featured_image_source());
+		$this->assertSame('author keywords', $topic->get_unsplash_keywords());
+		$this->assertSame('author featured prompt', $topic->get_image_prompt());
+		$this->assertSame('author content', $topic->get_content_images()[0]->image_prompt);
+		$this->assertSame(1, (int) $topic->get_content_images()[0]->placeholder_index);
+
+		$template = new AIPS_Template_Context((object) array(
+			'id'                     => 0,
+			'name'                   => 'Template',
+			'featured_image_source'  => 'media_library',
+			'featured_image_media_ids' => '4,5',
+			'image_prompt'           => 'template featured',
+			'post_images'            => array(
+				(object) array('image_order' => 1, 'image_prompt' => 'template content'),
+			),
+		));
+
+		$this->assertSame('media_library', $template->get_featured_image_source());
+		$this->assertSame('4,5', $template->get_media_library_ids());
+		$this->assertSame('template featured', $template->get_image_prompt());
+		$this->assertSame('template content', $template->get_content_images()[0]->image_prompt);
+	}
+
+	public function test_disallowed_source_is_rejected() {
+		update_option('aips_allowed_image_sources', array('unsplash'));
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$resolved = $this->generator->resolve_post_image(
+			(object) array('source' => 'ai_prompt', 'image_prompt' => 'A photo'),
+			'Title',
+			'Topic'
+		);
+
+		delete_option('aips_allowed_image_sources');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$this->assertSame(0, $resolved['attachment_id']);
+		$this->assertNotSame('', $resolved['error']);
+	}
+
+	public function test_restore_distributes_a_missing_figure_among_all_images() {
+		$repo       = new AIPS_Post_Images_Generated_Repository();
+		$post_id    = self::factory()->post->create(array('post_title' => 'Restore'));
+		$history_id = 8801;
+		$attachment = $this->create_attachment();
+		$row_ids    = array();
+		foreach (array(1, 2, 3) as $image_index) {
+			$row_ids[] = $repo->create(array(
+				'post_id'       => $post_id,
+				'history_id'    => $history_id,
+				'image_index'   => $image_index,
+				'attachment_id' => $attachment,
+				'status'        => 'completed',
+			));
+		}
+
+		$content = '';
+		for ($i = 1; $i <= 9; $i++) {
+			$content .= "<p>P{$i}</p>\n";
+		}
+
+		$service = new AIPS_Component_Regeneration_Service();
+		$applied = $service->apply_restored_post_image(
+			$post_id,
+			$row_ids[2],
+			array('attachment_id' => $attachment),
+			$content,
+			$history_id
+		);
+
+		$this->assertGreaterThan(strpos($applied['content'], 'P7'), strpos($applied['content'], 'data-aips-image-id="' . $row_ids[2] . '"'));
+	}
+
 	public function test_post_image_component_keys_are_distinct_from_featured_image() {
 		$this->assertTrue(AIPS_Component_Regeneration_Service::is_ai_edit_component('featured_image'));
 		$this->assertTrue(AIPS_Component_Regeneration_Service::is_ai_edit_component('post_images'));
@@ -457,6 +799,7 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 class AIPS_Test_Post_Image_Service extends AIPS_Image_Service {
 	public $last_keywords = null;
 	public $last_media_ids = null;
+	public $featured_image_id = 0;
 	private $results;
 
 	public function __construct($results) {
@@ -468,6 +811,7 @@ class AIPS_Test_Post_Image_Service extends AIPS_Image_Service {
 	}
 
 	public function generate_and_upload_featured_image($image_prompt, $post_title) {
+		$this->featured_image_id = is_wp_error($this->results['ai']) ? 0 : (int) $this->results['ai'];
 		return $this->results['ai'];
 	}
 
@@ -487,6 +831,7 @@ class AIPS_Test_Post_Images_Post_Manager {
 	public $forced_statuses = array();
 	public $component_statuses = array();
 	public $generation_incomplete = null;
+	public $featured_image_id = 0;
 	private $post_id;
 
 	public function __construct($post_id) {
@@ -506,5 +851,10 @@ class AIPS_Test_Post_Images_Post_Manager {
 	public function force_post_status($post_id, $post_status) {
 		$this->forced_statuses[] = $post_status;
 		return $post_id;
+	}
+
+	public function set_featured_image($post_id, $attachment_id) {
+		$this->featured_image_id = (int) $attachment_id;
+		return true;
 	}
 }

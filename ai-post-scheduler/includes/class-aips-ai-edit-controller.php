@@ -157,14 +157,15 @@ class AIPS_AI_Edit_Controller {
 					'attachment_id' => $featured_image_id,
 					'url' => $featured_image_url,
 				),
-				'post_images' => (function() use ($post_id) {
+				'post_images' => (function() use ($post_id, $history_id) {
 					$repo = new AIPS_Post_Images_Generated_Repository();
-					$rows = $repo->get_by_post_id($post_id);
+					$rows = $repo->get_for_post_history($post_id, $history_id);
 					$list = array();
-					foreach ($rows as $r) {
+					foreach ($rows as $position => $r) {
 						$list[] = array(
 							'id'            => (int) $r->id,
-							'image_index'   => (int) $r->image_index,
+							'image_index'   => $position + 1,
+							'stored_index'  => (int) $r->image_index,
 							'attachment_id' => (int) $r->attachment_id,
 							'url'           => !empty($r->image_url) ? $r->image_url : ($r->attachment_id ? wp_get_attachment_url($r->attachment_id) : ''),
 							'source'        => $r->image_source,
@@ -476,7 +477,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		if (isset($components['slug'])) {
-			$post_data['post_name'] = sanitize_title(wp_unslash($components['slug']));
+			$post_data['post_name'] = $this->sanitize_post_slug(wp_unslash($components['slug']));
 			$updated_components[] = 'slug';
 		}
 
@@ -662,7 +663,13 @@ class AIPS_AI_Edit_Controller {
 			$content = isset($_POST['current_content'])
 				? wp_kses_post(wp_unslash($_POST['current_content']))
 				: (string) get_post_field('post_content', $post_id);
-			$applied = $this->service->apply_restored_post_image($post_id, $post_image_id, $restored_value, $content);
+			$applied = $this->service->apply_restored_post_image(
+				$post_id,
+				$post_image_id,
+				$restored_value,
+				$content,
+				isset($_POST['history_id']) ? absint($_POST['history_id']) : 0
+			);
 			if (is_wp_error($applied)) {
 				$this->log_wp_error($applied, __METHOD__);
 				AIPS_Ajax_Response::error(__('Failed to restore post image revision.', 'ai-post-scheduler'));
@@ -674,7 +681,7 @@ class AIPS_AI_Edit_Controller {
 					$post_data['post_title'] = sanitize_text_field($restored_value);
 					break;
 				case 'slug':
-					$post_data['post_name'] = sanitize_title($restored_value);
+					$post_data['post_name'] = $this->sanitize_post_slug($restored_value);
 					break;
 				case 'excerpt':
 					$post_data['post_excerpt'] = sanitize_textarea_field($restored_value);
@@ -717,7 +724,7 @@ class AIPS_AI_Edit_Controller {
 					$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
 					break;
 				case 'slug':
-					$sanitized_components['slug'] = sanitize_title((string) $restored_value);
+					$sanitized_components['slug'] = $this->sanitize_post_slug($restored_value);
 					break;
 				case 'excerpt':
 					$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
@@ -759,6 +766,22 @@ class AIPS_AI_Edit_Controller {
 	 * @param string   $method The calling method name; pass __METHOD__ from the caller.
 	 * @return void
 	 */
+	/**
+	 * Turn a requested slug into a post name without keeping script contents.
+	 *
+	 * @param mixed $slug Raw slug.
+	 * @return string
+	 */
+	private function sanitize_post_slug($slug) {
+		$slug = (string) $slug;
+		$stripped = preg_replace('@<(script|style)\b[^>]*>.*?</\1>@si', '', $slug);
+		if (is_string($stripped)) {
+			$slug = $stripped;
+		}
+
+		return sanitize_title(wp_strip_all_tags($slug));
+	}
+
 	private function log_wp_error( WP_Error $error, $method = '' ) {
 		$context = $method ? '[' . $method . '] ' : '';
 		AIPS_Logger::instance()->error( 'AIPS AI Edit Controller Error ' . $context . '(' . $error->get_error_code() . '): ' . $error->get_error_message() );
@@ -777,7 +800,7 @@ class AIPS_AI_Edit_Controller {
 				return sanitize_text_field((string) $value);
 
 			case 'slug':
-				return sanitize_title((string) $value);
+				return $this->sanitize_post_slug($value);
 
 			case 'excerpt':
 				return sanitize_textarea_field((string) $value);

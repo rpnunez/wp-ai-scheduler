@@ -367,7 +367,7 @@ class AIPS_Generated_Posts_Controller {
 		if ($history_item->post_id) {
 			$components = array('title', 'slug', 'excerpt', 'content', 'featured_image', 'post_images');
 			$post_id = absint($history_item->post_id);
-			foreach ((new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id) as $image_row) {
+			foreach ((new AIPS_Post_Images_Generated_Repository())->get_for_post_history($post_id, (int) $history_item->id) as $image_row) {
 				$components[] = 'post_image_' . (int) $image_row->id;
 			}
 			foreach ($components as $component) {

@@ -1942,11 +1942,11 @@ class AIPS_DB_Migrations {
 			'featured_image_media_ids'         => 'text DEFAULT NULL',
 		);
 		foreach ( $author_columns as $column => $definition ) {
-			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $column ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN `{$column}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 				return false;
 			}
-			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $column ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				return false;
 			}
 		}
@@ -1956,7 +1956,7 @@ class AIPS_DB_Migrations {
 			$wpdb->prefix . 'aips_post_images_generated',
 		);
 		foreach ( $required_tables as $table ) {
-			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) !== $table ) {
 				return false;
 			}
 		}
@@ -1969,7 +1969,7 @@ class AIPS_DB_Migrations {
 		);
 		foreach ( $required_columns as $table => $columns ) {
 			foreach ( $columns as $column ) {
-				if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", $column ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					return false;
 				}
 			}

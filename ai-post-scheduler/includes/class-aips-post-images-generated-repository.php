@@ -50,6 +50,38 @@ class AIPS_Post_Images_Generated_Repository {
 	}
 
 	/**
+	 * Generated rows for one post and one history run.
+	 *
+	 * Rows stamped with a different history id are excluded, so image 2 of an
+	 * older run cannot be treated as image 2 of the current run. Rows saved
+	 * before history_id was recorded are used only when this run has none.
+	 *
+	 * @param int $post_id    Post ID.
+	 * @param int $history_id History container ID.
+	 * @return array
+	 */
+	public function get_for_post_history($post_id, $history_id) {
+		$rows = $this->get_by_post_id($post_id);
+		$history_id = absint($history_id);
+		if (!$history_id) {
+			return $rows;
+		}
+
+		$matched = array();
+		$unscoped = array();
+		foreach ($rows as $row) {
+			$row_history = isset($row->history_id) ? (int) $row->history_id : 0;
+			if ($row_history === $history_id) {
+				$matched[] = $row;
+			} elseif (0 === $row_history) {
+				$unscoped[] = $row;
+			}
+		}
+
+		return !empty($matched) ? $matched : $unscoped;
+	}
+
+	/**
 	 * Get a single generated image record by ID.
 	 *
 	 * @param int $id Record ID.

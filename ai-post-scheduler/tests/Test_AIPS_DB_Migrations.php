@@ -831,6 +831,10 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$assert_image_columns( 'must gain author image columns on upgrade from 3.7.23' );
 		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ) );
 
+		// The test suite rewrites DROP TABLE to DROP TEMPORARY TABLE, which
+		// cannot remove the permanent tables this assertion has to hide.
+		remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
 		$wpdb->query( "DROP TABLE `{$images}`" );
 		$wpdb->query( "DROP TABLE `{$generated}`" );
 		try {
@@ -839,6 +843,8 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			$this->assertSame( '3.7.23', get_option( 'aips_db_version' ), 'a failed migration must not stamp the version' );
 		} finally {
 			AIPS_DB_Manager::install_tables();
+			add_filter( 'query', array( $this, '_create_temporary_tables' ) );
+			add_filter( 'query', array( $this, '_drop_temporary_tables' ) );
 		}
 	}
 }

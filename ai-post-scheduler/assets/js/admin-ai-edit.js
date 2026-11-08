@@ -510,7 +510,7 @@
 					id: image.id,
 					image: image,
 					markup: image.markup || '',
-					content: payload.content || '',
+					content: image.content || '',
 					sourceContent: payload.source_content || '',
 					baseContent: baseContent
 				};
@@ -589,7 +589,8 @@
 
 			var current = $('#aips-component-content').val();
 			var nextContent = current;
-			if ((current === pending.baseContent || current === pending.sourceContent) && typeof pending.content === 'string' && pending.content !== '') {
+			var editorUnchanged = current === pending.baseContent || current === pending.sourceContent;
+			if (editorUnchanged && typeof pending.content === 'string' && pending.content !== '') {
 				nextContent = pending.content;
 			} else if (pending.markup) {
 				nextContent = window.AIPS.replacePostImageMarkup(current, pending.id, pending.markup);

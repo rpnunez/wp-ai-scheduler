@@ -821,7 +821,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->record_regeneration_trigger($history_container, $context, __('Post images', 'ai-post-scheduler'), $post_id);
 
 		$generated_repo = new AIPS_Post_Images_Generated_Repository();
-		$existing_generated = $generated_repo->get_by_post_id($post_id);
+		$existing_generated = $generated_repo->get_for_post_history($post_id, $history_id);
 
 		$images_to_regenerate = array();
 		if ($image_id === 'all') {
@@ -829,7 +829,7 @@ class AIPS_Component_Regeneration_Service {
 		} else {
 			$target_id = absint($image_id);
 			foreach ($existing_generated as $eg) {
-				if ((int) $eg->id === $target_id) {
+				if ((int) $eg->id === $target_id && (int) $eg->post_id === $post_id) {
 					$images_to_regenerate[] = $eg;
 					break;
 				}
@@ -844,7 +844,7 @@ class AIPS_Component_Regeneration_Service {
 					'post_id'         => $post_id,
 					'history_id'      => $history_id,
 					'config_image_id' => !empty($ci->id) ? (int) $ci->id : 0,
-					'image_index'     => !empty($ci->image_order) ? (int) $ci->image_order : ($idx + 1),
+					'image_index'     => !empty($ci->placeholder_index) ? (int) $ci->placeholder_index : ($idx + 1),
 					'attachment_id'   => 0,
 					'image_source'    => !empty($ci->source) ? $ci->source : 'ai_prompt',
 					'image_prompt'    => !empty($ci->image_prompt) ? $ci->image_prompt : '',
@@ -894,13 +894,10 @@ class AIPS_Component_Regeneration_Service {
 
 			if ($resolved['attachment_id'] <= 0) {
 				// Keep a working image rather than trading it for a placeholder.
+				// The row itself stays unchanged until Save, so closing the modal
+				// does not record a failed status against the stored figure.
 				$has_previous_image = (int) $target_row->attachment_id > 0;
 				$status = $has_previous_image ? 'completed' : 'failed';
-
-				$generated_repo->update($gen_id, array(
-					'status'        => $status,
-					'error_message' => $resolved['error'],
-				));
 
 				$history_container->record_error($resolved['error'], array(
 					'component' => 'post_images',
@@ -924,6 +921,7 @@ class AIPS_Component_Regeneration_Service {
 				$title,
 				!empty($config->caption) ? $config->caption : ''
 			);
+			$isolated = $this->replace_post_image_markup($source_content, $target_row, $new_markup, $total_images);
 			$content = $this->replace_post_image_markup($content, $target_row, $new_markup, $total_images);
 
 			$image_value = array(
@@ -948,6 +946,7 @@ class AIPS_Component_Regeneration_Service {
 				'status'        => 'completed',
 				'error_message' => '',
 				'markup'        => $new_markup,
+				'content'       => $isolated,
 			);
 		}
 
@@ -967,9 +966,12 @@ class AIPS_Component_Regeneration_Service {
 	 * @param string $content  Editor content to update.
 	 * @return array|WP_Error
 	 */
-	public function apply_restored_post_image($post_id, $image_id, $value, $content) {
+	public function apply_restored_post_image($post_id, $image_id, $value, $content, $history_id = 0) {
 		$row = (new AIPS_Post_Images_Generated_Repository())->get_by_id($image_id);
 		if (!$row || (int) $row->post_id !== (int) $post_id) {
+			return new WP_Error('invalid_post_image', __('Post image not found.', 'ai-post-scheduler'));
+		}
+		if ($history_id && (int) $row->history_id > 0 && (int) $row->history_id !== (int) $history_id) {
 			return new WP_Error('invalid_post_image', __('Post image not found.', 'ai-post-scheduler'));
 		}
 
@@ -979,7 +981,7 @@ class AIPS_Component_Regeneration_Service {
 
 		$attachment_id = absint($value['attachment_id']);
 		$attachment = get_post($attachment_id);
-		if (!$attachment || 'attachment' !== $attachment->post_type) {
+		if (!$attachment || 'attachment' !== $attachment->post_type || !wp_attachment_is_image($attachment_id)) {
 			return new WP_Error('invalid_post_image_revision', __('Invalid post image revision data.', 'ai-post-scheduler'));
 		}
 
@@ -990,7 +992,8 @@ class AIPS_Component_Regeneration_Service {
 
 		$title = get_the_title($post_id);
 		$markup = $this->generator->build_post_image_markup($image_id, $attachment_id, $url, $title, '');
-		$content = $this->replace_post_image_markup($content, $row, $markup, 1);
+		$siblings = (new AIPS_Post_Images_Generated_Repository())->get_for_post_history($post_id, (int) $row->history_id);
+		$content = $this->replace_post_image_markup($content, $row, $markup, max(1, count($siblings)));
 
 		return array(
 			'id' => $image_id,
@@ -1073,9 +1076,15 @@ class AIPS_Component_Regeneration_Service {
 			}
 		}
 
-		foreach ($generation_context->get_content_images() as $idx => $image) {
-			$image_order = !empty($image->image_order) ? (int) $image->image_order : ($idx + 1);
-			if ($image_order === (int) $row->image_index) {
+		$indexed = AIPS_Post_Images_Service::with_placeholder_indexes($generation_context->get_content_images());
+		foreach ($indexed as $image) {
+			if ((int) $image->placeholder_index === (int) $row->image_index) {
+				return $image;
+			}
+		}
+		foreach ($indexed as $image) {
+			$image_order = isset($image->image_order) ? (int) $image->image_order : 0;
+			if ($image_order > 0 && $image_order === (int) $row->image_index) {
 				return $image;
 			}
 		}

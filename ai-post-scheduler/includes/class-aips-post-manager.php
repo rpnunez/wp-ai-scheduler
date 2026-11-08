@@ -423,6 +423,10 @@ class AIPS_Post_Manager {
                 $normalized_statuses['post_images'] = !empty($component_statuses['post_images']);
             }
 
+            if (array_key_exists('post_slug', $component_statuses)) {
+                $normalized_statuses['post_slug'] = !empty($component_statuses['post_slug']);
+            }
+
             update_post_meta($post_id, self::META_GENERATION_COMPONENT_STATUSES, wp_json_encode($normalized_statuses));
         }
 
@@ -483,7 +487,11 @@ class AIPS_Post_Manager {
             $component_statuses['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
         }
 
-        $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image', 'post_images');
+        if ('' !== (string) $post->post_name) {
+            $component_statuses['post_slug'] = true;
+        }
+
+        $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image', 'post_images', 'post_slug');
         foreach ($allowed_keys as $key) {
             if (array_key_exists($key, $overrides)) {
                 $component_statuses[$key] = (bool) $overrides[$key];

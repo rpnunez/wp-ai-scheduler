@@ -245,7 +245,7 @@ class AIPS_Prompt_Builder_Post_Content {
 			}
 		}
 
-		$images = array_slice($images, 0, AIPS_Config::get_instance()->get_max_post_images_limit());
+		$images = AIPS_Post_Images_Service::limited_content_images($images);
 
 		if (empty($images)) {
 			return '';
@@ -256,8 +256,8 @@ class AIPS_Prompt_Builder_Post_Content {
 			'You must include the following image placeholders on their own line between paragraphs or sections in the article body:'
 		);
 
-		foreach ($images as $idx => $img) {
-			$img_order = !empty($img->image_order) ? (int) $img->image_order : ($idx + 1);
+		foreach ($images as $img) {
+			$img_order = (int) $img->placeholder_index;
 			$placement = !empty($img->placement) ? $img->placement : 'auto';
 			$desc = "Placeholder: [post_image index=\"{$img_order}\"]";
 			if ($placement !== 'auto' && preg_match('/^after_section_(\d+)$/', $placement, $m)) {

@@ -79,6 +79,101 @@ class AIPS_Post_Images_Service {
 	}
 
 	/**
+	 * Number configured images as placeholder indexes 1..N.
+	 *
+	 * Index N is the Nth row after sorting by image_order, then id. A stored
+	 * order of 0, a duplicate, or a number past the list does not shift a later
+	 * image into an earlier slot: the second row is always [post_image index="2"].
+	 *
+	 * @param array $images Image configuration objects or arrays.
+	 * @return array Objects with placeholder_index set, in placeholder order.
+	 */
+	public static function with_placeholder_indexes(array $images) {
+		$sorted = array();
+		foreach ($images as $image) {
+			if (is_array($image)) {
+				$image = (object) $image;
+			}
+			if (is_object($image)) {
+				$sorted[] = $image;
+			}
+		}
+
+		usort($sorted, static function ($left, $right) {
+			$order = (int) (isset($left->image_order) ? $left->image_order : 0)
+				<=> (int) (isset($right->image_order) ? $right->image_order : 0);
+			if (0 !== $order) {
+				return $order;
+			}
+
+			return (int) (isset($left->id) ? $left->id : 0)
+				<=> (int) (isset($right->id) ? $right->id : 0);
+		});
+
+		foreach ($sorted as $position => $image) {
+			$image->placeholder_index = $position + 1;
+		}
+
+		return $sorted;
+	}
+
+	/**
+	 * Sort content images, apply the configured limit, and number them 1..N.
+	 *
+	 * @param array $images Image configuration objects or arrays.
+	 * @return array
+	 */
+	public static function limited_content_images(array $images) {
+		$indexed = self::with_placeholder_indexes($images);
+		$limit = AIPS_Config::get_instance()->get_max_post_images_limit();
+		$limited = array_slice($indexed, 0, max(0, (int) $limit));
+
+		foreach ($limited as $position => $image) {
+			$image->placeholder_index = $position + 1;
+		}
+
+		return $limited;
+	}
+
+	/**
+	 * Remove image shortcodes the model duplicated or numbered out of range.
+	 *
+	 * @param string $content Post content.
+	 * @return string
+	 */
+	public static function strip_unresolved_placeholders($content) {
+		$stripped = preg_replace(
+			'/<p>\s*\[post_image\s+index=["\']?\d+["\']?\s*\]\s*<\/p>|\[post_image\s+index=["\']?\d+["\']?\s*\]/i',
+			'',
+			(string) $content
+		);
+
+		return is_string($stripped) ? $stripped : (string) $content;
+	}
+
+	/**
+	 * Keep the generated-image marker when post content is sanitized.
+	 *
+	 * @param array  $tags    Allowed tags.
+	 * @param string $context KSES context.
+	 * @return array
+	 */
+	public static function allow_figure_attributes($tags, $context) {
+		if ('post' !== $context || !is_array($tags)) {
+			return $tags;
+		}
+
+		if (!isset($tags['figure']) || !is_array($tags['figure'])) {
+			$tags['figure'] = array();
+		}
+
+		$tags['figure']['class'] = true;
+		$tags['figure']['data-aips-image-id'] = true;
+
+		return $tags;
+	}
+
+	/**
 	 * Update generated image rows to match saved post content.
 	 *
 	 * The content decides which image a row points to, so a regeneration only
@@ -99,7 +194,13 @@ class AIPS_Post_Images_Service {
 			}
 
 			$attachment_id = (int) $attachment[1];
+			if ((int) $row->post_id !== (int) $post_id) {
+				continue;
+			}
 			if ($attachment_id === (int) $row->attachment_id && 'completed' === $row->status) {
+				continue;
+			}
+			if (!function_exists('wp_attachment_is_image') || !wp_attachment_is_image($attachment_id)) {
 				continue;
 			}
 

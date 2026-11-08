@@ -285,10 +285,11 @@ class AIPS_Post_Images_Repository {
 		// one of them, so keep the old rows rather than lose the configuration.
 		$to_delete = array_diff($existing_ids, $kept_ids);
 		if (!empty($to_delete) && !$create_failed) {
-			$placeholders = implode(',', array_fill(0, count($to_delete), '%d'));
+			$ids = array_map('absint', array_values($to_delete));
+			$placeholders = implode(',', array_fill(0, count($ids), '%d'));
 			$query = $this->wpdb->prepare(
 				"DELETE FROM {$this->table_name} WHERE id IN ($placeholders)",
-				$to_delete
+				...$ids
 			);
 			$this->wpdb->query($query);
 		}

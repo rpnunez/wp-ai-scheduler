@@ -1732,7 +1732,7 @@ class AIPS_Generator {
      * @return array Array with 'content' and 'success' (true when every image resolved) keys.
      */
     private function generate_and_inject_post_images($context, $post_id, $title, $content) {
-        $images = $context->get_content_images();
+        $images = AIPS_Post_Images_Service::with_placeholder_indexes($context->get_content_images());
         if (empty($images)) {
             return array('content' => $content, 'success' => true);
         }
@@ -1742,8 +1742,8 @@ class AIPS_Generator {
         $total_images = count($images);
         $all_succeeded = true;
 
-        foreach ($images as $idx => $img) {
-            $order     = !empty($img->image_order) ? (int) $img->image_order : ($idx + 1);
+        foreach ($images as $img) {
+            $order     = (int) $img->placeholder_index;
             $source    = !empty($img->source) ? $img->source : 'ai_prompt';
             $placement = !empty($img->placement) ? $img->placement : 'auto';
             $caption   = !empty($img->caption) ? $img->caption : '';
@@ -1772,6 +1772,8 @@ class AIPS_Generator {
 
             $content = $this->inject_single_post_image($content, $order, $placement, $markup, $total_images);
         }
+
+        $content = AIPS_Post_Images_Service::strip_unresolved_placeholders($content);
 
         return array('content' => $content, 'success' => $all_succeeded);
     }
@@ -1898,8 +1900,11 @@ class AIPS_Generator {
         // images evenly across the post's paragraphs.
         if (preg_match_all('/<\/p>/i', $content, $paragraphs, PREG_OFFSET_CAPTURE)) {
             $total_p = count($paragraphs[0]);
-            $slots = max(1, (int) $total_images, (int) $order) + 1;
-            $target_p_index = min($total_p - 1, max(0, (int) round(($order / $slots) * $total_p) - 1));
+            $count = max(1, (int) $total_images);
+            $position = max(1, min($count, (int) $order));
+            // 1-based position: image 2 of 3 lands between image 1 and image 3.
+            $target_p_index = (int) floor((($position - 0.5) / $count) * $total_p);
+            $target_p_index = min($total_p - 1, max(0, $target_p_index));
             $p_match = $paragraphs[0][$target_p_index];
             $insert_pos = $p_match[1] + strlen($p_match[0]);
             return substr($content, 0, $insert_pos) . "\n" . $markup . "\n" . substr($content, $insert_pos);

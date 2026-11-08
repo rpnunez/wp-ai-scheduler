@@ -20,6 +20,7 @@
   - Featured image generation no longer forces posts to draft on its own: the post keeps its intended status unless the image actually fails.
   - Implemented AI-guided placeholder injection (`[post_image index="N"]`) and DOM fallback injection for heading sections (`after_section_N`) and natural paragraph distribution.
   - Added a Post Images tab to the AI Edit modal, alongside Featured Image. Each content image has its own side-by-side comparison, Re-generate action, and View Revisions history. Accepted images are written into the post on Save.
+  - Placeholder index N is the Nth configured content image. A stored order of 0, a duplicate, or a gap cannot make the second image resolve as the third. Regeneration replaces only that image's figure, a failed attempt leaves the generated row unchanged until Save, and each history run only lists its own images.
   - Migration `3.7.24` adds the author featured-image columns and confirms the post-image tables. It is numbered after 3.7.23 so sites already stamped with the slug release still receive this schema. The slug migration is unchanged.
 - **Comprehensive Post Lifecycle Deletion Cleanup:**
   - Added `AIPS_Post_Cleanup_Service` orchestrated via WordPress `before_delete_post` hook to reliably clean up plugin data when posts are permanently deleted.

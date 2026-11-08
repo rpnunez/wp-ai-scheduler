@@ -220,7 +220,7 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			$images = (new AIPS_Post_Images_Repository())->get_content_images_for_entity('author', $author_id);
 		}
 
-		$this->content_images = array_slice($images, 0, AIPS_Config::get_instance()->get_max_post_images_limit());
+		$this->content_images = AIPS_Post_Images_Service::limited_content_images($images);
 		return $this->content_images;
 	}
 

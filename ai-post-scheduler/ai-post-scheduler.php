@@ -712,6 +712,8 @@ final class AI_Post_Scheduler {
     private function boot_common() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
 
+        add_filter('wp_kses_allowed_html', array('AIPS_Post_Images_Service', 'allow_figure_attributes'), 10, 2);
+
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
 
