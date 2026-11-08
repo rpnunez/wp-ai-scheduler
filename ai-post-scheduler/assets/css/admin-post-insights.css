@@ -178,8 +178,7 @@
 }
 
 .aips-insight-section {
-	border-top: 1px solid var(--aips-gray-100);
-	padding: 10px 0;
+	padding: 10px 0 4px;
 }
 
 .aips-insight-section-title {
@@ -298,9 +297,15 @@
 }
 
 .aips-gutenberg-section {
-	border-top: 1px solid var(--aips-gray-200);
 	padding-top: 12px;
 	margin-top: 12px;
+}
+
+/* Match the compact controls used by the AI Edit editor panels. */
+.aips-metabox-wrap .button,
+.aips-gutenberg-panel .components-button {
+	min-height: 30px;
+	font-size: 12px;
 }
 
 .aips-gutenberg-section-title {

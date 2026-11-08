@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
+
 ### Performance
 - **AI Prompt Bloat Optimization & Input Token Reduction:**
   - Pruned redundant `content_format` and `post_slice` diversity blocks in `AIPS_Prompt_Builder_Post_Metadata::append_diversity_blocks()` during metadata follow-up turns on established conversations, saving ~300 input tokens per post.
