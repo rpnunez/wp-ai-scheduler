@@ -53,7 +53,7 @@ $aips_ai_edit_modal_rendered = true;
 						<span class="aips-tab-badge" data-badge="title" style="display: none;"></span>
 					</button>
 					<button type="button" class="aips-ai-edit-tab" role="tab" aria-selected="false" data-tab="slug">
-						<span><?php esc_html_e('Slug', 'ai-post-scheduler'); ?></span>
+						<span><?php esc_html_e('Post Slug', 'ai-post-scheduler'); ?></span>
 						<span class="aips-tab-badge" data-badge="slug" style="display: none;"></span>
 					</button>
 					<button type="button" class="aips-ai-edit-tab" role="tab" aria-selected="false" data-tab="excerpt">
@@ -99,7 +99,7 @@ $aips_ai_edit_modal_rendered = true;
 								<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-nav-to-tab" data-target-tab="title"><?php esc_html_e('View', 'ai-post-scheduler'); ?></button>
 							</div>
 							<div class="aips-ai-edit-summary-card" data-component-card="slug">
-								<span class="aips-summary-card-title"><?php esc_html_e('Slug', 'ai-post-scheduler'); ?></span>
+								<span class="aips-summary-card-title"><?php esc_html_e('Post Slug', 'ai-post-scheduler'); ?></span>
 								<span class="aips-summary-card-status" id="aips-summary-status-slug"><?php esc_html_e('Ready', 'ai-post-scheduler'); ?></span>
 								<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-nav-to-tab" data-target-tab="slug"><?php esc_html_e('View', 'ai-post-scheduler'); ?></button>
 							</div>
@@ -198,7 +198,7 @@ $aips_ai_edit_modal_rendered = true;
 					<div class="aips-component-section" data-component="slug">
 						<div class="aips-component-header">
 							<div class="aips-component-header-left">
-								<h4 class="aips-component-title"><?php esc_html_e('Slug', 'ai-post-scheduler'); ?></h4>
+								<h4 class="aips-component-title"><?php esc_html_e('Post Slug', 'ai-post-scheduler'); ?></h4>
 								<span class="aips-component-status"></span>
 							</div>
 							<div class="aips-component-actions">
@@ -238,7 +238,7 @@ $aips_ai_edit_modal_rendered = true;
 						</div>
 
 						<div class="aips-component-body">
-							<label class="aips-field-label" for="aips-component-slug"><?php esc_html_e('Editable Slug:', 'ai-post-scheduler'); ?></label>
+							<label class="aips-field-label" for="aips-component-slug"><?php esc_html_e('Editable Post Slug:', 'ai-post-scheduler'); ?></label>
 							<input type="text" id="aips-component-slug" class="aips-component-input" />
 							<div class="aips-component-meta">
 								<span class="aips-char-count"></span>

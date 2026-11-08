@@ -18,7 +18,7 @@
 		var $variantsContainer = $metaBox.find('.aips-classic-variants-container');
 		var $variantsList = $metaBox.find('.aips-classic-variants-list');
 
-		$metaBox.on('click', '.aips-gen-titles-btn, .aips-gen-excerpts-btn', function (e) {
+		$metaBox.on('click', '.aips-gen-titles-btn, .aips-gen-slugs-btn, .aips-gen-excerpts-btn', function (e) {
 			e.preventDefault();
 			var $btn = $(this);
 			var component = $btn.data('component');
@@ -61,6 +61,12 @@
 					.on('click', function () {
 						if ('title' === component) {
 							$('#title').val(text).trigger('change');
+						} else if ('slug' === component) {
+							$('#post_name').val(text).trigger('change');
+							$('#editable-post-name, #editable-post-name-full').text(text);
+							if ($('#new-post-slug').length) {
+								$('#new-post-slug').val(text);
+							}
 						} else if ('excerpt' === component) {
 							$('#excerpt').val(text).trigger('change');
 						}

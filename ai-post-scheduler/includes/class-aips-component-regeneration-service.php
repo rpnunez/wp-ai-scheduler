@@ -418,6 +418,7 @@ class AIPS_Component_Regeneration_Service {
 			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 
+		$generation_context = $context['generation_context'];
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 
@@ -672,7 +673,7 @@ class AIPS_Component_Regeneration_Service {
 		$source = sanitize_key($source);
 		$reason = sanitize_key($reason);
 
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components, true)) {
 			return new WP_Error('invalid_component', __('Invalid component type.', 'ai-post-scheduler'));
 		}

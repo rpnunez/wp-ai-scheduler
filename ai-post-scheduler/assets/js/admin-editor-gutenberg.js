@@ -1,7 +1,7 @@
 /**
  * AI Post Scheduler - Gutenberg Block Editor Integration
  *
- * Provides Document Sidebar Panel for post components (Title, Excerpt) and
+ * Provides Document Sidebar Panel for post components (Title, Post Slug, Excerpt) and
  * inline Block Toolbar extension for paragraph/heading/list rewriting with
  * presets, custom directives, variant cards, and internal link weaving.
  *
@@ -39,10 +39,11 @@
 	}
 
 	/* ==========================================================================
-	   1. Document Settings Panel (Post-level: Title, Excerpt Variants)
+	   1. Document Settings Panel (Post-level: Title, Post Slug, Excerpt Variants)
 	   ========================================================================== */
 	function DocumentPanel() {
 		var [titleVariants, setTitleVariants] = useState([]);
+		var [slugVariants, setSlugVariants] = useState([]);
 		var [excerptVariants, setExcerptVariants] = useState([]);
 		var [busyComponent, setBusyComponent] = useState(null);
 
@@ -58,6 +59,8 @@
 				if (response && response.success && response.data && response.data.variants) {
 					if ('title' === component) {
 						setTitleVariants(response.data.variants);
+					} else if ('slug' === component) {
+						setSlugVariants(response.data.variants);
 					} else {
 						setExcerptVariants(response.data.variants);
 					}
@@ -76,6 +79,8 @@
 		function applyToPost(component, value) {
 			if ('title' === component) {
 				wp.data.dispatch('core/editor').editPost({ title: value });
+			} else if ('slug' === component) {
+				wp.data.dispatch('core/editor').editPost({ slug: value });
 			} else if ('excerpt' === component) {
 				wp.data.dispatch('core/editor').editPost({ excerpt: value });
 			}
@@ -115,6 +120,15 @@
 					onClick: function () { generateVariants('title'); }
 				}, l10n.labels.titleVariants || 'Generate 3 Title Candidates'),
 				renderVariantList('title', titleVariants),
+
+				el(Button, {
+					variant: 'secondary',
+					isBusy: 'slug' === busyComponent,
+					disabled: !!busyComponent,
+					style: { marginTop: '10px' },
+					onClick: function () { generateVariants('slug'); }
+				}, l10n.labels.slugVariants || 'Generate 3 Post Slug Candidates'),
+				renderVariantList('slug', slugVariants),
 
 				el(Button, {
 					variant: 'secondary',

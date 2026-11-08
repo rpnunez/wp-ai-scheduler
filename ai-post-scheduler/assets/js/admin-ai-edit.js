@@ -705,9 +705,9 @@
 					case 'title':
 						components.title = $('#aips-component-title').val();
 						break;
-						case 'slug':
-							components.slug = $('#aips-component-slug').val();
-							break;
+					case 'slug':
+						components.slug = $('#aips-component-slug').val();
+						break;
 					case 'excerpt':
 						components.excerpt = $('#aips-component-excerpt').val();
 						break;

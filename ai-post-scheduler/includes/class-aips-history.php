@@ -1664,6 +1664,9 @@ class AIPS_History {
             }
         }
 
+        if (strpos($message, 'slug') !== false) {
+            return 'post_slug';
+        }
         if (strpos($message, 'title') !== false) {
             return 'post_title';
         }
@@ -1707,6 +1710,8 @@ class AIPS_History {
             'body' => __('Post Content', 'ai-post-scheduler'),
             'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
             'excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
+            'post_slug' => __('Post Slug', 'ai-post-scheduler'),
+            'slug' => __('Post Slug', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
             'image' => __('Featured Image', 'ai-post-scheduler'),
             'topic' => __('Topic', 'ai-post-scheduler'),
