@@ -211,6 +211,14 @@ class AIPS_Config {
             'aips_notif_daily_digest_last_sent' => '',
             'aips_notif_weekly_summary_last_sent' => '',
             'aips_notif_monthly_report_last_sent' => '',
+            // Summarized Notification Digest
+            'aips_notif_digest_enabled' => false,
+            'aips_notif_digest_threshold' => 5,
+            'aips_notif_digest_max_delay' => 3600,
+            'aips_notif_digest_types' => array(
+                'post_generated',
+                'post_ready_for_review',
+            ),
             // Resilience
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
@@ -246,6 +254,8 @@ class AIPS_Config {
             'aips_telemetry_prune_interval'            => 'daily',
             'aips_history_log_retention_value'         => 60,
             'aips_history_log_retention_unit'          => 'days',
+            'aips_ai_error_log_retention_value'        => 30,
+            'aips_ai_error_log_retention_unit'         => 'days',
             'aips_clean_orphaned_embeddings'           => true,
             'aips_clean_expired_topics'                => true,
             // Cache Monitor
@@ -711,6 +721,32 @@ class AIPS_Config {
             'daily_last_sent'   => (string) $this->get_option('aips_notif_daily_digest_last_sent'),
             'weekly_last_sent'  => (string) $this->get_option('aips_notif_weekly_summary_last_sent'),
             'monthly_last_sent' => (string) $this->get_option('aips_notif_monthly_report_last_sent'),
+        );
+    }
+
+    /**
+     * Get summarized notification digest configuration.
+     *
+     * @return array Notification summarized digest configuration with keys:
+     *               'enabled'   (bool)  Whether summarized batching is enabled.
+     *               'threshold' (int)   Notification count to trigger immediate digest send.
+     *               'max_delay' (int)   Maximum delay window in seconds before dispatching.
+     *               'types'     (array) Eligible notification type keys to batch into digest.
+     */
+    public function get_notification_summarized_digest_config() {
+        $threshold = absint($this->get_option('aips_notif_digest_threshold'));
+        if ($threshold < 2) {
+            $threshold = 5;
+        }
+
+        $types = $this->get_option('aips_notif_digest_types');
+        $types = is_array($types) ? $types : array();
+
+        return array(
+            'enabled'   => (bool) $this->get_option('aips_notif_digest_enabled'),
+            'threshold' => $threshold,
+            'max_delay' => absint($this->get_option('aips_notif_digest_max_delay')) ?: 3600,
+            'types'     => $types,
         );
     }
 
