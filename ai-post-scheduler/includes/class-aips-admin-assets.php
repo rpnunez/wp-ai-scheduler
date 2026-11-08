@@ -2287,7 +2287,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-link-report-script',
             AIPS_PLUGIN_URL . 'assets/js/admin-link-report.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'heartbeat'),
             AIPS_VERSION,
             true
         );

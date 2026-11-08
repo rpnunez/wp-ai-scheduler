@@ -14,13 +14,9 @@ class Test_AIPS_Site_Health_Integration extends WP_UnitTestCase {
 		$tests = AIPS_Site_Health_Integration::register_site_status_tests(array());
 
 		$this->assertArrayHasKey('direct', $tests);
-		$this->assertArrayHasKey('async', $tests);
-
 		$this->assertArrayHasKey('aips_ai_provider', $tests['direct']);
 		$this->assertArrayHasKey('aips_cron_health', $tests['direct']);
 		$this->assertArrayHasKey('aips_database_integrity', $tests['direct']);
-		$this->assertArrayHasKey('aips_token_budget', $tests['direct']);
-		$this->assertArrayHasKey('aips_ai_connectivity', $tests['async']);
 	}
 
 	/**
@@ -64,34 +60,6 @@ class Test_AIPS_Site_Health_Integration extends WP_UnitTestCase {
 		$this->assertArrayHasKey('description', $result);
 		$this->assertContains($result['status'], array('good', 'recommended', 'critical'));
 		$this->assertSame('aips_database_integrity', $result['test']);
-	}
-
-	/**
-	 * Test test_token_budget returns valid site health test structure.
-	 */
-	public function test_test_token_budget() {
-		$result = AIPS_Site_Health_Integration::test_token_budget();
-
-		$this->assertArrayHasKey('label', $result);
-		$this->assertArrayHasKey('status', $result);
-		$this->assertArrayHasKey('badge', $result);
-		$this->assertArrayHasKey('description', $result);
-		$this->assertContains($result['status'], array('good', 'recommended', 'critical'));
-		$this->assertSame('aips_token_budget', $result['test']);
-	}
-
-	/**
-	 * Test test_ai_connectivity_direct returns valid test structure.
-	 */
-	public function test_test_ai_connectivity_direct() {
-		$result = AIPS_Site_Health_Integration::test_ai_connectivity_direct();
-
-		$this->assertArrayHasKey('label', $result);
-		$this->assertArrayHasKey('status', $result);
-		$this->assertArrayHasKey('badge', $result);
-		$this->assertArrayHasKey('description', $result);
-		$this->assertContains($result['status'], array('good', 'recommended', 'critical'));
-		$this->assertSame('aips_ai_connectivity', $result['test']);
 	}
 
 	/**

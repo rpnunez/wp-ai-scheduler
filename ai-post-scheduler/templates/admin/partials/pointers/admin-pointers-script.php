@@ -11,14 +11,16 @@ if (!defined('ABSPATH')) {
 ?>
 <script type="text/javascript">
 	jQuery(document).ready(function($) {
-		var activePointers = <?php echo wp_json_encode($active); ?>;
+		var activePointers = <?php echo wp_json_encode($active, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 		$.each(activePointers, function(pointerId, pointerData) {
 			var $target = $(pointerData.target);
 			if (!$target.length) {
 				return;
 			}
 
-			var contentHtml = '<h3>' + pointerData.title + '</h3><p>' + pointerData.content + '</p>';
+			var title = $('<div>').text(pointerData.title).html();
+			var content = $('<div>').text(pointerData.content).html();
+			var contentHtml = '<h3>' + title + '</h3><p>' + content + '</p>';
 
 			$target.pointer({
 				content: contentHtml,

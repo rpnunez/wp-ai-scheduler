@@ -394,22 +394,20 @@
 			this.isPolling = true;
 			$('#aips-link-report-rebuild').prop('disabled', true);
 
-			// Accelerate native WordPress Heartbeat interval to 5s while backfill is running
+			// Accelerate native WordPress Heartbeat while backfill is running.
 			if (window.wp && wp.heartbeat) {
 				wp.heartbeat.interval('fast');
+			} else {
+				// Keep the existing polling path if Heartbeat is unavailable.
+				this.pollTimer = setInterval(function() {
+					if (self.isPolling) {
+						self.poll();
+					}
+				}, 5000);
 			}
 
 			// Fire an immediate poll check
 			this.poll();
-
-			// Fallback polling timer in case Heartbeat is paused or inactive
-			this.pollTimer = setInterval(function() {
-				if (!self.isPolling) {
-					clearInterval(self.pollTimer);
-					return;
-				}
-				self.poll();
-			}, 5000);
 		},
 
 		stopPolling: function() {

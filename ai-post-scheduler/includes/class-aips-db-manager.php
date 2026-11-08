@@ -72,6 +72,22 @@ class AIPS_DB_Manager {
         return $full_names;
     }
 
+    /**
+     * Return expected plugin tables that are absent from the current database.
+     *
+     * @return string[] Full table names.
+     */
+    public static function get_missing_table_names() {
+        global $wpdb;
+
+        $existing = $wpdb->get_col('SHOW TABLES');
+        if (!is_array($existing)) {
+            return array_values(self::get_full_table_names());
+        }
+
+        return array_values(array_diff(self::get_full_table_names(), $existing));
+    }
+
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();

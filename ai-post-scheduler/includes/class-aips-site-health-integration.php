@@ -3,8 +3,8 @@
  * WordPress Site Health Integration Class
  *
  * Integrates AI Post Scheduler diagnostics into native WordPress Core Site Health
- * (Tools > Site Health), providing direct status checks, async AI connectivity tests,
- * and comprehensive system debugging export information.
+ * (Tools > Site Health), providing direct status checks and system debugging
+ * export information. Provider availability does not test remote connectivity.
  *
  * @package AI_Post_Scheduler
  * @since   3.7.20
@@ -20,27 +20,6 @@ if (!defined('ABSPATH')) {
 class AIPS_Site_Health_Integration {
 
 	/**
-	 * Core tables required for plugin execution.
-	 *
-	 * @var string[]
-	 */
-	const CORE_TABLES = array(
-		'aips_templates',
-		'aips_schedule',
-		'aips_history',
-		'aips_history_log',
-		'aips_authors',
-		'aips_author_topics',
-		'aips_voices',
-		'aips_article_structures',
-		'aips_post_slices',
-		'aips_campaigns',
-		'aips_post_images',
-		'aips_post_images_generated',
-		'aips_background_processes',
-	);
-
-	/**
 	 * Primary generation cron hook.
 	 */
 	const GENERATION_CRON_HOOK = 'aips_generate_scheduled_posts';
@@ -53,8 +32,6 @@ class AIPS_Site_Health_Integration {
 	public static function init() {
 		add_filter('site_status_tests', array(__CLASS__, 'register_site_status_tests'));
 		add_filter('debug_information', array(__CLASS__, 'add_debug_information'));
-		add_action('wp_ajax_health_check_aips_site_health_ai_connectivity', array(__CLASS__, 'ajax_test_ai_connectivity'));
-		add_action('wp_ajax_aips_site_health_ai_connectivity', array(__CLASS__, 'ajax_test_ai_connectivity'));
 	}
 
 	/**
@@ -70,9 +47,6 @@ class AIPS_Site_Health_Integration {
 
 		if (!isset($tests['direct'])) {
 			$tests['direct'] = array();
-		}
-		if (!isset($tests['async'])) {
-			$tests['async'] = array();
 		}
 
 		// 1. AI Provider Engine Check (Direct)
@@ -93,20 +67,6 @@ class AIPS_Site_Health_Integration {
 			'test'  => array(__CLASS__, 'test_database_integrity'),
 		);
 
-		// 4. Token Budget Headroom Check (Direct)
-		$tests['direct']['aips_token_budget'] = array(
-			'label' => __('Token Budget & Headroom', 'ai-post-scheduler'),
-			'test'  => array(__CLASS__, 'test_token_budget'),
-		);
-
-		// 5. Live AI Connectivity Test (Async)
-		$tests['async']['aips_ai_connectivity'] = array(
-			'label'             => __('Live AI Provider Connectivity', 'ai-post-scheduler'),
-			'test'              => 'aips_site_health_ai_connectivity',
-			'has_rest'          => false,
-			'async_direct_test' => array(__CLASS__, 'test_ai_connectivity_direct'),
-		);
-
 		return $tests;
 	}
 
@@ -120,7 +80,7 @@ class AIPS_Site_Health_Integration {
 
 		if ($has_provider) {
 			return array(
-				'label'       => __('AI Provider is configured and operational', 'ai-post-scheduler'),
+				'label'       => __('AI provider backend is available', 'ai-post-scheduler'),
 				'status'      => 'good',
 				'badge'       => array(
 					'label' => __('AI Post Scheduler', 'ai-post-scheduler'),
@@ -163,9 +123,6 @@ class AIPS_Site_Health_Integration {
 	public static function test_cron_health() {
 		$next_run = wp_next_scheduled(self::GENERATION_CRON_HOOK);
 		$now      = time();
-
-		$cron_disabled = defined('DISABLE_WP_CRON') && DISABLE_WP_CRON;
-		$alternate_cron = defined('ALTERNATE_WP_CRON') && ALTERNATE_WP_CRON;
 
 		if (!$next_run) {
 			// Check if there are active schedules in the database
@@ -263,16 +220,7 @@ class AIPS_Site_Health_Integration {
 	 * @return array<string, mixed>
 	 */
 	public static function test_database_integrity() {
-		global $wpdb;
-
-		$missing = array();
-		foreach (self::CORE_TABLES as $table_base) {
-			$table_name = $wpdb->prefix . $table_base;
-			$found = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name));
-			if ($found !== $table_name) {
-				$missing[] = $table_name;
-			}
-		}
+		$missing = AIPS_DB_Manager::get_missing_table_names();
 
 		if (empty($missing)) {
 			return array(
@@ -310,156 +258,6 @@ class AIPS_Site_Health_Integration {
 			),
 			'test'        => 'aips_database_integrity',
 		);
-	}
-
-	/**
-	 * Direct Check: Verifies token headroom and monthly limit consumption.
-	 *
-	 * @return array<string, mixed>
-	 */
-	public static function test_token_budget() {
-		$budget_limit = (int) AIPS_Config::get_instance()->get_option('aips_monthly_token_budget', 0);
-
-		if ($budget_limit <= 0) {
-			return array(
-				'label'       => __('No token budget cap is configured', 'ai-post-scheduler'),
-				'status'      => 'good',
-				'badge'       => array(
-					'label' => __('AI Post Scheduler', 'ai-post-scheduler'),
-					'color' => 'blue',
-				),
-				'description' => sprintf(
-					'<p>%s</p>',
-					esc_html__('Your AI generation pipelines have unlimited token headroom configured without local spending caps.', 'ai-post-scheduler')
-				),
-				'actions'     => '',
-				'test'        => 'aips_token_budget',
-			);
-		}
-
-		// Calculate current usage for the current month
-		$repo = new AIPS_Dashboard_Repository();
-		$month_start = strtotime('first day of this month 00:00:00');
-		$month_end   = strtotime('last day of this month 23:59:59');
-		$stats = $repo->get_summary_stats($month_start, $month_end);
-		$used_tokens = isset($stats['total_tokens']) ? (int) $stats['total_tokens'] : 0;
-
-		$percent = $budget_limit > 0 ? ($used_tokens / $budget_limit) * 100 : 0;
-
-		if ($percent >= 90) {
-			return array(
-				'label'       => __('Token budget is nearing monthly exhaustion', 'ai-post-scheduler'),
-				'status'      => 'recommended',
-				'badge'       => array(
-					'label' => __('AI Post Scheduler', 'ai-post-scheduler'),
-					'color' => 'orange',
-				),
-				'description' => sprintf(
-					'<p>%s</p>',
-					sprintf(
-						/* translators: 1: formatted used tokens, 2: formatted budget limit, 3: percentage */
-						esc_html__('You have consumed %1$s of your %2$s monthly token limit (%3$.1f%%). Consider adjusting your budget limits to prevent generation pauses.', 'ai-post-scheduler'),
-						number_format_i18n($used_tokens),
-						number_format_i18n($budget_limit),
-						$percent
-					)
-				),
-				'actions'     => sprintf(
-					'<p><a href="%s">%s</a></p>',
-					esc_url(admin_url('admin.php?page=aips-settings')),
-					esc_html__('Update Token Limits in Settings', 'ai-post-scheduler')
-				),
-				'test'        => 'aips_token_budget',
-			);
-		}
-
-		return array(
-			'label'       => __('Token headroom is healthy', 'ai-post-scheduler'),
-			'status'      => 'good',
-			'badge'       => array(
-				'label' => __('AI Post Scheduler', 'ai-post-scheduler'),
-				'color' => 'blue',
-			),
-			'description' => sprintf(
-				'<p>%s</p>',
-				sprintf(
-					/* translators: 1: formatted used tokens, 2: formatted budget limit, 3: percentage */
-					esc_html__('%1$s of %2$s monthly tokens used (%3$.1f%%). Generous headroom is available for scheduled runs.', 'ai-post-scheduler'),
-					number_format_i18n($used_tokens),
-					number_format_i18n($budget_limit),
-					$percent
-				)
-			),
-			'actions'     => '',
-			'test'        => 'aips_token_budget',
-		);
-	}
-
-	/**
-	 * Async Check / Direct Callback: Tests live AI connectivity.
-	 *
-	 * @return array<string, mixed>
-	 */
-	public static function test_ai_connectivity_direct() {
-		$start_time = microtime(true);
-		$available  = AIPS_AI_Provider_Factory::has_available_provider();
-		$latency = round((microtime(true) - $start_time) * 1000, 2);
-
-		if ($available) {
-			return array(
-				'label'       => __('Live AI Provider connectivity is operational', 'ai-post-scheduler'),
-				'status'      => 'good',
-				'badge'       => array(
-					'label' => __('AI Post Scheduler', 'ai-post-scheduler'),
-					'color' => 'blue',
-				),
-				'description' => sprintf(
-					'<p>%s</p>',
-					sprintf(
-						/* translators: %s: response latency in milliseconds */
-						esc_html__('Connection to the configured AI engine completed successfully (latency: %s ms).', 'ai-post-scheduler'),
-						$latency
-					)
-				),
-				'actions'     => '',
-				'test'        => 'aips_ai_connectivity',
-			);
-		}
-
-		return array(
-			'label'       => __('Could not establish live connection with AI provider', 'ai-post-scheduler'),
-			'status'      => 'critical',
-			'badge'       => array(
-				'label' => __('AI Post Scheduler', 'ai-post-scheduler'),
-				'color' => 'red',
-			),
-			'description' => sprintf(
-				'<p>%s</p>',
-				esc_html__('Failed to contact your configured AI provider backend. Verify your API credentials and ensure the Meow Apps AI Engine or WordPress AI Client connector is functioning.', 'ai-post-scheduler')
-			),
-			'actions'     => sprintf(
-				'<p><a href="%s">%s</a></p>',
-				esc_url(admin_url('admin.php?page=aips-settings')),
-				esc_html__('Review AI Settings', 'ai-post-scheduler')
-			),
-			'test'        => 'aips_ai_connectivity',
-		);
-	}
-
-	/**
-	 * AJAX endpoint for the async Site Health connectivity check.
-	 *
-	 * @return void
-	 */
-	public static function ajax_test_ai_connectivity() {
-		check_ajax_referer('health-check-site-status');
-
-		if (!current_user_can('view_site_health_checks')) {
-			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-		}
-
-		$result = self::test_ai_connectivity_direct();
-		wp_send_json_success($result);
 	}
 
 	/**

@@ -1197,7 +1197,6 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_ajax() {
-        AIPS_Site_Health_Integration::init();
         AIPS_Admin_Heartbeat_Handler::init();
 
         $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';

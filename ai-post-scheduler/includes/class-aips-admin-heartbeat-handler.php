@@ -98,10 +98,7 @@ class AIPS_Admin_Heartbeat_Handler {
 		$history_repo = new AIPS_History_Repository();
 		$in_flight    = $history_repo->count_by_status('processing');
 
-		$digest_queue = 0;
-		if (class_exists('AIPS_Notifications')) {
-			$digest_queue = (int) AIPS_Notifications::instance()->get_digest_queue_count();
-		}
+		$digest_queue = (int) AIPS_Notifications::instance()->get_digest_queue_count();
 
 		return array(
 			'in_flight'     => $in_flight,
