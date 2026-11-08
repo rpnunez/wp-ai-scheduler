@@ -326,6 +326,23 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Whether decoded embedding vectors should be written to the persistent cache
+	 * (AIPS_Cache DB tier / transients).
+	 *
+	 * Default false. The canonical vectors live in aips_embeddings as compact
+	 * float32 blobs (~6 KB each) and decoding them is a cheap unpack(), so
+	 * persisting the expanded float arrays (~30 KB each) only bloated the DB cache
+	 * (~42 MB in production) for a negligible CPU saving. The per-request in-memory
+	 * cache is always kept. Sites that want the old behaviour can opt back in via
+	 * the `aips_persist_decoded_embeddings` filter.
+	 *
+	 * @return bool
+	 */
+	private function should_persist_decoded_vectors() {
+		return (bool) apply_filters('aips_persist_decoded_embeddings', false);
+	}
+
+	/**
 	 * Decode an embedding from either packed binary float32, JSON string, or pass-through array.
 	 *
 	 * Fully backward-compatible polymorphic decoder with multi-tiered caching:
@@ -429,7 +446,7 @@ class AIPS_Embeddings_Repository {
 		// 4. Save to in-memory and persistent caches
 		$this->decoded_memory_cache[$mem_key] = $vector;
 
-		if (!empty($object_type) && $object_id > 0) {
+		if (!empty($object_type) && $object_id > 0 && $this->should_persist_decoded_vectors()) {
 			$ttl = 7 * DAY_IN_SECONDS; // 7 days expiration window
 			if ($cache_driver && $cache_driver->is_available()) {
 				$cache_driver->set($cache_key, $vector, $ttl, 'aips_embeddings');
@@ -527,7 +544,7 @@ class AIPS_Embeddings_Repository {
 		// Cache normalized vector
 		$this->decoded_memory_cache[$mem_key] = $vector;
 
-		if (!empty($object_type) && $object_id > 0) {
+		if (!empty($object_type) && $object_id > 0 && $this->should_persist_decoded_vectors()) {
 			$ttl = 7 * DAY_IN_SECONDS;
 			if ($cache_driver && $cache_driver->is_available()) {
 				$cache_driver->set($cache_key, $vector, $ttl, 'aips_embeddings');

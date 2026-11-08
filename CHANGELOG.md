@@ -1,5 +1,68 @@
 ## [Unreleased]
 
+### Performance
+- **AI Prompt Bloat Optimization & Input Token Reduction:**
+  - Pruned redundant `content_format` and `post_slice` diversity blocks in `AIPS_Prompt_Builder_Post_Metadata::append_diversity_blocks()` during metadata follow-up turns on established conversations, saving ~300 input tokens per post.
+  - Eliminated duplicate voice content instructions in `AIPS_Prompt_Builder::build_content_context()` when called for `AIPS_Generation_Context`, avoiding redundant injection across both prompt body and AI Engine context options.
+  - Reduced default article digest size in `AIPS_Prompt_Builder_Post_Title::build_base_prompt()` from 12,000 characters (`DEFAULT_MAX_CHARS`) to 3,000 characters, saving ~1,500–2,500 input tokens per post on stateless title generation requests without compromising headline relevance.
+
+### Added
+- **Comprehensive Post Lifecycle Deletion Cleanup:**
+  - Added `AIPS_Post_Cleanup_Service` orchestrated via WordPress `before_delete_post` hook to reliably clean up plugin data when posts are permanently deleted.
+  - Purges embedding vectors in `wp_aips_embeddings` and bidirectional relationship pairings in `wp_aips_relationships`.
+  - Purges internal link suggestions in `wp_aips_internal_links`, link index records in `wp_aips_link_index`, and link click counts in `wp_aips_link_clicks`.
+  - Purges history containers in `wp_aips_history` and detailed event logs in `wp_aips_history_log`, with automatic history cache invalidation.
+  - Deactivates pointing redirect rules in `wp_aips_redirects` (`enabled = 0`, `target_post_id = 0`) to prevent 404 redirection loops, and deletes origin redirects.
+  - Disassociates author topic generation logs (`wp_aips_author_topic_logs.post_id = NULL`) to preserve audit trails without automatically re-queuing the topic.
+  - Introduced `AIPS_Post_Cleanup_Service::without_history_deletion()` and pre-disassociation in Review Queue post regeneration flows to protect active history containers during regeneration deletions.
+  - Added revision and autosave guards (`wp_is_post_revision`, `wp_is_post_autosave`) to prevent premature cleanup when editing posts.
+  - Added extensibility hooks `aips_before_post_cleanup`, `aips_post_cleanup_executed`, and filter `aips_should_cleanup_post`.
+- **Diagnostics → System Info "Totals & Counts" section:**
+  - New section listing lifetime totals: posts generated, generation runs and success rate, generations by method, history containers by kind, authors, author topics and author posts, logged AI requests, AI Assistance requests, background-job AI calls, embeddings, content relationships, internal link suggestions, indexed links, templates/schedules/campaigns, trending topics, sources and fetched source pages, and bulk batch jobs. Included in the "Copy System Report" Markdown.
+  - New per-provider AI call counter (`AIPS_AI_Call_Counter`, non-autoloaded option `aips_ai_call_counters`) recorded by `AIPS_AI_Service`, shown as "AI Calls (WP AI Connector)" and "AI Calls (Meow AI Engine)" with a by-type breakdown. History logs never recorded the provider, so these counts start from the first AI call after upgrading.
+  - Totals come from the new read-only `AIPS_System_Totals_Repository`, cached for 10 minutes.
+- **Interactive Cards Redesign for Posts Pending Review & Floating Bulk Actions (#2334, #2340):**
+  - Modernized the Content > Pending Review tab from an HTML table into a responsive 3-column card grid with featured image display, fallback banner placeholders, post type badges, and context attribution.
+  - Added instant 1-click publishing without modal confirmation, including smooth card fade-out animation, draft counter synchronization, and toast notification with direct editor links.
+  - Added floating bulk actions bar anchored towards the bottom center of the viewport with dynamic selection counters, mass select/unselect all toggle, action selector, and escape key dismissal.
+  - Implemented live debounced AJAX filtering for post search and template / post type dropdowns.
+  - Added hybrid infinite scrolling that auto-loads subsequent pages on scroll for the initial pages and presents an explicit "Load More Posts" button with loading spinner for deeper queues.
+  - Hydrated draft post queries with excerpt/content snippets, featured images, and pre-primed thumbnail caches.
+  - Constrained list table column widths preventing horizontal layout overflow.
+- **Native Post Editor "AI Edit" Integration (Gutenberg & Classic Editor):**
+  - Expanded AI Edit beyond the list table modal directly into the native WordPress Post Editor canvas.
+  - Added dedicated Gutenberg Document Settings panel (`PluginDocumentSettingPanel`) for post-level Title, Excerpt, and Featured Image variant generation.
+  - Added inline Gutenberg Block Toolbar extension (`BlockControls`) on paragraphs, headings, and lists with floating directive popover, standard presets (Make Punchier, Expand with Examples, Simplify & Clarify, Tone Polish), custom prompt input, and 1-vs-3 candidate toggle.
+  - Added multi-variant candidate selector cards (`[Variant 1] [Variant 2] [Variant 3]`) for 1-click insertion into the active editor block.
+  - Added Context-Aware Internal Linking ("Weave Internal Links") that identifies published site posts and prompts the AI to insert natural contextual links with visual confirmation badges and 1-click accept/dismiss controls.
+  - Added full Classic Editor parity with a dedicated sidebar meta box and custom TinyMCE toolbar button for selection-level rewriting.
+  - Implemented unified Pure AJAX backend in `AIPS_Editor_Controller`, `AIPS_Editor_Directive_Service`, and `AIPS_Editor_Link_Weave_Service`.
+- **AI Edit Surface Exposure & Modal Upgrades:**
+  - Exposed "AI Edit" link directly on the standard WordPress All Posts list table (`edit.php`) row actions adjacent to "Edit" for all posts generated by AI Post Scheduler.
+  - Promoted the "AI Edit" button on the Generated Posts tab (`aips-generated-posts`) into the primary row action group alongside "Edit" without burying it inside the overflow menu.
+  - Added "AI Edit" action button to the History table row actions and the History Details modal header links for posts with generation history.
+  - Modernized the AI Edit modal with tabbed navigation (`Overview`, `Title`, `Excerpt`, `Content`, `Featured Image`), component status badges (`Regenerated`, `Modified`), side-by-side comparison with per-component "Accept & Replace", and a batch "Accept All Regenerations" workflow.
+  - Added dynamic in-place DOM row updates on save without requiring a full page reload.
+  - Hardened `AIPS_AI_Edit_Controller::ajax_get_post_components()` to resolve generation context via post ID fallback when `history_id` is omitted.
+  - Preserved backslashes across saves in `AIPS_AI_Edit_Controller::ajax_save_post_components()` using `wp_slash()`.
+- **Summarized Notification Digest & Batch Threshold:**
+  - Added configurable summarized notification digest in Settings > Notifications to batch frequent generation and review emails (e.g. Post Generated, Post Ready For Review) into a single digest email instead of sending individual emails per post.
+  - Exposed customizable batch threshold (clamped 2–50, default 5) to trigger instant digest dispatch when accumulated count is met.
+  - Added maximum delay fallback window (15m, 30m, 1h default, 2h, 6h) via recurring 15-minute WP-Cron check (`aips_notif_digest_cron`) to dispatch pending notifications even if below threshold.
+  - Added "Send Pending Digest Now" admin action for immediate manual queue testing and flush.
+  - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
+
+### Fixed
+- **History stays consistent when a regeneration delete or a history-log delete fails:**
+  - Single and bulk review regeneration restore the history container's status, post association, and error message when `wp_delete_post()` is vetoed (`pre_delete_post`) or otherwise fails, instead of leaving the original draft detached.
+  - `AIPS_History_Repository::delete_by_post_id()` returns false and leaves parent containers in place when deleting child `wp_aips_history_log` rows fails, so a failed log delete cannot orphan those logs.
+  - History updates now persist an explicit `post_id` or `error_message` of null, so regeneration can clear and later restore those fields.
+  - Topic-log disassociation on post delete updates `wp_aips_author_topic_logs` (`$table_name`). The previous `$table` property access aborted cleanup.
+
+### Fixed
+- Pending Review selection count and bulk publish/delete now use the same posts: after Cards → expanded List → Cards, IDs that are no longer rendered are dropped instead of being counted and then skipped.
+- Capped Pending Review `review_per_page` and the cards draft-list AJAX `per_page` at 100. Screen Options above the old 50 limit are still honored up to that ceiling.
+
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
 - Reject unusable or potentially truncated responses, bound response bodies to 2 MiB, and track the most recent attempt separately from the last successful fetch. Duplicate content preserves its original fetch time; identical text from a different URL has separate provenance.
@@ -24,6 +87,19 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **AI Errors Intelligence Console:**
+  - Exports include every matching error up to 2,000 rows. JSON and CSV report the real match count, the number of rows written, and whether the file was truncated at that bound.
+  - Category totals classify each error once, using the same rules as each row. An error that matches two signatures is counted in the winning category only, and unclassified errors stay in General.
+  - Secret redaction walks nested JSON fields such as `api_key` and `access_token`, including provider keys that do not start with `sk-`.
+- **Capture Original & Current Post Component Values in AI Edit Revisions:**
+  - Resolved an issue in the AI Edit component regeneration flow where the pre-regeneration state (original/current post value) was not recorded as a revision snapshot, leaving only the newly generated draft in "View Revisions".
+  - Updated `AIPS_AI_Edit_Controller::ajax_regenerate_component()` and `ajax_regenerate_all_components()` to capture the current component state (from client payload or falling back to `$post`) before invoking AI regeneration, with intelligent deduplication against recent revisions to avoid duplicate snapshots across multiple regenerations.
+  - Updated `AIPS_Generator::generate_and_resolve_metadata()` to record baseline `ai_response` history entries for `title` and `excerpt` during initial post generation.
+  - Enhanced `admin-ai-edit.js` to transmit `current_value` and `current_source` across single and batch regenerations, refreshed revision panels on regeneration, and added localized "Original Version" revision labels.
+- **Preserve Backslashes on AI Edit Save:**
+  - Resolved an issue in `AIPS_AI_Edit_Controller::ajax_save_post_components()` and `ajax_restore_component_revision()` where post components had their backslashes stripped when saved via `wp_update_post()`, because sanitized components were unslashed and `wp_update_post()` expects slashed data.
+- **Settings Navigation Page Scroll:**
+  - Fixed page scroll position not resetting to top when clicking Settings tabs from the left-hand navigation rail.
 - **Stress Test Modal & History UI Refinements:**
   - Resolved unscrollable modal dialog by enforcing max-height, flex-column constraints, and scrollable body container.
   - Positioned History tab header action buttons side-by-side and disabled "Compare 2 Selected Runs" with clear visual styling and ARIA attributes until exactly two runs are selected.
@@ -236,7 +312,15 @@
 - **Continuous Sync on Publish**: Automatically generates embeddings and updates relationship pairings when posts are published or updated.
 - **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
 
-## [Unreleased]
+### Added
+- **AI Edit Surface Exposure & Modal Upgrades:**
+  - Exposed "AI Edit" link directly on the standard WordPress All Posts list table (`edit.php`) row actions adjacent to "Edit" for all posts generated by AI Post Scheduler.
+  - Promoted the "AI Edit" button on the Generated Posts tab (`aips-generated-posts`) into the primary row action group alongside "Edit" without burying it inside the overflow menu.
+  - Added "AI Edit" action button to the History table row actions and the History Details modal header links for posts with generation history.
+  - Modernized the AI Edit modal with tabbed navigation (`Overview`, `Title`, `Excerpt`, `Content`, `Featured Image`), component status badges (`Regenerated`, `Modified`), side-by-side comparison with per-component "Accept & Replace", and a batch "Accept All Regenerations" workflow.
+  - Added dynamic in-place DOM row updates on save without requiring a full page reload.
+  - Hardened `AIPS_AI_Edit_Controller::ajax_get_post_components()` to resolve generation context via post ID fallback when `history_id` is omitted.
+  - Preserved backslashes across saves in `AIPS_AI_Edit_Controller::ajax_save_post_components()` using `wp_slash()`.
 
 ### Added
 - **System Status / Diagnostics maintenance improvements:**

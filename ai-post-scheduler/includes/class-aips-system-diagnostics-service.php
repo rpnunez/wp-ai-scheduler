@@ -230,6 +230,14 @@ class AIPS_System_Diagnostics_Service {
 				array($this, 'prune_history_logs'),
 				true
 			),
+			'prune_ai_errors' => $this->build_refresh_task_definition(
+				__('AI Error logs prune', 'ai-post-scheduler'),
+				__('Prune AI Error Logs', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_prune_ai_errors',
+				array($this, 'prune_ai_errors'),
+				true
+			),
 			'clean_orphaned_embeddings' => $this->build_refresh_task_definition(
 				__('Orphaned embeddings cleanup', 'ai-post-scheduler'),
 				__('Clean Orphaned Embeddings', 'ai-post-scheduler'),
@@ -279,6 +287,7 @@ class AIPS_System_Diagnostics_Service {
 				'steps' => array(
 					'prune_telemetry',
 					'prune_history_logs',
+					'prune_ai_errors',
 					'clean_orphaned_embeddings',
 					'cache_maintenance',
 					'clear_embeddings_cache',
@@ -840,6 +849,29 @@ class AIPS_System_Diagnostics_Service {
 			'success'   => true,
 			'message'   => sprintf(
 				__('History log prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
+				$deleted,
+				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
+			),
+			'deleted'   => $deleted,
+			'optimized' => $optimized,
+			'tables'    => array_filter(array($this->db_prune_service->get_table_status('aips_history_log'))),
+		);
+	}
+
+	/**
+	 * Prune old AI error logs.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function prune_ai_errors() {
+		$result    = $this->db_prune_service->prune_ai_error_logs();
+		$deleted   = isset($result['deleted']) ? (int) $result['deleted'] : 0;
+		$optimized = !empty($result['optimized']);
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('AI Error logs prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
 				$deleted,
 				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
 			),

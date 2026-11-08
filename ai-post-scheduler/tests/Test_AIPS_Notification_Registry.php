@@ -34,9 +34,9 @@ class Test_AIPS_Notification_Registry extends WP_UnitTestCase {
 		$this->assertIsArray($registry);
 	}
 
-	public function test_get_type_registry_has_all_24_types() {
+	public function test_get_type_registry_has_all_25_types() {
 		$registry = AIPS_Notification_Registry::get_type_registry();
-		$this->assertCount(24, $registry);
+		$this->assertCount(25, $registry);
 	}
 
 	public function test_get_type_registry_contains_required_keys() {
@@ -57,6 +57,7 @@ class Test_AIPS_Notification_Registry extends WP_UnitTestCase {
 			'daily_digest',
 			'weekly_summary',
 			'monthly_report',
+			'summarized_digest',
 			'history_cleanup',
 			'seeder_complete',
 			'template_change',
@@ -167,5 +168,25 @@ class Test_AIPS_Notification_Registry extends WP_UnitTestCase {
 		$from_registry      = AIPS_Notification_Registry::get_channel_mode_options();
 		$from_notifications = AIPS_Notifications::get_channel_mode_options();
 		$this->assertSame($from_registry, $from_notifications);
+	}
+
+	// -----------------------------------------------------------------------
+	// get_digest_eligible_types
+	// -----------------------------------------------------------------------
+
+	public function test_get_digest_eligible_types_returns_expected_content_types() {
+		$eligible = AIPS_Notification_Registry::get_digest_eligible_types();
+		$this->assertIsArray($eligible);
+		$this->assertCount(5, $eligible);
+		$this->assertArrayHasKey('post_generated', $eligible);
+		$this->assertArrayHasKey('post_ready_for_review', $eligible);
+		$this->assertArrayHasKey('template_generated', $eligible);
+		$this->assertArrayHasKey('manual_generation_completed', $eligible);
+		$this->assertArrayHasKey('partial_generation_completed', $eligible);
+
+		// Critical error notifications must NEVER be eligible for batching.
+		$this->assertArrayNotHasKey('generation_failed', $eligible);
+		$this->assertArrayNotHasKey('quota_alert', $eligible);
+		$this->assertArrayNotHasKey('circuit_breaker_opened', $eligible);
 	}
 }

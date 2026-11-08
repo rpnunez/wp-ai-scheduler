@@ -626,4 +626,26 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 			'Raw AI variable placeholder must be substituted before the prompt is sent to the AI service.'
 		);
 	}
+
+	/**
+	 * Test that build_content_context does not duplicate voice instructions for AIPS_Generation_Context.
+	 */
+	public function test_build_content_context_omits_duplicate_voice_instructions_for_context() {
+		$template = (object) array(
+			'id'              => 10,
+			'name'            => 'Context Template',
+			'prompt_template' => 'Write an article on {{topic}}',
+		);
+		$voice = (object) array(
+			'id'                   => 20,
+			'content_instructions' => 'VOICE_INSTRUCTION_UNIQUE_TOKEN_12345',
+		);
+		$context = new AIPS_Template_Context( $template, $voice, 'WordPress Optimization' );
+		$builder = new AIPS_Prompt_Builder();
+
+		$context_str = $builder->build_content_context( $context );
+
+		$this->assertStringNotContainsString( 'VOICE_INSTRUCTION_UNIQUE_TOKEN_12345', $context_str );
+		$this->assertStringContainsString( 'CRITICAL INSTRUCTIONS:', $context_str );
+	}
 }

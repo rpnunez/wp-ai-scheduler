@@ -227,21 +227,19 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	/**
 	 * Append the shared diversity blocks so titles stay varied across posts.
 	 *
+	 * Only injects avoid_titles block; content-format and post-slice guidance
+	 * were already established during content generation in turn 1 and are not
+	 * repeated here to prevent input prompt bloat.
+	 *
 	 * @param string $prompt  Prompt built so far.
 	 * @param mixed  $subject Generation context.
 	 * @return string
 	 */
 	private function append_diversity_blocks($prompt, $subject) {
-		$blocks = array(
-			$this->diversity_injector->build_avoid_titles_block($subject),
-			$this->diversity_injector->build_content_format_block($subject),
-			$this->diversity_injector->build_post_slice_block($subject),
-		);
+		$avoid_titles_block = $this->diversity_injector->build_avoid_titles_block($subject);
 
-		foreach ($blocks as $block) {
-			if (!empty($block)) {
-				$prompt .= "\n\n" . $block;
-			}
+		if (!empty($avoid_titles_block)) {
+			$prompt .= "\n\n" . $avoid_titles_block;
 		}
 
 		return $prompt;
