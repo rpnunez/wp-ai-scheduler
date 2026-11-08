@@ -557,4 +557,42 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			(is_array($result) && isset($result['attachment_id'])) || is_wp_error($result)
 		);
 	}
+
+	/**
+	 * Test build_directive_instruction formatting for presets and custom directives.
+	 */
+	public function test_build_directive_instruction_with_preset_and_custom() {
+		$empty_instruction = $this->service->build_directive_instruction(array());
+		$this->assertSame('', $empty_instruction);
+
+		$preset_instruction = $this->service->build_directive_instruction(array(
+			'directive_preset' => 'punchy',
+		));
+		$this->assertStringContainsString('punchier', $preset_instruction);
+
+		$combined_instruction = $this->service->build_directive_instruction(array(
+			'directive_preset' => 'seo',
+			'custom_directive' => 'Focus on developer workflows',
+		));
+		$this->assertStringContainsString('search intent', $combined_instruction);
+		$this->assertStringContainsString('Focus on developer workflows', $combined_instruction);
+	}
+
+	/**
+	 * Test extract_ai_options extracts model and clamps temperature between 0 and 1.
+	 */
+	public function test_extract_ai_options_extracts_model_and_clamps_temperature() {
+		$options = $this->service->extract_ai_options(array(
+			'model_override'       => 'claude-3-5-sonnet-20241022',
+			'temperature_override' => '1.5',
+		));
+
+		$this->assertSame('claude-3-5-sonnet-20241022', $options['model']);
+		$this->assertSame(1.0, $options['temperature']);
+
+		$options_negative = $this->service->extract_ai_options(array(
+			'temperature_override' => '-0.2',
+		));
+		$this->assertSame(0.0, $options_negative['temperature']);
+	}
 }

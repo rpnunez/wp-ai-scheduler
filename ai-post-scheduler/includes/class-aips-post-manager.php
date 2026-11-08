@@ -31,6 +31,7 @@ class AIPS_Post_Manager {
 	public const META_PROMPT                                 = '_aips_prompt';
 	public const META_GENERATION_TIME                        = '_aips_generation_time';
 	public const META_TOKENS_USED                            = '_aips_tokens_used';
+	public const META_AI_EDIT_OVERRIDES                     = '_aips_ai_edit_overrides';
 	public const CANONICAL_PLUGIN_POST_META_KEYS            = array(
 		self::META_GENERATED_POST,
 		self::META_GENERATION_COMPONENT_STATUSES,
@@ -44,6 +45,7 @@ class AIPS_Post_Manager {
 		self::META_PROMPT,
 		self::META_GENERATION_TIME,
 		self::META_TOKENS_USED,
+		self::META_AI_EDIT_OVERRIDES,
 	);
 
     /**

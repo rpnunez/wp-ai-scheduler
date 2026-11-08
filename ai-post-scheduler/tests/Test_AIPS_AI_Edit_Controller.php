@@ -46,6 +46,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertTrue(has_action('wp_ajax_aips_regenerate_component'));
 		$this->assertTrue(has_action('wp_ajax_aips_regenerate_all_components'));
 		$this->assertTrue(has_action('wp_ajax_aips_save_post_components'));
+		$this->assertTrue(has_action('wp_ajax_aips_reset_component_overrides'));
 	}
 
 	/**
@@ -1289,5 +1290,146 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			}
 		}
 		$this->assertTrue($found, 'Timeline activity log for restored revision was not found.');
+	}
+
+	/**
+	 * Test that ajax_regenerate_component handles directives and sticky model overrides.
+	 */
+	public function test_regenerate_component_handles_directives_and_sticky_model_overrides() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Original Test Title',
+			'post_content' => 'Original test content',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id'         => $post_id,
+			'title'           => 'Original Test Title',
+			'creation_method' => 'manual',
+		));
+
+		$service_mock = $this->createMock(AIPS_Component_Regeneration_Service::class);
+		$service_mock->method('get_generation_context')->willReturn(array(
+			'context_type'       => 'template',
+			'context_name'       => 'Test Template',
+			'post_id'            => $post_id,
+			'generation_context' => $this->createMock(AIPS_Generation_Context::class),
+		));
+		$service_mock->method('capture_component_revision')->willReturn(true);
+		$service_mock->expects($this->once())
+			->method('regenerate_title')
+			->with($this->callback(function ($context) {
+				return isset($context['custom_directive'])
+					&& $context['custom_directive'] === 'Make it punchier and shorter'
+					&& isset($context['directive_preset'])
+					&& $context['directive_preset'] === 'punchy'
+					&& isset($context['model_override'])
+					&& $context['model_override'] === 'gpt-4o'
+					&& isset($context['temperature_override'])
+					&& $context['temperature_override'] === 0.35
+					&& !empty($context['downstream_cascaded']);
+			}))
+			->willReturn('Regenerated Punchy Title');
+
+		$controller = new AIPS_AI_Edit_Controller($service_mock, $this->history_repository);
+
+		$_POST = array(
+			'action'               => 'aips_regenerate_component',
+			'post_id'              => $post_id,
+			'history_id'           => $history_id,
+			'component'            => 'title',
+			'current_value'        => 'Original Test Title',
+			'custom_directive'     => 'Make it punchier and shorter',
+			'directive_preset'     => 'punchy',
+			'model_override'       => 'gpt-4o',
+			'temperature_override' => '0.35',
+			'downstream_cascaded'  => 'true',
+			'nonce'                => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$controller->ajax_regenerate_component();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('Regenerated Punchy Title', $response['data']['new_value']);
+		$this->assertSame('gpt-4o', $response['data']['model']);
+		$this->assertSame(0.35, $response['data']['temperature']);
+
+		// Verify overrides stuck in post meta
+		$overrides = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
+		$this->assertIsArray($overrides);
+		$this->assertArrayHasKey('title', $overrides);
+		$this->assertSame('gpt-4o', $overrides['title']['model']);
+		$this->assertSame(0.35, $overrides['title']['temperature']);
+	}
+
+	/**
+	 * Test that ajax_reset_component_overrides resets post meta and returns defaults.
+	 */
+	public function test_ajax_reset_component_overrides() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Post With Overrides',
+		));
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, array(
+			'title' => array(
+				'model'       => 'gpt-4o',
+				'temperature' => 0.2,
+			),
+			'excerpt' => array(
+				'model'       => 'claude-3-5-sonnet-20241022',
+				'temperature' => 0.8,
+			),
+		));
+
+		$_POST = array(
+			'action'    => 'aips_reset_component_overrides',
+			'post_id'   => $post_id,
+			'component' => 'title',
+			'nonce'     => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_reset_component_overrides();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertArrayHasKey('default_temperature', $response['data']);
+
+		// Verify title override was removed but excerpt remains
+		$overrides = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
+		$this->assertIsArray($overrides);
+		$this->assertArrayNotHasKey('title', $overrides);
+		$this->assertArrayHasKey('excerpt', $overrides);
+		$this->assertSame('claude-3-5-sonnet-20241022', $overrides['excerpt']['model']);
+
+		// Reset excerpt as well; post meta should now be deleted completely
+		$_POST['component'] = 'excerpt';
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_reset_component_overrides();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$overrides_after = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
+		$this->assertEmpty($overrides_after);
 	}
 }

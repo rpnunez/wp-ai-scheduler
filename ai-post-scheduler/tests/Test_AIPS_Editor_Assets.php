@@ -84,6 +84,9 @@ class Test_AIPS_Editor_Assets extends WP_UnitTestCase {
 		$this->assertArrayHasKey(AIPS_Editor_Directive_Service::PRESET_EXPAND, $l10n['presets']);
 		$this->assertArrayHasKey(AIPS_Editor_Directive_Service::PRESET_SIMPLIFY, $l10n['presets']);
 		$this->assertArrayHasKey(AIPS_Editor_Directive_Service::PRESET_TONE_SHIFT, $l10n['presets']);
+		$this->assertArrayHasKey('models', $l10n);
+		$this->assertArrayHasKey('componentOverrides', $l10n);
+		$this->assertArrayHasKey('defaultAiConfig', $l10n);
 	}
 
 	public function test_register_classic_metabox_registers_per_component_boxes() {

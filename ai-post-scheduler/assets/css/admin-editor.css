@@ -304,3 +304,92 @@
 .aips-gutenberg-component-section .aips-diff-wrapper {
 	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
+
+/* ==========================================================================
+   Split Button, Directives Popover & Advanced Controls
+   ========================================================================== */
+.aips-split-btn-group {
+	display: inline-flex;
+	align-items: stretch;
+	vertical-align: middle;
+}
+
+.aips-split-btn-group .aips-regenerate-btn {
+	border-top-right-radius: 0 !important;
+	border-bottom-right-radius: 0 !important;
+	border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.aips-split-btn-group .aips-split-toggle-btn {
+	border-top-left-radius: 0 !important;
+	border-bottom-left-radius: 0 !important;
+	padding: 0 6px !important;
+	min-width: 26px;
+}
+
+.aips-split-btn-group .aips-split-toggle-btn .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	line-height: 28px;
+}
+
+.aips-directive-popover {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+	padding: 10px 12px;
+	margin-top: 6px;
+	margin-bottom: 8px;
+	position: relative;
+	z-index: 10;
+}
+
+.aips-preset-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.aips-preset-chip {
+	font-size: 11px !important;
+	padding: 2px 8px !important;
+	height: auto !important;
+	line-height: 1.6 !important;
+	border-radius: 12px !important;
+	cursor: pointer;
+	transition: all 0.15s ease-in-out;
+}
+
+.aips-preset-chip.active {
+	background: #2271b1 !important;
+	color: #fff !important;
+	border-color: #2271b1 !important;
+}
+
+.aips-advanced-accordion {
+	transition: border-color 0.15s ease-in-out;
+}
+
+.aips-advanced-accordion:hover {
+	border-color: #c3c4c7;
+}
+
+.aips-advanced-accordion-toggle:focus {
+	outline: none;
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.aips-temperature-slider {
+	accent-color: #2271b1;
+	cursor: pointer;
+}
+
+.aips-sync-downstream-label {
+	user-select: none;
+}
+
+.aips-sync-downstream-label input[type="checkbox"] {
+	margin-top: 0;
+}
