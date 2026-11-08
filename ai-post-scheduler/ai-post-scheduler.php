@@ -132,6 +132,13 @@ final class AI_Post_Scheduler {
             );
         }
 
+        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_notif_digest_enabled' ) ) {
+            $events['aips_notif_digest_cron'] = array(
+                'schedule' => 'fifteen_minutes',
+                'label'   => __( 'Notification Digest Check', 'ai-post-scheduler' ),
+            );
+        }
+
         return $events;
     }
 
@@ -806,6 +813,12 @@ final class AI_Post_Scheduler {
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
         );
+
+        // Custom cron intervals (fifteen_minutes, every_2_hours, etc.) must be available
+        // in every request context so wp_schedule_event recognizes them.
+        add_filter('cron_schedules', function($schedules) {
+            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
+        });
     }
 
     /**
@@ -833,9 +846,6 @@ final class AI_Post_Scheduler {
         // claim-first lock as the main tick, never the manual-run path.
         add_action(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, function($schedule_id) {
             AIPS_Scheduler::instance()->process_queued_due_schedule((int) $schedule_id);
-        });
-        add_filter('cron_schedules', function($schedules) {
-            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
         });
 
         // Batch-queue single events: each call processes one slice of a large schedule.
@@ -1207,6 +1217,9 @@ final class AI_Post_Scheduler {
 
         // "Internal Links" panel in the Classic and Block editors.
         new AIPS_Internal_Links_Editor_Panel();
+
+        // Native "AI Edit" in the Classic and Block editors.
+        new AIPS_Editor_Assets();
 
         // Keep the duplicate scan cron event in line with its setting.
         (new AIPS_Duplicate_Group_Service())->ensure_schedule();

@@ -1,0 +1,198 @@
+/**
+ * AI Post Scheduler - Native Editor Styles
+ *
+ * Styles for Gutenberg and Classic Editor AI Edit components, popovers, and badges.
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.8.0
+ */
+
+/* ==========================================================================
+   Shared Popover & Toolbar Extension (Gutenberg & TinyMCE)
+   ========================================================================== */
+.aips-editor-popover {
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-base);
+	box-shadow: var(--aips-shadow-md);
+	width: 320px;
+	max-width: 90vw;
+	padding: var(--aips-space-3);
+	font-size: var(--aips-text-sm);
+	color: var(--aips-text);
+	z-index: var(--aips-z-popover);
+}
+
+.aips-editor-popover-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--aips-space-2);
+	padding-bottom: var(--aips-space-2);
+	border-bottom: 1px solid var(--aips-gray-100);
+}
+
+.aips-editor-popover-title {
+	font-weight: var(--aips-font-semibold);
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-900);
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-1);
+}
+
+.aips-preset-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-1);
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-preset-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 8px;
+	background: var(--aips-gray-50);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-sm);
+	color: var(--aips-gray-700);
+	font-size: var(--aips-text-xs);
+	cursor: pointer;
+	transition: all var(--aips-transition-fast);
+}
+
+.aips-preset-pill:hover {
+	background: var(--aips-primary-light);
+	border-color: var(--aips-primary);
+	color: var(--aips-primary);
+}
+
+.aips-preset-pill.is-active {
+	background: var(--aips-primary);
+	border-color: var(--aips-primary);
+	color: var(--aips-white);
+}
+
+.aips-editor-input-row {
+	display: flex;
+	gap: var(--aips-space-1);
+	margin-bottom: var(--aips-space-2);
+}
+
+.aips-editor-input {
+	flex: 1;
+	font-size: var(--aips-text-xs);
+	padding: 4px 8px;
+	border: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-sm);
+}
+
+.aips-editor-options-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-600);
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-variants-toggle {
+	display: inline-flex;
+	border: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-sm);
+	overflow: hidden;
+}
+
+.aips-var-btn {
+	padding: 2px 7px;
+	background: var(--aips-white);
+	border: none;
+	font-size: var(--aips-text-xs);
+	cursor: pointer;
+}
+
+.aips-var-btn.is-active {
+	background: var(--aips-primary);
+	color: var(--aips-white);
+}
+
+/* ==========================================================================
+   Candidate Variant Carousel Cards
+   ========================================================================== */
+.aips-variant-carousel {
+	margin-top: var(--aips-space-2);
+	border-top: 1px solid var(--aips-gray-100);
+	padding-top: var(--aips-space-2);
+}
+
+.aips-variant-card {
+	background: var(--aips-gray-50);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-base);
+	padding: var(--aips-space-2);
+	margin-bottom: var(--aips-space-2);
+}
+
+.aips-variant-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-500);
+	font-weight: var(--aips-font-semibold);
+}
+
+.aips-variant-card-body {
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-900);
+	line-height: var(--aips-leading-normal);
+	margin-bottom: var(--aips-space-2);
+	max-height: 120px;
+	overflow-y: auto;
+}
+
+/* ==========================================================================
+   Internal Link Insertion Confirmation Badges
+   ========================================================================== */
+.aips-link-confirm-container {
+	margin-top: var(--aips-space-2);
+	background: var(--aips-success-bg);
+	border: 1px solid var(--aips-success-border);
+	border-radius: var(--aips-radius-base);
+	padding: var(--aips-space-2);
+}
+
+.aips-link-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: var(--aips-text-xs);
+	color: var(--aips-success-dark);
+	margin-top: 4px;
+}
+
+.aips-link-item strong {
+	color: var(--aips-gray-900);
+}
+
+/* ==========================================================================
+   Classic Editor Meta Box
+   ========================================================================== */
+.aips-classic-editor-metabox {
+	padding: var(--aips-space-1);
+}
+
+.aips-editor-component-actions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-2);
+	margin-top: var(--aips-space-2);
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-classic-variants-list {
+	margin-top: var(--aips-space-2);
+}
