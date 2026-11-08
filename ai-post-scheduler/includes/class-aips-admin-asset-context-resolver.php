@@ -306,6 +306,8 @@ class AIPS_Admin_Asset_Context_Resolver {
 			|| $this->hook_contains($hook, self::PAGE_STRESS_TEST)
 			|| $this->is_diagnostics_tab($page, 'stress-test');
 
+		$is_ai_errors = $this->is_diagnostics_tab($page, 'ai-errors');
+
 		return array(
 			'hook'                    => $hook,
 			'page'                    => $page,
@@ -334,6 +336,7 @@ class AIPS_Admin_Asset_Context_Resolver {
 			'is_content_intelligence' => $is_content_intelligence,
 			'is_cache_monitor'        => $is_cache_monitor,
 			'is_stress_test'          => $is_stress_test,
+			'is_ai_errors'            => $is_ai_errors,
 		);
 	}
 }

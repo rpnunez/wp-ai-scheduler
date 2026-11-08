@@ -67,6 +67,10 @@ class Test_AIPS_Settings_UI_Characterization extends WP_UnitTestCase {
 			'indexer_post_types_field_callback',
 			'related_posts_enabled_field_callback',
 			'deduplication_mode_field_callback',
+			'max_post_images_limit_field_callback',
+			'allowed_image_sources_field_callback',
+			'notif_digest_enabled_field_callback',
+			'ai_error_log_retention_field_callback',
 		);
 
 		foreach ( $callbacks as $cb ) {
@@ -111,6 +115,25 @@ class Test_AIPS_Settings_UI_Characterization extends WP_UnitTestCase {
 		$this->assertEquals( 'date_range', $this->ui->sanitize_embeddings_scope( 'date_range' ) );
 		$this->assertEquals( 'all', $this->ui->sanitize_embeddings_scope( 'all' ) );
 		$this->assertEquals( 'aips_only', $this->ui->sanitize_embeddings_scope( 'invalid_scope' ) );
+	}
+
+	public function test_digest_and_post_images_callbacks() {
+		$this->assertEquals( 5, $this->ui->sanitize_digest_threshold( 'not-a-number' ) );
+		$this->assertEquals( 2, $this->ui->sanitize_digest_threshold( 1 ) );
+		$this->assertEquals( 50, $this->ui->sanitize_digest_threshold( 99 ) );
+		$this->assertEquals( 3600, $this->ui->sanitize_digest_max_delay( 123 ) );
+		$this->assertEquals( 900, $this->ui->sanitize_digest_max_delay( 900 ) );
+		$this->assertSame( array(), $this->ui->sanitize_digest_types( 'nope' ) );
+
+		ob_start();
+		$this->ui->max_post_images_limit_field_callback();
+		$html = ob_get_clean();
+		$this->assertStringContainsString( 'aips_max_post_images_limit', $html );
+
+		ob_start();
+		$this->ui->allowed_image_sources_field_callback();
+		$html = ob_get_clean();
+		$this->assertStringContainsString( 'aips_allowed_image_sources[]', $html );
 	}
 
 	public function test_logging_and_cache_sanitizers() {

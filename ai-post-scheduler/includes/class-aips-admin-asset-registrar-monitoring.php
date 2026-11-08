@@ -219,6 +219,7 @@ class AIPS_Admin_Asset_Registrar_Monitoring {
 			'noncePruneTelemetry'          => wp_create_nonce('aips_status_prune_telemetry'),
 			'noncePurgeTelemetry'          => wp_create_nonce('aips_status_purge_telemetry'),
 			'noncePruneHistoryLogs'        => wp_create_nonce('aips_status_prune_history_logs'),
+			'noncePruneAiErrors'           => wp_create_nonce('aips_status_prune_ai_errors'),
 			'nonceCleanEmbeddings'         => wp_create_nonce('aips_status_clean_orphaned_embeddings'),
 			'nonceOptimizeTable'           => wp_create_nonce('aips_status_optimize_table'),
 			'nonceGetTables'               => wp_create_nonce('aips_status_get_tables'),
@@ -448,6 +449,49 @@ class AIPS_Admin_Asset_Registrar_Monitoring {
 				'comparisonDiff'        => __('Stress Test Comparison & Diff', 'ai-post-scheduler'),
 				'selectTwoRunsToCompare'=> __('Please select exactly 2 runs to compare.', 'ai-post-scheduler'),
 			),
+		));
+	}
+
+	/**
+	 * Enqueue assets for the AI Errors diagnostics tab.
+	 *
+	 * @return void
+	 */
+	public function enqueue_ai_errors() {
+		$this->enqueue_history();
+
+		wp_enqueue_script(
+			'aips-admin-ai-errors',
+			AIPS_PLUGIN_URL . 'assets/js/admin-ai-errors.js',
+			array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-admin-history'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-admin-ai-errors', 'aipsAiErrorsL10n', array(
+			'loading'             => __('Loading error logs…', 'ai-post-scheduler'),
+			'loadingDetails'      => __('Loading error details…', 'ai-post-scheduler'),
+			'noErrorsFound'       => __('No errors found matching the current filters.', 'ai-post-scheduler'),
+			'errorLoading'        => __('Failed to load error logs.', 'ai-post-scheduler'),
+			'errorLoadingDetails' => __('Failed to load error details.', 'ai-post-scheduler'),
+			'copied'              => __('Copied!', 'ai-post-scheduler'),
+			'copyDiagnostic'      => __('Copy Diagnostic Info', 'ai-post-scheduler'),
+			'copyPrompt'          => __('Copy Prompt', 'ai-post-scheduler'),
+			'runLabel'            => __('Run #%d', 'ai-post-scheduler'),
+			'viewDetails'         => __('View Details', 'ai-post-scheduler'),
+			'colDateTime'         => __('Date / Time', 'ai-post-scheduler'),
+			'colComponent'        => __('Component', 'ai-post-scheduler'),
+			'colError'            => __('Error Message', 'ai-post-scheduler'),
+			'colRun'              => __('Associated Run / Post', 'ai-post-scheduler'),
+			'colActions'          => __('Actions', 'ai-post-scheduler'),
+			'promptEmpty'         => __('No prompt recorded for this error.', 'ai-post-scheduler'),
+			'optionsEmpty'        => __('No request parameters recorded.', 'ai-post-scheduler'),
+			'copySupportReport'   => __('Copy Support Report', 'ai-post-scheduler'),
+			'pinging'             => __('Testing Connection…', 'ai-post-scheduler'),
+			'pingSuccess'         => __('Connection OK: %dms', 'ai-post-scheduler'),
+			'pingFailed'          => __('Connection Failed', 'ai-post-scheduler'),
+			'exportFailed'        => __('Failed to export error logs.', 'ai-post-scheduler'),
+			'nonce'               => wp_create_nonce('aips_ajax_nonce'),
 		));
 	}
 }

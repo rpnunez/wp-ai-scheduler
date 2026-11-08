@@ -291,6 +291,50 @@ class AIPS_Settings_UI {
 		return $this->integrations->sanitize_notification_preferences( $value );
 	}
 
+	public function post_images_section_callback() {
+		$this->content->post_images_section_callback();
+	}
+
+	public function max_post_images_limit_field_callback() {
+		$this->content->max_post_images_limit_field_callback();
+	}
+
+	public function allowed_image_sources_field_callback() {
+		$this->content->allowed_image_sources_field_callback();
+	}
+
+	public function notif_digest_enabled_field_callback() {
+		$this->integrations->notif_digest_enabled_field_callback();
+	}
+
+	public function notif_digest_threshold_field_callback() {
+		$this->integrations->notif_digest_threshold_field_callback();
+	}
+
+	public function notif_digest_max_delay_field_callback() {
+		$this->integrations->notif_digest_max_delay_field_callback();
+	}
+
+	public function notif_digest_types_field_callback() {
+		$this->integrations->notif_digest_types_field_callback();
+	}
+
+	public function notif_digest_actions_field_callback() {
+		$this->integrations->notif_digest_actions_field_callback();
+	}
+
+	public function sanitize_digest_threshold( $value ) {
+		return $this->integrations->sanitize_digest_threshold( $value );
+	}
+
+	public function sanitize_digest_max_delay( $value ) {
+		return $this->integrations->sanitize_digest_max_delay( $value );
+	}
+
+	public function sanitize_digest_types( $value ) {
+		return $this->integrations->sanitize_digest_types( $value );
+	}
+
 	public function sanitize_similarity_threshold( $value ) {
 		return $this->authors->sanitize_similarity_threshold( $value );
 	}
@@ -829,6 +873,23 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
+	public function ai_error_log_retention_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$value  = (int) $config->get_option('aips_ai_error_log_retention_value', 30);
+		$unit   = (string) $config->get_option('aips_ai_error_log_retention_unit', 'days');
+		?>
+		<div class="aips-retention-input-row">
+			<input type="number" name="aips_ai_error_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
+			<select name="aips_ai_error_log_retention_unit" class="aips-form-select">
+				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('AI Error logs in aips_history_log older than this threshold will be pruned during maintenance tasks.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
 	public function history_log_retention_field_callback() {
 		$config = AIPS_Config::get_instance();
 		$value  = (int) $config->get_option('aips_history_log_retention_value', 60);

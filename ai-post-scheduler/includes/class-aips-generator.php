@@ -44,6 +44,7 @@ class AIPS_Generator {
     private $prompt_builder;
     private $post_content_prompt_builder;
     private $post_title_prompt_builder;
+    private $post_slug_prompt_builder;
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
     private $post_metadata_prompt_builder;
@@ -108,6 +109,7 @@ class AIPS_Generator {
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
+        $this->post_slug_prompt_builder = $this->prompt_builder->get_post_slug_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
 
@@ -397,14 +399,16 @@ class AIPS_Generator {
     /**
      * Resolve AI Variables from a generation context.
      *
-     * Extracts AI Variables from the title prompt and uses AI to generate
-     * appropriate values based on the content context.
+     * Extracts AI Variables from the title prompt and optional component
+     * instructions, then uses AI to generate appropriate values based on the
+     * content context.
      *
      * @param AIPS_Generation_Context $context Generation context.
-     * @param string                  $content Generated article content for context.
+     * @param string                  $content                 Generated article content for context.
+     * @param string                  $additional_instructions Optional component instructions that can contain AI variables.
      * @return array Associative array of resolved AI variable values.
      */
-    private function resolve_ai_variables_from_context($context, $content) {
+    private function resolve_ai_variables_from_context($context, $content, $additional_instructions = '') {
         // Get the title prompt from context
         $title_prompt = $context->get_title_prompt();
 
@@ -423,6 +427,12 @@ class AIPS_Generator {
         }
 
         $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
+        if ($additional_instructions !== '') {
+            $ai_variables = array_values(array_unique(array_merge(
+                $ai_variables,
+                $this->template_processor->extract_ai_variables($additional_instructions)
+            )));
+        }
         if (empty($ai_variables)) {
             return array();
         }
@@ -441,7 +451,11 @@ class AIPS_Generator {
             $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
         }
 
-        return $this->resolve_ai_variables_for_template_string($title_prompt, $context_str, 'ai_variables');
+        return $this->resolve_ai_variables_for_template_string(
+            $title_prompt . "\n" . $additional_instructions,
+            $context_str,
+            'ai_variables'
+        );
     }
 
     /**
@@ -700,6 +714,10 @@ class AIPS_Generator {
             );
         }
 
+        if (!empty($options['custom_directive'])) {
+            $prompt .= "\n\n" . sprintf(__('Follow this directive for the title: %s', 'ai-post-scheduler'), $options['custom_directive']);
+        }
+
         // Request title from AI service
         $result = $this->generate_content($prompt, $options, 'title');
 
@@ -780,6 +798,10 @@ class AIPS_Generator {
             $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str, $context);
         }
 
+        if (!empty($options['custom_directive'])) {
+            $excerpt_prompt .= "\n\n" . sprintf(__('Follow this directive for the excerpt: %s', 'ai-post-scheduler'), $options['custom_directive']);
+        }
+
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
 
@@ -853,24 +875,24 @@ class AIPS_Generator {
             $image_prompt_template = (string) $this->post_featured_image_prompt_builder->build($context, $context->get_topic());
         }
 
-        // Collect the placeholders appearing across both templates so the model
-        // resolves them once, in the same turn that consumes them. The title
-        // instructions are read through the builder so a voice override — which may
-        // carry different placeholders than the template's own title prompt — is
-        // the string actually scanned.
+        // Collect the placeholders appearing across templates so the model
+        // resolves them once, in the same turn that consumes them.
         $ai_variables = array();
+        $include_slug = method_exists($context, 'should_generate_slug') && $context->should_generate_slug();
 
         if (method_exists($this->template_processor, 'extract_ai_variables')) {
             $title_instructions = $this->get_post_metadata_prompt_builder()->resolve_title_instructions($context, $context->get_topic());
+            $slug_instructions  = $include_slug ? $this->post_slug_prompt_builder->resolve_slug_instructions($context, $context->get_topic()) : '';
 
             $ai_variables = array_values(array_unique(array_merge(
                 (array) $this->template_processor->extract_ai_variables($title_instructions),
+                (array) $this->template_processor->extract_ai_variables($slug_instructions),
                 (array) $this->template_processor->extract_ai_variables($image_prompt_template)
             )));
         }
 
-        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template);
-        $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '');
+        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template, $include_slug);
+        $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '', $include_slug);
 
         if ($this->current_history) {
             $this->current_history->record(
@@ -946,9 +968,11 @@ class AIPS_Generator {
         }
 
         $image_prompt = isset($result['image_prompt']) ? trim((string) $result['image_prompt']) : '';
+        $slug         = isset($result['slug']) ? trim((string) $result['slug']) : '';
 
         return array(
             'title'        => preg_replace('/^["\']|["\']$/', '', $title),
+            'slug'         => preg_replace('/^["\']|["\']$/', '', $slug),
             'excerpt'      => $excerpt,
             'image_prompt' => $image_prompt !== '' ? $this->remove_unresolved_template_placeholders($image_prompt) : '',
             'ai_variables' => $ai_variable_values,
@@ -1118,8 +1142,10 @@ class AIPS_Generator {
         $generation_start = microtime(true);
         $component_statuses = array(
             'post_title'     => false,
+            'post_slug'      => true, // Optional: a failed slug falls back to WordPress's title-based slug.
             'post_excerpt'   => false,
             'featured_image' => !$context->should_generate_featured_image(),
+            'post_images'    => !$context->has_content_images(),
             'post_content'   => false,
         );
 
@@ -1176,13 +1202,19 @@ class AIPS_Generator {
 
 		$metadata_result = $this->generate_and_resolve_metadata($context, $content);
 		$title                 = $metadata_result['title'];
+		$slug                  = $metadata_result['slug'];
 		$excerpt               = $metadata_result['excerpt'];
 		$resolved_image_prompt = $metadata_result['resolved_image_prompt'];
 
 		$component_statuses['post_title']   = $metadata_result['title_success'];
 		$component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
 
-		$pre_image_incomplete  = in_array(false, $component_statuses, true);
+		// Image components are only resolved after the post exists, so their
+		// initial "not done yet" flags must not count as failures here.
+		$pre_image_statuses = $component_statuses;
+		unset($pre_image_statuses['featured_image'], $pre_image_statuses['post_images']);
+
+		$pre_image_incomplete  = in_array(false, $pre_image_statuses, true);
 		$generation_incomplete = $pre_image_incomplete;
 
         // Resolve the status the context/template would normally apply.
@@ -1194,7 +1226,11 @@ class AIPS_Generator {
         // the template's configured status. Featured image failure (if
         // requested) is resolved after post creation below and can only
         // ever downgrade further, never upgrade back to the intended status.
-        $initial_post_status = $pre_image_incomplete ? 'draft' : $intended_post_status;
+        //
+        // Posts with content images are held as drafts until their placeholders
+        // have been replaced, then moved to the intended status below.
+        $hold_for_post_images = !$pre_image_incomplete && $context->has_content_images();
+        $initial_post_status  = ($pre_image_incomplete || $hold_for_post_images) ? 'draft' : $intended_post_status;
 
         // Generation-time affiliate link injection (when enabled on the template/author).
         if ( $context instanceof AIPS_Generation_Context && $context->get_affiliate_links_enabled() && ! empty( $content ) ) {
@@ -1210,6 +1246,7 @@ class AIPS_Generator {
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
             'title' => $title,
+            'slug' => $slug,
             'content' => $content,
             'excerpt' => $excerpt,
             'context' => $context,
@@ -1262,6 +1299,17 @@ class AIPS_Generator {
         $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content, $resolved_image_prompt);
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
+        // Handle post content images generation/selection.
+        if ($context->has_content_images()) {
+            $post_images_result = $this->generate_and_inject_post_images($context, $post_id, $title, $content);
+            $content = $post_images_result['content'];
+            $component_statuses['post_images'] = $post_images_result['success'];
+            wp_update_post(array(
+                'ID'           => $post_id,
+                'post_content' => wp_slash($content),
+            ));
+        }
+
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
@@ -1274,6 +1322,19 @@ class AIPS_Generator {
             if (is_wp_error($downgrade_result)) {
                 $this->generation_logger->log(
                     'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
+                    'error',
+                    array('post_id' => $post_id)
+                );
+            }
+        }
+
+        // Every image landed: release the post that was held back for injection.
+        if ($hold_for_post_images && !$generation_incomplete && $intended_post_status !== 'draft') {
+            $release_result = $this->post_manager->force_post_status($post_id, $intended_post_status);
+
+            if (is_wp_error($release_result)) {
+                $this->generation_logger->log(
+                    'Failed to apply intended post status after post image injection: ' . $release_result->get_error_message(),
                     'error',
                     array('post_id' => $post_id)
                 );
@@ -1526,6 +1587,48 @@ class AIPS_Generator {
         $featured_image_result = null;
 
         if ($featured_image_source === 'unsplash') {
+            if (!$this->image_service->has_unsplash_access_key()) {
+                $component_success = false;
+                $skip_message = __('Unsplash API key is missing, skipped featured image generation', 'ai-post-scheduler');
+                $this->logger->log($skip_message, 'warning');
+
+                if ($this->current_history) {
+                    $this->current_history->record(
+                        'warning',
+                        $skip_message,
+                        array('source' => 'unsplash'),
+                        null,
+                        array('component' => 'featured_image', 'reason' => 'unsplash_key_missing')
+                    );
+                    $this->current_history->record(
+                        'metric_generation_result',
+                        'Featured image generation metric snapshot',
+                        array(
+                            'outcome'          => 'failed',
+                            'duration_seconds' => 0,
+                            'image_attempted'  => true,
+                            'image_success'    => false,
+                            'image_source'     => 'unsplash',
+                        ),
+                        null,
+                        array('component' => 'featured_image')
+                    );
+                }
+
+                do_action('aips_integration_error', array(
+                    'title'          => __('Unsplash Integration Error', 'ai-post-scheduler'),
+                    'error_message'  => __('Featured image generation attempt requested with Unsplash, but there is no API key set.', 'ai-post-scheduler'),
+                    'message'        => __('Featured image generation attempt requested with Unsplash, but there is no API key set.', 'ai-post-scheduler'),
+                    'error_code'     => 'unsplash_key_missing',
+                    'request_type'   => 'featured_image_unsplash',
+                    'dedupe_key'     => 'integration_error_unsplash_key_missing',
+                    'dedupe_window'  => 1800,
+                    'url'            => admin_url('admin.php?page=aips-settings#aips_api_keys_section'),
+                ));
+
+                return null;
+            }
+
             $keywords = $context->get_unsplash_keywords();
             $topic_str = $context->get_topic();
 
@@ -1625,6 +1728,197 @@ class AIPS_Generator {
         }
 
         return $featured_image_id;
+    }
+
+    /**
+     * Generate and inject post content images into post content.
+     *
+     * @param AIPS_Generation_Context $context Current generation context.
+     * @param int                     $post_id Post ID.
+     * @param string                  $title   Post title.
+     * @param string                  $content Current post content HTML.
+     * @return array Array with 'content' and 'success' (true when every image resolved) keys.
+     */
+    private function generate_and_inject_post_images($context, $post_id, $title, $content) {
+        $images = AIPS_Post_Images_Service::with_placeholder_indexes($context->get_content_images());
+        if (empty($images)) {
+            return array('content' => $content, 'success' => true);
+        }
+
+        $generated_repo = new AIPS_Post_Images_Generated_Repository();
+        $history_id = $this->current_history ? $this->current_history->get_id() : 0;
+        $total_images = count($images);
+        $all_succeeded = true;
+
+        foreach ($images as $img) {
+            $order     = (int) $img->placeholder_index;
+            $source    = !empty($img->source) ? $img->source : 'ai_prompt';
+            $placement = !empty($img->placement) ? $img->placement : 'auto';
+            $caption   = !empty($img->caption) ? $img->caption : '';
+
+            $resolved = $this->resolve_post_image($img, $title, $context->get_topic());
+            $is_success = $resolved['attachment_id'] > 0;
+            $all_succeeded = $all_succeeded && $is_success;
+
+            $gen_id = (int) $generated_repo->create(array(
+                'post_id'         => $post_id,
+                'history_id'      => $history_id,
+                'config_image_id' => !empty($img->id) ? (int) $img->id : 0,
+                'image_index'     => $order,
+                'attachment_id'   => $resolved['attachment_id'],
+                'image_source'    => $source,
+                'image_prompt'    => $resolved['prompt'],
+                'image_url'       => $resolved['image_url'],
+                'placement'       => $placement,
+                'status'          => $is_success ? 'completed' : 'failed',
+                'error_message'   => $resolved['error'],
+            ));
+
+            $markup = $is_success
+                ? $this->build_post_image_markup($gen_id, $resolved['attachment_id'], $resolved['image_url'], $title, $caption)
+                : sprintf('<!-- aips-image-placeholder id="%d" -->', $gen_id);
+
+            $content = $this->inject_single_post_image($content, $order, $placement, $markup, $total_images);
+        }
+
+        $content = AIPS_Post_Images_Service::strip_unresolved_placeholders($content);
+
+        return array('content' => $content, 'success' => $all_succeeded);
+    }
+
+    /**
+     * Produce the attachment for one post image configuration.
+     *
+     * Shared by first-time generation and AI Edit regeneration so both honour
+     * the same sources, keywords and prompt processing.
+     *
+     * @param object      $image Image configuration (source, image_prompt, unsplash_keywords, media_ids).
+     * @param string      $title Post title.
+     * @param string|null $topic Generation topic.
+     * @return array Array with 'attachment_id', 'image_url', 'prompt' and 'error' keys.
+     */
+    public function resolve_post_image($image, $title, $topic) {
+        $source = !empty($image->source) ? $image->source : 'ai_prompt';
+        $resolved = array(
+            'attachment_id' => 0,
+            'image_url'     => '',
+            'prompt'        => '',
+            'error'         => '',
+        );
+
+        if (!in_array($source, AIPS_Config::get_instance()->get_allowed_image_sources(), true)) {
+            $resolved['error'] = __('This image source is disabled in Settings.', 'ai-post-scheduler');
+            return $resolved;
+        }
+
+        if ($source === 'unsplash') {
+            if (!$this->image_service->has_unsplash_access_key()) {
+                $resolved['error'] = __('Unsplash API key is missing.', 'ai-post-scheduler');
+                return $resolved;
+            }
+
+            $keywords = !empty($image->unsplash_keywords) ? $image->unsplash_keywords : '';
+            $resolved['prompt'] = $this->template_processor->process($keywords, $topic);
+            $result = $this->image_service->fetch_and_upload_unsplash_image($resolved['prompt'], $title);
+        } elseif ($source === 'media_library') {
+            $result = $this->image_service->select_media_library_image(!empty($image->media_ids) ? $image->media_ids : '');
+        } else {
+            $resolved['prompt'] = !empty($image->image_prompt)
+                ? $this->template_processor->process($image->image_prompt, $topic)
+                : sprintf('An illustrative editorial photograph for the article section titled "%s", on the topic "%s"', $title, $topic);
+            $result = $this->image_service->generate_and_upload_featured_image($resolved['prompt'], $title);
+        }
+
+        if (is_wp_error($result)) {
+            $resolved['error'] = $result->get_error_message();
+            return $resolved;
+        }
+
+        $resolved['attachment_id'] = (int) $result;
+        $resolved['image_url'] = (string) wp_get_attachment_url($resolved['attachment_id']);
+
+        return $resolved;
+    }
+
+    /**
+     * Build the figure markup for a generated post image.
+     *
+     * @param int    $generated_id  Generated image row ID.
+     * @param int    $attachment_id Attachment ID.
+     * @param string $image_url     Attachment URL.
+     * @param string $title         Post title, used when the attachment has no alt text.
+     * @param string $caption       Optional caption.
+     * @return string Figure HTML.
+     */
+    public function build_post_image_markup($generated_id, $attachment_id, $image_url, $title, $caption = '') {
+        $alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+        if (empty($alt)) {
+            $alt = $title;
+        }
+
+        return sprintf(
+            '<figure class="wp-block-image size-large" data-aips-image-id="%d"><img src="%s" alt="%s" class="wp-image-%d"/>%s</figure>',
+            $generated_id,
+            esc_url($image_url),
+            esc_attr($alt),
+            $attachment_id,
+            !empty($caption) ? sprintf('<figcaption class="wp-element-caption">%s</figcaption>', esc_html($caption)) : ''
+        );
+    }
+
+    /**
+     * Inject a single post image markup into content by replacing placeholder or fallback DOM injection.
+     *
+     * @param string $content      Post content HTML.
+     * @param int    $order        Image index / order number.
+     * @param string $placement    Placement rule ('auto', 'after_section_1', etc.).
+     * @param string $markup       HTML markup to inject.
+     * @param int    $total_images Number of images being distributed through the post.
+     * @return string Updated post content.
+     */
+    public function inject_single_post_image($content, $order, $placement, $markup, $total_images = 1) {
+        // Pattern for placeholder: [post_image index="N"] or [post_image index=N] or [post_image index='N']
+        $pattern = '/<p>\s*\[post_image\s+index=["\']?' . preg_quote((string) $order, '/') . '["\']?\s*\]\s*<\/p>|\[post_image\s+index=["\']?' . preg_quote((string) $order, '/') . '["\']?\s*\]/i';
+
+        if (preg_match($pattern, $content)) {
+            // A callback keeps "$" and "\" in the markup (e.g. a title used as alt text) literal.
+            return preg_replace_callback($pattern, static function () use ($markup) {
+                return "\n" . $markup . "\n";
+            }, $content, 1);
+        }
+
+        // Fallback: If placeholder was omitted by LLM, inject based on placement rule
+        if ($placement !== 'auto' && preg_match('/^after_section_(\d+)$/', $placement, $matches)) {
+            $section_num = (int) $matches[1];
+            if (preg_match_all('/<h[2-4][^>]*>.*?<\/h[2-4]>/is', $content, $headings, PREG_OFFSET_CAPTURE)) {
+                if (isset($headings[0][$section_num - 1])) {
+                    $heading_match = $headings[0][$section_num - 1];
+                    $heading_end = $heading_match[1] + strlen($heading_match[0]);
+                    $after_heading = substr($content, $heading_end);
+                    if (preg_match('/<\/p>/i', $after_heading, $p_match, PREG_OFFSET_CAPTURE)) {
+                        $insert_pos = $heading_end + $p_match[0][1] + strlen($p_match[0][0]);
+                        return substr($content, 0, $insert_pos) . "\n" . $markup . "\n" . substr($content, $insert_pos);
+                    }
+                    return substr($content, 0, $heading_end) . "\n" . $markup . "\n" . substr($content, $heading_end);
+                }
+            }
+        }
+
+        // Fallback for 'auto' or when targeted section is not found: spread the
+        // images evenly across the post's paragraphs.
+        if (preg_match_all('/<\/p>/i', $content, $paragraphs, PREG_OFFSET_CAPTURE)) {
+            $total_p = count($paragraphs[0]);
+            $count = max(1, (int) $total_images);
+            $position = max(1, min($count, (int) $order));
+            // 1-based position: image 2 of 3 lands between image 1 and image 3.
+            $target_p_index = (int) floor((($position - 0.5) / $count) * $total_p);
+            $target_p_index = min($total_p - 1, max(0, $target_p_index));
+            $p_match = $paragraphs[0][$target_p_index];
+            $insert_pos = $p_match[1] + strlen($p_match[0]);
+            return substr($content, 0, $insert_pos) . "\n" . $markup . "\n" . substr($content, $insert_pos);
+        }
+
+        return $content . "\n" . $markup;
     }
 
     /**
@@ -1792,15 +2086,126 @@ class AIPS_Generator {
 		$metadata = $this->use_metadata_turn() ? $this->generate_metadata_turn($context) : null;
 
 		$title_result   = $this->resolve_generated_title($context, $content, $metadata);
+		$slug_result    = $this->resolve_generated_slug($title_result['title'], $content, $context, $metadata);
 		$excerpt_result = $this->resolve_generated_excerpt($title_result['title'], $content, $context, $metadata);
 
 		return array(
 			'title'                 => $title_result['title'],
 			'title_success'         => $title_result['success'],
+			'slug'                  => $slug_result['slug'],
+			'slug_success'          => $slug_result['success'],
 			'excerpt'               => $excerpt_result['excerpt'],
 			'excerpt_success'       => $excerpt_result['success'],
 			'resolved_image_prompt' => $metadata !== null ? $metadata['image_prompt'] : null,
 		);
+	}
+
+	/**
+	 * Resolves the generated slug and its component status.
+	 *
+	 * @param string                  $title    Resolved post title.
+	 * @param string                  $content  Generated post content.
+	 * @param AIPS_Generation_Context $context  Generation context.
+	 * @param array|null              $metadata Combined metadata response, when available.
+	 * @return array
+	 */
+	private function resolve_generated_slug($title, $content, $context, $metadata) {
+		if (!method_exists($context, 'should_generate_slug') || !$context->should_generate_slug()) {
+			return array(
+				'slug'    => '',
+				'success' => true,
+			);
+		}
+
+		$slug_success = false;
+
+		$slug = '';
+
+		if ($metadata !== null) {
+			// The metadata turn already answered; do not spend another AI call if it left the slug blank.
+			$slug         = isset($metadata['slug']) ? sanitize_title((string) $metadata['slug']) : '';
+			$slug_success = ($slug !== '');
+		} else {
+			$slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
+			if (is_wp_error($slug)) {
+				$slug         = '';
+				$slug_success = false;
+			} else {
+				$slug_success = $slug_success && ($slug !== '');
+			}
+		}
+
+		if ($slug_success) {
+			if ($this->current_history) {
+				$this->current_history->record(
+					'info',
+					'Post slug generated',
+					array('slug' => $slug),
+					null,
+					array('component' => 'post_slug')
+				);
+			}
+		} else {
+			if ($this->current_history) {
+				$this->current_history->record(
+					'error',
+					'Post slug generation failed',
+					array(),
+					null,
+					array('component' => 'post_slug')
+				);
+			}
+		}
+
+		return array(
+			'slug'    => $slug,
+			'success' => (bool) $slug_success,
+		);
+	}
+
+	/**
+	 * Generate a post slug from a generation context.
+	 *
+	 * @param AIPS_Generation_Context $context            Generation context.
+	 * @param string                  $content            Generated article content.
+	 * @param string                  $title              Generated article title.
+	 * @param array                   $options            AI options.
+	 * @param bool|null               $generation_success Output parameter. Set to true on success, false on failure.
+	 * @return string|WP_Error Generated slug string or WP_Error on failure.
+	 */
+	public function generate_slug_from_context($context, $content = '', $title = '', $options = array(), &$generation_success = null) {
+		if ($this->conversation !== null) {
+			$slug_prompt = $this->post_slug_prompt_builder->build_followup($context, $title);
+		} else {
+			$slug_prompt = $this->post_slug_prompt_builder->build($context, null, null, $content, $title);
+		}
+
+		$slug_instructions = $this->post_slug_prompt_builder->resolve_slug_instructions($context, $context->get_topic(), $title);
+		$ai_variables      = $this->resolve_ai_variables_from_context($context, $content, $slug_instructions);
+		if (!empty($ai_variables)) {
+			$slug_prompt = $this->template_processor->process_with_ai_variables(
+				$slug_prompt,
+				$context->get_topic(),
+				$ai_variables
+			);
+		}
+
+		if (!empty($options['custom_directive'])) {
+			$slug_prompt .= "\n\n" . sprintf(__('Follow this directive for the slug: %s', 'ai-post-scheduler'), $options['custom_directive']);
+		}
+
+		$result = $this->generate_content($slug_prompt, $options, 'slug');
+
+		if (is_wp_error($result)) {
+			$generation_success = false;
+			return $result;
+		}
+
+		$generation_success = true;
+		$slug = trim($result);
+		$slug = preg_replace('/^["\']|["\']$/', '', $slug);
+
+		return sanitize_title($slug);
 	}
 
 	/**
@@ -1859,6 +2264,14 @@ class AIPS_Generator {
 			}
 
 			$title = $base_title . ' - ' . AIPS_DateTime::now()->toDisplay();
+		} elseif ($this->current_history) {
+			$this->current_history->record(
+				'ai_response',
+				'Post title generated successfully',
+				null,
+				$title,
+				array('component' => 'title')
+			);
 		}
 
 		return array(
@@ -1880,6 +2293,15 @@ class AIPS_Generator {
 		if ($metadata !== null) {
 			$excerpt         = self::truncate_excerpt($metadata['excerpt']);
 			$excerpt_success = ($excerpt !== '');
+			if ($this->current_history && $excerpt_success) {
+				$this->current_history->record(
+					'ai_response',
+					'Post excerpt generated successfully',
+					null,
+					$excerpt,
+					array('component' => 'excerpt')
+				);
+			}
 		} else {
 			$excerpt_success = false;
 			$excerpt         = $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);

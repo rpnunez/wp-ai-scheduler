@@ -569,6 +569,32 @@
 				}
 			};
 
+			if (canvasId === 'aips-chart-ai-calls' || canvasId === 'aips-chart-ai-error-rate') {
+				var self = this;
+				options.onHover = function(evt, elements) {
+					$canvas.css('cursor', elements && elements.length ? 'pointer' : 'default');
+				};
+				options.onClick = function(evt, elements) {
+					if (!elements || !elements.length) {
+						return;
+					}
+					var chartData = self.currentChartData || window.aipsDashboardChartData || {};
+					var element = elements[0];
+					var index = element.index;
+					var dayDate = '';
+					if (chartData.days && chartData.days[index]) {
+						dayDate = chartData.days[index];
+					} else if (labels && labels[index]) {
+						dayDate = labels[index];
+					}
+
+					if (dayDate) {
+						var targetUrl = 'admin.php?page=aips-diagnostics&tab=ai-errors&date_from=' + encodeURIComponent(dayDate) + '&date_to=' + encodeURIComponent(dayDate);
+						window.location.href = targetUrl;
+					}
+				};
+			}
+
 			this.charts[canvasId] = new Chart(ctx, {
 				type:    type,
 				data:    { labels: labels, datasets: datasets },
@@ -603,7 +629,16 @@
 
 			// Card 3: AI Requests
 			$('.aips-stat-info .aips-stat-value').text(data.ai_calls_in_period);
-			$('.aips-stat-info .aips-stat-sub-meta').text('Error Rate: ' + data.ai_error_rate_in_period + '% (' + data.ai_errors_in_period + ' errors)');
+			var errorsUrl = 'admin.php?page=aips-diagnostics&tab=ai-errors';
+			if (data.date_from) {
+				errorsUrl += '&date_from=' + encodeURIComponent(data.date_from);
+			}
+			if (data.date_to) {
+				errorsUrl += '&date_to=' + encodeURIComponent(data.date_to);
+			}
+			$('.aips-stat-info .aips-stat-sub-meta').html(
+				'Error Rate: ' + data.ai_error_rate_in_period + '% (<a href="' + errorsUrl + '" class="aips-ai-errors-deep-link">' + data.ai_errors_in_period + ' AI call errors</a>)'
+			);
 
 			// Card 4: Author Topics
 			$('.aips-stat-warning .aips-stat-value').text(data.topics_created_in_period);
@@ -612,6 +647,7 @@
 			// 4. Update Chart.js datasets
 			if (typeof Chart !== 'undefined') {
 				var cd = data.chart_data;
+				this.currentChartData = cd;
 				
 				// Update Chart 1: AI Calls & Errors
 				if (this.charts['aips-chart-ai-calls']) {

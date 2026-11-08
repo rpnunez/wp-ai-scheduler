@@ -176,6 +176,9 @@ class AIPS_Admin_Assets {
 		if (!$ctx['is_plugin_page']) {
 			if ($ctx['is_native_post']) {
 				$this->global_registrar->enqueue_history_modal_opener();
+				if ('edit.php' === $hook) {
+					$this->global_registrar->enqueue_ai_edit();
+				}
 			}
 			return;
 		}
@@ -187,10 +190,12 @@ class AIPS_Admin_Assets {
 		}
 
 		if ($ctx['is_authors']) {
+			wp_enqueue_media();
 			$this->content_strategy_registrar->enqueue_authors($hook, $ctx['page'], $ctx['tab']);
 		}
 
 		if ($ctx['is_studio']) {
+			wp_enqueue_media();
 			$this->content_strategy_registrar->enqueue_templates();
 			$this->content_strategy_registrar->enqueue_voices();
 			$this->content_strategy_registrar->enqueue_structures();
@@ -279,6 +284,10 @@ class AIPS_Admin_Assets {
 
 		if ($ctx['is_stress_test']) {
 			$this->monitoring_registrar->enqueue_stress_test();
+		}
+
+		if (!empty($ctx['is_ai_errors'])) {
+			$this->monitoring_registrar->enqueue_ai_errors();
 		}
 	}
 
@@ -428,6 +437,18 @@ class AIPS_Admin_Assets {
 
 	public function enqueue_stress_test_assets() {
 		$this->monitoring_registrar->enqueue_stress_test();
+	}
+
+	public function enqueue_ai_edit_assets() {
+		$this->global_registrar->enqueue_ai_edit();
+	}
+
+	public function render_ai_edit_modal_scaffold() {
+		$this->global_registrar->render_ai_edit_modal_scaffold();
+	}
+
+	public function enqueue_ai_errors_tab_assets() {
+		$this->monitoring_registrar->enqueue_ai_errors();
 	}
 
 	/**

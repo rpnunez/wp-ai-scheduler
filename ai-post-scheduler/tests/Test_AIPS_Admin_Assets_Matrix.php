@@ -100,6 +100,11 @@ class Test_AIPS_Admin_Assets_Matrix extends WP_UnitTestCase {
 		$ctx = $resolver->resolve('toplevel_page_other-plugin');
 		$this->assertFalse($ctx['is_plugin_page']);
 		$this->assertFalse($ctx['is_dashboard']);
+
+		$_GET = array('page' => 'aips-diagnostics', 'tab' => 'ai-errors');
+		$ctx = $resolver->resolve('admin_page_aips-diagnostics');
+		$this->assertTrue($ctx['is_plugin_page']);
+		$this->assertTrue($ctx['is_ai_errors']);
 	}
 
 	/**
