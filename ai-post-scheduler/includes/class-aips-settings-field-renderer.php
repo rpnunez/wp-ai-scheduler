@@ -39,7 +39,7 @@ class AIPS_Settings_Field_Renderer {
 		}
 
 		$id          = isset($args['id']) ? sanitize_key($args['id']) : $option_name;
-		$name        = isset($args['name']) ? esc_attr($args['name']) : $option_name;
+		$name        = isset($args['name']) ? (string) $args['name'] : $option_name;
 		$description = isset($args['description']) ? $args['description'] : '';
 		$default     = isset($args['default']) ? $args['default'] : '';
 		$class       = isset($args['class']) ? $args['class'] : '';
@@ -132,7 +132,7 @@ class AIPS_Settings_Field_Renderer {
 	 * @return void
 	 */
 	private static function render_text_input($type, $id, $name, $value, $args, $class) {
-		$class_str    = 'regular-text ' . esc_attr($class);
+		$class_str    = 'regular-text ' . $class;
 		$placeholder  = isset($args['placeholder']) ? ' placeholder="' . esc_attr($args['placeholder']) . '"' : '';
 		$disabled     = !empty($args['disabled']) ? ' disabled' : '';
 		$autocomplete = isset($args['autocomplete']) ? ' autocomplete="' . esc_attr($args['autocomplete']) . '"' : '';
@@ -151,7 +151,7 @@ class AIPS_Settings_Field_Renderer {
 	 * @return void
 	 */
 	private static function render_password($id, $name, $value, $args, $class) {
-		$class_str = 'regular-text aips-password-input ' . esc_attr($class);
+		$class_str = 'regular-text aips-password-input ' . $class;
 
 		$partials_path = defined('AIPS_PLUGIN_DIR')
 			? AIPS_PLUGIN_DIR . 'templates/admin/partials/settings/field-password.php'
@@ -348,7 +348,7 @@ class AIPS_Settings_Field_Renderer {
 	private static function render_textarea($id, $name, $value, $args, $class) {
 		$rows      = isset($args['rows']) ? absint($args['rows']) : 5;
 		$cols      = isset($args['cols']) ? absint($args['cols']) : 50;
-		$class_str = 'large-text ' . esc_attr($class);
+		$class_str = 'large-text ' . $class;
 
 		echo '<textarea id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" rows="' . esc_attr((string) $rows) . '" cols="' . esc_attr((string) $cols) . '" class="' . esc_attr(trim($class_str)) . '">' . esc_textarea((string) $value) . '</textarea>';
 	}

@@ -40,6 +40,26 @@ class Test_AIPS_Settings_Field_Renderer extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Field names and CSS classes must be escaped once at the HTML boundary.
+	 */
+	public function test_render_escapes_attributes_once() {
+		ob_start();
+		AIPS_Settings_Field_Renderer::render(array(
+			'type'        => 'text',
+			'option_name' => 'test_text_opt',
+			'name'        => 'settings[api&key]',
+			'class'       => 'token&field',
+			'value'       => 'a&b',
+		));
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('name="settings[api&amp;key]"', $output);
+		$this->assertStringContainsString('class="regular-text token&amp;field"', $output);
+		$this->assertStringContainsString('value="a&amp;b"', $output);
+		$this->assertStringNotContainsString('&amp;amp;', $output);
+	}
+
+	/**
 	 * Test rendering password input with reveal toggle.
 	 */
 	public function test_render_password() {
