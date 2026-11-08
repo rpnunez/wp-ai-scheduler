@@ -265,6 +265,28 @@ class AIPS_Redirects_Service {
 	}
 
 	/**
+	 * Deactivate pointing redirects and delete origin redirects for a deleted post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array{disabled: int, deleted: int}
+	 */
+	public function on_before_delete_post(int $post_id): array {
+		$post_id = absint($post_id);
+		if ($post_id <= 0) {
+			return array('disabled' => 0, 'deleted' => 0);
+		}
+
+		$disabled = $this->repository->disable_target_post($post_id);
+		$deleted  = $this->repository->delete_by_origin_ref($post_id);
+
+		if ($disabled > 0 || $deleted > 0) {
+			$this->refresh_native_index();
+		}
+
+		return array('disabled' => $disabled, 'deleted' => $deleted);
+	}
+
+	/**
 	 * Enable or disable a redirect. Disabling removes it from an external
 	 * provider; enabling adds it back to the active provider.
 	 *

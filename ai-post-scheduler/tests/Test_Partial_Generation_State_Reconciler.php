@@ -204,6 +204,48 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An empty draft permalink is not a missing required component.
+	 */
+	public function test_empty_draft_slug_does_not_mark_generation_history_partial() {
+		global $wpdb;
+
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Complete Draft',
+			'post_excerpt' => 'Excerpt',
+			'post_content' => 'Content body',
+			'post_status'  => 'draft',
+		));
+		$wpdb->update($wpdb->posts, array('post_name' => ''), array('ID' => $post_id));
+		clean_post_cache($post_id);
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'     => true,
+			'post_excerpt'   => true,
+			'featured_image' => true,
+			'post_content'   => true,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'false');
+
+		$wpdb->insert($wpdb->prefix . 'aips_history', array(
+			'status'          => 'completed',
+			'record_kind'     => 'generation',
+			'creation_method' => 'manual',
+			'post_id'         => $post_id,
+			'created_at'      => time(),
+			'completed_at'    => time(),
+		));
+		$history_id = (int) $wpdb->insert_id;
+
+		$this->reconciler->on_save_post($post_id, get_post($post_id), true);
+
+		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+		$this->assertSame(
+			'completed',
+			$wpdb->get_var($wpdb->prepare("SELECT status FROM {$wpdb->prefix}aips_history WHERE id = %d", $history_id))
+		);
+	}
+
+	/**
 	 * The later after-insert hook should also reconcile the current post state.
 	 */
 	public function test_reconciles_partial_post_after_after_insert_hook() {

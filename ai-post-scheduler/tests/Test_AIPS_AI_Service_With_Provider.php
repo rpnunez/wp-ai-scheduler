@@ -306,4 +306,54 @@ class Test_AIPS_AI_Service_With_Provider extends WP_UnitTestCase {
         $this->assertArrayHasKey('json_schema', $stub->last_params);
         $this->assertSame($schema, $stub->last_params['json_schema']);
     }
+
+    public function test_successful_call_increments_provider_counter() {
+        delete_option(AIPS_AI_Call_Counter::OPTION);
+        $service = $this->make_service(new AIPS_Stub_AI_Provider());
+
+        $service->generate_text('Prompt');
+        $service->generate_text('Prompt');
+        $service->generate_image('Prompt');
+
+        $counts = AIPS_AI_Call_Counter::get_counts();
+        $this->assertGreaterThan(0, $counts['since']);
+        $this->assertSame(3, $counts['providers']['stub']['total']);
+        $this->assertSame(0, $counts['providers']['stub']['failed']);
+        $this->assertSame(2, $counts['providers']['stub']['by_type']['text']);
+        $this->assertSame(1, $counts['providers']['stub']['by_type']['image']);
+    }
+
+    public function test_failed_call_increments_failed_counter() {
+        delete_option(AIPS_AI_Call_Counter::OPTION);
+        $stub = new AIPS_Stub_AI_Provider();
+        $stub->text_throw = 'invalid_api_key';
+        $service = $this->make_service($stub);
+
+        $service->generate_text('Prompt');
+
+        $counts = AIPS_AI_Call_Counter::get_counts();
+        $this->assertGreaterThanOrEqual(1, $counts['providers']['stub']['total']);
+        $this->assertSame($counts['providers']['stub']['total'], $counts['providers']['stub']['failed']);
+    }
+
+    public function test_unavailable_provider_is_not_counted() {
+        delete_option(AIPS_AI_Call_Counter::OPTION);
+        $stub = new AIPS_Stub_AI_Provider();
+        $stub->available = false;
+        $service = $this->make_service($stub);
+
+        $service->generate_text('Prompt');
+
+        $this->assertSame(array(), AIPS_AI_Call_Counter::get_counts()['providers']);
+    }
+
+    public function test_counter_option_is_not_autoloaded() {
+        global $wpdb;
+        delete_option(AIPS_AI_Call_Counter::OPTION);
+
+        AIPS_AI_Call_Counter::increment('stub', 'text');
+
+        $autoload = $wpdb->get_var($wpdb->prepare("SELECT autoload FROM {$wpdb->options} WHERE option_name = %s", AIPS_AI_Call_Counter::OPTION));
+        $this->assertContains($autoload, array('no', 'off'));
+    }
 }
