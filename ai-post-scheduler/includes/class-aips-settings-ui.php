@@ -892,6 +892,110 @@ class AIPS_Settings_UI {
         <?php
     }
 
+	/**
+	 * Render the summarized digest enabled toggle field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_enabled_field_callback() {
+		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_notif_digest_enabled');
+		?>
+		<label for="aips_notif_digest_enabled">
+			<input type="checkbox" id="aips_notif_digest_enabled" name="aips_notif_digest_enabled" value="1" <?php checked($enabled, true); ?>>
+			<?php esc_html_e('Enable summarized activity digest', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('Batch frequent generation and review email notifications into a single digest instead of sending separate emails for each post.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest threshold number field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_threshold_field_callback() {
+		$threshold = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_threshold', 5));
+		if ($threshold < 2) {
+			$threshold = 5;
+		}
+		?>
+		<input type="number" id="aips_notif_digest_threshold" name="aips_notif_digest_threshold" value="<?php echo esc_attr($threshold); ?>" min="2" max="50" step="1" class="small-text">
+		<p class="description"><?php esc_html_e('Number of notifications that triggers an immediate digest email (2–50).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest max delay select field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_max_delay_field_callback() {
+		$selected = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_max_delay', 3600));
+		$options = array(
+			900   => __('15 minutes', 'ai-post-scheduler'),
+			1800  => __('30 minutes', 'ai-post-scheduler'),
+			3600  => __('1 hour (default)', 'ai-post-scheduler'),
+			7200  => __('2 hours', 'ai-post-scheduler'),
+			21600 => __('6 hours', 'ai-post-scheduler'),
+		);
+		?>
+		<select id="aips_notif_digest_max_delay" name="aips_notif_digest_max_delay">
+			<?php foreach ($options as $seconds => $label) : ?>
+				<option value="<?php echo esc_attr($seconds); ?>" <?php selected($selected, $seconds); ?>><?php echo esc_html($label); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e('Maximum wait time before dispatching queued notifications, even if the count threshold has not been reached.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest eligible notification types multi-checkbox callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_types_field_callback() {
+		$selected_types = (array) AIPS_Config::get_instance()->get_option('aips_notif_digest_types', array('post_generated', 'post_ready_for_review'));
+		$eligible_types = AIPS_Notification_Registry::get_digest_eligible_types();
+		?>
+		<fieldset>
+			<legend class="screen-reader-text"><span><?php esc_html_e('Eligible Notification Types', 'ai-post-scheduler'); ?></span></legend>
+			<?php foreach ($eligible_types as $type_key => $meta) : ?>
+				<label class="aips-checkbox-label-block">
+					<input type="checkbox" name="aips_notif_digest_types[]" value="<?php echo esc_attr($type_key); ?>" <?php checked(in_array($type_key, $selected_types, true)); ?>>
+					<strong><?php echo esc_html($meta['label']); ?></strong>
+					<span class="description aips-checkbox-label-desc">&mdash; <?php echo esc_html($meta['description']); ?></span>
+				</label>
+			<?php endforeach; ?>
+		</fieldset>
+		<p class="description"><?php esc_html_e('Select which notification types are intercepted into the digest. Critical errors and system resilience alerts are never batched.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest manual queue flush action callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_actions_field_callback() {
+		$queue_count = AIPS_Notifications::instance()->get_digest_queue_count();
+		?>
+		<div class="aips-settings-action-row">
+			<button type="button" id="aips-flush-digest-btn" class="button button-secondary">
+				<?php esc_html_e('Send Pending Digest Now', 'ai-post-scheduler'); ?>
+			</button>
+			<span class="description">
+				<?php
+				printf(
+					/* translators: %s: span element containing pending count */
+					esc_html__('Currently %s pending notifications in the digest queue.', 'ai-post-scheduler'),
+					'<strong id="aips-digest-queue-count">' . esc_html($queue_count) . '</strong>'
+				);
+				?>
+			</span>
+		</div>
+		<?php
+	}
+
     /**
      * Sanitize comma-separated notification email addresses.
      *
@@ -940,6 +1044,58 @@ class AIPS_Settings_UI {
 
         return $sanitized;
     }
+
+	/**
+	 * Sanitize the summarized digest count threshold (2–50).
+	 *
+	 * @param mixed $value Raw input.
+	 * @return int Clamped integer between 2 and 50.
+	 */
+	public function sanitize_digest_threshold($value) {
+		if (!is_numeric($value)) {
+			return 5;
+		}
+		$val = intval($value);
+		if ($val < 2) {
+			$val = 2;
+		} elseif ($val > 50) {
+			$val = 50;
+		}
+		return $val;
+	}
+
+	/**
+	 * Sanitize the summarized digest maximum delay window.
+	 *
+	 * @param mixed $value Raw input in seconds.
+	 * @return int Valid delay in seconds (default 3600).
+	 */
+	public function sanitize_digest_max_delay($value) {
+		$val = absint($value);
+		$allowed = array(900, 1800, 3600, 7200, 21600);
+		return in_array($val, $allowed, true) ? $val : 3600;
+	}
+
+	/**
+	 * Sanitize the summarized digest eligible notification types.
+	 *
+	 * @param mixed $value Raw input array of type keys.
+	 * @return array Sanitized list of eligible notification type keys.
+	 */
+	public function sanitize_digest_types($value) {
+		if (!is_array($value)) {
+			return array();
+		}
+		$eligible = array_keys(AIPS_Notification_Registry::get_digest_eligible_types());
+		$sanitized = array();
+		foreach ($value as $type) {
+			$type = sanitize_key($type);
+			if (in_array($type, $eligible, true)) {
+				$sanitized[] = $type;
+			}
+		}
+		return array_values(array_unique($sanitized));
+	}
 
     /**
      * Sanitize the topic similarity threshold value.
@@ -3127,15 +3283,37 @@ class AIPS_Settings_UI {
 		$value  = (int) $config->get_option('aips_history_log_retention_value', 60);
 		$unit   = (string) $config->get_option('aips_history_log_retention_unit', 'days');
 		?>
-		<div style="display: flex; align-items: center; gap: 8px;">
-			<input type="number" name="aips_history_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" style="width: 80px;">
-			<select name="aips_history_log_retention_unit">
+		<div class="aips-retention-input-row">
+			<input type="number" name="aips_history_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
+			<select name="aips_history_log_retention_unit" class="aips-form-select">
 				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
 				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
 				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
 			</select>
 		</div>
 		<p class="description"><?php esc_html_e('Detailed generation execution events in aips_history_log older than this threshold will be pruned.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render inputs for AI Error Log retention threshold.
+	 *
+	 * @return void
+	 */
+	public function ai_error_log_retention_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$value  = (int) $config->get_option('aips_ai_error_log_retention_value', 30);
+		$unit   = (string) $config->get_option('aips_ai_error_log_retention_unit', 'days');
+		?>
+		<div class="aips-retention-input-row">
+			<input type="number" name="aips_ai_error_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
+			<select name="aips_ai_error_log_retention_unit" class="aips-form-select">
+				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('AI Error logs in aips_history_log older than this threshold will be pruned during maintenance tasks.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 

@@ -369,7 +369,7 @@
             $(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle);
             $(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.closeAllRowActionMenus);
             $(document).on('click', function(e) {
-                if (!$(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
+                if (!$(e.target).closest('.aips-row-action-group, .aips-row-action-menu, .aips-card-footer-right').length) {
                     AIPS.closeAllRowActionMenus();
                 }
             });
