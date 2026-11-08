@@ -31,6 +31,7 @@ class AIPS_Post_Manager {
 	public const META_PROMPT                                 = '_aips_prompt';
 	public const META_GENERATION_TIME                        = '_aips_generation_time';
 	public const META_TOKENS_USED                            = '_aips_tokens_used';
+	public const META_AI_EDIT_OVERRIDES                     = '_aips_ai_edit_overrides';
 	public const CANONICAL_PLUGIN_POST_META_KEYS            = array(
 		self::META_GENERATED_POST,
 		self::META_GENERATION_COMPONENT_STATUSES,
@@ -44,6 +45,7 @@ class AIPS_Post_Manager {
 		self::META_PROMPT,
 		self::META_GENERATION_TIME,
 		self::META_TOKENS_USED,
+		self::META_AI_EDIT_OVERRIDES,
 	);
 
     /**
@@ -125,6 +127,14 @@ class AIPS_Post_Manager {
             $post_data['post_category'] = $post_category;
         } elseif ($default_cat = AIPS_Config::get_instance()->get_option('aips_default_category')) {
             $post_data['post_category'] = array((int) $default_cat);
+        }
+
+        $slug = isset($data['slug']) ? $data['slug'] : (isset($data['post_name']) ? $data['post_name'] : '');
+        if (is_string($slug) && trim($slug) !== '') {
+            $sanitized_slug = sanitize_title(trim($slug));
+            if ($sanitized_slug !== '') {
+                $post_data['post_name'] = $sanitized_slug;
+            }
         }
 
         $post_id = wp_insert_post($post_data, true);
@@ -409,12 +419,24 @@ class AIPS_Post_Manager {
                 'featured_image' => !empty($component_statuses['featured_image']),
                 'post_content'   => !empty($component_statuses['post_content']),
             );
+            if (array_key_exists('post_slug', $component_statuses)) {
+                $normalized_statuses['post_slug'] = !empty($component_statuses['post_slug']);
+            }
+
+            // Only posts with content images track this component.
+            if (array_key_exists('post_images', $component_statuses)) {
+                $normalized_statuses['post_images'] = !empty($component_statuses['post_images']);
+            }
 
             update_post_meta($post_id, self::META_GENERATION_COMPONENT_STATUSES, wp_json_encode($normalized_statuses));
         }
 
         if ($generation_incomplete === null && is_array($normalized_statuses)) {
-            $generation_incomplete = in_array(false, $normalized_statuses, true);
+            // Slug is optional: a missing slug falls back to WordPress's title slug
+            // and must not mark an otherwise complete generation as incomplete.
+            $required_statuses = $normalized_statuses;
+            unset($required_statuses['post_slug']);
+            $generation_incomplete = in_array(false, $required_statuses, true);
         }
 
         if ($generation_incomplete !== null) {
@@ -437,7 +459,7 @@ class AIPS_Post_Manager {
      *
      * @param int   $post_id   Post ID.
      * @param array $overrides Optional component status overrides keyed by post_title, post_excerpt,
-     *                         post_content, featured_image.
+     *                         post_content, featured_image, post_images, post_slug.
      * @return array|null Normalized component statuses or null when post not found.
      */
     public function reconcile_generation_status_meta_from_post($post_id, $overrides = array()) {
@@ -459,13 +481,19 @@ class AIPS_Post_Manager {
             'post_excerpt' => '' !== trim(wp_strip_all_tags((string) $post->post_excerpt)),
             'post_content' => '' !== trim(wp_strip_all_tags((string) $post->post_content)),
             'featured_image' => $has_thumbnail,
+            'post_slug' => '' !== trim((string) $post->post_name),
         );
 
         if (!$has_thumbnail && is_array($existing_statuses) && array_key_exists('featured_image', $existing_statuses)) {
             $component_statuses['featured_image'] = !empty($existing_statuses['featured_image']);
         }
 
-        $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image');
+        if (is_array($existing_statuses) && array_key_exists('post_images', $existing_statuses)) {
+            $generated_images = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
+            $component_statuses['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
+        }
+
+        $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image', 'post_images', 'post_slug');
         foreach ($allowed_keys as $key) {
             if (array_key_exists($key, $overrides)) {
                 $component_statuses[$key] = (bool) $overrides[$key];

@@ -186,7 +186,7 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 		try {
 			$controller = new AIPS_Authors_Controller();
 
-			$before = current_time('mysql');
+			$before = AIPS_DateTime::now()->timestamp();
 
 			$_POST = array(
 				'nonce'                      => wp_create_nonce('aips_ajax_nonce'),
@@ -198,7 +198,7 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 
 			$response = $this->capture_ajax(array($controller, 'ajax_save_author'));
 
-			$after = current_time('mysql');
+			$after = AIPS_DateTime::now()->timestamp();
 		} finally {
 			// Always restore original wpdb, even if an exception is thrown.
 			$wpdb = $original_wpdb;
