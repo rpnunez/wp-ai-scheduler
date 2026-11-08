@@ -2146,10 +2146,30 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         if ($status === 'all') {
+            $this->wpdb->query("DELETE FROM {$this->table_name_log}");
             return $this->wpdb->query("DELETE FROM {$this->table_name}");
         }
-        
-        return $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
+
+        $result = $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
+        $this->purge_orphaned_logs();
+
+        return $result;
+    }
+
+    /**
+     * Delete every aips_history_log row whose parent aips_history row is gone.
+     *
+     * aips_history_log has no FK cascade, so each history-deletion path calls this
+     * (or deletes the child rows directly) to stop orphaned log rows accumulating.
+     *
+     * @return int|false Rows deleted, or false on failure.
+     */
+    private function purge_orphaned_logs() {
+        return $this->wpdb->query(
+            "DELETE l FROM {$this->table_name_log} l
+             LEFT JOIN {$this->table_name} h ON h.id = l.history_id
+             WHERE h.id IS NULL"
+        );
     }
     
     /**
@@ -2159,6 +2179,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
+        $id = absint($id);
+        // Remove child log rows first so they never outlive their parent.
+        $this->wpdb->delete($this->table_name_log, array('history_id' => $id), array('%d'));
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
@@ -2188,6 +2211,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+
+        // Remove child log rows first so they never outlive their parent.
+        $this->wpdb->query($this->wpdb->prepare(
+            "DELETE FROM {$this->table_name_log} WHERE history_id IN ($placeholders)",
+            $ids
+        ));
 
         $query = $this->wpdb->prepare(
             "DELETE FROM {$this->table_name} WHERE id IN ($placeholders)",
@@ -2262,8 +2291,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             );
         }
         
-        // Clear cache
+        // Cascade: drop log rows left without a parent by the deletion above.
         if ($deleted !== false && $deleted > 0) {
+            $this->purge_orphaned_logs();
             $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
         
