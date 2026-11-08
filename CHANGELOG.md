@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Changed
+- Content Indexer screen now gets background queue progress, index counts, quota meters and cooldown state from WordPress Heartbeat (`aips_content_indexer`, `manage_options` only). The request is skipped while a manual scan runs and while the tab is hidden, and the screen refreshes as soon as the tab is shown again.
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
 
 ### Performance

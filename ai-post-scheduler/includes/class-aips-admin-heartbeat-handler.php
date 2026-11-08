@@ -173,7 +173,7 @@ class AIPS_Admin_Heartbeat_Handler {
 					'active'            => (bool) $cooldown['is_paused'],
 					'until'             => (int) $cooldown['paused_until'],
 					'remaining_seconds' => (int) $cooldown['remaining_seconds'],
-					'reason'            => (string) $cooldown['reason'],
+					'reason'            => $cooldown['is_paused'] ? (string) $cooldown['reason'] : '',
 				),
 			);
 		} catch (Exception $e) {

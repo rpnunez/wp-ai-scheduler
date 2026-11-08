@@ -180,5 +180,6 @@ class Test_AIPS_Admin_Heartbeat_Handler extends WP_UnitTestCase {
 
 		$this->assertFalse($payload['cooldown']['active']);
 		$this->assertSame(0, $payload['cooldown']['remaining_seconds']);
+		$this->assertSame('', $payload['cooldown']['reason']);
 	}
 }
