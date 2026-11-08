@@ -465,61 +465,187 @@
 }
 
 .aips-directive-popover {
-	background: #fff;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
-	box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-base);
+	box-shadow: var(--aips-shadow-md);
 	padding: 10px 12px;
 	margin-top: 6px;
 	margin-bottom: 8px;
 	position: relative;
-	z-index: 10;
+	z-index: var(--aips-z-popover, 10);
+}
+
+.aips-popover-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 6px;
+}
+
+.aips-popover-header strong {
+	font-size: var(--aips-text-2xs);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--aips-gray-600);
+}
+
+.aips-popover-close-btn {
+	font-size: 16px;
+	line-height: 1;
+	text-decoration: none;
+	color: var(--aips-gray-400);
 }
 
 .aips-preset-chips {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 4px;
+	margin-bottom: 8px;
 }
 
 .aips-preset-chip {
-	font-size: 11px !important;
+	font-size: var(--aips-text-2xs) !important;
 	padding: 2px 8px !important;
 	height: auto !important;
 	line-height: 1.6 !important;
-	border-radius: 12px !important;
+	border-radius: var(--aips-radius-pill, 12px) !important;
 	cursor: pointer;
-	transition: all 0.15s ease-in-out;
+	transition: all var(--aips-transition-fast);
 }
 
 .aips-preset-chip.active {
-	background: #2271b1 !important;
-	color: #fff !important;
-	border-color: #2271b1 !important;
+	background: var(--aips-primary) !important;
+	color: var(--aips-white) !important;
+	border-color: var(--aips-primary) !important;
+}
+
+.aips-popover-footer {
+	margin-top: 8px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+.aips-popover-footer .dashicons {
+	font-size: 14px;
+	line-height: 1.6;
 }
 
 .aips-advanced-accordion {
-	transition: border-color 0.15s ease-in-out;
+	margin-top: 8px;
+	border: 1px solid var(--aips-gray-100);
+	border-radius: var(--aips-radius-base);
+	background: var(--aips-white);
+	transition: border-color var(--aips-transition-fast);
 }
 
 .aips-advanced-accordion:hover {
-	border-color: #c3c4c7;
+	border-color: var(--aips-gray-300);
+}
+
+.aips-advanced-accordion-toggle {
+	width: 100%;
+	text-align: left;
+	background: none;
+	border: none;
+	padding: 6px 10px;
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-900);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .aips-advanced-accordion-toggle:focus {
 	outline: none;
-	box-shadow: 0 0 0 1px #2271b1;
+	box-shadow: 0 0 0 1px var(--aips-primary);
+}
+
+.aips-advanced-accordion-toggle .dashicons-admin-generic {
+	font-size: 15px;
+	margin-right: 4px;
+	color: var(--aips-gray-600);
+}
+
+.aips-active-override-badge {
+	background: var(--aips-primary);
+	color: var(--aips-white);
+	font-size: 10px;
+	padding: 1px 5px;
+	border-radius: 8px;
+	margin-left: 6px;
+	font-weight: normal;
+}
+
+.aips-advanced-drawer {
+	padding: 10px 12px;
+	border-top: 1px solid var(--aips-gray-50);
+	background: var(--aips-white);
+}
+
+.aips-drawer-row {
+	margin-bottom: 10px;
+}
+
+.aips-drawer-row label {
+	display: block;
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-semibold);
+	margin-bottom: 4px;
+}
+
+.aips-temp-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+}
+
+.aips-temp-val-badge {
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-primary);
 }
 
 .aips-temperature-slider {
-	accent-color: #2271b1;
+	accent-color: var(--aips-primary);
 	cursor: pointer;
+}
+
+.aips-temp-scale-labels {
+	display: flex;
+	justify-content: space-between;
+	font-size: 10px;
+	color: var(--aips-gray-500);
+	margin-top: 2px;
+}
+
+.aips-drawer-footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	margin-top: 8px;
+}
+
+.aips-reset-overrides-btn {
+	color: var(--aips-danger);
+	text-decoration: none;
+	font-size: var(--aips-text-2xs);
 }
 
 .aips-sync-downstream-label {
 	user-select: none;
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	font-size: var(--aips-text-xs);
+	cursor: pointer;
 }
 
 .aips-sync-downstream-label input[type="checkbox"] {
 	margin-top: 0;
+	margin-right: 5px;
 }
