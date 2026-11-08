@@ -28,6 +28,11 @@ class AIPS_AI_Error_Classifier {
 	const CATEGORY_GENERAL        = 'general';
 
 	/**
+	 * Placeholder written in place of a redacted secret value.
+	 */
+	const REDACTED_SECRET = '***[REDACTED_SECRET]***';
+
+	/**
 	 * Get definitions and metadata for all supported categories.
 	 *
 	 * @return array<string, array<string, string>>
@@ -166,6 +171,102 @@ class AIPS_AI_Error_Classifier {
 	}
 
 	/**
+	 * Ordered classification rules. The first match wins, so a row belongs to one category.
+	 *
+	 * @return array<int, array{category:string,http_codes:array<int,int>,needles:array<int,string>}>
+	 */
+	private static function category_match_rules() {
+		return array(
+			array(
+				'category'   => self::CATEGORY_RATE_LIMIT,
+				'http_codes' => array(429),
+				'needles'    => array(
+					'rate_limit',
+					'rate limit',
+					'too many requests',
+					'insufficient_quota',
+					'quota exceeded',
+					'exceeded your current quota',
+				),
+			),
+			array(
+				'category'   => self::CATEGORY_AUTH,
+				'http_codes' => array(401, 403),
+				'needles'    => array(
+					'invalid_api_key',
+					'invalid api key',
+					'incorrect api key',
+					'authentication_error',
+					'permission_denied',
+					'unauthorized',
+					'forbidden',
+				),
+			),
+			array(
+				'category'   => self::CATEGORY_CONTEXT_LENGTH,
+				'http_codes' => array(),
+				'needles'    => array(
+					'context_length_exceeded',
+					'context length',
+					'maximum context',
+					'tokens exceeded',
+					'prompt is too long',
+					'reduce the length of the messages',
+					'context_window_exceeded',
+					'token limit',
+				),
+			),
+			array(
+				'category'   => self::CATEGORY_TIMEOUT,
+				'http_codes' => array(408, 504),
+				'needles'    => array(
+					'curl error 28',
+					'operation timed out',
+					'timed out',
+					'gateway timeout',
+					'request timeout',
+				),
+			),
+			array(
+				'category'   => self::CATEGORY_PROVIDER_DOWN,
+				'http_codes' => array(500, 502, 503),
+				'needles'    => array(
+					'internal_server_error',
+					'internal server error',
+					'bad gateway',
+					'service_unavailable',
+					'service unavailable',
+					'overloaded',
+					'server error',
+				),
+			),
+			array(
+				'category'   => self::CATEGORY_CONTENT_POLICY,
+				'http_codes' => array(),
+				'needles'    => array(
+					'content_policy',
+					'safety_policy',
+					'blocked by safety filters',
+					'harmful content',
+					'moderation',
+					'flagged by moderation',
+				),
+			),
+			array(
+				'category'   => self::CATEGORY_JSON_PARSING,
+				'http_codes' => array(),
+				'needles'    => array(
+					'json_decode',
+					'invalid json',
+					'failed to parse json',
+					'syntax error in json',
+					'schema validation failed',
+				),
+			),
+		);
+	}
+
+	/**
 	 * Determine category slug based on HTTP status code and message patterns.
 	 *
 	 * @param int    $http_code Extracted HTTP status code.
@@ -173,87 +274,15 @@ class AIPS_AI_Error_Classifier {
 	 * @return string Category slug.
 	 */
 	private static function determine_category($http_code, $haystack) {
-		// 1. Rate Limit & Quota (429)
-		if (429 === $http_code
-			|| strpos($haystack, 'rate_limit') !== false
-			|| strpos($haystack, 'rate limit') !== false
-			|| strpos($haystack, 'too many requests') !== false
-			|| strpos($haystack, 'insufficient_quota') !== false
-			|| strpos($haystack, 'quota exceeded') !== false
-			|| strpos($haystack, 'exceeded your current quota') !== false
-		) {
-			return self::CATEGORY_RATE_LIMIT;
-		}
-
-		// 2. Authentication & Permissions (401, 403)
-		if (401 === $http_code || 403 === $http_code
-			|| strpos($haystack, 'invalid_api_key') !== false
-			|| strpos($haystack, 'invalid api key') !== false
-			|| strpos($haystack, 'incorrect api key') !== false
-			|| strpos($haystack, 'authentication_error') !== false
-			|| strpos($haystack, 'permission_denied') !== false
-			|| strpos($haystack, 'unauthorized') !== false
-			|| strpos($haystack, 'forbidden') !== false
-		) {
-			return self::CATEGORY_AUTH;
-		}
-
-		// 3. Context Length / Token Limit Exceeded
-		if (strpos($haystack, 'context_length_exceeded') !== false
-			|| strpos($haystack, 'context length') !== false
-			|| strpos($haystack, 'maximum context') !== false
-			|| strpos($haystack, 'tokens exceeded') !== false
-			|| strpos($haystack, 'prompt is too long') !== false
-			|| strpos($haystack, 'reduce the length of the messages') !== false
-			|| strpos($haystack, 'context_window_exceeded') !== false
-			|| strpos($haystack, 'token limit') !== false
-		) {
-			return self::CATEGORY_CONTEXT_LENGTH;
-		}
-
-		// 4. Connection / Gateway Timeout (408, 504, curl 28)
-		if (408 === $http_code || 504 === $http_code
-			|| strpos($haystack, 'curl error 28') !== false
-			|| strpos($haystack, 'operation timed out') !== false
-			|| strpos($haystack, 'timed out') !== false
-			|| strpos($haystack, 'gateway timeout') !== false
-			|| strpos($haystack, 'request timeout') !== false
-		) {
-			return self::CATEGORY_TIMEOUT;
-		}
-
-		// 5. Provider Outage / Server Failure (500, 502, 503)
-		if (500 === $http_code || 502 === $http_code || 503 === $http_code
-			|| strpos($haystack, 'internal_server_error') !== false
-			|| strpos($haystack, 'internal server error') !== false
-			|| strpos($haystack, 'bad gateway') !== false
-			|| strpos($haystack, 'service_unavailable') !== false
-			|| strpos($haystack, 'service unavailable') !== false
-			|| strpos($haystack, 'overloaded') !== false
-			|| strpos($haystack, 'server error') !== false
-		) {
-			return self::CATEGORY_PROVIDER_DOWN;
-		}
-
-		// 6. Content Policy Violation / Safety Filter
-		if (strpos($haystack, 'content_policy') !== false
-			|| strpos($haystack, 'safety_policy') !== false
-			|| strpos($haystack, 'blocked by safety filters') !== false
-			|| strpos($haystack, 'harmful content') !== false
-			|| strpos($haystack, 'moderation') !== false
-			|| strpos($haystack, 'flagged by moderation') !== false
-		) {
-			return self::CATEGORY_CONTENT_POLICY;
-		}
-
-		// 7. JSON / Parsing Errors
-		if (strpos($haystack, 'json_decode') !== false
-			|| strpos($haystack, 'invalid json') !== false
-			|| strpos($haystack, 'failed to parse json') !== false
-			|| strpos($haystack, 'syntax error in json') !== false
-			|| strpos($haystack, 'schema validation failed') !== false
-		) {
-			return self::CATEGORY_JSON_PARSING;
+		foreach (self::category_match_rules() as $rule) {
+			if (in_array((int) $http_code, $rule['http_codes'], true)) {
+				return $rule['category'];
+			}
+			foreach ($rule['needles'] as $needle) {
+				if (strpos($haystack, $needle) !== false) {
+					return $rule['category'];
+				}
+			}
 		}
 
 		return self::CATEGORY_GENERAL;
@@ -350,55 +379,192 @@ class AIPS_AI_Error_Classifier {
 	}
 
 	/**
-	 * Map a category slug to SQL LIKE patterns for repository queries.
+	 * Map a category slug to the same signals classify() uses, as SQL LIKE patterns.
+	 *
+	 * Patterns overlap across categories. Exclusive classification belongs to
+	 * classify(); do not SUM these patterns independently.
 	 *
 	 * @param string $category Category slug.
 	 * @return array<int, string> Array of SQL LIKE pattern substrings.
 	 */
 	public static function get_sql_patterns_for_category($category) {
-		switch ($category) {
-			case self::CATEGORY_RATE_LIMIT:
-				return array('%429%', '%rate_limit%', '%rate limit%', '%too many requests%', '%insufficient_quota%', '%quota exceeded%');
-			case self::CATEGORY_AUTH:
-				return array('%401%', '%403%', '%invalid_api_key%', '%invalid api key%', '%unauthorized%', '%permission_denied%', '%authentication_error%');
-			case self::CATEGORY_CONTEXT_LENGTH:
-				return array('%context_length%', '%context length%', '%maximum context%', '%tokens exceeded%', '%prompt is too long%');
-			case self::CATEGORY_TIMEOUT:
-				return array('%504%', '%408%', '%curl error 28%', '%operation timed out%', '%timed out%', '%gateway timeout%');
-			case self::CATEGORY_PROVIDER_DOWN:
-				return array('%500%', '%502%', '%503%', '%internal_server_error%', '%bad gateway%', '%service unavailable%', '%service_unavailable%', '%overloaded%');
-			case self::CATEGORY_CONTENT_POLICY:
-				return array('%content_policy%', '%safety_policy%', '%blocked by safety filters%', '%moderation%');
-			case self::CATEGORY_JSON_PARSING:
-				return array('%json_decode%', '%invalid json%', '%failed to parse json%');
-			default:
-				return array();
+		foreach (self::category_match_rules() as $rule) {
+			if ($rule['category'] !== $category) {
+				continue;
+			}
+
+			$patterns = array();
+			foreach ($rule['http_codes'] as $code) {
+				$patterns[] = '%' . $code . '%';
+			}
+			foreach ($rule['needles'] as $needle) {
+				$patterns[] = '%' . $needle . '%';
+			}
+			return $patterns;
 		}
+
+		return array();
 	}
 
 	/**
 	 * Redact sensitive secrets (e.g. API keys, passwords, auth tokens) from strings.
 	 *
+	 * JSON objects and arrays are walked recursively so sensitive field names
+	 * are redacted at any depth, including provider keys that do not use an
+	 * sk- or ant- prefix.
+	 *
 	 * @param string $text Text to redact.
 	 * @return string Sanitized text.
 	 */
 	public static function redact_secrets($text) {
-		if (!is_string($text) || empty($text)) {
+		if (!is_string($text) || '' === $text) {
 			return '';
 		}
 
-		// Redact OpenAI / standard bearer keys: sk-...
-		$text = preg_replace('/sk-[a-zA-Z0-9_\-]{20,}/', 'sk-***[REDACTED_API_KEY]***', $text);
+		return self::redact_secrets_in_string($text, 0);
+	}
 
-		// Redact Anthropic keys: ant-...
-		$text = preg_replace('/ant-[a-zA-Z0-9_\-]{20,}/', 'ant-***[REDACTED_API_KEY]***', $text);
+	/**
+	 * Redact a string, decoding JSON payloads so nested fields can be walked.
+	 *
+	 * @param string $text  Text to redact.
+	 * @param int    $depth Current recursion depth.
+	 * @return string
+	 */
+	private static function redact_secrets_in_string($text, $depth) {
+		$trimmed = ltrim($text);
+		$first   = isset($trimmed[0]) ? $trimmed[0] : '';
+		if ($depth < 8 && ('{' === $first || '[' === $first)) {
+			$decoded = json_decode($text, true);
+			if (JSON_ERROR_NONE === json_last_error() && is_array($decoded)) {
+				$encoded = wp_json_encode(self::redact_secrets_in_value($decoded, $depth + 1));
+				return is_string($encoded) ? $encoded : self::redact_secret_patterns($text);
+			}
+		}
 
-		// Redact generic Authorization / Bearer tokens
-		$text = preg_replace('/(Bearer\s+)[a-zA-Z0-9_\.\-]{20,}/i', '$1***[REDACTED_TOKEN]***', $text);
+		return self::redact_secret_patterns($text);
+	}
 
-		// Redact database passwords or password parameters
-		$text = preg_replace('/("password"\s*:\s*")[^"]+(")/i', '$1***[REDACTED_PASSWORD]***$2', $text);
-		$text = preg_replace('/(\bpassword\b\s*=\s*)[^\s&]+/i', '$1***[REDACTED_PASSWORD]***', $text);
+	/**
+	 * Redact secrets inside a decoded JSON value.
+	 *
+	 * @param mixed $value Decoded JSON value.
+	 * @param int   $depth Current recursion depth.
+	 * @return mixed
+	 */
+	private static function redact_secrets_in_value($value, $depth) {
+		if ($depth > 8) {
+			return is_string($value) ? self::redact_secret_patterns($value) : $value;
+		}
+
+		if (!is_array($value)) {
+			return is_string($value) ? self::redact_secrets_in_string($value, $depth) : $value;
+		}
+
+		$redacted = array();
+		foreach ($value as $key => $child) {
+			if (is_string($key) && self::is_sensitive_secret_field($key)) {
+				$redacted[$key] = self::REDACTED_SECRET;
+				continue;
+			}
+			$redacted[$key] = self::redact_secrets_in_value($child, $depth + 1);
+		}
+
+		return $redacted;
+	}
+
+	/**
+	 * Whether a JSON field name holds a secret.
+	 *
+	 * @param string $name Field name.
+	 * @return bool
+	 */
+	private static function is_sensitive_secret_field($name) {
+		$normalized = strtolower((string) preg_replace('/[^a-z0-9]/', '', $name));
+		if ('' === $normalized) {
+			return false;
+		}
+
+		$exact = array(
+			'apikey'         => true,
+			'apisecret'      => true,
+			'accesstoken'    => true,
+			'refreshtoken'   => true,
+			'idtoken'        => true,
+			'password'       => true,
+			'passwd'         => true,
+			'pass'           => true,
+			'secret'         => true,
+			'clientsecret'   => true,
+			'privatekey'     => true,
+			'authorization'  => true,
+			'auth'           => true,
+			'credential'     => true,
+			'credentials'    => true,
+			'token'          => true,
+			'accesskey'      => true,
+			'secretkey'      => true,
+			'bearertoken'    => true,
+			'sessiontoken'   => true,
+			'authtoken'      => true,
+		);
+		if (isset($exact[$normalized])) {
+			return true;
+		}
+
+		$markers = array(
+			'apikey',
+			'apisecret',
+			'accesstoken',
+			'refreshtoken',
+			'clientsecret',
+			'privatekey',
+			'secretkey',
+			'bearertoken',
+		);
+		foreach ($markers as $marker) {
+			if (false !== strpos($normalized, $marker)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Apply literal secret patterns to a non-JSON string.
+	 *
+	 * @param string $text Text to redact.
+	 * @return string
+	 */
+	private static function redact_secret_patterns($text) {
+		$replacements = array(
+			'/sk-[a-zA-Z0-9_\-]{20,}/' => 'sk-***[REDACTED_API_KEY]***',
+			'/ant-[a-zA-Z0-9_\-]{20,}/' => 'ant-***[REDACTED_API_KEY]***',
+			'/(Bearer\s+)[a-zA-Z0-9_\.\-]{20,}/i' => '$1***[REDACTED_TOKEN]***',
+			'/("password"\s*:\s*")[^"]+(")/i' => '$1***[REDACTED_PASSWORD]***$2',
+			'/(\bpassword\b\s*=\s*)[^\s&]+/i' => '$1***[REDACTED_PASSWORD]***',
+			'/AIza[0-9A-Za-z_\-]{20,}/' => self::REDACTED_SECRET,
+			'/gsk_[a-zA-Z0-9]{20,}/' => self::REDACTED_SECRET,
+			'/xai-[a-zA-Z0-9]{20,}/' => self::REDACTED_SECRET,
+		);
+
+		foreach ($replacements as $pattern => $replacement) {
+			$updated = preg_replace($pattern, $replacement, $text);
+			if (is_string($updated)) {
+				$text = $updated;
+			}
+		}
+
+		$field = 'api[_\-\s]?key|access[_\-\s]?token|refresh[_\-\s]?token|client[_\-\s]?secret|api[_\-\s]?secret|private[_\-\s]?key|id[_\-\s]?token';
+		$updated = preg_replace('/("(?:' . $field . ')"\s*:\s*")[^"]*(")/i', '$1' . self::REDACTED_SECRET . '$2', $text);
+		if (is_string($updated)) {
+			$text = $updated;
+		}
+		$updated = preg_replace('/(\b(?:' . $field . ')\b\s*[=:]\s*)(?:"|\')?[^\s&"\']+/i', '$1' . self::REDACTED_SECRET, $text);
+		if (is_string($updated)) {
+			$text = $updated;
+		}
 
 		return $text;
 	}

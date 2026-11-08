@@ -129,6 +129,42 @@ class Test_AIPS_AI_Error_Classifier extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test redaction of non-sk provider keys stored under sensitive JSON fields.
+	 */
+	public function test_redact_non_sk_provider_keys_in_sensitive_fields() {
+		$api_key      = 'AIzaSyA-not-an-sk-key-0123456789abcdef';
+		$access_token = 'ya29.nonsk-access-token-value-0123456789';
+		$payload      = wp_json_encode( array(
+			'message' => 'provider rejected the call',
+			'context' => array(
+				'api_key' => $api_key,
+				'request' => array(
+					'access_token' => $access_token,
+					'model'        => 'gemini-1.5-pro',
+				),
+			),
+		) );
+
+		$redacted = AIPS_AI_Error_Classifier::redact_secrets( $payload );
+
+		$this->assertStringNotContainsString( $api_key, $redacted );
+		$this->assertStringNotContainsString( $access_token, $redacted );
+		$this->assertStringContainsString( 'gemini-1.5-pro', $redacted );
+
+		$decoded = json_decode( $redacted, true );
+		$this->assertIsArray( $decoded );
+		$this->assertSame( AIPS_AI_Error_Classifier::REDACTED_SECRET, $decoded['context']['api_key'] );
+		$this->assertSame( AIPS_AI_Error_Classifier::REDACTED_SECRET, $decoded['context']['request']['access_token'] );
+		$this->assertSame( 'gemini-1.5-pro', $decoded['context']['request']['model'] );
+
+		$inline          = 'upstream api_key=' . $api_key . ' access_token=' . $access_token;
+		$inline_redacted = AIPS_AI_Error_Classifier::redact_secrets( $inline );
+		$this->assertStringNotContainsString( $api_key, $inline_redacted );
+		$this->assertStringNotContainsString( $access_token, $inline_redacted );
+		$this->assertStringContainsString( AIPS_AI_Error_Classifier::REDACTED_SECRET, $inline_redacted );
+	}
+
+	/**
 	 * Test Markdown support report generation.
 	 */
 	public function test_generate_support_report() {

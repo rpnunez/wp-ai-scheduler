@@ -550,6 +550,62 @@ class AIPS_Diagnostics_Controller {
 	}
 
 	/**
+	 * Collect AI error rows for export up to an explicit bound.
+	 *
+	 * total_count is the number of matches. truncated is true when that number
+	 * exceeds the bound and the file therefore omits older matches.
+	 *
+	 * @param array    $args  Filter arguments accepted by get_ai_errors(), excluding pagination.
+	 * @param int|null $limit Maximum rows to include. Null uses the repository export bound.
+	 * @return array{items:array,total_count:int,exported_count:int,truncated:bool,export_limit:int}
+	 */
+	public function prepare_ai_error_export( array $args = array(), $limit = null ) {
+		$max_limit    = AIPS_History_Repository::AI_ERROR_EXPORT_MAX_ROWS;
+		$export_limit = null === $limit ? $max_limit : max( 1, (int) $limit );
+		$export_limit = min( $max_limit, $export_limit );
+
+		$results = $this->history_repository->get_ai_errors( array_merge( $args, array(
+			'page'       => 1,
+			'per_page'   => $export_limit,
+			'for_export' => true,
+		) ) );
+
+		$items    = isset( $results['items'] ) && is_array( $results['items'] ) ? $results['items'] : array();
+		$total    = isset( $results['total'] ) ? (int) $results['total'] : count( $items );
+		$exported = count( $items );
+
+		return array(
+			'items'          => $items,
+			'total_count'    => $total,
+			'exported_count' => $exported,
+			'truncated'      => $total > $exported,
+			'export_limit'   => $export_limit,
+		);
+	}
+
+	/**
+	 * Redact secrets on exported error text fields.
+	 *
+	 * @param array $items Export rows.
+	 * @return array
+	 */
+	private function redact_ai_error_export_items( array $items ) {
+		foreach ( $items as $index => $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			if ( ! empty( $item['error_message'] ) && is_string( $item['error_message'] ) ) {
+				$items[ $index ]['error_message'] = AIPS_AI_Error_Classifier::redact_secrets( $item['error_message'] );
+			}
+			if ( ! empty( $item['message'] ) && is_string( $item['message'] ) ) {
+				$items[ $index ]['message'] = AIPS_AI_Error_Classifier::redact_secrets( $item['message'] );
+			}
+		}
+
+		return $items;
+	}
+
+	/**
 	 * AJAX endpoint to export AI error records as CSV or JSON.
 	 *
 	 * @return void
@@ -599,20 +655,21 @@ class AIPS_Diagnostics_Controller {
 			}
 		}
 
-		// Retrieve up to 2,000 error records for export.
-		$results = $this->history_repository->get_ai_errors( array(
+		$export = $this->prepare_ai_error_export( array(
 			'date_from'   => $from_ts,
 			'date_to'     => $to_ts,
 			'component'   => $component,
 			'category'    => $category,
 			'error_scope' => $error_scope,
 			'search'      => $search,
-			'page'        => 1,
-			'per_page'    => 2000,
 		) );
 
-		$items = isset( $results['items'] ) && is_array( $results['items'] ) ? $results['items'] : array();
-		$filename = 'aips-ai-errors-' . gmdate( 'Y-m-d-His' );
+		$items          = $export['items'];
+		$total_count    = $export['total_count'];
+		$exported_count = $export['exported_count'];
+		$truncated      = $export['truncated'];
+		$export_limit   = $export['export_limit'];
+		$filename       = 'aips-ai-errors-' . gmdate( 'Y-m-d-His' );
 
 		if ( 'json' === $format ) {
 			header( 'Content-Type: application/json; charset=utf-8' );
@@ -621,20 +678,15 @@ class AIPS_Diagnostics_Controller {
 			header( 'Pragma: no-cache' );
 			header( 'Expires: 0' );
 
-			// Redact sensitive keys from raw messages before JSON export
-			foreach ( $items as &$item ) {
-				if ( ! empty( $item['error_message'] ) ) {
-					$item['error_message'] = AIPS_AI_Error_Classifier::redact_secrets( $item['error_message'] );
-				}
-				if ( ! empty( $item['message'] ) ) {
-					$item['message'] = AIPS_AI_Error_Classifier::redact_secrets( $item['message'] );
-				}
-			}
+			$items = $this->redact_ai_error_export_items( $items );
 
 			echo wp_json_encode( array(
-				'exported_at' => gmdate( 'c' ),
-				'total_count' => count( $items ),
-				'errors'      => $items,
+				'exported_at'    => gmdate( 'c' ),
+				'total_count'    => $total_count,
+				'exported_count' => $exported_count,
+				'truncated'      => $truncated,
+				'export_limit'   => $export_limit,
+				'errors'         => $items,
 			), JSON_PRETTY_PRINT );
 			exit;
 		}
@@ -647,6 +699,11 @@ class AIPS_Diagnostics_Controller {
 		header( 'Expires: 0' );
 
 		$output = fopen( 'php://output', 'w' );
+
+		fwrite( $output, '# total_count: ' . (int) $total_count . "\n" );
+		fwrite( $output, '# exported_count: ' . (int) $exported_count . "\n" );
+		fwrite( $output, '# truncated: ' . ( $truncated ? 'yes' : 'no' ) . "\n" );
+		fwrite( $output, '# export_limit: ' . (int) $export_limit . "\n" );
 
 		// CSV Column Headers
 		fputcsv( $output, array(

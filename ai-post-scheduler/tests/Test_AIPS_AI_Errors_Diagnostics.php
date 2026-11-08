@@ -223,6 +223,7 @@ class Test_AIPS_AI_Errors_Diagnostics extends WP_UnitTestCase {
 
 		$_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['error_scope'] = 'ai_only';
+		$_REQUEST             = $_POST;
 
 		try {
 			ob_start();
@@ -378,6 +379,113 @@ class Test_AIPS_AI_Errors_Diagnostics extends WP_UnitTestCase {
 		$this->assertNotNull( $stats['top_component'] );
 		$this->assertSame( 'content', $stats['top_component']['key'] );
 		$this->assertSame( 2, $stats['top_component']['count'] );
+	}
+
+	/**
+	 * A row that matches two category signatures counts once, and a general error stays visible.
+	 */
+	public function test_summary_counts_mixed_signature_once_and_keeps_general() {
+		$history_id = $this->repository->create( array(
+			'generated_title' => 'Mixed Signature Summary',
+			'creation_method' => 'manual',
+			'status'          => 'failed',
+			'created_at'      => AIPS_DateTime::now()->timestamp(),
+		) );
+
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for content: 429 rate limit exceeded; 401 unauthorized invalid_api_key',
+			'context' => array(
+				'component' => 'content',
+				'error'     => '429 rate limit exceeded; 401 unauthorized invalid_api_key',
+				'http_code' => 429,
+			),
+		), AIPS_History_Type::ERROR );
+
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for excerpt: The writer returned an unexpected local result with no provider status.',
+			'context' => array(
+				'component' => 'excerpt',
+				'error'     => 'The writer returned an unexpected local result with no provider status.',
+			),
+		), AIPS_History_Type::ERROR );
+
+		$stats = $this->repository->get_ai_error_summary_stats();
+
+		$this->assertSame( 2, $stats['total_errors'] );
+		$this->assertSame( 1, $stats['categories']['rate_limit']['count'] );
+		$this->assertSame( 0, $stats['categories']['auth']['count'] );
+		$this->assertSame( 1, $stats['categories']['general']['count'] );
+
+		$sum = 0;
+		foreach ( $stats['categories'] as $category ) {
+			$sum += $category['count'];
+		}
+		$this->assertSame( $stats['total_errors'], $sum );
+
+		$this->assertSame( 1, $this->repository->get_ai_errors( array( 'category' => 'rate_limit' ) )['total'] );
+		$this->assertSame( 0, $this->repository->get_ai_errors( array( 'category' => 'auth' ) )['total'] );
+		$this->assertSame( 1, $this->repository->get_ai_errors( array( 'category' => 'general' ) )['total'] );
+	}
+
+	/**
+	 * Exports include matches past the interactive page cap and report truncation honestly.
+	 */
+	public function test_export_includes_more_than_list_page_and_reports_truncation() {
+		$history_id = $this->repository->create( array(
+			'generated_title' => 'Export Boundary',
+			'creation_method' => 'manual',
+			'status'          => 'failed',
+			'created_at'      => AIPS_DateTime::now()->timestamp(),
+		) );
+
+		$total = 101;
+		for ( $i = 1; $i <= $total; $i++ ) {
+			$this->repository->add_log_entry( $history_id, array(
+				'message' => 'AI generation failed for content: Export boundary error ' . $i,
+				'context' => array(
+					'component' => 'content',
+					'error'     => 'Export boundary error ' . $i,
+				),
+			), AIPS_History_Type::ERROR );
+		}
+
+		$list = $this->repository->get_ai_errors( array(
+			'per_page' => 2000,
+		) );
+		$this->assertSame( $total, $list['total'] );
+		$this->assertSame( AIPS_History_Repository::AI_ERROR_LIST_MAX_PER_PAGE, $list['per_page'] );
+		$this->assertCount( AIPS_History_Repository::AI_ERROR_LIST_MAX_PER_PAGE, $list['items'] );
+
+		$page2 = $this->repository->get_ai_errors( array(
+			'page'     => 2,
+			'per_page' => AIPS_History_Repository::AI_ERROR_LIST_MAX_PER_PAGE,
+		) );
+		$this->assertCount( 1, $page2['items'] );
+
+		$export = $this->controller->prepare_ai_error_export( array(
+			'error_scope' => 'ai_only',
+		) );
+		$this->assertSame( $total, $export['total_count'] );
+		$this->assertSame( $total, $export['exported_count'] );
+		$this->assertFalse( $export['truncated'] );
+		$this->assertSame( AIPS_History_Repository::AI_ERROR_EXPORT_MAX_ROWS, $export['export_limit'] );
+		$this->assertCount( $total, $export['items'] );
+
+		$messages = array();
+		foreach ( $export['items'] as $item ) {
+			$messages[] = $item['error_message'];
+		}
+		$this->assertContains( 'Export boundary error 1', $messages );
+		$this->assertContains( 'Export boundary error 101', $messages );
+
+		$bounded = $this->controller->prepare_ai_error_export( array(
+			'error_scope' => 'ai_only',
+		), 100 );
+		$this->assertSame( $total, $bounded['total_count'] );
+		$this->assertSame( 100, $bounded['exported_count'] );
+		$this->assertTrue( $bounded['truncated'] );
+		$this->assertSame( 100, $bounded['export_limit'] );
+		$this->assertNotSame( $bounded['exported_count'], $bounded['total_count'] );
 	}
 
 	/**
