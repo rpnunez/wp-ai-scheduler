@@ -64,6 +64,15 @@
 			$(document).on('click', '.aips-toggle-cache-tasks', this.toggleCacheTasks.bind(this));
 			$(document).on('click', '.aips-refresh-system', this.refreshSystem.bind(this));
 			$(document).on('click', '.aips-copy-system-report', this.copySystemReport.bind(this));
+			$(document).on('click', '.aips-prune-telemetry-btn', this.pruneTelemetry.bind(this));
+			$(document).on('click', '.aips-purge-telemetry-btn', this.purgeTelemetry.bind(this));
+			$(document).on('click', '.aips-prune-history-logs-btn', this.pruneHistoryLogs.bind(this));
+			$(document).on('click', '.aips-clean-orphaned-embeddings-btn', this.cleanOrphanedEmbeddings.bind(this));
+			$(document).on('click', '.aips-optimize-table-btn', this.optimizeTable.bind(this));
+			$(document).on('click', '.aips-refresh-tables-btn', function(e) {
+				e.preventDefault();
+				this.refreshTables(true);
+			}.bind(this));
 		},
 
 		/**
@@ -237,10 +246,12 @@
 		 */
 		rebuildCaches: function(e) {
 			e.preventDefault();
+			var self = this;
 			var l10n = window.aipsSystemStatusL10n || {};
 			var $btn = $(e.currentTarget);
 			var $spinner = $btn.siblings('.spinner');
 			var $result = $('.aips-status-op-result');
+			var $cacheResults = $('.aips-cache-rebuild-results');
 			var selectedSubsystems = this.getSelectedCacheSubsystems();
 
 			if (!selectedSubsystems.length) {
@@ -266,7 +277,12 @@
 				function(response) {
 					if (response && response.success) {
 						var msg = (response.data && response.data.message) ? response.data.message : (l10n.rebuildDone || 'Caches rebuilt successfully.');
-						$result.text(msg).show();
+						var steps = response.data && Array.isArray(response.data.steps) ? response.data.steps : [];
+						if (steps.length) {
+							self.renderRefreshResults($cacheResults, steps);
+						} else {
+							$result.text(msg).show();
+						}
 						if (AIPS.Utilities && AIPS.Utilities.showToast) {
 							AIPS.Utilities.showToast(msg, 'success');
 						}
@@ -369,6 +385,35 @@
 				return;
 			}
 
+			var hasDestructive = $('.aips-refresh-task-destructive:checked').length > 0;
+
+			if (hasDestructive) {
+				var confirmMsg = l10n.confirmRefreshSystemDestructive || 'This includes one or more tasks that permanently delete data (e.g. telemetry/history pruning, orphaned embeddings cleanup). Continue?';
+				AIPS.Utilities.confirm(confirmMsg, 'Refresh System', [
+					{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+					{ label: 'Yes, continue', className: 'aips-btn aips-btn-danger-solid', action: function() {
+						self.runRefreshSystem($btn, $spinner, $results, selectedTasks);
+					}}
+				]);
+				return;
+			}
+
+			this.runRefreshSystem($btn, $spinner, $results, selectedTasks);
+		},
+
+		/**
+		 * Post the selected "Refresh System" tasks and render the results.
+		 *
+		 * @param {jQuery} $btn          The Refresh System button.
+		 * @param {jQuery} $spinner      Its sibling spinner element.
+		 * @param {jQuery} $results      Results container.
+		 * @param {Array}  selectedTasks Selected task step keys.
+		 * @return {void}
+		 */
+		runRefreshSystem: function($btn, $spinner, $results, selectedTasks) {
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+
 			$spinner.addClass('is-active');
 			$results.hide().empty();
 
@@ -437,6 +482,412 @@
 			});
 
 			$results.show();
+		},
+
+		/**
+		 * Prune telemetry older than the configured retention setting.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		pruneTelemetry: function(e) {
+			e.preventDefault();
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+
+			var confirmMsg = l10n.confirmPruneTelemetry || 'Prune telemetry records older than retention period? Batched deletion will defragment table if needed.';
+			AIPS.Utilities.confirm(confirmMsg, 'Prune Telemetry', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, prune old records', className: 'aips-btn aips-btn-primary', action: function() {
+					$btn.prop('disabled', true);
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Pruning telemetry…', 'info');
+					}
+
+					$.post(ajaxurl, {
+						action: 'aips_status_prune_telemetry',
+						nonce:  l10n.noncePruneTelemetry || (window.aipsAjax && aipsAjax.nonce) || ''
+					}, function(response) {
+						if (response && response.success) {
+							var msg = (response.data && response.data.message) ? response.data.message : 'Telemetry pruned successfully.';
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(msg, 'success');
+							}
+							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+								self.refreshTables(false);
+							}
+						} else {
+							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Prune failed.');
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(err, 'error');
+							}
+						}
+						$btn.prop('disabled', false);
+					}).fail(function() {
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+						}
+						$btn.prop('disabled', false);
+					});
+				}}
+			]);
+		},
+
+		/**
+		 * Purge all telemetry data (TRUNCATE TABLE to reclaim all disk space).
+		 *
+		 * Requires typing 'PURGE' into confirmation modal.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		purgeTelemetry: function(e) {
+			e.preventDefault();
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+
+			AIPS.Utilities.confirmWithWord({
+				heading:      l10n.confirmPurgeTelemetryTitle || 'Purge All Telemetry Data',
+				message:      l10n.confirmPurgeTelemetry || 'Are you sure you want to PURGE ALL telemetry records? This will truncate the table and instantly reclaim all disk space (reset to 0 bytes). This action cannot be undone.',
+				word:         'PURGE',
+				confirmLabel: 'Purge Table',
+				confirmClass: 'aips-btn aips-btn-danger-solid'
+			}).then(function(confirmed) {
+				if (!confirmed) {
+					return;
+				}
+
+				$btn.prop('disabled', true);
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast('Purging telemetry table…', 'info');
+				}
+
+				$.post(ajaxurl, {
+					action: 'aips_status_purge_telemetry',
+					nonce:  l10n.noncePurgeTelemetry || (window.aipsAjax && aipsAjax.nonce) || ''
+				}, function(response) {
+					if (response && response.success) {
+						var msg = (response.data && response.data.message) ? response.data.message : 'Telemetry table truncated and space reclaimed.';
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(msg, 'success');
+						}
+						if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+							self.refreshTables(false);
+						}
+					} else {
+						var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Purge failed.');
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(err, 'error');
+						}
+					}
+					$btn.prop('disabled', false);
+				}).fail(function() {
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+					}
+					$btn.prop('disabled', false);
+				});
+			});
+		},
+
+		/**
+		 * Prune history logs older than configured retention period.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		pruneHistoryLogs: function(e) {
+			e.preventDefault();
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+
+			var confirmMsg = l10n.confirmPruneHistoryLogs || 'Prune generation logs older than configured retention period?';
+			AIPS.Utilities.confirm(confirmMsg, 'Prune History Logs', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, prune logs', className: 'aips-btn aips-btn-primary', action: function() {
+					$btn.prop('disabled', true);
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Pruning history logs…', 'info');
+					}
+
+					$.post(ajaxurl, {
+						action: 'aips_status_prune_history_logs',
+						nonce:  l10n.noncePruneHistoryLogs || (window.aipsAjax && aipsAjax.nonce) || ''
+					}, function(response) {
+						if (response && response.success) {
+							var msg = (response.data && response.data.message) ? response.data.message : 'History logs pruned successfully.';
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(msg, 'success');
+							}
+							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+								self.refreshTables(false);
+							}
+						} else {
+							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Prune failed.');
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(err, 'error');
+							}
+						}
+						$btn.prop('disabled', false);
+					}).fail(function() {
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+						}
+						$btn.prop('disabled', false);
+					});
+				}}
+			]);
+		},
+
+		/**
+		 * Clean orphaned post embeddings.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		cleanOrphanedEmbeddings: function(e) {
+			e.preventDefault();
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+
+			var confirmMsg = l10n.confirmCleanEmbeddings || 'Clean orphaned embeddings for posts that no longer exist?';
+			AIPS.Utilities.confirm(confirmMsg, 'Clean Orphaned Embeddings', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, clean orphans', className: 'aips-btn aips-btn-primary', action: function() {
+					$btn.prop('disabled', true);
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Cleaning orphaned embeddings…', 'info');
+					}
+
+					$.post(ajaxurl, {
+						action: 'aips_status_clean_orphaned_embeddings',
+						nonce:  l10n.nonceCleanEmbeddings || (window.aipsAjax && aipsAjax.nonce) || ''
+					}, function(response) {
+						if (response && response.success) {
+							var msg = (response.data && response.data.message) ? response.data.message : 'Orphaned embeddings cleaned successfully.';
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(msg, 'success');
+							}
+							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+								self.refreshTables(false);
+							}
+						} else {
+							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Cleanup failed.');
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(err, 'error');
+							}
+						}
+						$btn.prop('disabled', false);
+					}).fail(function() {
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+						}
+						$btn.prop('disabled', false);
+					});
+				}}
+			]);
+		},
+
+		/**
+		 * Run OPTIMIZE TABLE on a specific plugin table.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		optimizeTable: function(e) {
+			e.preventDefault();
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+			var tableName = $btn.data('table') || '';
+
+			if (!tableName) {
+				return;
+			}
+
+			var confirmMsg = l10n.confirmOptimizeTable || ('Run OPTIMIZE TABLE on ' + tableName + '? This can briefly lock the table on large sites.');
+			AIPS.Utilities.confirm(confirmMsg, 'Optimize Table', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, optimize', className: 'aips-btn aips-btn-primary', action: function() {
+					$btn.prop('disabled', true);
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Optimizing table ' + tableName + '…', 'info');
+					}
+
+					$.post(ajaxurl, {
+						action: 'aips_status_optimize_table',
+						nonce:  l10n.nonceOptimizeTable || (window.aipsAjax && aipsAjax.nonce) || '',
+						table:  tableName
+					}, function(response) {
+						if (response && response.success) {
+							var msg = (response.data && response.data.message) ? response.data.message : (l10n.tableOptimized || 'Table optimized successfully.');
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(msg, 'success');
+							}
+							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+								self.refreshTables(false);
+							}
+						} else {
+							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Optimization failed.');
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(err, 'error');
+							}
+						}
+						$btn.prop('disabled', false);
+					}).fail(function() {
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+						}
+						$btn.prop('disabled', false);
+					});
+				}}
+			]);
+		},
+
+		/**
+		 * Patch a single table-status row's cells in the DOM.
+		 *
+		 * @param {Object} t Table status record (short_name, formatted_* fields, overhead).
+		 * @return {void}
+		 */
+		updateTableRow: function(t) {
+			var short = t.short_name || '';
+			var $row = $('#aips-tbl-row-' + short);
+			if (!$row.length) {
+				return;
+			}
+
+			$row.find('.aips-cell-records').text(t.formatted_records || String(t.records));
+			$row.find('.aips-cell-data').text(t.formatted_data_size || String(t.data_size));
+			$row.find('.aips-cell-index').text(t.formatted_index_size || String(t.index_size));
+			var $ohCell = $row.find('.aips-cell-overhead');
+			var ohText = t.formatted_overhead || String(t.overhead);
+			if (t.overhead > 1048576) {
+				$ohCell.empty().append($('<span>').css({ color: '#d63638', fontWeight: '600' }).text(ohText));
+			} else {
+				$ohCell.text(ohText);
+			}
+
+			// Keep raw byte/record counts on the row in sync so recomputeTotals()
+			// can sum them without a full server round trip.
+			$row.attr({
+				'data-records':    t.records,
+				'data-data-size':  t.data_size,
+				'data-index-size': t.index_size,
+				'data-overhead':   t.overhead
+			});
+		},
+
+		/**
+		 * Format a byte count the same way PHP's size_format(x, 2) does, for
+		 * client-side totals recomputation.
+		 *
+		 * @param {number} bytes Byte count.
+		 * @return {string}
+		 */
+		formatBytes: function(bytes) {
+			bytes = Number(bytes) || 0;
+			var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+			var i = 0;
+			while (bytes >= 1024 && i < units.length - 1) {
+				bytes /= 1024;
+				i++;
+			}
+			return bytes.toFixed(i === 0 ? 0 : 2) + ' ' + units[i];
+		},
+
+		/**
+		 * Recompute the grand-totals row by summing the data-* byte/record
+		 * counts kept on every table row, so totals stay accurate after a
+		 * single-row patch without re-fetching the full table listing.
+		 *
+		 * @return {void}
+		 */
+		recomputeTotals: function() {
+			var totals = { records: 0, dataSize: 0, indexSize: 0, overhead: 0 };
+
+			$('[id^="aips-tbl-row-"]').each(function() {
+				var $row = $(this);
+				totals.records   += parseInt($row.attr('data-records'), 10) || 0;
+				totals.dataSize   += parseInt($row.attr('data-data-size'), 10) || 0;
+				totals.indexSize  += parseInt($row.attr('data-index-size'), 10) || 0;
+				totals.overhead   += parseInt($row.attr('data-overhead'), 10) || 0;
+			});
+
+			if (!$('#aips-tot-records').length) {
+				return;
+			}
+
+			$('#aips-tot-records').text(totals.records.toLocaleString());
+			$('#aips-tot-data').text(this.formatBytes(totals.dataSize));
+			$('#aips-tot-index').text(this.formatBytes(totals.indexSize));
+			$('#aips-tot-overhead').text(this.formatBytes(totals.overhead));
+		},
+
+		/**
+		 * Patch the DOM rows for tables included in a mutating action's AJAX
+		 * response, avoiding a full extra `aips_status_get_tables` round trip,
+		 * then recompute the grand-totals row from all rows' current data.
+		 *
+		 * @param {Array|undefined} tables Table status records from the response, if any.
+		 * @return {boolean} True if at least one row was patched from the response.
+		 */
+		patchTablesFromResponse: function(tables) {
+			if (!Array.isArray(tables) || !tables.length) {
+				return false;
+			}
+			var self = this;
+			tables.forEach(function(t) {
+				self.updateTableRow(t);
+			});
+			self.recomputeTotals();
+			return true;
+		},
+
+		/**
+		 * Refresh table sizes and counts via AJAX and update the status matrix DOM.
+		 *
+		 * @param {boolean} showToastNotice Whether to display a toast on completion.
+		 * @return {void}
+		 */
+		refreshTables: function(showToastNotice) {
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $('.aips-refresh-tables-btn');
+
+			$btn.prop('disabled', true);
+
+			$.post(ajaxurl, {
+				action: 'aips_status_get_tables',
+				nonce:  l10n.nonceGetTables || (window.aipsAjax && aipsAjax.nonce) || ''
+			}, function(response) {
+				if (response && response.success && response.data) {
+					var tables = response.data.tables || [];
+					var totals = response.data.totals || {};
+
+					tables.forEach(function(t) {
+						self.updateTableRow(t);
+					});
+
+					if (totals.formatted_records) {
+						$('#aips-tot-records').text(totals.formatted_records);
+						$('#aips-tot-data').text(totals.formatted_data);
+						$('#aips-tot-index').text(totals.formatted_index);
+						$('#aips-tot-overhead').text(totals.formatted_overhead);
+					}
+
+					if (showToastNotice && AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(l10n.tablesRefreshed || 'Table sizes refreshed.', 'success');
+					}
+				}
+				$btn.prop('disabled', false);
+			}).fail(function() {
+				$btn.prop('disabled', false);
+			});
 		},
 
 	};

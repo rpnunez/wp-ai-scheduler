@@ -6,8 +6,11 @@
  *
  * Registered AJAX actions (all in AIPS_Ajax_Registry):
  *   aips_stress_test_run
- *   aips_stress_test_cleanup
  *   aips_stress_test_status
+ *
+ * Stress test data cleanup ("Delete Data" button) is handled by the shared
+ * aips_status_clean_stress_test_data endpoint on AIPS_System_Status_Controller,
+ * not by this controller — see AIPS_System_Diagnostics_Service::clean_stress_test_data().
  *
  * Each case runs in its own request so a slow provider cannot blow the PHP time
  * limit for the whole suite; the browser sequences them.
@@ -46,7 +49,6 @@ class AIPS_Stress_Test_Controller {
         $this->service = $service ?: new AIPS_Stress_Test_Service();
 
         add_action('wp_ajax_aips_stress_test_run', array($this, 'ajax_run'));
-        add_action('wp_ajax_aips_stress_test_cleanup', array($this, 'ajax_cleanup'));
         add_action('wp_ajax_aips_stress_test_status', array($this, 'ajax_status'));
         add_action('wp_ajax_aips_stress_test_save_run', array($this, 'ajax_save_run'));
         add_action('wp_ajax_aips_stress_test_get_history', array($this, 'ajax_get_history'));
@@ -102,30 +104,6 @@ class AIPS_Stress_Test_Controller {
         }
 
         AIPS_Ajax_Response::success(array('result' => $this->service->run($case_id)));
-    }
-
-    /**
-     * Delete every post and attachment the page created.
-     *
-     * @return void
-     */
-    public function ajax_cleanup() {
-        $this->verify_request();
-
-        $deleted = $this->service->cleanup_test_data();
-
-        AIPS_Ajax_Response::success(
-            array(
-                'deleted'   => $deleted,
-                'test_data' => $this->service->count_test_data(),
-            ),
-            sprintf(
-                /* translators: 1: post count, 2: attachment count */
-                __('Removed %1$d posts and %2$d attachments.', 'ai-post-scheduler'),
-                $deleted['posts'],
-                $deleted['attachments']
-            )
-        );
     }
 
     /**

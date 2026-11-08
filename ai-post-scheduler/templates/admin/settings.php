@@ -160,6 +160,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 										<?php do_settings_fields('aips-settings', 'aips_general_section'); ?>
 									</table>
 								</div>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Post Content Images', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_post_images_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -336,6 +342,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 								</div>
 
 								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Summarized Notification Digest', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_notifications_summarized_digest_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
 									<h3 class="aips-settings-card-title"><?php esc_html_e('Scheduled Activity Digests & Reports', 'ai-post-scheduler'); ?></h3>
 									<table class="form-table" role="presentation">
 										<?php do_settings_fields('aips-settings', 'aips_notifications_digests_section'); ?>
@@ -405,6 +418,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 									<h3 class="aips-settings-card-title"><?php esc_html_e('Cache System & Storage Engine', 'ai-post-scheduler'); ?></h3>
 									<table class="form-table" role="presentation" id="aips-cache-settings-table">
 										<?php do_settings_fields('aips-settings', 'aips_cache_section'); ?>
+									</table>
+								</div>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Database & Data Retention', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation" id="aips-database-retention-settings-table">
+										<?php do_settings_fields('aips-settings', 'aips_database_retention_section'); ?>
 									</table>
 								</div>
 								<p class="submit">

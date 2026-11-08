@@ -116,13 +116,30 @@
 		},
 
 		/**
-		 * Whether a template with this ID exists on the page.
+		 * Whether a template with this ID exists on the page or has been registered.
 		 *
 		 * @param {string} id - The element ID of the <script type="text/html"> block.
 		 * @return {boolean}
 		 */
 		has: function (id) {
 			return this.get(id) !== '';
+		},
+
+		/**
+		 * Register a template string directly into the cache under the given ID,
+		 * so render()/renderRaw() can use it even when no matching
+		 * <script type="text/html"> element exists on the current page.
+		 *
+		 * Use this for a shared JS module (not tied to one admin page) that needs
+		 * a built-in fallback template, instead of hand-concatenating HTML.
+		 *
+		 * @param {string} id   - The template ID to register (same namespace as DOM template IDs).
+		 * @param {string} html - The raw template HTML, using {{token}} placeholders.
+		 * @return {string} The registered HTML, for convenience.
+		 */
+		register: function (id, html) {
+			_cache[id] = html;
+			return html;
 		},
 
 		/**

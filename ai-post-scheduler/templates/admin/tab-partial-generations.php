@@ -122,7 +122,7 @@ if (!defined('ABSPATH')) {
 						<tbody>
 							<?php foreach ($partial_posts_data as $post_data): ?>
 							<tr>
-								<th scope="row" class="check-column"><input type="checkbox" class="aips-partial-cb" value="<?php echo esc_attr($post_data['id']); ?>"></th>
+								<th scope="row" class="check-column"><input type="checkbox" class="aips-partial-cb" value="<?php echo esc_attr(!empty($post_data['post_id']) ? $post_data['post_id'] : (!empty($post_data['id']) ? $post_data['id'] : '')); ?>"></th>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
@@ -187,8 +187,8 @@ if (!defined('ABSPATH')) {
 											<button type="button" class="aips-row-action-item aips-ai-edit-btn"
 												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-												title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-admin-customizer"></span>
+												title="<?php esc_attr_e('AI Edit — Regenerate post components (title, excerpt, content, image) with AI', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-update"></span>
 												<span><?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?></span>
 											</button>
 											<button type="button" class="aips-row-action-item aips-view-session"

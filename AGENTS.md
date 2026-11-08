@@ -5,7 +5,7 @@
 - Project: WordPress plugin for scheduling and generating AI-written posts through Meow Apps AI Engine.
 - Plugin app root: `ai-post-scheduler/`; run Composer, PHPUnit, and plugin scripts from that directory.
 - Bootstrap/version source: `ai-post-scheduler/ai-post-scheduler.php`.
-- Current plugin version: **3.7.19** (`Version:` header and `AIPS_VERSION`).
+- Current plugin version: **3.7.24** (`Version:` header and `AIPS_VERSION`).
 - Runtime targets: PHP 8.2+ and WordPress 5.8+.
 
 ## Key paths
@@ -59,3 +59,7 @@
 ## Documentation ownership
 - Keep this file concise (about 40–60 lines) and high-level.
 - Put long subsystem inventories, cron hook lists, table catalogs, and workflow details in `docs/AI_AGENT_REFERENCE.md` or `docs/DEVELOPMENT_GUIDELINES.md`.
+
+## End-to-end feature delivery
+- For a request that explicitly invokes `$feature-to-pr`, follow `.agents/skills/feature-to-pr/SKILL.md` from branch setup through the final PR update. Ordinary coding requests do not automatically authorize the full PR workflow.
+- Keep project standards here and in `TESTING.md`; keep the delivery sequence in the skill. The user's explicit constraints for a task take precedence.

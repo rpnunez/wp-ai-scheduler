@@ -71,19 +71,27 @@ class AIPS_Broken_Links_Service {
 	private $config;
 
 	/**
-	 * @param AIPS_Link_Index_Service|null $link_index Link index service.
-	 * @param AIPS_Link_Url_Resolver|null  $resolver   URL resolver.
-	 * @param AIPS_Config|null             $config     Config.
+	 * @var AIPS_Link_Insertion_Engine
+	 */
+	private $engine;
+
+	/**
+	 * @param AIPS_Link_Index_Service|null    $link_index Link index service.
+	 * @param AIPS_Link_Url_Resolver|null     $resolver   URL resolver.
+	 * @param AIPS_Config|null                $config     Config.
+	 * @param AIPS_Link_Insertion_Engine|null $engine     Link insertion/reversion engine.
 	 */
 	public function __construct(
 		?AIPS_Link_Index_Service $link_index = null,
 		?AIPS_Link_Url_Resolver $resolver = null,
-		?AIPS_Config $config = null
+		?AIPS_Config $config = null,
+		?AIPS_Link_Insertion_Engine $engine = null
 	) {
 		$container        = AIPS_Container::get_instance();
 		$this->link_index = $link_index ?: ($container->has(AIPS_Link_Index_Service::class) ? $container->make(AIPS_Link_Index_Service::class) : new AIPS_Link_Index_Service());
 		$this->resolver   = $resolver ?: new AIPS_Link_Url_Resolver();
 		$this->config     = $config ?: AIPS_Config::get_instance();
+		$this->engine     = $engine ?: ($container->has(AIPS_Link_Insertion_Engine::class) ? $container->make(AIPS_Link_Insertion_Engine::class) : new AIPS_Link_Insertion_Engine());
 	}
 
 	/**
@@ -252,7 +260,7 @@ class AIPS_Broken_Links_Service {
 			return new WP_Error('aips_broken_missing_post', __('The post no longer exists.', 'ai-post-scheduler'));
 		}
 
-		$engine  = new AIPS_Link_Insertion_Engine();
+		$engine  = $this->engine;
 		$content = (string) $post->post_content;
 
 		// Undo in reverse order of application.

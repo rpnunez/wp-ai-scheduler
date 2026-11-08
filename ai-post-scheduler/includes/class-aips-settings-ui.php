@@ -469,6 +469,48 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render Post Images section description.
+     */
+    public function post_images_section_callback() {
+        echo '<p class="description">' . esc_html__('Configure global limits and available sources for Post Content Images generation across Templates and Authors.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render Max Post Images Limit field.
+     */
+    public function max_post_images_limit_field_callback() {
+        $value = AIPS_Config::get_instance()->get_max_post_images_limit();
+        ?>
+        <input type="number" name="aips_max_post_images_limit" id="aips_max_post_images_limit" value="<?php echo esc_attr($value); ?>" min="0" max="20" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum number of post images that can be added and generated for a single post (0 to 20). Defaults to 5.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Allowed Image Sources field.
+     */
+    public function allowed_image_sources_field_callback() {
+        $allowed = AIPS_Config::get_instance()->get_allowed_image_sources();
+        $sources = array(
+            'ai_prompt'     => __('AI Prompt Generation', 'ai-post-scheduler'),
+            'unsplash'      => __('Unsplash (keyword search)', 'ai-post-scheduler'),
+            'media_library' => __('WordPress Media Library', 'ai-post-scheduler'),
+        );
+        ?>
+        <fieldset>
+            <legend class="screen-reader-text"><?php esc_html_e('Allowed Image Sources', 'ai-post-scheduler'); ?></legend>
+            <?php foreach ($sources as $key => $label): ?>
+                <label style="display: block; margin-bottom: 6px;">
+                    <input type="checkbox" name="aips_allowed_image_sources[]" value="<?php echo esc_attr($key); ?>" <?php checked(in_array($key, $allowed, true)); ?>>
+                    <?php echo esc_html($label); ?>
+                </label>
+            <?php endforeach; ?>
+            <p class="description"><?php esc_html_e('Controls which image sources are available when configuring Featured Image and Post Images on Templates and Authors.', 'ai-post-scheduler'); ?></p>
+        </fieldset>
+        <?php
+    }
+
+    /**
      * Render the Google Search Console connection (API Keys tab).
      *
      * Search Console data is private, so it needs a service account key
@@ -892,6 +934,110 @@ class AIPS_Settings_UI {
         <?php
     }
 
+	/**
+	 * Render the summarized digest enabled toggle field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_enabled_field_callback() {
+		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_notif_digest_enabled');
+		?>
+		<label for="aips_notif_digest_enabled">
+			<input type="checkbox" id="aips_notif_digest_enabled" name="aips_notif_digest_enabled" value="1" <?php checked($enabled, true); ?>>
+			<?php esc_html_e('Enable summarized activity digest', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('Batch frequent generation and review email notifications into a single digest instead of sending separate emails for each post.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest threshold number field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_threshold_field_callback() {
+		$threshold = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_threshold', 5));
+		if ($threshold < 2) {
+			$threshold = 5;
+		}
+		?>
+		<input type="number" id="aips_notif_digest_threshold" name="aips_notif_digest_threshold" value="<?php echo esc_attr($threshold); ?>" min="2" max="50" step="1" class="small-text">
+		<p class="description"><?php esc_html_e('Number of notifications that triggers an immediate digest email (2–50).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest max delay select field callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_max_delay_field_callback() {
+		$selected = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_max_delay', 3600));
+		$options = array(
+			900   => __('15 minutes', 'ai-post-scheduler'),
+			1800  => __('30 minutes', 'ai-post-scheduler'),
+			3600  => __('1 hour (default)', 'ai-post-scheduler'),
+			7200  => __('2 hours', 'ai-post-scheduler'),
+			21600 => __('6 hours', 'ai-post-scheduler'),
+		);
+		?>
+		<select id="aips_notif_digest_max_delay" name="aips_notif_digest_max_delay">
+			<?php foreach ($options as $seconds => $label) : ?>
+				<option value="<?php echo esc_attr($seconds); ?>" <?php selected($selected, $seconds); ?>><?php echo esc_html($label); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e('Maximum wait time before dispatching queued notifications, even if the count threshold has not been reached.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest eligible notification types multi-checkbox callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_types_field_callback() {
+		$selected_types = (array) AIPS_Config::get_instance()->get_option('aips_notif_digest_types', array('post_generated', 'post_ready_for_review'));
+		$eligible_types = AIPS_Notification_Registry::get_digest_eligible_types();
+		?>
+		<fieldset>
+			<legend class="screen-reader-text"><span><?php esc_html_e('Eligible Notification Types', 'ai-post-scheduler'); ?></span></legend>
+			<?php foreach ($eligible_types as $type_key => $meta) : ?>
+				<label class="aips-checkbox-label-block">
+					<input type="checkbox" name="aips_notif_digest_types[]" value="<?php echo esc_attr($type_key); ?>" <?php checked(in_array($type_key, $selected_types, true)); ?>>
+					<strong><?php echo esc_html($meta['label']); ?></strong>
+					<span class="description aips-checkbox-label-desc">&mdash; <?php echo esc_html($meta['description']); ?></span>
+				</label>
+			<?php endforeach; ?>
+		</fieldset>
+		<p class="description"><?php esc_html_e('Select which notification types are intercepted into the digest. Critical errors and system resilience alerts are never batched.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the summarized digest manual queue flush action callback.
+	 *
+	 * @return void
+	 */
+	public function notif_digest_actions_field_callback() {
+		$queue_count = AIPS_Notifications::instance()->get_digest_queue_count();
+		?>
+		<div class="aips-settings-action-row">
+			<button type="button" id="aips-flush-digest-btn" class="button button-secondary">
+				<?php esc_html_e('Send Pending Digest Now', 'ai-post-scheduler'); ?>
+			</button>
+			<span class="description">
+				<?php
+				printf(
+					/* translators: %s: span element containing pending count */
+					esc_html__('Currently %s pending notifications in the digest queue.', 'ai-post-scheduler'),
+					'<strong id="aips-digest-queue-count">' . esc_html($queue_count) . '</strong>'
+				);
+				?>
+			</span>
+		</div>
+		<?php
+	}
+
     /**
      * Sanitize comma-separated notification email addresses.
      *
@@ -940,6 +1086,58 @@ class AIPS_Settings_UI {
 
         return $sanitized;
     }
+
+	/**
+	 * Sanitize the summarized digest count threshold (2–50).
+	 *
+	 * @param mixed $value Raw input.
+	 * @return int Clamped integer between 2 and 50.
+	 */
+	public function sanitize_digest_threshold($value) {
+		if (!is_numeric($value)) {
+			return 5;
+		}
+		$val = intval($value);
+		if ($val < 2) {
+			$val = 2;
+		} elseif ($val > 50) {
+			$val = 50;
+		}
+		return $val;
+	}
+
+	/**
+	 * Sanitize the summarized digest maximum delay window.
+	 *
+	 * @param mixed $value Raw input in seconds.
+	 * @return int Valid delay in seconds (default 3600).
+	 */
+	public function sanitize_digest_max_delay($value) {
+		$val = absint($value);
+		$allowed = array(900, 1800, 3600, 7200, 21600);
+		return in_array($val, $allowed, true) ? $val : 3600;
+	}
+
+	/**
+	 * Sanitize the summarized digest eligible notification types.
+	 *
+	 * @param mixed $value Raw input array of type keys.
+	 * @return array Sanitized list of eligible notification type keys.
+	 */
+	public function sanitize_digest_types($value) {
+		if (!is_array($value)) {
+			return array();
+		}
+		$eligible = array_keys(AIPS_Notification_Registry::get_digest_eligible_types());
+		$sanitized = array();
+		foreach ($value as $type) {
+			$type = sanitize_key($type);
+			if (in_array($type, $eligible, true)) {
+				$sanitized[] = $type;
+			}
+		}
+		return array_values(array_unique($sanitized));
+	}
 
     /**
      * Sanitize the topic similarity threshold value.
@@ -3050,6 +3248,160 @@ class AIPS_Settings_UI {
 	 */
 	public function sanitize_author_topic_auto_approval_max_similarity($value) {
 		return max(0.50, min(0.99, (float) $value));
+	}
+
+	/**
+	 * Render description for the Database & Retention section.
+	 *
+	 * @return void
+	 */
+	public function database_retention_section_callback() {
+		echo '<p>' . esc_html__('Configure automatic database pruning policies to keep high-growth tables (telemetry, execution logs, orphaned embeddings) lean and performant.', 'ai-post-scheduler') . '</p>';
+	}
+
+	/**
+	 * Render the automated pruning master toggle.
+	 *
+	 * @return void
+	 */
+	public function auto_prune_enabled_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_auto_prune_enabled');
+		?>
+		<input type="hidden" name="aips_auto_prune_enabled" value="0">
+		<label>
+			<input type="checkbox" name="aips_auto_prune_enabled" value="1" <?php checked($value, true); ?>>
+			<?php esc_html_e('Enable scheduled automatic database pruning', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('When enabled, background cleanups run via WP-Cron according to the schedule configured below.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the telemetry retention period field (number + unit).
+	 *
+	 * @return void
+	 */
+	public function telemetry_retention_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$value  = (int) $config->get_option('aips_telemetry_retention_value', 30);
+		$unit   = (string) $config->get_option('aips_telemetry_retention_unit', 'days');
+		?>
+		<div style="display: flex; align-items: center; gap: 8px;">
+			<input type="number" name="aips_telemetry_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="365" style="width: 80px;">
+			<select name="aips_telemetry_retention_unit">
+				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('Telemetry records older than this period will be pruned during scheduled and manual cleanups.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the prune frequency selector.
+	 *
+	 * @return void
+	 */
+	public function prune_interval_field_callback() {
+		$interval = (string) AIPS_Config::get_instance()->get_option('aips_telemetry_prune_interval', 'daily');
+		?>
+		<select name="aips_telemetry_prune_interval">
+			<option value="daily" <?php selected($interval, 'daily'); ?>><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
+			<option value="twicedaily" <?php selected($interval, 'twicedaily'); ?>><?php esc_html_e('Twice Daily', 'ai-post-scheduler'); ?></option>
+			<option value="weekly" <?php selected($interval, 'weekly'); ?>><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
+		</select>
+		<p class="description"><?php esc_html_e('How often the background cleanup cron job should run when automatic pruning is enabled.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the history log retention field (number + unit).
+	 *
+	 * @return void
+	 */
+	public function history_log_retention_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$value  = (int) $config->get_option('aips_history_log_retention_value', 60);
+		$unit   = (string) $config->get_option('aips_history_log_retention_unit', 'days');
+		?>
+		<div class="aips-retention-input-row">
+			<input type="number" name="aips_history_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
+			<select name="aips_history_log_retention_unit" class="aips-form-select">
+				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('Detailed generation execution events in aips_history_log older than this threshold will be pruned.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render inputs for AI Error Log retention threshold.
+	 *
+	 * @return void
+	 */
+	public function ai_error_log_retention_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$value  = (int) $config->get_option('aips_ai_error_log_retention_value', 30);
+		$unit   = (string) $config->get_option('aips_ai_error_log_retention_unit', 'days');
+		?>
+		<div class="aips-retention-input-row">
+			<input type="number" name="aips_ai_error_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
+			<select name="aips_ai_error_log_retention_unit" class="aips-form-select">
+				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('AI Error logs in aips_history_log older than this threshold will be pruned during maintenance tasks.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render checkboxes for cleaning orphaned embeddings and expired topics.
+	 *
+	 * @return void
+	 */
+	public function clean_orphaned_data_field_callback() {
+		$config           = AIPS_Config::get_instance();
+		$clean_embeddings = (bool) $config->get_option('aips_clean_orphaned_embeddings', true);
+		$clean_topics     = (bool) $config->get_option('aips_clean_expired_topics', true);
+		?>
+		<input type="hidden" name="aips_clean_orphaned_embeddings" value="0">
+		<input type="hidden" name="aips_clean_expired_topics" value="0">
+		<label style="display: block; margin-bottom: 6px;">
+			<input type="checkbox" name="aips_clean_orphaned_embeddings" value="1" <?php checked($clean_embeddings, true); ?>>
+			<?php esc_html_e('Purge orphaned embeddings (vectors for posts deleted from WordPress)', 'ai-post-scheduler'); ?>
+		</label>
+		<label style="display: block;">
+			<input type="checkbox" name="aips_clean_expired_topics" value="1" <?php checked($clean_topics, true); ?>>
+			<?php esc_html_e('Purge rejected and expired author topics older than 30 days', 'ai-post-scheduler'); ?>
+		</label>
+		<?php
+	}
+
+	/**
+	 * Sanitize retention unit selection.
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return string
+	 */
+	public function sanitize_retention_unit($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('days', 'weeks', 'months'), true) ? $value : 'days';
+	}
+
+	/**
+	 * Sanitize prune interval schedule.
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return string
+	 */
+	public function sanitize_prune_interval($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('daily', 'twicedaily', 'weekly'), true) ? $value : 'daily';
 	}
 
 }

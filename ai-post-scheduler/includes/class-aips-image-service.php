@@ -113,6 +113,16 @@ class AIPS_Image_Service {
     }
 
     /**
+     * Check whether an Unsplash access key is configured.
+     *
+     * @return bool
+     */
+    public function has_unsplash_access_key(): bool {
+        $access_key = trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'));
+        return !empty($access_key);
+    }
+
+    /**
      * Retrieve an Unsplash image URL using the configured API key.
      *
      * @param string $keywords Keywords to search for.
@@ -121,7 +131,7 @@ class AIPS_Image_Service {
     private function fetch_unsplash_image_url($keywords) {
         $access_key = trim(AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'));
 
-        if (empty($access_key)) {
+        if (!$this->has_unsplash_access_key()) {
             return new WP_Error('unsplash_key_missing', __('Unsplash access key is not configured.', 'ai-post-scheduler'));
         }
 

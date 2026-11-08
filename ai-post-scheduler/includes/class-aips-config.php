@@ -170,6 +170,8 @@ class AIPS_Config {
             'aips_bulk_publish_async_threshold' => 30,
             // General
             'aips_unsplash_access_key' => '',
+            'aips_max_post_images_limit' => 5,
+            'aips_allowed_image_sources' => array('ai_prompt', 'unsplash', 'media_library'),
             'aips_gsc_service_account' => '',
             'aips_gsc_property'        => '',
             'aips_gsc_anchor_enabled'  => true,
@@ -211,6 +213,14 @@ class AIPS_Config {
             'aips_notif_daily_digest_last_sent' => '',
             'aips_notif_weekly_summary_last_sent' => '',
             'aips_notif_monthly_report_last_sent' => '',
+            // Summarized Notification Digest
+            'aips_notif_digest_enabled' => false,
+            'aips_notif_digest_threshold' => 5,
+            'aips_notif_digest_max_delay' => 3600,
+            'aips_notif_digest_types' => array(
+                'post_generated',
+                'post_ready_for_review',
+            ),
             // Resilience
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
@@ -239,6 +249,17 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            // Database & Retention
+            'aips_auto_prune_enabled'                  => false,
+            'aips_telemetry_retention_value'           => 30,
+            'aips_telemetry_retention_unit'            => 'days',
+            'aips_telemetry_prune_interval'            => 'daily',
+            'aips_history_log_retention_value'         => 60,
+            'aips_history_log_retention_unit'          => 'days',
+            'aips_ai_error_log_retention_value'        => 30,
+            'aips_ai_error_log_retention_unit'         => 'days',
+            'aips_clean_orphaned_embeddings'           => true,
+            'aips_clean_expired_topics'                => true,
             // Cache Monitor
             'aips_cache_monitor_enabled'               => false,
             'aips_cache_monitor_index_enabled'         => true,
@@ -706,6 +727,32 @@ class AIPS_Config {
     }
 
     /**
+     * Get summarized notification digest configuration.
+     *
+     * @return array Notification summarized digest configuration with keys:
+     *               'enabled'   (bool)  Whether summarized batching is enabled.
+     *               'threshold' (int)   Notification count to trigger immediate digest send.
+     *               'max_delay' (int)   Maximum delay window in seconds before dispatching.
+     *               'types'     (array) Eligible notification type keys to batch into digest.
+     */
+    public function get_notification_summarized_digest_config() {
+        $threshold = absint($this->get_option('aips_notif_digest_threshold'));
+        if ($threshold < 2) {
+            $threshold = 5;
+        }
+
+        $types = $this->get_option('aips_notif_digest_types');
+        $types = is_array($types) ? $types : array();
+
+        return array(
+            'enabled'   => (bool) $this->get_option('aips_notif_digest_enabled'),
+            'threshold' => $threshold,
+            'max_delay' => absint($this->get_option('aips_notif_digest_max_delay')) ?: 3600,
+            'types'     => $types,
+        );
+    }
+
+    /**
      * Get cache framework configuration.
      *
      * Returns all settings that configure the plugin's cache layer, including
@@ -770,8 +817,29 @@ class AIPS_Config {
         return array(
             'developer_mode'           => (bool) $this->get_option('aips_developer_mode'),
             'unsplash_access_key'      => (string) $this->get_option('aips_unsplash_access_key'),
+            'max_post_images_limit'    => $this->get_max_post_images_limit(),
+            'allowed_image_sources'    => $this->get_allowed_image_sources(),
             'topic_similarity_threshold' => (float) $this->get_option('aips_topic_similarity_threshold'),
         );
+    }
+
+    /**
+     * Get maximum possible post images that can be generated for a post.
+     *
+     * @return int
+     */
+    public function get_max_post_images_limit(): int {
+        return max(0, min(20, (int) $this->get_option('aips_max_post_images_limit', 5)));
+    }
+
+    /**
+     * Get allowed image sources for post images.
+     *
+     * @return array
+     */
+    public function get_allowed_image_sources(): array {
+        $allowed = $this->get_option('aips_allowed_image_sources', array('ai_prompt', 'unsplash', 'media_library'));
+        return is_array($allowed) ? $allowed : array('ai_prompt', 'unsplash', 'media_library');
     }
 
     /**

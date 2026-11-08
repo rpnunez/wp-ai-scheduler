@@ -122,6 +122,12 @@ class AIPS_Ajax_Registry {
 		'aips_save_post_components'       => 'AIPS_AI_Edit_Controller',
 		'aips_get_component_revisions'    => 'AIPS_AI_Edit_Controller',
 		'aips_restore_component_revision' => 'AIPS_AI_Edit_Controller',
+		'aips_reset_component_overrides'  => 'AIPS_AI_Edit_Controller',
+
+		// Editor Controller (Gutenberg & Classic Editor)
+		'aips_editor_apply_directive'              => 'AIPS_Editor_Controller',
+		'aips_editor_weave_internal_links'         => 'AIPS_Editor_Controller',
+		'aips_editor_generate_component_variants'  => 'AIPS_Editor_Controller',
 
 		// Generated Posts Controller
 		'aips_get_post_session'           => 'AIPS_Generated_Posts_Controller',
@@ -223,6 +229,7 @@ class AIPS_Ajax_Registry {
 		// Settings Ajax
 		'aips_save_settings'              => 'AIPS_Settings_Ajax',
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
+		'aips_flush_notification_digest' => 'AIPS_Settings_Ajax',
 
 		// Sources Controller
 		'aips_get_sources'                => 'AIPS_Sources_Controller',
@@ -251,6 +258,12 @@ class AIPS_Ajax_Registry {
 		// Dev Tools
 		'aips_generate_scaffold'          => 'AIPS_Dev_Tools',
 
+		// Diagnostics Controller
+		'aips_get_ai_errors'              => 'AIPS_Diagnostics_Controller',
+		'aips_get_ai_error_details'       => 'AIPS_Diagnostics_Controller',
+		'aips_get_ai_error_summary'       => 'AIPS_Diagnostics_Controller',
+		'aips_export_ai_errors'           => 'AIPS_Diagnostics_Controller',
+
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
 		'aips_get_telemetry_details'      => 'AIPS_Telemetry_Controller',
@@ -267,6 +280,14 @@ class AIPS_Ajax_Registry {
 		'aips_status_cleanup_notifications' => 'AIPS_System_Status_Controller',
 		'aips_status_reset_resilience'   => 'AIPS_System_Status_Controller',
 		'aips_status_repair_datetime'    => 'AIPS_System_Status_Controller',
+		'aips_status_prune_telemetry'    => 'AIPS_System_Status_Controller',
+		'aips_status_purge_telemetry'    => 'AIPS_System_Status_Controller',
+		'aips_status_prune_history_logs' => 'AIPS_System_Status_Controller',
+		'aips_status_prune_ai_errors'    => 'AIPS_System_Status_Controller',
+		'aips_status_clean_orphaned_embeddings' => 'AIPS_System_Status_Controller',
+		'aips_status_optimize_table'     => 'AIPS_System_Status_Controller',
+		'aips_status_get_tables'         => 'AIPS_System_Status_Controller',
+		'aips_status_clean_stress_test_data' => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',
@@ -382,7 +403,6 @@ class AIPS_Ajax_Registry {
 
 		// Stress Test Controller
 		'aips_stress_test_run'                 => 'AIPS_Stress_Test_Controller',
-		'aips_stress_test_cleanup'             => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_status'              => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_save_run'            => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_get_history'         => 'AIPS_Stress_Test_Controller',
