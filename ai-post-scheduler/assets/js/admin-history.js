@@ -55,7 +55,23 @@
 			$title.text(title);
 
 			actions.forEach(function (action) {
-				if (!action || !action.url || !action.label) {
+				if (!action || !action.label) {
+					return;
+				}
+
+				if (action.class && action.class.indexOf('aips-ai-edit-btn') !== -1) {
+					actionsHtml += '<button type="button" class="' + $('<div>').text(String(action.class)).html() + '"'
+						+ ' data-post-id="' + (action.post_id ? $('<div>').text(String(action.post_id)).html() : '') + '"'
+						+ ' data-history-id="' + (action.history_id ? $('<div>').text(String(action.history_id)).html() : '') + '"'
+						+ ' title="' + (action.title ? $('<div>').text(String(action.title)).html() : '') + '"'
+						+ ' style="background:none;border:none;padding:0;color:#2271b1;text-decoration:underline;cursor:pointer;font-size:inherit;display:inline-flex;align-items:center;gap:4px;">'
+						+ '<span class="dashicons dashicons-update" style="font-size:14px;width:14px;height:14px;"></span> '
+						+ $('<div>').text(String(action.label)).html()
+						+ '</button>';
+					return;
+				}
+
+				if (!action.url) {
 					return;
 				}
 
@@ -360,6 +376,9 @@
 		 */
 		initStandaloneOpener: function () {
 			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
+			$(document).on('click', '.aips-history-header-ai-edit', function() {
+				$('#aips-history-modal').hide();
+			});
 			// Detail tabs render in both the History page modal and the standalone
 			// modal on native post screens, so bind them wherever this script loads.
 			$(document).on('click', '.aips-history-detail-tab', this.switchDetailTab.bind(this));

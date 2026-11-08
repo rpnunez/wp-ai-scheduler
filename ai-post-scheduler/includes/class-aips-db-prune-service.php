@@ -177,6 +177,9 @@ class AIPS_DB_Prune_Service {
 		}
 
 		$deleted   = $this->prune_repository->prune_history_logs($cutoff);
+		// Also clear rows orphaned by history deletions (no parent aips_history row).
+		$orphaned  = $this->prune_repository->purge_orphaned_history_logs();
+		$deleted  += $orphaned;
 		$optimized = false;
 
 		if ($deleted > 500) {
@@ -185,6 +188,7 @@ class AIPS_DB_Prune_Service {
 
 		return array(
 			'deleted'   => $deleted,
+			'orphaned'  => $orphaned,
 			'optimized' => $optimized,
 			'cutoff'    => $cutoff,
 		);

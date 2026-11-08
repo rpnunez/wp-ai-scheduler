@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.19
+ * Version: 3.7.22
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.19');
+    define('AIPS_VERSION', '3.7.22');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -1217,6 +1217,9 @@ final class AI_Post_Scheduler {
 
         // "Internal Links" panel in the Classic and Block editors.
         new AIPS_Internal_Links_Editor_Panel();
+
+        // Native "AI Edit" in the Classic and Block editors.
+        new AIPS_Editor_Assets();
 
         // Keep the duplicate scan cron event in line with its setting.
         (new AIPS_Duplicate_Group_Service())->ensure_schedule();

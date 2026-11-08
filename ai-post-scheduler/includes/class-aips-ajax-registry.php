@@ -123,6 +123,11 @@ class AIPS_Ajax_Registry {
 		'aips_get_component_revisions'    => 'AIPS_AI_Edit_Controller',
 		'aips_restore_component_revision' => 'AIPS_AI_Edit_Controller',
 
+		// Editor Controller (Gutenberg & Classic Editor)
+		'aips_editor_apply_directive'              => 'AIPS_Editor_Controller',
+		'aips_editor_weave_internal_links'         => 'AIPS_Editor_Controller',
+		'aips_editor_generate_component_variants'  => 'AIPS_Editor_Controller',
+
 		// Generated Posts Controller
 		'aips_get_post_session'           => 'AIPS_Generated_Posts_Controller',
 		'aips_get_session_json'           => 'AIPS_Generated_Posts_Controller',
