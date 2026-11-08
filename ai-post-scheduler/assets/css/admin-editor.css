@@ -154,6 +154,16 @@
 	overflow-y: auto;
 }
 
+.aips-variant-card.is-inserted {
+	background: var(--aips-success-bg);
+	border-color: var(--aips-success-border);
+}
+
+.aips-variant-card.is-inserted .aips-apply-variant-btn {
+	background: var(--aips-success-dark);
+	border-color: var(--aips-success-dark);
+}
+
 /* ==========================================================================
    Internal Link Insertion Confirmation Badges
    ========================================================================== */
@@ -201,7 +211,11 @@
    Per-Component Classic Editor Widgets & Gutenberg Panels
    ========================================================================== */
 .aips-classic-component-widget {
-	padding: 4px 0;
+	box-sizing: border-box;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	margin: 0;
 }
 
 .aips-classic-component-widget .aips-component-header {
@@ -209,12 +223,37 @@
 	justify-content: flex-end;
 	align-items: center;
 	margin-bottom: 8px;
+	padding: 0;
+	border: 0;
 }
 
 .aips-classic-component-widget .aips-component-actions {
 	display: flex;
 	gap: 6px;
 	align-items: center;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.aips-classic-component-widget .aips-split-btn-group {
+	max-width: 100%;
+}
+
+.aips-classic-component-widget .aips-split-btn-group .aips-regenerate-btn {
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.aips-classic-component-widget .aips-split-btn-group .aips-split-toggle-btn {
+	flex: 0 0 30px;
+}
+
+.aips-classic-component-widget .aips-component-body,
+.aips-classic-component-widget .aips-advanced-accordion,
+.aips-classic-component-widget .aips-diff-wrapper {
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
 }
 
 .aips-classic-component-widget .aips-regenerate-btn.regenerating .dashicons {
@@ -414,12 +453,27 @@
 .aips-classic-component-widget .aips-diff-footer {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
 	padding: 8px 10px;
 	background: var(--aips-white);
 }
 
 .aips-classic-component-widget .aips-discard-diff-btn {
-	margin-left: 6px;
+	margin-left: 0;
+}
+
+.aips-gutenberg-component-section .aips-diff-wrapper {
+	max-width: 100%;
+	box-sizing: border-box;
+	padding: 8px;
+	margin: 10px 0 12px;
+	background: var(--aips-gray-50);
+}
+
+.aips-gutenberg-component-section .aips-advanced-accordion {
+	margin-bottom: 10px;
+	border-color: var(--aips-gray-100);
 }
 
 .aips-classic-component-widget .aips-component-revisions {

@@ -57,8 +57,6 @@
 		var [showRevisions, setShowRevisions] = useState(false);
 		var [revisions, setRevisions] = useState([]);
 		var [loadingRevisions, setLoadingRevisions] = useState(false);
-		var [variants, setVariants] = useState([]);
-		var [busyVariants, setBusyVariants] = useState(false);
 
 		// Prompt Steering & Creativity state
 		var [showPopover, setShowPopover] = useState(false);
@@ -264,29 +262,6 @@
 			});
 		}
 
-		function handleGenerateVariants() {
-			setBusyVariants(true);
-			$.post(l10n.ajaxurl, {
-				action: 'aips_editor_generate_component_variants',
-				nonce: l10n.nonce,
-				post_id: l10n.postId,
-				component: component
-			})
-			.done(function (response) {
-				if (response && response.success && response.data && response.data.variants) {
-					setVariants(response.data.variants);
-				} else {
-					notify((response && response.data && response.data.message) || l10n.labels.actionError, 'error');
-				}
-			})
-			.fail(function () {
-				notify(l10n.labels.actionError, 'error');
-			})
-			.always(function () {
-				setBusyVariants(false);
-			});
-		}
-
 		function handleResetOverrides() {
 			$.post(l10n.ajaxurl, {
 				action: 'aips_reset_component_overrides',
@@ -335,7 +310,7 @@
 			return { key: k, label: l10n.presets[k].label, desc: l10n.presets[k].description };
 		});
 
-		return el('div', { className: 'aips-gutenberg-component-section', style: { padding: '4px 0' } },
+		return el('div', { className: 'aips-gutenberg-component-section' },
 			'slug' === component && el(TextControl, {
 				label: 'Permalink slug',
 				value: currentValue || '',
@@ -350,19 +325,13 @@
 					isBusy: isRegenerating,
 					disabled: isRegenerating,
 					onClick: function () { handleRegenerate(false); }
-				}, isRegenerating ? (l10n.labels.generating || 'Generating...') : ('Re-generate ' + label)),
+					}, isRegenerating ? (l10n.labels.generating || 'Generating...') : 'Re-generate'),
 				el(Button, {
 					variant: 'primary',
 					icon: showPopover ? 'arrow-up-alt2' : 'arrow-down-alt2',
 					title: 'Steering & Directives',
-					onClick: function () { setShowPopover(!showPopover); }
-				}),
-				('title' === component || 'excerpt' === component || 'slug' === component) && el(Button, {
-					variant: 'secondary',
-					isBusy: busyVariants,
-					disabled: busyVariants,
-					onClick: handleGenerateVariants
-				}, '3 Candidates')
+						onClick: function () { setShowPopover(!showPopover); }
+					})
 			),
 
 			// Prompt Steering Popover Box
@@ -408,7 +377,7 @@
 			),
 
 			// Advanced Directives & Model Accordion
-			el('div', { style: { border: '1px solid #dcdcde', borderRadius: '4px', background: '#fdfdfd', marginBottom: '10px' } },
+			el('div', { className: 'aips-advanced-accordion' },
 				el(Button, {
 					variant: 'tertiary',
 					style: { width: '100%', display: 'flex', justifyContent: 'space-between', padding: '6px 8px', fontSize: '12px', fontWeight: '600' },
@@ -453,7 +422,7 @@
 			),
 
 			// Side-by-side diff
-			showDiff && el('div', { className: 'aips-diff-wrapper', style: { border: '1px solid #dcdcde', borderRadius: '4px', background: '#f6f7f7', padding: '8px', marginBottom: '12px' } },
+			showDiff && el('div', { className: 'aips-diff-wrapper' },
 				el('div', { style: { fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', marginBottom: '6px' } }, 'Side-by-Side Comparison'),
 				el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' } },
 					el('div', { style: { background: '#fff', border: '1px solid #dcdcde', borderRadius: '4px', padding: '6px', fontSize: '12px', maxHeight: '140px', overflowY: 'auto' } },
@@ -475,24 +444,6 @@
 						style: { marginLeft: 'auto', marginBottom: 0 }
 					})
 				)
-			),
-
-			// Candidates carousel
-			variants.length > 0 && el('div', { className: 'aips-variant-carousel', style: { marginBottom: '12px' } },
-				variants.map(function (variantText, idx) {
-					return el('div', { key: idx, className: 'aips-variant-card', style: { background: '#f6f7f7', border: '1px solid #dcdcde', borderRadius: '4px', padding: '6px', marginBottom: '6px' } },
-						el('div', { style: { fontSize: '11px', color: '#646970', fontWeight: '600', marginBottom: '4px' } }, 'Candidate ' + (idx + 1)),
-						el('div', { style: { fontSize: '12px', marginBottom: '6px' } }, variantText),
-						el(Button, {
-							variant: 'primary',
-							isSmall: true,
-							onClick: function () {
-								applyToGutenberg(variantText);
-								notify('Applied candidate to ' + label + '!');
-							}
-						}, 'Apply')
-					);
-				})
 			),
 
 			// Revisions drawer toggle

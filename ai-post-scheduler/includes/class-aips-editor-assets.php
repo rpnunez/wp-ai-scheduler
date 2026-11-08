@@ -371,6 +371,7 @@ class AIPS_Editor_Assets {
 				'apply'         => __('Apply to Block', 'ai-post-scheduler'),
 				'replace'       => __('Replace Selection', 'ai-post-scheduler'),
 				'insert'        => __('Insert', 'ai-post-scheduler'),
+				'inserted'      => __('Inserted', 'ai-post-scheduler'),
 				'dismiss'       => __('Dismiss', 'ai-post-scheduler'),
 				'generating'    => __('Generating with AI…', 'ai-post-scheduler'),
 				'weaving'       => __('Weaving internal links…', 'ai-post-scheduler'),
