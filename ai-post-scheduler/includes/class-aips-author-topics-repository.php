@@ -311,6 +311,27 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
+	 * Get an author's oldest pending topics, for re-running auto-approval.
+	 *
+	 * Uncached on purpose: the caller changes these rows straight away.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $limit     Maximum rows to return.
+	 * @return array Array of topic objects (oldest first).
+	 */
+	public function get_pending_for_approval_recheck($author_id, $limit) {
+		return (array) $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT id, author_id, topic_title, topic_prompt, status, score, metadata
+			 FROM {$this->table_name}
+			 WHERE author_id = %d AND status = 'pending'
+			 ORDER BY id ASC
+			 LIMIT %d",
+			absint($author_id),
+			max(1, (int) $limit)
+		));
+	}
+
+	/**
 	 * Update a topic.
 	 *
 	 * @param int $id Topic ID.

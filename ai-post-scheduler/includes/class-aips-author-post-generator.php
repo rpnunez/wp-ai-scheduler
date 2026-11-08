@@ -57,6 +57,56 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	const MAX_POSTS_PER_RUN = 10;
 
 	/**
+	 * Error codes that mean every further request would fail too, so an author
+	 * batch should stop instead of burning its remaining topics.
+	 *
+	 * @var string[]
+	 */
+	const SYSTEMIC_ERROR_CODES = array('rate_limit_exceeded', 'circuit_breaker_open', 'ai_unavailable', 'no_connector');
+
+	/**
+	 * Resolve the underlying cause code of a generation error.
+	 *
+	 * The generator wraps a failed content request in
+	 * `aips_generation_missing_required_content` and keeps the provider's code
+	 * in the error data as `cause_code`.
+	 *
+	 * @param WP_Error $error Generation error.
+	 * @return string Cause code.
+	 */
+	public static function get_generation_error_cause($error) {
+		if (!is_wp_error($error)) {
+			return '';
+		}
+
+		$data = $error->get_error_data();
+		if (is_array($data) && !empty($data['cause_code'])) {
+			return (string) $data['cause_code'];
+		}
+
+		return (string) $error->get_error_code();
+	}
+
+	/**
+	 * Whether a generation error means the rest of the batch would fail too.
+	 *
+	 * @param WP_Error $error Generation error.
+	 * @return bool
+	 */
+	public static function is_systemic_generation_error($error) {
+		/**
+		 * Filters the error codes that stop an author post batch early.
+		 *
+		 * @since 3.7.25
+		 *
+		 * @param string[] $codes Error codes.
+		 */
+		$codes = (array) apply_filters('aips_author_batch_stop_error_codes', self::SYSTEMIC_ERROR_CODES);
+
+		return in_array(self::get_generation_error_cause($error), $codes, true);
+	}
+
+	/**
 	 * @var self|null Singleton instance.
 	 */
 	private static $instance = null;
@@ -353,11 +403,28 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 				);
 			}
 
-			foreach ($topics as $topic) {
+			foreach (array_values($topics) as $topic_index => $topic) {
 				$result = $this->generate_post_from_topic($topic, $author, $creation_method, $trigger_context);
 
 				if (is_wp_error($result)) {
 					$last_error = $result;
+
+					// A rate limit or open circuit breaker fails every later post in
+					// this batch too. Stop here: the failed topic's claim is already
+					// released and the remaining topics stay approved for the next run.
+					if (self::is_systemic_generation_error($result)) {
+						$this->logger->log(
+							sprintf(
+								'Stopping author %d batch after a system-wide error (%s); %d topic(s) left for the next run.',
+								(int) $author->id,
+								self::get_generation_error_cause($result),
+								max(0, count($topics) - $topic_index - 1)
+							),
+							'warning'
+						);
+						break;
+					}
+
 					continue;
 				}
 

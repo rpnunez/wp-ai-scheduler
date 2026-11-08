@@ -2021,8 +2021,10 @@ class AIPS_Generator {
 		}
 
 		$content = $this->generate_content($content_prompt, $content_options, 'content');
+		$content_error = null;
 
 		if (is_wp_error($content)) {
+			$content_error = $content;
 			$this->current_history->record_error($content->get_error_message(), array(
 				'component' => 'content',
 				'prompt'    => $content_prompt,
@@ -2033,13 +2035,26 @@ class AIPS_Generator {
 		$content = $this->normalize_generated_content_for_wordpress($content);
 
 		if ($content === '') {
-			$error_message = __('Post generation failed before a usable Post Content could be created.', 'ai-post-scheduler');
+			// Keep the provider's reason (rate limit, timeout, quota...) on the run, so
+			// History and the returned error say why instead of only that it failed.
+			$cause_code    = $content_error ? (string) $content_error->get_error_code() : 'empty_content';
+			$cause_message = $content_error
+				? (string) $content_error->get_error_message()
+				: __('The AI returned no usable content.', 'ai-post-scheduler');
+
+			$error_message = sprintf(
+				/* translators: %s: underlying reason the content request failed */
+				__('Post generation failed before a usable Post Content could be created. Cause: %s', 'ai-post-scheduler'),
+				$cause_message
+			);
 
 			$error = new WP_Error(
 				'aips_generation_missing_required_content',
 				$error_message,
 				array(
 					'component_statuses' => $component_statuses,
+					'cause_code'         => $cause_code,
+					'cause_message'      => $cause_message,
 				)
 			);
 
@@ -2047,6 +2062,8 @@ class AIPS_Generator {
 				'component'          => 'post_content',
 				'component_statuses' => $component_statuses,
 				'content_length'     => mb_strlen($content),
+				'cause_code'         => $cause_code,
+				'cause_message'      => $cause_message,
 			));
 
 			$this->current_history->record(
