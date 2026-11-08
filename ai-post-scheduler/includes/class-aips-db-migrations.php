@@ -271,14 +271,17 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
-		// migrate_to_3_7_21() converts the AIPS tables to utf8mb4, consolidates
-		// redundant indexes and clears orphaned history_log rows. It reads the
-		// schema install_tables() has just normalised, so it runs after the
-		// Layer-1 apply, and returns false (leaving the version unstamped) if a
-		// charset conversion fails so a partial run always finishes.
-		if ( version_compare( $from_version, '3.7.21', '<' ) && ! $this->migrate_to_3_7_21() ) {
+		// migrate_to_3_7_22() consolidates redundant indexes, strips cached
+		// embeddings, clears the embeddings cache group, and deletes orphaned
+		// history_log rows. 3.7.21 is the author featured-image columns
+		// migration (a separate change), so this is the next patch: a site
+		// already stamped 3.7.21 still runs it, and it stays below the
+		// 3.8.0/3.8.1 campaign migrations. It reads the schema install_tables()
+		// has just normalised, so it runs after the Layer-1 apply. A false
+		// return leaves the version unstamped so the next request retries.
+		if ( version_compare( $from_version, '3.7.22', '<' ) && ! $this->migrate_to_3_7_22() ) {
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
-			$this->logger->log( 'Charset/index consolidation migration failed; database upgrade will retry.', 'error' );
+			$this->logger->log( 'Index consolidation migration failed; database upgrade will retry.', 'error' );
 			return;
 		}
 
@@ -1832,7 +1835,12 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
-	 * Migration for version 3.7.21.
+	 * Migration for version 3.7.22.
+	 *
+	 * Ordered after 3.7.21 (author featured-image columns, owned by a
+	 * different change) and before the 3.8.0/3.8.1 campaign migrations.
+	 * A site already stamped 3.7.21 still runs this gate, and a later
+	 * upgrade through 3.8.x still runs those campaign migrations.
 	 *
 	 * Three storage/efficiency fixes surfaced by a production DB audit:
 	 *   1. Consolidates redundant single-column indexes that are left-prefixes of
@@ -1859,7 +1867,7 @@ class AIPS_DB_Migrations {
 	 *
 	 * @return bool
 	 */
-	private function migrate_to_3_7_21() {
+	private function migrate_to_3_7_22() {
 		$this->consolidate_history_indexes();
 		$this->consolidate_author_topic_indexes();
 		$this->strip_author_topic_metadata_embeddings();
@@ -1893,7 +1901,7 @@ class AIPS_DB_Migrations {
 		) );
 
 		if ( $deleted ) {
-			$this->logger->log( sprintf( 'Migration 3.7.21: Cleared %d decoded-embedding rows from the aips_cache embeddings group.', (int) $deleted ), 'info' );
+			$this->logger->log( sprintf( 'Migration 3.7.22: Cleared %d decoded-embedding rows from the aips_cache embeddings group.', (int) $deleted ), 'info' );
 		}
 	}
 
@@ -2040,7 +2048,7 @@ class AIPS_DB_Migrations {
 		} while ( ! empty( $rows ) );
 
 		if ( $updated ) {
-			$this->logger->log( sprintf( 'Migration 3.7.21: Stripped cached embeddings from %d aips_author_topics metadata rows.', $updated ), 'info' );
+			$this->logger->log( sprintf( 'Migration 3.7.22: Stripped cached embeddings from %d aips_author_topics metadata rows.', $updated ), 'info' );
 		}
 	}
 
@@ -2068,7 +2076,7 @@ class AIPS_DB_Migrations {
 		);
 
 		if ( $deleted ) {
-			$this->logger->log( sprintf( 'Migration 3.7.21: Deleted %d orphaned aips_history_log rows.', (int) $deleted ), 'info' );
+			$this->logger->log( sprintf( 'Migration 3.7.22: Deleted %d orphaned aips_history_log rows.', (int) $deleted ), 'info' );
 		}
 	}
 
