@@ -1234,12 +1234,13 @@ final class AI_Post_Scheduler {
         new AIPS_Admin_Assets();
         new AIPS_Settings();
         new AIPS_Onboarding_Wizard();
-        AIPS_Site_Health_Integration::init();
-        AIPS_Admin_Pointers::init();
-        AIPS_Admin_Heartbeat_Handler::init();
 
         // Toolbar node is visible on WP admin pages as well as the frontend.
         new AIPS_Admin_Bar();
+
+        AIPS_Site_Health_Integration::init();
+        AIPS_Admin_Pointers::init();
+        AIPS_Admin_Heartbeat_Handler::init();
 
         // Notification event handler listens for plugin-level events on admin pages.
         new AIPS_Notifications();
