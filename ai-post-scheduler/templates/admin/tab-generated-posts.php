@@ -166,6 +166,13 @@ if (!defined('ABSPATH')) {
 												<span class="dashicons dashicons-edit" aria-hidden="true"></span>
 												<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 											</button>
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn"
+												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+												title="<?php esc_attr_e('AI Edit — Regenerate post components (title, excerpt, content, image) with AI', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-update" aria-hidden="true"></span>
+												<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
+											</button>
 											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle"
 												aria-haspopup="true"
 												aria-expanded="false"
@@ -180,13 +187,6 @@ if (!defined('ABSPATH')) {
 												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
 												<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
 												<span><?php esc_html_e('Preview', 'ai-post-scheduler'); ?></span>
-											</button>
-											<button type="button" class="aips-row-action-item aips-ai-edit-btn"
-												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
-												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-												title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-admin-customizer" aria-hidden="true"></span>
-												<span><?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?></span>
 											</button>
 											<?php
 												$history_url = AIPS_Admin_Menu_Helper::get_page_url('history', array_filter(array(
