@@ -61,6 +61,10 @@ class Test_AIPS_Pending_Review_List_Table extends WP_UnitTestCase {
 		}
 	}
 
+	public function test_per_page_default_is_twelve() {
+		$this->assertSame(12, AIPS_Pending_Review_List_Table::PER_PAGE_DEFAULT);
+	}
+
 	public function test_columns_are_ordered_with_actions_last() {
 		$table = new AIPS_Pending_Review_List_Table();
 

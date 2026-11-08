@@ -93,6 +93,13 @@ final class AI_Post_Scheduler {
             );
         }
 
+        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_notif_digest_enabled' ) ) {
+            $events['aips_notif_digest_cron'] = array(
+                'schedule' => 'fifteen_minutes',
+                'label'   => __( 'Notification Digest Check', 'ai-post-scheduler' ),
+            );
+        }
+
         return $events;
     }
 
@@ -144,19 +151,35 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function includes() {
-        // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
-        $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        $this->load_class_loaders();
 
-        if ( file_exists( $vendor_autoload ) ) {
+        // Helpers
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-admin-menu-helper.php';
+    }
+
+    /**
+     * Load Composer autoload when it is present, then the AIPS_ fallback autoloader.
+     *
+     * The fallback stays registered even when vendor/autoload.php is missing so
+     * AIPS_ classes still resolve from includes/.
+     *
+     * @param string|null $vendor_autoload Absolute path to composer autoload.php.
+     *                                     Null uses the plugin vendor file.
+     * @return void
+     */
+    private function load_class_loaders( $vendor_autoload = null ) {
+        if ( null === $vendor_autoload ) {
+            $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        }
+
+        // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
+        if ( is_string( $vendor_autoload ) && '' !== $vendor_autoload && file_exists( $vendor_autoload ) ) {
             require_once $vendor_autoload;
         }
 
         // Fallback shim: handles any AIPS_ class that Composer classmap does not resolve.
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
-
-        // Helpers
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-admin-menu-helper.php';
     }
 
     /**
@@ -467,6 +490,11 @@ final class AI_Post_Scheduler {
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
         );
+
+        // Custom cron intervals (fifteen_minutes, every_2_hours, etc.) must be available
+        // in every request context so wp_schedule_event recognizes them. Registered
+        // here, not in the cron-only bootstrapper, so the callback exists once.
+        AIPS_Cron_Bootstrapper::register_intervals();
     }
 
     /**
@@ -515,6 +543,10 @@ final class AI_Post_Scheduler {
         new AIPS_Post_History_UI();
         new AIPS_Internal_Links_Editor_Panel();
 
+        // Native "AI Edit" in the Classic and Block editors.
+        new AIPS_Editor_Assets();
+
+        // Keep the duplicate scan cron event in line with its setting.
         (new AIPS_Duplicate_Group_Service())->ensure_schedule();
         AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();
 

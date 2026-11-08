@@ -28,6 +28,32 @@ final class AIPS_Cron_Bootstrapper {
 	}
 
 	/**
+	 * Register custom cron intervals for every request context.
+	 *
+	 * wp_schedule_event() only accepts a schedule name that cron_schedules
+	 * already knows. Intervals such as fifteen_minutes are used from admin,
+	 * AJAX, and activation, so this filter must not live only in boot().
+	 *
+	 * @return void
+	 */
+	public static function register_intervals() {
+		static $registered = false;
+
+		if ( $registered ) {
+			return;
+		}
+
+		$registered = true;
+
+		add_filter(
+			'cron_schedules',
+			static function ( $schedules ) {
+				return AIPS_Scheduler::instance()->add_cron_intervals( $schedules );
+			}
+		);
+	}
+
+	/**
 	 * Register main generation and author schedulers.
 	 *
 	 * @return void
@@ -42,10 +68,6 @@ final class AIPS_Cron_Bootstrapper {
 		// batches resuming after their cooldown.
 		add_action(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, function($schedule_id) {
 			AIPS_Scheduler::instance()->process_queued_due_schedule((int) $schedule_id);
-		});
-
-		add_filter('cron_schedules', function($schedules) {
-			return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
 		});
 
 		// Batch-queue single events: each call processes one slice of a large schedule.
