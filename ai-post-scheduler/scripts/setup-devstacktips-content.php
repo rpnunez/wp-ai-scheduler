@@ -1,37 +1,47 @@
 <?php
 /**
- * DevStackTips Content Setup Script
+ * DevStackTips Content Setup Script (v3)
  *
- * Creates a complete content strategy for DevStackTips including:
- * - Plugin settings (Content Strategy + Resilience & Limits + Production Settings)
- * - 7 Categories
- * - 8 Voices (writing styles)
- * - 11 Article Structures
- * - 8 Authors
- * - 4 Post Slices
- * - 2 Source Groups with 6 Sources
- * - 11 Templates
- * - 11 Campaigns
- * - 11 Schedules
+ * Configures AIPS for DevStackTips. v3 keeps the live configuration and only
+ * changes the fields it manages, so settings and objects tuned in the admin
+ * are left alone.
  *
- * Plugin Settings Configured:
- * - Default Article Structure, Research Niches, Notifications
- * - Telemetry, Cache System, Topic Similarity Threshold
- * - Log Retention, Default Post Settings, Unsplash Key (placeholder)
+ * What it does:
+ * 1. Seed (create-only): categories, voices, prompt sections, article structures,
+ *    post slices, source groups and sources, campaigns, authors, templates and
+ *    schedules that do not exist yet. Existing objects are never overwritten
+ *    by seed data. Settings from the seed are written only when missing.
+ * 2. v3 managed fields on existing objects:
+ *    - Templates: voice, AI slug + slug prompt, per-template title prompt,
+ *      featured AI image (house style, no Unsplash), source groups.
+ *    - Schedules: an article structure per schedule.
+ *    - Authors: AI slug, featured AI image, category when missing; for the
+ *      v2 authors also score-based topic approval and a daily 1-post cadence.
+ *    - In-content AI images on tutorial, backend, architecture, refactoring
+ *      and testing templates.
+ *    - Settings: allowed image sources, image limit, AI assistance guidance.
+ * 3. Re-checks the v2 authors' stalled pending topics against the new policy.
  *
- * Note: After running, manually configure:
- * - Notification email address in Settings > Notifications
- * - Unsplash Access Key in Settings > Featured Images (if using Unsplash)
+ * Usage (WP-CLI only):
+ *   Dry run (default, writes nothing, prints every change):
+ *     wp eval-file wp-content/plugins/ai-post-scheduler/scripts/setup-devstacktips-content.php
+ *   Apply (writes a JSON backup first):
+ *     wp eval-file .../setup-devstacktips-content.php apply
+ *   Apply and save template posts as drafts during rollout:
+ *     wp eval-file .../setup-devstacktips-content.php apply drafts
+ *   Switch template posts back to publish after the review week:
+ *     wp eval-file .../setup-devstacktips-content.php apply publish
+ *   Restore from a backup written by apply:
+ *     wp eval-file .../setup-devstacktips-content.php rollback /path/to/backup.json
  *
- * Usage:
- *   CLI only: wp eval-file wp-content/plugins/ai-post-scheduler/scripts/setup-devstacktips-content.php
- *   To rollback (CLI): wp eval-file wp-content/plugins/ai-post-scheduler/scripts/setup-devstacktips-content.php rollback
+ * Options:
+ *   backup-dir=/path   Where apply writes backups. Default: ~/aips-backups
+ *                      (system temp when HOME is not writable). Never inside
+ *                      the WordPress directory.
  *
- * Rollback warning:
- *   Rollback deletes seeded objects by configured names/slugs. Run a database
- *   backup first; rollback is not guaranteed to preserve pre-existing data
- *   that used the same names/slugs as seeded categories, source groups,
- *   sections, voices, slices, schedules, templates, campaigns, or sources.
+ * Rollback restores every field, setting and image configuration v3 changed
+ * and deletes the objects it created. It does not undo topic approvals made by
+ * the pending-topic re-check (approved topics can be bulk-rejected in the admin).
  *
  * @package AI_Post_Scheduler
  */
@@ -42,20 +52,36 @@ if (!defined('ABSPATH')) {
 
 /**
  * Class AIPS_DevStackTips_Setup
- * 
  */
 class AIPS_DevStackTips_Setup {
-	/**
-	 * Strategy profile name
-	 */
-	private const STRATEGY_PROFILE = 'devstacktips-production-v2';
 
 	/**
-	 * Distribution configuration defines the overall content distribution strategy, including:
-	 * - Primary distribution period (e.g. weekly)
-	 * - Target post counts for different periods (daily, weekly, monthly)
-	 * - Campaign shares (relative weights for how many posts each campaign should receive)
-	 * - Author shares (relative weights for how many posts each author should receive)
+	 * Strategy profile name, stored in backups.
+	 */
+	private const STRATEGY_PROFILE = 'devstacktips-production-v3';
+
+	/**
+	 * Shared visual style for every generated image.
+	 */
+	private const HOUSE_STYLE = 'Flat vector technical illustration, dark navy background with blue and teal accents, clean geometric shapes, subtle grid, professional developer aesthetic, no text, no letters, no logos, 16:9';
+
+	/**
+	 * Slot (site time) of the first v2 author's daily post run; later authors follow every AUTHOR_SLOT_GAP minutes.
+	 */
+	private const AUTHOR_FIRST_SLOT = '06:00';
+
+	/**
+	 * Minutes between staggered author post runs.
+	 */
+	private const AUTHOR_SLOT_GAP = 25;
+
+	/**
+	 * Pending topics the apply step re-checks per author.
+	 */
+	private const TOPIC_RECHECK_LIMIT = 200;
+
+	/**
+	 * Distribution configuration used by the seed data (campaign and author shares).
 	 */
 	private const DISTRIBUTION_CONFIG = array(
 		'distribution_period' => 'weekly',
@@ -89,122 +115,1723 @@ class AIPS_DevStackTips_Setup {
 		),
 	);
 
-	/**
-	 * Tracks items created or updated during the seeding run, keyed by entity type.
-	 *
-	 * @var array
-	 */
-	private $created_items = array();
+	/** @var string 'dry-run', 'apply' or 'rollback'. */
+	private $mode = 'dry-run';
 
-	/**
-	 * Accumulates error messages encountered during the seeding or rollback run.
-	 *
-	 * @var array
-	 */
-	private $errors = array();
+	/** @var string '', 'draft' or 'publish': template post status to set. */
+	private $template_status = '';
 
-	/**
-	 * Holds all resolved seed data arrays, keyed by entity type (e.g. 'categories', 'voices').
-	 *
-	 * @var array
-	 */
+	/** @var string Backup file to restore (rollback mode). */
+	private $rollback_file = '';
+
+	/** @var string Directory for backups. */
+	private $backup_dir = '';
+
+	/** @var string Backup file written by this apply run. */
+	private $backup_file = '';
+
+	/** @var array Seed data keyed by entity type. */
 	private $object_data = array();
 
-	/**
-	 * Whether the instance is operating in rollback mode rather than seeding mode.
-	 *
-	 * @var bool
-	 */
-	private $rollback_mode = false;
+	/** @var array Name => ID maps of live objects, keyed by entity type. */
+	private $ids = array(
+		'categories'    => array(),
+		'voices'        => array(),
+		'structures'    => array(),
+		'source_groups' => array(),
+		'campaigns'     => array(),
+		'templates'     => array(),
+		'authors'       => array(),
+		'schedules'     => array(),
+	);
+
+	/** @var array Planned or applied changes. */
+	private $changes = array();
+
+	/** @var array Objects planned or created. */
+	private $creations = array();
+
+	/** @var array Error messages. */
+	private $errors = array();
+
+	/** @var array Warning messages. */
+	private $warnings = array();
+
+	/** @var array Backup payload. */
+	private $backup = array();
 
 	/**
-	 * Initializes the setup instance and pre-builds all seed data.
-	 *
-	 * @param bool $rollback Pass true to run in rollback mode instead of seeding mode.
+	 * @param array $args Positional WP-CLI arguments.
 	 */
-	public function __construct($rollback = false) {
-		$this->rollback_mode = $rollback;
-		$this->build_seeding_object_data();
+	public function __construct(array $args = array()) {
+		$this->parse_args($args);
 	}
 
 	/**
-	 * Executes the full seeding or rollback workflow depending on the mode set at construction.
+	 * Whether this run writes to the database.
 	 *
+	 * @return bool
+	 */
+	private function is_apply() {
+		return 'apply' === $this->mode;
+	}
+
+	/**
+	 * Parse positional arguments.
+	 *
+	 * @param array $args
 	 * @return void
 	 */
+	private function parse_args(array $args) {
+		foreach ($args as $index => $arg) {
+			$arg = (string) $arg;
+
+			if ('apply' === $arg) {
+				$this->mode = 'apply';
+			} elseif ('rollback' === $arg) {
+				$this->mode = 'rollback';
+				$this->rollback_file = isset($args[$index + 1]) ? (string) $args[$index + 1] : '';
+			} elseif ('drafts' === $arg) {
+				$this->template_status = 'draft';
+			} elseif ('publish' === $arg) {
+				$this->template_status = 'publish';
+			} elseif (0 === strpos($arg, 'backup-dir=')) {
+				$this->backup_dir = substr($arg, strlen('backup-dir='));
+			}
+		}
+
+		if ('' === $this->backup_dir) {
+			$home = getenv('HOME');
+			$this->backup_dir = ($home && is_dir($home) && is_writable($home))
+				? rtrim($home, '/\\') . DIRECTORY_SEPARATOR . 'aips-backups'
+				: sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'aips-backups';
+		}
+	}
+
+	/**
+	 * Run the selected mode.
+	 *
+	 * @return bool True when the run finished without errors.
+	 */
 	public function run() {
-		if ($this->rollback_mode) {
-			$this->rollback();
+		if ('rollback' === $this->mode) {
+			return $this->rollback();
+		}
+
+		$this->line('=========================================');
+		$this->line('DevStackTips Content Setup (' . self::STRATEGY_PROFILE . ')');
+		$this->line('Mode: ' . ($this->is_apply() ? 'APPLY (writes changes)' : 'DRY RUN (no changes are written)'));
+		$this->line('=========================================');
+
+		$this->object_data = $this->build_seeding_object_data();
+
+		if ($this->is_apply() && !$this->start_backup()) {
+			return false;
+		}
+
+		$this->load_live_ids();
+
+		$this->seed_categories();
+		$this->seed_voices();
+		$this->seed_structures();
+		$this->seed_post_slices();
+		$this->seed_source_groups_and_sources();
+		$this->seed_campaigns();
+		$this->seed_authors();
+		$this->seed_templates();
+		$this->seed_schedules();
+		$this->seed_settings_if_missing();
+
+		$this->apply_template_fields();
+		$this->apply_schedule_fields();
+		$this->apply_author_fields();
+		$this->apply_post_images();
+		$this->apply_v3_settings();
+		$this->recheck_pending_topics();
+
+		if ($this->is_apply()) {
+			$this->write_backup();
+		}
+
+		$this->print_summary();
+
+		return empty($this->errors);
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Output helpers                                                      */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Print one line.
+	 *
+	 * @param string $text
+	 * @return void
+	 */
+	private function line($text = '') {
+		echo $text . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output.
+	}
+
+	/**
+	 * Print a section heading.
+	 *
+	 * @param string $title
+	 * @return void
+	 */
+	private function heading($title) {
+		$this->line('');
+		$this->line('--- ' . $title . ' ---');
+	}
+
+	/**
+	 * Record an error.
+	 *
+	 * @param string $message
+	 * @return void
+	 */
+	private function error($message) {
+		$this->errors[] = $message;
+		$this->line('[ERR] ' . $message);
+	}
+
+	/**
+	 * Record a warning.
+	 *
+	 * @param string $message
+	 * @return void
+	 */
+	private function warn($message) {
+		$this->warnings[] = $message;
+		$this->line('[WARN] ' . $message);
+	}
+
+	/**
+	 * Short printable form of a value.
+	 *
+	 * @param mixed $value
+	 * @return string
+	 */
+	private function short($value) {
+		if (null === $value) {
+			return '(null)';
+		}
+		if (is_bool($value)) {
+			return $value ? 'true' : 'false';
+		}
+		if (is_array($value) || is_object($value)) {
+			$value = wp_json_encode($value);
+		}
+		$value = str_replace(array("\r", "\n"), ' ', (string) $value);
+		if ('' === $value) {
+			return '(empty)';
+		}
+
+		return strlen($value) > 90 ? substr($value, 0, 87) . '...' : $value;
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Comparison helpers                                                  */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Normalize a value for comparison (null/'' equal, JSON arrays by content, numbers as strings).
+	 *
+	 * @param mixed $value
+	 * @return string
+	 */
+	private function normalize($value) {
+		if (null === $value || false === $value) {
+			return '';
+		}
+		if (true === $value) {
+			return '1';
+		}
+		if (is_string($value)) {
+			$trimmed = trim($value);
+			if ('' !== $trimmed && ('[' === $trimmed[0] || '{' === $trimmed[0])) {
+				$decoded = json_decode($trimmed, true);
+				if (is_array($decoded)) {
+					$value = $decoded;
+				}
+			}
+		}
+		if (is_array($value)) {
+			$value = array_map(
+				function ($item) {
+					return is_scalar($item) ? (string) $item : $item;
+				},
+				$value
+			);
+			return (string) wp_json_encode($value);
+		}
+		if (is_float($value) || is_int($value)) {
+			return (string) (0 + $value);
+		}
+		if (is_numeric($value)) {
+			return (string) (0 + $value);
+		}
+
+		return (string) $value;
+	}
+
+	/**
+	 * Whether two values are equal after normalization.
+	 *
+	 * @param mixed $a
+	 * @param mixed $b
+	 * @return bool
+	 */
+	private function same($a, $b) {
+		return $this->normalize($a) === $this->normalize($b);
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Backup                                                              */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Create the backup file before the first write.
+	 *
+	 * @return bool
+	 */
+	private function start_backup() {
+		if (!wp_mkdir_p($this->backup_dir) || !is_writable($this->backup_dir)) {
+			$this->error('Backup directory is not writable: ' . $this->backup_dir . ' (pass backup-dir=/path).');
+			return false;
+		}
+
+		if ($this->is_inside_wordpress($this->backup_dir)) {
+			$this->error('Refusing to write backups inside the WordPress directory: ' . $this->backup_dir . ' (pass backup-dir=/path outside it).');
+			return false;
+		}
+
+		$this->backup = array(
+			'profile'     => self::STRATEGY_PROFILE,
+			'site_url'    => home_url(),
+			'created_utc' => gmdate('c'),
+			'rows'        => array(),
+			'options'     => array(),
+			'post_images' => array(),
+			'created'     => array(),
+		);
+
+		$this->backup_file = rtrim($this->backup_dir, '/\\') . DIRECTORY_SEPARATOR . 'devstacktips-v3-backup-' . gmdate('Ymd-His') . '.json';
+
+		if (!$this->write_backup()) {
+			$this->error('Could not write backup file: ' . $this->backup_file);
+			return false;
+		}
+
+		$this->line('Backup file: ' . $this->backup_file);
+
+		return true;
+	}
+
+	/**
+	 * Write the backup payload to disk.
+	 *
+	 * @return bool
+	 */
+	private function write_backup() {
+		if ('' === $this->backup_file) {
+			return false;
+		}
+
+		$json = wp_json_encode($this->backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+		return false !== $json && false !== file_put_contents($this->backup_file, $json . "\n");
+	}
+
+	/**
+	 * Remember a field's value before the first change.
+	 *
+	 * @param string $entity
+	 * @param int    $id
+	 * @param string $field
+	 * @param mixed  $old
+	 * @return void
+	 */
+	private function backup_field($entity, $id, $field, $old) {
+		$key = (string) (int) $id;
+		if (!isset($this->backup['rows'][$entity][$key]) || !array_key_exists($field, $this->backup['rows'][$entity][$key])) {
+			$this->backup['rows'][$entity][$key][$field] = $old;
+		}
+	}
+
+	/**
+	 * Remember an option's value before the first change.
+	 *
+	 * @param string $name
+	 * @return void
+	 */
+	private function backup_option($name) {
+		if (isset($this->backup['options'][$name])) {
 			return;
 		}
 
-		echo "=========================================
-DevStackTips Content Setup
-=========================================
-";
-		echo "Creating complete content production system...
-";
-		echo "Applying strategy profile: " . esc_html(self::STRATEGY_PROFILE) . "
-";
+		$missing = new stdClass();
+		$value = get_option($name, $missing);
 
-		// Step 1: Create Categories
-		$this->create_categories();
-
-		// Step 2: Create Voices
-		$this->create_voices();
-
-		// Step 3: Create Article Structures (with sections)
-		$this->create_article_structures();
-
-		// Step 4: Configure Plugin Settings (needs category & structure IDs)
-		$this->configure_settings();
-
-		// Step 5: Create Authors
-		$this->create_authors();
-
-		// Step 6: Create Post Slices
-		$this->create_post_slices();
-
-		// Step 7: Create Source Groups and Sources
-		$this->create_source_groups();
-
-		// Step 8: Create Campaigns
-		$this->create_campaigns();
-
-		// Step 9: Create Templates (campaign-bound)
-		$this->create_templates();
-
-		// Step 10: Create Schedules
-		$this->create_schedules();
-
-		// Report Results
-		$this->print_summary();
-
+		$this->backup['options'][$name] = array(
+			'existed' => ($value !== $missing),
+			'value'   => ($value !== $missing) ? $value : null,
+		);
 	}
 
+	/**
+	 * Record a created object (for rollback).
+	 *
+	 * @param string $entity
+	 * @param int    $id
+	 * @param string $name
+	 * @return void
+	 */
+	private function record_created($entity, $id, $name) {
+		$this->creations[] = array('entity' => $entity, 'id' => (int) $id, 'name' => $name);
 
+		if ($this->is_apply()) {
+			$this->backup['created'][] = array('entity' => $entity, 'id' => (int) $id, 'name' => $name);
+			$this->write_backup();
+		}
+	}
 
 	/**
-	 * Populates $object_data with all resolved seed data arrays for every entity type.
+	 * Record a planned creation in dry-run mode.
+	 *
+	 * @param string $entity
+	 * @param string $name
+	 * @return void
+	 */
+	private function plan_create($entity, $name) {
+		$this->creations[] = array('entity' => $entity, 'id' => 0, 'name' => $name);
+		$this->line("[PLAN] Would create {$entity}: {$name}");
+	}
+
+	/**
+	 * Whether a directory is inside the WordPress install.
+	 *
+	 * @param string $dir
+	 * @return bool
+	 */
+	private function is_inside_wordpress($dir) {
+		$real_dir = realpath($dir);
+		$real_root = realpath(ABSPATH);
+
+		if (!$real_dir || !$real_root) {
+			return false;
+		}
+
+		$real_dir = rtrim(str_replace('\\', '/', $real_dir), '/') . '/';
+		$real_root = rtrim(str_replace('\\', '/', $real_root), '/') . '/';
+
+		return 0 === strpos($real_dir, $real_root);
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Live lookups                                                        */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Build name => ID maps from the live database.
 	 *
 	 * @return void
 	 */
+	private function load_live_ids() {
+		foreach ($this->object_data['categories'] as $category) {
+			$term = get_term_by('slug', $category['slug'], 'category');
+			if ($term && !is_wp_error($term)) {
+				$this->ids['categories'][$category['name']] = (int) $term->term_id;
+			}
+		}
+
+		foreach ((new AIPS_Voices_Repository())->get_all() as $row) {
+			$this->ids['voices'][(string) $row->name] = (int) $row->id;
+		}
+
+		foreach ((new AIPS_Article_Structure_Repository())->get_all() as $row) {
+			$this->ids['structures'][(string) $row->name] = (int) $row->id;
+		}
+
+		foreach ($this->get_all_source_group_seeds() as $group) {
+			$term = get_term_by('slug', $group['slug'], 'aips_source_group');
+			if ($term && !is_wp_error($term)) {
+				$this->ids['source_groups'][$group['slug']] = (int) $term->term_id;
+			}
+		}
+
+		foreach ((new AIPS_Campaigns_Repository())->get_campaigns(null, null) as $row) {
+			$this->ids['campaigns'][(string) $row->name] = (int) $row->id;
+		}
+
+		foreach ((new AIPS_Template_Repository())->get_all() as $row) {
+			$this->ids['templates'][(string) $row->name] = (int) $row->id;
+		}
+
+		foreach ((new AIPS_Authors_Repository())->get_all() as $row) {
+			$this->ids['authors'][(string) $row->name] = (int) $row->id;
+		}
+
+		foreach ((new AIPS_Schedule_Repository())->get_all(false) as $row) {
+			if (!empty($row->title)) {
+				$this->ids['schedules'][(string) $row->title] = (int) $row->id;
+			}
+		}
+	}
+
+	/**
+	 * Category term ID by seed name, or by live category name.
+	 *
+	 * @param string $name
+	 * @return int
+	 */
+	private function category_id($name) {
+		if (isset($this->ids['categories'][$name])) {
+			return (int) $this->ids['categories'][$name];
+		}
+
+		$id = (int) get_cat_ID($name);
+		if ($id > 0) {
+			$this->ids['categories'][$name] = $id;
+		}
+
+		return $id;
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Seed: create-only                                                   */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Create missing categories.
+	 *
+	 * @return void
+	 */
+	private function seed_categories() {
+		$this->heading('Seed: categories (create missing only)');
+
+		foreach ($this->object_data['categories'] as $category) {
+			if (isset($this->ids['categories'][$category['name']])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('category', $category['name']);
+				continue;
+			}
+
+			$result = wp_insert_term($category['name'], 'category', array(
+				'slug'        => $category['slug'],
+				'description' => $category['description'],
+			));
+
+			if (is_wp_error($result)) {
+				$this->error('Failed to create category ' . $category['name'] . ': ' . $result->get_error_message());
+				continue;
+			}
+
+			$this->ids['categories'][$category['name']] = (int) $result['term_id'];
+			$this->record_created('category', (int) $result['term_id'], $category['name']);
+			$this->line('[OK] Created category: ' . $category['name']);
+		}
+	}
+
+	/**
+	 * Create missing voices.
+	 *
+	 * @return void
+	 */
+	private function seed_voices() {
+		$this->heading('Seed: voices (create missing only)');
+		$repo = new AIPS_Voices_Repository();
+
+		foreach ($this->object_data['voices'] as $voice) {
+			if (isset($this->ids['voices'][$voice['name']])) {
+				continue;
+			}
+
+			if (isset($voice['content_instructions']) && is_array($voice['content_instructions'])) {
+				$voice['content_instructions'] = implode("\n", $voice['content_instructions']);
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('voice', $voice['name']);
+				continue;
+			}
+
+			$id = $repo->create($voice);
+			if (!$id) {
+				$this->error('Failed to create voice: ' . $voice['name']);
+				continue;
+			}
+
+			$this->ids['voices'][$voice['name']] = (int) $id;
+			$this->record_created('voice', (int) $id, $voice['name']);
+			$this->line('[OK] Created voice: ' . $voice['name']);
+		}
+	}
+
+	/**
+	 * Create missing prompt sections and article structures.
+	 *
+	 * @return void
+	 */
+	private function seed_structures() {
+		$this->heading('Seed: prompt sections and article structures (create missing only)');
+		$structure_repo = new AIPS_Article_Structure_Repository();
+		$section_repo = new AIPS_Prompt_Section_Repository();
+
+		foreach ($this->object_data['sections'] as $section) {
+			if ($section_repo->get_by_key($section['section_key'])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('prompt section', $section['name']);
+				continue;
+			}
+
+			$id = $section_repo->create($section);
+			if ($id) {
+				$this->record_created('prompt_section', (int) $id, $section['name']);
+				$this->line('[OK] Created prompt section: ' . $section['name']);
+			} else {
+				$this->error('Failed to create prompt section: ' . $section['name']);
+			}
+		}
+
+		foreach ($this->object_data['structures'] as $structure) {
+			if (isset($this->ids['structures'][$structure['name']])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('article structure', $structure['name']);
+				continue;
+			}
+
+			$id = $structure_repo->create(array(
+				'name'           => $structure['name'],
+				'description'    => $structure['description'],
+				'structure_data' => wp_json_encode(array(
+					'sections'        => $structure['sections'],
+					'prompt_template' => '',
+				)),
+				'is_active'      => 1,
+			));
+
+			if (!$id) {
+				$this->error('Failed to create article structure: ' . $structure['name']);
+				continue;
+			}
+
+			$this->ids['structures'][$structure['name']] = (int) $id;
+			$this->record_created('structure', (int) $id, $structure['name']);
+			$this->line('[OK] Created article structure: ' . $structure['name']);
+		}
+	}
+
+	/**
+	 * Create missing post slices.
+	 *
+	 * @return void
+	 */
+	private function seed_post_slices() {
+		$this->heading('Seed: post slices (create missing only)');
+		$repo = new AIPS_Post_Slices_Repository();
+		$existing = array();
+
+		foreach ($repo->get_all(false) as $row) {
+			$existing[(string) $row->name] = (int) $row->id;
+		}
+
+		$now = AIPS_DateTime::now()->timestamp();
+
+		foreach ($this->object_data['post_slices'] as $slice) {
+			if (isset($existing[$slice['name']])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('post slice', $slice['name']);
+				continue;
+			}
+
+			$id = $repo->create(array(
+				'name'        => $slice['name'],
+				'description' => $slice['description'],
+				'sort_order'  => $slice['sort_order'],
+				'is_active'   => $slice['is_active'],
+				'created_at'  => $now,
+				'updated_at'  => $now,
+			));
+
+			if ($id) {
+				$this->record_created('post_slice', (int) $id, $slice['name']);
+				$this->line('[OK] Created post slice: ' . $slice['name']);
+			} else {
+				$this->error('Failed to create post slice: ' . $slice['name']);
+			}
+		}
+	}
+
+	/**
+	 * Create missing source groups (v2 + v3) and their sources.
+	 *
+	 * @return void
+	 */
+	private function seed_source_groups_and_sources() {
+		$this->heading('Seed: source groups and sources (create missing only)');
+		$sources_repo = new AIPS_Sources_Repository();
+
+		foreach ($this->get_all_source_group_seeds() as $group) {
+			if (isset($this->ids['source_groups'][$group['slug']])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('source group', $group['name']);
+				continue;
+			}
+
+			$result = wp_insert_term($group['name'], 'aips_source_group', array(
+				'slug'        => $group['slug'],
+				'description' => $group['description'],
+			));
+
+			if (is_wp_error($result)) {
+				$this->error('Failed to create source group ' . $group['name'] . ': ' . $result->get_error_message());
+				continue;
+			}
+
+			$this->ids['source_groups'][$group['slug']] = (int) $result['term_id'];
+			$this->record_created('source_group', (int) $result['term_id'], $group['name']);
+			$this->line('[OK] Created source group: ' . $group['name']);
+		}
+
+		foreach ($this->get_all_source_seeds() as $source) {
+			if ($sources_repo->url_exists($source['url'])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('source', $source['name'] . ' (' . $source['url'] . ')');
+				continue;
+			}
+
+			if (!isset($this->ids['source_groups'][$source['group_slug']])) {
+				$this->warn('Skipped source ' . $source['name'] . ': source group ' . $source['group_slug'] . ' is missing.');
+				continue;
+			}
+
+			$id = $sources_repo->create(array(
+				'url'       => $source['url'],
+				'label'     => $source['name'],
+				'is_active' => $source['is_active'],
+			));
+
+			if (!$id) {
+				$this->error('Failed to create source: ' . $source['name']);
+				continue;
+			}
+
+			$sources_repo->set_source_terms($id, array((int) $this->ids['source_groups'][$source['group_slug']]));
+			$sources_repo->set_fetch_schedule($id, 'daily');
+			$this->record_created('source', (int) $id, $source['name']);
+			$this->line('[OK] Created source: ' . $source['name']);
+		}
+	}
+
+	/**
+	 * Create missing campaigns.
+	 *
+	 * @return void
+	 */
+	private function seed_campaigns() {
+		$this->heading('Seed: campaigns (create missing only)');
+		$repo = new AIPS_Campaigns_Repository();
+
+		foreach ($this->object_data['campaigns'] as $campaign) {
+			if (isset($this->ids['campaigns'][$campaign['name']])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('campaign', $campaign['name']);
+				continue;
+			}
+
+			$id = $repo->create_campaign(array(
+				'name'          => $campaign['name'],
+				'content_goal'  => $campaign['content_goal'],
+				'campaign_mode' => 'template',
+				'is_active'     => 1,
+				'is_archived'   => 0,
+			));
+
+			if (!$id || is_wp_error($id)) {
+				$this->error('Failed to create campaign: ' . $campaign['name']);
+				continue;
+			}
+
+			$this->ids['campaigns'][$campaign['name']] = (int) $id;
+			$this->record_created('campaign', (int) $id, $campaign['name']);
+			$this->line('[OK] Created campaign: ' . $campaign['name']);
+		}
+	}
+
+	/**
+	 * Create missing authors from the v2 seed.
+	 *
+	 * @return void
+	 */
+	private function seed_authors() {
+		$this->heading('Seed: authors (create missing only)');
+		$repo = new AIPS_Authors_Repository();
+		$interval = AIPS_Interval_Calculator::instance();
+		$now = AIPS_DateTime::now()->timestamp();
+		$post_author = $this->resolve_post_author();
+		$index = 0;
+
+		foreach ($this->object_data['authors'] as $author) {
+			$index++;
+			if (isset($this->ids['authors'][$author['name']])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('author', $author['name']);
+				continue;
+			}
+
+			$group_ids = array();
+			if (!empty($author['source_group_name'])) {
+				foreach ($this->get_all_source_group_seeds() as $group) {
+					if ($group['name'] === $author['source_group_name'] && isset($this->ids['source_groups'][$group['slug']])) {
+						$group_ids[] = (int) $this->ids['source_groups'][$group['slug']];
+					}
+				}
+			}
+
+			$stagger = $index * 600;
+			$id = $repo->create(array(
+				'name'                               => $author['name'],
+				'field_niche'                        => $author['field_niche'],
+				'keywords'                           => $author['keywords'],
+				'description'                        => $author['description'],
+				'details'                            => $author['details'],
+				'article_structure_id'               => isset($this->ids['structures'][$author['structure_name']]) ? $this->ids['structures'][$author['structure_name']] : null,
+				'voice_tone'                         => $author['voice_tone'],
+				'writing_style'                      => $author['writing_style'],
+				'target_audience'                    => $author['target_audience'],
+				'expertise_level'                    => $author['expertise_level'],
+				'content_goals'                      => $author['content_goals'],
+				'excluded_topics'                    => $author['excluded_topics'],
+				'preferred_content_length'           => $author['preferred_content_length'],
+				'language'                           => 'en',
+				'post_status'                        => 'draft',
+				'post_category'                      => $this->category_id($author['category_name']),
+				'post_author'                        => $post_author,
+				'featured_image_source'              => 'ai_prompt',
+				'topic_generation_frequency'         => $author['topic_generation_frequency'],
+				'topic_generation_quantity'          => $author['topic_generation_quantity'],
+				'topic_generation_next_run'          => $interval->calculate_next_run($author['topic_generation_frequency'], $now + $stagger),
+				'topic_generation_last_run'          => 0,
+				'topic_generation_is_active'         => 1,
+				'post_generation_frequency'          => $author['post_generation_frequency'],
+				'post_generation_next_run'           => $interval->calculate_next_run($author['post_generation_frequency'], $now + $stagger + 300),
+				'post_generation_last_run'           => 0,
+				'post_generation_is_active'          => 1,
+				'max_posts_per_topic'                => $author['max_posts_per_topic'],
+				'manual_post_generation_quantity'    => $author['manual_post_generation_quantity'],
+				'scheduled_post_generation_quantity' => $author['scheduled_post_generation_quantity'],
+				'include_sources'                    => !empty($group_ids) ? 1 : 0,
+				'source_group_ids'                   => wp_json_encode($group_ids),
+				'is_active'                          => $author['is_active'],
+				'created_at'                         => $now,
+				'updated_at'                         => $now,
+			));
+
+			if (!$id) {
+				$this->error('Failed to create author: ' . $author['name']);
+				continue;
+			}
+
+			$this->ids['authors'][$author['name']] = (int) $id;
+			$this->record_created('author', (int) $id, $author['name']);
+			$this->line('[OK] Created author: ' . $author['name']);
+		}
+	}
+
+	/**
+	 * Create missing templates from the v2 seed (v3 fields are applied afterwards).
+	 *
+	 * @return void
+	 */
+	private function seed_templates() {
+		$this->heading('Seed: templates (create missing only)');
+		$repo = new AIPS_Template_Repository();
+		$post_author = $this->resolve_post_author();
+
+		foreach ($this->object_data['templates'] as $template) {
+			if (isset($this->ids['templates'][$template['name']])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('template', $template['name']);
+				continue;
+			}
+
+			$campaign_id = isset($this->ids['campaigns'][$template['campaign_name']]) ? $this->ids['campaigns'][$template['campaign_name']] : 0;
+			if (!$campaign_id) {
+				$this->error('Campaign not found for template ' . $template['name'] . ' (' . $template['campaign_name'] . ')');
+				continue;
+			}
+
+			$category_ids = array();
+			foreach ((array) $template['categories'] as $category_name) {
+				$category_id = $this->category_id($category_name);
+				if ($category_id) {
+					$category_ids[] = $category_id;
+				}
+			}
+
+			$id = $repo->create(array(
+				'name'                    => $template['name'],
+				'prompt_template'         => $template['prompt_template'],
+				'title_prompt'            => 'Generate a concise, specific, SEO-friendly technical post title for this topic.',
+				'voice_id'                => isset($this->ids['voices'][$template['voice_name']]) ? $this->ids['voices'][$template['voice_name']] : null,
+				'post_quantity'           => isset($template['post_quantity']) ? $template['post_quantity'] : 1,
+				'post_status'             => 'draft',
+				'post_type'               => 'post',
+				'post_category'           => !empty($category_ids) ? $category_ids[0] : 0,
+				'post_tags'               => isset($template['post_tags']) ? $template['post_tags'] : '',
+				'post_author'             => $post_author,
+				'generate_featured_image' => 0,
+				'featured_image_source'   => 'ai_prompt',
+				'image_prompt'            => isset($template['image_prompt']) ? $template['image_prompt'] : '',
+				'include_sources'         => 0,
+				'source_group_ids'        => wp_json_encode(array()),
+				'campaign_id'             => $campaign_id,
+				'is_active'               => 1,
+			));
+
+			if (!$id) {
+				$this->error('Failed to create template: ' . $template['name']);
+				continue;
+			}
+
+			$this->ids['templates'][$template['name']] = (int) $id;
+			$this->record_created('template', (int) $id, $template['name']);
+			$this->line('[OK] Created template: ' . $template['name']);
+		}
+	}
+
+	/**
+	 * Create missing schedules from the v2 seed.
+	 *
+	 * @return void
+	 */
+	private function seed_schedules() {
+		$this->heading('Seed: schedules (create missing only)');
+		$repo = new AIPS_Schedule_Repository();
+
+		foreach ($this->object_data['schedules'] as $schedule) {
+			if (isset($this->ids['schedules'][$schedule['title']])) {
+				continue;
+			}
+
+			if (!$this->is_apply()) {
+				$this->plan_create('schedule', $schedule['title']);
+				continue;
+			}
+
+			if (!isset($this->ids['templates'][$schedule['template_name']])) {
+				$this->error('Template not found for schedule ' . $schedule['title']);
+				continue;
+			}
+
+			$id = $repo->create(array(
+				'template_id'   => $this->ids['templates'][$schedule['template_name']],
+				'title'         => $schedule['title'],
+				'frequency'     => $schedule['frequency'],
+				'next_run'      => $this->next_weekday_timestamp((int) $schedule['weekday'], $schedule['start_time']),
+				'last_run'      => 0,
+				'is_active'     => $schedule['is_active'],
+				'status'        => !empty($schedule['is_active']) ? 'active' : 'inactive',
+				'schedule_type' => 'post_generation',
+			));
+
+			if (!$id) {
+				$this->error('Failed to create schedule: ' . $schedule['title']);
+				continue;
+			}
+
+			$this->ids['schedules'][$schedule['title']] = (int) $id;
+			$this->record_created('schedule', (int) $id, $schedule['title']);
+			$this->line('[OK] Created schedule: ' . $schedule['title']);
+		}
+	}
+
+	/**
+	 * Write v2 seed settings that are not stored yet. Stored values are never changed here.
+	 *
+	 * @return void
+	 */
+	private function seed_settings_if_missing() {
+		$this->heading('Seed: settings (only options that are not stored yet)');
+		$missing = new stdClass();
+
+		foreach ($this->object_data['settings'] as $section) {
+			if (empty($section['options']) || !is_array($section['options'])) {
+				continue;
+			}
+
+			foreach ($section['options'] as $entry) {
+				$name = $entry['option_name'];
+				if (get_option($name, $missing) !== $missing) {
+					continue;
+				}
+
+				$value = $this->resolve_seed_setting_value($entry);
+				if (null === $value) {
+					continue;
+				}
+
+				$this->set_option($name, $value, 'seed');
+			}
+		}
+	}
+
+	/**
+	 * Resolve a v2 settings entry (static value, structure or category reference).
+	 *
+	 * @param array $entry
+	 * @return mixed|null
+	 */
+	private function resolve_seed_setting_value(array $entry) {
+		if (array_key_exists('value', $entry)) {
+			return $entry['value'];
+		}
+		if (isset($entry['structure_name'])) {
+			return isset($this->ids['structures'][$entry['structure_name']]) ? $this->ids['structures'][$entry['structure_name']] : null;
+		}
+		if (isset($entry['category_name'])) {
+			$id = $this->category_id($entry['category_name']);
+			return $id ? $id : null;
+		}
+
+		return null;
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* v3 managed fields                                                   */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Compare desired fields with a live row and write the differences.
+	 *
+	 * @param string   $entity  'template', 'schedule' or 'author'.
+	 * @param int      $id      Row ID.
+	 * @param string   $label   Display name.
+	 * @param object   $live    Live row.
+	 * @param array    $desired Field => value.
+	 * @return void
+	 */
+	private function apply_fields($entity, $id, $label, $live, array $desired) {
+		$diff = array();
+
+		foreach ($desired as $field => $value) {
+			$old = isset($live->$field) ? $live->$field : null;
+			if (!$this->same($old, $value)) {
+				$diff[$field] = array('old' => $old, 'new' => $value);
+			}
+		}
+
+		if (empty($diff)) {
+			$this->line("[OK] {$label}: already up to date");
+			return;
+		}
+
+		foreach ($diff as $field => $values) {
+			$this->changes[] = array('entity' => $entity, 'id' => (int) $id, 'name' => $label, 'field' => $field);
+			$this->line(sprintf('[%s] %s: %s: %s -> %s', $this->is_apply() ? 'SET' : 'PLAN', $label, $field, $this->short($values['old']), $this->short($values['new'])));
+		}
+
+		if (!$this->is_apply()) {
+			return;
+		}
+
+		$update = array();
+		foreach ($diff as $field => $values) {
+			$this->backup_field($entity, $id, $field, $values['old']);
+			$update[$field] = $values['new'];
+		}
+		$this->write_backup();
+
+		if (false === $this->repository_update($entity, $id, $update)) {
+			$this->error("Failed to update {$entity} {$label}");
+		}
+	}
+
+	/**
+	 * Update a row through its repository.
+	 *
+	 * @param string $entity
+	 * @param int    $id
+	 * @param array  $data
+	 * @return mixed False on failure.
+	 */
+	private function repository_update($entity, $id, array $data) {
+		switch ($entity) {
+			case 'template':
+				return (new AIPS_Template_Repository())->update($id, $data);
+			case 'schedule':
+				return (new AIPS_Schedule_Repository())->update($id, $data);
+			case 'author':
+				return (new AIPS_Authors_Repository())->update($id, $data);
+		}
+
+		return false;
+	}
+
+	/**
+	 * Fetch a live row by ID.
+	 *
+	 * @param string $entity
+	 * @param int    $id
+	 * @return object|null
+	 */
+	private function get_live_row($entity, $id) {
+		switch ($entity) {
+			case 'template':
+				return (new AIPS_Template_Repository())->get_by_id($id);
+			case 'schedule':
+				return (new AIPS_Schedule_Repository())->get_by_id($id);
+			case 'author':
+				return (new AIPS_Authors_Repository())->get_by_id($id);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Apply v3 template fields.
+	 *
+	 * @return void
+	 */
+	private function apply_template_fields() {
+		$this->heading('v3: templates (voice, slug, title prompt, featured image, sources)');
+
+		foreach ($this->get_v3_template_config() as $name => $config) {
+			if (empty($this->ids['templates'][$name])) {
+				$this->line("[SKIP] Template not found: {$name}" . ($this->is_apply() ? '' : ' (would be created by the seed step)'));
+				continue;
+			}
+
+			$id = (int) $this->ids['templates'][$name];
+			$live = $this->get_live_row('template', $id);
+			if (!$live) {
+				$this->warn("Template {$name} (#{$id}) could not be loaded.");
+				continue;
+			}
+
+			$desired = array(
+				'generate_slug'           => 1,
+				'slug_prompt'             => $this->get_slug_prompt($config['slug_type']),
+				'title_prompt'            => $config['title_prompt'],
+				'generate_featured_image' => 1,
+				'featured_image_source'   => 'ai_prompt',
+			);
+
+			if (isset($this->ids['voices'][$config['voice']])) {
+				$desired['voice_id'] = (int) $this->ids['voices'][$config['voice']];
+			} else {
+				$this->warn("Voice not found for template {$name}: {$config['voice']}");
+			}
+
+			// Keep a hand-written featured image prompt; fill only an empty one.
+			if ('' === trim((string) $live->image_prompt)) {
+				$desired['image_prompt'] = $this->featured_image_prompt($config['image_subject']);
+			}
+
+			if (!empty($config['source_group'])) {
+				if (isset($this->ids['source_groups'][$config['source_group']])) {
+					$desired['include_sources'] = 1;
+					$desired['source_group_ids'] = wp_json_encode(array((int) $this->ids['source_groups'][$config['source_group']]));
+				} else {
+					$this->line("[SKIP] {$name}: source group {$config['source_group']} not created yet" . ($this->is_apply() ? '' : ' (created on apply)'));
+				}
+			}
+
+			if ('' !== $this->template_status) {
+				$desired['post_status'] = $this->template_status;
+			}
+
+			$this->apply_fields('template', $id, 'Template ' . $name, $live, $desired);
+		}
+	}
+
+	/**
+	 * Apply v3 schedule fields (one article structure per schedule).
+	 *
+	 * @return void
+	 */
+	private function apply_schedule_fields() {
+		$this->heading('v3: schedules (article structure per schedule)');
+		$structure_by_template = array();
+
+		foreach ($this->get_v3_template_config() as $name => $config) {
+			$structure_by_template[$name] = $config['structure'];
+		}
+
+		foreach ($this->object_data['schedules'] as $schedule) {
+			$title = $schedule['title'];
+			if (empty($this->ids['schedules'][$title])) {
+				$this->line("[SKIP] Schedule not found: {$title}");
+				continue;
+			}
+
+			$structure_name = isset($structure_by_template[$schedule['template_name']]) ? $structure_by_template[$schedule['template_name']] : '';
+			if (!$structure_name || empty($this->ids['structures'][$structure_name])) {
+				$this->warn("Article structure not found for schedule {$title}: {$structure_name}");
+				continue;
+			}
+
+			$id = (int) $this->ids['schedules'][$title];
+			$live = $this->get_live_row('schedule', $id);
+			if (!$live) {
+				$this->warn("Schedule {$title} (#{$id}) could not be loaded.");
+				continue;
+			}
+
+			$this->apply_fields('schedule', $id, 'Schedule ' . $title, $live, array(
+				'article_structure_id' => (int) $this->ids['structures'][$structure_name],
+			));
+		}
+	}
+
+	/**
+	 * Apply v3 author fields.
+	 *
+	 * @return void
+	 */
+	private function apply_author_fields() {
+		$this->heading('v3: authors (slug, featured image, category, approval, cadence)');
+		$slot = 0;
+
+		foreach ($this->get_v3_author_config() as $name => $config) {
+			if (empty($this->ids['authors'][$name])) {
+				$this->line("[SKIP] Author not found: {$name}");
+				continue;
+			}
+
+			$id = (int) $this->ids['authors'][$name];
+			$live = $this->get_live_row('author', $id);
+			if (!$live) {
+				$this->warn("Author {$name} (#{$id}) could not be loaded.");
+				continue;
+			}
+
+			$desired = array(
+				'generate_slug'           => 1,
+				'slug_prompt'             => $this->get_slug_prompt($config['slug_type']),
+				'generate_featured_image' => 1,
+				'featured_image_source'   => 'ai_prompt',
+			);
+
+			if ('' === trim((string) $live->image_prompt)) {
+				$desired['image_prompt'] = $this->featured_image_prompt($config['image_subject']);
+			}
+
+			if (empty($live->post_category) && !empty($config['category'])) {
+				$category_id = $this->category_id($config['category']);
+				if ($category_id) {
+					$desired['post_category'] = $category_id;
+				} else {
+					$this->warn("Category not found for author {$name}: {$config['category']}");
+				}
+			}
+
+			if (!empty($config['source_group']) && isset($this->ids['source_groups'][$config['source_group']])) {
+				$desired['include_sources'] = 1;
+				$desired['source_group_ids'] = wp_json_encode(array((int) $this->ids['source_groups'][$config['source_group']]));
+			}
+
+			if (!empty($config['v2_author'])) {
+				$desired['topic_auto_approval_mode'] = 'score';
+				$desired['topic_auto_approval_min_score'] = 85;
+				$desired['topic_auto_approval_fallback'] = 'pending';
+				$desired['topic_generation_quantity'] = 8;
+				$desired['scheduled_post_generation_quantity'] = 1;
+				$desired['post_generation_frequency'] = 'daily';
+
+				// Only move the next run when the cadence actually changes, so a
+				// re-run does not keep shifting the schedule.
+				if (!$this->same(isset($live->post_generation_frequency) ? $live->post_generation_frequency : '', 'daily')) {
+					$desired['post_generation_next_run'] = $this->next_daily_timestamp(self::AUTHOR_FIRST_SLOT, $slot * self::AUTHOR_SLOT_GAP);
+				}
+
+				$slot++;
+			}
+
+			$this->apply_fields('author', $id, 'Author ' . $name, $live, $desired);
+		}
+	}
+
+	/**
+	 * Apply in-content image configurations to templates.
+	 *
+	 * @return void
+	 */
+	private function apply_post_images() {
+		$this->heading('v3: in-content AI images (templates)');
+		$repo = new AIPS_Post_Images_Repository();
+
+		foreach ($this->get_v3_template_config() as $name => $config) {
+			if (empty($config['content_images'])) {
+				continue;
+			}
+
+			if (empty($this->ids['templates'][$name])) {
+				$this->line("[SKIP] Template not found: {$name}");
+				continue;
+			}
+
+			$id = (int) $this->ids['templates'][$name];
+			$live_rows = (array) $repo->get_content_images_for_entity('template', $id);
+
+			$desired = array();
+			foreach (array_values($config['content_images']) as $index => $image) {
+				$desired[] = array(
+					'id'           => isset($live_rows[$index]->id) ? (int) $live_rows[$index]->id : 0,
+					'image_order'  => $index + 1,
+					'source'       => 'ai_prompt',
+					'image_prompt' => self::HOUSE_STYLE . '. ' . $image['prompt'],
+					'placement'    => $image['placement'],
+					'caption'      => '',
+				);
+			}
+
+			$live_compare = array();
+			foreach ($live_rows as $row) {
+				$live_compare[] = array((string) $row->source, (string) $row->image_prompt, (string) $row->placement);
+			}
+			$desired_compare = array();
+			foreach ($desired as $row) {
+				$desired_compare[] = array($row['source'], $row['image_prompt'], $row['placement']);
+			}
+
+			if ($live_compare === $desired_compare) {
+				$this->line("[OK] Template {$name}: in-content images already up to date");
+				continue;
+			}
+
+			$this->changes[] = array('entity' => 'post_images', 'id' => $id, 'name' => 'Template ' . $name, 'field' => 'content_images');
+			$this->line(sprintf('[%s] Template %s: in-content images: %d -> %d (%s)', $this->is_apply() ? 'SET' : 'PLAN', $name, count($live_rows), count($desired), implode(', ', wp_list_pluck($desired, 'placement'))));
+
+			if (!$this->is_apply()) {
+				continue;
+			}
+
+			$key = 'template:' . $id;
+			if (!isset($this->backup['post_images'][$key])) {
+				$this->backup['post_images'][$key] = array_map(
+					function ($row) {
+						return array(
+							'image_order'       => (int) $row->image_order,
+							'source'            => (string) $row->source,
+							'image_prompt'      => (string) $row->image_prompt,
+							'unsplash_keywords' => (string) $row->unsplash_keywords,
+							'media_ids'         => (string) $row->media_ids,
+							'placement'         => (string) $row->placement,
+							'caption'           => (string) $row->caption,
+						);
+					},
+					$live_rows
+				);
+				$this->write_backup();
+			}
+
+			$repo->sync_for_entity('template', $id, $desired, 'content');
+		}
+	}
+
+	/**
+	 * Apply v3 settings.
+	 *
+	 * @return void
+	 */
+	private function apply_v3_settings() {
+		$this->heading('v3: settings');
+
+		foreach ($this->get_v3_settings() as $name => $value) {
+			$current = get_option($name, null);
+			if ($this->same($current, $value)) {
+				$this->line("[OK] {$name}: already up to date");
+				continue;
+			}
+
+			$this->set_option($name, $value, 'v3');
+		}
+	}
+
+	/**
+	 * Write (or plan) an option change.
+	 *
+	 * @param string $name
+	 * @param mixed  $value
+	 * @param string $reason 'seed' or 'v3'.
+	 * @return void
+	 */
+	private function set_option($name, $value, $reason) {
+		$current = get_option($name, null);
+		$this->changes[] = array('entity' => 'option', 'id' => 0, 'name' => $name, 'field' => $reason);
+		$this->line(sprintf('[%s] %s: %s -> %s', $this->is_apply() ? 'SET' : 'PLAN', $name, $this->short($current), $this->short($value)));
+
+		if (!$this->is_apply()) {
+			return;
+		}
+
+		$this->backup_option($name);
+		$this->write_backup();
+		update_option($name, $value);
+	}
+
+	/**
+	 * Re-check the v2 authors' pending topics against their new approval policy.
+	 *
+	 * @return void
+	 */
+	private function recheck_pending_topics() {
+		$this->heading('v3: pending topic re-check (v2 authors)');
+		$topics_repo = new AIPS_Author_Topics_Repository();
+		$generator = null;
+
+		foreach ($this->get_v3_author_config() as $name => $config) {
+			if (empty($config['v2_author']) || empty($this->ids['authors'][$name])) {
+				continue;
+			}
+
+			$author_id = (int) $this->ids['authors'][$name];
+
+			if (!$this->is_apply()) {
+				$eligible = 0;
+				$qualifying = 0;
+				foreach ($topics_repo->get_pending_for_approval_recheck($author_id, 500) as $row) {
+					$meta = !empty($row->metadata) ? json_decode($row->metadata, true) : array();
+					$meta = is_array($meta) ? $meta : array();
+					if (!empty($meta['auto_approval_rule']) && (!isset($meta['auto_approval_reason']) || 'relevance_unavailable' !== $meta['auto_approval_reason'])) {
+						continue;
+					}
+					$eligible++;
+					if ((int) $row->score >= 85) {
+						$qualifying++;
+					}
+				}
+				$this->line("[PLAN] Author {$name}: {$eligible} pending topic(s) eligible for re-check, about {$qualifying} at score 85 or above would be approved");
+				continue;
+			}
+
+			$author = (new AIPS_Authors_Repository())->get_by_id($author_id);
+			if (!$author) {
+				continue;
+			}
+
+			if (null === $generator) {
+				$generator = new AIPS_Author_Topics_Generator();
+			}
+
+			$counts = $generator->recheck_pending_auto_approval($author, self::TOPIC_RECHECK_LIMIT);
+			$this->line(sprintf('[SET] Author %s: re-checked %d pending topic(s): %d approved, %d rejected', $name, $counts['checked'], $counts['approved'], $counts['rejected']));
+		}
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Rollback                                                            */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Restore everything recorded in a backup file.
+	 *
+	 * @return bool
+	 */
+	private function rollback() {
+		$this->line('=========================================');
+		$this->line('DevStackTips Content Setup: ROLLBACK');
+		$this->line('=========================================');
+
+		if ('' === $this->rollback_file || !is_readable($this->rollback_file)) {
+			$this->error('Pass a readable backup file: rollback /path/to/devstacktips-v3-backup-*.json');
+			return false;
+		}
+
+		$backup = json_decode((string) file_get_contents($this->rollback_file), true);
+		if (!is_array($backup) || empty($backup['profile']) || self::STRATEGY_PROFILE !== $backup['profile']) {
+			$this->error('Not a ' . self::STRATEGY_PROFILE . ' backup: ' . $this->rollback_file);
+			return false;
+		}
+
+		if (!empty($backup['site_url']) && home_url() !== $backup['site_url']) {
+			$this->error('Backup was made on ' . $backup['site_url'] . ', not ' . home_url() . '. Refusing to restore.');
+			return false;
+		}
+
+		$this->heading('Restoring fields');
+		foreach ((array) $backup['rows'] as $entity => $rows) {
+			foreach ((array) $rows as $id => $fields) {
+				$data = array();
+				foreach ((array) $fields as $field => $old) {
+					// Repository update() skips null values; 0/'' clear the column instead.
+					if (null === $old) {
+						$old = ('_id' === substr($field, -3) || 'post_category' === $field) ? 0 : '';
+					}
+					$data[$field] = $old;
+				}
+
+				if (false === $this->repository_update($entity, (int) $id, $data)) {
+					$this->error("Failed to restore {$entity} #{$id}");
+					continue;
+				}
+				$this->line("[OK] Restored {$entity} #{$id}: " . implode(', ', array_keys($data)));
+			}
+		}
+
+		$this->heading('Restoring in-content image configurations');
+		$images_repo = new AIPS_Post_Images_Repository();
+		foreach ((array) $backup['post_images'] as $key => $rows) {
+			list($type, $id) = array_pad(explode(':', (string) $key, 2), 2, 0);
+			$images_repo->sync_for_entity($type, (int) $id, (array) $rows, 'content');
+			$this->line("[OK] Restored images for {$type} #{$id} (" . count((array) $rows) . ' row(s))');
+		}
+
+		$this->heading('Restoring settings');
+		foreach ((array) $backup['options'] as $name => $state) {
+			if (!empty($state['existed'])) {
+				update_option($name, $state['value']);
+				$this->line("[OK] Restored {$name}");
+			} else {
+				delete_option($name);
+				$this->line("[OK] Removed {$name} (it did not exist before)");
+			}
+		}
+
+		$this->heading('Deleting created objects');
+		foreach (array_reverse((array) $backup['created']) as $item) {
+			$this->delete_created($item['entity'], (int) $item['id'], (string) $item['name']);
+		}
+
+		$this->line('');
+		$this->line('Topic approvals made by the pending-topic re-check are not undone; bulk-reject them in Authors > Topics if needed.');
+		$this->line(empty($this->errors) ? 'Rollback complete.' : 'Rollback finished with ' . count($this->errors) . ' error(s).');
+
+		return empty($this->errors);
+	}
+
+	/**
+	 * Delete one object created by an apply run.
+	 *
+	 * @param string $entity
+	 * @param int    $id
+	 * @param string $name
+	 * @return void
+	 */
+	private function delete_created($entity, $id, $name) {
+		$result = false;
+
+		switch ($entity) {
+			case 'category':
+				$result = wp_delete_term($id, 'category');
+				break;
+			case 'source_group':
+				$result = wp_delete_term($id, 'aips_source_group');
+				break;
+			case 'source':
+				$sources = new AIPS_Sources_Repository();
+				$sources->delete_source_terms($id);
+				$result = $sources->delete($id);
+				break;
+			case 'voice':
+				$result = (new AIPS_Voices_Repository())->delete($id);
+				break;
+			case 'prompt_section':
+				$result = (new AIPS_Prompt_Section_Repository())->delete($id);
+				break;
+			case 'structure':
+				$result = (new AIPS_Article_Structure_Repository())->delete($id);
+				break;
+			case 'post_slice':
+				$result = (new AIPS_Post_Slices_Repository())->delete($id);
+				break;
+			case 'campaign':
+				$result = (new AIPS_Campaigns_Repository())->delete_campaign($id);
+				break;
+			case 'author':
+				$result = (new AIPS_Authors_Repository())->delete($id);
+				break;
+			case 'template':
+				$result = (new AIPS_Template_Repository())->delete($id);
+				break;
+			case 'schedule':
+				$result = (new AIPS_Schedule_Repository())->delete($id);
+				break;
+		}
+
+		if (false === $result || is_wp_error($result)) {
+			$this->error("Failed to delete {$entity} #{$id} ({$name})");
+			return;
+		}
+
+		$this->line("[OK] Deleted {$entity} #{$id} ({$name})");
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Summary and small helpers                                           */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Print the run summary.
+	 *
+	 * @return void
+	 */
+	private function print_summary() {
+		$this->line('');
+		$this->line('=========================================');
+		$this->line($this->is_apply() ? 'SUMMARY (applied)' : 'SUMMARY (dry run, nothing written)');
+		$this->line('=========================================');
+
+		$by_entity = array();
+		foreach ($this->changes as $change) {
+			$by_entity[$change['entity']] = isset($by_entity[$change['entity']]) ? $by_entity[$change['entity']] + 1 : 1;
+		}
+
+		$this->line('Objects ' . ($this->is_apply() ? 'created' : 'to create') . ': ' . count($this->creations));
+		foreach ($by_entity as $entity => $count) {
+			$this->line("Field changes ({$entity}): {$count}");
+		}
+		$this->line('Warnings: ' . count($this->warnings));
+		$this->line('Errors: ' . count($this->errors));
+
+		if ($this->is_apply()) {
+			$this->line('');
+			$this->line('Backup: ' . $this->backup_file);
+			$this->line('Undo with: wp eval-file <this script> rollback ' . $this->backup_file);
+		} else {
+			$this->line('');
+			$this->line('Run again with "apply" to write these changes (add "drafts" to save template posts as drafts during rollout).');
+		}
+
+		$this->line('');
+		$this->line('Not changed by this script (manual follow-ups):');
+		$this->line('- Unsplash stays unused (no API key). Allowed image sources are AI prompt and media library.');
+		$this->line('- The indexer queue pause (aips_indexer_queue_paused) is left as is.');
+		$this->line('- Affiliate links, related posts and telemetry are left as configured.');
+	}
+
+	/**
+	 * Post author for created objects.
+	 *
+	 * @return int
+	 */
+	private function resolve_post_author() {
+		$user_id = (int) get_current_user_id();
+
+		return $user_id > 0 ? $user_id : (int) AIPS_Config::get_instance()->get_option('aips_default_post_author');
+	}
+
+	/**
+	 * Next occurrence of a weekday and time in the site timezone.
+	 *
+	 * @param int    $iso_weekday 1 (Monday) to 7 (Sunday).
+	 * @param string $time_hhmm   "HH:MM".
+	 * @return int Unix timestamp.
+	 */
+	private function next_weekday_timestamp($iso_weekday, $time_hhmm) {
+		$timezone = wp_timezone();
+		$now = new DateTimeImmutable('now', $timezone);
+		list($hour, $minute) = array_map('intval', explode(':', $time_hhmm));
+		$candidate = $now->setTime($hour, $minute);
+		$days = ($iso_weekday - (int) $now->format('N') + 7) % 7;
+		$candidate = $candidate->modify('+' . $days . ' days');
+
+		if ($candidate <= $now) {
+			$candidate = $candidate->modify('+7 days');
+		}
+
+		return $candidate->getTimestamp();
+	}
+
+	/**
+	 * Next occurrence of a daily time (site timezone), shifted by a number of minutes.
+	 *
+	 * @param string $time_hhmm      "HH:MM".
+	 * @param int    $offset_minutes Minutes added to the slot.
+	 * @return int Unix timestamp.
+	 */
+	private function next_daily_timestamp($time_hhmm, $offset_minutes = 0) {
+		$timezone = wp_timezone();
+		$now = new DateTimeImmutable('now', $timezone);
+		list($hour, $minute) = array_map('intval', explode(':', $time_hhmm));
+		$candidate = $now->setTime($hour, $minute)->modify('+' . (int) $offset_minutes . ' minutes');
+
+		if ($candidate <= $now) {
+			$candidate = $candidate->modify('+1 day');
+		}
+
+		return $candidate->getTimestamp();
+	}
+
+	/**
+	 * Featured image prompt in the house style.
+	 *
+	 * @param string $subject
+	 * @return string
+	 */
+	private function featured_image_prompt($subject) {
+		return self::HOUSE_STYLE . '. Concept illustration for a technical article about {{topic}}: ' . $subject . '.';
+	}
+
+	/**
+	 * Seed data for every entity type.
+	 *
+	 * @return array
+	 */
 	private function build_seeding_object_data() {
-		$this->object_data = array(
-			'settings' => $this->get_settings_seed_data(),
-			'categories' => $this->get_category_seed_data(),
-			'voices' => $this->get_voice_seed_data(),
-			'sections' => $this->get_section_seed_data(),
-			'structures' => $this->get_structure_seed_data(),
-			'authors' => $this->get_author_seed_data(),
-			'post_slices' => $this->get_post_slice_seed_data(),
-			'source_groups' => $this->get_source_group_seed_data(),
-			'sources' => $this->get_source_seed_data(),
-			'campaigns' => $this->get_campaign_seed_data(),
-			'templates' => $this->get_template_seed_data(),
-			'schedules' => $this->get_schedule_seed_data(),
+		return array(
+			'settings'      => $this->get_settings_seed_data(),
+			'categories'    => $this->get_category_seed_data(),
+			'voices'        => $this->get_voice_seed_data(),
+			'sections'      => $this->get_section_seed_data(),
+			'structures'    => $this->get_structure_seed_data(),
+			'authors'       => $this->get_author_seed_data(),
+			'post_slices'   => $this->get_post_slice_seed_data(),
+			'campaigns'     => $this->get_campaign_seed_data(),
+			'templates'     => $this->get_template_seed_data(),
+			'schedules'     => $this->get_schedule_seed_data(),
 		);
 	}
+
+	/**
+	 * v2 source groups plus the groups added in v3.
+	 *
+	 * @return array
+	 */
+	private function get_all_source_group_seeds() {
+		return array_merge($this->get_source_group_seed_data(), $this->get_v3_source_group_seed_data());
+	}
+
+	/**
+	 * v2 sources plus the sources added in v3.
+	 *
+	 * @return array
+	 */
+	private function get_all_source_seeds() {
+		return array_merge($this->get_source_seed_data(), $this->get_v3_source_seed_data());
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* v2 distribution helpers (used by the seed data below)               */
+	/* ------------------------------------------------------------------ */
 
 	/**
 	 * Returns the distribution configuration constant as an array.
@@ -326,838 +1953,9 @@ DevStackTips Content Setup
 		return $this->distribute_target_counts($shares, $this->get_primary_target_post_count());
 	}
 
-	/**
-	 * Formats any scalar or array value into a human-readable string for summary output.
-	 *
-	 * @param mixed $value The value to format (bool, array, or scalar).
-	 * @return string A display-safe string representation of the value.
-	 */
-	private function format_summary_value($value) {
-		if (is_bool($value)) {
-			return $value ? 'true' : 'false';
-		}
-
-		if (is_array($value)) {
-			return wp_json_encode($value);
-		}
-
-		$display_value = (string) $value;
-
-		return ($display_value === '') ? '(empty)' : $display_value;
-	}
-
-	/**
-	 * Compares two values for equality using serialized representations to handle arrays and objects.
-	 *
-	 * @param mixed $expected The expected value.
-	 * @param mixed $actual   The actual value to compare against.
-	 * @return bool True if the serialized forms are identical, false otherwise.
-	 */
-	private function values_match($expected, $actual) {
-		return maybe_serialize($expected) === maybe_serialize($actual);
-	}
-
-	/**
-	 * Outputs a prefixed status line to indicate success or warning for a given operation.
-	 *
-	 * @param bool   $is_ok   True to prefix with [OK], false to prefix with [WARN].
-	 * @param string $message The message to display.
-	 * @return void
-	 */
-	private function report_status($is_ok, $message) {
-		echo ($is_ok ? '[OK] ' : '[WARN] ') . $message . "\n";
-	}
-
-	/**
-	 * Updates a WordPress option and immediately retrieves the stored value for verification.
-	 *
-	 * @param string $option_name The WordPress option key to update.
-	 * @param mixed  $value       The value to store.
-	 * @return mixed The value retrieved from the database immediately after the update.
-	 */
-	private function update_option_and_return($option_name, $value) {
-		update_option($option_name, $value);
-
-		return get_option($option_name);
-	}
-
-	/**
-	 * Resolves the final value for a settings entry, supporting static values, structure lookups, and category lookups.
-	 *
-	 * @param array $entry      A settings entry array. May contain 'value', 'structure_name', or 'category_name'.
-	 * @param array $structures Map of structure names to their database IDs.
-	 * @param array $categories Map of category names to their term IDs.
-	 * @return mixed|null The resolved value, or null if the entry cannot be resolved.
-	 */
-	private function resolve_setting_entry_value($entry, $structures = array(), $categories = array()) {
-		if (array_key_exists('value', $entry)) {
-			return $entry['value'];
-		}
-
-		if (isset($entry['structure_name'])) {
-			return isset($structures[$entry['structure_name']]) ? $structures[$entry['structure_name']] : null;
-		}
-
-		if (isset($entry['category_name'])) {
-			return isset($categories[$entry['category_name']]) ? $categories[$entry['category_name']] : null;
-		}
-
-		return null;
-	}
-
-	/**
-	 * Returns the human-readable label for a settings entry, falling back to the option name.
-	 *
-	 * @param array $entry A settings entry array, optionally containing a 'label' key.
-	 * @return string The label string for display purposes.
-	 */
-	private function get_setting_entry_label($entry) {
-		return isset($entry['label']) ? $entry['label'] : $entry['option_name'];
-	}
-
-	/**
-	 * Returns all individual option entries from every settings section as a flat array.
-	 *
-	 * @return array Flat list of settings entry arrays, each containing at minimum an 'option_name' key.
-	 */
-	private function get_flattened_setting_entries() {
-		$entries = array();
-
-		foreach ($this->object_data['settings'] as $section) {
-			if (empty($section['options']) || !is_array($section['options'])) {
-				continue;
-			}
-
-			foreach ($section['options'] as $entry) {
-				$entries[] = $entry;
-			}
-		}
-
-		return $entries;
-	}
-
-	/**
-	 * Resolves all settings entries to their final values, omitting any that cannot be resolved.
-	 *
-	 * @param array $structures Map of structure names to their database IDs.
-	 * @param array $categories Map of category names to their term IDs.
-	 * @return array Associative array of option names to their resolved values.
-	 */
-	private function get_resolved_configured_settings($structures = array(), $categories = array()) {
-		$configured_settings = array();
-
-		foreach ($this->get_flattened_setting_entries() as $entry) {
-			$value = $this->resolve_setting_entry_value($entry, $structures, $categories);
-			if ($value === null) {
-				continue;
-			}
-
-			$configured_settings[$entry['option_name']] = $value;
-		}
-
-		return $configured_settings;
-	}
-
-	/**
-	 * Writes all configured plugin settings to the WordPress options table and reports the result of each write.
-	 *
-	 * @return void
-	 */
-	private function configure_settings() {
-		echo "
---- Step 4: Configuring Plugin Settings ---
-";
-		$settings = $this->object_data['settings'];
-		$structures = $this->get_created_structures_by_name();
-		$categories = $this->get_created_categories_by_name();
-
-		foreach ($settings as $section) {
-			$title = isset($section['title']) ? $section['title'] : 'Settings';
-			echo "
-[ " . esc_html($title) . " ]
-";
-
-			if (empty($section['options']) || !is_array($section['options'])) {
-				continue;
-			}
-
-			foreach ($section['options'] as $entry) {
-				$expected_value = $this->resolve_setting_entry_value($entry, $structures, $categories);
-				$label = $this->get_setting_entry_label($entry);
-				$warning_message = isset($entry['warning_message']) ? $entry['warning_message'] : '';
-
-				if ($expected_value === null) {
-					$this->report_status(false, 'Skipped ' . $label . ' because the configured source value could not be resolved');
-					continue;
-				}
-
-				$current_value = $this->update_option_and_return($entry['option_name'], $expected_value);
-				$is_saved = $this->values_match($expected_value, $current_value);
-
-				$this->report_status(
-					$is_saved,
-					'Set ' . $label . ' = ' . $this->format_summary_value($current_value)
-				);
-
-				if (!$is_saved) {
-					$this->report_status(
-						false,
-						'Expected ' . $this->format_summary_value($expected_value) . ' but found ' . $this->format_summary_value($current_value)
-					);
-				}
-
-				if ($warning_message !== '') {
-					$this->report_status(false, $warning_message);
-				}
-			}
-		}
-
-		$this->report_status(true, 'All plugin settings configured for production');
-	}
-
-	/**
-	 * Creates or registers all seed categories as WordPress taxonomy terms under 'category'.
-	 *
-	 * Existing categories with a matching slug are recorded rather than duplicated.
-	 *
-	 * @return void
-	 */
-	private function create_categories() {
-		echo "
---- Step 1: Creating Categories ---
-";
-
-		foreach ($this->object_data['categories'] as $cat_data) {
-			$existing = term_exists($cat_data['slug'], 'category');
-			if (!$existing) {
-				$result = wp_insert_term($cat_data['name'], 'category', array(
-					'slug' => $cat_data['slug'],
-					'description' => $cat_data['description'],
-				));
-
-				if (!is_wp_error($result)) {
-					$this->created_items['categories'][] = array('id' => $result['term_id'], 'name' => $cat_data['name']);
-					echo "[OK] Created category: {$cat_data['name']}\n";
-				} else {
-					$this->errors[] = "Failed to create category: {$cat_data['name']} - " . $result->get_error_message();
-					echo "[ERR] Failed: {$cat_data['name']}\n";
-				}
-			} else {
-				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
-				$this->created_items['categories'][] = array('id' => $term_id, 'name' => $cat_data['name']);
-				echo "[INFO] Category exists: {$cat_data['name']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Creates or updates all seed voices via the voices repository.
-	 *
-	 * Voices matched by name are updated in place; new voices are inserted.
-	 *
-	 * @return void
-	 */
-	private function create_voices() {
-		echo "
---- Step 3: Creating Voices ---
-";
-
-		$voices_repo = new AIPS_Voices_Repository();
-		$voices = $this->object_data['voices'];
-		$existing_voices = array();
-
-		foreach ($voices_repo->get_all() as $existing_voice) {
-			if (!empty($existing_voice->name) && !empty($existing_voice->id)) {
-				$existing_voices[(string) $existing_voice->name] = (int) $existing_voice->id;
-			}
-		}
-
-		foreach ($voices as $voice_data) {
-			if (isset($voice_data['content_instructions']) && is_array($voice_data['content_instructions'])) {
-				$voice_data['content_instructions'] = implode("\n", $voice_data['content_instructions']);
-			}
-
-			if (isset($existing_voices[$voice_data['name']])) {
-				$voice_id = $existing_voices[$voice_data['name']];
-				$voices_repo->update($voice_id, $voice_data);
-				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
-				echo "[INFO] Voice exists, updated: {$voice_data['name']}\n";
-				continue;
-			}
-
-			$voice_id = $voices_repo->create($voice_data);
-			if ($voice_id) {
-				$this->created_items['voices'][] = array('id' => $voice_id, 'name' => $voice_data['name']);
-				echo "[OK] Created voice: {$voice_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create voice: {$voice_data['name']}";
-				echo "[ERR] Failed: {$voice_data['name']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Creates or updates all seed prompt sections and article structures via their respective repositories.
-	 *
-	 * Also sets the default article structure option when the 'Evergreen How-To Guide' is processed.
-	 *
-	 * @return void
-	 */
-	private function create_article_structures() {
-		echo "
---- Step 4: Creating Article Structures ---
-";
-
-		$structure_repo = new AIPS_Article_Structure_Repository();
-		$section_repo = new AIPS_Prompt_Section_Repository();
-
-		foreach ($this->object_data['sections'] as $section_data) {
-			$existing = $section_repo->get_by_key($section_data['section_key']);
-			if (!$existing) {
-				$section_id = $section_repo->create($section_data);
-				if ($section_id) {
-					echo "[OK] Created section: {$section_data['name']}\n";
-				}
-			}
-		}
-
-		$existing_structures = array();
-		foreach ($structure_repo->get_all() as $existing_structure) {
-			if (!empty($existing_structure->name) && !empty($existing_structure->id)) {
-				$existing_structures[(string) $existing_structure->name] = (int) $existing_structure->id;
-			}
-		}
-
-		foreach ($this->object_data['structures'] as $structure_data) {
-			$structure_json = wp_json_encode(array(
-				'sections' => $structure_data['sections'],
-				'prompt_template' => '',
-			));
-
-			$structure_payload = array(
-				'name' => $structure_data['name'],
-				'description' => $structure_data['description'],
-				'structure_data' => $structure_json,
-				'is_active' => 1,
-			);
-
-			if (isset($existing_structures[$structure_data['name']])) {
-				$structure_id = $existing_structures[$structure_data['name']];
-				$structure_repo->update($structure_id, $structure_payload);
-				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
-				if ($structure_data['name'] === 'Evergreen How-To Guide') {
-					update_option('aips_default_article_structure_id', (int) $structure_id);
-				}
-				echo "[INFO] Structure exists, updated: {$structure_data['name']}\n";
-				continue;
-			}
-
-			$structure_id = $structure_repo->create($structure_payload);
-			if ($structure_id) {
-				$this->created_items['structures'][] = array('id' => $structure_id, 'name' => $structure_data['name']);
-				if ($structure_data['name'] === 'Evergreen How-To Guide') {
-					update_option('aips_default_article_structure_id', (int) $structure_id);
-				}
-				echo "[OK] Created structure: {$structure_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create structure: {$structure_data['name']}";
-				echo "[ERR] Failed: {$structure_data['name']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Creates or updates all seed authors, resolving their associated structure, category, and source group IDs.
-	 *
-	 * Author post and topic generation schedules are calculated from the current time.
-	 *
-	 * @return void
-	 */
-	private function create_authors() {
-		echo "
---- Step 5: Creating Authors ---
-";
-
-		$authors_repo = new AIPS_Authors_Repository();
-		$structures = $this->get_created_structures_by_name();
-		$categories = $this->get_created_categories_by_name();
-		$source_groups = $this->get_created_source_groups_by_name();
-		$interval_calc = AIPS_Interval_Calculator::instance();
-		$now = AIPS_DateTime::now()->timestamp();
-		$existing_authors = array();
-
-		foreach ($authors_repo->get_all() as $existing_author) {
-			if (!empty($existing_author->name) && !empty($existing_author->id)) {
-				$existing_authors[(string) $existing_author->name] = (int) $existing_author->id;
-			}
-		}
-
-		$author_index = 0;
-		foreach ($this->object_data['authors'] as $author_data) {
-			$author_index++;
-			$structure_id = isset($structures[$author_data['structure_name']]) ? $structures[$author_data['structure_name']] : null;
-			$post_category = isset($categories[$author_data['category_name']]) ? $categories[$author_data['category_name']] : 0;
-			$source_group_ids = array();
-			if (isset($author_data['source_group_name'], $source_groups[$author_data['source_group_name']])) {
-				$source_group_ids[] = $source_groups[$author_data['source_group_name']];
-			}
-
-			$stagger = $author_index * 600;
-			$topic_next_run = $interval_calc->calculate_next_run($author_data['topic_generation_frequency'], $now + $stagger);
-			$post_next_run = $interval_calc->calculate_next_run($author_data['post_generation_frequency'], $now + $stagger + 300);
-
-			$author_payload = array(
-				'name' => $author_data['name'],
-				'field_niche' => $author_data['field_niche'],
-				'keywords' => $author_data['keywords'],
-				'description' => $author_data['description'],
-				'details' => $author_data['details'],
-				'article_structure_id' => $structure_id,
-				'voice_tone' => $author_data['voice_tone'],
-				'writing_style' => $author_data['writing_style'],
-				'target_audience' => $author_data['target_audience'],
-				'expertise_level' => $author_data['expertise_level'],
-				'content_goals' => $author_data['content_goals'],
-				'excluded_topics' => $author_data['excluded_topics'],
-				'preferred_content_length' => $author_data['preferred_content_length'],
-				'language' => 'en',
-				'post_status' => 'draft',
-				'post_category' => $post_category,
-				'post_author' => (get_current_user_id() > 0) ? get_current_user_id() : (int) AIPS_Config::get_instance()->get_option('aips_default_post_author'),
-				'featured_image_source' => 'ai_prompt',
-				'topic_generation_frequency' => $author_data['topic_generation_frequency'],
-				'topic_generation_quantity' => $author_data['topic_generation_quantity'],
-				'topic_generation_next_run' => $topic_next_run,
-				'topic_generation_last_run' => 0,
-				'topic_generation_is_active' => 1,
-				'post_generation_frequency' => $author_data['post_generation_frequency'],
-				'post_generation_next_run' => $post_next_run,
-				'post_generation_last_run' => 0,
-				'post_generation_is_active' => 1,
-				'max_posts_per_topic' => $author_data['max_posts_per_topic'],
-				'manual_post_generation_quantity' => $author_data['manual_post_generation_quantity'],
-				'scheduled_post_generation_quantity' => $author_data['scheduled_post_generation_quantity'],
-				'include_sources' => isset($author_data['include_sources']) ? $author_data['include_sources'] : 0,
-				'source_group_ids' => wp_json_encode($source_group_ids),
-				'is_active' => $author_data['is_active'],
-				'created_at' => $now,
-				'updated_at' => $now,
-			);
-
-			if (isset($existing_authors[$author_data['name']])) {
-				$author_id = $existing_authors[$author_data['name']];
-				unset($author_payload['created_at']);
-				$updated = $authors_repo->update($author_id, $author_payload);
-
-				if ($updated !== false) {
-					$this->created_items['authors'][] = array('id' => $author_id, 'name' => $author_data['name']);
-					echo "[INFO] Author exists, updated: {$author_data['name']}\n";
-					continue;
-				}
-
-				$this->errors[] = "Failed to update author: {$author_data['name']}";
-				echo "[ERR] Failed to update author: {$author_data['name']}\n";
-				continue;
-			}
-
-			$author_id = $authors_repo->create($author_payload);
-
-			if ($author_id) {
-				$this->created_items['authors'][] = array('id' => $author_id, 'name' => $author_data['name']);
-				echo "[OK] Created author: {$author_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create author: {$author_data['name']}";
-				echo "[ERR] Failed: {$author_data['name']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Creates or updates all seed post slices via the post slices repository.
-	 *
-	 * @return void
-	 */
-	private function create_post_slices() {
-		echo "
---- Step 6: Creating Post Slices ---
-";
-
-		$slices_repo = new AIPS_Post_Slices_Repository();
-		$now = AIPS_DateTime::now()->timestamp();
-		$existing_slices = array();
-
-		foreach ($slices_repo->get_all(false) as $existing_slice) {
-			if (!empty($existing_slice->name) && !empty($existing_slice->id)) {
-				$existing_slices[(string) $existing_slice->name] = (int) $existing_slice->id;
-			}
-		}
-
-		foreach ($this->object_data['post_slices'] as $slice_data) {
-			$slice_payload = array(
-				'name' => $slice_data['name'],
-				'description' => $slice_data['description'],
-				'sort_order' => $slice_data['sort_order'],
-				'is_active' => $slice_data['is_active'],
-				'updated_at' => $now,
-			);
-
-			if (isset($existing_slices[$slice_data['name']])) {
-				$slice_id = $existing_slices[$slice_data['name']];
-				$result = $slices_repo->update($slice_id, $slice_payload);
-
-				if ($result !== false) {
-					$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
-					echo "[INFO] Post slice exists, updated: {$slice_data['name']}\n";
-				} else {
-					$this->errors[] = "Failed to update post slice: {$slice_data['name']}";
-					echo "[ERR] Failed to update: {$slice_data['name']}\n";
-				}
-				continue;
-			}
-
-			$slice_payload['created_at'] = $now;
-
-			$slice_id = $slices_repo->create($slice_payload);
-
-			if ($slice_id) {
-				$this->created_items['slices'][] = array('id' => $slice_id, 'name' => $slice_data['name']);
-				echo "[OK] Created post slice: {$slice_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create post slice: {$slice_data['name']}";
-				echo "[ERR] Failed: {$slice_data['name']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Creates or registers all seed source groups as taxonomy terms, then creates their associated sources.
-	 *
-	 * Sources are skipped if a matching URL already exists in the repository.
-	 *
-	 * @return void
-	 */
-	private function create_source_groups() {
-		echo "
---- Step 7: Creating Source Groups and Sources ---
-";
-
-		$sources_repo = new AIPS_Sources_Repository();
-		$group_ids = array();
-
-		foreach ($this->object_data['source_groups'] as $group_data) {
-			$existing = term_exists($group_data['slug'], 'aips_source_group');
-			if (!$existing) {
-				$result = wp_insert_term($group_data['name'], 'aips_source_group', array(
-					'slug' => $group_data['slug'],
-					'description' => $group_data['description'],
-				));
-
-				if (!is_wp_error($result)) {
-					$group_ids[$group_data['slug']] = $result['term_id'];
-					$this->created_items['source_groups'][] = array('id' => $result['term_id'], 'name' => $group_data['name']);
-					echo "[OK] Created source group: {$group_data['name']}\n";
-				}
-			} else {
-				$term_id = is_array($existing) ? (int) $existing['term_id'] : (int) $existing;
-				$group_ids[$group_data['slug']] = $term_id;
-				$this->created_items['source_groups'][] = array('id' => $term_id, 'name' => $group_data['name']);
-				echo "[INFO] Source group exists: {$group_data['name']}\n";
-			}
-		}
-
-		foreach ($this->object_data['sources'] as $source_data) {
-			if (!isset($group_ids[$source_data['group_slug']])) {
-				continue;
-			}
-
-			if ($sources_repo->url_exists($source_data['url'])) {
-				echo "  [INFO] Source exists (URL): {$source_data['name']}\n";
-				continue;
-			}
-
-			$source_id = $sources_repo->create(array(
-				'url' => $source_data['url'],
-				'label' => $source_data['name'],
-				'is_active' => $source_data['is_active'],
-			));
-
-			if ($source_id) {
-				$sources_repo->set_source_terms($source_id, array((int) $group_ids[$source_data['group_slug']]));
-				$sources_repo->set_fetch_schedule($source_id, 'daily');
-				$this->created_items['sources'][] = array('id' => $source_id, 'name' => $source_data['name']);
-				echo "[OK] Created source: {$source_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create source: {$source_data['name']}";
-				echo "[ERR] Failed: {$source_data['name']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Creates or updates all seed campaigns via the campaigns repository.
-	 *
-	 * @return void
-	 */
-	private function create_campaigns() {
-		echo "
---- Step 8: Creating Campaigns ---
-";
-
-		$campaigns_repo = new AIPS_Campaigns_Repository();
-		$existing_campaigns = array();
-
-		foreach ($campaigns_repo->get_campaigns(null, null) as $existing_campaign) {
-			if (!empty($existing_campaign->name) && !empty($existing_campaign->id)) {
-				$existing_campaigns[(string) $existing_campaign->name] = (int) $existing_campaign->id;
-			}
-		}
-
-		foreach ($this->object_data['campaigns'] as $campaign_data) {
-			$campaign_id = 0;
-
-			if (isset($existing_campaigns[$campaign_data['name']])) {
-				$campaign_id = (int) $existing_campaigns[$campaign_data['name']];
-				$updated = $campaigns_repo->update_campaign($campaign_id, array(
-					'content_goal' => $campaign_data['content_goal'],
-					'campaign_mode' => 'template',
-					'is_active' => 1,
-					'is_archived' => 0,
-				));
-
-				if (is_wp_error($updated)) {
-					$this->errors[] = "Failed to update campaign: {$campaign_data['name']}";
-					echo "[ERR] Failed to update campaign: {$campaign_data['name']}\n";
-					continue;
-				}
-
-				echo "[INFO] Campaign exists, updated: {$campaign_data['name']}\n";
-			} else {
-				$campaign_id = $campaigns_repo->create_campaign(array(
-					'name' => $campaign_data['name'],
-					'content_goal' => $campaign_data['content_goal'],
-					'campaign_mode' => 'template',
-					'is_active' => 1,
-					'is_archived' => 0,
-				));
-			}
-
-			if ($campaign_id) {
-				$this->created_items['campaigns'][] = array('id' => $campaign_id, 'name' => $campaign_data['name']);
-				if (!isset($existing_campaigns[$campaign_data['name']])) {
-					echo "[OK] Created campaign: {$campaign_data['name']}\n";
-				}
-
-				echo "  Topics to assign:\n";
-				$topics_array = explode("\n", $campaign_data['topics']);
-				foreach (array_slice($topics_array, 0, 3) as $topic) {
-					echo "    - {$topic}\n";
-				}
-				echo "    ... and " . (count($topics_array) - 3) . " more\n";
-			} else {
-				$this->errors[] = "Failed to create campaign: {$campaign_data['name']}";
-				echo "[ERR] Failed: {$campaign_data['name']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Creates or updates all seed templates, resolving voice, structure, campaign, category, and source group IDs.
-	 *
-	 * Templates with a missing campaign are skipped and logged as errors.
-	 *
-	 * @return void
-	 */
-	private function create_templates() {
-		echo "
---- Step 9: Creating Templates ---
-";
-
-		$template_repo = new AIPS_Template_Repository();
-		$voices = $this->get_created_voices_by_name();
-		$structures = $this->get_created_structures_by_name();
-		$categories = $this->get_created_categories_by_name();
-		$source_groups = $this->get_created_source_groups_by_name();
-		$campaigns = $this->get_created_campaigns_by_name();
-		$default_post_author = (int) AIPS_Config::get_instance()->get_option('aips_default_post_author');
-		$current_user_id = (int) get_current_user_id();
-		$post_author = $current_user_id > 0 ? $current_user_id : $default_post_author;
-		$existing_templates = array();
-
-		foreach ($template_repo->get_all() as $existing_template) {
-			if (!empty($existing_template->name) && !empty($existing_template->id)) {
-				$existing_templates[(string) $existing_template->name] = (int) $existing_template->id;
-			}
-		}
-
-		foreach ($this->object_data['templates'] as $template_data) {
-			$voice_id = isset($voices[$template_data['voice_name']]) ? $voices[$template_data['voice_name']] : null;
-			$structure_id = isset($structures[$template_data['structure_name']]) ? $structures[$template_data['structure_name']] : null;
-			$campaign_id = isset($template_data['campaign_name'], $campaigns[$template_data['campaign_name']]) ? $campaigns[$template_data['campaign_name']] : 0;
-
-			if (empty($campaign_id)) {
-				$this->errors[] = "Campaign not found for template: {$template_data['name']} ({$template_data['campaign_name']})";
-				echo "[ERR] Campaign not found for template: {$template_data['name']}\n";
-				continue;
-			}
-
-			$category_ids = array();
-			if (isset($template_data['categories'])) {
-				foreach ($template_data['categories'] as $cat_name) {
-					if (isset($categories[$cat_name])) {
-						$category_ids[] = $categories[$cat_name];
-					}
-				}
-			}
-
-			$source_group_ids = array();
-			if (isset($template_data['source_group']) && isset($source_groups[$template_data['source_group']])) {
-				$source_group_ids[] = $source_groups[$template_data['source_group']];
-			}
-
-			$template_payload = array(
-				'name' => $template_data['name'],
-				'prompt_template' => $template_data['prompt_template'],
-				'title_prompt' => 'Generate a concise, specific, SEO-friendly technical post title for this topic.',
-				'voice_id' => $voice_id,
-				'article_structure_id' => $structure_id,
-				'post_quantity' => isset($template_data['post_quantity']) ? $template_data['post_quantity'] : 1,
-				'post_status' => 'draft',
-				'post_type' => 'post',
-				'post_category' => !empty($category_ids) ? $category_ids[0] : 0,
-				'post_tags' => isset($template_data['post_tags']) ? $template_data['post_tags'] : '',
-				'post_author' => $post_author,
-				'generate_featured_image' => isset($template_data['generate_featured_image']) ? $template_data['generate_featured_image'] : 0,
-				'featured_image_source' => isset($template_data['featured_image_source']) ? $template_data['featured_image_source'] : 'ai_prompt',
-				'image_prompt' => isset($template_data['image_prompt']) ? $template_data['image_prompt'] : '',
-				'featured_image_unsplash_keywords' => isset($template_data['unsplash_keywords']) ? $template_data['unsplash_keywords'] : '',
-				'include_sources' => isset($template_data['include_sources']) ? (int) $template_data['include_sources'] : 0,
-				'source_group_ids' => wp_json_encode($source_group_ids),
-				'campaign_id' => $campaign_id,
-				'is_active' => 1,
-			);
-
-			if (isset($existing_templates[$template_data['name']])) {
-				$template_id = $existing_templates[$template_data['name']];
-				$template_repo->update($template_id, $template_payload);
-				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
-				echo "[INFO] Template exists, updated: {$template_data['name']}\n";
-				continue;
-			}
-
-			$template_id = $template_repo->create($template_payload);
-			if ($template_id) {
-				$this->created_items['templates'][] = array('id' => $template_id, 'name' => $template_data['name']);
-				echo "[OK] Created template: {$template_data['name']}\n";
-			} else {
-				$this->errors[] = "Failed to create template: {$template_data['name']}";
-				echo "[ERR] Failed: {$template_data['name']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Creates or updates all seed schedules, resolving each schedule's template ID and calculating the next run timestamp.
-	 *
-	 * Schedules whose template cannot be found are skipped and logged as errors.
-	 *
-	 * @return void
-	 */
-	private function create_schedules() {
-		echo "
---- Step 10: Creating Schedules ---
-";
-
-		$schedule_repo = new AIPS_Schedule_Repository();
-		$templates = $this->get_created_templates_by_name();
-		$existing_schedules = array();
-
-		foreach ($schedule_repo->get_all(false) as $existing_schedule) {
-			if (!empty($existing_schedule->title) && !empty($existing_schedule->id)) {
-				$existing_schedules[(string) $existing_schedule->title] = (int) $existing_schedule->id;
-			}
-		}
-
-		foreach ($this->object_data['schedules'] as $schedule_data) {
-			if (!isset($templates[$schedule_data['template_name']])) {
-				$this->errors[] = "Template not found for schedule: {$schedule_data['title']}";
-				echo "[ERR] Template not found: {$schedule_data['template_name']}\n";
-				continue;
-			}
-
-			$template_id = $templates[$schedule_data['template_name']];
-			$next_run = $this->get_next_weekday_timestamp(
-				isset($schedule_data['weekday']) ? (int) $schedule_data['weekday'] : 1,
-				$schedule_data['start_time']
-			);
-
-			$schedule_payload = array(
-				'template_id' => $template_id,
-				'title' => $schedule_data['title'],
-				'frequency' => $schedule_data['frequency'],
-				'next_run' => $next_run,
-				'is_active' => $schedule_data['is_active'],
-				'status' => !empty($schedule_data['is_active']) ? 'active' : 'inactive',
-				'schedule_type' => 'post_generation',
-			);
-
-			if (isset($existing_schedules[$schedule_data['title']])) {
-				$schedule_id = $existing_schedules[$schedule_data['title']];
-				$result = $schedule_repo->update($schedule_id, $schedule_payload);
-				$next_run_formatted = AIPS_DateTime::fromTimestamp($next_run)->format('Y-m-d H:i:s');
-
-				if ($result) {
-					$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
-					echo "[INFO] Schedule exists, updated: {$schedule_data['title']} (next run: {$next_run_formatted})\n";
-				} else {
-					$this->errors[] = "Failed to update schedule: {$schedule_data['title']}";
-					echo "[ERR] Failed to update: {$schedule_data['title']}\n";
-				}
-				continue;
-			}
-
-			$schedule_payload['last_run'] = 0;
-
-			$schedule_id = $schedule_repo->create($schedule_payload);
-
-			if ($schedule_id) {
-				$this->created_items['schedules'][] = array('id' => $schedule_id, 'title' => $schedule_data['title']);
-				$next_run_formatted = AIPS_DateTime::fromTimestamp($next_run)->format('Y-m-d H:i:s');
-				echo "[OK] Created schedule: {$schedule_data['title']} (next run: {$next_run_formatted})\n";
-			} else {
-				$this->errors[] = "Failed to create schedule: {$schedule_data['title']}";
-				echo "[ERR] Failed: {$schedule_data['title']}\n";
-			}
-		}
-	}
-
-	/**
-	 * Calculate the timestamp for the next occurrence of a specific weekday and time.
-	 * 
-	 * @param int $iso_weekday 1 (Monday) to 7 (Sunday)
-	 * @param string $time_hhmm Time in "HH:MM" format (24-hour)
-	 * 
-	 * @return int Unix timestamp for the next occurrence of that weekday and time, relative to the current time in the site's timezone.
-	 */
-	private function get_next_weekday_timestamp($iso_weekday, $time_hhmm) {
-		$iso_weekday = max(1, min(7, (int) $iso_weekday));
-		$time_hhmm = preg_match('/^\d{2}:\d{2}$/', (string) $time_hhmm) ? (string) $time_hhmm : '09:00';
-
-		$site_tz = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone(get_option('timezone_string') ?: 'UTC');
-		$now = new DateTimeImmutable('now', $site_tz);
-
-		$days_ahead = $iso_weekday - (int) $now->format('N');
-		if ($days_ahead < 0) {
-			$days_ahead += 7;
-		}
-
-		$candidate = $now->modify('+' . $days_ahead . ' days')->setTime((int) substr($time_hhmm, 0, 2), (int) substr($time_hhmm, 3, 2));
-
-		if ($candidate->getTimestamp() <= $now->getTimestamp()) {
-			$candidate = $candidate->modify('+7 days');
-		}
-
-		return $candidate->getTimestamp();
-	}
+	/* ------------------------------------------------------------------ */
+	/* v2 seed data (create-only for objects that do not exist yet)        */
+	/* ------------------------------------------------------------------ */
 
 	/**
 	 * Returns the seed data array for all plugin settings, organized into labeled sections.
@@ -2645,548 +3443,247 @@ Tone:
 		return $schedules;
 	}
 
+	/* ------------------------------------------------------------------ */
+	/* v3 configuration                                                    */
+	/* ------------------------------------------------------------------ */
+
 	/**
-	 * Returns a map of created category names to their WordPress term IDs.
+	 * Source groups added in v3.
 	 *
-	 * @return array Associative array of category name to term ID.
+	 * @return array
 	 */
-	private function get_created_categories_by_name() {
-		$map = array();
-		if (isset($this->created_items['categories'])) {
-			foreach ($this->created_items['categories'] as $category) {
-				$map[$category['name']] = $category['id'];
-			}
-		}
-		return $map;
+	private function get_v3_source_group_seed_data() {
+		return array(
+			array(
+				'name'        => 'Backend & Architecture',
+				'slug'        => 'backend-architecture',
+				'description' => 'Software architecture, backend engineering, testing and refactoring practice',
+			),
+			array(
+				'name'        => 'AI & Dev Tooling',
+				'slug'        => 'ai-dev-tooling',
+				'description' => 'AI for developers, developer tools, editors, containers and workflows',
+			),
+		);
 	}
 
 	/**
-	 * Returns a map of created source group names to their taxonomy term IDs.
+	 * Sources added in v3 (all verified to serve RSS/Atom).
 	 *
-	 * @return array Associative array of source group name to term ID.
+	 * @return array
 	 */
-	private function get_created_source_groups_by_name() {
-		$map = array();
-		if (isset($this->created_items['source_groups'])) {
-			foreach ($this->created_items['source_groups'] as $group) {
-				$map[$group['name']] = $group['id'];
-			}
-		}
-		return $map;
+	private function get_v3_source_seed_data() {
+		return array(
+			array('name' => 'Martin Fowler', 'url' => 'https://martinfowler.com/feed.atom', 'group_slug' => 'backend-architecture', 'is_active' => 1),
+			array('name' => 'The Pragmatic Engineer', 'url' => 'https://blog.pragmaticengineer.com/rss/', 'group_slug' => 'backend-architecture', 'is_active' => 1),
+			array('name' => 'InfoQ', 'url' => 'https://feed.infoq.com/', 'group_slug' => 'backend-architecture', 'is_active' => 1),
+			array('name' => 'stitcher.io (PHP)', 'url' => 'https://stitcher.io/rss', 'group_slug' => 'backend-architecture', 'is_active' => 1),
+			array('name' => 'GitHub Blog', 'url' => 'https://github.blog/feed/', 'group_slug' => 'ai-dev-tooling', 'is_active' => 1),
+			array('name' => 'Simon Willison', 'url' => 'https://simonwillison.net/atom/everything/', 'group_slug' => 'ai-dev-tooling', 'is_active' => 1),
+			array('name' => 'PhpStorm Blog', 'url' => 'https://blog.jetbrains.com/phpstorm/feed/', 'group_slug' => 'ai-dev-tooling', 'is_active' => 1),
+			array('name' => 'Docker Blog', 'url' => 'https://www.docker.com/blog/feed/', 'group_slug' => 'ai-dev-tooling', 'is_active' => 1),
+		);
 	}
 
 	/**
-	 * Returns a map of created template names to their database IDs.
+	 * Slug prompt for a content type.
 	 *
-	 * @return array Associative array of template name to database ID.
+	 * @param string $type
+	 * @return string
 	 */
-	private function get_created_templates_by_name() {
-		$map = array();
-		if (isset($this->created_items['templates'])) {
-			foreach ($this->created_items['templates'] as $template) {
-				$map[$template['name']] = $template['id'];
-			}
-		}
-		return $map;
-	}
+	private function get_slug_prompt($type) {
+		$base = 'Return only a URL slug: lowercase, words separated by hyphens, 3 to 6 words, primary keyword first, no stop words (a, the, and, of, to, for, with), no dates or years, no version numbers unless they define the topic, no punctuation.';
 
-	/**
-	 * Returns a map of created voice names to their database IDs.
-	 *
-	 * @return array Associative array of voice name to database ID.
-	 */
-	private function get_created_voices_by_name() {
-		$map = array();
-		if (isset($this->created_items['voices'])) {
-			foreach ($this->created_items['voices'] as $voice) {
-				$map[$voice['name']] = $voice['id'];
-			}
-		}
-		return $map;
-	}
-
-	/**
-	 * Returns a map of created article structure names to their database IDs.
-	 *
-	 * @return array Associative array of structure name to database ID.
-	 */
-	private function get_created_structures_by_name() {
-		$map = array();
-		if (isset($this->created_items['structures'])) {
-			foreach ($this->created_items['structures'] as $structure) {
-				$map[$structure['name']] = $structure['id'];
-			}
-		}
-		return $map;
-	}
-
-	/**
-	 * Returns a map of created campaign names to their database IDs.
-	 *
-	 * @return array Associative array of campaign name to database ID.
-	 */
-	private function get_created_campaigns_by_name() {
-		$map = array();
-		if (isset($this->created_items['campaigns'])) {
-			foreach ($this->created_items['campaigns'] as $campaign) {
-				$map[$campaign['name']] = $campaign['id'];
-			}
-		}
-		return $map;
-	}
-
-	/**
-	 * Returns the complete list of WordPress option keys that this script configures, including extras used by rollback.
-	 *
-	 * @return array Flat list of unique option key strings.
-	 */
-	private function get_configured_setting_keys() {
-		$keys = array();
-
-		foreach ($this->get_flattened_setting_entries() as $entry) {
-			$keys[] = $entry['option_name'];
-		}
-
-		$keys[] = 'aips_cache_driver';
-		$keys[] = 'aips_cache_default_ttl';
-
-		return array_values(array_unique($keys));
-	}
-
-	/**
-	 * Outputs a formatted HTML summary of all configured settings, throughput targets, allocations, and created items.
-	 *
-	 * Also prints next-step instructions and rollback guidance.
-	 *
-	 * @return void
-	 */
-	private function print_summary() {
-		echo "\n=========================================\nSetup Complete!\n=========================================\n";
-
-		$settings = $this->object_data['settings'];
-		$structures = $this->get_created_structures_by_name();
-		$categories = $this->get_created_categories_by_name();
-		$primary_period = $this->get_primary_distribution_period();
-		$target_posts = $this->get_target_posts_by_period();
-		$template_targets = array();
-		$campaign_targets = array();
-		$author_targets = array();
-
-		foreach ($this->object_data['templates'] as $template) {
-			$template_targets[$template['name']] = isset($template['post_quantity']) ? (int) $template['post_quantity'] : 0;
-		}
-
-		foreach ($this->object_data['campaigns'] as $campaign) {
-			$key = 'target_posts_per_' . $primary_period;
-			$campaign_targets[$campaign['name']] = isset($campaign[$key]) ? (int) $campaign[$key] : 0;
-		}
-
-		foreach ($this->object_data['authors'] as $author) {
-			$author_targets[$author['name']] = isset($author['scheduled_post_generation_quantity']) ? (int) $author['scheduled_post_generation_quantity'] : 0;
-		}
-
-		$configured_settings = $this->get_resolved_configured_settings($structures, $categories);
-
-		echo "
-[ Configured Settings (" . count($configured_settings) . " total): ]
-";
-				foreach ($configured_settings as $key => $value) {
-			echo "  * " . $key . ": " . $this->format_summary_value($value) . "
-";
-		}
-		
-		echo "
-[ Target Throughput: ]
-";
-				foreach ($target_posts as $period => $count) {
-			echo "  * " . ucfirst($period) . " target: " . $count . " posts
-";
-		}
-		echo "  * Primary distribution period: " . $primary_period . "
-";
-		
-		echo "
-[ Campaign Allocation (" . esc_html($primary_period) . "): ]
-";
-				foreach ($campaign_targets as $name => $count) {
-			echo "  * " . $name . ": " . $count . " posts per " . $primary_period . "
-";
-		}
-		
-		echo "
-[ Template Allocation (" . esc_html($primary_period) . "): ]
-";
-				foreach ($template_targets as $name => $count) {
-			echo "  * " . $name . ": " . $count . " posts per run
-";
-		}
-		
-		echo "
-[ Author Allocation (" . esc_html($primary_period) . "): ]
-";
-				foreach ($author_targets as $name => $count) {
-			echo "  * " . $name . ": " . $count . " scheduled posts per " . $primary_period . "
-";
-		}
-				
-		echo "
-[ Created Items: ]
-";
-				
-		$entity_types = array(
-			'categories' => 'Categories',
-			'voices' => 'Voices',
-			'structures' => 'Article Structures',
-			'authors' => 'Authors',
-			'slices' => 'Post Slices',
-			'source_groups' => 'Source Groups',
-			'sources' => 'Sources',
-			'templates' => 'Templates',
-			'campaigns' => 'Campaigns',
-			'schedules' => 'Schedules',
+		$rules = array(
+			'tutorial'     => 'Start with the main technology or task, e.g. "php-enum-validation-guide".',
+			'comparison'   => 'Use the pattern "x-vs-y" followed by at most two context words, e.g. "laravel-vs-symfony-apis".',
+			'security'     => 'Lead with the vulnerability or control, e.g. "sql-injection-prevention-php".',
+			'news'         => 'Lead with the affected product or CVE identifier and the issue, e.g. "cve-2026-1234-openssl-patch". Keep it evergreen: no "latest" or "new".',
+			'architecture' => 'Lead with the pattern or design concept, e.g. "hexagonal-architecture-php-services".',
+			'refactoring'  => 'Lead with the code smell or refactoring move, e.g. "refactor-god-class-php".',
+			'testing'      => 'Lead with the testing technique, e.g. "phpunit-test-doubles-guide".',
+			'tooling'      => 'Lead with the tool name and the task, e.g. "docker-compose-php-dev-setup".',
+			'ai'           => 'Lead with the AI technique or tool and the developer task, e.g. "llm-code-review-workflow".',
+			'default'      => 'Lead with the most specific technical term in the title.',
 		);
 
-		foreach ($entity_types as $key => $label) {
-			if (isset($this->created_items[$key])) {
-				$count = count($this->created_items[$key]);
-				echo "  * {$label}: {$count} created
-";
-			}
-		}
-		
-		
-		if (!empty($this->errors)) {
-			echo "
-[ Errors: ]
-";
-						foreach ($this->errors as $error) {
-				echo "  * " . $error . "
-";
-			}
-					}
-
-		echo "\n--- Next Steps ---\n";
-				echo "  1. [WARN] REQUIRED: Add notification email in Settings > Notifications
-";
-		echo "  2. [WARN] If using Unsplash: Add Unsplash Access Key in Settings > Featured Images
-";
-		echo "  3. Review all configured settings in Settings page (Content Strategy, Resilience, Notifications, etc.)
-";
-		echo "  4. Review created Categories, Templates, Voices, Structures in WordPress admin
-";
-		echo "  5. Verify schedule cadence against the configured throughput targets: " . wp_json_encode($target_posts) . "
-";
-		echo "  6. Check Source Groups and Sources for proper RSS feed URLs
-";
-		$default_post_status = isset($configured_settings['aips_default_post_status']) ? $configured_settings['aips_default_post_status'] : 'draft';
-		echo "  7. Start with post status " . $default_post_status . " to review content quality before auto-publishing
-";
-		echo "  8. Monitor History page, Operations Insights, and Telemetry for generation metrics
-";
-		echo "  9. Review and approve Author Topics before they generate posts
-";
-		
-		echo "\n--- Rollback ---\n";
-		echo "To rollback all changes made by this script, run:
-";
-		echo "  wp eval-file wp-content/plugins/ai-post-scheduler/scripts/setup-devstacktips-content.php rollback
-";
-		echo "Or use the Dev Tools page and add 'rollback' as an argument.
-";
-		echo "Rollback warning: rollback deletes by configured names/slugs and is not guaranteed to preserve pre-existing data that used the same names. Take a database backup before rollback.
-";
+		return $base . ' ' . (isset($rules[$type]) ? $rules[$type] : $rules['default']);
 	}
 
 	/**
-	 * Rollback all changes made by this setup script.
-	 * 
-	 * Deletes matching entities in reverse order to maintain referential integrity.
-	 * This matches by configured names/slugs, so it may delete pre-existing data
-	 * that used the same identifiers. Take a database backup before rollback.
+	 * v3 template configuration, keyed by live template name.
+	 *
+	 * Keys: voice, structure (schedule article structure), slug_type, title_prompt,
+	 * image_subject (featured image, used only when the template has no image prompt),
+	 * source_group (slug), content_images (in-content AI images).
+	 *
+	 * @return array
 	 */
-	private function rollback() {
-		global $wpdb;
-
-		echo "=========================================
-DevStackTips Content Rollback
-=========================================
-";
-		echo "Rolling back all setup changes...
-";
-		echo "Warning: rollback deletes matching names/slugs and may remove pre-existing shared terms or records. Restore from a database backup if pre-existing data must be recovered safely.
-";
-
-		$deleted = array(
-			'schedules' => 0,
-			'campaigns' => 0,
-			'templates' => 0,
-			'sources' => 0,
-			'source_groups' => 0,
-			'slices' => 0,
-			'authors' => 0,
-			'structures' => 0,
-			'sections' => 0,
-			'voices' => 0,
-			'categories' => 0,
-			'settings' => 0,
+	private function get_v3_template_config() {
+		return array(
+			'Beginner How-To' => array(
+				'voice'          => 'Hands-On Tutorial Coach',
+				'structure'      => 'Evergreen How-To Guide',
+				'slug_type'      => 'tutorial',
+				'title_prompt'   => 'Write a beginner-friendly how-to title that starts with "How to" and names the exact technology and outcome. Under 65 characters, no clickbait, no year.',
+				'image_subject'  => 'a friendly step-by-step learning path with numbered stages leading to a working result',
+				'source_group'   => 'php-ecosystem',
+				'content_images' => array(
+					array('placement' => 'after_section_2', 'prompt' => 'Simple step-by-step flow diagram of the setup or process described for {{topic}}, three to five connected stages'),
+				),
+			),
+			'Intermediate Backend' => array(
+				'voice'          => 'DevStackTips Default',
+				'structure'      => 'Advanced Technical Tutorial',
+				'slug_type'      => 'tutorial',
+				'title_prompt'   => 'Write a specific title for an intermediate backend tutorial: name the technique and the concrete benefit (performance, reliability, scale). Under 65 characters, no year.',
+				'image_subject'  => 'backend services, an API gateway and a database connected by clean data-flow lines',
+				'source_group'   => 'backend-architecture',
+				'content_images' => array(
+					array('placement' => 'after_section_2', 'prompt' => 'Request flow diagram for {{topic}}: client, API layer, services and data store as connected boxes with arrows'),
+					array('placement' => 'after_section_4', 'prompt' => 'Before and after comparison diagram showing the backend design improvement described for {{topic}}'),
+				),
+			),
+			'Security Guide' => array(
+				'voice'          => 'Senior Backend Mentor',
+				'structure'      => 'Security Best Practices',
+				'slug_type'      => 'security',
+				'title_prompt'   => 'Write a security guide title that names the vulnerability or control and the stack, e.g. "Preventing SQL Injection in PHP with Prepared Statements". Under 65 characters, no fear-mongering.',
+				'image_subject'  => 'a shield protecting a layered application stack, with a blocked attack path',
+				'source_group'   => 'security-news',
+				'content_images' => array(),
+			),
+			'Framework Comparison' => array(
+				'voice'          => 'Neutral Technical Analyst',
+				'structure'      => 'Comparison Article',
+				'slug_type'      => 'comparison',
+				'title_prompt'   => 'Write a neutral comparison title in the form "X vs Y: <deciding factor>" that names both options and the main criterion. Under 65 characters, no winner in the title, no year.',
+				'image_subject'  => 'two balanced technology stacks side by side on a scale, evenly weighted',
+				'source_group'   => 'php-ecosystem',
+				'content_images' => array(),
+			),
+			'Developer Tooling' => array(
+				'voice'          => 'Hands-On Tutorial Coach',
+				'structure'      => 'Tool / Workflow Explainer',
+				'slug_type'      => 'tooling',
+				'title_prompt'   => 'Write a practical title that names the tool and the workflow it improves, e.g. "Speed Up PHP Debugging with Xdebug Step Filters". Under 65 characters, no year.',
+				'image_subject'  => 'a developer terminal and editor connected to automation gears and a pipeline',
+				'source_group'   => 'ai-dev-tooling',
+				'content_images' => array(),
+			),
+			'AI for Developers' => array(
+				'voice'          => 'AI Engineering Editor',
+				'structure'      => 'AI-for-Devs Article',
+				'slug_type'      => 'ai',
+				'title_prompt'   => 'Write a grounded title about using AI in a specific developer task; name the task and the technique, avoid hype words like "revolutionary" or "game-changer". Under 65 characters.',
+				'image_subject'  => 'a code editor with an assistant panel and a human review checkpoint',
+				'source_group'   => 'ai-dev-tooling',
+				'content_images' => array(),
+			),
+			'Security News' => array(
+				'voice'          => 'Senior Backend Mentor',
+				'structure'      => 'News / Trend Analysis',
+				'slug_type'      => 'news',
+				'title_prompt'   => 'Write a factual security briefing title that names the affected software or CVE and what developers must do (patch, mitigate, audit). Under 70 characters, no sensationalism.',
+				'image_subject'  => 'a security alert radar scanning a network of application nodes',
+				'source_group'   => 'security-news',
+				'content_images' => array(),
+			),
+			'PHP Framework Deep Dive' => array(
+				'voice'          => 'DevStackTips Default',
+				'structure'      => 'Advanced Technical Tutorial',
+				'slug_type'      => 'tutorial',
+				'title_prompt'   => 'Write a deep-dive title that names the PHP framework, the feature and the practical outcome, e.g. "Laravel Queues: Reliable Retries with Job Middleware". Under 65 characters, no year.',
+				'image_subject'  => 'modular PHP framework components fitting together like building blocks',
+				'source_group'   => 'php-ecosystem',
+				'content_images' => array(
+					array('placement' => 'after_section_2', 'prompt' => 'Architecture diagram of the framework components involved in {{topic}} and how a request moves through them'),
+				),
+			),
+			'Architecture Pattern Deep Dive' => array(
+				'voice'          => 'Staff Software Architect',
+				'structure'      => 'Architecture Pattern Deep Dive',
+				'slug_type'      => 'architecture',
+				'title_prompt'   => 'Write an architecture title that names the pattern and the problem it solves, e.g. "Hexagonal Architecture: Isolating PHP Domain Logic". Under 65 characters, no year.',
+				'image_subject'  => 'isometric modular system components with clear boundaries and connections',
+				'source_group'   => 'backend-architecture',
+				'content_images' => array(
+					array('placement' => 'after_section_2', 'prompt' => 'Component diagram of the architecture pattern in {{topic}}: modules, boundaries and dependencies as labeled-free boxes and arrows'),
+					array('placement' => 'after_section_4', 'prompt' => 'Sequence-style diagram of one request flowing through the architecture described in {{topic}}'),
+				),
+			),
+			'Refactoring & Code Smells' => array(
+				'voice'          => 'Code Craftsman & Refactoring Lead',
+				'structure'      => 'Refactoring & Code Smells Case Study',
+				'slug_type'      => 'refactoring',
+				'title_prompt'   => 'Write a refactoring title that names the code smell and the refactoring move, e.g. "Breaking Up a God Class with Extract Service". Under 65 characters, no year.',
+				'image_subject'  => 'tangled lines reorganizing into clean, orderly modular blocks',
+				'source_group'   => 'backend-architecture',
+				'content_images' => array(
+					array('placement' => 'after_section_2', 'prompt' => 'Before and after diagram of the code structure in {{topic}}: tangled dependencies on the left, clean separated modules on the right'),
+				),
+			),
+			'Test Strategy & Automation Guide' => array(
+				'voice'          => 'Test Automation & QA Lead',
+				'structure'      => 'Test Strategy & Automation Guide',
+				'slug_type'      => 'testing',
+				'title_prompt'   => 'Write a testing title that names the technique and the confidence it gives, e.g. "Contract Tests for PHP APIs Without Flaky Mocks". Under 65 characters, no year.',
+				'image_subject'  => 'a test pyramid and a CI pipeline with passing checks',
+				'source_group'   => 'backend-architecture',
+				'content_images' => array(
+					array('placement' => 'after_section_2', 'prompt' => 'Test strategy diagram for {{topic}}: test pyramid layers and where they run in a CI pipeline'),
+				),
+			),
 		);
+	}
 
-		// Reset settings to defaults first
-		echo "
---- Resetting Plugin Settings ---
-";
+	/**
+	 * v3 author configuration, keyed by live author name.
+	 *
+	 * v2_author: also switch to score-based approval (85+) and a daily 1-post cadence.
+	 * category: set only when the author has none.
+	 *
+	 * @return array
+	 */
+	private function get_v3_author_config() {
+		return array(
+			'Backend Architecture Specialist' => array('v2_author' => true, 'slug_type' => 'architecture', 'category' => 'Backend Development', 'image_subject' => 'backend services and APIs connected in a clean system diagram'),
+			'Security Expert' => array('v2_author' => true, 'slug_type' => 'security', 'category' => 'Security', 'source_group' => 'security-news', 'image_subject' => 'a shield protecting application layers from an attack path'),
+			'DevOps Practitioner' => array('v2_author' => true, 'slug_type' => 'tooling', 'category' => 'DevOps & Tools', 'image_subject' => 'a CI/CD pipeline with containers and automation gears'),
+			'Framework Analyst' => array('v2_author' => true, 'slug_type' => 'comparison', 'category' => 'Framework Guides', 'image_subject' => 'framework building blocks compared side by side'),
+			'AI Engineering Pragmatist' => array('v2_author' => true, 'slug_type' => 'ai', 'category' => 'AI for Developers', 'image_subject' => 'a code editor with an AI assistant and a human review step'),
+			'Staff Software Architect' => array('v2_author' => true, 'slug_type' => 'architecture', 'category' => 'Backend Development', 'image_subject' => 'isometric modular architecture with clear domain boundaries'),
+			'Test Automation & Quality Specialist' => array('v2_author' => true, 'slug_type' => 'testing', 'category' => 'DevOps & Tools', 'image_subject' => 'a test pyramid with passing checks in a pipeline'),
+			'Code Quality & Refactoring Craftsman' => array('v2_author' => true, 'slug_type' => 'refactoring', 'category' => 'Backend Development', 'image_subject' => 'messy code blocks being reorganized into clean modules'),
+			'Marcus Vance' => array('v2_author' => false, 'slug_type' => 'architecture', 'category' => 'Backend Development', 'image_subject' => 'cloud-native distributed services across regions with message queues'),
+			'Elena Rostova' => array('v2_author' => false, 'slug_type' => 'default', 'category' => 'Web Development', 'image_subject' => 'a modern frontend component tree with performance gauges'),
+			'Devon Miller (multi post)' => array('v2_author' => false, 'slug_type' => 'security', 'category' => 'Security', 'image_subject' => 'a secured CI/CD pipeline with signed artifacts and a shield'),
+		);
+	}
 
-		$defaults = AIPS_Config::get_instance()->get_default_options();
-		foreach ($this->get_configured_setting_keys() as $key) {
-			if (array_key_exists($key, $defaults)) {
-				update_option($key, $defaults[$key]);
-				$deleted['settings']++;
-			}
-		}
-		echo "[OK] Reset configured settings to plugin defaults\n";
-
-		// Delete in reverse order of creation to maintain referential integrity
-
-		// 1. Delete Schedules
-		echo "
---- Deleting Schedules ---
-";
-		$schedule_titles = wp_list_pluck($this->object_data['schedules'], 'title');
-		foreach ($schedule_titles as $title) {
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_schedule',
-				array('title' => $title),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['schedules'] += $count;
-				echo "[OK] Deleted schedule: {$title}\n";
-			}
-		}
-
-		// 2. Delete Campaigns
-		echo "
---- Deleting Campaigns ---
-";
-		$campaign_names = wp_list_pluck($this->object_data['campaigns'], 'name');
-		foreach ($campaign_names as $name) {
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_campaigns',
-				array('name' => $name),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['campaigns'] += $count;
-				echo "[OK] Deleted campaign: {$name}\n";
-			}
-		}
-
-		// 3. Delete Templates
-		echo "
---- Deleting Templates ---
-";
-		$template_names = wp_list_pluck($this->object_data['templates'], 'name');
-		foreach ($template_names as $name) {
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_templates',
-				array('name' => $name),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['templates'] += $count;
-				echo "[OK] Deleted template: {$name}\n";
-			}
-		}
-
-		// 4. Delete Sources
-		echo "
---- Deleting Sources ---
-";
-		$source_names = wp_list_pluck($this->object_data['sources'], 'name');
-		$sources_repo = new AIPS_Sources_Repository();
-		$sources_by_label = array();
-		foreach ($sources_repo->get_all() as $existing_source) {
-			if (!empty($existing_source->id) && !empty($existing_source->label)) {
-				if (!isset($sources_by_label[(string) $existing_source->label])) {
-					$sources_by_label[(string) $existing_source->label] = array();
-				}
-				$sources_by_label[(string) $existing_source->label][] = (int) $existing_source->id;
-			}
-		}
-
-		foreach ($source_names as $name) {
-			$source_ids = isset($sources_by_label[$name]) ? $sources_by_label[$name] : array();
-			foreach ($source_ids as $source_id) {
-				$sources_repo->delete_source_terms((int) $source_id);
-			}
-
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_sources',
-				array('label' => $name),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['sources'] += $count;
-				echo "[OK] Deleted source: {$name}\n";
-			}
-		}
-
-		// 5. Delete Source Groups (taxonomy terms)
-		echo "
---- Deleting Source Groups ---
-";
-		$source_group_slugs = wp_list_pluck($this->object_data['source_groups'], 'slug');
-		foreach ($source_group_slugs as $slug) {
-			$term = term_exists($slug, 'aips_source_group');
-			if ($term) {
-				$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
-				$result = wp_delete_term($term_id, 'aips_source_group');
-				if (!is_wp_error($result)) {
-					$deleted['source_groups']++;
-					echo "[OK] Deleted source group: {$slug}\n";
-				} else {
-					$error_message = $result->get_error_message();
-					$this->errors[] = "Failed to delete source group: {$slug} ({$error_message})";
-					echo "[ERR] Failed to delete source group: {$slug} ({$error_message})\n";
-				}
-			}
-		}
-
-		// 6. Delete Post Slices
-		echo "
---- Deleting Post Slices ---
-";
-		$slice_names = wp_list_pluck($this->object_data['post_slices'], 'name');
-		foreach ($slice_names as $name) {
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_post_slices',
-				array('name' => $name),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['slices'] += $count;
-				echo "[OK] Deleted post slice: {$name}\n";
-			}
-		}
-
-		// 7. Delete Authors
-		echo "
---- Deleting Authors ---
-";
-		$author_names = wp_list_pluck($this->object_data['authors'], 'name');
-		foreach ($author_names as $name) {
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_authors',
-				array('name' => $name),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['authors'] += $count;
-				echo "[OK] Deleted author: {$name}\n";
-			}
-		}
-
-		// 8. Delete Article Structures
-		echo "
---- Deleting Article Structures ---
-";
-		$structure_names = wp_list_pluck($this->object_data['structures'], 'name');
-		foreach ($structure_names as $name) {
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_article_structures',
-				array('name' => $name),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['structures'] += $count;
-				echo "[OK] Deleted article structure: {$name}\n";
-			}
-		}
-
-		// 9. Delete Prompt Sections (delete all sections created by this script)
-		echo "
---- Deleting Prompt Sections ---
-";
-		$section_names = wp_list_pluck($this->object_data['sections'], 'name');
-		foreach ($section_names as $name) {
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_prompt_sections',
-				array('name' => $name),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['sections'] += $count;
-				echo "[OK] Deleted prompt section: {$name}\n";
-			}
-		}
-
-		// 10. Delete Voices
-		echo "
---- Deleting Voices ---
-";
-		$voice_names = wp_list_pluck($this->object_data['voices'], 'name');
-		foreach ($voice_names as $name) {
-			$count = $wpdb->delete(
-				$wpdb->prefix . 'aips_voices',
-				array('name' => $name),
-				array('%s')
-			);
-			if ($count > 0) {
-				$deleted['voices'] += $count;
-				echo "[OK] Deleted voice: {$name}\n";
-			}
-		}
-
-		// 11. Delete Categories (WordPress taxonomy terms)
-		echo "
---- Deleting Categories ---
-";
-		$category_slugs = wp_list_pluck($this->object_data['categories'], 'slug');
-		foreach ($category_slugs as $slug) {
-			$term = term_exists($slug, 'category');
-			if ($term) {
-				$term_id = is_array($term) ? (int) $term['term_id'] : (int) $term;
-				$result = wp_delete_term($term_id, 'category');
-				if (!is_wp_error($result)) {
-					$deleted['categories']++;
-					echo "[OK] Deleted category: {$slug}\n";
-				} else {
-					$error_message = $result->get_error_message();
-					$this->errors[] = "Failed to delete category: {$slug} ({$error_message})";
-					echo "[ERR] Failed to delete category: {$slug} ({$error_message})\n";
-				}
-			}
-		}
-
-		// Summary
-		echo "\n=========================================\nRollback Complete\n=========================================\n";
-				foreach ($deleted as $type => $count) {
-			echo "  * " . ucfirst($type) . ": {$count} deleted
-";
-		}
-		
-		$total = array_sum($deleted);
-		echo "
-Total items deleted: {$total}
-";
-		echo "You can now re-run the setup script if needed.
-";
+	/**
+	 * Settings v3 always sets.
+	 *
+	 * @return array Option name => value.
+	 */
+	private function get_v3_settings() {
+		return array(
+			'aips_allowed_image_sources'   => array('ai_prompt', 'media_library'),
+			'aips_max_post_images_limit'   => 3,
+			'aips_ai_assistance_guidance'  => 'Write for DevStackTips: professional software engineers and web developers (mid to senior level). Voice: authoritative yet approachable, expert-level, practical. Prefer real-world patterns over theory, keep a security-first mindset, use precise technical terms, and avoid hype, clickbait and filler. Keep suggestions concise and specific to PHP, backend, architecture, security, DevOps, testing and AI-for-developers topics.',
+		);
 	}
 }
 
-if (PHP_SAPI !== 'cli') {
-	wp_die(esc_html__('The DevStackTips seeder can only be run from WP-CLI.', 'ai-post-scheduler'));
+if (!defined('AIPS_DEVSTACKTIPS_SETUP_NO_RUN')) {
+	if (!defined('WP_CLI') || !WP_CLI) {
+		wp_die(esc_html__('The DevStackTips setup script can only be run from WP-CLI.', 'ai-post-scheduler'));
+	}
+
+	$aips_devstacktips_args = (isset($args) && is_array($args)) ? $args : array();
+	$aips_devstacktips_setup = new AIPS_DevStackTips_Setup($aips_devstacktips_args);
+
+	if (!$aips_devstacktips_setup->run()) {
+		WP_CLI::error('DevStackTips setup finished with errors (see [ERR] lines above).');
+	}
 }
-
-// Determine mode from CLI argument.
-$rollback_mode = false;
-global $argv;
-if (isset($argv) && in_array('rollback', $argv, true)) {
-	$rollback_mode = true;
-}
-
-// Run the setup or rollback
-$setup = new AIPS_DevStackTips_Setup($rollback_mode);
-$setup->run();
-
-

@@ -185,8 +185,10 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 		$this->assertSame('relevance_unavailable', $pending['reason']);
 		$this->assertNull($pending['meta']['auto_approval_relevance']);
 
+		// An embeddings outage is not a verdict: even a "rejected" fallback keeps the topic pending.
 		$rejected = $eval->evaluate_author_topic_auto_approval($topic, $author, null, $this->similarity_policy(array('fallback' => 'rejected')));
-		$this->assertSame('rejected', $rejected['decision']);
+		$this->assertSame('pending', $rejected['decision']);
+		$this->assertSame('relevance_unavailable', $rejected['reason']);
 
 		$split = $eval->evaluate_author_topic_auto_approval($topic, $author, null, $this->similarity_policy(array('fallback' => 'smart_split')));
 		$this->assertSame('pending', $split['decision']);
@@ -309,5 +311,94 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 
 		$result = $generator->get_author_composite_embedding( $author );
 		$this->assertSame( $saved_vector, $result );
+	}
+
+	/**
+	 * Insert a topic row directly through the repository.
+	 *
+	 * @param int        $author_id
+	 * @param string     $title
+	 * @param int        $score
+	 * @param array|null $meta
+	 * @param string     $status
+	 * @return int Topic ID.
+	 */
+	private function insert_topic( $author_id, $title, $score, $meta = null, $status = 'pending' ) {
+		$repo = new AIPS_Author_Topics_Repository();
+		$repo->create_bulk( array(
+			array(
+				'author_id'    => $author_id,
+				'topic_title'  => $title,
+				'topic_prompt' => '',
+				'status'       => $status,
+				'score'        => $score,
+				'keywords'     => '',
+				'metadata'     => null === $meta ? '' : wp_json_encode( $meta ),
+				'generated_at' => time(),
+			),
+		) );
+
+		$latest = $repo->get_latest_by_author( $author_id, 1 );
+
+		return (int) $latest[0]->id;
+	}
+
+	/**
+	 * Pending topics that never got an auto-approval decision are decided by the
+	 * current policy; topics already judged by a rule are left for human review.
+	 */
+	public function test_recheck_pending_auto_approval_decides_unevaluated_topics() {
+		$author_id = 987001;
+		$author    = (object) array(
+			'id'                            => $author_id,
+			'name'                          => 'Recheck Author',
+			'topic_auto_approval_mode'      => 'score',
+			'topic_auto_approval_min_score' => 85,
+			'topic_auto_approval_fallback'  => 'pending',
+		);
+
+		$high      = $this->insert_topic( $author_id, 'High score never evaluated', 92 );
+		$low       = $this->insert_topic( $author_id, 'Low score never evaluated', 70 );
+		$unmeasure = $this->insert_topic( $author_id, 'Relevance unavailable', 90, array( 'auto_approval_rule' => 'similarity', 'auto_approval_reason' => 'relevance_unavailable' ) );
+		$judged    = $this->insert_topic( $author_id, 'Already judged', 95, array( 'auto_approval_rule' => 'score', 'auto_approval_reason' => 'below_min_score' ) );
+
+		$counts = $this->generator->recheck_pending_auto_approval( $author, 20 );
+
+		$this->assertSame( 3, $counts['checked'] );
+		$this->assertSame( 2, $counts['approved'] );
+		$this->assertSame( 0, $counts['rejected'] );
+
+		$repo = new AIPS_Author_Topics_Repository();
+		$this->assertSame( 'approved', $repo->get_by_id( $high )->status );
+		$this->assertSame( 'approved', $repo->get_by_id( $unmeasure )->status );
+
+		$low_row = $repo->get_by_id( $low );
+		$this->assertSame( 'pending', $low_row->status );
+		$low_meta = json_decode( $low_row->metadata, true );
+		$this->assertSame( 'score', $low_meta['auto_approval_rule'] );
+
+		// Recorded decision means the low topic is not re-checked again.
+		$this->assertSame( 'pending', $repo->get_by_id( $judged )->status );
+		$again = $this->generator->recheck_pending_auto_approval( $author, 20 );
+		$this->assertSame( 0, $again['checked'] );
+	}
+
+	/**
+	 * Manual-mode authors are never re-checked.
+	 */
+	public function test_recheck_pending_auto_approval_skips_manual_authors() {
+		$author_id = 987002;
+		$author    = (object) array(
+			'id'                       => $author_id,
+			'name'                     => 'Manual Author',
+			'topic_auto_approval_mode' => 'manual',
+		);
+
+		$topic_id = $this->insert_topic( $author_id, 'Manual topic', 99 );
+
+		$counts = $this->generator->recheck_pending_auto_approval( $author, 20 );
+
+		$this->assertSame( 0, $counts['checked'] );
+		$this->assertSame( 'pending', ( new AIPS_Author_Topics_Repository() )->get_by_id( $topic_id )->status );
 	}
 }
