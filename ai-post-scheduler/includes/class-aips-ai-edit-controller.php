@@ -332,6 +332,7 @@ class AIPS_AI_Edit_Controller {
 		if ($downstream_cascaded) {
 			$context['downstream_cascaded'] = true;
 			$context['trigger_detail']     = __('Cascaded downstream alignment from upstream component acceptance', 'ai-post-scheduler');
+			$this->apply_upstream_component_context($context);
 		}
 		
 		// Regenerate component
@@ -618,15 +619,11 @@ class AIPS_AI_Edit_Controller {
 		if ($history_container && !is_wp_error($history_container)) {
 			foreach ($updated_components as $comp) {
 				$comp_label = ucfirst(str_replace('_', ' ', $comp));
-				$saved_val = isset($sanitized_components[$comp]) ? $sanitized_components[$comp] : '';
-				if (is_array($saved_val) || is_object($saved_val)) {
-					$saved_val = wp_json_encode($saved_val);
-				}
 				$history_container->record(
 					'activity',
 					sprintf(__('Post %s regenerated via AI Edit', 'ai-post-scheduler'), $comp_label),
 					null,
-					$saved_val,
+					$this->activity_output_for_component($comp, $sanitized_components),
 					array('component' => $comp, 'post_id' => $post_id, 'action' => 'save_component')
 				);
 			}
@@ -858,6 +855,108 @@ class AIPS_AI_Edit_Controller {
 	}
 
 	/**
+	 * Overlay title and content the editor just accepted onto a cascaded regeneration.
+	 *
+	 * Downstream excerpt generation must follow the draft the user accepted, even
+	 * when that draft has not yet been read back from the persisted post.
+	 *
+	 * @param array $context Generation context, passed by reference.
+	 * @return void
+	 */
+	private function apply_upstream_component_context(array &$context) {
+		if (isset($_POST['upstream_title'])) {
+			$upstream_title = sanitize_text_field(wp_unslash($_POST['upstream_title']));
+			if ('' !== $upstream_title) {
+				$context['current_title'] = $upstream_title;
+			}
+		}
+
+		if (isset($_POST['upstream_content'])) {
+			$upstream_content = wp_kses_post(wp_unslash($_POST['upstream_content']));
+			if ('' !== trim($upstream_content)) {
+				$context['current_content'] = $upstream_content;
+			}
+		}
+	}
+
+	/**
+	 * Build the timeline output payload for one saved component.
+	 *
+	 * Featured image saves are stored under featured_image_id, while the
+	 * updated-component list uses featured_image.
+	 *
+	 * @param string $component            Component key from the update list.
+	 * @param array  $sanitized_components Sanitized save payload.
+	 * @return string
+	 */
+	private function activity_output_for_component($component, array $sanitized_components) {
+		if ('featured_image' === $component) {
+			$attachment_id = 0;
+			if (isset($sanitized_components['featured_image_id'])) {
+				$attachment_id = absint($sanitized_components['featured_image_id']);
+			} elseif (isset($sanitized_components['featured_image'])) {
+				$raw = $sanitized_components['featured_image'];
+				if (is_array($raw) && isset($raw['attachment_id'])) {
+					$attachment_id = absint($raw['attachment_id']);
+				} else {
+					$attachment_id = absint($raw);
+				}
+			}
+
+			return wp_json_encode(array(
+				'attachment_id' => $attachment_id,
+				'url'           => $attachment_id ? (string) wp_get_attachment_url($attachment_id) : '',
+			));
+		}
+
+		$saved_val = isset($sanitized_components[$component]) ? $sanitized_components[$component] : '';
+		if (is_array($saved_val) || is_object($saved_val)) {
+			return wp_json_encode($saved_val);
+		}
+
+		return (string) $saved_val;
+	}
+
+	/**
+	 * Accept a featured-image revision as an array, attachment ID, or JSON object.
+	 *
+	 * Editor widgets send the current thumbnail as a bare attachment ID. Treating
+	 * only arrays as valid snapshots drops that ID and skips pre-regeneration capture.
+	 *
+	 * @param mixed $value Raw featured image value.
+	 * @return array|null Normalized array, or null when the shape is unusable.
+	 */
+	private function coerce_featured_image_revision_input($value) {
+		if (is_array($value)) {
+			return $value;
+		}
+
+		if (is_int($value) || is_float($value)) {
+			return array(
+				'attachment_id' => absint($value),
+			);
+		}
+
+		if (!is_string($value)) {
+			return null;
+		}
+
+		$trimmed = trim($value);
+		if ('' !== $trimmed && ctype_digit($trimmed)) {
+			return array(
+				'attachment_id' => absint($trimmed),
+			);
+		}
+
+		$decoded = json_decode($trimmed, true);
+		if (is_array($decoded)) {
+			return $decoded;
+		}
+
+		return null;
+	}
+
+	/**
 	 * Sanitize a component value before storing it as a revision snapshot.
 	 *
 	 * @param string $component Component type.
@@ -876,6 +975,7 @@ class AIPS_AI_Edit_Controller {
 				return wp_kses_post((string) $value);
 
 			case 'featured_image':
+				$value = $this->coerce_featured_image_revision_input($value);
 				if (!is_array($value)) {
 					return array(
 						'attachment_id' => 0,
@@ -883,9 +983,27 @@ class AIPS_AI_Edit_Controller {
 					);
 				}
 
+				$attachment_id = 0;
+				if (isset($value['attachment_id'])) {
+					$attachment_id = absint($value['attachment_id']);
+				} elseif (isset($value['id'])) {
+					$attachment_id = absint($value['id']);
+				}
+
+				$url = '';
+				if ($attachment_id > 0) {
+					$resolved_url = wp_get_attachment_url($attachment_id);
+					if ($resolved_url) {
+						$url = esc_url_raw($resolved_url);
+					}
+				}
+				if ('' === $url && isset($value['url'])) {
+					$url = esc_url_raw($value['url']);
+				}
+
 				return array(
-					'attachment_id' => isset($value['attachment_id']) ? absint($value['attachment_id']) : 0,
-					'url' => isset($value['url']) ? esc_url_raw($value['url']) : '',
+					'attachment_id' => $attachment_id,
+					'url' => $url,
 				);
 
 			default:

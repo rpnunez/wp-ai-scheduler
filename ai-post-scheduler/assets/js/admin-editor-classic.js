@@ -74,8 +74,15 @@
 			return $('#content').val() || '';
 		}
 		if ('featured_image' === component) {
-			var thumbId = $('#_thumbnail_id').val();
-			return thumbId && thumbId !== '-1' ? thumbId : '';
+			var thumbId = parseInt($('#_thumbnail_id').val(), 10) || 0;
+			if (thumbId > 0) {
+				var previewSrc = $('.aips-classic-component-widget[data-component="featured_image"] .aips-featured-image-preview img').attr('src') || '';
+				return {
+					attachment_id: thumbId,
+					url: previewSrc
+				};
+			}
+			return '';
 		}
 		return '';
 	}
@@ -331,7 +338,9 @@
 				var originalHtml = $btn.html();
 				var currentVal = getCurrentComponentValue(component);
 				var isDownstreamCascaded = !!$widget.data('downstream-cascaded');
+				var upstreamContext = $widget.data('upstream-context') || {};
 				$widget.removeData('downstream-cascaded');
+				$widget.removeData('upstream-context');
 
 				var activePreset = $widget.find('.aips-preset-chip.active').data('preset') || '';
 				var customDirective = $widget.find('.aips-custom-directive-input').val() || '';
@@ -340,7 +349,7 @@
 
 				$btn.prop('disabled', true).addClass('regenerating').html('<span class="dashicons dashicons-update"></span> ' + (l10n.labels.generating || 'Generating…'));
 
-				$.post(l10n.ajaxurl, {
+				var regeneratePayload = {
 					action: 'aips_regenerate_component',
 					nonce: l10n.nonce,
 					post_id: l10n.postId,
@@ -352,7 +361,15 @@
 					model_override: modelOverride,
 					temperature_override: tempOverride,
 					downstream_cascaded: isDownstreamCascaded ? 'true' : 'false'
-				})
+				};
+				if (isDownstreamCascaded && upstreamContext.title) {
+					regeneratePayload.upstream_title = upstreamContext.title;
+				}
+				if (isDownstreamCascaded && upstreamContext.content) {
+					regeneratePayload.upstream_content = upstreamContext.content;
+				}
+
+				$.post(l10n.ajaxurl, regeneratePayload)
 				.done(function (response) {
 					if (response && response.success && response.data && response.data.new_value) {
 						var newVal = response.data.new_value;
@@ -415,7 +432,14 @@
 					payloadComponents.featured_image_id = typeof newVal === 'object' ? newVal.attachment_id : newVal;
 				}
 
-				$.post(l10n.ajaxurl, {
+				var upstreamContext = {};
+				if ('title' === component) {
+					upstreamContext.title = payloadComponents.title;
+				} else if ('content' === component) {
+					upstreamContext.content = payloadComponents.content;
+				}
+
+				var saveRequest = $.post(l10n.ajaxurl, {
 					action: 'aips_save_post_components',
 					nonce: l10n.nonce,
 					post_id: l10n.postId,
@@ -426,16 +450,27 @@
 				$widget.removeData('pending-value');
 				loadRevisions($widget, component);
 
-				// Trigger cascading downstream regeneration if requested
+				// Wait until the accepted draft is persisted. Excerpt regeneration
+				// reads title and content from that saved post (and from the
+				// upstream fields below) to stay aligned with the accepted version.
 				if (downstreamTargets.length > 0) {
-					$.each(downstreamTargets, function (i, targetComp) {
-						targetComp = $.trim(targetComp);
-						if (!targetComp) return;
-						var $targetWidget = $('.aips-classic-component-widget[data-component="' + targetComp + '"]');
-						if ($targetWidget.length) {
-							$targetWidget.data('downstream-cascaded', true);
-							$targetWidget.find('.aips-regenerate-btn').trigger('click');
+					saveRequest.done(function (response) {
+						if (!response || !response.success) {
+							alert((response && response.data && response.data.message) || l10n.labels.actionError || 'Error saving component.');
+							return;
 						}
+						$.each(downstreamTargets, function (i, targetComp) {
+							targetComp = $.trim(targetComp);
+							if (!targetComp) return;
+							var $targetWidget = $('.aips-classic-component-widget[data-component="' + targetComp + '"]');
+							if ($targetWidget.length) {
+								$targetWidget.data('downstream-cascaded', true);
+								$targetWidget.data('upstream-context', upstreamContext);
+								$targetWidget.find('.aips-regenerate-btn').trigger('click');
+							}
+						});
+					}).fail(function () {
+						alert(l10n.labels.actionError || 'Error saving component.');
 					});
 				}
 			});

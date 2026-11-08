@@ -105,9 +105,9 @@
 			});
 		}
 
-		function handleRegenerate(isCascade) {
+		function handleRegenerate(isCascade, cascadeDetail) {
 			setIsRegenerating(true);
-			$.post(l10n.ajaxurl, {
+			var regeneratePayload = {
 				action: 'aips_regenerate_component',
 				nonce: l10n.nonce,
 				post_id: l10n.postId,
@@ -119,7 +119,16 @@
 				model_override: modelOverride,
 				temperature_override: temperatureOverride,
 				downstream_cascaded: isCascade ? 'true' : 'false'
-			})
+			};
+			if (isCascade && cascadeDetail) {
+				if (cascadeDetail.upstream_title) {
+					regeneratePayload.upstream_title = cascadeDetail.upstream_title;
+				}
+				if (cascadeDetail.upstream_content) {
+					regeneratePayload.upstream_content = cascadeDetail.upstream_content;
+				}
+			}
+			$.post(l10n.ajaxurl, regeneratePayload)
 			.done(function (response) {
 				if (response && response.success && response.data && response.data.new_value) {
 					setRegeneratedDraft(response.data.new_value);
@@ -178,7 +187,7 @@
 				payloadComponents.featured_image_id = typeof regeneratedDraft === 'object' ? regeneratedDraft.attachment_id : regeneratedDraft;
 			}
 
-			$.post(l10n.ajaxurl, {
+			var saveRequest = $.post(l10n.ajaxurl, {
 				action: 'aips_save_post_components',
 				nonce: l10n.nonce,
 				post_id: l10n.postId,
@@ -190,13 +199,25 @@
 			loadRevisions();
 			notify('Updated ' + label + '!');
 
-			// Trigger downstream cascade if enabled
-			if (syncDownstream) {
-				if ('title' === component || 'content' === component) {
+			// Persist the accepted draft before cascading. The excerpt panel
+			// rebuilds its prompt from the saved title/content plus these fields.
+			if (syncDownstream && ('title' === component || 'content' === component)) {
+				saveRequest.done(function (response) {
+					if (!response || !response.success) {
+						notify((response && response.data && response.data.message) || l10n.labels.actionError, 'error');
+						return;
+					}
 					window.dispatchEvent(new CustomEvent('aips:regenerate_component', {
-						detail: { component: 'excerpt', source: 'cascade' }
+						detail: {
+							component: 'excerpt',
+							source: 'cascade',
+							upstream_title: 'title' === component ? payloadComponents.title : '',
+							upstream_content: 'content' === component ? payloadComponents.content : ''
+						}
 					}));
-				}
+				}).fail(function () {
+					notify(l10n.labels.actionError, 'error');
+				});
 			}
 		}
 
@@ -280,7 +301,7 @@
 		useEffect(function () {
 			function onCascade(e) {
 				if (e.detail && e.detail.component === component) {
-					handleRegenerate(true);
+					handleRegenerate(true, e.detail);
 				}
 			}
 			window.addEventListener('aips:regenerate_component', onCascade);

@@ -106,14 +106,18 @@ class AIPS_Component_Regeneration_Service {
 	 * @param bool                    $include_title      Whether to append the title
 	 *                                                    exchange. Excluded when the
 	 *                                                    title itself is being redone.
+	 * @param string|null             $body_override      Article body to replay. Null
+	 *                                                    reads the persisted post.
+	 * @param string|null             $title_override     Title to replay. Null reads
+	 *                                                    the persisted post.
 	 * @return AIPS_AI_Conversation|null Transcript, or null when unavailable.
 	 */
-	private function build_conversation($generation_context, $post_id, $include_title = false) {
+	private function build_conversation($generation_context, $post_id, $include_title = false, $body_override = null, $title_override = null) {
 		if (!$post_id || !$this->generator->supports_conversation()) {
 			return null;
 		}
 
-		$body = (string) get_post_field('post_content', $post_id);
+		$body = is_string($body_override) ? $body_override : (string) get_post_field('post_content', $post_id);
 
 		if (trim($body) === '') {
 			return null;
@@ -126,7 +130,7 @@ class AIPS_Component_Regeneration_Service {
 		}
 
 		if ($include_title) {
-			$title = (string) get_the_title($post_id);
+			$title = is_string($title_override) ? $title_override : (string) get_the_title($post_id);
 
 			if (trim($title) !== '') {
 				$conversation->add_exchange(
@@ -248,8 +252,16 @@ class AIPS_Component_Regeneration_Service {
 		}
 
 		// Replay the article and its title so the excerpt is written against the
-		// same context the original run had, without re-sending either.
-		$conversation = $this->build_conversation($generation_context, $post_id, true);
+		// same context the original run had, without re-sending either. Prefer
+		// the resolved title/content (including a just-accepted upstream draft)
+		// over a second read of the persisted post.
+		$conversation = $this->build_conversation(
+			$generation_context,
+			$post_id,
+			true,
+			'' !== trim((string) $content) ? (string) $content : null,
+			'' !== trim((string) $title) ? (string) $title : null
+		);
 		$options = $this->extract_ai_options($context);
 		$directive = $this->build_directive_instruction($context);
 		if ($directive !== '') {

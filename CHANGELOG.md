@@ -60,6 +60,10 @@
   - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
 
 ### Fixed
+- **AI Edit cascade, featured-image revisions, and timeline output:**
+  - Accepting a title or content draft with Sync Downstream waits for `aips_save_post_components` and sends the accepted text as upstream context, so the cascaded excerpt (including its conversation replay) follows that draft.
+  - Featured-image revision snapshots accept a bare attachment ID from the editor, so the current image is captured before regeneration.
+  - Saving a featured image records the attachment ID in the History timeline output instead of an empty payload.
 - **History stays consistent when a regeneration delete or a history-log delete fails:**
   - Single and bulk review regeneration restore the history container's status, post association, and error message when `wp_delete_post()` is vetoed (`pre_delete_post`) or otherwise fails, instead of leaving the original draft detached.
   - `AIPS_History_Repository::delete_by_post_id()` returns false and leaves parent containers in place when deleting child `wp_aips_history_log` rows fails, so a failed log delete cannot orphan those logs.

@@ -1432,4 +1432,214 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$overrides_after = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
 		$this->assertEmpty($overrides_after);
 	}
+
+	/**
+	 * A bare featured-image attachment ID from the editor is a valid pre-regeneration snapshot.
+	 */
+	public function test_regenerate_component_captures_featured_image_id_snapshot() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Image Snapshot Post',
+		));
+		$attachment_id = $this->factory->post->create(array(
+			'post_type'      => 'attachment',
+			'post_mime_type' => 'image/jpeg',
+			'post_status'    => 'inherit',
+		));
+		set_post_thumbnail($post_id, $attachment_id);
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		));
+
+		$mock_service = $this->getMockBuilder('AIPS_Component_Regeneration_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_generation_context', 'regenerate_featured_image', 'capture_component_revision'))
+			->getMock();
+
+		$mock_service->method('get_generation_context')->willReturn(array(
+			'post_id'            => $post_id,
+			'history_id'         => $history_id,
+			'generation_context' => $this->createMock('AIPS_Generation_Context'),
+		));
+		$mock_service->method('regenerate_featured_image')->willReturn(array(
+			'attachment_id' => $attachment_id,
+			'url'           => 'https://example.com/new.jpg',
+		));
+
+		$captured_value = null;
+		$mock_service->expects($this->once())
+			->method('capture_component_revision')
+			->willReturnCallback(function ($p_id, $h_id, $comp, $val, $source, $reason) use (&$captured_value) {
+				$captured_value = $val;
+				return true;
+			});
+
+		$controller = new AIPS_AI_Edit_Controller($mock_service, $this->history_repository);
+
+		$_POST = array(
+			'action'        => 'aips_regenerate_component',
+			'post_id'       => $post_id,
+			'history_id'    => $history_id,
+			'component'     => 'featured_image',
+			'current_value' => (string) $attachment_id,
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$controller->ajax_regenerate_component();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertIsArray($captured_value);
+		$this->assertSame($attachment_id, $captured_value['attachment_id']);
+	}
+
+	/**
+	 * Cascaded excerpt regeneration uses the accepted upstream title and content.
+	 */
+	public function test_regenerate_component_applies_upstream_context_when_cascaded() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Persisted Title',
+			'post_content' => 'Persisted body.',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		));
+
+		$mock_service = $this->getMockBuilder('AIPS_Component_Regeneration_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_generation_context', 'regenerate_excerpt', 'capture_component_revision'))
+			->getMock();
+
+		$mock_service->method('get_generation_context')->willReturn(array(
+			'post_id'            => $post_id,
+			'history_id'         => $history_id,
+			'generation_context' => $this->createMock('AIPS_Generation_Context'),
+		));
+		$mock_service->method('capture_component_revision')->willReturn(true);
+		$mock_service->expects($this->once())
+			->method('regenerate_excerpt')
+			->with($this->callback(function ($context) {
+				return isset($context['current_title'], $context['current_content'])
+					&& 'Accepted Title' === $context['current_title']
+					&& 'Accepted body.' === $context['current_content']
+					&& !empty($context['downstream_cascaded']);
+			}))
+			->willReturn('Aligned excerpt');
+
+		$controller = new AIPS_AI_Edit_Controller($mock_service, $this->history_repository);
+
+		$_POST = array(
+			'action'              => 'aips_regenerate_component',
+			'post_id'             => $post_id,
+			'history_id'          => $history_id,
+			'component'           => 'excerpt',
+			'current_value'       => 'Old excerpt',
+			'downstream_cascaded' => 'true',
+			'upstream_title'      => 'Accepted Title',
+			'upstream_content'    => 'Accepted body.',
+			'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$controller->ajax_regenerate_component();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('Aligned excerpt', $response['data']['new_value']);
+		$this->assertSame('Persisted Title', get_post($post_id)->post_title);
+	}
+
+	/**
+	 * Featured-image saves log the attachment payload on the timeline activity event.
+	 */
+	public function test_ajax_save_post_components_records_featured_image_timeline_output() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Image Timeline Post',
+		));
+		$attachment_id = $this->factory->post->create(array(
+			'post_type'      => 'attachment',
+			'post_mime_type' => 'image/jpeg',
+			'post_status'    => 'inherit',
+		));
+		update_post_meta($attachment_id, '_wp_attached_file', '2026/11/test.jpg');
+		update_post_meta($attachment_id, '_wp_attachment_metadata', array(
+			'width'  => 10,
+			'height' => 10,
+			'file'   => '2026/11/test.jpg',
+			'sizes'  => array(
+				'thumbnail' => array(
+					'file'      => 'test-150x150.jpg',
+					'width'     => 150,
+					'height'    => 150,
+					'mime-type' => 'image/jpeg',
+				),
+			),
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		));
+
+		$_POST = array(
+			'action'     => 'aips_save_post_components',
+			'post_id'    => $post_id,
+			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
+			'components' => array(
+				'featured_image_id' => (string) $attachment_id,
+			),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertSame($attachment_id, (int) get_post_thumbnail_id($post_id));
+
+		$logs = $this->history_repository->get_logs_by_history_id($history_id);
+		$image_output = '';
+		foreach ($logs as $log) {
+			if ((int) $log->history_type_id !== AIPS_History_Type::ACTIVITY) {
+				continue;
+			}
+			$details = json_decode($log->details, true);
+			if (!is_array($details) || empty($details['message'])) {
+				continue;
+			}
+			if (false === strpos($details['message'], 'Post Featured image regenerated via AI Edit')) {
+				continue;
+			}
+			if (isset($details['output']['value'])) {
+				$image_output = (string) $details['output']['value'];
+			} elseif (isset($details['output'])) {
+				$image_output = is_string($details['output']) ? $details['output'] : wp_json_encode($details['output']);
+			}
+		}
+
+		$this->assertNotSame('', $image_output);
+		$this->assertStringContainsString((string) $attachment_id, $image_output);
+	}
 }
