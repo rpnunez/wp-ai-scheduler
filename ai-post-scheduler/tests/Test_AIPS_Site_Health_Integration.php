@@ -107,5 +107,16 @@ class Test_AIPS_Site_Health_Integration extends WP_UnitTestCase {
 		$fields = $debug['ai-post-scheduler']['fields'];
 		$this->assertArrayHasKey('version', $fields);
 		$this->assertArrayHasKey('next_cron_event', $fields);
+		$this->assertArrayHasKey('notification_digest', $fields);
+		$this->assertArrayHasKey('max_post_images_limit', $fields);
+	}
+
+	/**
+	 * Cron health inspects the real generation hook, not a stale aips_cron_event name.
+	 */
+	public function test_cron_health_uses_generation_hook() {
+		wp_schedule_event(time() + 300, 'hourly', AIPS_Site_Health_Integration::GENERATION_CRON_HOOK);
+		$result = AIPS_Site_Health_Integration::test_cron_health();
+		$this->assertSame('good', $result['status']);
 	}
 }

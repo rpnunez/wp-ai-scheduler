@@ -44,6 +44,8 @@ class AIPS_Admin_Heartbeat_Handler {
 			return $response;
 		}
 
+		// Background process Heartbeat (`aips_bg`) is owned by AIPS_Background_Process_Manager.
+
 		// 1. Link Report backfill progress
 		if (!empty($data['aips_link_report_backfill'])) {
 			$response['aips_link_report_backfill'] = self::get_link_report_backfill_data();
@@ -96,10 +98,16 @@ class AIPS_Admin_Heartbeat_Handler {
 		$history_repo = new AIPS_History_Repository();
 		$in_flight    = $history_repo->count_by_status('processing');
 
+		$digest_queue = 0;
+		if (class_exists('AIPS_Notifications')) {
+			$digest_queue = (int) AIPS_Notifications::instance()->get_digest_queue_count();
+		}
+
 		return array(
-			'in_flight'    => $in_flight,
-			'queue_length' => $queue_count,
-			'timestamp'    => time(),
+			'in_flight'     => $in_flight,
+			'queue_length'  => $queue_count,
+			'digest_queue'  => $digest_queue,
+			'timestamp'     => time(),
 		);
 	}
 

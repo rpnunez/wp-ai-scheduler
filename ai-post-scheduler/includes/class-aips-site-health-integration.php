@@ -28,12 +28,22 @@ class AIPS_Site_Health_Integration {
 		'aips_templates',
 		'aips_schedule',
 		'aips_history',
+		'aips_history_log',
 		'aips_authors',
 		'aips_author_topics',
 		'aips_voices',
 		'aips_article_structures',
 		'aips_post_slices',
+		'aips_campaigns',
+		'aips_post_images',
+		'aips_post_images_generated',
+		'aips_background_processes',
 	);
+
+	/**
+	 * Primary generation cron hook.
+	 */
+	const GENERATION_CRON_HOOK = 'aips_generate_scheduled_posts';
 
 	/**
 	 * Initialize Site Health hooks.
@@ -151,7 +161,7 @@ class AIPS_Site_Health_Integration {
 	 * @return array<string, mixed>
 	 */
 	public static function test_cron_health() {
-		$next_run = wp_next_scheduled('aips_cron_event');
+		$next_run = wp_next_scheduled(self::GENERATION_CRON_HOOK);
 		$now      = time();
 
 		$cron_disabled = defined('DISABLE_WP_CRON') && DISABLE_WP_CRON;
@@ -160,7 +170,8 @@ class AIPS_Site_Health_Integration {
 		if (!$next_run) {
 			// Check if there are active schedules in the database
 			$repo = new AIPS_Schedule_Repository();
-			$active_schedules_count = $repo->count_active();
+			$status_counts = $repo->count_by_status();
+			$active_schedules_count = isset($status_counts['active']) ? (int) $status_counts['active'] : 0;
 
 			if ($active_schedules_count > 0) {
 				return array(
@@ -172,7 +183,7 @@ class AIPS_Site_Health_Integration {
 					),
 					'description' => sprintf(
 						'<p>%s</p>',
-						esc_html__('You have active content generation schedules, but the main cron hook (aips_cron_event) is not scheduled in WordPress. Run the cron repair tool in Diagnostics.', 'ai-post-scheduler')
+						esc_html__('You have active content generation schedules, but the main cron hook (aips_generate_scheduled_posts) is not scheduled in WordPress. Run the cron repair tool in Diagnostics.', 'ai-post-scheduler')
 					),
 					'actions'     => sprintf(
 						'<p><a href="%s">%s</a></p>',
@@ -473,7 +484,7 @@ class AIPS_Site_Health_Integration {
 		$config = AIPS_Config::get_instance();
 		$fields['default_model'] = array(
 			'label' => __('Default AI Model', 'ai-post-scheduler'),
-			'value' => $config->get_option('aips_default_model', 'Default'),
+			'value' => $config->get_option('aips_ai_model', 'Default'),
 		);
 		$fields['default_temperature'] = array(
 			'label' => __('Default Temperature', 'ai-post-scheduler'),
@@ -482,15 +493,17 @@ class AIPS_Site_Health_Integration {
 
 		// Active counts
 		$schedule_repo = new AIPS_Schedule_Repository();
+		$schedule_counts = $schedule_repo->count_by_status();
 		$fields['active_schedules'] = array(
 			'label' => __('Active Schedules', 'ai-post-scheduler'),
-			'value' => (string) $schedule_repo->count_active(),
+			'value' => (string) (isset($schedule_counts['active']) ? $schedule_counts['active'] : 0),
 		);
 
 		$template_repo = new AIPS_Template_Repository();
+		$template_counts = $template_repo->count_by_status();
 		$fields['total_templates'] = array(
 			'label' => __('Configured Templates', 'ai-post-scheduler'),
-			'value' => (string) $template_repo->count_all(),
+			'value' => (string) (isset($template_counts['total']) ? $template_counts['total'] : 0),
 		);
 
 		$topics_repo = new AIPS_Author_Topics_Repository();
@@ -500,9 +513,24 @@ class AIPS_Site_Health_Integration {
 			'value' => (string) (isset($counts['approved']) ? $counts['approved'] : 0),
 		);
 
+		$generation_cron = wp_next_scheduled(self::GENERATION_CRON_HOOK);
 		$fields['next_cron_event'] = array(
 			'label' => __('Next Scheduled Cron', 'ai-post-scheduler'),
-			'value' => wp_next_scheduled('aips_cron_event') ? wp_date('Y-m-d H:i:s', wp_next_scheduled('aips_cron_event')) : __('None scheduled', 'ai-post-scheduler'),
+			'value' => $generation_cron ? wp_date('Y-m-d H:i:s', $generation_cron) : __('None scheduled', 'ai-post-scheduler'),
+		);
+
+		$digest_enabled = (bool) $config->get_option('aips_notif_digest_enabled');
+		$digest_cron    = wp_next_scheduled('aips_notif_digest_cron');
+		$fields['notification_digest'] = array(
+			'label' => __('Notification Digest Cron', 'ai-post-scheduler'),
+			'value' => $digest_enabled
+				? ($digest_cron ? wp_date('Y-m-d H:i:s', $digest_cron) : __('Enabled but not scheduled', 'ai-post-scheduler'))
+				: __('Disabled', 'ai-post-scheduler'),
+		);
+
+		$fields['max_post_images_limit'] = array(
+			'label' => __('Max Post Images', 'ai-post-scheduler'),
+			'value' => (string) $config->get_max_post_images_limit(),
 		);
 
 		$debug_info['ai-post-scheduler'] = array(

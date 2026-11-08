@@ -45,6 +45,7 @@ class Test_AIPS_Admin_Heartbeat_Handler extends WP_UnitTestCase {
 		$this->assertArrayHasKey('aips_queue_monitor', $response);
 		$this->assertArrayHasKey('in_flight', $response['aips_queue_monitor']);
 		$this->assertArrayHasKey('queue_length', $response['aips_queue_monitor']);
+		$this->assertArrayHasKey('digest_queue', $response['aips_queue_monitor']);
 		$this->assertArrayHasKey('timestamp', $response['aips_queue_monitor']);
 	}
 
