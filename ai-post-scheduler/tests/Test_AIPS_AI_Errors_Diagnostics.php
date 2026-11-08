@@ -40,6 +40,12 @@ class Test_AIPS_AI_Errors_Diagnostics extends WP_UnitTestCase {
 
 		$this->assertTrue( AIPS_Ajax_Registry::has_action( 'aips_get_ai_error_details' ) );
 		$this->assertSame( 'AIPS_Diagnostics_Controller', AIPS_Ajax_Registry::get_controller_for( 'aips_get_ai_error_details' ) );
+
+		$this->assertTrue( AIPS_Ajax_Registry::has_action( 'aips_get_ai_error_summary' ) );
+		$this->assertSame( 'AIPS_Diagnostics_Controller', AIPS_Ajax_Registry::get_controller_for( 'aips_get_ai_error_summary' ) );
+
+		$this->assertTrue( AIPS_Ajax_Registry::has_action( 'aips_export_ai_errors' ) );
+		$this->assertSame( 'AIPS_Diagnostics_Controller', AIPS_Ajax_Registry::get_controller_for( 'aips_export_ai_errors' ) );
 	}
 
 	/**
@@ -217,6 +223,7 @@ class Test_AIPS_AI_Errors_Diagnostics extends WP_UnitTestCase {
 
 		$_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['error_scope'] = 'ai_only';
+		$_REQUEST             = $_POST;
 
 		try {
 			ob_start();
@@ -325,5 +332,248 @@ class Test_AIPS_AI_Errors_Diagnostics extends WP_UnitTestCase {
 
 		$has_index = $wpdb->get_row( "SHOW INDEX FROM `{$table}` WHERE Key_name = 'history_type_ts'" );
 		$this->assertNotNull( $has_index );
+	}
+
+	/**
+	 * Test get_ai_error_summary_stats aggregates categories and components accurately.
+	 */
+	public function test_get_ai_error_summary_stats() {
+		$history_id = $this->repository->create( array(
+			'generated_title' => 'Summary Stats Test',
+			'creation_method' => 'manual',
+			'status'          => 'failed',
+			'created_at'      => AIPS_DateTime::now()->timestamp(),
+		) );
+
+		// 1. Rate limit error (component: content)
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for content: Rate limit exceeded (429)',
+			'context' => array( 'component' => 'content', 'http_code' => 429 ),
+		), AIPS_History_Type::ERROR );
+
+		// 2. Auth error (component: title)
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for title: invalid_api_key (401)',
+			'context' => array( 'component' => 'title', 'http_code' => 401 ),
+		), AIPS_History_Type::ERROR );
+
+		// 3. Another rate limit error (component: content)
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for content: quota exceeded',
+			'context' => array( 'component' => 'content' ),
+		), AIPS_History_Type::ERROR );
+
+		$stats = $this->repository->get_ai_error_summary_stats();
+
+		$this->assertSame( 3, $stats['total_errors'] );
+		$this->assertArrayHasKey( 'rate_limit', $stats['categories'] );
+		$this->assertSame( 2, $stats['categories']['rate_limit']['count'] );
+		$this->assertArrayHasKey( 'auth', $stats['categories'] );
+		$this->assertSame( 1, $stats['categories']['auth']['count'] );
+
+		// Top category should be rate_limit
+		$this->assertNotNull( $stats['top_category'] );
+		$this->assertSame( 'rate_limit', $stats['top_category']['slug'] );
+
+		// Top component should be content
+		$this->assertNotNull( $stats['top_component'] );
+		$this->assertSame( 'content', $stats['top_component']['key'] );
+		$this->assertSame( 2, $stats['top_component']['count'] );
+	}
+
+	/**
+	 * A row that matches two category signatures counts once, and a general error stays visible.
+	 */
+	public function test_summary_counts_mixed_signature_once_and_keeps_general() {
+		$history_id = $this->repository->create( array(
+			'generated_title' => 'Mixed Signature Summary',
+			'creation_method' => 'manual',
+			'status'          => 'failed',
+			'created_at'      => AIPS_DateTime::now()->timestamp(),
+		) );
+
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for content: 429 rate limit exceeded; 401 unauthorized invalid_api_key',
+			'context' => array(
+				'component' => 'content',
+				'error'     => '429 rate limit exceeded; 401 unauthorized invalid_api_key',
+				'http_code' => 429,
+			),
+		), AIPS_History_Type::ERROR );
+
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for excerpt: The writer returned an unexpected local result with no provider status.',
+			'context' => array(
+				'component' => 'excerpt',
+				'error'     => 'The writer returned an unexpected local result with no provider status.',
+			),
+		), AIPS_History_Type::ERROR );
+
+		$stats = $this->repository->get_ai_error_summary_stats();
+
+		$this->assertSame( 2, $stats['total_errors'] );
+		$this->assertSame( 1, $stats['categories']['rate_limit']['count'] );
+		$this->assertSame( 0, $stats['categories']['auth']['count'] );
+		$this->assertSame( 1, $stats['categories']['general']['count'] );
+
+		$sum = 0;
+		foreach ( $stats['categories'] as $category ) {
+			$sum += $category['count'];
+		}
+		$this->assertSame( $stats['total_errors'], $sum );
+
+		$this->assertSame( 1, $this->repository->get_ai_errors( array( 'category' => 'rate_limit' ) )['total'] );
+		$this->assertSame( 0, $this->repository->get_ai_errors( array( 'category' => 'auth' ) )['total'] );
+		$this->assertSame( 1, $this->repository->get_ai_errors( array( 'category' => 'general' ) )['total'] );
+	}
+
+	/**
+	 * Exports include matches past the interactive page cap and report truncation honestly.
+	 */
+	public function test_export_includes_more_than_list_page_and_reports_truncation() {
+		$history_id = $this->repository->create( array(
+			'generated_title' => 'Export Boundary',
+			'creation_method' => 'manual',
+			'status'          => 'failed',
+			'created_at'      => AIPS_DateTime::now()->timestamp(),
+		) );
+
+		$total = 101;
+		for ( $i = 1; $i <= $total; $i++ ) {
+			$this->repository->add_log_entry( $history_id, array(
+				'message' => 'AI generation failed for content: Export boundary error ' . $i,
+				'context' => array(
+					'component' => 'content',
+					'error'     => 'Export boundary error ' . $i,
+				),
+			), AIPS_History_Type::ERROR );
+		}
+
+		$list = $this->repository->get_ai_errors( array(
+			'per_page' => 2000,
+		) );
+		$this->assertSame( $total, $list['total'] );
+		$this->assertSame( AIPS_History_Repository::AI_ERROR_LIST_MAX_PER_PAGE, $list['per_page'] );
+		$this->assertCount( AIPS_History_Repository::AI_ERROR_LIST_MAX_PER_PAGE, $list['items'] );
+
+		$page2 = $this->repository->get_ai_errors( array(
+			'page'     => 2,
+			'per_page' => AIPS_History_Repository::AI_ERROR_LIST_MAX_PER_PAGE,
+		) );
+		$this->assertCount( 1, $page2['items'] );
+
+		$export = $this->controller->prepare_ai_error_export( array(
+			'error_scope' => 'ai_only',
+		) );
+		$this->assertSame( $total, $export['total_count'] );
+		$this->assertSame( $total, $export['exported_count'] );
+		$this->assertFalse( $export['truncated'] );
+		$this->assertSame( AIPS_History_Repository::AI_ERROR_EXPORT_MAX_ROWS, $export['export_limit'] );
+		$this->assertCount( $total, $export['items'] );
+
+		$messages = array();
+		foreach ( $export['items'] as $item ) {
+			$messages[] = $item['error_message'];
+		}
+		$this->assertContains( 'Export boundary error 1', $messages );
+		$this->assertContains( 'Export boundary error 101', $messages );
+
+		$bounded = $this->controller->prepare_ai_error_export( array(
+			'error_scope' => 'ai_only',
+		), 100 );
+		$this->assertSame( $total, $bounded['total_count'] );
+		$this->assertSame( 100, $bounded['exported_count'] );
+		$this->assertTrue( $bounded['truncated'] );
+		$this->assertSame( 100, $bounded['export_limit'] );
+		$this->assertNotSame( $bounded['exported_count'], $bounded['total_count'] );
+	}
+
+	/**
+	 * Test category filtering in get_ai_errors.
+	 */
+	public function test_category_filtering() {
+		$history_id = $this->repository->create( array(
+			'generated_title' => 'Category Filter Test',
+			'creation_method' => 'manual',
+			'status'          => 'failed',
+			'created_at'      => AIPS_DateTime::now()->timestamp(),
+		) );
+
+		// Rate limit
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for content: 429 Too Many Requests',
+		), AIPS_History_Type::ERROR );
+
+		// Auth
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for title: 401 Unauthorized invalid_api_key',
+		), AIPS_History_Type::ERROR );
+
+		// General unclassified
+		$this->repository->add_log_entry( $history_id, array(
+			'message' => 'AI generation failed for excerpt: Unexpected response structure from experimental model',
+		), AIPS_History_Type::ERROR );
+
+		$filtered = $this->repository->get_ai_errors( array( 'category' => 'rate_limit' ) );
+		$this->assertSame( 1, $filtered['total'] );
+		$this->assertSame( 'rate_limit', $filtered['items'][0]['category'] );
+
+		$general_filtered = $this->repository->get_ai_errors( array( 'category' => 'general' ) );
+		$this->assertSame( 1, $general_filtered['total'] );
+		$this->assertSame( 'general', $general_filtered['items'][0]['category'] );
+	}
+
+	/**
+	 * Test AI error logs pruning via AIPS_DB_Prune_Service.
+	 */
+	public function test_prune_ai_error_logs() {
+		global $wpdb;
+
+		$history_id = $this->repository->create( array(
+			'generated_title' => 'Pruning Test',
+			'creation_method' => 'manual',
+			'status'          => 'failed',
+			'created_at'      => time(),
+		) );
+
+		// 1. Old AI error (60 days ago)
+		$old_ts = time() - ( 60 * DAY_IN_SECONDS );
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_history_log',
+			array(
+				'history_id'      => $history_id,
+				'history_type_id' => AIPS_History_Type::ERROR,
+				'timestamp'       => $old_ts,
+				'details'         => wp_json_encode( array(
+					'message' => 'AI generation failed for content: Old failure',
+				) ),
+			)
+		);
+
+		// 2. Recent AI error (today)
+		$recent_ts = time() - 3600;
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_history_log',
+			array(
+				'history_id'      => $history_id,
+				'history_type_id' => AIPS_History_Type::ERROR,
+				'timestamp'       => $recent_ts,
+				'details'         => wp_json_encode( array(
+					'message' => 'AI generation failed for content: Recent failure',
+				) ),
+			)
+		);
+
+		$prune_service = new AIPS_DB_Prune_Service();
+		// Prune logs older than 30 days
+		$cutoff = time() - ( 30 * DAY_IN_SECONDS );
+		$result = $prune_service->prune_ai_error_logs( $cutoff );
+
+		$this->assertSame( 1, $result['deleted'] );
+
+		// Verify remaining logs: only the recent one remains
+		$remaining = $this->repository->get_ai_errors();
+		$this->assertSame( 1, $remaining['total'] );
+		$this->assertStringContainsString( 'Recent failure', $remaining['items'][0]['error_message'] );
 	}
 }

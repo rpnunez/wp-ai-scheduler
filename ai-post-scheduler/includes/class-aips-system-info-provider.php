@@ -21,14 +21,24 @@ class AIPS_System_Info_Provider {
 	private $db_prune_service;
 
 	/**
-	 * @param AIPS_DB_Prune_Service|null $db_prune_service Optional service override.
+	 * @var AIPS_System_Totals_Repository
 	 */
-	public function __construct($db_prune_service = null) {
+	private $totals_repository;
+
+	/**
+	 * @param AIPS_DB_Prune_Service|null         $db_prune_service  Optional service override.
+	 * @param AIPS_System_Totals_Repository|null $totals_repository Optional repository override.
+	 */
+	public function __construct($db_prune_service = null, $totals_repository = null) {
 		$container = AIPS_Container::get_instance();
 
 		$this->db_prune_service = $db_prune_service ?: ($container->has(AIPS_DB_Prune_Service::class)
 			? $container->make(AIPS_DB_Prune_Service::class)
 			: AIPS_DB_Prune_Service::instance());
+
+		$this->totals_repository = $totals_repository ?: ($container->has(AIPS_System_Totals_Repository::class)
+			? $container->make(AIPS_System_Totals_Repository::class)
+			: new AIPS_System_Totals_Repository());
 	}
 
 	/**
@@ -38,13 +48,321 @@ class AIPS_System_Info_Provider {
 	 */
 	public function get_system_info(): array {
 		return array(
-			'environment'  => $this->get_environment_info(),
-			'plugin'       => $this->get_plugin_info(),
-			'database'     => $this->get_database_info(),
-			'filesystem'   => $this->get_filesystem_info(),
-			'ai'           => $this->get_ai_info(),
-			'data_storage' => $this->get_data_storage_info(),
+			'environment'   => $this->get_environment_info(),
+			'plugin'        => $this->get_plugin_info(),
+			'totals_counts' => $this->get_totals_info(),
+			'database'      => $this->get_database_info(),
+			'filesystem'    => $this->get_filesystem_info(),
+			'ai'            => $this->get_ai_info(),
+			'data_storage'  => $this->get_data_storage_info(),
 		);
+	}
+
+	/**
+	 * Display title for a system info section key.
+	 *
+	 * @param string $section Section key from get_system_info().
+	 * @return string
+	 */
+	public function get_section_title($section): string {
+		$titles = array(
+			'ai'            => __('AI', 'ai-post-scheduler'),
+			'totals_counts' => __('Totals & Counts', 'ai-post-scheduler'),
+		);
+
+		$section = (string) $section;
+
+		return isset($titles[$section]) ? $titles[$section] : ucwords(str_replace(array('_', '-'), ' ', $section));
+	}
+
+	/**
+	 * Lifetime totals across content generation, authors, AI usage, embeddings,
+	 * linking, and content setup.
+	 *
+	 * @return array<string, array{label:string, value:string, status:string, details?:array<string>}>
+	 */
+	private function get_totals_info(): array {
+		$t = $this->totals_repository->get_totals();
+
+		$history     = $t['history'];
+		$gen_status  = $history['generation_by_status'];
+		$completed   = isset($gen_status['completed']) ? (int) $gen_status['completed'] : 0;
+		$partial     = isset($gen_status['partial']) ? (int) $gen_status['partial'] : 0;
+		$failed      = isset($gen_status['failed']) ? (int) $gen_status['failed'] : 0;
+		$finished    = $completed + $partial + $failed;
+		$success_pct = $finished > 0 ? round((($completed + $partial) / $finished) * 100, 1) : 0;
+
+		$rows = array(
+			'generated_posts' => $this->total_row(__('Posts Generated', 'ai-post-scheduler'), $t['generated_posts']),
+			'generation_runs' => array(
+				'label'  => __('Generation Runs', 'ai-post-scheduler'),
+				'value'  => sprintf(
+					/* translators: 1: completed runs, 2: partial runs, 3: failed runs, 4: success rate percentage */
+					__('%1$s completed · %2$s partial · %3$s failed (%4$s%% success)', 'ai-post-scheduler'),
+					number_format_i18n($completed),
+					number_format_i18n($partial),
+					number_format_i18n($failed),
+					number_format_i18n($success_pct, 1)
+				),
+				'status' => 'info',
+			),
+			'generation_methods' => $this->breakdown_row(
+				__('Generations by Method', 'ai-post-scheduler'),
+				array_sum($history['generation_by_method']),
+				$history['generation_by_method']
+			),
+			'history_containers' => $this->breakdown_row(
+				__('History Containers', 'ai-post-scheduler'),
+				$history['total'],
+				$history['by_kind']
+			),
+			'authors'       => $this->active_row(__('Authors', 'ai-post-scheduler'), $t['authors']),
+			'author_topics' => $this->breakdown_row(
+				__('Author Topics Generated', 'ai-post-scheduler'),
+				$t['author_topics']['total'],
+				$t['author_topics']['groups']
+			),
+			'author_posts'  => $this->total_row(__('Author Posts Generated', 'ai-post-scheduler'), $t['author_posts']),
+			'ai_requests'   => $this->total_row(__('AI Requests (All-Time, Logged)', 'ai-post-scheduler'), $t['ai_requests']),
+		);
+
+		$rows = array_merge($rows, $this->get_ai_call_counter_rows());
+
+		$rows['ai_assistance']       = $this->total_row(__('AI Assistance Requests', 'ai-post-scheduler'), $t['ai_assistance']);
+		$rows['background_ai_calls'] = $this->total_row(__('AI Calls by Background Jobs', 'ai-post-scheduler'), $t['background_ai_calls']);
+		$rows['embeddings']          = $this->breakdown_row(
+			__('Embeddings', 'ai-post-scheduler'),
+			$t['embeddings']['total'],
+			$t['embeddings']['groups']
+		);
+		$rows['relationships']  = $this->total_row(__('Content Relationships', 'ai-post-scheduler'), $t['relationships']);
+		$rows['internal_links'] = $this->breakdown_row(
+			__('Internal Link Suggestions', 'ai-post-scheduler'),
+			$t['internal_links']['total'],
+			$t['internal_links']['groups']
+		);
+		$rows['link_index'] = array(
+			'label'  => __('Links Indexed', 'ai-post-scheduler'),
+			'value'  => sprintf(
+				/* translators: 1: total links, 2: links per type, 3: links inserted by the plugin */
+				__('%1$s (%2$s) · %3$s inserted by AIPS', 'ai-post-scheduler'),
+				number_format_i18n($t['link_index']['total']),
+				$this->format_breakdown($t['link_index']['by_type']),
+				number_format_i18n($t['link_index']['inserted_by_aips'])
+			),
+			'status' => 'info',
+		);
+		$rows['templates']       = $this->active_row(__('Templates', 'ai-post-scheduler'), $t['templates']);
+		$rows['schedules']       = $this->active_row(__('Schedules', 'ai-post-scheduler'), $t['schedules']);
+		$rows['campaigns']       = $this->active_row(__('Campaigns', 'ai-post-scheduler'), $t['campaigns']);
+		$rows['trending_topics'] = $this->total_row(__('Trending Topics Researched', 'ai-post-scheduler'), $t['trending_topics']);
+		$rows['sources']         = $this->total_row(__('Sources', 'ai-post-scheduler'), $t['sources']);
+		$rows['source_pages']    = array(
+			'label'   => __('Source Pages Fetched', 'ai-post-scheduler'),
+			'value'   => sprintf(
+				/* translators: 1: fetched source pages, 2: times source content was used */
+				__('%1$s pages · used %2$s times', 'ai-post-scheduler'),
+				number_format_i18n($t['source_pages']['total']),
+				number_format_i18n($t['source_pages']['times_used'])
+			),
+			'status'  => 'info',
+			'details' => $this->breakdown_details($t['source_pages']['by_status']),
+		);
+		$rows['bulk_jobs'] = array(
+			'label'  => __('Bulk Batch Jobs', 'ai-post-scheduler'),
+			'value'  => sprintf(
+				/* translators: 1: bulk job count, 2: items processed */
+				__('%1$s jobs · %2$s items processed', 'ai-post-scheduler'),
+				number_format_i18n($t['bulk_jobs']['total']),
+				number_format_i18n($t['bulk_jobs']['processed'])
+			),
+			'status' => 'info',
+		);
+
+		return $rows;
+	}
+
+	/**
+	 * Rows for the per-provider AI call counter (WP AI Connector / AI Engine).
+	 *
+	 * @return array<string, array{label:string, value:string, status:string, details?:array<string>}>
+	 */
+	private function get_ai_call_counter_rows(): array {
+		$counts    = AIPS_AI_Call_Counter::get_counts();
+		$providers = $counts['providers'];
+
+		// Always list the two real providers, even before their first call.
+		foreach (array('wp_ai_client', 'meow') as $provider_id) {
+			if (!isset($providers[$provider_id])) {
+				$providers[$provider_id] = array('total' => 0, 'failed' => 0, 'by_type' => array());
+			}
+		}
+
+		$since = $counts['since'] > 0
+			? sprintf(
+				/* translators: %s: date the AI call counter started */
+				__('since %s', 'ai-post-scheduler'),
+				wp_date(get_option('date_format'), $counts['since'])
+			)
+			: __('counting starts with the next AI call', 'ai-post-scheduler');
+
+		$rows    = array();
+		$by_type = array();
+
+		foreach ($providers as $provider_id => $entry) {
+			$total  = isset($entry['total']) ? (int) $entry['total'] : 0;
+			$failed = isset($entry['failed']) ? (int) $entry['failed'] : 0;
+			$types  = isset($entry['by_type']) && is_array($entry['by_type']) ? $entry['by_type'] : array();
+
+			foreach ($types as $type => $count) {
+				$by_type[$type] = (isset($by_type[$type]) ? $by_type[$type] : 0) + (int) $count;
+			}
+
+			arsort($types);
+
+			$rows['ai_calls_' . sanitize_key($provider_id)] = array(
+				'label'   => sprintf(
+					/* translators: %s: AI provider name */
+					__('AI Calls (%s)', 'ai-post-scheduler'),
+					$this->get_provider_label($provider_id)
+				),
+				'value'   => sprintf(
+					/* translators: 1: total calls, 2: failed calls, 3: "since <date>" note */
+					__('%1$s calls · %2$s failed (%3$s)', 'ai-post-scheduler'),
+					number_format_i18n($total),
+					number_format_i18n($failed),
+					$since
+				),
+				'status'  => 'info',
+				'details' => $this->breakdown_details($types),
+			);
+		}
+
+		arsort($by_type);
+
+		$rows['ai_calls_by_type'] = array(
+			'label'  => __('AI Calls by Type', 'ai-post-scheduler'),
+			'value'  => empty($by_type) ? __('None recorded yet', 'ai-post-scheduler') : $this->format_breakdown($by_type),
+			'status' => 'info',
+		);
+
+		return $rows;
+	}
+
+	/**
+	 * Human label for an AI provider id.
+	 *
+	 * @param string $provider_id Provider id.
+	 * @return string
+	 */
+	private function get_provider_label($provider_id): string {
+		$labels = array(
+			'wp_ai_client' => __('WP AI Connector', 'ai-post-scheduler'),
+			'meow'         => __('Meow AI Engine', 'ai-post-scheduler'),
+		);
+
+		return isset($labels[$provider_id]) ? $labels[$provider_id] : $this->humanize_key($provider_id);
+	}
+
+	/**
+	 * A row showing a single total.
+	 *
+	 * @param string $label Row label.
+	 * @param int    $total Total.
+	 * @return array{label:string, value:string, status:string}
+	 */
+	private function total_row($label, $total): array {
+		return array(
+			'label'  => $label,
+			'value'  => number_format_i18n((int) $total),
+			'status' => 'info',
+		);
+	}
+
+	/**
+	 * A row showing "<active> active of <total>".
+	 *
+	 * @param string                       $label  Row label.
+	 * @param array{total:int, active:int} $counts Counts.
+	 * @return array{label:string, value:string, status:string}
+	 */
+	private function active_row($label, array $counts): array {
+		return array(
+			'label'  => $label,
+			'value'  => sprintf(
+				/* translators: 1: active count, 2: total count */
+				__('%1$s active of %2$s', 'ai-post-scheduler'),
+				number_format_i18n((int) $counts['active']),
+				number_format_i18n((int) $counts['total'])
+			),
+			'status' => 'info',
+		);
+	}
+
+	/**
+	 * A row showing a total with its breakdown inline and in the details panel.
+	 *
+	 * @param string            $label  Row label.
+	 * @param int               $total  Total.
+	 * @param array<string,int> $groups Breakdown counts keyed by raw value.
+	 * @return array{label:string, value:string, status:string}
+	 */
+	private function breakdown_row($label, $total, array $groups): array {
+		$value = number_format_i18n((int) $total);
+
+		if (!empty($groups)) {
+			$value .= ' (' . $this->format_breakdown($groups) . ')';
+		}
+
+		return array(
+			'label'  => $label,
+			'value'  => $value,
+			'status' => 'info',
+		);
+	}
+
+	/**
+	 * Format breakdown counts as "Completed 10 · Failed 2".
+	 *
+	 * @param array<string,int> $groups Breakdown counts keyed by raw value.
+	 * @return string
+	 */
+	private function format_breakdown(array $groups): string {
+		if (empty($groups)) {
+			return __('none', 'ai-post-scheduler');
+		}
+
+		$parts = array();
+		foreach ($groups as $key => $count) {
+			$parts[] = $this->humanize_key($key) . ' ' . number_format_i18n((int) $count);
+		}
+
+		return implode(' · ', $parts);
+	}
+
+	/**
+	 * Breakdown counts as one "Key: count" line each, for the details panel.
+	 *
+	 * @param array<string,int> $groups Breakdown counts keyed by raw value.
+	 * @return array<string>
+	 */
+	private function breakdown_details(array $groups): array {
+		$lines = array();
+		foreach ($groups as $key => $count) {
+			$lines[] = $this->humanize_key($key) . ': ' . number_format_i18n((int) $count);
+		}
+
+		return $lines;
+	}
+
+	/**
+	 * Turn a raw slug ("bulk_generate") into a label ("Bulk Generate").
+	 *
+	 * @param string $key Raw key.
+	 * @return string
+	 */
+	private function humanize_key($key): string {
+		return ucwords(str_replace(array('_', '-'), ' ', (string) $key));
 	}
 
 	/**
@@ -358,7 +676,7 @@ class AIPS_System_Info_Provider {
 		$output .= "Generated: " . gmdate('Y-m-d H:i:s') . " UTC\n\n";
 
 		foreach ($data as $section_key => $section_data) {
-			$title = ucwords(str_replace(array('_', '-'), ' ', $section_key));
+			$title = $this->get_section_title($section_key);
 			$output .= "#### " . $title . "\n";
 			$output .= "| Setting | Value | Status |\n";
 			$output .= "| :--- | :--- | :--- |\n";
