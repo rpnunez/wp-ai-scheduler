@@ -122,6 +122,57 @@ class Test_AIPS_Ajax_Registry_Consistency extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The controllers using automatic registration must expose a callback for every mapped action.
+	 */
+	public function test_automatic_controller_actions_have_callbacks() {
+		$controllers = array(
+			'AIPS_Schedule_Controller',
+			'AIPS_Author_Topics_Controller',
+			'AIPS_Content_Indexer_Controller',
+		);
+		$missing = array();
+
+		foreach ($controllers as $controller) {
+			foreach (AIPS_Ajax_Registry::get_actions_for_controller($controller) as $action) {
+				$unprefixed = substr($action, 5);
+				$feature_stripped = preg_replace('/^[a-z0-9]+_/', '', $unprefixed);
+				$candidates = array(
+					'ajax_' . $unprefixed,
+					'ajax_' . $feature_stripped,
+					'ajax_' . $action,
+					$action,
+				);
+				$found = false;
+				foreach ($candidates as $candidate) {
+					if (method_exists($controller, $candidate)) {
+						$found = true;
+						break;
+					}
+				}
+				if (!$found) {
+					$missing[] = $controller . ': ' . $action;
+				}
+			}
+		}
+
+		$this->assertEmpty($missing, 'AJAX actions without callbacks: ' . implode(', ', $missing));
+	}
+
+	/**
+	 * Link Report has legacy action names that require explicit method mappings.
+	 */
+	public function test_link_report_registers_every_mapped_action() {
+		new AIPS_Link_Report_Controller();
+		$missing = array();
+		foreach (AIPS_Ajax_Registry::get_actions_for_controller('AIPS_Link_Report_Controller') as $action) {
+			if (false === has_action('wp_ajax_' . $action)) {
+				$missing[] = $action;
+			}
+		}
+		$this->assertEmpty($missing, 'Link Report actions without hooks: ' . implode(', ', $missing));
+	}
+
+	/**
 	 * Test AIPS_Ajax_Guard permits authorized administrator with valid nonce.
 	 */
 	public function test_ajax_guard_allows_authorized_admin() {

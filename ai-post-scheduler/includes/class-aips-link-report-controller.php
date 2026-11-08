@@ -69,7 +69,21 @@ class AIPS_Link_Report_Controller {
 		$this->job_handler      = new AIPS_Link_Report_Job_Handler($this->service, $this->query_handler);
 
 		// Canonical hook registration
-		AIPS_Ajax_Registry::register_controller_actions($this);
+		AIPS_Ajax_Registry::register_controller_actions($this, array(
+			'aips_link_report_get'                => 'ajax_get_report',
+			'aips_link_report_get_post_links'     => 'ajax_get_post_links',
+			'aips_link_report_start_backfill'     => 'ajax_start_backfill',
+			'aips_link_report_backfill_status'    => 'ajax_backfill_status',
+			'aips_link_report_pause_backfill'     => 'ajax_pause_backfill',
+			'aips_link_report_resume_backfill'    => 'ajax_resume_backfill',
+			'aips_link_report_cancel_backfill'    => 'ajax_cancel_backfill',
+			'aips_link_report_suggest'            => 'ajax_suggest',
+			'aips_link_report_get_suggestions'    => 'ajax_get_suggestions',
+			'aips_link_report_apply_suggestion'   => 'ajax_apply_suggestion',
+			'aips_link_report_revert_suggestion'  => 'ajax_revert_suggestion',
+			'aips_link_report_dismiss_suggestion' => 'ajax_dismiss_suggestion',
+			'aips_link_report_get_post_panel'     => 'ajax_get_post_panel',
+		));
 	}
 
 	/**

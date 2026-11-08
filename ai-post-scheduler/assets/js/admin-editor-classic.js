@@ -579,53 +579,6 @@
 				});
 			});
 
-			// 3 Candidates Button
-			$widget.on('click', '.aips-gen-variants-btn', function (e) {
-				e.preventDefault();
-				var $btn = $(this);
-				var originalHtml = $btn.html();
-				var $container = $widget.find('.aips-classic-variants-container');
-				var $carousel = $container.find('.aips-variant-carousel');
-
-				$btn.prop('disabled', true).html('<span class="dashicons dashicons-update"></span> ' + (l10n.labels.generating || 'Generating…'));
-
-				$.post(l10n.ajaxurl, {
-					action: 'aips_editor_generate_component_variants',
-					nonce: l10n.nonce,
-					post_id: l10n.postId,
-					component: component
-				})
-				.done(function (response) {
-					if (response && response.success && response.data && response.data.variants) {
-						$carousel.empty();
-						$container.show();
-						$.each(response.data.variants, function (idx, text) {
-							var html = '';
-							if (window.AIPS && window.AIPS.Templates) {
-								html = window.AIPS.Templates.render('aips-tmpl-editor-variant-card', {
-									candidateIndex: idx + 1,
-									text: text,
-									insertLabel: l10n.labels.insert || 'Apply'
-								});
-							}
-							var $card = $(html);
-							$card.find('.aips-apply-variant-btn').on('click', function () {
-								applyComponentValue(component, text);
-								$card.css('background-color', 'var(--aips-success-bg)');
-							});
-							$carousel.append($card);
-						});
-					} else {
-						notifyEditor((response && response.data && response.data.message) || l10n.labels.actionError);
-					}
-				})
-				.fail(function () {
-					notifyEditor(l10n.labels.actionError);
-				})
-				.always(function () {
-					$btn.prop('disabled', false).html(originalHtml);
-				});
-			});
 		});
 	}
 
@@ -668,7 +621,9 @@
 						var $card = $(html);
 						$card.find('.aips-apply-variant-btn').on('click', function () {
 							applyComponentValue(component, text);
-							$card.css('background-color', 'var(--aips-success-bg)');
+							$variantsList.find('.aips-variant-card').removeClass('is-inserted').find('.aips-apply-variant-btn').text(l10n.labels.insert || 'Insert');
+							$card.addClass('is-inserted');
+							$(this).text(l10n.labels.inserted || 'Inserted');
 						});
 						$variantsList.append($card);
 					});
