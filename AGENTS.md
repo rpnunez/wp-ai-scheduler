@@ -5,7 +5,7 @@
 - Project: WordPress plugin for scheduling and generating AI-written posts through Meow Apps AI Engine.
 - Plugin app root: `ai-post-scheduler/`; run Composer, PHPUnit, and plugin scripts from that directory.
 - Bootstrap/version source: `ai-post-scheduler/ai-post-scheduler.php`.
-- Current plugin version: **3.7.19**. The `Version:` header in `ai-post-scheduler/ai-post-scheduler.php` is the only release number; `AIPS_VERSION` is read from that header.
+- Current plugin version: **3.7.22**. The `Version:` header in `ai-post-scheduler/ai-post-scheduler.php` is the only release number; `AIPS_VERSION` is read from that header.
 - Runtime targets: PHP 8.2+ and WordPress 5.8+.
 
 ## Key paths

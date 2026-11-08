@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.19
+ * Version: 3.7.22
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -443,8 +443,7 @@ final class AI_Post_Scheduler {
         }, 20, 2);
 
         add_action('before_delete_post', function ($post_id) {
-            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
-            AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
+            AIPS_Container::get_instance()->make(AIPS_Post_Cleanup_Service::class)->on_before_delete_post($post_id);
         });
 
         // Silos: keep the link index and guide cache in step with pillar/cluster changes.

@@ -41,6 +41,10 @@ class Test_AIPS_Entrypoint_Refactor extends WP_UnitTestCase {
 		$this->assertTrue($container->has(AIPS_History_Repository::class));
 		$this->assertTrue($container->has(AIPS_AI_Service_Interface::class));
 		$this->assertTrue($container->has(AIPS_Schedule_Repository::class));
+		$this->assertTrue($container->has(AIPS_Post_Cleanup_Service::class));
+		$this->assertTrue($container->has(AIPS_Internal_Links_Repository::class));
+		$this->assertTrue($container->has(AIPS_Author_Topic_Logs_Repository::class));
+		$this->assertTrue($container->has(AIPS_Redirects_Repository::class));
 
 		// Re-register bindings through entrypoint proxy to preserve clean container state
 		AI_Post_Scheduler::get_instance()->register_container_bindings();

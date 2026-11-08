@@ -1,6 +1,22 @@
 ## [Unreleased]
 
+### Performance
+- **AI Prompt Bloat Optimization & Input Token Reduction:**
+  - Pruned redundant `content_format` and `post_slice` diversity blocks in `AIPS_Prompt_Builder_Post_Metadata::append_diversity_blocks()` during metadata follow-up turns on established conversations, saving ~300 input tokens per post.
+  - Eliminated duplicate voice content instructions in `AIPS_Prompt_Builder::build_content_context()` when called for `AIPS_Generation_Context`, avoiding redundant injection across both prompt body and AI Engine context options.
+  - Reduced default article digest size in `AIPS_Prompt_Builder_Post_Title::build_base_prompt()` from 12,000 characters (`DEFAULT_MAX_CHARS`) to 3,000 characters, saving ~1,500–2,500 input tokens per post on stateless title generation requests without compromising headline relevance.
+
 ### Added
+- **Comprehensive Post Lifecycle Deletion Cleanup:**
+  - Added `AIPS_Post_Cleanup_Service` orchestrated via WordPress `before_delete_post` hook to reliably clean up plugin data when posts are permanently deleted.
+  - Purges embedding vectors in `wp_aips_embeddings` and bidirectional relationship pairings in `wp_aips_relationships`.
+  - Purges internal link suggestions in `wp_aips_internal_links`, link index records in `wp_aips_link_index`, and link click counts in `wp_aips_link_clicks`.
+  - Purges history containers in `wp_aips_history` and detailed event logs in `wp_aips_history_log`, with automatic history cache invalidation.
+  - Deactivates pointing redirect rules in `wp_aips_redirects` (`enabled = 0`, `target_post_id = 0`) to prevent 404 redirection loops, and deletes origin redirects.
+  - Disassociates author topic generation logs (`wp_aips_author_topic_logs.post_id = NULL`) to preserve audit trails without automatically re-queuing the topic.
+  - Introduced `AIPS_Post_Cleanup_Service::without_history_deletion()` and pre-disassociation in Review Queue post regeneration flows to protect active history containers during regeneration deletions.
+  - Added revision and autosave guards (`wp_is_post_revision`, `wp_is_post_autosave`) to prevent premature cleanup when editing posts.
+  - Added extensibility hooks `aips_before_post_cleanup`, `aips_post_cleanup_executed`, and filter `aips_should_cleanup_post`.
 - **Diagnostics → System Info "Totals & Counts" section:**
   - New section listing lifetime totals: posts generated, generation runs and success rate, generations by method, history containers by kind, authors, author topics and author posts, logged AI requests, AI Assistance requests, background-job AI calls, embeddings, content relationships, internal link suggestions, indexed links, templates/schedules/campaigns, trending topics, sources and fetched source pages, and bulk batch jobs. Included in the "Copy System Report" Markdown.
   - New per-provider AI call counter (`AIPS_AI_Call_Counter`, non-autoloaded option `aips_ai_call_counters`) recorded by `AIPS_AI_Service`, shown as "AI Calls (WP AI Connector)" and "AI Calls (Meow AI Engine)" with a by-type breakdown. History logs never recorded the provider, so these counts start from the first AI call after upgrading.
@@ -36,6 +52,16 @@
   - Added "Send Pending Digest Now" admin action for immediate manual queue testing and flush.
   - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
 
+### Fixed
+- **History stays consistent when a regeneration delete or a history-log delete fails:**
+  - Single and bulk review regeneration restore the history container's status, post association, and error message when `wp_delete_post()` is vetoed (`pre_delete_post`) or otherwise fails, instead of leaving the original draft detached.
+  - `AIPS_History_Repository::delete_by_post_id()` returns false and leaves parent containers in place when deleting child `wp_aips_history_log` rows fails, so a failed log delete cannot orphan those logs.
+  - History updates now persist an explicit `post_id` or `error_message` of null, so regeneration can clear and later restore those fields.
+  - Topic-log disassociation on post delete updates `wp_aips_author_topic_logs` (`$table_name`). The previous `$table` property access aborted cleanup.
+
+### Fixed
+- Pending Review selection count and bulk publish/delete now use the same posts: after Cards → expanded List → Cards, IDs that are no longer rendered are dropped instead of being counted and then skipped.
+- Capped Pending Review `review_per_page` and the cards draft-list AJAX `per_page` at 100. Screen Options above the old 50 limit are still honored up to that ceiling.
 
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.
@@ -61,6 +87,10 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **AI Errors Intelligence Console:**
+  - Exports include every matching error up to 2,000 rows. JSON and CSV report the real match count, the number of rows written, and whether the file was truncated at that bound.
+  - Category totals classify each error once, using the same rules as each row. An error that matches two signatures is counted in the winning category only, and unclassified errors stay in General.
+  - Secret redaction walks nested JSON fields such as `api_key` and `access_token`, including provider keys that do not start with `sk-`.
 - **Capture Original & Current Post Component Values in AI Edit Revisions:**
   - Resolved an issue in the AI Edit component regeneration flow where the pre-regeneration state (original/current post value) was not recorded as a revision snapshot, leaving only the newly generated draft in "View Revisions".
   - Updated `AIPS_AI_Edit_Controller::ajax_regenerate_component()` and `ajax_regenerate_all_components()` to capture the current component state (from client payload or falling back to `$post`) before invoking AI regeneration, with intelligent deduplication against recent revisions to avoid duplicate snapshots across multiple regenerations.

@@ -256,8 +256,11 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 
 		$this->assertSame( 'approved', $result['decision'] );
 		$this->assertTrue( $result['meta']['auto_approved'] );
+		// The candidate vector is used for relevance scoring (proven by the high
+		// relevance below) but must NOT be persisted back into metadata — it is a
+		// ~50 KB/row float array whose canonical copy lives in aips_embeddings.
 		$this->assertGreaterThan( 0.80, $result['meta']['auto_approval_relevance'] );
-		$this->assertSame( $candidate_vec, $result['meta']['embedding'] );
+		$this->assertArrayNotHasKey( 'embedding', $result['meta'] );
 	}
 
 	/**
