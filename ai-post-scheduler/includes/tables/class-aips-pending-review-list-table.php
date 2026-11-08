@@ -40,6 +40,26 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 	const PER_PAGE_DEFAULT = 12;
 
 	/**
+	 * Largest page size accepted from Screen Options, review_per_page, or the
+	 * cards AJAX request. The draft query loads post content for every row, so
+	 * the SQL LIMIT has to stay bounded. Values above the previous 50 cap are
+	 * still honored up to this ceiling.
+	 *
+	 * @var int
+	 */
+	const PER_PAGE_MAX = 100;
+
+	/**
+	 * Clamp a pending-review page size into the allowed query range.
+	 *
+	 * @param int $per_page Requested page size.
+	 * @return int
+	 */
+	public static function bounded_per_page($per_page) {
+		return min(self::PER_PAGE_MAX, max(1, (int) $per_page));
+	}
+
+	/**
 	 * @var AIPS_Post_Review_Repository
 	 */
 	protected $repository;
@@ -176,7 +196,16 @@ class AIPS_Pending_Review_List_Table extends AIPS_List_Table {
 	public function prepare_items() {
 		$this->_column_headers = $this->get_column_info();
 
-		$per_page     = max(1, (int) $this->get_items_per_page(self::PER_PAGE_OPTION, self::PER_PAGE_DEFAULT));
+		$per_page = self::bounded_per_page(
+			(int) $this->get_items_per_page(self::PER_PAGE_OPTION, self::PER_PAGE_DEFAULT)
+		);
+		// A Cards-to-List switch can include cards already loaded. The query
+		// value may rise above the Screen Option, and it stays inside PER_PAGE_MAX.
+		if (isset($_GET['review_per_page'])) {
+			$per_page = self::bounded_per_page(
+				max($per_page, absint(wp_unslash($_GET['review_per_page'])))
+			);
+		}
 		$current_page = $this->get_pagenum();
 
 		$search      = isset($_REQUEST['s']) ? sanitize_text_field(wp_unslash($_REQUEST['s'])) : '';

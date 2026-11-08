@@ -47,9 +47,14 @@ class AIPS_Partial_Generation_State_Reconciler {
 			return;
 		}
 
+		// A missing slug is optional. Drafts often have an empty post_name, and that
+		// must not flip an otherwise complete generation run back to partial.
+		$required_statuses = $statuses;
+		unset($required_statuses['post_slug']);
+
 		AIPS_History_Repository::instance()->sync_generation_status_for_post(
 			absint($post_id),
-			in_array(false, $statuses, true)
+			in_array(false, $required_statuses, true)
 		);
 	}
 

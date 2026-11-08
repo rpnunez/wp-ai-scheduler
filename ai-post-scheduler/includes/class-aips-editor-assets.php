@@ -18,7 +18,13 @@ class AIPS_Editor_Assets {
 	/**
 	 * Meta box ID for the Classic Editor.
 	 */
-	const METABOX_ID = 'aips_classic_ai_edit_metabox';
+	const METABOX_ID          = 'aips_classic_ai_edit_metabox';
+	const METABOX_ID_TITLE    = 'aips_ai_edit_title_metabox';
+	const METABOX_ID_SLUG     = 'aips_ai_edit_slug_metabox';
+	const METABOX_ID_EXCERPT  = 'aips_ai_edit_excerpt_metabox';
+	const METABOX_ID_CONTENT  = 'aips_ai_edit_content_metabox';
+	const METABOX_ID_IMAGE    = 'aips_ai_edit_featured_image_metabox';
+	const METABOX_ID_POST_IMAGES = 'aips_ai_edit_post_images_metabox';
 
 	/**
 	 * @var AIPS_Editor_Directive_Service
@@ -65,6 +71,67 @@ class AIPS_Editor_Assets {
 			return;
 		}
 
+		// Register per-component AI Edit widgets
+		add_meta_box(
+			self::METABOX_ID_TITLE,
+			__('AI Edit: Post Title', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'side',
+			'high',
+			array('component' => 'title', 'label' => __('Title', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_SLUG,
+			__('AI Edit: Post Slug', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'side',
+			'high',
+			array('component' => 'slug', 'label' => __('Slug', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_EXCERPT,
+			__('AI Edit: Post Excerpt', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'side',
+			'default',
+			array('component' => 'excerpt', 'label' => __('Excerpt', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_CONTENT,
+			__('AI Edit: Post Content', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'normal',
+			'default',
+			array('component' => 'content', 'label' => __('Content', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_IMAGE,
+			__('AI Edit: Featured Image', 'ai-post-scheduler'),
+			array($this, 'render_classic_component_metabox'),
+			$post_type,
+			'side',
+			'default',
+			array('component' => 'featured_image', 'label' => __('Featured Image', 'ai-post-scheduler'))
+		);
+
+		add_meta_box(
+			self::METABOX_ID_POST_IMAGES,
+			__('AI Edit: Post Images', 'ai-post-scheduler'),
+			array($this, 'render_classic_post_images_metabox'),
+			$post_type,
+			'normal',
+			'default'
+		);
+
+		// Keep existing quick directive meta box
 		add_meta_box(
 			self::METABOX_ID,
 			__('AI Edit & Directives', 'ai-post-scheduler'),
@@ -77,11 +144,40 @@ class AIPS_Editor_Assets {
 	}
 
 	/**
+	 * Render a per-component Classic Editor meta box template.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @param array   $args Meta box registration arguments.
+	 * @return void
+	 */
+	public function render_classic_component_metabox($post, array $args = array()): void {
+		$component       = isset($args['args']['component']) ? sanitize_key($args['args']['component']) : 'title';
+		$component_label = isset($args['args']['label']) ? $args['args']['label'] : ucfirst($component);
+		$template_path   = AIPS_PLUGIN_DIR . 'templates/admin/classic-ai-edit-component-metabox.php';
+		if (file_exists($template_path)) {
+			include $template_path;
+		}
+	}
+
+	/**
 	 * Render the Classic Editor meta box template.
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return void
 	 */
+	/**
+	 * Render the Classic Editor Post Images meta box.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return void
+	 */
+	public function render_classic_post_images_metabox($post): void {
+		$template_path = AIPS_PLUGIN_DIR . 'templates/admin/classic-ai-edit-post-images-metabox.php';
+		if (file_exists($template_path)) {
+			include $template_path;
+		}
+	}
+
 	public function render_classic_metabox($post): void {
 		$template_path = AIPS_PLUGIN_DIR . 'templates/admin/classic-ai-edit-metabox.php';
 		if (file_exists($template_path)) {
@@ -115,14 +211,38 @@ class AIPS_Editor_Assets {
 		$this->register_styles();
 		wp_enqueue_style('aips-editor-style');
 
+		if (!wp_script_is('aips-templates-script', 'registered')) {
+			wp_register_script(
+				'aips-templates-script',
+				AIPS_PLUGIN_URL . 'assets/js/templates.js',
+				array('jquery'),
+				AIPS_VERSION,
+				true
+			);
+		}
+		wp_enqueue_script('aips-templates-script');
+
+		if (!wp_script_is('aips-utilities-script', 'registered')) {
+			wp_register_script(
+				'aips-utilities-script',
+				AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+				array('jquery'),
+				AIPS_VERSION,
+				true
+			);
+		}
+		wp_enqueue_script('aips-utilities-script');
+
 		wp_enqueue_script(
 			'aips-editor-classic',
 			AIPS_PLUGIN_URL . 'assets/js/admin-editor-classic.js',
-			array('jquery'),
+			array('jquery', 'aips-templates-script', 'aips-utilities-script'),
 			AIPS_VERSION,
 			true
 		);
 		wp_localize_script('aips-editor-classic', 'aipsEditorL10n', $this->get_l10n($post_id));
+
+		add_action('admin_footer', array($this, 'render_classic_templates'));
 
 		// Hook TinyMCE filters for inline selection actions
 		if (current_user_can('edit_posts') && 'true' === get_user_option('rich_editing')) {
@@ -166,9 +286,16 @@ class AIPS_Editor_Assets {
 		}
 
 		wp_register_style(
+			'aips-ai-edit-style',
+			AIPS_PLUGIN_URL . 'assets/css/admin-ai-edit.css',
+			array('aips-design-tokens'),
+			AIPS_VERSION
+		);
+
+		wp_register_style(
 			'aips-editor-style',
 			AIPS_PLUGIN_URL . 'assets/css/admin-editor.css',
-			array('aips-design-tokens'),
+			array('aips-design-tokens', 'aips-ai-edit-style'),
 			AIPS_VERSION
 		);
 	}
@@ -202,12 +329,43 @@ class AIPS_Editor_Assets {
 	 * @return array
 	 */
 	public function get_l10n(int $post_id = 0): array {
+		$history_id = 0;
+		if ($post_id > 0) {
+			$container = AIPS_Container::get_instance();
+			if ($container->has(AIPS_History_Repository_Interface::class)) {
+				$repo = $container->make(AIPS_History_Repository_Interface::class);
+				$rec  = $repo->get_by_post_id($post_id);
+				if ($rec && isset($rec->id)) {
+					$history_id = (int) $rec->id;
+				}
+			}
+		}
+
+		$default_config = AIPS_Config::get_instance()->get_ai_config();
+		$available_models = array(
+			''                           => __('Template Default', 'ai-post-scheduler'),
+			'gpt-4o'                     => 'GPT-4o (OpenAI)',
+			'gpt-4o-mini'                => 'GPT-4o Mini (OpenAI)',
+			'claude-3-5-sonnet-20241022' => 'Claude 3.5 Sonnet (Anthropic)',
+			'claude-3-5-haiku-20241022'  => 'Claude 3.5 Haiku (Anthropic)',
+			'gemini-1.5-pro'             => 'Gemini 1.5 Pro (Google)',
+			'gemini-1.5-flash'           => 'Gemini 1.5 Flash (Google)',
+		);
+
 		return array(
-			'ajaxurl'    => admin_url('admin-ajax.php'),
-			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
-			'postId'     => $post_id,
-			'presets'    => $this->directive_service->get_standard_presets(),
-			'panelTitle' => __('AI Edit & Directives', 'ai-post-scheduler'),
+			'ajaxurl'            => admin_url('admin-ajax.php'),
+			'nonce'              => wp_create_nonce('aips_ajax_nonce'),
+			'postId'             => $post_id,
+			'historyId'          => $history_id,
+			'postImages'         => $this->get_editor_post_images($post_id, $history_id),
+			'presets'            => $this->directive_service->get_standard_presets(),
+			'models'             => $available_models,
+			'componentOverrides' => $post_id > 0 ? (get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true) ?: array()) : array(),
+			'defaultAiConfig'    => array(
+				'model'       => isset($default_config['model']) ? $default_config['model'] : '',
+				'temperature' => isset($default_config['temperature']) ? floatval($default_config['temperature']) : 0.7,
+			),
+			'panelTitle'         => __('AI Edit & Directives', 'ai-post-scheduler'),
 			'labels'     => array(
 				'popoverTitle'  => __('AI Edit — Rewrite & Enhance', 'ai-post-scheduler'),
 				'apply'         => __('Apply to Block', 'ai-post-scheduler'),
@@ -220,6 +378,7 @@ class AIPS_Editor_Assets {
 				'instruction'   => __('Custom instruction (e.g. "make it punchy")...', 'ai-post-scheduler'),
 				'weaveBtn'      => __('Weave Internal Links', 'ai-post-scheduler'),
 				'titleVariants' => __('Generate 3 Title Candidates', 'ai-post-scheduler'),
+				'slugVariants' => __('Generate 3 Post Slug Candidates', 'ai-post-scheduler'),
 				'excerptVariants' => __('Generate 3 Excerpt Candidates', 'ai-post-scheduler'),
 				'success'       => __('Content updated!', 'ai-post-scheduler'),
 				'selectPrompt'  => __('Choose a preset or enter instructions below:', 'ai-post-scheduler'),
@@ -227,5 +386,80 @@ class AIPS_Editor_Assets {
 				'actionError'   => __('That did not work. Please check your AI configuration.', 'ai-post-scheduler'),
 			),
 		);
+	}
+
+	/**
+	 * Content images for the post's current history run.
+	 *
+	 * @param int $post_id    Post ID.
+	 * @param int $history_id History container ID.
+	 * @return array
+	 */
+	private function get_editor_post_images(int $post_id, int $history_id): array {
+		if ($post_id <= 0) {
+			return array();
+		}
+
+		$rows = (new AIPS_Post_Images_Generated_Repository())->get_for_post_history($post_id, $history_id);
+		$list = array();
+		foreach ($rows as $position => $row) {
+			$url = '';
+			if (!empty($row->image_url)) {
+				$url = (string) $row->image_url;
+			} elseif (!empty($row->attachment_id)) {
+				$url = (string) wp_get_attachment_url((int) $row->attachment_id);
+			}
+			$list[] = array(
+				'id'         => (int) $row->id,
+				'imageIndex' => $position + 1,
+				'status'     => (string) $row->status,
+				'url'        => $url,
+				'error'      => isset($row->error_message) ? (string) $row->error_message : '',
+			);
+		}
+
+		return $list;
+	}
+
+	/**
+	 * Render HTML templates for Classic Editor widgets.
+	 *
+	 * @return void
+	 */
+	public function render_classic_templates(): void {
+		?>
+		<script type="text/html" id="aips-tmpl-editor-revision-item">
+			<div class="aips-revision-item" data-revision-id="{{id}}">
+				<div class="aips-revision-header">
+					<span><span class="dashicons dashicons-backup"></span> {{sourceBadge}} {{timeText}}</span>
+					<button type="button" class="button button-small button-secondary aips-restore-revision-btn" data-revision-id="{{id}}">
+						<span class="dashicons dashicons-undo"></span> {{restoreLabel}}
+					</button>
+				</div>
+				<div class="aips-revision-body">{{snippet}}</div>
+			</div>
+		</script>
+		<script type="text/html" id="aips-tmpl-editor-post-image-card">
+			<div class="aips-editor-post-image-card" data-image-id="{{id}}">
+				<div class="aips-editor-post-image-header">
+					<strong>{{title}}</strong>
+					<span class="aips-editor-post-image-status">{{status}}</span>
+				</div>
+				<div class="aips-editor-post-image-actions">
+					<button type="button" class="button button-secondary aips-editor-post-image-regenerate">{{regenerateLabel}}</button>
+					<button type="button" class="button button-link aips-editor-post-image-revisions">{{revisionsLabel}}</button>
+				</div>
+				<div class="aips-editor-post-image-compare" hidden></div>
+				<div class="aips-editor-post-image-revisions" hidden></div>
+			</div>
+		</script>
+		<script type="text/html" id="aips-tmpl-editor-variant-card">
+			<div class="aips-variant-card">
+				<div class="aips-variant-card-header"><span>Candidate {{candidateIndex}}</span></div>
+				<div class="aips-variant-card-body">{{text}}</div>
+				<button type="button" class="button button-small button-primary aips-apply-variant-btn">{{insertLabel}}</button>
+			</div>
+		</script>
+		<?php
 	}
 }
