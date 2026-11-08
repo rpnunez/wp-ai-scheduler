@@ -138,10 +138,21 @@ interface AIPS_History_Repository_Interface {
 	/**
 	 * Retrieve AI error records and associated history metadata.
 	 *
+	 * per_page is capped at 100 unless for_export is true, which raises the cap
+	 * to 2,000. Category filters use the AI error classifier.
+	 *
 	 * @param array $args Filter and pagination arguments.
 	 * @return array{items:array,total:int,total_pages:int,page:int,per_page:int}
 	 */
 	public function get_ai_errors($args = array());
+
+	/**
+	 * Retrieve aggregate statistics and category breakdown for AI errors.
+	 *
+	 * @param array $args Filter arguments (date_from, date_to, error_scope, search).
+	 * @return array
+	 */
+	public function get_ai_error_summary_stats($args = array());
 
 	/**
 	 * Retrieve a single AI error record with full details by history log ID.

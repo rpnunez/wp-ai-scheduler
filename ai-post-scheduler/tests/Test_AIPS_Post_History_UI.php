@@ -178,6 +178,9 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		public function get_ai_errors($args = array()) {
 			return array('items' => array(), 'total' => 0, 'total_pages' => 1, 'page' => 1, 'per_page' => 20);
 		}
+		public function get_ai_error_summary_stats($args = array()) {
+			return array('total_errors' => 0, 'categories' => array(), 'top_category' => null, 'top_component' => null);
+		}
 		public function get_ai_error_by_id($log_id) {
 			return null;
 		}

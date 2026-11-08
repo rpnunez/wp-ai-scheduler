@@ -41,6 +41,8 @@ class AIPS_Diagnostics_Controller {
 
 		add_action( 'wp_ajax_aips_get_ai_errors', array( $this, 'ajax_get_ai_errors' ) );
 		add_action( 'wp_ajax_aips_get_ai_error_details', array( $this, 'ajax_get_ai_error_details' ) );
+		add_action( 'wp_ajax_aips_get_ai_error_summary', array( $this, 'ajax_get_ai_error_summary' ) );
+		add_action( 'wp_ajax_aips_export_ai_errors', array( $this, 'ajax_export_ai_errors' ) );
 	}
 
 	/**
@@ -446,6 +448,7 @@ class AIPS_Diagnostics_Controller {
 		$date_from_str = isset( $_POST['date_from'] ) ? sanitize_text_field( wp_unslash( $_POST['date_from'] ) ) : '';
 		$date_to_str   = isset( $_POST['date_to'] ) ? sanitize_text_field( wp_unslash( $_POST['date_to'] ) ) : '';
 		$component     = isset( $_POST['component'] ) ? sanitize_key( wp_unslash( $_POST['component'] ) ) : '';
+		$category      = isset( $_POST['category'] ) ? sanitize_key( wp_unslash( $_POST['category'] ) ) : '';
 		$error_scope   = isset( $_POST['error_scope'] ) ? sanitize_key( wp_unslash( $_POST['error_scope'] ) ) : 'ai_only';
 		$search        = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
 		$page          = isset( $_POST['page'] ) ? max( 1, absint( $_POST['page'] ) ) : 1;
@@ -481,6 +484,7 @@ class AIPS_Diagnostics_Controller {
 			'date_from'   => $from_ts,
 			'date_to'     => $to_ts,
 			'component'   => $component,
+			'category'    => $category,
 			'error_scope' => $error_scope,
 			'search'      => $search,
 			'page'        => $page,
@@ -488,6 +492,267 @@ class AIPS_Diagnostics_Controller {
 		) );
 
 		AIPS_Ajax_Response::success( $results );
+	}
+
+	/**
+	 * AJAX endpoint to retrieve summary metrics and category rollups for AI errors.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_ai_error_summary() {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
+			AIPS_Ajax_Response::error( __( 'Invalid nonce.', 'ai-post-scheduler' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$date_from_str = isset( $_POST['date_from'] ) ? sanitize_text_field( wp_unslash( $_POST['date_from'] ) ) : '';
+		$date_to_str   = isset( $_POST['date_to'] ) ? sanitize_text_field( wp_unslash( $_POST['date_to'] ) ) : '';
+		$error_scope   = isset( $_POST['error_scope'] ) ? sanitize_key( wp_unslash( $_POST['error_scope'] ) ) : 'ai_only';
+		$search        = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
+
+		$from_ts = 0;
+		if ( ! empty( $date_from_str ) ) {
+			if ( is_numeric( $date_from_str ) ) {
+				$from_ts = (int) $date_from_str;
+			} else {
+				try {
+					$from_ts = AIPS_DateTime::fromDate( $date_from_str )->timestamp();
+				} catch ( \Throwable $e ) {
+					$from_ts = 0;
+				}
+			}
+		}
+
+		$to_ts = 0;
+		if ( ! empty( $date_to_str ) ) {
+			if ( is_numeric( $date_to_str ) ) {
+				$to_ts = (int) $date_to_str;
+			} else {
+				try {
+					$to_ts = AIPS_DateTime::fromDate( $date_to_str )->timestamp() + DAY_IN_SECONDS - 1;
+				} catch ( \Throwable $e ) {
+					$to_ts = 0;
+				}
+			}
+		}
+
+		$stats = $this->history_repository->get_ai_error_summary_stats( array(
+			'date_from'   => $from_ts,
+			'date_to'     => $to_ts,
+			'error_scope' => $error_scope,
+			'search'      => $search,
+		) );
+
+		AIPS_Ajax_Response::success( $stats );
+	}
+
+	/**
+	 * Collect AI error rows for export up to an explicit bound.
+	 *
+	 * total_count is the number of matches. truncated is true when that number
+	 * exceeds the bound and the file therefore omits older matches.
+	 *
+	 * @param array    $args  Filter arguments accepted by get_ai_errors(), excluding pagination.
+	 * @param int|null $limit Maximum rows to include. Null uses the repository export bound.
+	 * @return array{items:array,total_count:int,exported_count:int,truncated:bool,export_limit:int}
+	 */
+	public function prepare_ai_error_export( array $args = array(), $limit = null ) {
+		$max_limit    = AIPS_History_Repository::AI_ERROR_EXPORT_MAX_ROWS;
+		$export_limit = null === $limit ? $max_limit : max( 1, (int) $limit );
+		$export_limit = min( $max_limit, $export_limit );
+
+		$results = $this->history_repository->get_ai_errors( array_merge( $args, array(
+			'page'       => 1,
+			'per_page'   => $export_limit,
+			'for_export' => true,
+		) ) );
+
+		$items    = isset( $results['items'] ) && is_array( $results['items'] ) ? $results['items'] : array();
+		$total    = isset( $results['total'] ) ? (int) $results['total'] : count( $items );
+		$exported = count( $items );
+
+		return array(
+			'items'          => $items,
+			'total_count'    => $total,
+			'exported_count' => $exported,
+			'truncated'      => $total > $exported,
+			'export_limit'   => $export_limit,
+		);
+	}
+
+	/**
+	 * Redact secrets on exported error text fields.
+	 *
+	 * @param array $items Export rows.
+	 * @return array
+	 */
+	private function redact_ai_error_export_items( array $items ) {
+		foreach ( $items as $index => $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			if ( ! empty( $item['error_message'] ) && is_string( $item['error_message'] ) ) {
+				$items[ $index ]['error_message'] = AIPS_AI_Error_Classifier::redact_secrets( $item['error_message'] );
+			}
+			if ( ! empty( $item['message'] ) && is_string( $item['message'] ) ) {
+				$items[ $index ]['message'] = AIPS_AI_Error_Classifier::redact_secrets( $item['message'] );
+			}
+		}
+
+		return $items;
+	}
+
+	/**
+	 * AJAX endpoint to export AI error records as CSV or JSON.
+	 *
+	 * @return void
+	 */
+	public function ajax_export_ai_errors() {
+		// Nonce check supports both GET and POST for direct download requests.
+		$nonce = isset( $_REQUEST['nonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'aips_ajax_nonce' ) ) {
+			wp_die( esc_html__( 'Invalid security token.', 'ai-post-scheduler' ), 403 );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to export logs.', 'ai-post-scheduler' ), 403 );
+		}
+
+		$format        = isset( $_REQUEST['format'] ) && 'json' === strtolower( sanitize_key( $_REQUEST['format'] ) ) ? 'json' : 'csv';
+		$date_from_str = isset( $_REQUEST['date_from'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['date_from'] ) ) : '';
+		$date_to_str   = isset( $_REQUEST['date_to'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['date_to'] ) ) : '';
+		$component     = isset( $_REQUEST['component'] ) ? sanitize_key( wp_unslash( $_REQUEST['component'] ) ) : '';
+		$category      = isset( $_REQUEST['category'] ) ? sanitize_key( wp_unslash( $_REQUEST['category'] ) ) : '';
+		$error_scope   = isset( $_REQUEST['error_scope'] ) ? sanitize_key( wp_unslash( $_REQUEST['error_scope'] ) ) : 'ai_only';
+		$search        = isset( $_REQUEST['search'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['search'] ) ) : '';
+
+		$from_ts = 0;
+		if ( ! empty( $date_from_str ) ) {
+			if ( is_numeric( $date_from_str ) ) {
+				$from_ts = (int) $date_from_str;
+			} else {
+				try {
+					$from_ts = AIPS_DateTime::fromDate( $date_from_str )->timestamp();
+				} catch ( \Throwable $e ) {
+					$from_ts = 0;
+				}
+			}
+		}
+
+		$to_ts = 0;
+		if ( ! empty( $date_to_str ) ) {
+			if ( is_numeric( $date_to_str ) ) {
+				$to_ts = (int) $date_to_str;
+			} else {
+				try {
+					$to_ts = AIPS_DateTime::fromDate( $date_to_str )->timestamp() + DAY_IN_SECONDS - 1;
+				} catch ( \Throwable $e ) {
+					$to_ts = 0;
+				}
+			}
+		}
+
+		$export = $this->prepare_ai_error_export( array(
+			'date_from'   => $from_ts,
+			'date_to'     => $to_ts,
+			'component'   => $component,
+			'category'    => $category,
+			'error_scope' => $error_scope,
+			'search'      => $search,
+		) );
+
+		$items          = $export['items'];
+		$total_count    = $export['total_count'];
+		$exported_count = $export['exported_count'];
+		$truncated      = $export['truncated'];
+		$export_limit   = $export['export_limit'];
+		$filename       = 'aips-ai-errors-' . gmdate( 'Y-m-d-His' );
+
+		if ( 'json' === $format ) {
+			header( 'Content-Type: application/json; charset=utf-8' );
+			header( 'Content-Disposition: attachment; filename="' . $filename . '.json"' );
+			header( 'Cache-Control: no-cache, no-store, must-revalidate' );
+			header( 'Pragma: no-cache' );
+			header( 'Expires: 0' );
+
+			$items = $this->redact_ai_error_export_items( $items );
+
+			echo wp_json_encode( array(
+				'exported_at'    => gmdate( 'c' ),
+				'total_count'    => $total_count,
+				'exported_count' => $exported_count,
+				'truncated'      => $truncated,
+				'export_limit'   => $export_limit,
+				'errors'         => $items,
+			), JSON_PRETTY_PRINT );
+			exit;
+		}
+
+		// CSV Export
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '.csv"' );
+		header( 'Cache-Control: no-cache, no-store, must-revalidate' );
+		header( 'Pragma: no-cache' );
+		header( 'Expires: 0' );
+
+		$output = fopen( 'php://output', 'w' );
+
+		fwrite( $output, '# total_count: ' . (int) $total_count . "\n" );
+		fwrite( $output, '# exported_count: ' . (int) $exported_count . "\n" );
+		fwrite( $output, '# truncated: ' . ( $truncated ? 'yes' : 'no' ) . "\n" );
+		fwrite( $output, '# export_limit: ' . (int) $export_limit . "\n" );
+
+		// CSV Column Headers
+		fputcsv( $output, array(
+			'ID',
+			'Date Time (UTC)',
+			'Local Date Time',
+			'Category Slug',
+			'Category Label',
+			'HTTP Code',
+			'Component',
+			'Error Message',
+			'History ID',
+			'Post ID',
+			'Post / Run Title',
+		) );
+
+		$escape_csv_formula = static function ( $val ) {
+			$str = (string) $val;
+			if ( '' !== $str && in_array( substr( $str, 0, 1 ), array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+				return "'" . $str;
+			}
+			return $str;
+		};
+
+		foreach ( $items as $row ) {
+			$raw_msg       = isset( $row['error_message'] ) ? $row['error_message'] : '';
+			$sanitized_msg = $escape_csv_formula( AIPS_AI_Error_Classifier::redact_secrets( $raw_msg ) );
+			$http_code     = ! empty( $row['classification']['http_code'] ) ? (string) $row['classification']['http_code'] : '';
+			$post_title    = $escape_csv_formula( isset( $row['post_title'] ) ? $row['post_title'] : '' );
+			$cat_label     = $escape_csv_formula( isset( $row['category_label'] ) ? $row['category_label'] : '' );
+			$comp_label    = $escape_csv_formula( isset( $row['component_label'] ) ? $row['component_label'] : '' );
+
+			fputcsv( $output, array(
+				isset( $row['id'] ) ? $row['id'] : '',
+				! empty( $row['timestamp'] ) ? gmdate( 'Y-m-d H:i:s', $row['timestamp'] ) : '',
+				isset( $row['formatted_date'] ) ? $row['formatted_date'] : '',
+				isset( $row['category'] ) ? $row['category'] : '',
+				$cat_label,
+				$http_code,
+				$comp_label,
+				$sanitized_msg,
+				isset( $row['history_id'] ) ? $row['history_id'] : '',
+				isset( $row['post_id'] ) ? $row['post_id'] : '',
+				$post_title,
+			) );
+		}
+
+		fclose( $output );
+		exit;
 	}
 
 	/**
