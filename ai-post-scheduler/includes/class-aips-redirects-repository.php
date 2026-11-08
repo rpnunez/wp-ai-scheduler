@@ -102,6 +102,54 @@ class AIPS_Redirects_Repository {
 	}
 
 	/**
+	 * Deactivate redirect rules pointing to a specific post ID.
+	 *
+	 * Sets target_post_id to 0 and enabled to 0 to prevent 404 redirection loops.
+	 *
+	 * @param int $post_id Target post ID.
+	 * @return int Number of affected rows.
+	 */
+	public function disable_target_post(int $post_id): int {
+		if (!$this->table_exists() || $post_id <= 0) {
+			return 0;
+		}
+
+		$result = $this->wpdb->update(
+			$this->table,
+			array(
+				'enabled'        => 0,
+				'target_post_id' => 0,
+				'updated_at'     => AIPS_DateTime::now()->timestamp(),
+			),
+			array('target_post_id' => $post_id),
+			array('%d', '%d', '%d'),
+			array('%d')
+		);
+
+		return false === $result ? 0 : (int) $result;
+	}
+
+	/**
+	 * Delete redirect rules that originated from a specific post (e.g. consolidation).
+	 *
+	 * @param int $post_id Origin post ID.
+	 * @return int Number of deleted rows.
+	 */
+	public function delete_by_origin_ref(int $post_id): int {
+		if (!$this->table_exists() || $post_id <= 0) {
+			return 0;
+		}
+
+		$result = $this->wpdb->delete(
+			$this->table,
+			array('origin_ref' => $post_id),
+			array('%d')
+		);
+
+		return false === $result ? 0 : (int) $result;
+	}
+
+	/**
 	 * One redirect.
 	 *
 	 * @param int $id Redirect ID.

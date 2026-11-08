@@ -955,6 +955,16 @@ class AIPS_History {
     private function build_history_modal_header_actions($container) {
         $actions = array();
 
+        if (!empty($container['post_id'])) {
+            $actions[] = array(
+                'label'      => __('AI Edit', 'ai-post-scheduler'),
+                'class'      => 'aips-ai-edit-btn aips-history-header-ai-edit',
+                'post_id'    => (int) $container['post_id'],
+                'history_id' => !empty($container['history_id']) ? (int) $container['history_id'] : (!empty($container['id']) ? (int) $container['id'] : 0),
+                'title'      => __('AI Edit — Regenerate post components (title, excerpt, content, image) with AI', 'ai-post-scheduler'),
+            );
+        }
+
         if (!empty($container['post_url'])) {
             $actions[] = array(
                 'label' => !empty($container['post_id'])

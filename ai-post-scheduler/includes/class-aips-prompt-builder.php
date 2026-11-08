@@ -138,14 +138,10 @@ class AIPS_Prompt_Builder {
             $context = $template_or_context;
             $topic_str = $context->get_topic();
             
-            // For template contexts with voice, add voice content instructions
-            if ($context->get_type() === 'template' && $context->get_voice_id()) {
-                $voice_obj = $context->get_voice();
-                if ($voice_obj && !empty($voice_obj->content_instructions)) {
-                    $context_parts[] = $this->template_processor->process($voice_obj->content_instructions, $topic_str);
-                }
-            }
-            
+            // Note: For AIPS_Generation_Context, voice content instructions are already
+            // integrated into the content prompt by AIPS_Prompt_Builder_Post_Content::build_from_context().
+            // Including them here as well duplicates the entire instructions block across both prompt
+            // and system/context options. Only add output instructions to avoid prompt bloat.
             $context_parts[] = $this->get_output_instructions();
             
             /**

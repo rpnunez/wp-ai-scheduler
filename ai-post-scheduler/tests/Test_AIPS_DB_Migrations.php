@@ -501,4 +501,280 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$wpdb->query("DELETE FROM `{$table}` WHERE id IN (" . implode(',', $ids) . ')');
 		delete_option('aips_author_topic_auto_approval_fallback');
 	}
+
+	/**
+	 * Invoke the private migrate_to_3_7_22() on a fresh instance.
+	 *
+	 * @return bool
+	 */
+	private function run_migrate_3_7_22() {
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_22' );
+		$method->setAccessible( true );
+		return (bool) $method->invoke( $migrations );
+	}
+
+	/**
+	 * migrate_to_3_7_22() must drop the redundant single-column indexes that are
+	 * left-prefixes of a composite and add the author_id_status_score covering
+	 * index, so the per-author topic claim no longer filesorts.
+	 */
+	public function test_migrate_to_3_7_22_consolidates_indexes() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$history = $wpdb->prefix . 'aips_history';
+		$topics  = $wpdb->prefix . 'aips_author_topics';
+
+		// Recreate the pre-3.7.22 index layout.
+		$wpdb->query( "ALTER TABLE `{$history}` ADD KEY status (status)" );
+		$wpdb->query( "ALTER TABLE `{$history}` ADD KEY template_id (template_id)" );
+		$wpdb->query( "ALTER TABLE `{$history}` ADD KEY post_id (post_id)" );
+		$wpdb->query( "ALTER TABLE `{$topics}` DROP INDEX IF EXISTS author_id_status_score" );
+		$wpdb->query( "ALTER TABLE `{$topics}` ADD KEY author_id (author_id)" );
+		$wpdb->query( "ALTER TABLE `{$topics}` ADD KEY status (status)" );
+		$wpdb->query( "ALTER TABLE `{$topics}` ADD KEY author_id_status (author_id, status)" );
+
+		$this->assertTrue( $this->run_migrate_3_7_22() );
+
+		$history_indexes = $wpdb->get_col( "SHOW INDEX FROM `{$history}`", 2 );
+		$this->assertNotContains( 'status', $history_indexes, 'Redundant aips_history.status index should be dropped' );
+		$this->assertNotContains( 'template_id', $history_indexes, 'Redundant aips_history.template_id index should be dropped' );
+		$this->assertNotContains( 'post_id', $history_indexes, 'Redundant aips_history.post_id index should be dropped' );
+		$this->assertContains( 'status_created', $history_indexes, 'Covering composite status_created must remain' );
+		$this->assertContains( 'post_status', $history_indexes, 'Covering composite post_status must remain' );
+
+		$topic_indexes = $wpdb->get_col( "SHOW INDEX FROM `{$topics}`", 2 );
+		$this->assertContains( 'author_id_status_score', $topic_indexes, 'author_id_status_score covering index must be added' );
+		$this->assertNotContains( 'author_id', $topic_indexes, 'Redundant author_id index should be dropped' );
+		$this->assertNotContains( 'author_id_status', $topic_indexes, 'Redundant author_id_status index should be dropped' );
+		$this->assertNotContains( 'status', $topic_indexes, 'Redundant status index should be dropped' );
+		$this->assertContains( 'status_score_reviewed', $topic_indexes, 'status_score_reviewed must remain' );
+	}
+
+	/**
+	 * migrate_to_3_7_22() must delete history_log rows whose parent history row
+	 * no longer exists, and leave rows with a live parent untouched.
+	 */
+	public function test_migrate_to_3_7_22_deletes_orphaned_history_log() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$history = $wpdb->prefix . 'aips_history';
+		$log     = $wpdb->prefix . 'aips_history_log';
+
+		$wpdb->insert(
+			$history,
+			array( 'status' => 'completed', 'record_kind' => 'event', 'created_at' => 1700000000 ),
+			array( '%s', '%s', '%d' )
+		);
+		$parent_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$log,
+			array( 'history_id' => $parent_id, 'timestamp' => 1700000000 ),
+			array( '%d', '%d' )
+		);
+		$live_log_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$log,
+			array( 'history_id' => 999999999, 'timestamp' => 1700000000 ),
+			array( '%d', '%d' )
+		);
+		$orphan_log_id = (int) $wpdb->insert_id;
+
+		$this->assertTrue( $this->run_migrate_3_7_22() );
+
+		$this->assertNull(
+			$wpdb->get_var( $wpdb->prepare( "SELECT id FROM `{$log}` WHERE id = %d", $orphan_log_id ) ),
+			'Orphaned history_log row should be deleted'
+		);
+		$this->assertSame(
+			(string) $live_log_id,
+			$wpdb->get_var( $wpdb->prepare( "SELECT id FROM `{$log}` WHERE id = %d", $live_log_id ) ),
+			'history_log row with a live parent must be kept'
+		);
+
+		$wpdb->query( $wpdb->prepare( "DELETE FROM `{$log}` WHERE id = %d", $live_log_id ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM `{$history}` WHERE id = %d", $parent_id ) );
+	}
+
+	/**
+	 * migrate_to_3_7_22() must strip the cached embedding vector from existing
+	 * author_topics metadata while preserving every other metadata field.
+	 */
+	public function test_migrate_to_3_7_22_strips_metadata_embeddings() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		$wpdb->insert(
+			$table,
+			array(
+				'author_id'    => 1,
+				'topic_title'  => 'Bloated topic',
+				'status'       => 'approved',
+				'score'        => 90,
+				'metadata'     => wp_json_encode( array(
+					'embedding'           => array_fill( 0, 1536, 0.1234 ),
+					'potential_duplicate' => false,
+					'auto_approval_rule'  => 'similarity',
+				) ),
+				'generated_at' => 1700000000,
+			),
+			array( '%d', '%s', '%s', '%d', '%s', '%d' )
+		);
+		$topic_id = (int) $wpdb->insert_id;
+
+		$this->assertTrue( $this->run_migrate_3_7_22() );
+
+		$meta = json_decode(
+			(string) $wpdb->get_var( $wpdb->prepare( "SELECT metadata FROM `{$table}` WHERE id = %d", $topic_id ) ),
+			true
+		);
+		$this->assertArrayNotHasKey( 'embedding', $meta, 'embedding must be stripped from metadata' );
+		$this->assertArrayHasKey( 'potential_duplicate', $meta, 'other metadata fields must be preserved' );
+		$this->assertSame( 'similarity', $meta['auto_approval_rule'], 'other metadata values must be preserved' );
+
+		$wpdb->query( $wpdb->prepare( "DELETE FROM `{$table}` WHERE id = %d", $topic_id ) );
+	}
+
+	/**
+	 * migrate_to_3_7_22() must clear the aips_embeddings cache group from
+	 * aips_cache while leaving other cache groups intact.
+	 */
+	public function test_migrate_to_3_7_22_clears_embeddings_cache() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$cache = $wpdb->prefix . 'aips_cache';
+
+		$wpdb->insert(
+			$cache,
+			array( 'cache_key' => 'vec_post_1', 'cache_group' => 'aips_embeddings', 'value' => '[0.1,0.2]', 'expires_at' => 0, 'updated_at' => 1700000000 ),
+			array( '%s', '%s', '%s', '%d', '%d' )
+		);
+		$wpdb->insert(
+			$cache,
+			array( 'cache_key' => 'keepme', 'cache_group' => 'aips_schedules', 'value' => 'x', 'expires_at' => 0, 'updated_at' => 1700000000 ),
+			array( '%s', '%s', '%s', '%d', '%d' )
+		);
+
+		$this->assertTrue( $this->run_migrate_3_7_22() );
+
+		$this->assertSame(
+			'0',
+			$wpdb->get_var( "SELECT COUNT(*) FROM `{$cache}` WHERE cache_group = 'aips_embeddings'" ),
+			'embeddings cache group should be cleared'
+		);
+		$this->assertSame(
+			'1',
+			$wpdb->get_var( "SELECT COUNT(*) FROM `{$cache}` WHERE cache_group = 'aips_schedules'" ),
+			'other cache groups must be left intact'
+		);
+
+		$wpdb->query( "DELETE FROM `{$cache}` WHERE cache_key IN ('vec_post_1','keepme')" );
+	}
+
+	/**
+	 * migrate_to_3_7_22() must return true and be a safe, idempotent no-op on a
+	 * second run (indexes already consolidated, no embeddings left to strip).
+	 */
+	public function test_migrate_to_3_7_22_is_idempotent() {
+		AIPS_DB_Manager::install_tables();
+
+		$this->assertTrue( $this->run_migrate_3_7_22() );
+		$this->assertTrue( $this->run_migrate_3_7_22() );
+
+		global $wpdb;
+		$topics        = $wpdb->prefix . 'aips_author_topics';
+		$topic_indexes = $wpdb->get_col( "SHOW INDEX FROM `{$topics}`", 2 );
+		$this->assertContains( 'author_id_status_score', $topic_indexes );
+	}
+
+	/**
+	 * Upgrading from 3.7.21 — the version owned by the author featured-image
+	 * migration — must still run migrate_to_3_7_22() and stamp the current
+	 * plugin version.
+	 *
+	 * A shared 3.7.21 gate would treat that stamp as already applied and skip
+	 * the index, metadata, cache, and orphan cleanup.
+	 */
+	public function test_migrate_to_3_7_22_runs_on_upgrade_from_3_7_21() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$log = $wpdb->prefix . 'aips_history_log';
+
+		$wpdb->insert(
+			$log,
+			array( 'history_id' => 999999991, 'timestamp' => 1700000000 ),
+			array( '%d', '%d' )
+		);
+		$orphan_log_id = (int) $wpdb->insert_id;
+		$this->assertGreaterThan( 0, $orphan_log_id );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.21' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$this->assertNull(
+			$wpdb->get_var( $wpdb->prepare( "SELECT id FROM `{$log}` WHERE id = %d", $orphan_log_id ) ),
+			'Upgrade from 3.7.21 must run migrate_to_3_7_22() and delete orphaned history_log rows'
+		);
+		$this->assertSame( '3.7.23', get_option( 'aips_db_version' ) );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+		$this->assertSame( '3.7.23', AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
+	}
+
+	/**
+	 * Invoke the private migrate_to_3_7_23() on a fresh instance.
+	 *
+	 * @return bool
+	 */
+	private function run_migrate_3_7_23() {
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_23' );
+		$method->setAccessible( true );
+		return (bool) $method->invoke( $migrations );
+	}
+
+	/**
+	 * migrate_to_3_7_23() must add generate_slug and slug_prompt when a site
+	 * already stamped 3.7.22 is missing them. 3.7.20 is the history index
+	 * migration, so the slug columns cannot share that gate.
+	 */
+	public function test_migrate_to_3_7_23_adds_slug_columns_after_3_7_22() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$templates = $wpdb->prefix . 'aips_templates';
+		$authors   = $wpdb->prefix . 'aips_authors';
+
+		$drop_slug_columns = function () use ( $wpdb, $templates, $authors ) {
+			$wpdb->query( "ALTER TABLE `{$templates}` DROP COLUMN generate_slug" );
+			$wpdb->query( "ALTER TABLE `{$templates}` DROP COLUMN slug_prompt" );
+			$wpdb->query( "ALTER TABLE `{$authors}` DROP COLUMN generate_slug" );
+			$wpdb->query( "ALTER TABLE `{$authors}` DROP COLUMN slug_prompt" );
+		};
+
+		$assert_slug_columns = function ( $message ) use ( $wpdb, $templates, $authors ) {
+			foreach ( array( $templates, $authors ) as $table ) {
+				$columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$table}`", 0 );
+				$this->assertContains( 'generate_slug', $columns, $table . ' ' . $message );
+				$this->assertContains( 'slug_prompt', $columns, $table . ' ' . $message );
+			}
+		};
+
+		$drop_slug_columns();
+		$this->assertTrue( $this->run_migrate_3_7_23() );
+		$assert_slug_columns( 'must gain slug columns from migrate_to_3_7_23()' );
+
+		$drop_slug_columns();
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.22' );
+		AIPS_DB_Migrations::check_and_run();
+		$assert_slug_columns( 'must gain slug columns on upgrade from 3.7.22' );
+		$this->assertSame( '3.7.23', get_option( 'aips_db_version' ) );
+	}
 }

@@ -90,4 +90,26 @@ class Test_Prompt_Builder_Post_Metadata extends WP_UnitTestCase {
 		$this->assertStringContainsString('Writing Style: in-depth analysis with code samples', $prompt);
 		$this->assertStringContainsString('EXCERPT INSTRUCTIONS:', $prompt);
 	}
+
+	public function test_append_diversity_blocks_omits_content_format_and_post_slice() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Template',
+			'prompt_template' => 'Write about {{topic}}.',
+			'title_prompt'    => 'Accurate title for {{topic}}.',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Performance');
+		$diversity = new class() {
+			public function build_avoid_titles_block($subject) { return 'AVOID_TITLES_BLOCK_CONTENT'; }
+			public function build_content_format_block($subject) { return 'CONTENT_FORMAT_BLOCK_SHOULD_BE_OMITTED'; }
+			public function build_post_slice_block($subject) { return 'POST_SLICE_BLOCK_SHOULD_BE_OMITTED'; }
+		};
+		$builder = new AIPS_Prompt_Builder_Post_Metadata(new AIPS_Template_Processor(), $diversity);
+
+		$prompt = $builder->build($context);
+
+		$this->assertStringContainsString('AVOID_TITLES_BLOCK_CONTENT', $prompt);
+		$this->assertStringNotContainsString('CONTENT_FORMAT_BLOCK_SHOULD_BE_OMITTED', $prompt);
+		$this->assertStringNotContainsString('POST_SLICE_BLOCK_SHOULD_BE_OMITTED', $prompt);
+	}
 }

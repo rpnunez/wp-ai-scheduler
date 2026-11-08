@@ -1,5 +1,9 @@
 # AI Post Scheduler - Database Schema Updates
 
+## Post slug settings (3.7.23)
+
+`aips_templates` and `aips_authors` gain `generate_slug` (tinyint, default 0) and `slug_prompt` (text, nullable). The guarded `migrate_to_3_7_23()` ALTERs are idempotent and run for any stored version below 3.7.23, including sites already stamped 3.7.22. 3.7.20 stays the `history_type_ts` index migration and is not reused for these columns. A failed ALTER restores the previous version gate so the next request retries. `dbDelta` also adds the columns from `AIPS_DB_Manager::get_schema()` during the same upgrade.
+
 ## Sources reliability (3.7.19)
 
 The Sources table adds nullable `last_fetch_attempt_at`, `last_fetch_status`, and `last_fetch_error`. Legacy attempt state remains unknown until the next fetch; `last_fetched_at` continues to mean last successful fetch. `next_fetch_at` becomes nullable so disabling automatic fetching can clear it under strict MySQL. The guarded migration preserves existing due timestamps and can run repeatedly. It verifies the structural changes before acknowledging version 3.7.19 and restores the previous version gate on failure so the next request retries. Atomic group replacement requires a transactional source-group table, normally InnoDB; verify the storage engine on legacy installations.

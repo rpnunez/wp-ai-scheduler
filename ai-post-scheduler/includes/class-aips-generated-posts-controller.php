@@ -304,7 +304,18 @@ class AIPS_Generated_Posts_Controller {
 		
 		foreach ($history_item->log as $log_entry) {
 			$details = json_decode($log_entry->details, true);
-			
+
+			// Decode any legacy base64-encoded output up front so every branch below
+			// (AI response, generic logs, debug) shows the real text. New rows are
+			// stored unencoded, so this only touches historical rows.
+			if (is_array($details) && isset($details['output']) && !empty($details['output_encoded']) && is_string($details['output'])) {
+				$decoded = base64_decode($details['output'], true);
+				if ($decoded !== false) {
+					$details['output'] = $decoded;
+					unset($details['output_encoded']);
+				}
+			}
+
 			// Categorize based on history_type_id
 			$type_id = isset($log_entry->history_type_id) ? (int) $log_entry->history_type_id : AIPS_History_Type::LOG;
 			
@@ -326,10 +337,7 @@ class AIPS_Generated_Posts_Controller {
 					if ($type_id === AIPS_History_Type::AI_REQUEST) {
 						$ai_calls[$component_type]['request'] = $details;
 					} else {
-						// Decode base64-encoded AI output if flagged
-						if (isset($details['output']) && !empty($details['output_encoded'])) {
-							$details['output'] = base64_decode($details['output']);
-						}
+						// Output already decoded at the top of the loop (legacy base64).
 						$ai_calls[$component_type]['response'] = $details;
 					}
 					break;
