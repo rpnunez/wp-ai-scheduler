@@ -166,4 +166,21 @@ class Test_AIPS_Screen_Meta_Box_Helper extends WP_UnitTestCase {
 		$this->assertStringContainsString('Connected', $status_output);
 		$this->assertStringContainsString('Topics in Queue', $status_output);
 	}
+
+	/**
+	 * AI Edit classic boxes register through the screen helper with unchanged IDs.
+	 */
+	public function test_classic_ai_edit_metaboxes_register_via_helper() {
+		global $wp_meta_boxes;
+
+		$user_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($user_id);
+
+		$assets = new AIPS_Editor_Assets();
+		$assets->register_classic_metabox('post');
+
+		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_TITLE, $wp_meta_boxes['post']['side']['high']);
+		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_SLUG, $wp_meta_boxes['post']['side']['high']);
+		$this->assertArrayHasKey(AIPS_Editor_Assets::METABOX_ID_POST_IMAGES, $wp_meta_boxes['post']['normal']['default']);
+	}
 }

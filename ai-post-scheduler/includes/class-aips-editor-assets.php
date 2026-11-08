@@ -71,8 +71,8 @@ class AIPS_Editor_Assets {
 			return;
 		}
 
-		// Register per-component AI Edit widgets
-		add_meta_box(
+		// Register per-component AI Edit widgets through the screen helper.
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			self::METABOX_ID_TITLE,
 			__('AI Edit: Post Title', 'ai-post-scheduler'),
 			array($this, 'render_classic_component_metabox'),
@@ -82,7 +82,7 @@ class AIPS_Editor_Assets {
 			array('component' => 'title', 'label' => __('Title', 'ai-post-scheduler'))
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			self::METABOX_ID_SLUG,
 			__('AI Edit: Post Slug', 'ai-post-scheduler'),
 			array($this, 'render_classic_component_metabox'),
@@ -92,7 +92,7 @@ class AIPS_Editor_Assets {
 			array('component' => 'slug', 'label' => __('Slug', 'ai-post-scheduler'))
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			self::METABOX_ID_EXCERPT,
 			__('AI Edit: Post Excerpt', 'ai-post-scheduler'),
 			array($this, 'render_classic_component_metabox'),
@@ -102,7 +102,7 @@ class AIPS_Editor_Assets {
 			array('component' => 'excerpt', 'label' => __('Excerpt', 'ai-post-scheduler'))
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			self::METABOX_ID_CONTENT,
 			__('AI Edit: Post Content', 'ai-post-scheduler'),
 			array($this, 'render_classic_component_metabox'),
@@ -112,7 +112,7 @@ class AIPS_Editor_Assets {
 			array('component' => 'content', 'label' => __('Content', 'ai-post-scheduler'))
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			self::METABOX_ID_IMAGE,
 			__('AI Edit: Featured Image', 'ai-post-scheduler'),
 			array($this, 'render_classic_component_metabox'),
@@ -122,7 +122,7 @@ class AIPS_Editor_Assets {
 			array('component' => 'featured_image', 'label' => __('Featured Image', 'ai-post-scheduler'))
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			self::METABOX_ID_POST_IMAGES,
 			__('AI Edit: Post Images', 'ai-post-scheduler'),
 			array($this, 'render_classic_post_images_metabox'),
@@ -131,8 +131,7 @@ class AIPS_Editor_Assets {
 			'default'
 		);
 
-		// Keep existing quick directive meta box
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			self::METABOX_ID,
 			__('AI Edit & Directives', 'ai-post-scheduler'),
 			array($this, 'render_classic_metabox'),

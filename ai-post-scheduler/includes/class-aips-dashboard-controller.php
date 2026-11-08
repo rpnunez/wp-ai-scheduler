@@ -561,7 +561,7 @@ class AIPS_Dashboard_Controller {
 	public static function register_meta_boxes($screen_id = 'toplevel_page_ai-post-scheduler') {
 		AIPS_Screen_Meta_Box_Helper::init_screen($screen_id);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			'aips-dashboard-overview-box',
 			__('Overview Summary', 'ai-post-scheduler'),
 			array(__CLASS__, 'render_overview_meta_box'),
@@ -570,7 +570,7 @@ class AIPS_Dashboard_Controller {
 			'high'
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			'aips-dashboard-activity-box',
 			__('Analytics Detail', 'ai-post-scheduler'),
 			array(__CLASS__, 'render_activity_meta_box'),
@@ -579,7 +579,7 @@ class AIPS_Dashboard_Controller {
 			'default'
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			'aips-dashboard-charts-box',
 			__('Performance & Trend Charts', 'ai-post-scheduler'),
 			array(__CLASS__, 'render_charts_meta_box'),
@@ -588,7 +588,7 @@ class AIPS_Dashboard_Controller {
 			'default'
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			'aips-dashboard-upcoming-box',
 			__('Next Month Outlook', 'ai-post-scheduler'),
 			array(__CLASS__, 'render_upcoming_meta_box'),
@@ -597,7 +597,7 @@ class AIPS_Dashboard_Controller {
 			'high'
 		);
 
-		add_meta_box(
+		AIPS_Screen_Meta_Box_Helper::register_box(
 			'aips-dashboard-status-box',
 			__('System Status & Provider', 'ai-post-scheduler'),
 			array(__CLASS__, 'render_status_meta_box'),

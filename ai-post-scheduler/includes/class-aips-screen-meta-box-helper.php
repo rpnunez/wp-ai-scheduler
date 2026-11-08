@@ -122,6 +122,7 @@ class AIPS_Screen_Meta_Box_Helper {
 	public static function render_isolated_box($id, $title, $content, $actions = array(), $badge = array()) {
 		AIPS_Admin_UI_Primitives::render_card(array(
 			'id'          => $id,
+			'class'       => 'postbox',
 			'title'       => $title,
 			'actions'     => $actions,
 			'badge'       => $badge,
