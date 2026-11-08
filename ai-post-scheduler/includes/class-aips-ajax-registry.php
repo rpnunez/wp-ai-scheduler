@@ -122,6 +122,7 @@ class AIPS_Ajax_Registry {
 		'aips_save_post_components'       => 'AIPS_AI_Edit_Controller',
 		'aips_get_component_revisions'    => 'AIPS_AI_Edit_Controller',
 		'aips_restore_component_revision' => 'AIPS_AI_Edit_Controller',
+		'aips_reset_component_overrides'  => 'AIPS_AI_Edit_Controller',
 
 		// Editor Controller (Gutenberg & Classic Editor)
 		'aips_editor_apply_directive'              => 'AIPS_Editor_Controller',

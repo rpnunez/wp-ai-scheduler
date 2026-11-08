@@ -7,6 +7,20 @@
   - Reduced default article digest size in `AIPS_Prompt_Builder_Post_Title::build_base_prompt()` from 12,000 characters (`DEFAULT_MAX_CHARS`) to 3,000 characters, saving ~1,500–2,500 input tokens per post on stateless title generation requests without compromising headline relevance.
 
 ### Added
+- **AI Edit Prompt Steering, Cascading Alignment & Creativity Controls:**
+  - Added Split Button & Quick Steering Popover (`[Re-generate ▾]`) allowing 1-click regeneration or dropdown directive selection with quick preset chips (`Make Punchier`, `SEO Focused`, `Conversational`, `Technical & Precise`, `Concise Summary`) and custom instruction inputs across Classic Editor and Gutenberg.
+  - Added Pre-Accept Checkbox ("Sync Downstream") in the Side-by-Side Diff Comparison footer: accepting a new Title or Content can automatically trigger cascading downstream regeneration of related components (e.g. Title -> Excerpt, Content -> Excerpt & Featured Image) with updated upstream context.
+  - Added Collapsible Accordion ("Advanced Directives & Model") featuring AI Model dropdown selector and Temperature/Creativity slider (0.0 to 1.0) with sticky post-meta persistence per component and 1-click "Reset to Template Default".
+  - Enhanced directive prompt assembly in `AIPS_Component_Regeneration_Service`, `AIPS_Generator`, and `AIPS_Editor_Directive_Service`.
+- **Per-Component AI Edit Meta Boxes & Gutenberg Document Panels:**
+  - Redesigned the Edit Post screen (Classic Editor and Gutenberg Block Editor) with dedicated per-component AI Edit widgets/panels for Title, Excerpt, Content, and Featured Image, replacing the disconnected candidate-only workflow.
+  - Implemented the canonical AI Edit interface across every component: Re-generate action, Side-by-Side comparison slot (Current Version vs Newly Regenerated Draft) with 1-click Accept & Replace and Discard, editable view/preview, and collapsible View Revisions drawer with instant restore.
+  - Retained optional multi-candidate generation ("3 Candidates") for Title and Excerpt.
+- **AI Edit History & Timeline Logging Integrity:**
+  - Resolved and associated post history containers across all AI Edit generation and editing operations, automatically recording discrete `ai_request` and `ai_response` logs so they appear in the post's History modal under "Technical" and "AI Calls" tabs.
+  - Automatically record a `"Post {Component} regenerated via AI Edit"` timeline event upon saving or restoring any component revision, cleanly displayed in the History container "Timeline" tab as `"Post {Component} regenerated"`.
+  - Added graceful fallback resolution in `AIPS_Generation_Context_Factory` for posts without explicit template or author/topic context.
+- **Per-component Post Slug AI Edit:** Classic Editor and Gutenberg each have a Post Slug widget with re-generate, side-by-side compare, accept, discard, and revision restore. Accepting a slug saves `post_name` through `sanitize_title` after script and style blocks are removed, and writes a `Post Slug regenerated via AI Edit` timeline event on the post's generation history container. Regenerate-all still skips slug generation when the template or author has it disabled. An empty draft permalink does not mark an otherwise complete generation as incomplete.
 - **Dedicated post slug generation:**
   - Templates and authors can opt in to an SEO slug step (`generate_slug`, `slug_prompt`) that runs with metadata generation and falls back to a title-based WordPress slug when the model returns nothing.
   - AI Edit can revise, regenerate, and restore the post slug. The tabbed modal includes a Post Slug panel with the same comparison, accept/discard, and revision flow as the other components. Gutenberg and Classic Editor AI Edit panels can generate three slug candidates and apply one to the permalink. Session details list slug requests and revisions with the other components.
@@ -51,6 +65,7 @@
   - Added multi-variant candidate selector cards (`[Variant 1] [Variant 2] [Variant 3]`) for 1-click insertion into the active editor block.
   - Added Context-Aware Internal Linking ("Weave Internal Links") that identifies published site posts and prompts the AI to insert natural contextual links with visual confirmation badges and 1-click accept/dismiss controls.
   - Added full Classic Editor parity with a dedicated sidebar meta box and custom TinyMCE toolbar button for selection-level rewriting.
+  - Added a Post Images meta box and Gutenberg panel. Each content image can be re-generated, compared, accepted into the matching figure, discarded, or restored from revisions. Save uses the shared post-component endpoint so generated image rows stay in sync, and the history timeline records "Post Images regenerated via AI Edit".
   - Implemented unified Pure AJAX backend in `AIPS_Editor_Controller`, `AIPS_Editor_Directive_Service`, and `AIPS_Editor_Link_Weave_Service`.
 - **AI Edit Surface Exposure & Modal Upgrades:**
   - Exposed "AI Edit" link directly on the standard WordPress All Posts list table (`edit.php`) row actions adjacent to "Edit" for all posts generated by AI Post Scheduler.
@@ -68,6 +83,10 @@
   - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
 
 ### Fixed
+- **AI Edit cascade, featured-image revisions, and timeline output:**
+  - Accepting a title or content draft with Sync Downstream waits for `aips_save_post_components` and sends the accepted text as upstream context, so the cascaded excerpt (including its conversation replay) follows that draft.
+  - Featured-image revision snapshots accept a bare attachment ID from the editor, so the current image is captured before regeneration.
+  - Saving a featured image records the attachment ID in the History timeline output instead of an empty payload.
 - **History stays consistent when a regeneration delete or a history-log delete fails:**
   - Single and bulk review regeneration restore the history container's status, post association, and error message when `wp_delete_post()` is vetoed (`pre_delete_post`) or otherwise fails, instead of leaving the original draft detached.
   - `AIPS_History_Repository::delete_by_post_id()` returns false and leaves parent containers in place when deleting child `wp_aips_history_log` rows fails, so a failed log delete cannot orphan those logs.
