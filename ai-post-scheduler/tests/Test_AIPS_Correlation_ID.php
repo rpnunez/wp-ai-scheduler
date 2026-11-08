@@ -41,6 +41,7 @@ class AIPS_Test_Stub_History_Repository_For_Correlation implements AIPS_History_
 	public function get_ai_errors($args = array()) { return array('items' => array(), 'total' => 0, 'total_pages' => 1, 'page' => 1, 'per_page' => 20); }
 	public function get_ai_error_summary_stats($args = array()) { return array('total_errors' => 0, 'categories' => array(), 'top_category' => null, 'top_component' => null); }
 	public function get_ai_error_by_id($log_id) { return null; }
+	public function delete_by_post_id($post_id) { return 0; }
 	public function count_completed_for_schedule($schedule) { return 0; }
 	public function invalidate_schedule_completed_count_cache($schedule_id) {}
 }

@@ -493,6 +493,65 @@ class AIPS_Post_Review {
 	}
 	
 	/**
+	 * Delete the draft tied to a history container so regeneration can replace it.
+	 *
+	 * The container is detached before deletion so post-deletion cleanup cannot
+	 * remove it. If deletion is vetoed or fails, the previous status, post
+	 * association, and error message are written back.
+	 *
+	 * @param int    $history_id   History container ID.
+	 * @param object $history_item History row being regenerated.
+	 * @param int    $post_id      Draft post ID to delete.
+	 * @return true|WP_Error True when the draft is gone. WP_Error delete_failed otherwise.
+	 */
+	public function delete_draft_for_regeneration($history_id, $history_item, $post_id) {
+		$history_id = absint($history_id);
+		$post_id    = absint($post_id);
+
+		if (!$history_id || !$post_id) {
+			return new WP_Error(
+				'delete_failed',
+				__('Failed to delete the existing draft for regeneration.', 'ai-post-scheduler')
+			);
+		}
+
+		$previous = array(
+			'status'        => isset($history_item->status) ? (string) $history_item->status : 'completed',
+			'post_id'       => isset($history_item->post_id) ? absint($history_item->post_id) : $post_id,
+			'error_message' => (is_object($history_item) && property_exists($history_item, 'error_message'))
+				? $history_item->error_message
+				: null,
+		);
+
+		$this->history_service->update_history_record($history_id, array(
+			'status'        => 'pending',
+			'post_id'       => null,
+			'error_message' => null,
+		));
+
+		$deleted = AIPS_Post_Cleanup_Service::without_history_deletion(function () use ($post_id) {
+			return wp_delete_post($post_id, true);
+		});
+
+		// A successful force-delete returns the post object and removes the row.
+		// pre_delete_post can short-circuit with any non-null value and leave the post in place.
+		if (!$deleted || get_post($post_id)) {
+			$this->history_service->update_history_record($history_id, $previous);
+
+			return new WP_Error(
+				'delete_failed',
+				sprintf(
+					/* translators: %d: post ID */
+					__('Failed to delete old post ID %d for regeneration', 'ai-post-scheduler'),
+					$post_id
+				)
+			);
+		}
+
+		return true;
+	}
+
+	/**
 	 * AJAX handler to regenerate a post.
 	 */
 	public function ajax_regenerate_post() {
@@ -525,21 +584,34 @@ class AIPS_Post_Review {
 			AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
 		}
 		
-		// Delete the existing post if it exists
+		// Detach the history container, then delete the existing draft.
+		// A vetoed or failed deletion restores the previous association.
 		if ($history_item->post_id) {
 			// Verify per-post capability before deleting
 			if (!current_user_can('delete_post', $history_item->post_id)) {
 				AIPS_Ajax_Response::error(__('You do not have permission to regenerate this post.', 'ai-post-scheduler'));
 			}
-			wp_delete_post($history_item->post_id, true);
+
+			$deleted = $this->delete_draft_for_regeneration($history_id, $history_item, $history_item->post_id);
+			if (is_wp_error($deleted)) {
+				$this->log_review_action(
+					$history_item->post_id,
+					sprintf(__('Post regeneration failed: %s', 'ai-post-scheduler'), $deleted->get_error_message()),
+					'post_regenerated',
+					'failed',
+					array('error' => $deleted->get_error_message())
+				);
+				AIPS_Ajax_Response::error(array('message' => $deleted->get_error_message()));
+				return;
+			}
+		} else {
+			// Update history status to pending for regeneration
+			$this->history_service->update_history_record($history_id, array(
+				'status'        => 'pending',
+				'post_id'       => null,
+				'error_message' => null,
+			));
 		}
-		
-		// Update history status to pending for regeneration
-		$this->history_service->update_history_record($history_id, array(
-			'status' => 'pending',
-			'post_id' => null,
-			'error_message' => null,
-		));
 		
 		// Trigger regeneration using the generator (same API as history retry)
 		$generator = new AIPS_Generator();
@@ -710,22 +782,10 @@ class AIPS_Post_Review {
 					);
 				}
 
-				if (!wp_delete_post($post_id, true)) {
-					return new WP_Error(
-						'delete_failed',
-						sprintf(
-							/* translators: %d: post ID */
-							__('Failed to delete old post ID %d for regeneration', 'ai-post-scheduler'),
-							$post_id
-						)
-					);
+				$deleted = $this->delete_draft_for_regeneration($history_id, $history_item, $post_id);
+				if (is_wp_error($deleted)) {
+					return $deleted;
 				}
-
-				$history_service->update_history_record($history_id, array(
-					'status'        => 'pending',
-					'post_id'       => null,
-					'error_message' => null,
-				));
 
 				$regen_result = $generator->generate_post($template, null, null, array(
 					'creation_method' => 'regenerate',
