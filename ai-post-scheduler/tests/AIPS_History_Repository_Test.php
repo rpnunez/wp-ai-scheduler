@@ -618,4 +618,62 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		$this->assertContains((int) $matching_id, $ids);
 		$this->assertNotContains((int) $other_id, $ids);
 	}
+
+	/**
+	 * Deleting a history row must cascade to its aips_history_log child rows so
+	 * they do not become orphans.
+	 */
+	public function test_delete_cascades_to_history_log() {
+		global $wpdb;
+		$log_table = $wpdb->prefix . 'aips_history_log';
+
+		$id = $this->repository->create(array(
+			'status'          => 'completed',
+			'post_type'       => 'post',
+			'creation_method' => 'manual',
+			'created_at'      => time(),
+		));
+		$wpdb->insert(
+			$log_table,
+			array( 'history_id' => (int) $id, 'timestamp' => time() ),
+			array( '%d', '%d' )
+		);
+		$this->assertGreaterThan( 0, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$log_table}` WHERE history_id = %d", (int) $id ) ) );
+
+		$this->repository->delete( $id );
+
+		$this->assertSame(
+			'0',
+			$wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$log_table}` WHERE history_id = %d", (int) $id ) ),
+			'history_log rows must be deleted with their parent history row'
+		);
+	}
+
+	/**
+	 * delete_bulk() must likewise cascade to aips_history_log.
+	 */
+	public function test_delete_bulk_cascades_to_history_log() {
+		global $wpdb;
+		$log_table = $wpdb->prefix . 'aips_history_log';
+
+		$id = $this->repository->create(array(
+			'status'          => 'completed',
+			'post_type'       => 'post',
+			'creation_method' => 'manual',
+			'created_at'      => time(),
+		));
+		$wpdb->insert(
+			$log_table,
+			array( 'history_id' => (int) $id, 'timestamp' => time() ),
+			array( '%d', '%d' )
+		);
+
+		$this->repository->delete_bulk( array( (int) $id ) );
+
+		$this->assertSame(
+			'0',
+			$wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$log_table}` WHERE history_id = %d", (int) $id ) ),
+			'delete_bulk() must remove child history_log rows'
+		);
+	}
 }
