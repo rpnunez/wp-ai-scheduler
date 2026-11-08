@@ -472,6 +472,12 @@ class AIPS_History {
             $excerpt_30 .= '…';
         }
 
+        $post_images_count = 0;
+        if ($post) {
+            $image_history_id = !empty($history_item->id) ? (int) $history_item->id : 0;
+            $post_images_count = count((new AIPS_Post_Images_Generated_Repository())->get_for_post_history($post->ID, $image_history_id));
+        }
+
         // Featured image
         $thumb_id = $post ? get_post_thumbnail_id($post->ID) : 0;
         $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
@@ -498,6 +504,7 @@ class AIPS_History {
                 'post_slug'      => __('slug', 'ai-post-scheduler'),
                 'post_excerpt'   => __('excerpt', 'ai-post-scheduler'),
                 'featured_image' => __('featured image', 'ai-post-scheduler'),
+                'post_images'    => __('post images', 'ai-post-scheduler'),
                 'post_content'   => __('content', 'ai-post-scheduler'),
             );
             foreach ($component_statuses as $component => $ok) {
@@ -590,6 +597,7 @@ class AIPS_History {
             'post_slug' => $generated_slug,
             'post_excerpt' => $excerpt_30,
             'show_milestones' => $show_milestones,
+            'post_images_count' => $post_images_count,
             'has_image' => !empty($thumb_url),
             'image_status' => $image_status,
             'image_url' => $thumb_url,
@@ -624,6 +632,7 @@ class AIPS_History {
             'slug' => __('Post Slug', 'ai-post-scheduler'),
             'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+            'post_images' => __('Post Images', 'ai-post-scheduler'),
             'metadata' => __('Metadata', 'ai-post-scheduler'),
             'ai_request' => __('AI Request', 'ai-post-scheduler'),
             'ai_response' => __('AI Response', 'ai-post-scheduler'),
@@ -1717,6 +1726,7 @@ class AIPS_History {
             'post_slug' => __('Post Slug', 'ai-post-scheduler'),
             'slug' => __('Post Slug', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+            'post_images' => __('Post Images', 'ai-post-scheduler'),
             'image' => __('Featured Image', 'ai-post-scheduler'),
             'topic' => __('Topic', 'ai-post-scheduler'),
             'research' => __('Research', 'ai-post-scheduler'),

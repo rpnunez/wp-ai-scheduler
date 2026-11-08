@@ -574,6 +574,293 @@
 				}, el(ComponentAIEditPanel, { component: 'featured_image', label: 'Featured Image' }));
 			}
 		});
+
+		wp.plugins.registerPlugin('aips-editor-post-images-panel', {
+			render: function () {
+				return el(PluginDocumentSettingPanel, {
+					name: 'aips-editor-post-images-panel',
+					title: 'AI Edit: Post Images',
+					icon: 'images-alt2'
+				}, el(PostImagesAIEditPanel, null));
+			}
+		});
+	}
+
+	function replacePostImageMarkup(content, imageId, markup) {
+		var id = String(imageId).replace(/[^\d]/g, '');
+		if (!id || !markup) {
+			return content || '';
+		}
+		var figure = new RegExp('<figure\\b[^>]*\\bdata-aips-image-id=["\']?' + id + '(?=[\'"\\s>])[^>]*>[\\s\\S]*?<\\/figure>', 'i');
+		var placeholder = new RegExp('<!--\\s*aips-image-placeholder\\s+id=["\']?' + id + '["\']?\\s*-->', 'i');
+		var source = content || '';
+		if (figure.test(source)) {
+			return source.replace(figure, markup);
+		}
+		if (placeholder.test(source)) {
+			return source.replace(placeholder, markup);
+		}
+		return source;
+	}
+
+	function getBlockEditorHtml() {
+		var select = wp.data.select('core/editor');
+		if (select && select.getEditedPostContent) {
+			return select.getEditedPostContent() || '';
+		}
+		if (select && select.getEditedPostAttribute) {
+			return select.getEditedPostAttribute('content') || '';
+		}
+		return '';
+	}
+
+	function blockAttributeHtml(block) {
+		var attrs = block && block.attributes ? block.attributes : {};
+		return [attrs.content, attrs.html, attrs.caption].filter(function (value) {
+			return typeof value === 'string';
+		}).join('\n');
+	}
+
+	function replaceFigureInBlocks(blocks, imageId, markup, attachmentId) {
+		var changed = false;
+		var id = String(imageId);
+		var next = (blocks || []).map(function (block) {
+			var html = blockAttributeHtml(block);
+			var attrs = block.attributes || {};
+			var matchesId = html.indexOf('data-aips-image-id="' + id + '"') !== -1
+				|| html.indexOf("data-aips-image-id='" + id + "'") !== -1
+				|| html.indexOf('data-aips-image-id=' + id) !== -1;
+			var matchesAttachment = attachmentId && (
+				parseInt(attrs.id, 10) === parseInt(attachmentId, 10)
+				|| html.indexOf('wp-image-' + attachmentId) !== -1
+			);
+			if (matchesId && markup) {
+				changed = true;
+				var nextAttrs = Object.assign({}, attrs);
+				['content', 'html'].forEach(function (key) {
+					if (typeof nextAttrs[key] === 'string') {
+						nextAttrs[key] = replacePostImageMarkup(nextAttrs[key], imageId, markup);
+					}
+				});
+				if (nextAttrs.content === attrs.content && nextAttrs.html === attrs.html && wp.blocks) {
+					return wp.blocks.createBlock('core/html', { content: markup });
+				}
+				return Object.assign({}, block, { attributes: nextAttrs });
+			}
+			if (matchesAttachment && markup && wp.blocks && ('core/image' === block.name || 'core/html' === block.name || 'core/freeform' === block.name)) {
+				changed = true;
+				return wp.blocks.createBlock('core/html', { content: markup });
+			}
+			if (block.innerBlocks && block.innerBlocks.length) {
+				var inner = replaceFigureInBlocks(block.innerBlocks, imageId, markup, attachmentId);
+				if (inner.changed) {
+					changed = true;
+					return Object.assign({}, block, { innerBlocks: inner.blocks });
+				}
+			}
+			return block;
+		});
+		return { changed: changed, blocks: next };
+	}
+
+	function applyFigureToBlockEditor(nextHtml, imageId, markup, attachmentId) {
+		var blockEditor = wp.data.select('core/block-editor');
+		var dispatch = wp.data.dispatch('core/block-editor');
+		if (blockEditor && dispatch && blockEditor.getBlocks) {
+			var walked = replaceFigureInBlocks(blockEditor.getBlocks(), imageId, markup, attachmentId);
+			if (walked.changed) {
+				dispatch.resetBlocks(walked.blocks);
+				return;
+			}
+		}
+		if (wp.blocks && wp.blocks.parse && dispatch) {
+			var parsed = wp.blocks.parse(nextHtml);
+			var serialized = wp.blocks.serialize ? wp.blocks.serialize(parsed) : nextHtml;
+			if (markup && serialized.indexOf('data-aips-image-id="' + imageId + '"') === -1) {
+				parsed = replaceFigureInBlocks(parsed, imageId, markup, attachmentId).blocks;
+			}
+			dispatch.resetBlocks(parsed);
+			return;
+		}
+		wp.data.dispatch('core/editor').editPost({ content: nextHtml });
+	}
+
+	function saveEditorPostImages(html) {
+		return $.post(l10n.ajaxurl, {
+			action: 'aips_save_post_components',
+			nonce: l10n.nonce,
+			post_id: l10n.postId,
+			components: {
+				content: html,
+				post_images_regenerated: 'true'
+			}
+		});
+	}
+
+	function PostImagesAIEditPanel() {
+		var images = l10n.postImages || [];
+		var pendingState = useState({});
+		var pending = pendingState[0];
+		var setPending = pendingState[1];
+		var busyState = useState(false);
+		var busy = busyState[0];
+		var setBusy = busyState[1];
+		var revisionState = useState({});
+		var revisions = revisionState[0];
+		var setRevisions = revisionState[1];
+
+		function stage(payload, sourceContent) {
+			var next = Object.assign({}, pending);
+			var rows = payload && payload.post_images ? payload.post_images : [];
+			rows.forEach(function (image) {
+				next[image.id] = {
+					id: image.id,
+					markup: image.markup || '',
+					content: image.content || '',
+					sourceContent: sourceContent,
+					url: image.url || '',
+					status: image.status || '',
+					error: image.error_message || '',
+					attachmentId: image.attachment_id || 0
+				};
+			});
+			setPending(next);
+		}
+
+		function regenerate(component) {
+			var sourceContent = getBlockEditorHtml();
+			setBusy(true);
+			$.post(l10n.ajaxurl, {
+				action: 'aips_regenerate_component',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				history_id: l10n.historyId || 0,
+				component: component,
+				current_content: sourceContent
+			}).done(function (response) {
+				if (response && response.success && response.data && response.data.new_value) {
+					stage(response.data.new_value, sourceContent);
+				} else {
+					notify((response && response.data && response.data.message) || l10n.labels.actionError, 'error');
+				}
+			}).fail(function () {
+				notify(l10n.labels.actionError, 'error');
+			}).always(function () {
+				setBusy(false);
+			});
+		}
+
+		function acceptImage(imageId) {
+			var item = pending[imageId];
+			if (!item) {
+				return;
+			}
+			var current = getBlockEditorHtml();
+			var next = current;
+			if (current === item.sourceContent && item.content) {
+				next = item.content;
+			} else if (item.markup) {
+				var replaced = replacePostImageMarkup(current, imageId, item.markup);
+				next = (replaced === current && item.content) ? item.content : replaced;
+			}
+			applyFigureToBlockEditor(next, imageId, item.markup, item.attachmentId);
+			var remaining = Object.assign({}, pending);
+			delete remaining[imageId];
+			setPending(remaining);
+			saveEditorPostImages(next).done(function (response) {
+				if (!response || !response.success) {
+					notify((response && response.data && response.data.message) || l10n.labels.actionError, 'error');
+				}
+			});
+		}
+
+		function loadRevisions(imageId) {
+			$.post(l10n.ajaxurl, {
+				action: 'aips_get_component_revisions',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				component: 'post_image_' + imageId
+			}).done(function (response) {
+				var next = Object.assign({}, revisions);
+				next[imageId] = (response && response.success && response.data && response.data.revisions) ? response.data.revisions : [];
+				setRevisions(next);
+			});
+		}
+
+		function restoreRevision(imageId, revision) {
+			$.post(l10n.ajaxurl, {
+				action: 'aips_restore_component_revision',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				history_id: l10n.historyId || 0,
+				component: 'post_image_' + imageId,
+				revision_id: revision.id,
+				current_content: getBlockEditorHtml()
+			}).done(function (response) {
+				var value = response && response.success && response.data ? response.data.value : null;
+				if (!value || !value.content) {
+					return;
+				}
+				applyFigureToBlockEditor(value.content, imageId, value.markup || '', value.attachment_id || 0);
+				saveEditorPostImages(value.content);
+			});
+		}
+
+		if (!images.length) {
+			return el('p', { className: 'description' }, 'This post has no content images.');
+		}
+
+		return el('div', { className: 'aips-editor-post-images' },
+			el('p', { className: 'description' }, 'Each row is one content image. Re-generate replaces that figure only. The featured image is edited in its own panel.'),
+			el(Button, {
+				variant: 'primary',
+				disabled: busy,
+				onClick: function () { regenerate('post_images'); }
+			}, busy ? 'Re-generating…' : 'Re-generate all'),
+			images.map(function (image) {
+				var draft = pending[image.id];
+				var shown = revisions[image.id];
+				return el('div', { key: image.id, className: 'aips-editor-post-image-card', 'data-image-id': image.id },
+					el('div', { className: 'aips-editor-post-image-header' },
+						el('strong', null, 'Image #' + image.imageIndex),
+						el('span', { className: 'aips-editor-post-image-status' }, (draft && draft.status) || image.status || '')
+					),
+					el('div', { className: 'aips-editor-post-image-actions' },
+						el(Button, {
+							variant: 'secondary',
+							isSmall: true,
+							disabled: busy,
+							onClick: function () { regenerate('post_image_' + image.id); }
+						}, 'Re-generate'),
+						el(Button, {
+							variant: 'link',
+							isSmall: true,
+							onClick: function () { loadRevisions(image.id); }
+						}, 'View Revisions')
+					),
+					draft && el('div', { className: 'aips-editor-post-image-compare' },
+						draft.error && !draft.url ? el('p', null, draft.error) : null,
+						el('p', null, 'Current'),
+						image.url ? el('img', { src: image.url, alt: '' }) : null,
+						el('p', null, 'Regenerated'),
+						draft.url ? el('img', { src: draft.url, alt: '' }) : null,
+						el(Button, { variant: 'primary', isSmall: true, onClick: function () { acceptImage(image.id); } }, 'Accept & Replace'),
+						el(Button, { variant: 'secondary', isSmall: true, onClick: function () {
+							var remaining = Object.assign({}, pending);
+							delete remaining[image.id];
+							setPending(remaining);
+						} }, 'Discard')
+					),
+					shown && el('div', { className: 'aips-editor-post-image-revisions' },
+						shown.length ? shown.map(function (rev) {
+							return el('div', { key: rev.id },
+								el(Button, { variant: 'link', isSmall: true, onClick: function () { restoreRevision(image.id, rev); } }, 'Restore')
+							);
+						}) : el('p', null, 'No revisions recorded.')
+					)
+				);
+			})
+		);
 	}
 
 	/* ==========================================================================

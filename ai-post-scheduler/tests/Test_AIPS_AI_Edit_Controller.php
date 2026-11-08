@@ -1250,6 +1250,207 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Saving an accepted post image updates that figure's row and records the timeline label.
+	 */
+	public function test_save_post_images_resyncs_targeted_figure_and_records_timeline() {
+		$post_id = $this->factory->post->create(array(
+			'post_content' => '<p>Original</p>',
+		));
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		));
+
+		$old_attachment = $this->make_image_attachment($post_id, 'old.jpg');
+		$kept_attachment = $this->make_image_attachment($post_id, 'kept.jpg');
+		$new_attachment = $this->make_image_attachment($post_id, 'new.jpg');
+
+		$repo = new AIPS_Post_Images_Generated_Repository();
+		$first_id = $repo->create(array(
+			'post_id'       => $post_id,
+			'history_id'    => $history_id,
+			'image_index'   => 1,
+			'attachment_id' => $old_attachment,
+			'image_url'     => 'http://example.com/old.jpg',
+			'status'        => 'completed',
+		));
+		$second_id = $repo->create(array(
+			'post_id'       => $post_id,
+			'history_id'    => $history_id,
+			'image_index'   => 2,
+			'attachment_id' => $kept_attachment,
+			'image_url'     => 'http://example.com/kept.jpg',
+			'status'        => 'completed',
+		));
+
+		$content = sprintf(
+			'<p>Keep</p><figure class="wp-block-image" data-aips-image-id="%1$d"><img src="http://example.com/new.jpg" alt="" class="wp-image-%2$d"/></figure><figure class="wp-block-image" data-aips-image-id="%3$d"><img src="http://example.com/kept.jpg" alt="" class="wp-image-%4$d"/></figure>',
+			$first_id,
+			$new_attachment,
+			$second_id,
+			$kept_attachment
+		);
+
+		$_POST = array(
+			'action'     => 'aips_save_post_components',
+			'post_id'    => $post_id,
+			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
+			'components' => array(
+				'content'                 => $content,
+				'post_images_regenerated' => 'true',
+			),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertContains('post_images', $response['data']['updated_components']);
+
+		$first = $repo->get_by_id($first_id);
+		$second = $repo->get_by_id($second_id);
+		$this->assertSame($new_attachment, (int) $first->attachment_id);
+		$this->assertSame($kept_attachment, (int) $second->attachment_id);
+
+		$logs = $this->history_repository->get_logs_by_history_id($history_id);
+		$timeline_messages = array();
+		foreach ($logs as $log) {
+			if ((int) $log->history_type_id === AIPS_History_Type::ACTIVITY) {
+				$details = json_decode($log->details, true);
+				if (isset($details['message'])) {
+					$timeline_messages[] = $details['message'];
+				}
+			}
+		}
+		$this->assertContains('Post Images regenerated via AI Edit', $timeline_messages);
+	}
+
+	/**
+	 * Restoring image 2 rewrites that figure and leaves image 1 in the returned content.
+	 */
+	public function test_restore_post_image_revision_targets_one_figure() {
+		$post_id = $this->factory->post->create();
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		));
+
+		$first_attachment = $this->make_image_attachment($post_id, 'first.jpg');
+		$second_attachment = $this->make_image_attachment($post_id, 'second.jpg');
+		$restored_attachment = $this->make_image_attachment($post_id, 'restored.jpg');
+
+		$repo = new AIPS_Post_Images_Generated_Repository();
+		$first_id = $repo->create(array(
+			'post_id'       => $post_id,
+			'history_id'    => $history_id,
+			'image_index'   => 1,
+			'attachment_id' => $first_attachment,
+			'status'        => 'completed',
+		));
+		$second_id = $repo->create(array(
+			'post_id'       => $post_id,
+			'history_id'    => $history_id,
+			'image_index'   => 2,
+			'attachment_id' => $second_attachment,
+			'status'        => 'completed',
+		));
+
+		$original = sprintf(
+			'<p>Body</p><figure class="wp-block-image" data-aips-image-id="%1$d"><img src="http://example.com/first.jpg" alt="" class="wp-image-%2$d"/></figure><figure class="wp-block-image" data-aips-image-id="%3$d"><img src="http://example.com/second.jpg" alt="" class="wp-image-%4$d"/></figure>',
+			$first_id,
+			$first_attachment,
+			$second_id,
+			$second_attachment
+		);
+		wp_update_post(array(
+			'ID'           => $post_id,
+			'post_content' => $original,
+		));
+
+		$revision_id = $this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'ai_response',
+				'message'     => 'Post image revision',
+				'output'      => array(
+					'attachment_id' => $restored_attachment,
+					'url'           => wp_get_attachment_url($restored_attachment),
+				),
+				'context'     => array(
+					'component' => 'post_image_' . $second_id,
+					'post_id'   => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+
+		$_POST = array(
+			'action'          => 'aips_restore_component_revision',
+			'post_id'         => $post_id,
+			'history_id'      => $history_id,
+			'component'       => 'post_image_' . $second_id,
+			'revision_id'     => $revision_id,
+			'current_content' => $original,
+			'nonce'           => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_restore_component_revision();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertStringContainsString('wp-image-' . $first_attachment, $response['data']['value']['content']);
+		$this->assertStringContainsString('wp-image-' . $restored_attachment, $response['data']['value']['content']);
+		$this->assertStringNotContainsString('wp-image-' . $second_attachment, $response['data']['value']['content']);
+		$this->assertStringContainsString('data-aips-image-id="' . $second_id . '"', $response['data']['value']['markup']);
+		$this->assertSame($original, get_post_field('post_content', $post_id));
+
+		$logs = $this->history_repository->get_logs_by_history_id($history_id);
+		$found = false;
+		foreach ($logs as $log) {
+			if ((int) $log->history_type_id === AIPS_History_Type::ACTIVITY) {
+				$details = json_decode($log->details, true);
+				if (isset($details['message']) && 'Post Images regenerated via AI Edit' === $details['message']) {
+					$found = true;
+				}
+			}
+		}
+		$this->assertTrue($found);
+	}
+
+	/**
+	 * Create an image attachment the post-image sync and restore paths will accept.
+	 *
+	 * @param int    $post_id Parent post ID.
+	 * @param string $file    Relative file name.
+	 * @return int
+	 */
+	private function make_image_attachment($post_id, $file) {
+		$attachment_id = wp_insert_attachment(array(
+			'post_mime_type' => 'image/jpeg',
+			'post_title'     => $file,
+			'post_status'    => 'inherit',
+			'post_parent'    => $post_id,
+		), $file, $post_id);
+		update_post_meta($attachment_id, '_wp_attached_file', $file);
+
+		return (int) $attachment_id;
+	}
+
+	/**
 	 * Test ajax_restore_component_revision records timeline activity event.
 	 */
 	public function test_ajax_restore_component_revision_records_timeline_activity_event() {

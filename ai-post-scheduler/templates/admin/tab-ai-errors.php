@@ -130,6 +130,7 @@ $retention_days    = (int) AIPS_Config::get_instance()->get_option('aips_ai_erro
 					<option value="slug" <?php selected($initial_component, 'slug'); ?>><?php esc_html_e('Post Slug', 'ai-post-scheduler'); ?></option>
 					<option value="excerpt" <?php selected($initial_component, 'excerpt'); ?>><?php esc_html_e('Excerpt', 'ai-post-scheduler'); ?></option>
 					<option value="featured_image" <?php selected($initial_component, 'featured_image'); ?>><?php esc_html_e('Featured Image Prompt', 'ai-post-scheduler'); ?></option>
+					<option value="post_images" <?php selected($initial_component, 'post_images'); ?>><?php esc_html_e('Post Images', 'ai-post-scheduler'); ?></option>
 					<option value="topics" <?php selected($initial_component, 'topics'); ?>><?php esc_html_e('Topics', 'ai-post-scheduler'); ?></option>
 					<option value="research" <?php selected($initial_component, 'research'); ?>><?php esc_html_e('Research', 'ai-post-scheduler'); ?></option>
 					<option value="taxonomy" <?php selected($initial_component, 'taxonomy'); ?>><?php esc_html_e('Taxonomy', 'ai-post-scheduler'); ?></option>

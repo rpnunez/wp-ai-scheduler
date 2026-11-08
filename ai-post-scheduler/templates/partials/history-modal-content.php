@@ -128,6 +128,16 @@ $type_labels = array(
 					<span class="aips-meta-text" title="<?php esc_attr_e('No featured image was generated or requested', 'ai-post-scheduler'); ?>">&mdash;</span>
 				<?php endif; ?>
 			</div>
+			<?php if (!empty($timeline_data['post_images_count'])): ?>
+			<div class="aips-timeline-milestone-item">
+				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+				<strong><?php esc_html_e('Post Images:', 'ai-post-scheduler'); ?></strong>
+				<span><?php echo esc_html(sprintf(
+					_n('%d content image', '%d content images', (int) $timeline_data['post_images_count'], 'ai-post-scheduler'),
+					(int) $timeline_data['post_images_count']
+				)); ?></span>
+			</div>
+			<?php endif; ?>
 			<div class="aips-timeline-milestone-item">
 				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
 				<strong><?php esc_html_e('Post Content:', 'ai-post-scheduler'); ?></strong>

@@ -649,3 +649,26 @@
 	margin-top: 0;
 	margin-right: 5px;
 }
+
+.aips-editor-post-image-card {
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-base);
+	padding: var(--aips-space-2);
+	margin-top: var(--aips-space-2);
+}
+
+.aips-editor-post-image-header,
+.aips-editor-post-image-actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--aips-space-2);
+	margin-bottom: var(--aips-space-1);
+}
+
+.aips-editor-post-image-compare img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin-bottom: var(--aips-space-2);
+}

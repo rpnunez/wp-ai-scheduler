@@ -147,7 +147,7 @@ class AIPS_Templates_Controller {
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'generate_slug' => $this->normalize_boolean_flag($generate_slug),
-            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
+            'featured_image_source' => (new AIPS_Post_Images_Service())->normalize_source(isset($_POST['featured_image_source']) ? wp_unslash($_POST['featured_image_source']) : 'ai_prompt'),
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
@@ -188,6 +188,11 @@ class AIPS_Templates_Controller {
         $id = $this->templates->save($data);
 
         if ($id) {
+            $post_images_repo = new AIPS_Post_Images_Repository();
+            $submitted_post_images = isset($_POST['template_post_images']) ? $_POST['template_post_images'] : (isset($_POST['post_images']) ? $_POST['post_images'] : array());
+            $template_post_images = (new AIPS_Post_Images_Service())->normalize_submitted_rows($submitted_post_images);
+            $post_images_repo->sync_for_entity('template', $id, $template_post_images, 'content');
+
             $slicing_notice = $this->maybe_log_template_slicing_notice($id, $data['name'], $data['post_quantity']);
 
             $this->record_template_event($data['id'] ? AIPS_History_Event_Type::TEMPLATE_UPDATED : AIPS_History_Event_Type::TEMPLATE_CREATED, absint($id), $data['name'], true);
@@ -232,6 +237,8 @@ class AIPS_Templates_Controller {
         }
 
         if ($this->templates->delete($id)) {
+            (new AIPS_Post_Images_Repository())->delete_for_entity('template', $id);
+
             $this->record_template_event(AIPS_History_Event_Type::TEMPLATE_DELETED, $id, ($template && !empty($template->name)) ? (string) $template->name : '', true);
 
             do_action('aips_template_changed', array(
@@ -266,6 +273,8 @@ class AIPS_Templates_Controller {
         $template = $this->templates->get($id);
 
         if ($template) {
+            $post_images_repo = new AIPS_Post_Images_Repository();
+            $template->post_images = $post_images_repo->get_content_images_for_entity('template', $id);
             AIPS_Ajax_Response::success(array('template' => $template));
         } else {
             AIPS_Ajax_Response::error(__('Template not found.', 'ai-post-scheduler'));
@@ -323,6 +332,9 @@ class AIPS_Templates_Controller {
         if ($new_id) {
             $mappings_repo = new AIPS_Integration_Mappings_Repository();
             $mappings_repo->clone_template_mappings($id, $new_id);
+
+            $post_images_repo = new AIPS_Post_Images_Repository();
+            $post_images_repo->clone_for_entity('template', $id, 'template', $new_id);
 
             $this->record_template_event(AIPS_History_Event_Type::TEMPLATE_CLONED, absint($new_id), $new_data['name'], true, array('cloned_from' => $id));
 

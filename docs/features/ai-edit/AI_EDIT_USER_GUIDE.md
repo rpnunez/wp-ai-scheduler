@@ -27,8 +27,9 @@ When you click "AI Edit", a tabbed modal window will open showing:
 
 ### Tabbed Editable Components
 
-Navigate through tabs for **Title**, **Post Slug**, **Excerpt**, **Content**, and **Featured Image**:
+Navigate through tabs for **Title**, **Post Slug**, **Excerpt**, **Content**, **Featured Image**, and **Post Images**:
 - Each tab displays the editable field and revision history.
+- **Post Images** lists every content image separately from the featured image. Each image has its own Re-generate button, side-by-side comparison, and View Revisions list. Accept a draft or restore a revision, then Save Changes. Cancelling the modal leaves the post unchanged.
 - Clicking **Re-generate** generates new AI content and opens a **Side-by-Side Comparison** (Current Version vs. Newly Regenerated Draft).
 - Click **Accept & Replace** to stage the regenerated draft into your edit field, or **Discard** to keep your current version.
 - Use **Regenerate All** to run all components and review diffs across tabs, with an **Accept All Regenerations** button to stage them simultaneously.

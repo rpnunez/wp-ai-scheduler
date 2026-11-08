@@ -24,6 +24,7 @@ class AIPS_Editor_Assets {
 	const METABOX_ID_EXCERPT  = 'aips_ai_edit_excerpt_metabox';
 	const METABOX_ID_CONTENT  = 'aips_ai_edit_content_metabox';
 	const METABOX_ID_IMAGE    = 'aips_ai_edit_featured_image_metabox';
+	const METABOX_ID_POST_IMAGES = 'aips_ai_edit_post_images_metabox';
 
 	/**
 	 * @var AIPS_Editor_Directive_Service
@@ -121,6 +122,15 @@ class AIPS_Editor_Assets {
 			array('component' => 'featured_image', 'label' => __('Featured Image', 'ai-post-scheduler'))
 		);
 
+		add_meta_box(
+			self::METABOX_ID_POST_IMAGES,
+			__('AI Edit: Post Images', 'ai-post-scheduler'),
+			array($this, 'render_classic_post_images_metabox'),
+			$post_type,
+			'normal',
+			'default'
+		);
+
 		// Keep existing quick directive meta box
 		add_meta_box(
 			self::METABOX_ID,
@@ -155,6 +165,19 @@ class AIPS_Editor_Assets {
 	 * @param WP_Post $post Post object.
 	 * @return void
 	 */
+	/**
+	 * Render the Classic Editor Post Images meta box.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return void
+	 */
+	public function render_classic_post_images_metabox($post): void {
+		$template_path = AIPS_PLUGIN_DIR . 'templates/admin/classic-ai-edit-post-images-metabox.php';
+		if (file_exists($template_path)) {
+			include $template_path;
+		}
+	}
+
 	public function render_classic_metabox($post): void {
 		$template_path = AIPS_PLUGIN_DIR . 'templates/admin/classic-ai-edit-metabox.php';
 		if (file_exists($template_path)) {
@@ -334,6 +357,7 @@ class AIPS_Editor_Assets {
 			'nonce'              => wp_create_nonce('aips_ajax_nonce'),
 			'postId'             => $post_id,
 			'historyId'          => $history_id,
+			'postImages'         => $this->get_editor_post_images($post_id, $history_id),
 			'presets'            => $this->directive_service->get_standard_presets(),
 			'models'             => $available_models,
 			'componentOverrides' => $post_id > 0 ? (get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true) ?: array()) : array(),
@@ -365,6 +389,39 @@ class AIPS_Editor_Assets {
 	}
 
 	/**
+	 * Content images for the post's current history run.
+	 *
+	 * @param int $post_id    Post ID.
+	 * @param int $history_id History container ID.
+	 * @return array
+	 */
+	private function get_editor_post_images(int $post_id, int $history_id): array {
+		if ($post_id <= 0) {
+			return array();
+		}
+
+		$rows = (new AIPS_Post_Images_Generated_Repository())->get_for_post_history($post_id, $history_id);
+		$list = array();
+		foreach ($rows as $position => $row) {
+			$url = '';
+			if (!empty($row->image_url)) {
+				$url = (string) $row->image_url;
+			} elseif (!empty($row->attachment_id)) {
+				$url = (string) wp_get_attachment_url((int) $row->attachment_id);
+			}
+			$list[] = array(
+				'id'         => (int) $row->id,
+				'imageIndex' => $position + 1,
+				'status'     => (string) $row->status,
+				'url'        => $url,
+				'error'      => isset($row->error_message) ? (string) $row->error_message : '',
+			);
+		}
+
+		return $list;
+	}
+
+	/**
 	 * Render HTML templates for Classic Editor widgets.
 	 *
 	 * @return void
@@ -380,6 +437,20 @@ class AIPS_Editor_Assets {
 					</button>
 				</div>
 				<div class="aips-revision-body">{{snippet}}</div>
+			</div>
+		</script>
+		<script type="text/html" id="aips-tmpl-editor-post-image-card">
+			<div class="aips-editor-post-image-card" data-image-id="{{id}}">
+				<div class="aips-editor-post-image-header">
+					<strong>{{title}}</strong>
+					<span class="aips-editor-post-image-status">{{status}}</span>
+				</div>
+				<div class="aips-editor-post-image-actions">
+					<button type="button" class="button button-secondary aips-editor-post-image-regenerate">{{regenerateLabel}}</button>
+					<button type="button" class="button button-link aips-editor-post-image-revisions">{{revisionsLabel}}</button>
+				</div>
+				<div class="aips-editor-post-image-compare" hidden></div>
+				<div class="aips-editor-post-image-revisions" hidden></div>
 			</div>
 		</script>
 		<script type="text/html" id="aips-tmpl-editor-variant-card">

@@ -685,8 +685,234 @@
 		});
 	}
 
+	function replacePostImageMarkup(content, imageId, markup) {
+		var id = String(imageId).replace(/[^\d]/g, '');
+		if (!id || !markup) {
+			return content || '';
+		}
+		var figure = new RegExp('<figure\\b[^>]*\\bdata-aips-image-id=["\']?' + id + '(?=[\'"\\s>])[^>]*>[\\s\\S]*?<\\/figure>', 'i');
+		var placeholder = new RegExp('<!--\\s*aips-image-placeholder\\s+id=["\']?' + id + '["\']?\\s*-->', 'i');
+		var source = content || '';
+		if (figure.test(source)) {
+			return source.replace(figure, markup);
+		}
+		if (placeholder.test(source)) {
+			return source.replace(placeholder, markup);
+		}
+		return source;
+	}
+
+	function getClassicEditorHtml() {
+		if (window.tinymce) {
+			var editor = window.tinymce.get('content');
+			if (editor && !editor.isHidden()) {
+				return editor.getContent();
+			}
+		}
+		return $('#content').val() || '';
+	}
+
+	function setClassicEditorHtml(html) {
+		if (window.tinymce) {
+			var editor = window.tinymce.get('content');
+			if (editor && !editor.isHidden()) {
+				editor.setContent(html);
+			}
+		}
+		$('#content').val(html).trigger('change');
+	}
+
+	function saveEditorPostImages(html) {
+		return $.post(l10n.ajaxurl, {
+			action: 'aips_save_post_components',
+			nonce: l10n.nonce,
+			post_id: l10n.postId,
+			components: {
+				content: html,
+				post_images_regenerated: 'true'
+			}
+		});
+	}
+
+	function initPostImagesWidget() {
+		var $root = $('#aips-editor-post-images');
+		if (!$root.length || !window.AIPS || !window.AIPS.Templates) {
+			return;
+		}
+
+		var pending = {};
+		var images = l10n.postImages || [];
+		var $list = $('#aips-editor-post-images-list');
+
+		function renderList() {
+			$list.empty();
+			$root.find('.aips-editor-post-images-empty').prop('hidden', images.length > 0);
+			images.forEach(function (image) {
+				var html = window.AIPS.Templates.render('aips-tmpl-editor-post-image-card', {
+					id: image.id,
+					title: 'Image #' + image.imageIndex,
+					status: image.status || '',
+					regenerateLabel: 'Re-generate',
+					revisionsLabel: 'View Revisions'
+				});
+				$list.append(html);
+			});
+		}
+
+		function stageResults(payload, sourceContent) {
+			var rows = (payload && payload.post_images) ? payload.post_images : [];
+			rows.forEach(function (image) {
+				pending[image.id] = {
+					id: image.id,
+					markup: image.markup || '',
+					content: image.content || '',
+					sourceContent: sourceContent,
+					url: image.url || '',
+					status: image.status || '',
+					error: image.error_message || ''
+				};
+				var $card = $list.find('.aips-editor-post-image-card[data-image-id="' + image.id + '"]');
+				$card.find('.aips-editor-post-image-status').text(image.status || '');
+				var $compare = $card.find('.aips-editor-post-image-compare');
+				$compare.prop('hidden', false).empty();
+				if (image.error_message && !image.url) {
+					$compare.append($('<p class="description"></p>').text(image.error_message));
+					return;
+				}
+				var current = images.filter(function (row) { return String(row.id) === String(image.id); })[0] || {};
+				$compare.append($('<p></p>').text('Current'));
+				if (current.url) {
+					$compare.append($('<img>', { src: current.url, alt: '' }));
+				}
+				$compare.append($('<p></p>').text('Regenerated'));
+				if (image.url) {
+					$compare.append($('<img>', { src: image.url, alt: '' }));
+				}
+				$compare.append($('<button type="button" class="button button-primary aips-editor-post-image-accept"></button>').text('Accept & Replace'));
+				$compare.append($('<button type="button" class="button aips-editor-post-image-discard"></button>').text('Discard'));
+			});
+		}
+
+		function applyImage(imageId, save) {
+			var item = pending[imageId];
+			if (!item) {
+				return $.Deferred().resolve().promise();
+			}
+			var current = getClassicEditorHtml();
+			var next = current;
+			if ((current === item.sourceContent) && item.content) {
+				next = item.content;
+			} else if (item.markup) {
+				var replaced = replacePostImageMarkup(current, imageId, item.markup);
+				next = (replaced === current && item.content) ? item.content : replaced;
+			}
+			delete pending[imageId];
+			setClassicEditorHtml(next);
+			$list.find('.aips-editor-post-image-card[data-image-id="' + imageId + '"] .aips-editor-post-image-compare').prop('hidden', true).empty();
+			return save ? saveEditorPostImages(next) : $.Deferred().resolve(next).promise();
+		}
+
+		function regenerate(component) {
+			var sourceContent = getClassicEditorHtml();
+			return $.post(l10n.ajaxurl, {
+				action: 'aips_regenerate_component',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				history_id: l10n.historyId || 0,
+				component: component,
+				current_content: sourceContent
+			}).done(function (response) {
+				if (response && response.success && response.data && response.data.new_value) {
+					stageResults(response.data.new_value, sourceContent);
+				} else {
+					notifyEditor((response && response.data && response.data.message) || l10n.labels.actionError);
+				}
+			}).fail(function () {
+				notifyEditor(l10n.labels.actionError);
+			});
+		}
+
+		renderList();
+
+		$('#aips-editor-post-images-regenerate-all').on('click', function (e) {
+			e.preventDefault();
+			regenerate('post_images');
+		});
+
+		$list.on('click', '.aips-editor-post-image-regenerate', function (e) {
+			e.preventDefault();
+			var imageId = $(this).closest('.aips-editor-post-image-card').data('image-id');
+			regenerate('post_image_' + imageId);
+		});
+
+		$list.on('click', '.aips-editor-post-image-accept', function (e) {
+			e.preventDefault();
+			var imageId = $(this).closest('.aips-editor-post-image-card').data('image-id');
+			applyImage(imageId, true);
+		});
+
+		$list.on('click', '.aips-editor-post-image-discard', function (e) {
+			e.preventDefault();
+			var imageId = $(this).closest('.aips-editor-post-image-card').data('image-id');
+			delete pending[imageId];
+			$(this).closest('.aips-editor-post-image-compare').prop('hidden', true).empty();
+		});
+
+		$list.on('click', '.aips-editor-post-image-revisions', function (e) {
+			e.preventDefault();
+			var $card = $(this).closest('.aips-editor-post-image-card');
+			var imageId = $card.data('image-id');
+			var $drawer = $card.find('.aips-editor-post-image-revisions');
+			$drawer.prop('hidden', false).text('Loading…');
+			$.post(l10n.ajaxurl, {
+				action: 'aips_get_component_revisions',
+				nonce: l10n.nonce,
+				post_id: l10n.postId,
+				component: 'post_image_' + imageId
+			}).done(function (response) {
+				$drawer.empty();
+				var revisions = (response && response.success && response.data && response.data.revisions) ? response.data.revisions : [];
+				if (!revisions.length) {
+					$drawer.text('No revisions recorded.');
+					return;
+				}
+				revisions.forEach(function (rev) {
+					var html = window.AIPS.Templates.render('aips-tmpl-editor-revision-item', {
+						id: rev.id,
+						sourceBadge: rev.source || '',
+						timeText: rev.timestamp ? String(rev.timestamp) : '',
+						restoreLabel: 'Restore',
+						snippet: typeof rev.value === 'string' ? rev.value : ''
+					});
+					var $item = $(html);
+					$item.find('.aips-restore-revision-btn').on('click', function () {
+						$.post(l10n.ajaxurl, {
+							action: 'aips_restore_component_revision',
+							nonce: l10n.nonce,
+							post_id: l10n.postId,
+							history_id: l10n.historyId || 0,
+							component: 'post_image_' + imageId,
+							revision_id: rev.id,
+							current_content: getClassicEditorHtml()
+						}).done(function (restoreResponse) {
+							var value = restoreResponse && restoreResponse.success && restoreResponse.data ? restoreResponse.data.value : null;
+							var next = value && value.content ? value.content : '';
+							if (!next) {
+								return;
+							}
+							setClassicEditorHtml(next);
+							saveEditorPostImages(next);
+						});
+					});
+					$drawer.append($item);
+				});
+			});
+		});
+	}
+
 	$(document).ready(function () {
 		initComponentWidgets();
 		initLegacyMetaBox();
+		initPostImagesWidget();
 	});
 })(jQuery);

@@ -469,6 +469,48 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render Post Images section description.
+     */
+    public function post_images_section_callback() {
+        echo '<p class="description">' . esc_html__('Configure global limits and available sources for Post Content Images generation across Templates and Authors.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render Max Post Images Limit field.
+     */
+    public function max_post_images_limit_field_callback() {
+        $value = AIPS_Config::get_instance()->get_max_post_images_limit();
+        ?>
+        <input type="number" name="aips_max_post_images_limit" id="aips_max_post_images_limit" value="<?php echo esc_attr($value); ?>" min="0" max="20" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum number of post images that can be added and generated for a single post (0 to 20). Defaults to 5.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Allowed Image Sources field.
+     */
+    public function allowed_image_sources_field_callback() {
+        $allowed = AIPS_Config::get_instance()->get_allowed_image_sources();
+        $sources = array(
+            'ai_prompt'     => __('AI Prompt Generation', 'ai-post-scheduler'),
+            'unsplash'      => __('Unsplash (keyword search)', 'ai-post-scheduler'),
+            'media_library' => __('WordPress Media Library', 'ai-post-scheduler'),
+        );
+        ?>
+        <fieldset>
+            <legend class="screen-reader-text"><?php esc_html_e('Allowed Image Sources', 'ai-post-scheduler'); ?></legend>
+            <?php foreach ($sources as $key => $label): ?>
+                <label style="display: block; margin-bottom: 6px;">
+                    <input type="checkbox" name="aips_allowed_image_sources[]" value="<?php echo esc_attr($key); ?>" <?php checked(in_array($key, $allowed, true)); ?>>
+                    <?php echo esc_html($label); ?>
+                </label>
+            <?php endforeach; ?>
+            <p class="description"><?php esc_html_e('Controls which image sources are available when configuring Featured Image and Post Images on Templates and Authors.', 'ai-post-scheduler'); ?></p>
+        </fieldset>
+        <?php
+    }
+
+    /**
      * Render the Google Search Console connection (API Keys tab).
      *
      * Search Console data is private, so it needs a service account key
