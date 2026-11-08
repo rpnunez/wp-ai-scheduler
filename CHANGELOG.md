@@ -81,6 +81,10 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **AI Errors Intelligence Console:**
+  - Exports include every matching error up to 2,000 rows. JSON and CSV report the real match count, the number of rows written, and whether the file was truncated at that bound.
+  - Category totals classify each error once, using the same rules as each row. An error that matches two signatures is counted in the winning category only, and unclassified errors stay in General.
+  - Secret redaction walks nested JSON fields such as `api_key` and `access_token`, including provider keys that do not start with `sk-`.
 - **Capture Original & Current Post Component Values in AI Edit Revisions:**
   - Resolved an issue in the AI Edit component regeneration flow where the pre-regeneration state (original/current post value) was not recorded as a revision snapshot, leaving only the newly generated draft in "View Revisions".
   - Updated `AIPS_AI_Edit_Controller::ajax_regenerate_component()` and `ajax_regenerate_all_components()` to capture the current component state (from client payload or falling back to `$post`) before invoking AI regeneration, with intelligent deduplication against recent revisions to avoid duplicate snapshots across multiple regenerations.
