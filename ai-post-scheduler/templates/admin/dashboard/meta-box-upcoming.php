@@ -20,7 +20,7 @@ if (is_array($data)) {
 			<?php echo sprintf(esc_html(_n('%d Scheduled Run', '%d Scheduled Runs', (int) ($upcoming_runs_count ?? 0), 'ai-post-scheduler')), (int) ($upcoming_runs_count ?? 0)); ?>
 		</span>
 	</div>
-	
+
 	<?php if (!empty($upcoming_5)): ?>
 	<div class="aips-table-wrap">
 		<table class="aips-table aips-dashboard-table">
