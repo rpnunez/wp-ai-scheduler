@@ -36,9 +36,34 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
     define('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT', 10);
 }
 
-// Plugin version
+// Plugin version. The Version header in ai-post-scheduler.php is the only
+// release number. AIPS_VERSION is read from that header so a bump in another
+// branch cannot drift from this constant.
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.19');
+    define('AIPS_VERSION', (static function () {
+        $plugin_file = __DIR__ . '/ai-post-scheduler.php';
+        $version     = '';
+
+        if (function_exists('get_file_data')) {
+            $plugin_data = get_file_data(
+                $plugin_file,
+                array('Version' => 'Version'),
+                'plugin'
+            );
+            if (!empty($plugin_data['Version'])) {
+                $version = (string) $plugin_data['Version'];
+            }
+        }
+
+        if ('' === $version && is_readable($plugin_file)) {
+            $header = file_get_contents($plugin_file, false, null, 0, 8192);
+            if (is_string($header) && preg_match('/^[ \t\/*#@]*Version:\s*(\S+)/mi', $header, $match)) {
+                $version = $match[1];
+            }
+        }
+
+        return $version;
+    })());
 }
 
 // Prompt-preview logging can expose generated content in logs. Off by default;

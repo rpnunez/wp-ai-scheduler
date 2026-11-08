@@ -128,7 +128,7 @@ Three mandatory steps for any new option:
 
 1. Update `AIPS_DB_Manager::get_schema()`.
 2. `install_tables()` + `dbDelta` do the rest — no extra wiring.
-3. Bump `Version:` header and `AIPS_VERSION` in `ai-post-scheduler.php`.
+3. Bump the `Version:` header in `ai-post-scheduler.php`. `AIPS_VERSION` is read from that header.
 4. Create a repository class for any new table.
 
 Migrations entry point: `AIPS_DB_Migrations::check_and_run()`.

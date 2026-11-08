@@ -25,7 +25,7 @@ For every schema or migration change, verify the following before approving.
 - No raw `$wpdb` in controllers, services, or templates.
 
 ### 4. Version bump
-- `Version:` header and `AIPS_VERSION` in `ai-post-scheduler/ai-post-scheduler.php` are incremented if schema changes are user-facing or require a DB upgrade.
+- `Version:` header in `ai-post-scheduler/ai-post-scheduler.php` is incremented if schema changes are user-facing or require a DB upgrade. `AIPS_VERSION` is read from that header.
 
 ### 5. Tests
 - `ai-post-scheduler/tests/Test_AIPS_DB_Schema.php` and `Test_AIPS_DB_Migrations.php` are updated or extended.
