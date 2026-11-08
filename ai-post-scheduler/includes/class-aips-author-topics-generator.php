@@ -355,7 +355,8 @@ class AIPS_Author_Topics_Generator {
 		// Scan a wider window so topics already judged by a rule don't hide eligible ones.
 		$rows = $this->topics_repository->get_pending_for_approval_recheck((int) $author->id, min(500, $limit * 5));
 
-		$candidates = array();
+		$candidates        = array();
+		$original_metadata = array();
 		foreach ($rows as $row) {
 			$meta = !empty($row->metadata) ? json_decode($row->metadata, true) : array();
 			$meta = is_array($meta) ? $meta : array();
@@ -365,6 +366,7 @@ class AIPS_Author_Topics_Generator {
 
 			if ($never_evaluated || $unmeasured) {
 				$candidates[] = (array) $row;
+				$original_metadata[(int) $row->id] = (string) $row->metadata;
 			}
 
 			if (count($candidates) >= $limit) {
@@ -388,16 +390,20 @@ class AIPS_Author_Topics_Generator {
 				continue;
 			}
 
-			$counts['checked']++;
-
 			// apply_auto_approval_rules() returns the topic untouched (no metadata
 			// rewrite) when it skipped evaluation, e.g. embeddings in cooldown.
+			$topic_id = (int) $topic['id'];
+			$status   = isset($topic['status']) ? (string) $topic['status'] : 'pending';
+			$unchanged = isset($original_metadata[$topic_id])
+				&& $original_metadata[$topic_id] === (string) $topic['metadata']
+				&& 'pending' === $status;
+
 			$meta = isset($topic['metadata']) && is_string($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
-			if (!is_array($meta) || empty($meta['auto_approval_rule'])) {
+			if ($unchanged || !is_array($meta) || empty($meta['auto_approval_rule'])) {
 				continue;
 			}
 
-			$status = isset($topic['status']) ? (string) $topic['status'] : 'pending';
+			$counts['checked']++;
 			$update = array('metadata' => $topic['metadata']);
 
 			if (in_array($status, array('approved', 'rejected'), true)) {
@@ -406,7 +412,8 @@ class AIPS_Author_Topics_Generator {
 				$update['reviewed_by'] = 0;
 			}
 
-			if (false === $this->topics_repository->update((int) $topic['id'], $update)) {
+			// Only while still pending: never overwrite a review made since the read.
+			if (!$this->topics_repository->update_if_pending($topic_id, $update)) {
 				continue;
 			}
 

@@ -332,6 +332,32 @@ class AIPS_Author_Topics_Repository {
 	}
 
 	/**
+	 * Update a topic only while it is still pending.
+	 *
+	 * Used by automated decisions so a human review made in the meantime is
+	 * never overwritten.
+	 *
+	 * @param int   $id   Topic ID.
+	 * @param array $data Columns to update.
+	 * @return int|false Rows updated (0 when the topic is no longer pending), or false on error.
+	 */
+	public function update_if_pending($id, $data) {
+		$result = $this->wpdb->update(
+			$this->table_name,
+			$data,
+			array('id' => absint($id), 'status' => 'pending'),
+			null,
+			array('%d', '%s')
+		);
+
+		if ($result) {
+			$this->invalidate_author_topic_cache_by_id($id, 'author_topic_updated', null);
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Update a topic.
 	 *
 	 * @param int $id Topic ID.

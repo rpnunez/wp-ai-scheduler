@@ -384,6 +384,19 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Automated updates never overwrite a topic that is no longer pending.
+	 */
+	public function test_update_if_pending_skips_reviewed_topics() {
+		$repo     = new AIPS_Author_Topics_Repository();
+		$pending  = $this->insert_topic( 987003, 'Still pending', 90 );
+		$reviewed = $this->insert_topic( 987003, 'Already rejected', 90, null, 'rejected' );
+
+		$this->assertSame( 1, $repo->update_if_pending( $pending, array( 'status' => 'approved' ) ) );
+		$this->assertSame( 0, $repo->update_if_pending( $reviewed, array( 'status' => 'approved' ) ) );
+		$this->assertSame( 'rejected', $repo->get_by_id( $reviewed )->status );
+	}
+
+	/**
 	 * Manual-mode authors are never re-checked.
 	 */
 	public function test_recheck_pending_auto_approval_skips_manual_authors() {
