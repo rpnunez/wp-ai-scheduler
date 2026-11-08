@@ -418,6 +418,15 @@ class AIPS_Post_Manager {
                 'post_content'   => !empty($component_statuses['post_content']),
             );
 
+            // Only posts with content images track this component.
+            if (array_key_exists('post_images', $component_statuses)) {
+                $normalized_statuses['post_images'] = !empty($component_statuses['post_images']);
+            }
+
+            if (array_key_exists('post_slug', $component_statuses)) {
+                $normalized_statuses['post_slug'] = !empty($component_statuses['post_slug']);
+            }
+
             update_post_meta($post_id, self::META_GENERATION_COMPONENT_STATUSES, wp_json_encode($normalized_statuses));
         }
 
@@ -445,7 +454,7 @@ class AIPS_Post_Manager {
      *
      * @param int   $post_id   Post ID.
      * @param array $overrides Optional component status overrides keyed by post_title, post_excerpt,
-     *                         post_content, featured_image.
+     *                         post_content, featured_image, post_images.
      * @return array|null Normalized component statuses or null when post not found.
      */
     public function reconcile_generation_status_meta_from_post($post_id, $overrides = array()) {
@@ -473,7 +482,16 @@ class AIPS_Post_Manager {
             $component_statuses['featured_image'] = !empty($existing_statuses['featured_image']);
         }
 
-        $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image');
+        if (is_array($existing_statuses) && array_key_exists('post_images', $existing_statuses)) {
+            $generated_images = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
+            $component_statuses['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
+        }
+
+        if ('' !== (string) $post->post_name) {
+            $component_statuses['post_slug'] = true;
+        }
+
+        $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image', 'post_images', 'post_slug');
         foreach ($allowed_keys as $key) {
             if (array_key_exists($key, $overrides)) {
                 $component_statuses[$key] = (bool) $overrides[$key];

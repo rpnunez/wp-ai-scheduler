@@ -152,12 +152,18 @@
 		 * Update status badges across tabs and overview summary cards
 		 */
 		updateTabBadges: function() {
-			var components = ['title', 'slug', 'excerpt', 'content', 'featured_image'];
+			var components = ['title', 'slug', 'excerpt', 'content', 'featured_image', 'post_images'];
 			components.forEach(function(comp) {
 				var $badge = $('.aips-tab-badge[data-badge="' + comp + '"]');
 				var $summaryStatus = $('#aips-summary-status-' + comp);
 				
-				if (aiEditState.pendingRegenerations && aiEditState.pendingRegenerations[comp] !== undefined) {
+				var hasPending = aiEditState.pendingRegenerations && aiEditState.pendingRegenerations[comp] !== undefined;
+				if (comp === 'post_images') {
+					hasPending = Object.keys(aiEditState.pendingRegenerations || {}).some(function(key) {
+						return key.indexOf('post_image_') === 0;
+					});
+				}
+				if (hasPending) {
 					$badge.removeClass('badge-modified').addClass('badge-regenerated').text(aipsAIEditL10n.regenerated || 'Regenerated').show();
 					if ($summaryStatus.length) {
 						$summaryStatus.addClass('has-changes').text(aipsAIEditL10n.regenerated || 'Regenerated');
@@ -180,6 +186,13 @@
 		 * Populate modal with post data
 		 */
 		populateAIEditModal: function(data) {
+			aiEditState.changedComponents = new Set();
+			aiEditState.pendingRegenerations = {};
+			aiEditState.acceptedPostImageMarkup = {};
+			$('.aips-component-section').removeClass('changed');
+			$('.aips-diff-wrapper').hide();
+			$('#aips-ai-edit-accept-all').hide();
+
 			if (data.history_id) {
 				aiEditState.historyId = data.history_id;
 			}
@@ -223,6 +236,11 @@
 				$('#aips-component-image').hide();
 				$('#aips-component-image-none').show();
 			}
+
+			var postImages = data.components.post_images || [];
+			aiEditState.components.post_images = postImages;
+			aiEditState.originalValues.post_images = postImages;
+			window.AIPS.renderAIEditPostImages(postImages);
 			
 			// Update character counts
 			window.AIPS.updateAIEditCharCount('title');
@@ -245,6 +263,7 @@
 			var currentValue = window.AIPS.getAIEditCurrentComponentValue(component);
 			var currentSource = aiEditState.currentSources[component] || 'persisted';
 			var currentReason = window.AIPS.shouldCaptureManualRevision(component) ? 'pre_regenerate_manual' : 'pre_regenerate_current';
+			var isPostImage = component === 'post_images' || String(component).indexOf('post_image_') === 0;
 
 			var requestData = {
 				action: 'aips_regenerate_component',
@@ -256,6 +275,13 @@
 				current_reason: currentReason,
 				nonce: aipsAIEditL10n.nonce
 			};
+
+			if (isPostImage) {
+				requestData.current_content = $('#aips-component-content').val();
+				if ($btn.data('image-id')) {
+					requestData.image_id = $btn.data('image-id');
+				}
+			}
 
 			var req = $.ajax({
 				url: aipsAIEditL10n.ajaxUrl,
@@ -328,6 +354,7 @@
 					history_id: aiEditState.historyId,
 					current_snapshots: currentSnapshots,
 					manual_snapshots: manualSnapshots,
+					current_content: $('#aips-component-content').val(),
 					nonce: aipsAIEditL10n.nonce
 				},
 				success: function(response) {
@@ -361,6 +388,12 @@
 			var regeneratedCount = 0;
 
 			Object.keys(regenerated).forEach(function(component) {
+				if (component === 'post_images') {
+					window.AIPS.stagePostImageRegenerations(regenerated[component]);
+					window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+					regeneratedCount += 1;
+					return;
+				}
 				aiEditState.pendingRegenerations[component] = regenerated[component];
 				window.AIPS.showComponentDiff(component, regenerated[component]);
 				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
@@ -405,6 +438,18 @@
 				.find('.button-text').text(aipsAIEditL10n.regenerate);
 			
 			if (response.success) {
+				if (component === 'post_images' || String(component).indexOf('post_image_') === 0) {
+					window.AIPS.stagePostImageRegenerations(response.data.new_value);
+					var failedImages = ((response.data.new_value && response.data.new_value.post_images) || []).filter(function(image) {
+						return image && image.error_message;
+					});
+					if (failedImages.length && !((response.data.new_value.post_images || []).some(function(image) { return image && image.url && !image.error_message; }))) {
+						window.AIPS.showComponentStatus(component, 'error', failedImages[0].error_message);
+					} else {
+						window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+					}
+					return;
+				}
 				aiEditState.pendingRegenerations[component] = response.data.new_value;
 				window.AIPS.showComponentDiff(component, response.data.new_value);
 				window.AIPS.updateTabBadges();
@@ -445,9 +490,184 @@
 		},
 
 		/**
+		 * Stage each regenerated content image for its own accept/discard diff.
+		 */
+		stagePostImageRegenerations: function(payload) {
+			var images = (payload && payload.post_images) ? payload.post_images : [];
+			var baseContent = $('#aips-component-content').val();
+			images.forEach(function(image) {
+				if (!image || !image.id) {
+					return;
+				}
+				if (image.error_message && !image.url) {
+					window.AIPS.showComponentStatus('post_image_' + image.id, 'error', image.error_message);
+					return;
+				}
+				if (!image.url) {
+					return;
+				}
+				aiEditState.pendingRegenerations['post_image_' + image.id] = {
+					id: image.id,
+					image: image,
+					markup: image.markup || '',
+					content: image.content || '',
+					sourceContent: payload.source_content || '',
+					baseContent: baseContent
+				};
+			});
+			window.AIPS.renderAIEditPostImages(aiEditState.components.post_images || []);
+			window.AIPS.refreshPostImageDiffs();
+			window.AIPS.updateTabBadges();
+			if (Object.keys(aiEditState.pendingRegenerations).length) {
+				$('#aips-ai-edit-accept-all').show();
+			}
+		},
+
+		/**
+		 * Redraw side-by-side diffs for post images that are still pending.
+		 */
+		refreshPostImageDiffs: function() {
+			Object.keys(aiEditState.pendingRegenerations || {}).forEach(function(key) {
+				if (key.indexOf('post_image_') !== 0) {
+					return;
+				}
+				var pending = aiEditState.pendingRegenerations[key];
+				var current = window.AIPS.findPostImage(pending.id);
+				window.AIPS.fillImageDiff(
+					$('#aips-diff-current-' + key),
+					current && current.url ? current.url : ''
+				);
+				window.AIPS.fillImageDiff(
+					$('#aips-diff-regenerated-' + key),
+					pending.image && pending.image.url ? pending.image.url : ''
+				);
+				$('.aips-diff-wrapper[data-component="' + key + '"]').show();
+			});
+		},
+
+		/**
+		 * Put a sanitized image, or an empty note, into a diff cell.
+		 */
+		fillImageDiff: function($cell, url) {
+			$cell.empty();
+			var safeUrl = url && window.AIPS.Utilities && window.AIPS.Utilities.sanitizeUrl
+				? window.AIPS.Utilities.sanitizeUrl(url)
+				: '';
+			if (!safeUrl) {
+				$cell.append($('<em></em>').text(aipsAIEditL10n.noImage || 'No image'));
+				return;
+			}
+			$cell.append($('<img>', {
+				src: safeUrl,
+				alt: '',
+				css: { maxWidth: '100%', height: 'auto', maxHeight: '160px', borderRadius: '4px' }
+			}));
+		},
+
+		/**
+		 * Find a loaded post image by generated row ID.
+		 */
+		findPostImage: function(imageId) {
+			var images = aiEditState.components.post_images || [];
+			for (var i = 0; i < images.length; i++) {
+				if (String(images[i].id) === String(imageId)) {
+					return images[i];
+				}
+			}
+			return null;
+		},
+
+		/**
+		 * Accept one post image and stage its figure into the editor content.
+		 */
+		acceptPostImageRegeneration: function(component) {
+			var pending = aiEditState.pendingRegenerations[component];
+			if (!pending) {
+				return;
+			}
+			delete aiEditState.pendingRegenerations[component];
+
+			var current = $('#aips-component-content').val();
+			var nextContent = current;
+			var editorUnchanged = current === pending.baseContent || current === pending.sourceContent;
+			if (editorUnchanged && typeof pending.content === 'string' && pending.content !== '') {
+				nextContent = pending.content;
+			} else if (pending.markup) {
+				nextContent = window.AIPS.replacePostImageMarkup(current, pending.id, pending.markup);
+			}
+			$('#aips-component-content').val(nextContent);
+			aiEditState.changedComponents.add('content');
+			aiEditState.changedComponents.add('post_images');
+			$('.aips-component-section[data-component="content"]').addClass('changed');
+			window.AIPS.setAIEditComponentSource('content', nextContent, 'ai_generated');
+
+			aiEditState.acceptedPostImageMarkup = aiEditState.acceptedPostImageMarkup || {};
+			if (pending.markup) {
+				aiEditState.acceptedPostImageMarkup[pending.id] = pending.markup;
+			}
+
+			var images = (aiEditState.components.post_images || []).slice();
+			var replaced = false;
+			images = images.map(function(image) {
+				if (String(image.id) !== String(pending.id)) {
+					return image;
+				}
+				replaced = true;
+				return $.extend({}, image, pending.image, { error_message: '' });
+			});
+			if (!replaced) {
+				images.push(pending.image);
+			}
+			aiEditState.components.post_images = images;
+			window.AIPS.renderAIEditPostImages(images);
+			window.AIPS.refreshPostImageDiffs();
+			$('.aips-component-section[data-component="' + component + '"]').addClass('changed');
+			window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.stagedForSave || aipsAIEditL10n.regenerateSuccess);
+			window.AIPS.updateTabBadges();
+			if (Object.keys(aiEditState.pendingRegenerations).length === 0) {
+				$('#aips-ai-edit-accept-all').hide();
+			}
+		},
+
+		/**
+		 * Keep accepted content images when a newly accepted article replaces the editor.
+		 */
+		reapplyAcceptedPostImageMarkup: function() {
+			var markup = aiEditState.acceptedPostImageMarkup || {};
+			var content = $('#aips-component-content').val();
+			Object.keys(markup).forEach(function(imageId) {
+				content = window.AIPS.replacePostImageMarkup(content, imageId, markup[imageId]);
+			});
+			$('#aips-component-content').val(content);
+		},
+
+		/**
+		 * Replace one content-image figure in HTML, appending it when it is absent.
+		 */
+		replacePostImageMarkup: function(content, imageId, markup) {
+			var id = String(imageId).replace(/[^\d]/g, '');
+			if (!id || !markup) {
+				return content;
+			}
+			var figure = new RegExp('<figure\\b[^>]*\\bdata-aips-image-id=["\']?' + id + '(?=[\'"\\s>])[^>]*>[\\s\\S]*?<\\/figure>', 'i');
+			var placeholder = new RegExp('<!--\\s*aips-image-placeholder\\s+id=["\']?' + id + '["\']?\\s*-->', 'i');
+			if (figure.test(content)) {
+				return content.replace(figure, markup);
+			}
+			if (placeholder.test(content)) {
+				return content.replace(placeholder, markup);
+			}
+			return content + '\n' + markup;
+		},
+
+		/**
 		 * Accept and replace a single component regeneration
 		 */
 		acceptComponentRegeneration: function(component) {
+			if (String(component).indexOf('post_image_') === 0) {
+				window.AIPS.acceptPostImageRegeneration(component);
+				return;
+			}
 			if (!aiEditState.pendingRegenerations || aiEditState.pendingRegenerations[component] === undefined) {
 				return;
 			}
@@ -455,6 +675,9 @@
 			delete aiEditState.pendingRegenerations[component];
 			
 			window.AIPS.updateAIEditComponentValue(component, val, 'ai_generated');
+			if (component === 'content') {
+				window.AIPS.reapplyAcceptedPostImageMarkup();
+			}
 			aiEditState.changedComponents.add(component);
 			
 			$('[data-component="' + component + '"]').closest('.aips-component-section').addClass('changed');
@@ -490,6 +713,12 @@
 				e.preventDefault();
 			}
 			var components = Object.keys(aiEditState.pendingRegenerations || {});
+			var order = { title: 1, excerpt: 2, content: 3, featured_image: 4 };
+			components.sort(function(a, b) {
+				var aRank = order[a] || (String(a).indexOf('post_image_') === 0 ? 5 : 6);
+				var bRank = order[b] || (String(b).indexOf('post_image_') === 0 ? 5 : 6);
+				return aRank - bRank;
+			});
 			components.forEach(function(comp) {
 				window.AIPS.acceptComponentRegeneration(comp);
 			});
@@ -513,7 +742,7 @@
 		 * Normalize a component value for reliable comparisons.
 		 */
 		normalizeAIEditComponentValue: function(component, value) {
-			if (component === 'featured_image') {
+			if (component === 'featured_image' || String(component).indexOf('post_image_') === 0) {
 				if (!value) {
 					return '';
 				}
@@ -549,6 +778,9 @@
 				case 'featured_image':
 					return aiEditState.components.featured_image || null;
 				default:
+					if (String(component).indexOf('post_image_') === 0) {
+						return window.AIPS.findPostImage(component.replace('post_image_', '')) || null;
+					}
 					return null;
 			}
 		},
@@ -615,6 +847,36 @@
 						aiEditState.components.featured_image = null;
 					}
 					break;
+				default:
+					if (String(component).indexOf('post_image_') === 0 && value) {
+						var restoredImage = value.image || value;
+						var images = (aiEditState.components.post_images || []).slice();
+						var found = false;
+						images = images.map(function(image) {
+							if (String(image.id) !== String(restoredImage.id)) {
+								return image;
+							}
+							found = true;
+							return $.extend({}, image, restoredImage);
+						});
+						if (!found && restoredImage.id) {
+							images.push(restoredImage);
+						}
+						aiEditState.components.post_images = images;
+						window.AIPS.renderAIEditPostImages(images);
+						if (typeof value.content === 'string') {
+							$('#aips-component-content').val(value.content);
+							aiEditState.changedComponents.add('content');
+							aiEditState.changedComponents.add('post_images');
+							$('.aips-component-section[data-component="content"]').addClass('changed');
+							if (value.markup) {
+								aiEditState.acceptedPostImageMarkup = aiEditState.acceptedPostImageMarkup || {};
+								aiEditState.acceptedPostImageMarkup[restoredImage.id] = value.markup;
+							}
+						}
+						window.AIPS.refreshPostImageDiffs();
+					}
+					break;
 			}
 
 			if (source) {
@@ -623,11 +885,63 @@
 		},
 		
 		/**
+		 * Render one card per content image, keeping the featured image on its own tab.
+		 */
+		renderAIEditPostImages: function(postImages) {
+			var $grid = $('#aips-ai-edit-post-images-grid');
+			var $none = $('#aips-component-post-images-none');
+			$grid.empty();
+
+			if (!postImages || postImages.length === 0) {
+				$grid.hide();
+				$none.show();
+				return;
+			}
+
+			$none.hide();
+			$grid.show();
+
+			var statusLabels = {
+				completed: aipsAIEditL10n.imageStatusCompleted || 'Completed',
+				failed: aipsAIEditL10n.imageStatusFailed || 'Failed',
+				pending: aipsAIEditL10n.imageStatusPending || 'Pending'
+			};
+
+			postImages.forEach(function(img) {
+				var safeUrl = img.url && window.AIPS.Utilities && window.AIPS.Utilities.sanitizeUrl
+					? window.AIPS.Utilities.sanitizeUrl(img.url)
+					: '';
+				var $card = $(window.AIPS.Templates.render('aips-tmpl-ai-edit-post-image-card', {
+					id: img.id,
+					imageIndex: img.image_index,
+					url: safeUrl,
+					statusClass: img.status === 'failed' ? 'error' : 'success',
+					statusText: statusLabels[img.status] || img.status || '',
+					errorMessage: img.error_message || ''
+				}));
+
+				if (!safeUrl) {
+					$card.find('img').remove();
+				} else {
+					$card.find('.aips-ai-edit-post-image-placeholder').remove();
+				}
+				if (!img.error_message) {
+					$card.find('.aips-ai-edit-post-image-error').remove();
+				}
+
+				$grid.append($card);
+			});
+		},
+
+		/**
 		 * Show component status message
 		 */
 		showComponentStatus: function(component, type, message) {
-			var $section = $('[data-component="' + component + '"]').closest('.aips-component-section');
-			var $status = $section.find('.aips-component-status');
+			var $section = $('.aips-component-section[data-component="' + component + '"]');
+			if (!$section.length) {
+				$section = $('[data-component="' + component + '"]').closest('.aips-component-section');
+			}
+			var $status = $section.find('.aips-component-status').first();
 			
 			$status.removeClass('success error')
 				.addClass(type)
@@ -864,6 +1178,7 @@
 			aiEditState.currentSources = {};
 			aiEditState.nonManualSnapshots = {};
 			aiEditState.pendingRegenerations = {};
+			aiEditState.acceptedPostImageMarkup = {};
 			aiEditState.activeTab = 'overview';
 			
 			// Clear all inputs
@@ -1039,7 +1354,7 @@
 			// Value preview
 			var $value = $('<div class="aips-revision-value aips-revision-value-' + componentType + '"></div>');
 			
-			if (componentType === 'featured_image') {
+			if (componentType === 'featured_image' || String(componentType).indexOf('post_image_') === 0) {
 				if (revision.value && revision.value.url) {
 					var sanitizedImageUrl = window.AIPS.Utilities.sanitizeUrl(revision.value.url);
 					
@@ -1097,6 +1412,7 @@
 					post_id: aiEditState.postId,
 					revision_id: revisionId,
 					component: componentType,
+					current_content: String(componentType).indexOf('post_image_') === 0 ? $('#aips-component-content').val() : '',
 					current_value: window.AIPS.shouldCaptureManualRevision(componentType) ? window.AIPS.getAIEditCurrentComponentValue(componentType) : '',
 					current_source: window.AIPS.shouldCaptureManualRevision(componentType) ? 'manual_edit' : '',
 					current_reason: window.AIPS.shouldCaptureManualRevision(componentType) ? 'pre_restore_manual' : ''

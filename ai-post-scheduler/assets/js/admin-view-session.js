@@ -195,14 +195,23 @@
 	 */
 	function renderAICalls(ai_calls, componentRevisions) {
 		var aiHtml = '';
-		var componentOrder = ['title', 'slug', 'excerpt', 'content', 'featured_image'];
+		var componentOrder = ['title', 'slug', 'excerpt', 'content', 'featured_image', 'post_images'];
 		var componentLabels = {
 			title: 'Title',
 			slug: 'Post Slug',
 			excerpt: 'Excerpt',
 			content: 'Content',
-			featured_image: 'Featured Image'
+			featured_image: 'Featured Image',
+			post_images: 'Post Images'
 		};
+		Object.keys(componentRevisions || {}).forEach(function(key) {
+			if (key.indexOf('post_image_') === 0 && componentOrder.indexOf(key) === -1) {
+				componentOrder.push(key);
+				var sample = componentRevisions[key] && componentRevisions[key][0];
+				var index = sample && sample.value && sample.value.image_index ? sample.value.image_index : key.replace('post_image_', '');
+				componentLabels[key] = 'Post Image #' + index;
+			}
+		});
 		var callMap = {};
 		
 		if (Array.isArray(ai_calls)) {
@@ -254,7 +263,7 @@
 					var $item = $('<div class="aips-ai-revision-item"></div>');
 					$item.append($('<div class="aips-ai-revision-meta"></div>').text(revision.timestamp || ''));
 					
-					if (componentType === 'featured_image' && revision.value && revision.value.url) {
+					if ((componentType === 'featured_image' || String(componentType).indexOf('post_image_') === 0) && revision.value && revision.value.url) {
 						$item.append(
 							$('<div class="aips-ai-revision-value"></div>').append(
 								$('<img class="aips-ai-revision-image" />').attr('src', revision.value.url).attr('alt', 'Revision')

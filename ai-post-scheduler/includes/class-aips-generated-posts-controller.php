@@ -241,6 +241,7 @@ class AIPS_Generated_Posts_Controller {
 			'post_excerpt' => __('Excerpt', 'ai-post-scheduler'),
 			'post_content' => __('Content', 'ai-post-scheduler'),
 			'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+			'post_images' => __('Post Images', 'ai-post-scheduler'),
 		);
 
 		$decoded = json_decode((string) $component_statuses_json, true);
@@ -364,10 +365,14 @@ class AIPS_Generated_Posts_Controller {
 		// Collect regenerations / revisions per component
 		$component_revisions = array();
 		if ($history_item->post_id) {
-			$components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
+			$components = array('title', 'slug', 'excerpt', 'content', 'featured_image', 'post_images');
+			$post_id = absint($history_item->post_id);
+			foreach ((new AIPS_Post_Images_Generated_Repository())->get_for_post_history($post_id, (int) $history_item->id) as $image_row) {
+				$components[] = 'post_image_' . (int) $image_row->id;
+			}
 			foreach ($components as $component) {
 				$component_revisions[$component] = $this->history_repository->get_component_revisions(
-					absint($history_item->post_id),
+					$post_id,
 					$component,
 					20
 				);

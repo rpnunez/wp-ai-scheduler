@@ -236,6 +236,9 @@ class AIPS_Post_Cleanup_Service {
 			$summary['topic_logs'] = (int) $this->author_topic_logs_repository->disassociate_post_id($post_id);
 		}
 
+		// 7. Drop generated post-image rows. Media attachments stay in the library.
+		$summary['post_images'] = (new AIPS_Post_Images_Generated_Repository())->delete_by_post_id($post_id) ? 1 : 0;
+
 		if ($this->logger) {
 			$this->logger->log(
 				sprintf(

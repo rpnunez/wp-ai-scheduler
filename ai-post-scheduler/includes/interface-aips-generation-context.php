@@ -103,6 +103,20 @@ interface AIPS_Generation_Context {
 	public function get_media_library_ids();
 
 	/**
+	 * Check if post content images are configured for this generation.
+	 *
+	 * @return bool True if there is at least one content image configured.
+	 */
+	public function has_content_images();
+
+	/**
+	 * Get configured post content images.
+	 *
+	 * @return array Array of image configuration objects/arrays.
+	 */
+	public function get_content_images();
+
+	/**
 	 * Get the post status for the generated post.
 	 *
 	 * @return string Post status ('draft', 'publish', etc.).

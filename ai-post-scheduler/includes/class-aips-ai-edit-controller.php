@@ -157,6 +157,26 @@ class AIPS_AI_Edit_Controller {
 					'attachment_id' => $featured_image_id,
 					'url' => $featured_image_url,
 				),
+				'post_images' => (function() use ($post_id, $history_id) {
+					$repo = new AIPS_Post_Images_Generated_Repository();
+					$rows = $repo->get_for_post_history($post_id, $history_id);
+					$list = array();
+					foreach ($rows as $position => $r) {
+						$list[] = array(
+							'id'            => (int) $r->id,
+							'image_index'   => $position + 1,
+							'stored_index'  => (int) $r->image_index,
+							'attachment_id' => (int) $r->attachment_id,
+							'url'           => !empty($r->image_url) ? $r->image_url : ($r->attachment_id ? wp_get_attachment_url($r->attachment_id) : ''),
+							'source'        => $r->image_source,
+							'image_prompt'  => $r->image_prompt,
+							'placement'     => $r->placement,
+							'status'        => $r->status,
+							'error_message' => $r->error_message,
+						);
+					}
+					return $list;
+				})(),
 			),
 		);
 		
@@ -188,9 +208,7 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
-		// Validate component type
-		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
-		if (!in_array($component, $valid_components)) {
+		if (!AIPS_Component_Regeneration_Service::is_ai_edit_component($component)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
@@ -274,6 +292,15 @@ class AIPS_AI_Edit_Controller {
 			case 'featured_image':
 				$result = $this->service->regenerate_featured_image($context);
 				break;
+			default:
+				$image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
+				if ('post_images' === $component || $image_id > 0) {
+					if (isset($_POST['current_content'])) {
+						$context['current_content'] = wp_kses_post(wp_unslash($_POST['current_content']));
+					}
+					$result = $this->service->regenerate_post_images($context, $image_id > 0 ? $image_id : 'all');
+				}
+				break;
 		}
 		
 		if (is_wp_error($result)) {
@@ -335,6 +362,9 @@ class AIPS_AI_Edit_Controller {
 		$context['current_title'] = $post->post_title;
 		$context['current_excerpt'] = $post->post_excerpt;
 		$context['current_content'] = $post->post_content;
+		if (isset($_POST['current_content'])) {
+			$context['current_content'] = wp_kses_post(wp_unslash($_POST['current_content']));
+		}
 
 		$current_snapshots = array();
 		if (isset($_POST['current_snapshots']) && is_array($_POST['current_snapshots'])) {
@@ -447,7 +477,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		if (isset($components['slug'])) {
-			$post_data['post_name'] = sanitize_title(wp_unslash($components['slug']));
+			$post_data['post_name'] = $this->sanitize_post_slug(wp_unslash($components['slug']));
 			$updated_components[] = 'slug';
 		}
 
@@ -498,6 +528,10 @@ class AIPS_AI_Edit_Controller {
 			$sanitized_components['featured_image_id'] = absint($components['featured_image_id']);
 		}
 
+		if (isset($components['content'])) {
+			$this->sync_post_images_with_content($post_id);
+		}
+
 		do_action('aips_post_components_updated', $post_id, $updated_components, $sanitized_components);
 		$this->reconcile_partial_generation_state($post_id);
 		
@@ -533,9 +567,7 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
-		// Validate component type
-		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
-		if (!in_array($component, $valid_components)) {
+		if (!AIPS_Component_Regeneration_Service::is_ai_edit_component($component)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
@@ -581,9 +613,7 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
-		// Validate component type
-		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
-		if (!in_array($component, $valid_components)) {
+		if (!AIPS_Component_Regeneration_Service::is_ai_edit_component($component)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
@@ -623,76 +653,99 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('Revision not found.', 'ai-post-scheduler'));
 		}
 		
-		// Restore the value to the post
+		// Restore the value to the post. A single post image is staged into the
+		// editor content and persisted on Save, matching regeneration.
 		$post_data = array('ID' => $post_id);
 		$restored_value = $revision_to_restore['value'];
+		$post_image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
 
-		switch ($component) {
-			case 'title':
-				$post_data['post_title'] = sanitize_text_field($restored_value);
-				break;
-			case 'slug':
-				$post_data['post_name'] = sanitize_title($restored_value);
-				break;
-			case 'excerpt':
-				$post_data['post_excerpt'] = sanitize_textarea_field($restored_value);
-				break;
-			case 'content':
-				$post_data['post_content'] = wp_kses_post($restored_value);
-				break;
-			case 'featured_image':
-				$restored_featured_image = $this->normalize_featured_image_revision_value($restored_value);
-				if (is_wp_error($restored_featured_image)) {
-					AIPS_Ajax_Response::error(__('Invalid featured image revision data.', 'ai-post-scheduler'));
-				}
-
-				$attachment_id = $restored_featured_image['attachment_id'];
-				if ($attachment_id > 0) {
-					$thumbnail_result = set_post_thumbnail($post_id, $attachment_id);
-					if (false === $thumbnail_result) {
-						AIPS_Ajax_Response::error(__('Failed to restore featured image revision.', 'ai-post-scheduler'));
-					}
-				} else {
-					delete_post_thumbnail($post_id);
-				}
-
-				$restored_value = $restored_featured_image;
-				break;
-		}
-		
-		// Update post (unless it's featured image which was already set)
-		if ($component !== 'featured_image') {
-			$result = wp_update_post(wp_slash($post_data), true);
-			
-			if (is_wp_error($result)) {
-				$this->log_wp_error($result, __METHOD__);
-				AIPS_Ajax_Response::error(__('An error occurred while restoring component revision.', 'ai-post-scheduler'));
+		if ($post_image_id > 0) {
+			$content = isset($_POST['current_content'])
+				? wp_kses_post(wp_unslash($_POST['current_content']))
+				: (string) get_post_field('post_content', $post_id);
+			$applied = $this->service->apply_restored_post_image(
+				$post_id,
+				$post_image_id,
+				$restored_value,
+				$content,
+				isset($_POST['history_id']) ? absint($_POST['history_id']) : 0
+			);
+			if (is_wp_error($applied)) {
+				$this->log_wp_error($applied, __METHOD__);
+				AIPS_Ajax_Response::error(__('Failed to restore post image revision.', 'ai-post-scheduler'));
 			}
-		}
+			$restored_value = $applied;
+		} else {
+			switch ($component) {
+				case 'title':
+					$post_data['post_title'] = sanitize_text_field($restored_value);
+					break;
+				case 'slug':
+					$post_data['post_name'] = $this->sanitize_post_slug($restored_value);
+					break;
+				case 'excerpt':
+					$post_data['post_excerpt'] = sanitize_textarea_field($restored_value);
+					break;
+				case 'content':
+					$post_data['post_content'] = wp_kses_post($restored_value);
+					break;
+				case 'featured_image':
+					$restored_featured_image = $this->normalize_featured_image_revision_value($restored_value);
+					if (is_wp_error($restored_featured_image)) {
+						AIPS_Ajax_Response::error(__('Invalid featured image revision data.', 'ai-post-scheduler'));
+					}
 
-		$sanitized_components = array();
-		switch ($component) {
-			case 'title':
-				$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
-				break;
-			case 'slug':
-				$sanitized_components['slug'] = sanitize_title((string) $restored_value);
-				break;
-			case 'excerpt':
-				$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
-				break;
-			case 'content':
-				$sanitized_components['content'] = wp_kses_post((string) $restored_value);
-				break;
-			case 'featured_image':
-				$sanitized_components['featured_image_id'] = is_array($restored_value) && isset($restored_value['attachment_id'])
-					? absint($restored_value['attachment_id'])
-					: 0;
-				break;
-		}
+					$attachment_id = $restored_featured_image['attachment_id'];
+					if ($attachment_id > 0) {
+						$thumbnail_result = set_post_thumbnail($post_id, $attachment_id);
+						if (false === $thumbnail_result) {
+							AIPS_Ajax_Response::error(__('Failed to restore featured image revision.', 'ai-post-scheduler'));
+						}
+					} else {
+						delete_post_thumbnail($post_id);
+					}
 
-		do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
-		$this->reconcile_partial_generation_state($post_id);
+					$restored_value = $restored_featured_image;
+					break;
+			}
+
+			if ($component !== 'featured_image') {
+				$result = wp_update_post(wp_slash($post_data), true);
+
+				if (is_wp_error($result)) {
+					$this->log_wp_error($result, __METHOD__);
+					AIPS_Ajax_Response::error(__('An error occurred while restoring component revision.', 'ai-post-scheduler'));
+				}
+			}
+
+			$sanitized_components = array();
+			switch ($component) {
+				case 'title':
+					$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
+					break;
+				case 'slug':
+					$sanitized_components['slug'] = $this->sanitize_post_slug($restored_value);
+					break;
+				case 'excerpt':
+					$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
+					break;
+				case 'content':
+					$sanitized_components['content'] = wp_kses_post((string) $restored_value);
+					break;
+				case 'featured_image':
+					$sanitized_components['featured_image_id'] = is_array($restored_value) && isset($restored_value['attachment_id'])
+						? absint($restored_value['attachment_id'])
+						: 0;
+					break;
+			}
+
+			if ('content' === $component) {
+				$this->sync_post_images_with_content($post_id);
+			}
+
+			do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
+			$this->reconcile_partial_generation_state($post_id);
+		}
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),
@@ -713,6 +766,22 @@ class AIPS_AI_Edit_Controller {
 	 * @param string   $method The calling method name; pass __METHOD__ from the caller.
 	 * @return void
 	 */
+	/**
+	 * Turn a requested slug into a post name without keeping script contents.
+	 *
+	 * @param mixed $slug Raw slug.
+	 * @return string
+	 */
+	private function sanitize_post_slug($slug) {
+		$slug = (string) $slug;
+		$stripped = preg_replace('@<(script|style)\b[^>]*>.*?</\1>@si', '', $slug);
+		if (is_string($stripped)) {
+			$slug = $stripped;
+		}
+
+		return sanitize_title(wp_strip_all_tags($slug));
+	}
+
 	private function log_wp_error( WP_Error $error, $method = '' ) {
 		$context = $method ? '[' . $method . '] ' : '';
 		AIPS_Logger::instance()->error( 'AIPS AI Edit Controller Error ' . $context . '(' . $error->get_error_code() . '): ' . $error->get_error_message() );
@@ -731,7 +800,7 @@ class AIPS_AI_Edit_Controller {
 				return sanitize_text_field((string) $value);
 
 			case 'slug':
-				return sanitize_title((string) $value);
+				return $this->sanitize_post_slug($value);
 
 			case 'excerpt':
 				return sanitize_textarea_field((string) $value);
@@ -740,21 +809,39 @@ class AIPS_AI_Edit_Controller {
 				return wp_kses_post((string) $value);
 
 			case 'featured_image':
-				if (!is_array($value)) {
-					return array(
-						'attachment_id' => 0,
-						'url' => '',
-					);
-				}
-
-				return array(
-					'attachment_id' => isset($value['attachment_id']) ? absint($value['attachment_id']) : 0,
-					'url' => isset($value['url']) ? esc_url_raw($value['url']) : '',
-				);
+				return $this->sanitize_image_revision_value($value);
 
 			default:
+				if (AIPS_Component_Regeneration_Service::post_image_id_from_component($component) > 0) {
+					$image = $this->sanitize_image_revision_value($value);
+					$image['id'] = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
+					if (is_array($value) && isset($value['image_index'])) {
+						$image['image_index'] = absint($value['image_index']);
+					}
+					return $image;
+				}
 				return '';
 		}
+	}
+
+	/**
+	 * Normalize an image revision payload to attachment id and URL.
+	 *
+	 * @param mixed $value Raw revision value.
+	 * @return array
+	 */
+	private function sanitize_image_revision_value($value) {
+		if (!is_array($value)) {
+			return array(
+				'attachment_id' => 0,
+				'url' => '',
+			);
+		}
+
+		return array(
+			'attachment_id' => isset($value['attachment_id']) ? absint($value['attachment_id']) : 0,
+			'url' => isset($value['url']) ? esc_url_raw($value['url']) : '',
+		);
 	}
 
 	/**
@@ -800,6 +887,19 @@ class AIPS_AI_Edit_Controller {
 	}
 
 	/**
+	 * Bring generated image rows in line with the post's stored content.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private function sync_post_images_with_content($post_id) {
+		(new AIPS_Post_Images_Service())->sync_generated_rows_from_content(
+			$post_id,
+			(string) get_post_field('post_content', $post_id)
+		);
+	}
+
+	/**
 	 * Retrieve current component value from the post object.
 	 *
 	 * @param WP_Post $post Post object.
@@ -827,8 +927,40 @@ class AIPS_AI_Edit_Controller {
 					'url'           => $attachment_id ? (string) wp_get_attachment_url($attachment_id) : '',
 				);
 			default:
+				$image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
+				if ($image_id > 0 && isset($post->ID)) {
+					return $this->get_generated_post_image_value((int) $post->ID, $image_id);
+				}
 				return '';
 		}
+	}
+
+	/**
+	 * Current generated post-image payload for revision snapshots.
+	 *
+	 * @param int $post_id  Post ID.
+	 * @param int $image_id Generated image row ID.
+	 * @return array
+	 */
+	private function get_generated_post_image_value($post_id, $image_id) {
+		$row = (new AIPS_Post_Images_Generated_Repository())->get_by_id($image_id);
+		if (!$row || (int) $row->post_id !== (int) $post_id) {
+			return array(
+				'id' => $image_id,
+				'attachment_id' => 0,
+				'url' => '',
+			);
+		}
+
+		$attachment_id = (int) $row->attachment_id;
+		$url = !empty($row->image_url) ? (string) $row->image_url : ($attachment_id ? (string) wp_get_attachment_url($attachment_id) : '');
+
+		return array(
+			'id' => (int) $row->id,
+			'image_index' => (int) $row->image_index,
+			'attachment_id' => $attachment_id,
+			'url' => $url,
+		);
 	}
 
 	/**
@@ -839,7 +971,7 @@ class AIPS_AI_Edit_Controller {
 	 * @return bool
 	 */
 	private function is_component_value_empty($component, $value) {
-		if ('featured_image' === $component) {
+		if ('featured_image' === $component || AIPS_Component_Regeneration_Service::post_image_id_from_component($component) > 0) {
 			if (is_array($value)) {
 				return empty($value['attachment_id']) && empty($value['url']);
 			}
@@ -883,7 +1015,7 @@ class AIPS_AI_Edit_Controller {
 	 * @return string
 	 */
 	private function normalize_revision_comparison_value($component, $value) {
-		if ('featured_image' === $component) {
+		if ('featured_image' === $component || AIPS_Component_Regeneration_Service::post_image_id_from_component($component) > 0) {
 			if (is_array($value)) {
 				return (string) (isset($value['attachment_id']) ? absint($value['attachment_id']) : 0);
 			}

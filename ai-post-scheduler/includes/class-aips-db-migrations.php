@@ -273,12 +273,10 @@ class AIPS_DB_Migrations {
 
 		// migrate_to_3_7_22() consolidates redundant indexes, strips cached
 		// embeddings, clears the embeddings cache group, and deletes orphaned
-		// history_log rows. 3.7.21 is the author featured-image columns
-		// migration (a separate change), so this is the next patch: a site
-		// already stamped 3.7.21 still runs it, and it stays below the
-		// 3.8.0/3.8.1 campaign migrations. It reads the schema install_tables()
-		// has just normalised, so it runs after the Layer-1 apply. A false
-		// return leaves the version unstamped so the next request retries.
+		// history_log rows. It stays below the slug migration and the post-image
+		// migration. It reads the schema install_tables() has just normalised,
+		// so it runs after the Layer-1 apply. A false return leaves the version
+		// unstamped so the next request retries.
 		if ( version_compare( $from_version, '3.7.22', '<' ) && ! $this->migrate_to_3_7_22() ) {
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
 			$this->logger->log( 'Index consolidation migration failed; database upgrade will retry.', 'error' );
@@ -292,6 +290,17 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.23', '<' ) && ! $this->migrate_to_3_7_23() ) {
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
 			$this->logger->log( 'Slug settings migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
+		// migrate_to_3_7_24() adds the author featured-image columns and confirms
+		// the post-image tables. It is gated above 3.7.23 so a site already
+		// stamped 3.7.22 (main) or 3.7.23 (slug) still receives this schema. A
+		// gate below 3.7.21 would never run on those sites. The ALTERs are
+		// idempotent when dbDelta has already applied the schema.
+		if ( version_compare( $from_version, '3.7.24', '<' ) && ! $this->migrate_to_3_7_24() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Post images migration failed; database upgrade will retry.', 'error' );
 			return;
 		}
 
@@ -1907,13 +1916,77 @@ class AIPS_DB_Migrations {
 		return true;
 	}
 
+
+	/**
+	 * Migration for version 3.7.24.
+	 *
+	 * Adds the author featured-image columns (image_prompt,
+	 * featured_image_unsplash_keywords, featured_image_media_ids) and confirms
+	 * the post-image tables created by install_tables(). Numbered after 3.7.23
+	 * because that gate belongs to slug settings. Idempotent: each column and
+	 * table is checked with SHOW COLUMNS / SHOW TABLES before any ALTER.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_24() {
+		global $wpdb;
+
+		$authors_table = $wpdb->prefix . 'aips_authors';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $authors_table ) ) !== $authors_table ) {
+			return false;
+		}
+
+		$author_columns = array(
+			'image_prompt'                     => 'text DEFAULT NULL',
+			'featured_image_unsplash_keywords' => 'text DEFAULT NULL',
+			'featured_image_media_ids'         => 'text DEFAULT NULL',
+		);
+		foreach ( $author_columns as $column => $definition ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN `{$column}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+				return false;
+			}
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return false;
+			}
+		}
+
+		$required_tables = array(
+			$wpdb->prefix . 'aips_post_images',
+			$wpdb->prefix . 'aips_post_images_generated',
+		);
+		foreach ( $required_tables as $table ) {
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) !== $table ) {
+				return false;
+			}
+		}
+
+		$post_images = $wpdb->prefix . 'aips_post_images';
+		$generated   = $wpdb->prefix . 'aips_post_images_generated';
+		$required_columns = array(
+			$post_images => array( 'entity_type', 'entity_id', 'image_order', 'source', 'placement' ),
+			$generated   => array( 'post_id', 'history_id', 'config_image_id', 'image_index', 'attachment_id', 'status' ),
+		);
+		foreach ( $required_columns as $table => $columns ) {
+			foreach ( $columns as $column ) {
+				if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					return false;
+				}
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.24: Added author featured-image columns and confirmed post-image tables.', 'info' );
+
+		return true;
+	}
+
 	/**
 	 * Migration for version 3.7.22.
 	 *
-	 * Ordered after 3.7.21 (author featured-image columns, owned by a
-	 * different change) and before the 3.8.0/3.8.1 campaign migrations.
-	 * A site already stamped 3.7.21 still runs this gate, and a later
-	 * upgrade through 3.8.x still runs those campaign migrations.
+	 * Index consolidation that already shipped on main. Author featured-image
+	 * columns and the post-image tables are 3.7.24, above the 3.7.23 slug
+	 * migration, so a site stamped 3.7.22 or 3.7.23 still receives them. A
+	 * site already stamped 3.7.21 still runs this gate.
 	 *
 	 * Three storage/efficiency fixes surfaced by a production DB audit:
 	 *   1. Consolidates redundant single-column indexes that are left-prefixes of

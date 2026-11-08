@@ -498,6 +498,7 @@ class AIPS_History {
                 'post_slug'      => __('slug', 'ai-post-scheduler'),
                 'post_excerpt'   => __('excerpt', 'ai-post-scheduler'),
                 'featured_image' => __('featured image', 'ai-post-scheduler'),
+                'post_images'    => __('post images', 'ai-post-scheduler'),
                 'post_content'   => __('content', 'ai-post-scheduler'),
             );
             foreach ($component_statuses as $component => $ok) {
@@ -620,6 +621,7 @@ class AIPS_History {
             'slug' => __('Post Slug', 'ai-post-scheduler'),
             'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+            'post_images' => __('Post Images', 'ai-post-scheduler'),
             'metadata' => __('Metadata', 'ai-post-scheduler'),
             'ai_request' => __('AI Request', 'ai-post-scheduler'),
             'ai_response' => __('AI Response', 'ai-post-scheduler'),
@@ -1713,6 +1715,7 @@ class AIPS_History {
             'post_slug' => __('Post Slug', 'ai-post-scheduler'),
             'slug' => __('Post Slug', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+            'post_images' => __('Post Images', 'ai-post-scheduler'),
             'image' => __('Featured Image', 'ai-post-scheduler'),
             'topic' => __('Topic', 'ai-post-scheduler'),
             'research' => __('Research', 'ai-post-scheduler'),

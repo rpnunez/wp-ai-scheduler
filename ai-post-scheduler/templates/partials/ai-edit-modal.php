@@ -68,6 +68,10 @@ $aips_ai_edit_modal_rendered = true;
 						<span><?php esc_html_e('Featured Image', 'ai-post-scheduler'); ?></span>
 						<span class="aips-tab-badge" data-badge="featured_image" style="display: none;"></span>
 					</button>
+					<button type="button" class="aips-ai-edit-tab" role="tab" aria-selected="false" data-tab="post_images">
+						<span><?php esc_html_e('Post Images', 'ai-post-scheduler'); ?></span>
+						<span class="aips-tab-badge" data-badge="post_images" style="display: none;"></span>
+					</button>
 				</nav>
 
 				<!-- Tab Panel: Overview & Context -->
@@ -117,6 +121,11 @@ $aips_ai_edit_modal_rendered = true;
 								<span class="aips-summary-card-title"><?php esc_html_e('Featured Image', 'ai-post-scheduler'); ?></span>
 								<span class="aips-summary-card-status" id="aips-summary-status-featured_image"><?php esc_html_e('Ready', 'ai-post-scheduler'); ?></span>
 								<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-nav-to-tab" data-target-tab="featured_image"><?php esc_html_e('View', 'ai-post-scheduler'); ?></button>
+							</div>
+							<div class="aips-ai-edit-summary-card" data-component-card="post_images">
+								<span class="aips-summary-card-title"><?php esc_html_e('Post Images', 'ai-post-scheduler'); ?></span>
+								<span class="aips-summary-card-status" id="aips-summary-status-post_images"><?php esc_html_e('Ready', 'ai-post-scheduler'); ?></span>
+								<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-nav-to-tab" data-target-tab="post_images"><?php esc_html_e('View', 'ai-post-scheduler'); ?></button>
 							</div>
 						</div>
 					</div>
@@ -475,6 +484,96 @@ $aips_ai_edit_modal_rendered = true;
 								</div>
 							</div>
 						</div>
+					</div>
+				</div>
+
+				<!-- Tab Panel: Post Images Component -->
+				<div class="aips-ai-edit-tab-panel" data-panel="post_images" role="tabpanel">
+					<div class="aips-component-section" data-component="post_images">
+						<div class="aips-component-header">
+							<div class="aips-component-header-left">
+								<h4 class="aips-component-title"><?php esc_html_e('Post Images', 'ai-post-scheduler'); ?></h4>
+								<span class="aips-component-status"></span>
+							</div>
+							<div class="aips-component-actions">
+								<button type="button" class="aips-regenerate-btn" data-component="post_images" data-image-id="all">
+									<span class="dashicons dashicons-update"></span>
+									<span class="button-text"><?php esc_html_e('Re-generate All Images', 'ai-post-scheduler'); ?></span>
+								</button>
+							</div>
+						</div>
+						<p class="description"><?php esc_html_e('Each content image is separate from the featured image. Accept a regeneration or restore a revision, then Save Changes to update the post.', 'ai-post-scheduler'); ?></p>
+						<div id="aips-ai-edit-post-images-grid" class="aips-ai-edit-post-images-grid"></div>
+						<div id="aips-component-post-images-none" class="aips-featured-image-none" style="display: none;">
+							<?php esc_html_e('No post content images generated for this post.', 'ai-post-scheduler'); ?>
+						</div>
+						<script type="text/html" id="aips-tmpl-ai-edit-post-image-card">
+							<div class="aips-component-section aips-ai-edit-post-image-item" data-component="post_image_{{id}}" data-image-id="{{id}}">
+								<div class="aips-component-header">
+									<div class="aips-component-header-left">
+										<h4 class="aips-component-title"><?php esc_html_e('Image', 'ai-post-scheduler'); ?> #{{imageIndex}}</h4>
+										<span class="aips-status-badge {{statusClass}}">{{statusText}}</span>
+										<span class="aips-component-status"></span>
+									</div>
+									<div class="aips-component-actions">
+										<button type="button" class="aips-regenerate-btn" data-component="post_image_{{id}}" data-image-id="{{id}}">
+											<span class="dashicons dashicons-update"></span>
+											<span class="button-text"><?php esc_html_e('Re-generate', 'ai-post-scheduler'); ?></span>
+										</button>
+									</div>
+								</div>
+								<div class="aips-diff-wrapper" data-component="post_image_{{id}}" style="display: none;">
+									<div class="aips-diff-header">
+										<span class="dashicons dashicons-randomize" aria-hidden="true"></span>
+										<strong><?php esc_html_e('Side-by-Side Comparison', 'ai-post-scheduler'); ?></strong>
+									</div>
+									<div class="aips-diff-grid">
+										<div class="aips-diff-col aips-diff-col-current">
+											<div class="aips-diff-col-header"><?php esc_html_e('Current Version', 'ai-post-scheduler'); ?></div>
+											<div class="aips-diff-col-body" id="aips-diff-current-post_image_{{id}}"></div>
+										</div>
+										<div class="aips-diff-col aips-diff-col-regenerated">
+											<div class="aips-diff-col-header"><?php esc_html_e('Newly Regenerated Draft', 'ai-post-scheduler'); ?></div>
+											<div class="aips-diff-col-body" id="aips-diff-regenerated-post_image_{{id}}"></div>
+										</div>
+									</div>
+									<div class="aips-diff-footer">
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-accept-diff-btn" data-component="post_image_{{id}}">
+											<span class="dashicons dashicons-yes"></span>
+											<?php esc_html_e('Accept & Replace', 'ai-post-scheduler'); ?>
+										</button>
+										<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-discard-diff-btn" data-component="post_image_{{id}}">
+											<span class="dashicons dashicons-no-alt"></span>
+											<?php esc_html_e('Discard', 'ai-post-scheduler'); ?>
+										</button>
+									</div>
+								</div>
+								<div class="aips-component-body">
+									<div class="aips-ai-edit-post-image-preview">
+										<img src="{{url}}" alt="" />
+										<span class="dashicons dashicons-format-image aips-ai-edit-post-image-placeholder"></span>
+									</div>
+									<p class="description aips-ai-edit-post-image-error">{{errorMessage}}</p>
+								</div>
+								<div class="aips-component-revisions-wrapper">
+									<button type="button" class="aips-view-revisions-btn" data-component="post_image_{{id}}">
+										<span class="dashicons dashicons-backup"></span>
+										<span class="button-text"><?php esc_html_e('View Revisions', 'ai-post-scheduler'); ?></span>
+										<span class="revision-count"></span>
+									</button>
+									<div class="aips-component-revisions" style="display: none;">
+										<div class="aips-revisions-loading">
+											<span class="spinner is-active"></span>
+											<span><?php esc_html_e('Loading revisions...', 'ai-post-scheduler'); ?></span>
+										</div>
+										<div class="aips-revisions-list"></div>
+										<div class="aips-revisions-empty" style="display: none;">
+											<?php esc_html_e('No previous revisions found for this image.', 'ai-post-scheduler'); ?>
+										</div>
+									</div>
+								</div>
+							</div>
+						</script>
 					</div>
 				</div>
 			</div>
