@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
+
 ### Technical Debt & Architecture (Phase 3 - #2265)
 - **Modularized History Architecture:**
   - Decomposed legacy 2,340-line `AIPS_History` class into single-responsibility layers:
@@ -135,6 +138,8 @@
   - Exposed cluster candidate truncation state and candidate metadata (`truncated`, `total_candidates`, `analyzed_candidates`, `max_candidates`) in `AIPS_Content_Indexer_Controller::ajax_get_post_clusters()` and `AIPS_Similarity_Evaluator::get_last_cluster_meta()`.
   - Replaced method-level static caches in `table_exists()` and `topics_table_exists()` with test-resettable class-level static cache and `reset_table_cache()`.
 ### Added
+- **AIPS_Secret_Encryption Test Suite:**
+  - Added unit test suite `Test_AIPS_Secret_Encryption` covering AES-256-CBC encryption, HMAC-SHA256 authenticated decryption, prefix handling, and resistance to tampering and malformed payloads.
 - **History `record_kind` Column:**
   - Every History row now stores what it is: `generation` (a run that produces or regenerates a post), `job` (content indexing, embeddings, bulk slices, source fetches and other background work) or `event` (lifecycle containers, topic-generation wrappers, review actions, notifications). Run lists, run statistics and the status sync filter on the stored kind instead of guessing from `creation_method` names, so a new container type can no longer leak into them: anything unclassified is an event.
   - The generator tags every run as a generation whatever its `creation_method`, and the bulk-generation summary container is a job, which separates it from the Planner's per-post runs that share its name. `AIPS_History_Record_Kind` classifies everything else; the `aips_generation_run_creation_methods` and `aips_history_job_creation_methods` filters extend it.

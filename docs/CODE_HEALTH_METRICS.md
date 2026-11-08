@@ -45,26 +45,26 @@ Controllers should focus strictly on request validation, capability/nonce verifi
 | Controller Class | Registered AJAX Endpoints | Primary Responsibility |
 |:---|:---:|:---|
 | `AIPS_History_Controller` | 8 | History reload, clear, bulk delete, modal, details, logs, retry, export |
-| `AIPS_Schedule_Controller` | 11 | Schedule saving, deletion, toggling, run-now, post counts, history |
-| `AIPS_Author_Topics_Controller` | 10 | Author topic approval, generation, suggestions, indexing |
+| `AIPS_Schedule_Controller` | 18 | Schedule saving, deletion, toggling, run-now, post counts, history |
+| `AIPS_Author_Topics_Controller` | 20 | Author topic approval, generation, suggestions, indexing |
 | `AIPS_Templates_Controller` | 6 | Template save, delete, clone, preview, batch configuration |
-| `AIPS_Generated_Posts_Controller` | 6 | Review, publish, reject, regenerate, status filtering |
-| `AIPS_AI_Edit_Controller` | 4 | AI revision viewer, suggestions, inline post editing |
+| `AIPS_Generated_Posts_Controller` | 3 | Generated post operations |
+| `AIPS_AI_Edit_Controller` | 7 | AI revision viewer, suggestions, inline post editing |
 
 ---
 
 ## 4. Request-Boundary Test Coverage
 
-Every AJAX endpoint registered in `AIPS_Ajax_Registry::$map` must be backed by a request-boundary test exercising nonce validation, capability checks (`manage_options`), input sanitization, and JSON response shape.
+The target is a request-boundary test for every AJAX endpoint in `AIPS_Ajax_Registry::$map`, exercising nonce validation, capability checks (`manage_options`), input sanitization, and JSON response shape. The suites below provide partial coverage; the endpoint-by-endpoint audit remains open.
 
-| Controller | Endpoints Tested | Suite | Pass Rate |
-|:---|:---:|:---|:---:|
-| `AIPS_History_Controller` | 8 / 8 | `tests/Test_AIPS_History_Controller.php` | 100% (21 tests, 85 assertions) |
-| `AIPS_Schedule_Controller` | 11 / 11 | `tests/Test_Schedule_Controller.php` | 100% |
-| `AIPS_Author_Topics_Controller` | 10 / 10 | `tests/Test_Author_Topics_Controller.php` | 100% |
-| `AIPS_Templates_Controller` | 6 / 6 | `tests/Test_Templates_Controller.php` | 100% |
-| `AIPS_Post_Review` | 8 / 8 | `tests/Test_Post_Review_Ajax.php` | 100% |
-| `AIPS_Settings_Ajax` | 2 / 2 | `tests/Test_Settings_Ajax.php` | 100% |
+| Controller | Registry actions | Suite | Status |
+|:---|:---:|:---|:---|
+| `AIPS_History_Controller` | 8 | `tests/Test_AIPS_History_Controller.php` | Endpoint tests added; current run pending |
+| `AIPS_Schedule_Controller` | 18 | `tests/Test_Schedule_Controller.php` | Coverage audit pending |
+| `AIPS_Author_Topics_Controller` | 20 | `tests/Test_Author_Topics_Controller.php` | Coverage audit pending |
+| `AIPS_Templates_Controller` | 6 | `tests/Test_Templates_Controller.php` | Coverage audit pending |
+| `AIPS_Post_Review` | 8 | `tests/Test_Post_Review_Ajax.php` | Coverage audit pending |
+| `AIPS_Settings_Ajax` | 2 | `tests/Test_Settings_Ajax.php` | Coverage audit pending |
 
 ---
 
@@ -72,5 +72,5 @@ Every AJAX endpoint registered in `AIPS_Ajax_Registry::$map` must be backed by a
 
 The test suite includes `Test_AIPS_Code_Health_Metrics.php` which executes during every CI and local test run to prevent code health regressions:
 1. `test_zero_direct_history_instantiations_in_includes`: Ensures no file under `includes/` invokes `new AIPS_History_Repository()` or `new AIPS_History_Service()`.
-2. `test_ajax_registry_controller_parity`: Ensures every entry in `AIPS_Ajax_Registry::$map` references a valid controller class implementing the corresponding `ajax_*` method.
+2. `test_ajax_registry_controller_parity`: Checks the eight History actions against the registry and controller methods. Full registry parity remains an open task.
 3. `test_modular_history_size`: Enforces that `class-aips-history.php` remains under 500 lines (down from 2,340 lines).
