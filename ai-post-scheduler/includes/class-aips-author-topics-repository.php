@@ -337,11 +337,12 @@ class AIPS_Author_Topics_Repository {
 	 * Used by automated decisions so a human review made in the meantime is
 	 * never overwritten.
 	 *
-	 * @param int   $id   Topic ID.
-	 * @param array $data Columns to update.
+	 * @param int      $id        Topic ID.
+	 * @param array    $data      Columns to update.
+	 * @param int|null $author_id Optional known author ID; skips a lookup during cache invalidation.
 	 * @return int|false Rows updated (0 when the topic is no longer pending), or false on error.
 	 */
-	public function update_if_pending($id, $data) {
+	public function update_if_pending($id, $data, $author_id = null) {
 		$result = $this->wpdb->update(
 			$this->table_name,
 			$data,
@@ -351,7 +352,7 @@ class AIPS_Author_Topics_Repository {
 		);
 
 		if ($result) {
-			$this->invalidate_author_topic_cache_by_id($id, 'author_topic_updated', null);
+			$this->invalidate_author_topic_cache_by_id($id, 'author_topic_updated', $author_id);
 		}
 
 		return $result;

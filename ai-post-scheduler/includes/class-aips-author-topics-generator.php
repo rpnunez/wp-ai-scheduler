@@ -310,6 +310,27 @@ class AIPS_Author_Topics_Generator {
 	}
 
 	/**
+	 * Whether a pending topic should get another auto-approval pass.
+	 *
+	 * True when no auto rule has judged it yet, or when its niche relevance
+	 * could not be measured (embeddings outage). Topics already judged by a
+	 * rule (e.g. score below threshold) are left for human review.
+	 *
+	 * @param string|array|null $metadata Topic metadata (JSON string or decoded array).
+	 * @return bool
+	 */
+	public static function is_approval_recheck_candidate($metadata): bool {
+		$meta = is_string($metadata) && '' !== $metadata ? json_decode($metadata, true) : $metadata;
+		$meta = is_array($meta) ? $meta : array();
+
+		if (empty($meta['auto_approval_rule'])) {
+			return true;
+		}
+
+		return isset($meta['auto_approval_reason']) && 'relevance_unavailable' === $meta['auto_approval_reason'];
+	}
+
+	/**
 	 * Re-run auto-approval on an author's pending topics that never got a decision.
 	 *
 	 * Auto-approval normally runs once, when topics are created. Topics skipped
@@ -358,13 +379,7 @@ class AIPS_Author_Topics_Generator {
 		$candidates        = array();
 		$original_metadata = array();
 		foreach ($rows as $row) {
-			$meta = !empty($row->metadata) ? json_decode($row->metadata, true) : array();
-			$meta = is_array($meta) ? $meta : array();
-
-			$never_evaluated = empty($meta['auto_approval_rule']);
-			$unmeasured      = isset($meta['auto_approval_reason']) && 'relevance_unavailable' === $meta['auto_approval_reason'];
-
-			if ($never_evaluated || $unmeasured) {
+			if (self::is_approval_recheck_candidate($row->metadata)) {
 				$candidates[] = (array) $row;
 				$original_metadata[(int) $row->id] = (string) $row->metadata;
 			}
@@ -403,7 +418,6 @@ class AIPS_Author_Topics_Generator {
 				continue;
 			}
 
-			$counts['checked']++;
 			$update = array('metadata' => $topic['metadata']);
 
 			if (in_array($status, array('approved', 'rejected'), true)) {
@@ -413,9 +427,11 @@ class AIPS_Author_Topics_Generator {
 			}
 
 			// Only while still pending: never overwrite a review made since the read.
-			if (!$this->topics_repository->update_if_pending($topic_id, $update)) {
+			if (!$this->topics_repository->update_if_pending($topic_id, $update, (int) $author->id)) {
 				continue;
 			}
+
+			$counts['checked']++;
 
 			if (!isset($update['status'])) {
 				continue;

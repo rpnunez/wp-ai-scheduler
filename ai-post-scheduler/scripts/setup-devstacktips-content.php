@@ -81,6 +81,11 @@ class AIPS_DevStackTips_Setup {
 	private const TOPIC_RECHECK_LIMIT = 200;
 
 	/**
+	 * Minimum topic score the v2 authors auto-approve at.
+	 */
+	private const V2_AUTHOR_MIN_SCORE = 85;
+
+	/**
 	 * Distribution configuration used by the seed data (campaign and author shares).
 	 */
 	private const DISTRIBUTION_CONFIG = array(
@@ -1360,7 +1365,7 @@ class AIPS_DevStackTips_Setup {
 
 			if (!empty($config['v2_author'])) {
 				$desired['topic_auto_approval_mode'] = 'score';
-				$desired['topic_auto_approval_min_score'] = 85;
+				$desired['topic_auto_approval_min_score'] = self::V2_AUTHOR_MIN_SCORE;
 				$desired['topic_auto_approval_fallback'] = 'pending';
 				$desired['topic_generation_quantity'] = 8;
 				$desired['scheduled_post_generation_quantity'] = 1;
@@ -1453,7 +1458,10 @@ class AIPS_DevStackTips_Setup {
 				$this->write_backup();
 			}
 
-			$repo->sync_for_entity('template', $id, $desired, 'content');
+			$kept = (array) $repo->sync_for_entity('template', $id, $desired, 'content');
+			if (count($kept) !== count($desired)) {
+				$this->error("Failed to save in-content images for template {$name} (" . count($kept) . ' of ' . count($desired) . ' saved)');
+			}
 		}
 	}
 
@@ -1518,18 +1526,28 @@ class AIPS_DevStackTips_Setup {
 			if (!$this->is_apply()) {
 				$eligible = 0;
 				$qualifying = 0;
-				foreach ($topics_repo->get_pending_for_approval_recheck($author_id, 500) as $row) {
-					$meta = !empty($row->metadata) ? json_decode($row->metadata, true) : array();
-					$meta = is_array($meta) ? $meta : array();
-					if (!empty($meta['auto_approval_rule']) && (!isset($meta['auto_approval_reason']) || 'relevance_unavailable' !== $meta['auto_approval_reason'])) {
+				// Same window and rule as recheck_pending_auto_approval() on apply.
+				$rows = $topics_repo->get_pending_for_approval_recheck($author_id, min(500, self::TOPIC_RECHECK_LIMIT * 5));
+				foreach ($rows as $row) {
+					if (!AIPS_Author_Topics_Generator::is_approval_recheck_candidate($row->metadata)) {
 						continue;
 					}
 					$eligible++;
-					if ((int) $row->score >= 85) {
+					if ((int) $row->score >= self::V2_AUTHOR_MIN_SCORE) {
 						$qualifying++;
 					}
+					if ($eligible >= self::TOPIC_RECHECK_LIMIT) {
+						break;
+					}
 				}
-				$this->line("[PLAN] Author {$name}: {$eligible} pending topic(s) eligible for re-check, about {$qualifying} at score 85 or above would be approved");
+				$this->line(sprintf(
+					'[PLAN] Author %s: %d pending topic(s) would be re-checked (limit %d), about %d at score %d or above would be approved',
+					$name,
+					$eligible,
+					self::TOPIC_RECHECK_LIMIT,
+					$qualifying,
+					self::V2_AUTHOR_MIN_SCORE
+				));
 				continue;
 			}
 
@@ -1582,8 +1600,10 @@ class AIPS_DevStackTips_Setup {
 			foreach ((array) $rows as $id => $fields) {
 				$data = array();
 				foreach ((array) $fields as $field => $old) {
-					// Repository update() skips null values; 0/'' clear the column instead.
-					if (null === $old) {
+					// Template and schedule update() skip null values, so 0/'' clear the
+					// column there. The authors repository writes values as given, so
+					// NULL is restored as NULL.
+					if (null === $old && 'author' !== $entity) {
 						$old = ('_id' === substr($field, -3) || 'post_category' === $field) ? 0 : '';
 					}
 					$data[$field] = $old;
@@ -3557,7 +3577,7 @@ Tone:
 				'voice'          => 'Neutral Technical Analyst',
 				'structure'      => 'Comparison Article',
 				'slug_type'      => 'comparison',
-				'title_prompt'   => 'Write a neutral comparison title in the form "X vs Y: <deciding factor>" that names both options and the main criterion. Under 65 characters, no winner in the title, no year.',
+				'title_prompt'   => 'Write a neutral comparison title in the form "X vs Y: [deciding factor]" that names both options and the main criterion. Under 65 characters, no winner in the title, no year.',
 				'image_subject'  => 'two balanced technology stacks side by side on a scale, evenly weighted',
 				'source_group'   => 'php-ecosystem',
 				'content_images' => array(),
@@ -3608,7 +3628,7 @@ Tone:
 				'image_subject'  => 'isometric modular system components with clear boundaries and connections',
 				'source_group'   => 'backend-architecture',
 				'content_images' => array(
-					array('placement' => 'after_section_2', 'prompt' => 'Component diagram of the architecture pattern in {{topic}}: modules, boundaries and dependencies as labeled-free boxes and arrows'),
+					array('placement' => 'after_section_2', 'prompt' => 'Component diagram of the architecture pattern in {{topic}}: modules, boundaries and dependencies as label-free boxes and arrows'),
 					array('placement' => 'after_section_4', 'prompt' => 'Sequence-style diagram of one request flowing through the architecture described in {{topic}}'),
 				),
 			),

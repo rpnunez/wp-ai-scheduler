@@ -187,6 +187,10 @@ class Test_DevStackTips_Setup_V3 extends WP_UnitTestCase {
 		$this->assertSame($templates_before, count((new AIPS_Template_Repository())->get_all()));
 		$this->assertStringNotContainsString('[SET] Template Security Guide', $output);
 		$this->assertStringContainsString('[OK] Template Security Guide: already up to date', $output);
+		// Nothing the repositories sanitize differently from the desired value may
+		// show up as a change again (e.g. tags stripped from a prompt).
+		$this->assertStringNotContainsString('Field changes (', $output);
+		$this->assertStringContainsString('[OK] Template Framework Comparison: already up to date', $output);
 
 		$after = $this->find_template('Security Guide');
 		$this->assertSame('Hand-edited prompt about {{topic}}.', $after->prompt_template);
