@@ -81,6 +81,28 @@
 		cooldownTimer: null,
 
 		/**
+		 * Whether this screen asks Heartbeat for Content Indexer progress.
+		 *
+		 * @type {boolean}
+		 */
+		heartbeatEnabled: false,
+
+		/**
+		 * Whether this module raised the Heartbeat cadence (only done when the
+		 * shared background-process module, which normally owns it, is absent).
+		 *
+		 * @type {boolean}
+		 */
+		heartbeatRaised: false,
+
+		/**
+		 * Background queue pending count from the previous Heartbeat tick.
+		 *
+		 * @type {number|null}
+		 */
+		lastQueuePending: null,
+
+		/**
 		 * Cached payload of post clusters and orphan posts.
 		 *
 		 * @type {Object|null}
@@ -177,6 +199,9 @@
 
 			// Initialize Cooldown timer if active
 			this.initCooldownTimer();
+
+			// Live progress for the background queue and cooldown via Heartbeat
+			this.initHeartbeat();
 
 			// Load the default graph for the first indexed post
 			if ($('#aips-graph-svg').length) {
@@ -1109,19 +1134,7 @@
 					// Update DOM metrics
 					if (data.status) {
 						var st = data.status;
-						$('#aips-stat-indexed').text(st.indexed);
-						$('#aips-stat-total').text(st.total_posts);
-						$('#aips-stat-percent').text(st.percent + '%');
-						$('#aips-index-progress-bar').css('width', st.percent + '%');
-
-						$('#aips-stat-topics-indexed').text(st.indexed_topics || 0);
-						$('#aips-stat-topics-total').text(st.total_topics || 0);
-						$('#aips-stat-topics-percent').text((st.topics_percent || 0) + '%');
-						$('#aips-topics-progress-bar').css('width', (st.topics_percent || 0) + '%');
-
-						var totalUnindexed = (st.unindexed || 0) + (st.unindexed_topics || 0);
-						$('#aips-stat-unindexed').text(totalUnindexed);
-						$('#aips-stat-unindexed-breakdown').text(st.unindexed + ' posts, ' + st.unindexed_topics + ' topics pending');
+						self.renderIndexStatus(st);
 
 						if (entityScope === 'topics') {
 							$('#aips-indexer-slice-count').text((st.indexed_topics || 0) + ' / ' + (st.total_topics || 0));
@@ -1139,26 +1152,7 @@
 
 					// Update live rate limit meters if returned
 					if (data.rate_limits) {
-						var rl = data.rate_limits;
-						var dCnt = rl.daily_count || 0, dLim = rl.daily_limit || 0;
-						var wCnt = rl.weekly_count || 0, wLim = rl.weekly_limit || 0;
-						var mCnt = rl.monthly_count || 0, mLim = rl.monthly_limit || 0;
-						var dLimitText = dLim > 0 ? String(dLim) : '∞';
-						var wLimitText = wLim > 0 ? String(wLim) : '∞';
-						var mLimitText = mLim > 0 ? String(mLim) : '∞';
-
-						if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-meter-count')) {
-							$('#aips-meter-daily-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: dCnt, limit: dLimitText }));
-							$('#aips-meter-weekly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: wCnt, limit: wLimitText }));
-							$('#aips-meter-monthly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: mCnt, limit: mLimitText }));
-						} else {
-							$('#aips-meter-daily-count').html('<strong>' + dCnt + '</strong> / ' + dLimitText);
-							$('#aips-meter-weekly-count').html('<strong>' + wCnt + '</strong> / ' + wLimitText);
-							$('#aips-meter-monthly-count').html('<strong>' + mCnt + '</strong> / ' + mLimitText);
-						}
-						if (dLim > 0) $('#aips-meter-daily-bar').css('width', Math.min(100, Math.round((dCnt / dLim) * 100)) + '%');
-						if (wLim > 0) $('#aips-meter-weekly-bar').css('width', Math.min(100, Math.round((wCnt / wLim) * 100)) + '%');
-						if (mLim > 0) $('#aips-meter-monthly-bar').css('width', Math.min(100, Math.round((mCnt / mLim) * 100)) + '%');
+						self.renderRateLimits(data.rate_limits);
 					}
 
 					if (data.cooldown && data.cooldown.active) {
@@ -1205,6 +1199,236 @@
 					AIPS.Utilities && AIPS.Utilities.showNotice('Network error during indexing batch. Paused.', 'error');
 				}
 			});
+		},
+
+		/**
+		 * Render index coverage counts and progress bars.
+		 *
+		 * @param {Object} st Status object (indexed, total_posts, percent, topics counts).
+		 * @return {void}
+		 */
+		renderIndexStatus: function (st) {
+			if (!st) {
+				return;
+			}
+
+			$('#aips-stat-indexed').text(st.indexed);
+			$('#aips-stat-total').text(st.total_posts);
+			$('#aips-stat-percent').text(st.percent + '%');
+			$('#aips-index-progress-bar').css('width', st.percent + '%');
+
+			$('#aips-stat-topics-indexed').text(st.indexed_topics || 0);
+			$('#aips-stat-topics-total').text(st.total_topics || 0);
+			$('#aips-stat-topics-percent').text((st.topics_percent || 0) + '%');
+			$('#aips-topics-progress-bar').css('width', (st.topics_percent || 0) + '%');
+
+			var totalUnindexed = (st.unindexed || 0) + (st.unindexed_topics || 0);
+			$('#aips-stat-unindexed').text(totalUnindexed);
+			$('#aips-stat-unindexed-breakdown').text(st.unindexed + ' posts, ' + st.unindexed_topics + ' topics pending');
+		},
+
+		/**
+		 * Render the embeddings quota meters.
+		 *
+		 * @param {Object} rl Usage counts and limits (daily/weekly/monthly).
+		 * @return {void}
+		 */
+		renderRateLimits: function (rl) {
+			if (!rl) {
+				return;
+			}
+
+			var dCnt = rl.daily_count || 0, dLim = rl.daily_limit || 0;
+			var wCnt = rl.weekly_count || 0, wLim = rl.weekly_limit || 0;
+			var mCnt = rl.monthly_count || 0, mLim = rl.monthly_limit || 0;
+			var dLimitText = dLim > 0 ? String(dLim) : '∞';
+			var wLimitText = wLim > 0 ? String(wLim) : '∞';
+			var mLimitText = mLim > 0 ? String(mLim) : '∞';
+
+			if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-meter-count')) {
+				$('#aips-meter-daily-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: dCnt, limit: dLimitText }));
+				$('#aips-meter-weekly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: wCnt, limit: wLimitText }));
+				$('#aips-meter-monthly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: mCnt, limit: mLimitText }));
+			} else {
+				$('#aips-meter-daily-count').html('<strong>' + dCnt + '</strong> / ' + dLimitText);
+				$('#aips-meter-weekly-count').html('<strong>' + wCnt + '</strong> / ' + wLimitText);
+				$('#aips-meter-monthly-count').html('<strong>' + mCnt + '</strong> / ' + mLimitText);
+			}
+			if (dLim > 0) $('#aips-meter-daily-bar').css('width', Math.min(100, Math.round((dCnt / dLim) * 100)) + '%');
+			if (wLim > 0) $('#aips-meter-weekly-bar').css('width', Math.min(100, Math.round((wCnt / wLim) * 100)) + '%');
+			if (mLim > 0) $('#aips-meter-monthly-bar').css('width', Math.min(100, Math.round((mCnt / mLim) * 100)) + '%');
+		},
+
+		// -----------------------------------------------------------------------
+		// Heartbeat progress updates
+		// -----------------------------------------------------------------------
+
+		/**
+		 * Subscribe to WordPress Heartbeat for background progress.
+		 *
+		 * Heartbeat is the only status channel on this screen. While a manual
+		 * scan runs, its batch responses already carry fresh status, so the
+		 * Heartbeat request is skipped. It is also skipped while the tab is
+		 * hidden; returning to the tab triggers an immediate refresh.
+		 *
+		 * @return {void}
+		 */
+		initHeartbeat: function () {
+			if (!window.wp || !wp.heartbeat) {
+				return;
+			}
+
+			// Nothing to keep live on screens without progress stats or a cooldown banner.
+			if (!$('#aips-stat-indexed').length && !$('#aips-cooldown-banner').length) {
+				return;
+			}
+
+			this.heartbeatEnabled = true;
+
+			$(document).on('heartbeat-send.aipsContentIndexer', this.onHeartbeatSend.bind(this));
+			$(document).on('heartbeat-tick.aipsContentIndexer', this.onHeartbeatTick.bind(this));
+			$(document).on('heartbeat-error.aipsContentIndexer', this.onHeartbeatError.bind(this));
+			$(document).on('visibilitychange.aipsContentIndexer', this.onVisibilityChange.bind(this));
+		},
+
+		/**
+		 * Whether the next Heartbeat should ask for indexer progress.
+		 *
+		 * @return {boolean}
+		 */
+		shouldRequestHeartbeat: function () {
+			return this.heartbeatEnabled && !this.isIndexing && document.visibilityState !== 'hidden';
+		},
+
+		/**
+		 * Heartbeat send: request indexer progress when it is useful.
+		 *
+		 * @param {jQuery.Event} e    Event.
+		 * @param {Object}       data Outgoing Heartbeat data.
+		 * @return {void}
+		 */
+		onHeartbeatSend: function (e, data) {
+			if (this.shouldRequestHeartbeat()) {
+				data.aips_content_indexer = 1;
+			}
+		},
+
+		/**
+		 * Heartbeat tick: render indexer progress from the server.
+		 *
+		 * @param {jQuery.Event} e    Event.
+		 * @param {Object}       data Heartbeat response.
+		 * @return {void}
+		 */
+		onHeartbeatTick: function (e, data) {
+			if (this.isIndexing || !data || !data.aips_content_indexer) {
+				return;
+			}
+
+			var payload = data.aips_content_indexer;
+			if (payload.error) {
+				this.syncHeartbeatCadence(false);
+				return;
+			}
+
+			this.applyHeartbeatPayload(payload);
+		},
+
+		/**
+		 * Heartbeat error: drop any raised cadence until the connection recovers.
+		 *
+		 * @return {void}
+		 */
+		onHeartbeatError: function () {
+			this.syncHeartbeatCadence(false);
+		},
+
+		/**
+		 * Tab visibility: slow down while hidden, refresh at once when shown.
+		 *
+		 * @return {void}
+		 */
+		onVisibilityChange: function () {
+			if (document.visibilityState === 'hidden') {
+				this.syncHeartbeatCadence(false);
+				return;
+			}
+
+			if (!this.isIndexing && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
+				wp.heartbeat.connectNow();
+			}
+		},
+
+		/**
+		 * Apply a Heartbeat progress payload to the screen.
+		 *
+		 * @param {Object} payload Progress payload (status, rate_limits, queue, cooldown).
+		 * @return {void}
+		 */
+		applyHeartbeatPayload: function (payload) {
+			var queue = payload.queue || {};
+			var cooldown = payload.cooldown || {};
+			var pending = parseInt(queue.pending_count, 10) || 0;
+			var queueActive = pending > 0 && !queue.paused && !cooldown.active;
+
+			this.renderIndexStatus(payload.status);
+			this.renderRateLimits(payload.rate_limits);
+			this.syncCooldownBanner(cooldown);
+
+			if (this.lastQueuePending !== null && this.lastQueuePending > 0 && pending === 0 && AIPS.Utilities && AIPS.Utilities.showToast) {
+				AIPS.Utilities.showToast(aipsContentIndexerL10n.queueComplete || 'Background indexing queue finished.', 'success');
+			}
+			this.lastQueuePending = pending;
+
+			this.syncHeartbeatCadence(queueActive);
+		},
+
+		/**
+		 * Show, refresh or hide the cooldown banner to match the server.
+		 *
+		 * @param {Object} cooldown Cooldown state (active, until, reason).
+		 * @return {void}
+		 */
+		syncCooldownBanner: function (cooldown) {
+			var $banner = $('#aips-cooldown-banner');
+			if (!$banner.length) {
+				return;
+			}
+
+			var isVisible = !$banner.hasClass('aips-hidden');
+
+			if (cooldown.active) {
+				var until = parseInt(cooldown.until, 10) || 0;
+				if (!isVisible || (parseInt($banner.attr('data-until'), 10) || 0) !== until) {
+					this.showCooldownBanner(cooldown);
+				}
+			} else if (isVisible) {
+				this.hideCooldownBanner();
+			}
+		},
+
+		/**
+		 * Raise the Heartbeat cadence while the background queue works.
+		 *
+		 * The shared background-process module already does this for every
+		 * process, including the indexer queue, so this only acts when that
+		 * module is not loaded on the page.
+		 *
+		 * @param {boolean} active Whether the queue is actively indexing.
+		 * @return {void}
+		 */
+		syncHeartbeatCadence: function (active) {
+			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function' || AIPS.BackgroundProcesses) {
+				return;
+			}
+
+			if (active && document.visibilityState !== 'hidden') {
+				wp.heartbeat.interval(15);
+				this.heartbeatRaised = true;
+			} else if (this.heartbeatRaised) {
+				wp.heartbeat.interval('standard');
+				this.heartbeatRaised = false;
+			}
 		},
 
 		/**

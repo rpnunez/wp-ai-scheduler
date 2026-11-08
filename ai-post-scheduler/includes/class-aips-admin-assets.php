@@ -2244,7 +2244,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-content-indexer-script',
             AIPS_PLUGIN_URL . 'assets/js/admin-content-indexer.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'heartbeat'),
             AIPS_VERSION,
             true
         );
@@ -2258,6 +2258,7 @@ class AIPS_Admin_Assets {
                 'resumeScan'            => __('Resume Scan', 'ai-post-scheduler'),
                 'indexingPaused'        => __('Indexing Paused', 'ai-post-scheduler'),
                 'indexingComplete'      => __('Content indexing complete!', 'ai-post-scheduler'),
+                'queueComplete'         => __('Background indexing queue finished.', 'ai-post-scheduler'),
                 'confirmClear'          => __('Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.', 'ai-post-scheduler'),
                 'indexed'               => __('Indexed', 'ai-post-scheduler'),
                 'pendingIndex'          => __('Pending Index', 'ai-post-scheduler'),

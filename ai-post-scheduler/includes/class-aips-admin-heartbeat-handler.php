@@ -61,6 +61,11 @@ class AIPS_Admin_Heartbeat_Handler {
 			$response['aips_cooldown_monitor'] = self::get_cooldown_monitor_data();
 		}
 
+		// 4. Content Indexer progress (index counts, queue, quota meters, cooldown)
+		if (!empty($data['aips_content_indexer'])) {
+			$response['aips_content_indexer'] = self::get_content_indexer_data();
+		}
+
 		return $response;
 	}
 
@@ -114,12 +119,76 @@ class AIPS_Admin_Heartbeat_Handler {
 	 * @return array<string, mixed>
 	 */
 	public static function get_cooldown_monitor_data() {
-		$cooldown_until = (int) get_option('aips_indexer_cooldown_until', 0);
-		$now = time();
+		$cooldown = self::get_rate_limiter()->get_cooldown_status();
 
 		return array(
-			'is_active'         => $cooldown_until > $now,
-			'remaining_seconds' => max(0, $cooldown_until - $now),
+			'is_active'         => (bool) $cooldown['is_paused'],
+			'remaining_seconds' => (int) $cooldown['remaining_seconds'],
 		);
+	}
+
+	/**
+	 * Retrieve the Content Indexer progress the indexer screen renders.
+	 *
+	 * Only the fields the screen draws are returned: index counts, the
+	 * background queue state, the embeddings quota meters and the cooldown.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_content_indexer_data() {
+		try {
+			$container  = AIPS_Container::get_instance();
+			$indexer    = $container->make(AIPS_Content_Indexer_Service::class);
+			$config     = AIPS_Config::get_instance();
+			$post_types = (array) $config->get_option('aips_indexer_post_types', array('post'));
+			$status     = $indexer->get_indexing_status($post_types);
+			$queue      = $indexer->get_queue_status();
+			$cooldown   = self::get_rate_limiter()->get_cooldown_status();
+			$limits     = isset($status['rate_limits']) && is_array($status['rate_limits']) ? $status['rate_limits'] : array();
+
+			$meter_keys  = array('daily_count', 'daily_limit', 'weekly_count', 'weekly_limit', 'monthly_count', 'monthly_limit');
+			$rate_limits = array();
+			foreach ($meter_keys as $key) {
+				$rate_limits[$key] = isset($limits[$key]) ? (int) $limits[$key] : 0;
+			}
+
+			return array(
+				'status'      => array(
+					'indexed'          => (int) $status['indexed'],
+					'total_posts'      => (int) $status['total_posts'],
+					'unindexed'        => (int) $status['unindexed'],
+					'percent'          => (int) $status['percent'],
+					'indexed_topics'   => (int) $status['indexed_topics'],
+					'total_topics'     => (int) $status['total_topics'],
+					'unindexed_topics' => (int) $status['unindexed_topics'],
+					'topics_percent'   => (int) $status['topics_percent'],
+				),
+				'rate_limits' => $rate_limits,
+				'queue'       => array(
+					'pending_count' => (int) $queue['pending_count'],
+					'is_running'    => (bool) $queue['is_running'],
+					'paused'        => $indexer->is_queue_paused(),
+				),
+				'cooldown'    => array(
+					'active'            => (bool) $cooldown['is_paused'],
+					'until'             => (int) $cooldown['paused_until'],
+					'remaining_seconds' => (int) $cooldown['remaining_seconds'],
+					'reason'            => (string) $cooldown['reason'],
+				),
+			);
+		} catch (Exception $e) {
+			return array(
+				'error' => $e->getMessage(),
+			);
+		}
+	}
+
+	/**
+	 * Embeddings rate limiter that owns the indexer cooldown state.
+	 *
+	 * @return AIPS_Embeddings_Rate_Limiter
+	 */
+	private static function get_rate_limiter() {
+		return new AIPS_Embeddings_Rate_Limiter();
 	}
 }
