@@ -2058,8 +2058,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $format[] = '%s';
         }
         
-        if (isset($data['post_id'])) {
-            $update_data['post_id'] = absint($data['post_id']);
+        // array_key_exists so an explicit null clears the association. isset()
+        // treats null as missing and would leave the previous post_id in place.
+        if (array_key_exists('post_id', $data)) {
+            $update_data['post_id'] = !empty($data['post_id']) ? absint($data['post_id']) : null;
             $format[] = '%d';
         }
 
@@ -2083,8 +2085,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $format[] = '%s';
         }
         
-        if (isset($data['error_message'])) {
-            $update_data['error_message'] = sanitize_text_field($data['error_message']);
+        if (array_key_exists('error_message', $data)) {
+            $update_data['error_message'] = is_null($data['error_message']) ? null : sanitize_text_field($data['error_message']);
             $format[] = '%s';
         }
         
@@ -2206,8 +2208,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Delete history records and associated event logs for a given post ID.
      *
+     * Child event logs are deleted first. If that query fails, parent containers
+     * are left in place and the failure is returned so callers do not report a
+     * successful purge that would orphan the logs.
+     *
      * @param int $post_id Post ID.
-     * @return int Number of history container records deleted.
+     * @return int|false Number of history container records deleted, or false on failure.
      */
     public function delete_by_post_id($post_id) {
         $post_id = absint($post_id);
@@ -2230,14 +2236,18 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $history_ids  = array_map('absint', $history_ids);
         $placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
 
-        // Delete detailed event logs first.
+        // Delete detailed event logs first. Stop before removing parents when this fails.
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $this->wpdb->query(
+        $log_result = $this->wpdb->query(
             $this->wpdb->prepare(
                 "DELETE FROM {$this->table_name_log} WHERE history_id IN ($placeholders)",
                 $history_ids
             )
         );
+
+        if (false === $log_result) {
+            return false;
+        }
 
         // Delete the history container records.
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -2248,11 +2258,15 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             )
         );
 
-        if ($result !== false && $result > 0) {
+        if (false === $result) {
+            return false;
+        }
+
+        if ($result > 0) {
             $this->invalidate_cache_domain('history', array(), 'history_mutated');
         }
 
-        return false === $result ? 0 : (int) $result;
+        return (int) $result;
     }
 
     /**

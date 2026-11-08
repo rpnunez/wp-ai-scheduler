@@ -71,37 +71,25 @@ class Test_AIPS_Post_Cleanup_Service extends WP_UnitTestCase {
 		$this->embeddings->upsert( 'post', $post_id, $vector, 'test-model', 8, md5( 'test' ), 'post' );
 		$this->embeddings->upsert( 'post', $other_id, $vector, 'test-model', 8, md5( 'other' ), 'post' );
 
-		$this->relationships->upsert( array(
-			'source_type'   => 'post',
-			'source_id'     => $post_id,
-			'target_type'   => 'post',
-			'target_id'     => $other_id,
-			'similarity'    => 0.95,
-			'relation_type' => 'related_post',
-		) );
+		$this->relationships->upsert( 'post', $post_id, 'post', $other_id, 0.95, 'related_post' );
 
-		$this->assertNotNull( $this->embeddings->get( 'post', $post_id ) );
-		$this->assertNotEmpty( $this->relationships->get_for_source( 'post', $post_id ) );
+		$this->assertNotNull( $this->embeddings->get_by_object( 'post', $post_id ) );
+		$this->assertNotEmpty( $this->relationships->get_related( 'post', $post_id, 5, 0.5 ) );
 
 		$summary = $this->service->on_before_delete_post( $post_id );
 
 		$this->assertGreaterThan( 0, $summary['embeddings'] );
 		$this->assertGreaterThan( 0, $summary['relationships'] );
-		$this->assertNull( $this->embeddings->get( 'post', $post_id ) );
-		$this->assertEmpty( $this->relationships->get_for_source( 'post', $post_id ) );
-		$this->assertNotNull( $this->embeddings->get( 'post', $other_id ) );
+		$this->assertNull( $this->embeddings->get_by_object( 'post', $post_id ) );
+		$this->assertEmpty( $this->relationships->get_related( 'post', $post_id, 5, 0.5 ) );
+		$this->assertNotNull( $this->embeddings->get_by_object( 'post', $other_id ) );
 	}
 
 	public function test_post_cleanup_purges_internal_links() {
 		$source_id = self::factory()->post->create( array( 'post_title' => 'Source' ) );
 		$target_id = self::factory()->post->create( array( 'post_title' => 'Target' ) );
 
-		$this->internal_links->insert( array(
-			'source_post_id' => $source_id,
-			'target_post_id' => $target_id,
-			'anchor_text'    => 'Click here',
-			'status'         => 'pending',
-		) );
+		$this->internal_links->insert( $source_id, $target_id, 0.8, 'Click here' );
 
 		$summary = $this->service->on_before_delete_post( $source_id );
 
@@ -237,7 +225,7 @@ class Test_AIPS_Post_Cleanup_Service extends WP_UnitTestCase {
 		// History container and logs still exist!
 		$this->assertNotNull( $this->history->get_by_id( $history_id ) );
 		// But embedding was deleted
-		$this->assertNull( $this->embeddings->get( 'post', $post_id ) );
+		$this->assertNull( $this->embeddings->get_by_object( 'post', $post_id ) );
 	}
 
 	public function test_aips_should_cleanup_post_filter_can_abort_cleanup() {
@@ -250,7 +238,7 @@ class Test_AIPS_Post_Cleanup_Service extends WP_UnitTestCase {
 		remove_filter( 'aips_should_cleanup_post', '__return_false' );
 
 		$this->assertEmpty( $summary );
-		$this->assertNotNull( $this->embeddings->get( 'post', $post_id ) );
+		$this->assertNotNull( $this->embeddings->get_by_object( 'post', $post_id ) );
 	}
 
 	public function test_actions_fire_on_cleanup() {
@@ -280,6 +268,50 @@ class Test_AIPS_Post_Cleanup_Service extends WP_UnitTestCase {
 		$this->assertSame( $post_id, $after_data['post_id'] );
 	}
 
+	public function test_failed_child_log_delete_keeps_history_containers() {
+		global $wpdb;
+
+		$post_id = self::factory()->post->create( array( 'post_title' => 'Log delete failure' ) );
+		$history_id = $this->history->create( array(
+			'post_id'         => $post_id,
+			'post_type'       => 'post',
+			'status'          => 'completed',
+			'generated_title' => 'Must survive',
+		) );
+		$this->history->add_log_entry( $history_id, 'child log' );
+
+		$filter = function ( $query ) use ( $wpdb ) {
+			if ( ! is_string( $query ) ) {
+				return $query;
+			}
+			if ( false === stripos( $query, 'DELETE' ) || false === strpos( $query, $wpdb->prefix . 'aips_history_log' ) ) {
+				return $query;
+			}
+			return 'DELETE FROM `' . $wpdb->prefix . 'aips_history_log_missing` WHERE 1=1';
+		};
+
+		add_filter( 'query', $filter );
+		$suppress = $wpdb->suppress_errors( true );
+
+		try {
+			$summary = $this->service->on_before_delete_post( $post_id );
+		} finally {
+			remove_filter( 'query', $filter );
+			$wpdb->suppress_errors( $suppress );
+			$wpdb->last_error = '';
+		}
+
+		$this->assertTrue( $summary['history_delete_failed'] );
+		$this->assertSame( 0, $summary['history'] );
+		$this->assertNotNull( $this->history->get_by_id( $history_id ) );
+
+		$remaining_logs = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->prefix}aips_history_log WHERE history_id = %d",
+			$history_id
+		) );
+		$this->assertSame( 1, $remaining_logs );
+	}
+
 	public function test_wp_delete_post_triggers_cleanup_via_hook() {
 		$post_id = self::factory()->post->create( array( 'post_title' => 'End to End Deletion' ) );
 
@@ -294,7 +326,7 @@ class Test_AIPS_Post_Cleanup_Service extends WP_UnitTestCase {
 
 		wp_delete_post( $post_id, true );
 
-		$this->assertNull( $this->embeddings->get( 'post', $post_id ) );
+		$this->assertNull( $this->embeddings->get_by_object( 'post', $post_id ) );
 		$this->assertNull( $this->history->get_by_id( $history_id ) );
 	}
 }

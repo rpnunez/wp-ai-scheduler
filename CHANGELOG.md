@@ -46,6 +46,12 @@
   - Added "Send Pending Digest Now" admin action for immediate manual queue testing and flush.
   - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
 
+### Fixed
+- **History stays consistent when a regeneration delete or a history-log delete fails:**
+  - Single and bulk review regeneration restore the history container's status, post association, and error message when `wp_delete_post()` is vetoed (`pre_delete_post`) or otherwise fails, instead of leaving the original draft detached.
+  - `AIPS_History_Repository::delete_by_post_id()` returns false and leaves parent containers in place when deleting child `wp_aips_history_log` rows fails, so a failed log delete cannot orphan those logs.
+  - History updates now persist an explicit `post_id` or `error_message` of null, so regeneration can clear and later restore those fields.
+  - Topic-log disassociation on post delete updates `wp_aips_author_topic_logs` (`$table_name`). The previous `$table` property access aborted cleanup.
 
 ### Sources reliability (3.7.19)
 - Schedule source fetching at the earliest configured due time, preserving independent source intervals and disabled mode. Shared, expiring leases prevent manual and scheduled workers from overlapping; bounded runs continue remaining work after 60 seconds.

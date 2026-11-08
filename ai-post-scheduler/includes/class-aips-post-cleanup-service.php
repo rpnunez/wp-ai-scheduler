@@ -206,8 +206,24 @@ class AIPS_Post_Cleanup_Service {
 		}
 
 		// 4. Purge history containers and detailed event logs (unless suppressed).
+		// A failed child-log delete returns false and leaves the containers in place.
 		if (!self::$suppress_history_deletion && $this->history_repository) {
-			$summary['history'] = (int) $this->history_repository->delete_by_post_id($post_id);
+			$deleted = $this->history_repository->delete_by_post_id($post_id);
+			if (false === $deleted) {
+				$summary['history'] = 0;
+				$summary['history_delete_failed'] = true;
+				if ($this->logger) {
+					$this->logger->log(
+						sprintf(
+							'Post cleanup could not delete history logs for post #%d; history containers were left in place.',
+							$post_id
+						),
+						'error'
+					);
+				}
+			} else {
+				$summary['history'] = (int) $deleted;
+			}
 		}
 
 		// 5. Handle redirects (deactivate pointing redirects, delete origin redirects).

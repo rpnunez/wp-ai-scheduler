@@ -158,7 +158,7 @@ class AIPS_Author_Topic_Logs_Repository {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$result = $this->wpdb->query(
 			$this->wpdb->prepare(
-				"UPDATE {$this->table} SET post_id = NULL WHERE post_id = %d",
+				"UPDATE {$this->table_name} SET post_id = NULL WHERE post_id = %d",
 				$post_id
 			)
 		);
