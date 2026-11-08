@@ -55,6 +55,7 @@ class AIPS_AI_Edit_Controller {
 		add_action('wp_ajax_aips_save_post_components', array($this, 'ajax_save_post_components'));
 		add_action('wp_ajax_aips_get_component_revisions', array($this, 'ajax_get_component_revisions'));
 		add_action('wp_ajax_aips_restore_component_revision', array($this, 'ajax_restore_component_revision'));
+		add_action('wp_ajax_aips_reset_component_overrides', array($this, 'ajax_reset_component_overrides'));
 	}
 	
 	/**
@@ -160,6 +161,7 @@ class AIPS_AI_Edit_Controller {
 					'url' => $featured_image_url,
 				),
 			),
+			'overrides' => get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true) ?: array(),
 		);
 		
 		AIPS_Ajax_Response::success($response);
@@ -185,6 +187,11 @@ class AIPS_AI_Edit_Controller {
 		$current_value = isset($_POST['current_value']) ? wp_unslash($_POST['current_value']) : null;
 		$current_source = isset($_POST['current_source']) ? sanitize_key(wp_unslash($_POST['current_source'])) : '';
 		$current_reason = isset($_POST['current_reason']) ? sanitize_key(wp_unslash($_POST['current_reason'])) : '';
+		$custom_directive     = isset($_POST['custom_directive']) ? sanitize_textarea_field(wp_unslash($_POST['custom_directive'])) : '';
+		$directive_preset     = isset($_POST['directive_preset']) ? sanitize_key(wp_unslash($_POST['directive_preset'])) : '';
+		$model_override       = isset($_POST['model_override']) ? sanitize_text_field(wp_unslash($_POST['model_override'])) : '';
+		$temperature_override = isset($_POST['temperature_override']) && '' !== $_POST['temperature_override'] && is_numeric($_POST['temperature_override']) ? floatval($_POST['temperature_override']) : null;
+		$downstream_cascaded  = !empty($_POST['downstream_cascaded']) && filter_var($_POST['downstream_cascaded'], FILTER_VALIDATE_BOOLEAN);
 		
 		if (!$post_id || !$component) {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
@@ -273,6 +280,59 @@ class AIPS_AI_Edit_Controller {
 				}
 			}
 		}
+
+		// Handle sticky component overrides (model and temperature)
+		$existing_overrides = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
+		if (!is_array($existing_overrides)) {
+			$existing_overrides = array();
+		}
+		$comp_override = isset($existing_overrides[$component]) && is_array($existing_overrides[$component]) ? $existing_overrides[$component] : array();
+
+		$updated_overrides = false;
+		if (isset($_POST['model_override'])) {
+			if (!empty($model_override)) {
+				$comp_override['model'] = $model_override;
+			} else {
+				unset($comp_override['model']);
+			}
+			$updated_overrides = true;
+		} elseif (!empty($comp_override['model'])) {
+			$model_override = $comp_override['model'];
+		}
+
+		if (isset($_POST['temperature_override']) && '' !== $_POST['temperature_override']) {
+			if (null !== $temperature_override) {
+				$comp_override['temperature'] = max(0.0, min(1.0, $temperature_override));
+			} else {
+				unset($comp_override['temperature']);
+			}
+			$updated_overrides = true;
+		} elseif (isset($comp_override['temperature'])) {
+			$temperature_override = floatval($comp_override['temperature']);
+		}
+
+		if ($updated_overrides) {
+			if (!empty($comp_override)) {
+				$existing_overrides[$component] = $comp_override;
+			} else {
+				unset($existing_overrides[$component]);
+			}
+			if (empty($existing_overrides)) {
+				delete_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES);
+			} else {
+				update_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, $existing_overrides);
+			}
+		}
+
+		$context['custom_directive']    = $custom_directive;
+		$context['directive_preset']    = $directive_preset;
+		$context['model_override']      = $model_override;
+		$context['temperature_override'] = $temperature_override;
+
+		if ($downstream_cascaded) {
+			$context['downstream_cascaded'] = true;
+			$context['trigger_detail']     = __('Cascaded downstream alignment from upstream component acceptance', 'ai-post-scheduler');
+		}
 		
 		// Regenerate component
 		$result = null;
@@ -296,7 +356,53 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'));
 		}
 		
-		AIPS_Ajax_Response::success(array('new_value' => $result));
+		AIPS_Ajax_Response::success(array(
+			'new_value'    => $result,
+			'model'        => $model_override,
+			'temperature'  => $temperature_override,
+			'overrides'    => $existing_overrides,
+		));
+	}
+
+	/**
+	 * AJAX handler: Reset component overrides to template default.
+	 */
+	public function ajax_reset_component_overrides() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('edit_posts')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$post_id   = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$component = isset($_POST['component']) ? sanitize_text_field(wp_unslash($_POST['component'])) : '';
+
+		if (!$post_id || !$component) {
+			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('edit_post', $post_id)) {
+			AIPS_Ajax_Response::error(__('You do not have permission to edit this post.', 'ai-post-scheduler'));
+		}
+
+		$existing_overrides = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
+		if (is_array($existing_overrides) && isset($existing_overrides[$component])) {
+			unset($existing_overrides[$component]);
+			if (empty($existing_overrides)) {
+				delete_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES);
+			} else {
+				update_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, $existing_overrides);
+			}
+		}
+
+		$default_config = AIPS_Config::get_instance()->get_ai_config();
+		AIPS_Ajax_Response::success(array(
+			'message'             => __('Component overrides reset to template defaults.', 'ai-post-scheduler'),
+			'default_model'       => isset($default_config['model']) ? $default_config['model'] : '',
+			'default_temperature' => isset($default_config['temperature']) ? floatval($default_config['temperature']) : 0.7,
+		));
 	}
 
 	/**

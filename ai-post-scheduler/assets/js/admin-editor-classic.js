@@ -239,12 +239,104 @@
 			// Preload revisions count
 			loadRevisions($widget, component);
 
+			// Popover toggle for quick prompt steering
+			$widget.on('click', '.aips-split-toggle-btn', function (e) {
+				e.preventDefault();
+				var $popover = $widget.find('.aips-directive-popover');
+				var isExpanded = $(this).attr('aria-expanded') === 'true';
+				$('.aips-directive-popover').not($popover).slideUp(150);
+				$('.aips-split-toggle-btn').not(this).attr('aria-expanded', 'false');
+				$popover.slideToggle(150);
+				$(this).attr('aria-expanded', !isExpanded);
+			});
+
+			$widget.on('click', '.aips-popover-close-btn', function (e) {
+				e.preventDefault();
+				$widget.find('.aips-directive-popover').slideUp(150);
+				$widget.find('.aips-split-toggle-btn').attr('aria-expanded', 'false');
+			});
+
+			// Preset chip selection
+			$widget.on('click', '.aips-preset-chip', function (e) {
+				e.preventDefault();
+				var $chip = $(this);
+				if ($chip.hasClass('active')) {
+					$chip.removeClass('active').removeClass('button-primary');
+				} else {
+					$widget.find('.aips-preset-chip').removeClass('active').removeClass('button-primary');
+					$chip.addClass('active').addClass('button-primary');
+				}
+			});
+
+			$widget.on('click', '.aips-clear-directive-btn', function (e) {
+				e.preventDefault();
+				$widget.find('.aips-preset-chip').removeClass('active').removeClass('button-primary');
+				$widget.find('.aips-custom-directive-input').val('');
+			});
+
+			$widget.on('click', '.aips-apply-regenerate-btn', function (e) {
+				e.preventDefault();
+				$widget.find('.aips-directive-popover').slideUp(150);
+				$widget.find('.aips-split-toggle-btn').attr('aria-expanded', 'false');
+				$widget.find('.aips-regenerate-btn').trigger('click');
+			});
+
+			// Advanced Directives & Model Accordion
+			$widget.on('click', '.aips-advanced-accordion-toggle', function (e) {
+				e.preventDefault();
+				var $drawer = $widget.find('.aips-advanced-drawer');
+				var isExpanded = $(this).attr('aria-expanded') === 'true';
+				$drawer.slideToggle(150);
+				$(this).attr('aria-expanded', !isExpanded);
+				$(this).find('.aips-accordion-arrow').toggleClass('dashicons-arrow-down-alt2 dashicons-arrow-up-alt2');
+			});
+
+			$widget.on('input change', '.aips-temperature-slider', function () {
+				var val = parseFloat($(this).val()) || 0.7;
+				$widget.find('.aips-temp-val-badge').text(val.toFixed(2));
+				$widget.find('.aips-active-override-badge').show();
+			});
+
+			$widget.on('change', '.aips-model-select', function () {
+				$widget.find('.aips-active-override-badge').show();
+			});
+
+			// Reset component overrides to template default
+			$widget.on('click', '.aips-reset-overrides-btn', function (e) {
+				e.preventDefault();
+				var $resetBtn = $(this);
+				$resetBtn.prop('disabled', true);
+				$.post(l10n.ajaxurl, {
+					action: 'aips_reset_component_overrides',
+					nonce: l10n.nonce,
+					post_id: l10n.postId,
+					component: component
+				}).done(function (res) {
+					if (res && res.success && res.data) {
+						$widget.find('.aips-model-select').val('');
+						var defTemp = parseFloat(res.data.default_temperature) || 0.7;
+						$widget.find('.aips-temperature-slider').val(defTemp);
+						$widget.find('.aips-temp-val-badge').text(defTemp.toFixed(2));
+						$widget.find('.aips-active-override-badge').hide();
+					}
+				}).always(function () {
+					$resetBtn.prop('disabled', false);
+				});
+			});
+
 			// Re-generate single component button
 			$widget.on('click', '.aips-regenerate-btn', function (e) {
 				e.preventDefault();
 				var $btn = $(this);
 				var originalHtml = $btn.html();
 				var currentVal = getCurrentComponentValue(component);
+				var isDownstreamCascaded = !!$widget.data('downstream-cascaded');
+				$widget.removeData('downstream-cascaded');
+
+				var activePreset = $widget.find('.aips-preset-chip.active').data('preset') || '';
+				var customDirective = $widget.find('.aips-custom-directive-input').val() || '';
+				var modelOverride = $widget.find('.aips-model-select').val() || '';
+				var tempOverride = $widget.find('.aips-temperature-slider').val() || '';
 
 				$btn.prop('disabled', true).addClass('regenerating').html('<span class="dashicons dashicons-update"></span> ' + (l10n.labels.generating || 'Generating…'));
 
@@ -254,7 +346,12 @@
 					post_id: l10n.postId,
 					history_id: l10n.historyId || 0,
 					component: component,
-					current_value: currentVal
+					current_value: currentVal,
+					custom_directive: customDirective,
+					directive_preset: activePreset,
+					model_override: modelOverride,
+					temperature_override: tempOverride,
+					downstream_cascaded: isDownstreamCascaded ? 'true' : 'false'
 				})
 				.done(function (response) {
 					if (response && response.success && response.data && response.data.new_value) {
@@ -301,6 +398,11 @@
 
 				applyComponentValue(component, newVal);
 
+				// Check if user requested cascading downstream alignment
+				var $downstreamCb = $widget.find('.aips-sync-downstream-cb');
+				var shouldSyncDownstream = $downstreamCb.length && $downstreamCb.is(':checked');
+				var downstreamTargets = shouldSyncDownstream ? ($downstreamCb.data('downstream') || '').split(',') : [];
+
 				// Persist via save_post_components to log timeline activity
 				var payloadComponents = {};
 				if ('title' === component) {
@@ -323,6 +425,19 @@
 				$widget.find('.aips-diff-wrapper').slideUp(150);
 				$widget.removeData('pending-value');
 				loadRevisions($widget, component);
+
+				// Trigger cascading downstream regeneration if requested
+				if (downstreamTargets.length > 0) {
+					$.each(downstreamTargets, function (i, targetComp) {
+						targetComp = $.trim(targetComp);
+						if (!targetComp) return;
+						var $targetWidget = $('.aips-classic-component-widget[data-component="' + targetComp + '"]');
+						if ($targetWidget.length) {
+							$targetWidget.data('downstream-cascaded', true);
+							$targetWidget.find('.aips-regenerate-btn').trigger('click');
+						}
+					});
+				}
 			});
 
 			// Discard diff

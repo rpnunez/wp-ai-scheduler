@@ -1,6 +1,11 @@
 ## [Unreleased]
 
 ### Added
+- **AI Edit Prompt Steering, Cascading Alignment & Creativity Controls:**
+  - Added Split Button & Quick Steering Popover (`[Re-generate ▾]`) allowing 1-click regeneration or dropdown directive selection with quick preset chips (`Make Punchier`, `SEO Focused`, `Conversational`, `Technical & Precise`, `Concise Summary`) and custom instruction inputs across Classic Editor and Gutenberg.
+  - Added Pre-Accept Checkbox ("Sync Downstream") in the Side-by-Side Diff Comparison footer: accepting a new Title or Content can automatically trigger cascading downstream regeneration of related components (e.g. Title -> Excerpt, Content -> Excerpt & Featured Image) with updated upstream context.
+  - Added Collapsible Accordion ("Advanced Directives & Model") featuring AI Model dropdown selector and Temperature/Creativity slider (0.0 to 1.0) with sticky post-meta persistence per component and 1-click "Reset to Template Default".
+  - Enhanced directive prompt assembly in `AIPS_Component_Regeneration_Service`, `AIPS_Generator`, and `AIPS_Editor_Directive_Service`.
 - **Per-Component AI Edit Meta Boxes & Gutenberg Document Panels:**
   - Redesigned the Edit Post screen (Classic Editor and Gutenberg Block Editor) with dedicated per-component AI Edit widgets/panels for Title, Excerpt, Content, and Featured Image, replacing the disconnected candidate-only workflow.
   - Implemented the canonical AI Edit interface across every component: Re-generate action, Side-by-Side comparison slot (Current Version vs Newly Regenerated Draft) with 1-click Accept & Replace and Discard, editable view/preview, and collapsible View Revisions drawer with instant restore.

@@ -180,16 +180,21 @@ class AIPS_Component_Regeneration_Service {
 		// than from a prompt that pastes the body back in. The title exchange is
 		// excluded — that is the component being redone.
 		$conversation = $this->build_conversation($generation_context, $post_id);
+		$options = $this->extract_ai_options($context);
+		$directive = $this->build_directive_instruction($context);
+		if ($directive !== '') {
+			$options['custom_directive'] = $directive;
+		}
 
 		if ($conversation !== null) {
 			$this->generator->set_conversation($conversation);
 
-			$result = $this->generator->generate_title_for_context($generation_context);
+			$result = $this->generator->generate_title_for_context($generation_context, '', array(), $options);
 
 			$this->generator->set_conversation(null);
 		} else {
 			$post_content = $post_id ? get_post_field('post_content', $post_id) : '';
-			$result = $this->generator->generate_title_for_context($generation_context, $post_content);
+			$result = $this->generator->generate_title_for_context($generation_context, $post_content, array(), $options);
 		}
 
 		if (is_wp_error($result)) {
@@ -245,11 +250,16 @@ class AIPS_Component_Regeneration_Service {
 		// Replay the article and its title so the excerpt is written against the
 		// same context the original run had, without re-sending either.
 		$conversation = $this->build_conversation($generation_context, $post_id, true);
+		$options = $this->extract_ai_options($context);
+		$directive = $this->build_directive_instruction($context);
+		if ($directive !== '') {
+			$options['custom_directive'] = $directive;
+		}
 
 		$this->generator->set_conversation($conversation);
 
 		// Use generator's generate_excerpt method
-		$result = $this->generator->generate_excerpt($title, $content, $voice, $topic_str, array(), $generation_context);
+		$result = $this->generator->generate_excerpt($title, $content, $voice, $topic_str, $options, $generation_context);
 
 		$this->generator->set_conversation(null);
 
@@ -291,11 +301,16 @@ class AIPS_Component_Regeneration_Service {
 
 		// Build the content prompt using the generation context
 		$prompt = $this->post_content_prompt_builder->build($generation_context);
+		$directive = $this->build_directive_instruction($context);
+		if ($directive !== '') {
+			$prompt .= "\n\n" . sprintf(__('Follow this directive for the content: %s', 'ai-post-scheduler'), $directive);
+		}
+
+		$options = $this->extract_ai_options($context);
+		$options['_aips_sources_selection'] = $this->post_content_prompt_builder->get_sources_selection();
 
 		// Generate content using the prompt
-		$result = $this->generator->generate_content($prompt, array(
-			'_aips_sources_selection' => $this->post_content_prompt_builder->get_sources_selection(),
-		));
+		$result = $this->generator->generate_content($prompt, $options);
 		
 		if (is_wp_error($result)) {
 			return $result;
@@ -506,6 +521,10 @@ class AIPS_Component_Regeneration_Service {
 		}
 
 		$processed_image_prompt = $this->generator->process_featured_image_prompt($generation_context, $current_content, $title);
+		$directive = $this->build_directive_instruction($context);
+		if ($directive !== '') {
+			$processed_image_prompt .= ', ' . $directive;
+		}
 		if (empty($processed_image_prompt)) {
 			$history_container->record(
 				'metric_generation_result',
@@ -637,6 +656,52 @@ class AIPS_Component_Regeneration_Service {
 		);
 
 		return true;
+	}
+
+	/**
+	 * Build directive instruction from context parameters.
+	 *
+	 * @param array $context Context array.
+	 * @return string Formatted directive instruction or empty string.
+	 */
+	public function build_directive_instruction(array $context): string {
+		$instruction = '';
+		$preset_key = !empty($context['directive_preset']) ? sanitize_key($context['directive_preset']) : '';
+		$custom = !empty($context['custom_directive']) ? trim((string) $context['custom_directive']) : '';
+
+		if ($preset_key) {
+			$directive_service = new AIPS_Editor_Directive_Service();
+			$presets = $directive_service->get_standard_presets();
+			if (isset($presets[$preset_key]['instruction'])) {
+				$instruction = $presets[$preset_key]['instruction'];
+			}
+		}
+
+		if ($custom !== '') {
+			$instruction = $instruction ? $instruction . ' Additional instruction: ' . $custom : $custom;
+		}
+
+		return $instruction;
+	}
+
+	/**
+	 * Extract AI execution options (model, temperature) from regeneration context.
+	 *
+	 * @param array $context Context array.
+	 * @return array
+	 */
+	public function extract_ai_options(array $context): array {
+		$options = array();
+
+		if (!empty($context['model_override'])) {
+			$options['model'] = sanitize_text_field($context['model_override']);
+		}
+
+		if (isset($context['temperature_override']) && is_numeric($context['temperature_override'])) {
+			$options['temperature'] = max(0.0, min(1.0, floatval($context['temperature_override'])));
+		}
+
+		return $options;
 	}
 
 	/**

@@ -700,6 +700,10 @@ class AIPS_Generator {
             );
         }
 
+        if (!empty($options['custom_directive'])) {
+            $prompt .= "\n\n" . sprintf(__('Follow this directive for the title: %s', 'ai-post-scheduler'), $options['custom_directive']);
+        }
+
         // Request title from AI service
         $result = $this->generate_content($prompt, $options, 'title');
 
@@ -778,6 +782,10 @@ class AIPS_Generator {
             $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice_obj, $topic_str);
         } else {
             $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str, $context);
+        }
+
+        if (!empty($options['custom_directive'])) {
+            $excerpt_prompt .= "\n\n" . sprintf(__('Follow this directive for the excerpt: %s', 'ai-post-scheduler'), $options['custom_directive']);
         }
 
         // Request excerpt from AI service

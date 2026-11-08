@@ -296,13 +296,30 @@ class AIPS_Editor_Assets {
 			}
 		}
 
+		$default_config = AIPS_Config::get_instance()->get_ai_config();
+		$available_models = array(
+			''                           => __('Template Default', 'ai-post-scheduler'),
+			'gpt-4o'                     => 'GPT-4o (OpenAI)',
+			'gpt-4o-mini'                => 'GPT-4o Mini (OpenAI)',
+			'claude-3-5-sonnet-20241022' => 'Claude 3.5 Sonnet (Anthropic)',
+			'claude-3-5-haiku-20241022'  => 'Claude 3.5 Haiku (Anthropic)',
+			'gemini-1.5-pro'             => 'Gemini 1.5 Pro (Google)',
+			'gemini-1.5-flash'           => 'Gemini 1.5 Flash (Google)',
+		);
+
 		return array(
-			'ajaxurl'    => admin_url('admin-ajax.php'),
-			'nonce'      => wp_create_nonce('aips_ajax_nonce'),
-			'postId'     => $post_id,
-			'historyId'  => $history_id,
-			'presets'    => $this->directive_service->get_standard_presets(),
-			'panelTitle' => __('AI Edit & Directives', 'ai-post-scheduler'),
+			'ajaxurl'            => admin_url('admin-ajax.php'),
+			'nonce'              => wp_create_nonce('aips_ajax_nonce'),
+			'postId'             => $post_id,
+			'historyId'          => $history_id,
+			'presets'            => $this->directive_service->get_standard_presets(),
+			'models'             => $available_models,
+			'componentOverrides' => $post_id > 0 ? (get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true) ?: array()) : array(),
+			'defaultAiConfig'    => array(
+				'model'       => isset($default_config['model']) ? $default_config['model'] : '',
+				'temperature' => isset($default_config['temperature']) ? floatval($default_config['temperature']) : 0.7,
+			),
+			'panelTitle'         => __('AI Edit & Directives', 'ai-post-scheduler'),
 			'labels'     => array(
 				'popoverTitle'  => __('AI Edit — Rewrite & Enhance', 'ai-post-scheduler'),
 				'apply'         => __('Apply to Block', 'ai-post-scheduler'),
