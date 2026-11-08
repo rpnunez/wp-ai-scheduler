@@ -395,6 +395,101 @@ class AIPS_DB_Prune_Repository {
 	}
 
 	/**
+	 * Prune AI error logs older than a given cutoff timestamp.
+	 *
+	 * @param int $cutoff_timestamp Epoch timestamp before which AI error logs will be deleted.
+	 * @param int $batch_size       Maximum rows to delete per iteration.
+	 * @return int Total deleted rows.
+	 */
+	public function prune_ai_error_logs($cutoff_timestamp, $batch_size = 1000) {
+		$table            = $this->wpdb->prefix . 'aips_history_log';
+		$cutoff_timestamp = (int) $cutoff_timestamp;
+		$batch_size       = max(1, min(5000, (int) $batch_size));
+		$total_deleted    = 0;
+		$error_type       = AIPS_History_Type::ERROR;
+
+		do {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$deleted = $this->wpdb->query(
+				$this->wpdb->prepare(
+					"DELETE FROM `{$table}` WHERE `history_type_id` = %d AND `details` LIKE '%%AI generation failed%%' AND `timestamp` < %d LIMIT %d",
+					$error_type,
+					$cutoff_timestamp,
+					$batch_size
+				)
+			);
+
+			if (false === $deleted) {
+				$this->log_db_error('prune_ai_error_logs: failed to delete AI error log batch', array(
+					'table' => $table,
+				));
+				break;
+			}
+
+			if (0 === (int) $deleted) {
+				break;
+			}
+
+			$total_deleted += (int) $deleted;
+		} while ((int) $deleted === $batch_size);
+
+		if ($total_deleted > 0) {
+			self::invalidate_tables_status_cache();
+		}
+
+		return $total_deleted;
+	}
+
+	/**
+	 * Delete aips_history_log rows whose parent aips_history row no longer exists.
+	 *
+	 * aips_history_log has no FK cascade; although the history repository now
+	 * removes child rows on delete, this batched sweep clears any strays (e.g.
+	 * from historical deletes before the cascade existed) and runs as part of the
+	 * scheduled history-log prune.
+	 *
+	 * @param int $batch_size Maximum rows to delete per iteration.
+	 * @return int Total orphaned rows deleted.
+	 */
+	public function purge_orphaned_history_logs($batch_size = 1000) {
+		$log           = $this->wpdb->prefix . 'aips_history_log';
+		$history       = $this->wpdb->prefix . 'aips_history';
+		$batch_size    = max(1, min(5000, (int) $batch_size));
+		$total_deleted = 0;
+
+		do {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$deleted = $this->wpdb->query(
+				$this->wpdb->prepare(
+					"DELETE FROM `{$log}`
+					 WHERE NOT EXISTS (SELECT 1 FROM `{$history}` h WHERE h.id = `{$log}`.history_id)
+					 LIMIT %d",
+					$batch_size
+				)
+			);
+
+			if (false === $deleted) {
+				$this->log_db_error('purge_orphaned_history_logs: failed to delete orphaned batch', array(
+					'table' => $log,
+				));
+				break;
+			}
+
+			if (0 === (int) $deleted) {
+				break;
+			}
+
+			$total_deleted += (int) $deleted;
+		} while ((int) $deleted === $batch_size);
+
+		if ($total_deleted > 0) {
+			self::invalidate_tables_status_cache();
+		}
+
+		return $total_deleted;
+	}
+
+	/**
 	 * Purge embedding vectors whose associated posts no longer exist, and clean related graph entries.
 	 *
 	 * @param int $batch_size Maximum rows to delete per iteration.

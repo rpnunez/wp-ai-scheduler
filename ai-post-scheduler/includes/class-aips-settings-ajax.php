@@ -38,6 +38,7 @@ class AIPS_Settings_AJAX {
 
 		add_action('wp_ajax_aips_save_settings', array($this, 'ajax_save_settings'));
 		add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
+		add_action('wp_ajax_aips_flush_notification_digest', array($this, 'ajax_flush_notification_digest'));
 	}
 
 	/**
@@ -180,6 +181,36 @@ class AIPS_Settings_AJAX {
 		// SECURITY: Escape the AI response before sending it to the browser to prevent XSS.
 		// Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.
 		AIPS_Ajax_Response::success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
+	}
+
+	/**
+	 * Flush and send the pending summarized notification digest immediately.
+	 *
+	 * @return void
+	 */
+	public function ajax_flush_notification_digest() {
+		$this->verify_request();
+
+		$notifications = AIPS_Notifications::instance();
+		$queue_count = $notifications->get_digest_queue_count();
+
+		if ($queue_count === 0) {
+			AIPS_Ajax_Response::success(array(
+				'message'     => __('There are no pending notifications in the digest queue.', 'ai-post-scheduler'),
+				'queue_count' => 0,
+			));
+		}
+
+		$flushed = $notifications->flush_digest_queue();
+
+		AIPS_Ajax_Response::success(array(
+			'message'     => sprintf(
+				/* translators: %d: number of flushed notifications */
+				_n('Successfully sent digest with %d notification.', 'Successfully sent digest with %d notifications.', $flushed, 'ai-post-scheduler'),
+				$flushed
+			),
+			'queue_count' => 0,
+		));
 	}
 
 	/**
