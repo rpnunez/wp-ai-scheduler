@@ -103,6 +103,24 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the slug prompt.
+	 *
+	 * @return string Slug prompt from the template.
+	 */
+	public function get_slug_prompt() {
+		return isset($this->template->slug_prompt) ? $this->template->slug_prompt : '';
+	}
+
+	/**
+	 * Check if slug generation is enabled.
+	 *
+	 * @return bool True if enabled.
+	 */
+	public function should_generate_slug() {
+		return !empty($this->template->generate_slug);
+	}
+
+	/**
 	 * Get the image prompt.
 	 *
 	 * @return string|null Image prompt or null.
@@ -306,6 +324,8 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 			'name' => $this->get_name(),
 			'content_prompt' => $this->get_content_prompt(),
 			'title_prompt' => $this->get_title_prompt(),
+			'slug_prompt' => $this->get_slug_prompt(),
+			'generate_slug' => $this->should_generate_slug(),
 			'post_status' => $this->get_post_status(),
 			'post_type' => $this->get_post_type(),
 			'post_category' => $this->get_post_category(),

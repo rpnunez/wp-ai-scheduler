@@ -20,6 +20,10 @@ if (!defined('ABSPATH')) {
 			<span class="dashicons dashicons-heading"></span>
 			<?php esc_html_e('3 Title Candidates', 'ai-post-scheduler'); ?>
 		</button>
+		<button type="button" class="button button-secondary aips-gen-slugs-btn" data-component="slug">
+			<span class="dashicons dashicons-admin-links"></span>
+			<?php esc_html_e('3 Post Slug Candidates', 'ai-post-scheduler'); ?>
+		</button>
 		<button type="button" class="button button-secondary aips-gen-excerpts-btn" data-component="excerpt">
 			<span class="dashicons dashicons-text"></span>
 			<?php esc_html_e('3 Excerpt Candidates', 'ai-post-scheduler'); ?>

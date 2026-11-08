@@ -448,6 +448,16 @@ class AIPS_History {
             $generated_title = $container['generated_title'];
         }
 
+        // Slug
+        $generated_slug = '';
+        if ($post && !empty($post->post_name)) {
+            $generated_slug = $post->post_name;
+        } elseif (!empty($history_item->post_slug)) {
+            $generated_slug = $history_item->post_slug;
+        } elseif (!empty($container['post_slug'])) {
+            $generated_slug = $container['post_slug'];
+        }
+
         // Excerpt snippet (up to 30 chars)
         $excerpt_raw = '';
         if ($post && !empty($post->post_excerpt)) {
@@ -485,6 +495,7 @@ class AIPS_History {
 
             $component_labels = array(
                 'post_title'     => __('title', 'ai-post-scheduler'),
+                'post_slug'      => __('slug', 'ai-post-scheduler'),
                 'post_excerpt'   => __('excerpt', 'ai-post-scheduler'),
                 'featured_image' => __('featured image', 'ai-post-scheduler'),
                 'post_content'   => __('content', 'ai-post-scheduler'),
@@ -576,6 +587,7 @@ class AIPS_History {
             'post_type_label' => $post_type_label,
             'attempt_text' => sprintf(__('Attempting to create a %s', 'ai-post-scheduler'), $post_type_label),
             'post_title' => $generated_title,
+            'post_slug' => $generated_slug,
             'post_excerpt' => $excerpt_30,
             'show_milestones' => $show_milestones,
             'has_image' => !empty($thumb_url),
@@ -608,6 +620,8 @@ class AIPS_History {
             'trigger_method' => __('Trigger Method', 'ai-post-scheduler'),
             'post_content' => __('Post Content', 'ai-post-scheduler'),
             'post_title' => __('Post Title', 'ai-post-scheduler'),
+            'post_slug' => __('Post Slug', 'ai-post-scheduler'),
+            'slug' => __('Post Slug', 'ai-post-scheduler'),
             'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
             'metadata' => __('Metadata', 'ai-post-scheduler'),
@@ -1654,6 +1668,9 @@ class AIPS_History {
             }
         }
 
+        if (strpos($message, 'slug') !== false) {
+            return 'post_slug';
+        }
         if (strpos($message, 'title') !== false) {
             return 'post_title';
         }
@@ -1697,6 +1714,8 @@ class AIPS_History {
             'body' => __('Post Content', 'ai-post-scheduler'),
             'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
             'excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
+            'post_slug' => __('Post Slug', 'ai-post-scheduler'),
+            'slug' => __('Post Slug', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
             'image' => __('Featured Image', 'ai-post-scheduler'),
             'topic' => __('Topic', 'ai-post-scheduler'),

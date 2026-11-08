@@ -696,7 +696,8 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 
 	/**
 	 * Upgrading from 3.7.21 — the version owned by the author featured-image
-	 * migration — must still run migrate_to_3_7_22() and stamp 3.7.22.
+	 * migration — must still run migrate_to_3_7_22() and stamp the current
+	 * plugin version.
 	 *
 	 * A shared 3.7.21 gate would treat that stamp as already applied and skip
 	 * the index, metadata, cache, and orphan cleanup.
@@ -722,8 +723,58 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			$wpdb->get_var( $wpdb->prepare( "SELECT id FROM `{$log}` WHERE id = %d", $orphan_log_id ) ),
 			'Upgrade from 3.7.21 must run migrate_to_3_7_22() and delete orphaned history_log rows'
 		);
-		$this->assertSame( '3.7.22', get_option( 'aips_db_version' ) );
+		$this->assertSame( '3.7.23', get_option( 'aips_db_version' ) );
 		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
-		$this->assertSame( '3.7.22', AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
+		$this->assertSame( '3.7.23', AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
+	}
+
+	/**
+	 * Invoke the private migrate_to_3_7_23() on a fresh instance.
+	 *
+	 * @return bool
+	 */
+	private function run_migrate_3_7_23() {
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_23' );
+		$method->setAccessible( true );
+		return (bool) $method->invoke( $migrations );
+	}
+
+	/**
+	 * migrate_to_3_7_23() must add generate_slug and slug_prompt when a site
+	 * already stamped 3.7.22 is missing them. 3.7.20 is the history index
+	 * migration, so the slug columns cannot share that gate.
+	 */
+	public function test_migrate_to_3_7_23_adds_slug_columns_after_3_7_22() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$templates = $wpdb->prefix . 'aips_templates';
+		$authors   = $wpdb->prefix . 'aips_authors';
+
+		$drop_slug_columns = function () use ( $wpdb, $templates, $authors ) {
+			$wpdb->query( "ALTER TABLE `{$templates}` DROP COLUMN generate_slug" );
+			$wpdb->query( "ALTER TABLE `{$templates}` DROP COLUMN slug_prompt" );
+			$wpdb->query( "ALTER TABLE `{$authors}` DROP COLUMN generate_slug" );
+			$wpdb->query( "ALTER TABLE `{$authors}` DROP COLUMN slug_prompt" );
+		};
+
+		$assert_slug_columns = function ( $message ) use ( $wpdb, $templates, $authors ) {
+			foreach ( array( $templates, $authors ) as $table ) {
+				$columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$table}`", 0 );
+				$this->assertContains( 'generate_slug', $columns, $table . ' ' . $message );
+				$this->assertContains( 'slug_prompt', $columns, $table . ' ' . $message );
+			}
+		};
+
+		$drop_slug_columns();
+		$this->assertTrue( $this->run_migrate_3_7_23() );
+		$assert_slug_columns( 'must gain slug columns from migrate_to_3_7_23()' );
+
+		$drop_slug_columns();
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.22' );
+		AIPS_DB_Migrations::check_and_run();
+		$assert_slug_columns( 'must gain slug columns on upgrade from 3.7.22' );
+		$this->assertSame( '3.7.23', get_option( 'aips_db_version' ) );
 	}
 }

@@ -52,6 +52,10 @@ $aips_ai_edit_modal_rendered = true;
 						<span><?php esc_html_e('Title', 'ai-post-scheduler'); ?></span>
 						<span class="aips-tab-badge" data-badge="title" style="display: none;"></span>
 					</button>
+					<button type="button" class="aips-ai-edit-tab" role="tab" aria-selected="false" data-tab="slug">
+						<span><?php esc_html_e('Post Slug', 'ai-post-scheduler'); ?></span>
+						<span class="aips-tab-badge" data-badge="slug" style="display: none;"></span>
+					</button>
 					<button type="button" class="aips-ai-edit-tab" role="tab" aria-selected="false" data-tab="excerpt">
 						<span><?php esc_html_e('Excerpt', 'ai-post-scheduler'); ?></span>
 						<span class="aips-tab-badge" data-badge="excerpt" style="display: none;"></span>
@@ -93,6 +97,11 @@ $aips_ai_edit_modal_rendered = true;
 								<span class="aips-summary-card-title"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></span>
 								<span class="aips-summary-card-status" id="aips-summary-status-title"><?php esc_html_e('Ready', 'ai-post-scheduler'); ?></span>
 								<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-nav-to-tab" data-target-tab="title"><?php esc_html_e('View', 'ai-post-scheduler'); ?></button>
+							</div>
+							<div class="aips-ai-edit-summary-card" data-component-card="slug">
+								<span class="aips-summary-card-title"><?php esc_html_e('Post Slug', 'ai-post-scheduler'); ?></span>
+								<span class="aips-summary-card-status" id="aips-summary-status-slug"><?php esc_html_e('Ready', 'ai-post-scheduler'); ?></span>
+								<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-nav-to-tab" data-target-tab="slug"><?php esc_html_e('View', 'ai-post-scheduler'); ?></button>
 							</div>
 							<div class="aips-ai-edit-summary-card" data-component-card="excerpt">
 								<span class="aips-summary-card-title"><?php esc_html_e('Excerpt', 'ai-post-scheduler'); ?></span>
@@ -166,6 +175,77 @@ $aips_ai_edit_modal_rendered = true;
 						</div>
 						<div class="aips-component-revisions-wrapper">
 							<button type="button" class="aips-view-revisions-btn" data-component="title">
+								<span class="dashicons dashicons-backup"></span>
+								<span class="button-text"><?php esc_html_e('View Revisions', 'ai-post-scheduler'); ?></span>
+								<span class="revision-count"></span>
+							</button>
+							<div class="aips-component-revisions" style="display: none;">
+								<div class="aips-revisions-loading">
+									<span class="spinner is-active"></span>
+									<span><?php esc_html_e('Loading revisions...', 'ai-post-scheduler'); ?></span>
+								</div>
+								<div class="aips-revisions-list"></div>
+								<div class="aips-revisions-empty" style="display: none;">
+									<?php esc_html_e('No previous revisions found.', 'ai-post-scheduler'); ?>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Tab Panel: Slug Component -->
+				<div class="aips-ai-edit-tab-panel" data-panel="slug" role="tabpanel">
+					<div class="aips-component-section" data-component="slug">
+						<div class="aips-component-header">
+							<div class="aips-component-header-left">
+								<h4 class="aips-component-title"><?php esc_html_e('Post Slug', 'ai-post-scheduler'); ?></h4>
+								<span class="aips-component-status"></span>
+							</div>
+							<div class="aips-component-actions">
+								<button type="button" class="aips-regenerate-btn" data-component="slug">
+									<span class="dashicons dashicons-update"></span>
+									<span class="button-text"><?php esc_html_e('Re-generate', 'ai-post-scheduler'); ?></span>
+								</button>
+							</div>
+						</div>
+
+						<!-- Side-by-Side Diff Comparison Slot -->
+						<div class="aips-diff-wrapper" data-component="slug" style="display: none;">
+							<div class="aips-diff-header">
+								<span class="dashicons dashicons-randomize" aria-hidden="true"></span>
+								<strong><?php esc_html_e('Side-by-Side Comparison', 'ai-post-scheduler'); ?></strong>
+							</div>
+							<div class="aips-diff-grid">
+								<div class="aips-diff-col aips-diff-col-current">
+									<div class="aips-diff-col-header"><?php esc_html_e('Current Version', 'ai-post-scheduler'); ?></div>
+									<div class="aips-diff-col-body" id="aips-diff-current-slug"></div>
+								</div>
+								<div class="aips-diff-col aips-diff-col-regenerated">
+									<div class="aips-diff-col-header"><?php esc_html_e('Newly Regenerated Draft', 'ai-post-scheduler'); ?></div>
+									<div class="aips-diff-col-body" id="aips-diff-regenerated-slug"></div>
+								</div>
+							</div>
+							<div class="aips-diff-footer">
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-accept-diff-btn" data-component="slug">
+									<span class="dashicons dashicons-yes"></span>
+									<?php esc_html_e('Accept & Replace', 'ai-post-scheduler'); ?>
+								</button>
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-discard-diff-btn" data-component="slug">
+									<span class="dashicons dashicons-no-alt"></span>
+									<?php esc_html_e('Discard', 'ai-post-scheduler'); ?>
+								</button>
+							</div>
+						</div>
+
+						<div class="aips-component-body">
+							<label class="aips-field-label" for="aips-component-slug"><?php esc_html_e('Editable Post Slug:', 'ai-post-scheduler'); ?></label>
+							<input type="text" id="aips-component-slug" class="aips-component-input" />
+							<div class="aips-component-meta">
+								<span class="aips-char-count"></span>
+							</div>
+						</div>
+						<div class="aips-component-revisions-wrapper">
+							<button type="button" class="aips-view-revisions-btn" data-component="slug">
 								<span class="dashicons dashicons-backup"></span>
 								<span class="button-text"><?php esc_html_e('View Revisions', 'ai-post-scheduler'); ?></span>
 								<span class="revision-count"></span>

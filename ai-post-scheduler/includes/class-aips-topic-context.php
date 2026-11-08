@@ -119,6 +119,24 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the slug prompt for AI slug generation.
+	 *
+	 * @return string Slug prompt from author.
+	 */
+	public function get_slug_prompt() {
+		return isset($this->author->slug_prompt) ? $this->author->slug_prompt : '';
+	}
+
+	/**
+	 * Check if slug generation is enabled.
+	 *
+	 * @return bool True if enabled in author settings.
+	 */
+	public function should_generate_slug() {
+		return !empty($this->author->generate_slug);
+	}
+
+	/**
 	 * Get the image prompt for featured image generation.
 	 *
 	 * Uses the topic title as the image prompt.
@@ -339,6 +357,8 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			'field_niche' => $this->author->field_niche,
 			'content_prompt' => $this->get_content_prompt(),
 			'title_prompt' => $this->get_title_prompt(),
+			'slug_prompt' => $this->get_slug_prompt(),
+			'generate_slug' => $this->should_generate_slug(),
 			'post_status' => $this->get_post_status(),
 			'post_type' => $this->get_post_type(),
 			'post_category' => $this->get_post_category(),

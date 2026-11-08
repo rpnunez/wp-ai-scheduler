@@ -108,7 +108,7 @@ class AIPS_Editor_Controller {
 	}
 
 	/**
-	 * AJAX handler: Generate 3 title or excerpt candidates.
+	 * AJAX handler: Generate 3 title, slug, or excerpt candidates.
 	 *
 	 * @return void
 	 */
@@ -123,7 +123,7 @@ class AIPS_Editor_Controller {
 		}
 
 		$component = isset($_POST['component']) ? sanitize_key($_POST['component']) : 'title';
-		if (!in_array($component, array('title', 'excerpt'), true)) {
+		if (!in_array($component, array('title', 'slug', 'excerpt'), true)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 

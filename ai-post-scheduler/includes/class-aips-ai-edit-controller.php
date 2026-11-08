@@ -156,6 +156,9 @@ class AIPS_AI_Edit_Controller {
 				'content' => array(
 					'value' => $post->post_content,
 				),
+				'slug' => array(
+					'value' => $post->post_name,
+				),
 				'featured_image' => array(
 					'attachment_id' => $featured_image_id,
 					'url' => $featured_image_url,
@@ -214,7 +217,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
@@ -341,6 +344,9 @@ class AIPS_AI_Edit_Controller {
 			case 'title':
 				$result = $this->service->regenerate_title($context);
 				break;
+			case 'slug':
+				$result = $this->service->regenerate_slug($context);
+				break;
 			case 'excerpt':
 				$result = $this->service->regenerate_excerpt($context);
 				break;
@@ -409,9 +415,10 @@ class AIPS_AI_Edit_Controller {
 	/**
 	 * AJAX handler: Regenerate all components.
 	 *
-	 * Regenerates title, excerpt, and content. Featured image regeneration is
+	 * Regenerates title, slug, excerpt, and content. Featured image regeneration is
 	 * conditional and only runs when a prior image exists or original generation
-	 * logged a featured-image failure.
+	 * logged a featured-image failure. Slug regeneration follows the template or
+	 * author generate_slug setting inside the component service.
 	 */
 	public function ajax_regenerate_all_components() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -464,7 +471,7 @@ class AIPS_AI_Edit_Controller {
 			$current_snapshots = $_POST['manual_snapshots'];
 		}
 
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		foreach ($valid_components as $component) {
 			$snapshot_value = null;
 			$source = 'persisted';
@@ -567,6 +574,11 @@ class AIPS_AI_Edit_Controller {
 			$updated_components[] = 'title';
 		}
 		
+		if (isset($components['slug'])) {
+			$post_data['post_name'] = sanitize_title(wp_unslash($components['slug']));
+			$updated_components[] = 'slug';
+		}
+
 		if (isset($components['excerpt'])) {
 			$post_data['post_excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
 			$updated_components[] = 'excerpt';
@@ -600,6 +612,9 @@ class AIPS_AI_Edit_Controller {
 		$sanitized_components = array();
 		if (isset($post_data['post_title'])) {
 			$sanitized_components['title'] = $post_data['post_title'];
+		}
+		if (isset($post_data['post_name'])) {
+			$sanitized_components['slug'] = $post_data['post_name'];
 		}
 		if (isset($post_data['post_excerpt'])) {
 			$sanitized_components['excerpt'] = $post_data['post_excerpt'];
@@ -662,7 +677,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
@@ -710,7 +725,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array('title', 'slug', 'excerpt', 'content', 'featured_image');
 		if (!in_array($component, $valid_components)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
@@ -759,6 +774,9 @@ class AIPS_AI_Edit_Controller {
 			case 'title':
 				$post_data['post_title'] = sanitize_text_field($restored_value);
 				break;
+			case 'slug':
+				$post_data['post_name'] = sanitize_title($restored_value);
+				break;
 			case 'excerpt':
 				$post_data['post_excerpt'] = sanitize_textarea_field($restored_value);
 				break;
@@ -799,6 +817,9 @@ class AIPS_AI_Edit_Controller {
 		switch ($component) {
 			case 'title':
 				$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
+				break;
+			case 'slug':
+				$sanitized_components['slug'] = sanitize_title((string) $restored_value);
 				break;
 			case 'excerpt':
 				$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
@@ -968,6 +989,9 @@ class AIPS_AI_Edit_Controller {
 			case 'title':
 				return sanitize_text_field((string) $value);
 
+			case 'slug':
+				return sanitize_title((string) $value);
+
 			case 'excerpt':
 				return sanitize_textarea_field((string) $value);
 
@@ -1068,6 +1092,8 @@ class AIPS_AI_Edit_Controller {
 		switch ($component) {
 			case 'title':
 				return isset($post->post_title) ? $post->post_title : '';
+			case 'slug':
+				return isset($post->post_name) ? $post->post_name : '';
 			case 'excerpt':
 				return isset($post->post_excerpt) ? $post->post_excerpt : '';
 			case 'content':

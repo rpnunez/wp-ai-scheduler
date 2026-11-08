@@ -20,6 +20,10 @@
   - Resolved and associated post history containers across all AI Edit generation and editing operations, automatically recording discrete `ai_request` and `ai_response` logs so they appear in the post's History modal under "Technical" and "AI Calls" tabs.
   - Automatically record a `"Post {Component} regenerated via AI Edit"` timeline event upon saving or restoring any component revision, cleanly displayed in the History container "Timeline" tab as `"Post {Component} regenerated"`.
   - Added graceful fallback resolution in `AIPS_Generation_Context_Factory` for posts without explicit template or author/topic context.
+- **Dedicated post slug generation:**
+  - Templates and authors can opt in to an SEO slug step (`generate_slug`, `slug_prompt`) that runs with metadata generation and falls back to a title-based WordPress slug when the model returns nothing.
+  - AI Edit can revise, regenerate, and restore the post slug. The tabbed modal includes a Post Slug panel with the same comparison, accept/discard, and revision flow as the other components. Gutenberg and Classic Editor AI Edit panels can generate three slug candidates and apply one to the permalink. Session details list slug requests and revisions with the other components.
+  - Migration 3.7.23 adds `generate_slug` and `slug_prompt` to `aips_templates` and `aips_authors`. It is numbered after 3.7.22 so sites already on the index-consolidation release still receive the columns. 3.7.20 remains the history log index migration.
 - **Comprehensive Post Lifecycle Deletion Cleanup:**
   - Added `AIPS_Post_Cleanup_Service` orchestrated via WordPress `before_delete_post` hook to reliably clean up plugin data when posts are permanently deleted.
   - Purges embedding vectors in `wp_aips_embeddings` and bidirectional relationship pairings in `wp_aips_relationships`.

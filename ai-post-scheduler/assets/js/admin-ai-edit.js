@@ -152,7 +152,7 @@
 		 * Update status badges across tabs and overview summary cards
 		 */
 		updateTabBadges: function() {
-			var components = ['title', 'excerpt', 'content', 'featured_image'];
+			var components = ['title', 'slug', 'excerpt', 'content', 'featured_image'];
 			components.forEach(function(comp) {
 				var $badge = $('.aips-tab-badge[data-badge="' + comp + '"]');
 				var $summaryStatus = $('#aips-summary-status-' + comp);
@@ -201,6 +201,10 @@
 			$('#aips-component-title').val(data.components.title.value);
 			aiEditState.originalValues.title = data.components.title.value;
 			window.AIPS.setAIEditComponentSource('title', data.components.title.value, 'persisted');
+
+			$('#aips-component-slug').val(data.components.slug.value);
+			aiEditState.originalValues.slug = data.components.slug.value;
+			window.AIPS.setAIEditComponentSource('slug', data.components.slug.value, 'persisted');
 			
 			$('#aips-component-excerpt').val(data.components.excerpt.value);
 			aiEditState.originalValues.excerpt = data.components.excerpt.value;
@@ -222,6 +226,7 @@
 			
 			// Update character counts
 			window.AIPS.updateAIEditCharCount('title');
+			window.AIPS.updateAIEditCharCount('slug');
 			window.AIPS.updateAIEditCharCount('excerpt');
 			window.AIPS.updateAIEditCharCount('content');
 			
@@ -308,7 +313,7 @@
 			e.preventDefault();
 
 			var $button = $(e.currentTarget);
-			var components = ['title', 'excerpt', 'content', 'featured_image'];
+			var components = ['title', 'slug', 'excerpt', 'content', 'featured_image'];
 			var currentSnapshots = window.AIPS.getAIEditCurrentSnapshots(components);
 			var manualSnapshots = window.AIPS.getAIEditManualSnapshots(components);
 
@@ -535,6 +540,8 @@
 			switch (component) {
 				case 'title':
 					return $('#aips-component-title').val();
+				case 'slug':
+					return $('#aips-component-slug').val();
 				case 'excerpt':
 					return $('#aips-component-excerpt').val();
 				case 'content':
@@ -584,6 +591,10 @@
 				case 'title':
 					$('#aips-component-title').val(value);
 					window.AIPS.updateAIEditCharCount('title');
+					break;
+				case 'slug':
+					$('#aips-component-slug').val(value);
+					window.AIPS.updateAIEditCharCount('slug');
 					break;
 				case 'excerpt':
 					$('#aips-component-excerpt').val(value);
@@ -693,6 +704,9 @@
 				switch(component) {
 					case 'title':
 						components.title = $('#aips-component-title').val();
+						break;
+					case 'slug':
+						components.slug = $('#aips-component-slug').val();
 						break;
 					case 'excerpt':
 						components.excerpt = $('#aips-component-excerpt').val();
@@ -854,6 +868,7 @@
 			
 			// Clear all inputs
 			$('#aips-component-title').val('');
+			$('#aips-component-slug').val('');
 			$('#aips-component-excerpt').val('');
 			$('#aips-component-content').val('');
 			$('#aips-component-image').attr('src', '').hide();
@@ -1145,6 +1160,10 @@
 			switch (componentType) {
 				case 'title':
 					$input = $('#aips-component-title');
+					$input.val(value);
+					break;
+				case 'slug':
+					$input = $('#aips-component-slug');
 					$input.val(value);
 					break;
 				case 'excerpt':

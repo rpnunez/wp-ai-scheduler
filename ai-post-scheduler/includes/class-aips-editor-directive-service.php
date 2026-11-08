@@ -213,10 +213,10 @@ class AIPS_Editor_Directive_Service {
 	}
 
 	/**
-	 * Generate 3 creative candidates for post title or excerpt.
+	 * Generate 3 creative candidates for a post title, slug, or excerpt.
 	 *
 	 * @param int    $post_id   Post ID.
-	 * @param string $component 'title' or 'excerpt'.
+	 * @param string $component 'title', 'slug', or 'excerpt'.
 	 * @return array<string>|WP_Error
 	 */
 	public function generate_component_variants(int $post_id, string $component = 'title') {
@@ -241,6 +241,14 @@ class AIPS_Editor_Directive_Service {
 			$prompt .= "Post Content Sample:\n" . $content_sample . "\n\n";
 			$prompt .= "Generate 3 highly engaging, click-worthy, SEO-optimized title variations for this post.\n";
 			$prompt .= "Return ONLY a valid JSON array of 3 strings: [\"Title 1\", \"Title 2\", \"Title 3\"]. No extra text.";
+		} elseif ('slug' === $component) {
+			$prompt  = "You are an expert SEO editor for WordPress permalinks.\n\n";
+			$prompt .= "Current Post Title: \"" . esc_attr($post->post_title) . "\"\n";
+			$prompt .= "Current Post Slug: \"" . esc_attr($post->post_name) . "\"\n";
+			$prompt .= "Post Content Sample:\n" . $content_sample . "\n\n";
+			$prompt .= "Generate 3 SEO URL slug variations for this post.\n";
+			$prompt .= "Each slug must be 3 to 6 words, lowercase, with words separated by hyphens, and must omit stop words.\n";
+			$prompt .= "Return ONLY a valid JSON array of 3 strings: [\"slug-one\", \"slug-two\", \"slug-three\"]. No extra text.";
 		} else {
 			$prompt  = "You are an expert editorial writer for WordPress.\n\n";
 			$prompt .= "Post Title: \"" . esc_attr($post->post_title) . "\"\n";
@@ -255,13 +263,21 @@ class AIPS_Editor_Directive_Service {
 		}
 
 		$raw = trim((string) $response);
+		$variants = array($raw);
 		if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
 			$decoded = json_decode($matches[0], true);
 			if (is_array($decoded) && count($decoded) > 0) {
-				return array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
+				$variants = array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
 			}
 		}
 
-		return array($raw);
+		if ('slug' === $component) {
+			$variants = array_values(array_filter(array_map('sanitize_title', $variants)));
+			if (empty($variants)) {
+				return new WP_Error('slug_generation_failed', __('Failed to generate a valid slug.', 'ai-post-scheduler'));
+			}
+		}
+
+		return $variants;
 	}
 }

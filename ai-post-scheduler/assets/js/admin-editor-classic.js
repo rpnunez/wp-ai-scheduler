@@ -67,6 +67,14 @@
 			}
 			return $('#aips-editor-input-excerpt').val() || '';
 		}
+		if ('slug' === component) {
+			var $postName = $('#post_name');
+			if ($postName.length) {
+				return $postName.val() || '';
+			}
+			var $slugInput = $('#aips-editor-input-slug');
+			return $slugInput.length ? ($slugInput.val() || '') : '';
+		}
 		if ('content' === component) {
 			if (window.tinymce && window.tinymce.get('content') && !window.tinymce.get('content').isHidden()) {
 				return window.tinymce.get('content').getContent();
@@ -96,6 +104,14 @@
 			var textVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
 			$('#excerpt').val(textVal).trigger('change').trigger('input');
 			$('#aips-editor-input-excerpt').val(textVal).trigger('input');
+		} else if ('slug' === component) {
+			var slugVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
+			$('#post_name').val(slugVal).trigger('change');
+			$('#aips-editor-input-slug').val(slugVal).trigger('input');
+			$('#editable-post-name, #editable-post-name-full').text(slugVal);
+			if ($('#new-post-slug').length) {
+				$('#new-post-slug').val(slugVal);
+			}
 		} else if ('content' === component) {
 			var htmlVal = typeof val === 'object' && val !== null ? (val.value || '') : String(val || '');
 			if (window.tinymce && window.tinymce.get('content') && !window.tinymce.get('content').isHidden()) {
@@ -584,7 +600,7 @@
 		var $variantsContainer = $metaBox.find('.aips-classic-variants-container');
 		var $variantsList = $metaBox.find('.aips-classic-variants-list');
 
-		$metaBox.on('click', '.aips-gen-titles-btn, .aips-gen-excerpts-btn', function (e) {
+		$metaBox.on('click', '.aips-gen-titles-btn, .aips-gen-slugs-btn, .aips-gen-excerpts-btn', function (e) {
 			e.preventDefault();
 			var $btn = $(this);
 			var component = $btn.data('component');

@@ -332,6 +332,7 @@ class AIPS_Editor_Assets {
 				'instruction'   => __('Custom instruction (e.g. "make it punchy")...', 'ai-post-scheduler'),
 				'weaveBtn'      => __('Weave Internal Links', 'ai-post-scheduler'),
 				'titleVariants' => __('Generate 3 Title Candidates', 'ai-post-scheduler'),
+				'slugVariants' => __('Generate 3 Post Slug Candidates', 'ai-post-scheduler'),
 				'excerptVariants' => __('Generate 3 Excerpt Candidates', 'ai-post-scheduler'),
 				'success'       => __('Content updated!', 'ai-post-scheduler'),
 				'selectPrompt'  => __('Choose a preset or enter instructions below:', 'ai-post-scheduler'),
