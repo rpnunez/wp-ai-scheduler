@@ -19,7 +19,7 @@ Define markup in `<script type="text/html" id="tmpl-...">` blocks in the relevan
 For any schema change (new table, column, or index):
 1. Update `AIPS_DB_Manager::get_schema()`.
 2. `install_tables()` + `dbDelta` handle the rest — no extra wiring needed.
-3. Bump **both** the `Version:` plugin header and `AIPS_VERSION` constant in `ai-post-scheduler.php`.
+3. Bump the `Version:` plugin header in `ai-post-scheduler.php`. `AIPS_VERSION` is read from that header in `config.php`; do not hard-code a second copy.
 4. Create a repository class in `includes/` for any new table.
 
 ---

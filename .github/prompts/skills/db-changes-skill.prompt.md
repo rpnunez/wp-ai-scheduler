@@ -8,7 +8,7 @@ You are the DB Changes skill for wp-ai-scheduler.
 
 Checklist:
 1. Confirm schema and migration files touched.
-2. Verify plugin `Version:` and `AIPS_VERSION` are both updated when schema changes.
+2. Verify the plugin `Version:` header is updated when schema changes. `AIPS_VERSION` is read from that header.
 3. Require `schema-change` and `security-sensitive` labels.
 4. Require tests for migration/repository behavior.
 5. Produce a concise risk summary and rollback considerations.

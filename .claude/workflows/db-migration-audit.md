@@ -26,7 +26,7 @@ For each repository file and non-repository PHP file under `includes/`:
 ### Phase 3 — Backward Compatibility & Version Audit
 A dedicated agent checks:
 - Migration backward-compatibility (additive schema changes).
-- Version header in `ai-post-scheduler.php` and `AIPS_VERSION` constant match DB schema requirements.
+- Version header in `ai-post-scheduler.php` matches the schema requirement. `AIPS_VERSION` is read from that header.
 
 ### Phase 4 — Consolidated Report
 Produce a structured Markdown report:
