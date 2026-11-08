@@ -135,13 +135,10 @@ class AIPS_DB_Manager {
             completed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY uuid (uuid),
-            KEY post_id (post_id),
             KEY post_type (post_type),
-            KEY template_id (template_id),
             KEY campaign_id (campaign_id),
             KEY author_id (author_id),
             KEY topic_id (topic_id),
-            KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
@@ -392,11 +389,9 @@ class AIPS_DB_Manager {
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
-            KEY author_id (author_id),
-            KEY status (status),
             KEY claimed_at (claimed_at),
             KEY generated_at (generated_at),
-            KEY author_id_status (author_id, status),
+            KEY author_id_status_score (author_id, status, score),
             KEY status_score_reviewed (status, score, reviewed_at)
         ) $charset_collate;";
 

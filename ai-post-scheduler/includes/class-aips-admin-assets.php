@@ -783,6 +783,7 @@ class AIPS_Admin_Assets {
             'revisionAiGenerated'  => __('AI Generated', 'ai-post-scheduler'),
             'revisionManualEdit'   => __('Manual Edit', 'ai-post-scheduler'),
             'revisionRestored'     => __('Restored Version', 'ai-post-scheduler'),
+            'revisionOriginal'     => __('Original Version', 'ai-post-scheduler'),
             'revisionUnknown'      => __('Revision', 'ai-post-scheduler'),
         ));
 

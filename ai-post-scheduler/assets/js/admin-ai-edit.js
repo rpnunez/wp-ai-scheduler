@@ -237,19 +237,20 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var component = $btn.data('component');
+			var currentValue = window.AIPS.getAIEditCurrentComponentValue(component);
+			var currentSource = aiEditState.currentSources[component] || 'persisted';
+			var currentReason = window.AIPS.shouldCaptureManualRevision(component) ? 'pre_regenerate_manual' : 'pre_regenerate_current';
+
 			var requestData = {
 				action: 'aips_regenerate_component',
 				post_id: aiEditState.postId,
 				history_id: aiEditState.historyId,
 				component: component,
+				current_value: currentValue,
+				current_source: currentSource,
+				current_reason: currentReason,
 				nonce: aipsAIEditL10n.nonce
 			};
-
-			if (window.AIPS.shouldCaptureManualRevision(component)) {
-				requestData.current_value = window.AIPS.getAIEditCurrentComponentValue(component);
-				requestData.current_source = 'manual_edit';
-				requestData.current_reason = 'pre_regenerate_manual';
-			}
 
 			var req = $.ajax({
 				url: aipsAIEditL10n.ajaxUrl,
@@ -285,13 +286,31 @@
 		},
 
 		/**
+		 * Build a map of current component values that should be snapshotted.
+		 */
+		getAIEditCurrentSnapshots: function(components) {
+			var snapshots = {};
+
+			components.forEach(function(component) {
+				var val = window.AIPS.getAIEditCurrentComponentValue(component);
+				if (val !== null && val !== '') {
+					snapshots[component] = val;
+				}
+			});
+
+			return snapshots;
+		},
+
+		/**
 		 * Regenerate all supported components in one request.
 		 */
 		regenerateAllComponents: function(e) {
 			e.preventDefault();
 
 			var $button = $(e.currentTarget);
-			var manualSnapshots = window.AIPS.getAIEditManualSnapshots(['title', 'excerpt', 'content', 'featured_image']);
+			var components = ['title', 'excerpt', 'content', 'featured_image'];
+			var currentSnapshots = window.AIPS.getAIEditCurrentSnapshots(components);
+			var manualSnapshots = window.AIPS.getAIEditManualSnapshots(components);
 
 			$('.aips-regenerate-btn').prop('disabled', true);
 
@@ -302,6 +321,7 @@
 					action: 'aips_regenerate_all_components',
 					post_id: aiEditState.postId,
 					history_id: aiEditState.historyId,
+					current_snapshots: currentSnapshots,
 					manual_snapshots: manualSnapshots,
 					nonce: aipsAIEditL10n.nonce
 				},
@@ -339,6 +359,7 @@
 				aiEditState.pendingRegenerations[component] = regenerated[component];
 				window.AIPS.showComponentDiff(component, regenerated[component]);
 				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+				window.AIPS.refreshComponentRevisions(component);
 				regeneratedCount += 1;
 			});
 
@@ -384,6 +405,7 @@
 				window.AIPS.updateTabBadges();
 				$('#aips-ai-edit-accept-all').show();
 				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+				window.AIPS.refreshComponentRevisions(component);
 			} else {
 				window.AIPS.showComponentStatus(component, 'error', response.data.message || aipsAIEditL10n.regenerateError);
 			}
@@ -1104,6 +1126,10 @@
 					return aipsAIEditL10n.revisionManualEdit;
 				case 'restored_revision':
 					return aipsAIEditL10n.revisionRestored;
+				case 'original_version':
+				case 'persisted':
+				case 'current_version':
+					return aipsAIEditL10n.revisionOriginal || aipsAIEditL10n.currentVersion || 'Original Version';
 				case 'ai_generated':
 				default:
 					return aipsAIEditL10n.revisionAiGenerated || aipsAIEditL10n.revisionUnknown;
