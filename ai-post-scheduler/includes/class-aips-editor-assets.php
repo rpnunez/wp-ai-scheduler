@@ -177,14 +177,27 @@ class AIPS_Editor_Assets {
 		$this->register_styles();
 		wp_enqueue_style('aips-editor-style');
 
+		if (!wp_script_is('aips-templates-script', 'registered')) {
+			wp_register_script(
+				'aips-templates-script',
+				AIPS_PLUGIN_URL . 'assets/js/templates.js',
+				array('jquery'),
+				AIPS_VERSION,
+				true
+			);
+		}
+		wp_enqueue_script('aips-templates-script');
+
 		wp_enqueue_script(
 			'aips-editor-classic',
 			AIPS_PLUGIN_URL . 'assets/js/admin-editor-classic.js',
-			array('jquery'),
+			array('jquery', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);
 		wp_localize_script('aips-editor-classic', 'aipsEditorL10n', $this->get_l10n($post_id));
+
+		add_action('admin_footer', array($this, 'render_classic_templates'));
 
 		// Hook TinyMCE filters for inline selection actions
 		if (current_user_can('edit_posts') && 'true' === get_user_option('rich_editing')) {
@@ -309,5 +322,33 @@ class AIPS_Editor_Assets {
 				'actionError'   => __('That did not work. Please check your AI configuration.', 'ai-post-scheduler'),
 			),
 		);
+	}
+
+	/**
+	 * Render HTML templates for Classic Editor widgets.
+	 *
+	 * @return void
+	 */
+	public function render_classic_templates(): void {
+		?>
+		<script type="text/html" id="aips-tmpl-editor-revision-item">
+			<div class="aips-revision-item" data-revision-id="{{id}}">
+				<div class="aips-revision-header">
+					<span><span class="dashicons dashicons-backup"></span> {{sourceBadge}} {{timeText}}</span>
+					<button type="button" class="button button-small button-secondary aips-restore-revision-btn" data-revision-id="{{id}}">
+						<span class="dashicons dashicons-undo"></span> {{restoreLabel}}
+					</button>
+				</div>
+				<div class="aips-revision-body">{{snippet}}</div>
+			</div>
+		</script>
+		<script type="text/html" id="aips-tmpl-editor-variant-card">
+			<div class="aips-variant-card">
+				<div class="aips-variant-card-header"><span>Candidate {{candidateIndex}}</span></div>
+				<div class="aips-variant-card-body">{{text}}</div>
+				<button type="button" class="button button-small button-primary aips-apply-variant-btn">{{insertLabel}}</button>
+			</div>
+		</script>
+		<?php
 	}
 }

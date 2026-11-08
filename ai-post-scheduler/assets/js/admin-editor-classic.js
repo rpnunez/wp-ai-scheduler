@@ -12,6 +12,34 @@
 
 	var l10n = window.aipsEditorL10n || {};
 
+	// Register default templates in AIPS.Templates if not already defined in the DOM.
+	if (window.AIPS && window.AIPS.Templates) {
+		if (!window.AIPS.Templates.has('aips-tmpl-editor-revision-item')) {
+			window.AIPS.Templates.register(
+				'aips-tmpl-editor-revision-item',
+				'<div class="aips-revision-item" data-revision-id="{{id}}">' +
+					'<div class="aips-revision-header">' +
+						'<span><span class="dashicons dashicons-backup"></span> {{sourceBadge}} {{timeText}}</span>' +
+						'<button type="button" class="button button-small button-secondary aips-restore-revision-btn" data-revision-id="{{id}}">' +
+							'<span class="dashicons dashicons-undo"></span> {{restoreLabel}}' +
+						'</button>' +
+					'</div>' +
+					'<div class="aips-revision-body">{{snippet}}</div>' +
+				'</div>'
+			);
+		}
+		if (!window.AIPS.Templates.has('aips-tmpl-editor-variant-card')) {
+			window.AIPS.Templates.register(
+				'aips-tmpl-editor-variant-card',
+				'<div class="aips-variant-card">' +
+					'<div class="aips-variant-card-header"><span>Candidate {{candidateIndex}}</span></div>' +
+					'<div class="aips-variant-card-body">{{text}}</div>' +
+					'<button type="button" class="button button-small button-primary aips-apply-variant-btn">{{insertLabel}}</button>' +
+				'</div>'
+			);
+		}
+	}
+
 	function escapeHtml(str) {
 		if (typeof str !== 'string') {
 			return '';
@@ -85,7 +113,7 @@
 				}
 				if (imgUrl) {
 					var $preview = $('.aips-classic-component-widget[data-component="featured_image"] .aips-featured-image-preview');
-					$preview.html('<img src="' + escapeHtml(imgUrl) + '" alt="" style="max-width:100%;height:auto;border:1px solid #dcdcde;border-radius:4px;" />');
+					$preview.html('<img src="' + escapeHtml(imgUrl) + '" alt="" />');
 				}
 			}
 		}
@@ -156,19 +184,19 @@
 			}
 
 			var sourceBadge = rev.source === 'manual_edit' ? 'Manual' : 'AI Generated';
-			var $item = $('<div class="aips-revision-item" style="border: 1px solid #dcdcde; background: #fff; border-radius: 4px; padding: 8px 10px; margin-bottom: 8px;"></div>');
-			var $header = $('<div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#646970; margin-bottom:4px;"></div>')
-				.append('<span><span class="dashicons dashicons-backup" style="font-size:14px;width:14px;height:14px;vertical-align:text-bottom;"></span> ' + escapeHtml(sourceBadge) + ' ' + escapeHtml(timeText) + '</span>');
+			var html = '';
+			if (window.AIPS && window.AIPS.Templates) {
+				html = window.AIPS.Templates.render('aips-tmpl-editor-revision-item', {
+					id: rev.id,
+					sourceBadge: sourceBadge,
+					timeText: timeText,
+					restoreLabel: l10n.labels.restore || 'Restore',
+					snippet: previewSnippet
+				});
+			}
 
-			var $restoreBtn = $('<button type="button" class="button button-small button-secondary aips-restore-revision-btn" style="margin-left:auto;"><span class="dashicons dashicons-undo" style="font-size:13px;width:13px;height:13px;vertical-align:text-bottom;"></span> ' + (l10n.labels.restore || 'Restore') + '</button>');
-			$restoreBtn.data('revision-id', rev.id);
-			$restoreBtn.data('revision-val', rawVal);
-
-			$header.append($restoreBtn);
-
-			var $body = $('<div style="font-size:12px; color:#1d2327; line-height:1.4; word-break:break-word;"></div>').text(previewSnippet);
-
-			$item.append($header).append($body);
+			var $item = $(html);
+			$item.find('.aips-restore-revision-btn').data('revision-id', rev.id).data('revision-val', rawVal);
 			$list.append($item);
 		});
 	}
@@ -240,9 +268,9 @@
 
 						if ('featured_image' === component) {
 							var currentThumb = $widget.find('.aips-featured-image-preview img').attr('src') || '';
-							$currentCol.html(currentThumb ? '<img src="' + escapeHtml(currentThumb) + '" style="max-width:100%;" />' : '<em>No current image</em>');
+							$currentCol.html(currentThumb ? '<img src="' + escapeHtml(currentThumb) + '" />' : '<em>No current image</em>');
 							var newThumb = typeof newVal === 'object' && newVal.url ? newVal.url : '';
-							$regenCol.html(newThumb ? '<img src="' + escapeHtml(newThumb) + '" style="max-width:100%;" />' : '<em>Image generated</em>');
+							$regenCol.html(newThumb ? '<img src="' + escapeHtml(newThumb) + '" />' : '<em>Image generated</em>');
 						} else {
 							$currentCol.text(typeof currentVal === 'string' ? currentVal : JSON.stringify(currentVal));
 							$regenCol.text(typeof newVal === 'string' ? newVal : (newVal.value || JSON.stringify(newVal)));
@@ -368,17 +396,19 @@
 						$carousel.empty();
 						$container.show();
 						$.each(response.data.variants, function (idx, text) {
-							var $card = $('<div class="aips-variant-card" style="background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px;padding:8px 10px;margin-bottom:6px;"></div>');
-							var $cardHeader = $('<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#646970;margin-bottom:4px;"><span>Candidate ' + (idx + 1) + '</span></div>');
-							var $cardBody = $('<div style="font-size:12px;color:#1d2327;line-height:1.4;margin-bottom:6px;"></div>').text(text);
-							var $applyBtn = $('<button type="button" class="button button-small button-primary">' + (l10n.labels.insert || 'Apply') + '</button>');
-
-							$applyBtn.on('click', function () {
+							var html = '';
+							if (window.AIPS && window.AIPS.Templates) {
+								html = window.AIPS.Templates.render('aips-tmpl-editor-variant-card', {
+									candidateIndex: idx + 1,
+									text: text,
+									insertLabel: l10n.labels.insert || 'Apply'
+								});
+							}
+							var $card = $(html);
+							$card.find('.aips-apply-variant-btn').on('click', function () {
 								applyComponentValue(component, text);
-								$card.css('background-color', '#edfaef');
+								$card.css('background-color', 'var(--aips-success-bg)');
 							});
-
-							$card.append($cardHeader).append($cardBody).append($applyBtn);
 							$carousel.append($card);
 						});
 					} else {
@@ -423,17 +453,19 @@
 					$variantsList.empty();
 					$variantsContainer.show();
 					$.each(response.data.variants, function (idx, text) {
-						var $card = $('<div class="aips-variant-card"></div>');
-						var $header = $('<div class="aips-variant-card-header"><span>Variant ' + (idx + 1) + '</span></div>');
-						var $body = $('<div class="aips-variant-card-body"></div>').text(text);
-						var $applyBtn = $('<button type="button" class="button button-small button-primary"></button>')
-							.text(l10n.labels.insert || 'Insert')
-							.on('click', function () {
-								applyComponentValue(component, text);
-								$card.css('background-color', 'var(--aips-success-bg)');
+						var html = '';
+						if (window.AIPS && window.AIPS.Templates) {
+							html = window.AIPS.Templates.render('aips-tmpl-editor-variant-card', {
+								candidateIndex: idx + 1,
+								text: text,
+								insertLabel: l10n.labels.insert || 'Insert'
 							});
-
-						$card.append($header).append($body).append($applyBtn);
+						}
+						var $card = $(html);
+						$card.find('.aips-apply-variant-btn').on('click', function () {
+							applyComponentValue(component, text);
+							$card.css('background-color', 'var(--aips-success-bg)');
+						});
 						$variantsList.append($card);
 					});
 				} else {
