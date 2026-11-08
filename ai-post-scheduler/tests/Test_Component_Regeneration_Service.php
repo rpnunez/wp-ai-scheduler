@@ -557,4 +557,124 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			(is_array($result) && isset($result['attachment_id'])) || is_wp_error($result)
 		);
 	}
+
+	/**
+	 * Test build_directive_instruction formatting for presets and custom directives.
+	 */
+	public function test_build_directive_instruction_with_preset_and_custom() {
+		$empty_instruction = $this->service->build_directive_instruction(array());
+		$this->assertSame('', $empty_instruction);
+
+		$preset_instruction = $this->service->build_directive_instruction(array(
+			'directive_preset' => 'punchy',
+		));
+		$this->assertStringContainsString('punchier', $preset_instruction);
+
+		$combined_instruction = $this->service->build_directive_instruction(array(
+			'directive_preset' => 'seo',
+			'custom_directive' => 'Focus on developer workflows',
+		));
+		$this->assertStringContainsString('search intent', $combined_instruction);
+		$this->assertStringContainsString('Focus on developer workflows', $combined_instruction);
+	}
+
+	/**
+	 * Test extract_ai_options extracts model and clamps temperature between 0 and 1.
+	 */
+	public function test_extract_ai_options_extracts_model_and_clamps_temperature() {
+		$options = $this->service->extract_ai_options(array(
+			'model_override'       => 'claude-3-5-sonnet-20241022',
+			'temperature_override' => '1.5',
+		));
+
+		$this->assertSame('claude-3-5-sonnet-20241022', $options['model']);
+		$this->assertSame(1.0, $options['temperature']);
+
+		$options_negative = $this->service->extract_ai_options(array(
+			'temperature_override' => '-0.2',
+		));
+		$this->assertSame(0.0, $options_negative['temperature']);
+	}
+
+	// ------------------------------------------------------------------
+	// regenerate_slug
+	// ------------------------------------------------------------------
+
+	/**
+	 * Test regenerate_slug requires generation context
+	 */
+	public function test_regenerate_slug_requires_context() {
+		$context = array();
+		$result = $this->service->regenerate_slug($context);
+
+		$this->assertInstanceOf('WP_Error', $result);
+		$this->assertEquals('missing_context', $result->get_error_code());
+	}
+
+	/**
+	 * Test regenerate_slug with template context
+	 */
+	public function test_regenerate_slug_with_template() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test Template',
+			'generate_slug'   => 1,
+			'slug_prompt'     => 'SEO slug',
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$context = array(
+			'generation_context' => $generation_context,
+			'current_title'      => 'A Test Post Title',
+			'current_content'    => 'Article body',
+		);
+
+		$result = $this->service->regenerate_slug($context);
+
+		// Returns string or WP_Error
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+	}
+
+	public function test_regenerate_all_skips_slug_when_template_disables_it() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'No Slug Template',
+			'generate_slug'   => 0,
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+		$this->assertFalse($generation_context->should_generate_slug());
+
+		$post_id = $this->factory->post->create(array('post_title' => 'Skip slug'));
+		$result = $this->service->regenerate_all_components(array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+			'history_id'         => 1,
+		));
+
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('slug', $result['skipped']);
+		$this->assertArrayNotHasKey('slug', $result['regenerated']);
+	}
+
+	public function test_regenerate_slug_explicit_call_ignores_disabled_setting() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Slug Off',
+			'generate_slug'   => 0,
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+		$result = $this->service->regenerate_slug(array(
+			'generation_context' => $generation_context,
+			'current_title'      => 'A Test Post Title',
+			'current_content'    => 'Article body',
+		));
+
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+		if (is_wp_error($result)) {
+			$this->assertNotSame('slug_disabled', $result->get_error_code());
+		}
+	}
 }
