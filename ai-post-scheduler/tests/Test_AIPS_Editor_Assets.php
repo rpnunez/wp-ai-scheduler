@@ -113,6 +113,7 @@ class Test_AIPS_Editor_Assets extends WP_UnitTestCase {
 		$this->assertStringContainsString('data-component="title"', $html);
 		$this->assertStringContainsString('aips-regenerate-btn', $html);
 		$this->assertStringContainsString('aips-view-revisions-btn', $html);
+		$this->assertStringNotContainsString('aips-gen-variants-btn', $html);
 	}
 
 	public function test_render_classic_slug_metabox_outputs_permalink_field() {
@@ -131,7 +132,7 @@ class Test_AIPS_Editor_Assets extends WP_UnitTestCase {
 		$this->assertStringContainsString('slug-widget-post', $html);
 		$this->assertStringContainsString('aips-accept-diff-btn', $html);
 		$this->assertStringContainsString('aips-view-revisions-btn', $html);
-		$this->assertStringContainsString('aips-gen-variants-btn', $html);
+		$this->assertStringNotContainsString('aips-gen-variants-btn', $html);
 	}
 
 	public function test_editor_scripts_sync_slug_with_wordpress_fields() {
