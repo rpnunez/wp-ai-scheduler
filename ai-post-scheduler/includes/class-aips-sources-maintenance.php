@@ -1,9 +1,19 @@
 <?php
-/** Opt-in, bounded source archive cleanup. */
-if (!defined('ABSPATH')) {
+/**
+ * Opt-in, bounded source archive cleanup.
+ *
+ * @package AI_Post_Scheduler
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Class AIPS_Sources_Maintenance
+ *
+ * Handles scheduled, batched pruning of expired source archive records.
+ */
 class AIPS_Sources_Maintenance {
 	const HOOK = 'aips_sources_archive_maintenance';
 	const CONTINUATION_HOOK = 'aips_sources_archive_maintenance_continue';
@@ -12,6 +22,11 @@ class AIPS_Sources_Maintenance {
 	private $lease;
 	private $logger;
 
+	/**
+	 * Retrieve singleton instance.
+	 *
+	 * @return self
+	 */
 	public static function instance(): self {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -19,6 +34,13 @@ class AIPS_Sources_Maintenance {
 		return self::$instance;
 	}
 
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Sources_Data_Repository|null $repository Repository instance for source archive data.
+	 * @param AIPS_Sources_Fetch_Lease|null      $lease      Lease manager for mutual exclusion.
+	 * @param AIPS_Logger|null                   $logger     Logger instance.
+	 */
 	public function __construct( $repository = null, $lease = null, $logger = null ) {
 		$this->repository = $repository ?: new AIPS_Sources_Data_Repository();
 		$this->lease = $lease ?: new AIPS_Sources_Fetch_Lease( 'aips_sources_maintenance_lease' );
@@ -30,12 +52,22 @@ class AIPS_Sources_Maintenance {
 		$this->schedule();
 	}
 
+	/**
+	 * Retrieve configured retention days for source archives.
+	 *
+	 * @return int Number of retention days, clamped between 0 and 3650.
+	 */
 	private function retention_days(): int {
 		// Read live state: a settings change must not use a cached previous value.
 		$defaults = AIPS_Config::get_instance()->get_default_options();
 		return max( 0, min( 3650, (int) get_option( 'aips_source_archive_retention_days', $defaults['aips_source_archive_retention_days'] ) ) );
 	}
 
+	/**
+	 * Schedule or clear archive maintenance cron event based on retention setting.
+	 *
+	 * @return void
+	 */
 	public function schedule(): void {
 		if ( 0 === $this->retention_days() ) {
 			wp_clear_scheduled_hook( self::HOOK );
@@ -47,12 +79,22 @@ class AIPS_Sources_Maintenance {
 		}
 	}
 
+	/**
+	 * Schedule a continuation event to process remaining expired archive batches.
+	 *
+	 * @return void
+	 */
 	private function continue_later(): void {
 		if ( ! wp_next_scheduled( self::CONTINUATION_HOOK ) ) {
 			wp_schedule_single_event( AIPS_DateTime::now()->timestamp() + 60, self::CONTINUATION_HOOK );
 		}
 	}
 
+	/**
+	 * Run archive maintenance cycle: acquire lease and prune expired snapshots in bounded batches.
+	 *
+	 * @return void
+	 */
 	public function run(): void {
 		$days = $this->retention_days();
 		if ( 0 === $days ) {

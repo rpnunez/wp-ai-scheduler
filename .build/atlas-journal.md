@@ -1466,3 +1466,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting root node creation, quick links creation, notifications creation, and background processes creation into distinct private helper methods. The main `add_toolbar_node` function was reduced to roughly 15 lines serving strictly as the orchestrator.
 **Consequence:** Increased the number of private methods on the class, but vastly improved readability and maintainability. Backwards compatibility for the admin bar remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced. Tests related to AIPS_Admin_Bar all passed.
+
+## 2026-11-07 - [Standardize DocBlocks on AIPS_Sources_Maintenance]
+
+- **Target:** ai-post-scheduler/includes/class-aips-sources-maintenance.php::AIPS_Sources_Maintenance
+- **Lens:** Saturday: Missing or stale DocBlocks and comments on recently changed code
+- **Context:** `AIPS_Sources_Maintenance` was introduced recently without standard WordPress/PHPDoc class and method documentation on its entry points and cleanup routines.
+- **Decision:** Added comprehensive PHPDoc DocBlocks to `AIPS_Sources_Maintenance` and all member methods (`instance`, `__construct`, `retention_days`, `schedule`, `continue_later`, `run`), detailing parameter types, return values, exceptions, and lifecycle behavior.
+- **Backward compatibility:** Preserved all method signatures, visibility, hooks, and operational logic without any functional modifications.
+- **Consequence:** Improved codebase documentation and developer experience; zero runtime impact.
+- **Tests:** Ran `php -l`, `composer lint:repository-boundary`, and PHPUnit tests `Test_AIPS_Sources_Maintenance.php` and `Test_AIPS_Sources_Fetch_Lease.php` (5 tests, 11 assertions passing).

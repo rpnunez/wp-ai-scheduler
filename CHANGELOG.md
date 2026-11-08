@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Added
+- **Developer Documentation & Maintenance Typing (Atlas):**
+  - Added comprehensive class-level and method-level DocBlocks to `AIPS_Sources_Maintenance` covering singleton retrieval, lease acquisition, bounded pruning cycles, and cron rescheduling.
 - **Interactive Cards Redesign for Posts Pending Review & Floating Bulk Actions (#2334, #2340):**
   - Modernized the Content > Pending Review tab from an HTML table into a responsive 3-column card grid with featured image display, fallback banner placeholders, post type badges, and context attribution.
   - Added instant 1-click publishing without modal confirmation, including smooth card fade-out animation, draft counter synchronization, and toast notification with direct editor links.
