@@ -221,7 +221,7 @@ class AIPS_Admin_Notices {
 
 		$attributes = array();
 		if (!empty($id)) {
-			$attributes['data-aips-notice-id'] = esc_attr(sanitize_key($id));
+			$attributes['data-aips-notice-id'] = sanitize_key($id);
 		}
 
 		$classes = 'notice notice-' . sanitize_html_class($type) . ' aips-notice';

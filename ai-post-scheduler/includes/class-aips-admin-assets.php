@@ -627,7 +627,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-utilities-script',
             AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-            array('jquery', 'aips-datetime-script', 'aips-templates-script'),
+            array('jquery', 'aips-datetime-script', 'aips-templates-script', 'wp-a11y'),
             AIPS_VERSION,
             true
         );
