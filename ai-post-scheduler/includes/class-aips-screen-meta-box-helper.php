@@ -36,6 +36,9 @@ class AIPS_Screen_Meta_Box_Helper {
 		if (empty($screen_id)) {
 			return;
 		}
+		if (isset(self::$registered_screens[$screen_id])) {
+			return;
+		}
 
 		self::$registered_screens[$screen_id] = true;
 
