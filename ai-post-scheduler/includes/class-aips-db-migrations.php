@@ -271,6 +271,20 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		// migrate_to_3_7_22() consolidates redundant indexes, strips cached
+		// embeddings, clears the embeddings cache group, and deletes orphaned
+		// history_log rows. 3.7.21 is the author featured-image columns
+		// migration (a separate change), so this is the next patch: a site
+		// already stamped 3.7.21 still runs it, and it stays below the
+		// 3.8.0/3.8.1 campaign migrations. It reads the schema install_tables()
+		// has just normalised, so it runs after the Layer-1 apply. A false
+		// return leaves the version unstamped so the next request retries.
+		if ( version_compare( $from_version, '3.7.22', '<' ) && ! $this->migrate_to_3_7_22() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Index consolidation migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		if ( version_compare( $from_version, '3.8.0', '<' ) && ! $this->migrate_to_3_8_0() ) {
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
 			$this->logger->log( 'Campaign container migration failed; database upgrade will retry.', 'error' );
@@ -1833,6 +1847,252 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
+	 * Migration for version 3.7.22.
+	 *
+	 * Ordered after 3.7.21 (author featured-image columns, owned by a
+	 * different change) and before the 3.8.0/3.8.1 campaign migrations.
+	 * A site already stamped 3.7.21 still runs this gate, and a later
+	 * upgrade through 3.8.x still runs those campaign migrations.
+	 *
+	 * Three storage/efficiency fixes surfaced by a production DB audit:
+	 *   1. Consolidates redundant single-column indexes that are left-prefixes of
+	 *      existing composites on aips_history and aips_author_topics, and adds
+	 *      author_id_status_score so the per-author topic claim no longer
+	 *      filesorts on score.
+	 *   2. Strips the cached candidate embedding vector out of every
+	 *      aips_author_topics.metadata payload — a ~50 KB-per-row float array that
+	 *      the duplicate/auto-approval pipeline no longer persists (the vector is
+	 *      transient and also lives canonically in aips_embeddings).
+	 *   3. Deletes aips_history_log rows whose parent aips_history row is gone.
+	 *   4. Clears the aips_embeddings cache group out of aips_cache (~42 MB of
+	 *      decoded float arrays that duplicate the compact binary vectors in
+	 *      aips_embeddings; the plugin no longer persists them).
+	 *
+	 * Every step is guarded (covering-index presence / SHOW INDEX / SHOW TABLES)
+	 * so it is a safe, idempotent no-op once applied and on fresh installs.
+	 *
+	 * The latin1 -> utf8mb4 table conversion the audit also surfaced is handled
+	 * separately: this site sets DB_CHARSET=latin1, so the latin1 AIPS columns
+	 * hold raw UTF-8 bytes and a plain CONVERT TO would double-encode them. That
+	 * conversion needs byte-level verification and a DB_CHARSET change, so it is
+	 * deliberately out of scope here.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_22() {
+		$this->consolidate_history_indexes();
+		$this->consolidate_author_topic_indexes();
+		$this->strip_author_topic_metadata_embeddings();
+		$this->cleanup_orphaned_history_log();
+		$this->cleanup_embeddings_cache();
+
+		return true;
+	}
+
+	/**
+	 * Drop the decoded-embedding rows from the aips_cache 'aips_embeddings' group.
+	 *
+	 * These cached ~30 KB float arrays duplicate the compact float32 blobs in
+	 * aips_embeddings (~5x larger) and are no longer written by the repository.
+	 * Deleting them reclaims the space immediately; anything still needed is
+	 * regenerated in-memory on demand. Guarded and safe to re-run.
+	 *
+	 * @return void
+	 */
+	private function cleanup_embeddings_cache() {
+		global $wpdb;
+		$cache = $wpdb->prefix . 'aips_cache';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $cache ) ) !== $cache ) {
+			return;
+		}
+
+		$deleted = $wpdb->query( $wpdb->prepare(
+			"DELETE FROM `{$cache}` WHERE cache_group = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'aips_embeddings'
+		) );
+
+		if ( $deleted ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Cleared %d decoded-embedding rows from the aips_cache embeddings group.', (int) $deleted ), 'info' );
+		}
+	}
+
+	/**
+	 * Drop the redundant single-/multi-column indexes on aips_history that are
+	 * left-prefixes of an existing composite.
+	 *
+	 * @return void
+	 */
+	private function consolidate_history_indexes() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		// Redundant index => the composite that makes it a left-prefix. Each is
+		// dropped only when its covering composite is present.
+		$redundant = array(
+			'status'      => 'status_created',
+			'template_id' => 'template_created',
+			'post_id'     => 'post_status',
+		);
+
+		foreach ( $redundant as $index_name => $covering_index ) {
+			$this->drop_redundant_index( $table, $index_name, $covering_index );
+		}
+	}
+
+	/**
+	 * Add the (author_id, status, score) covering index on aips_author_topics and
+	 * drop the now-redundant author_id / author_id_status / status indexes.
+	 *
+	 * The covering index lets the per-author topic claim filter and sort from one
+	 * index instead of filesorting on score. install_tables() also adds it from
+	 * the schema, but it is added here so the drops never depend on dbDelta.
+	 *
+	 * @return void
+	 */
+	private function consolidate_author_topic_indexes() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		$has_new = $wpdb->get_row(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'author_id_status_score'" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		);
+		if ( ! $has_new ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY author_id_status_score (author_id, status, score)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		}
+
+		$this->drop_redundant_index( $table, 'author_id', 'author_id_status_score' );
+		$this->drop_redundant_index( $table, 'author_id_status', 'author_id_status_score' );
+		$this->drop_redundant_index( $table, 'status', 'status_score_reviewed' );
+	}
+
+	/**
+	 * Drop an index, but only once the covering index that replaces it exists.
+	 *
+	 * @param string $table          Full table name.
+	 * @param string $index_name     Index to drop.
+	 * @param string $covering_index Index that must be present first.
+	 * @return void
+	 */
+	private function drop_redundant_index( $table, $index_name, $covering_index ) {
+		global $wpdb;
+
+		$covering = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$covering_index
+		) );
+		if ( ! $covering ) {
+			return;
+		}
+
+		$exists = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$index_name
+		) );
+		if ( $exists ) {
+			$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `{$index_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		}
+	}
+
+	/**
+	 * Remove the cached `embedding` vector from existing aips_author_topics
+	 * metadata payloads.
+	 *
+	 * The duplicate/auto-approval pipeline used to persist the full candidate
+	 * embedding (a ~1,536-float array, ~50 KB of JSON) in each topic's metadata.
+	 * It is transient — only reused within the generating request — and the
+	 * canonical vector lives in aips_embeddings, so it is stripped here to reclaim
+	 * the space. Only the `embedding` key is removed; every other metadata field
+	 * (scores, duplicate flags, approval notes) is preserved. Processed in indexed
+	 * id batches and safe to re-run (rows without the key are skipped).
+	 *
+	 * @return void
+	 */
+	private function strip_author_topic_metadata_embeddings() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		$batch_size = 200;
+		$last_id    = 0;
+		$updated    = 0;
+
+		do {
+			$rows = $wpdb->get_results( $wpdb->prepare(
+				"SELECT id, metadata FROM `{$table}`
+				WHERE id > %d AND metadata LIKE %s
+				ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$last_id,
+				'%"embedding"%',
+				$batch_size
+			) );
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row->id;
+
+				$meta = json_decode( (string) $row->metadata, true );
+				if ( ! is_array( $meta ) || ! array_key_exists( 'embedding', $meta ) ) {
+					continue;
+				}
+
+				unset( $meta['embedding'] );
+
+				$wpdb->update(
+					$table,
+					array( 'metadata' => wp_json_encode( $meta ) ),
+					array( 'id' => (int) $row->id ),
+					array( '%s' ),
+					array( '%d' )
+				);
+				++$updated;
+			}
+		} while ( ! empty( $rows ) );
+
+		if ( $updated ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Stripped cached embeddings from %d aips_author_topics metadata rows.', $updated ), 'info' );
+		}
+	}
+
+	/**
+	 * Delete aips_history_log rows whose parent aips_history row no longer exists.
+	 *
+	 * @return void
+	 */
+	private function cleanup_orphaned_history_log() {
+		global $wpdb;
+		$log  = $wpdb->prefix . 'aips_history_log';
+		$hist = $wpdb->prefix . 'aips_history';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $log ) ) !== $log ) {
+			return;
+		}
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $hist ) ) !== $hist ) {
+			return;
+		}
+
+		$deleted = $wpdb->query(
+			"DELETE l FROM `{$log}` l
+			LEFT JOIN `{$hist}` h ON h.id = l.history_id
+			WHERE h.id IS NULL" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		);
+
+		if ( $deleted ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Deleted %d orphaned aips_history_log rows.', (int) $deleted ), 'info' );
+		}
+	}
+
+	/**
 	 * Migrate to 3.8.0:
 	 * 1. Ensure aips_campaign_templates exists.
 	 * 2. Add directives and default columns to aips_campaigns.
@@ -1947,6 +2207,4 @@ class AIPS_DB_Migrations {
 		$this->logger->log( 'migrate_to_3_8_1: campaign topic silo columns migration complete', 'info' );
 		return true;
 	}
-
 }
-

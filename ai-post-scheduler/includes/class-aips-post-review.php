@@ -139,12 +139,21 @@ class AIPS_Post_Review {
 		}
 		
 		$page = isset($_POST['page']) ? absint($_POST['page']) : 1;
+		// Match the Screen Options page size so Cards continuation starts after
+		// the server-rendered first page. Preferences above 50 are honored up
+		// to the same ceiling as review_per_page on the list table.
+		$per_page = AIPS_Pending_Review_List_Table::PER_PAGE_DEFAULT;
+		if (isset($_POST['per_page'])) {
+			$per_page = absint(wp_unslash($_POST['per_page']));
+		}
+		$per_page = AIPS_Pending_Review_List_Table::bounded_per_page($per_page);
 		$search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 		$post_type = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
 
 		$draft_posts = $this->get_draft_posts(array(
 			'page' => $page,
+			'per_page' => $per_page,
 			'search' => $search,
 			'template_id' => $template_id,
 			'post_type' => $post_type,

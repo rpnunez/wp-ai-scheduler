@@ -8214,12 +8214,24 @@ tr.aips-row-details > td {
 /* Post Type Checkbox Block */
 .aips-checkbox-label-block {
 	display: block;
-	margin-bottom: 8px;
-	font-size: 13px;
+	margin-bottom: var(--aips-space-2);
+	font-size: var(--aips-text-sm);
 }
 
 .aips-checkbox-label-block input[type="checkbox"] {
 	margin-right: 6px;
+}
+
+.aips-checkbox-label-block .description,
+.aips-checkbox-label-desc {
+	margin-left: var(--aips-space-1);
+}
+
+/* Settings Action Row */
+.aips-settings-action-row {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-3);
 }
 
 /* Meow Environment Discovery */
