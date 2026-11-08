@@ -14,6 +14,16 @@
   - Resolved and associated post history containers across all AI Edit generation and editing operations, automatically recording discrete `ai_request` and `ai_response` logs so they appear in the post's History modal under "Technical" and "AI Calls" tabs.
   - Automatically record a `"Post {Component} regenerated via AI Edit"` timeline event upon saving or restoring any component revision, cleanly displayed in the History container "Timeline" tab as `"Post {Component} regenerated"`.
   - Added graceful fallback resolution in `AIPS_Generation_Context_Factory` for posts without explicit template or author/topic context.
+- **Comprehensive Post Lifecycle Deletion Cleanup:**
+  - Added `AIPS_Post_Cleanup_Service` orchestrated via WordPress `before_delete_post` hook to reliably clean up plugin data when posts are permanently deleted.
+  - Purges embedding vectors in `wp_aips_embeddings` and bidirectional relationship pairings in `wp_aips_relationships`.
+  - Purges internal link suggestions in `wp_aips_internal_links`, link index records in `wp_aips_link_index`, and link click counts in `wp_aips_link_clicks`.
+  - Purges history containers in `wp_aips_history` and detailed event logs in `wp_aips_history_log`, with automatic history cache invalidation.
+  - Deactivates pointing redirect rules in `wp_aips_redirects` (`enabled = 0`, `target_post_id = 0`) to prevent 404 redirection loops, and deletes origin redirects.
+  - Disassociates author topic generation logs (`wp_aips_author_topic_logs.post_id = NULL`) to preserve audit trails without automatically re-queuing the topic.
+  - Introduced `AIPS_Post_Cleanup_Service::without_history_deletion()` and pre-disassociation in Review Queue post regeneration flows to protect active history containers during regeneration deletions.
+  - Added revision and autosave guards (`wp_is_post_revision`, `wp_is_post_autosave`) to prevent premature cleanup when editing posts.
+  - Added extensibility hooks `aips_before_post_cleanup`, `aips_post_cleanup_executed`, and filter `aips_should_cleanup_post`.
 - **Diagnostics → System Info "Totals & Counts" section:**
   - New section listing lifetime totals: posts generated, generation runs and success rate, generations by method, history containers by kind, authors, author topics and author posts, logged AI requests, AI Assistance requests, background-job AI calls, embeddings, content relationships, internal link suggestions, indexed links, templates/schedules/campaigns, trending topics, sources and fetched source pages, and bulk batch jobs. Included in the "Copy System Report" Markdown.
   - New per-provider AI call counter (`AIPS_AI_Call_Counter`, non-autoloaded option `aips_ai_call_counters`) recorded by `AIPS_AI_Service`, shown as "AI Calls (WP AI Connector)" and "AI Calls (Meow AI Engine)" with a by-type breakdown. History logs never recorded the provider, so these counts start from the first AI call after upgrading.
@@ -49,6 +59,12 @@
   - Added "Send Pending Digest Now" admin action for immediate manual queue testing and flush.
   - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
 
+### Fixed
+- **History stays consistent when a regeneration delete or a history-log delete fails:**
+  - Single and bulk review regeneration restore the history container's status, post association, and error message when `wp_delete_post()` is vetoed (`pre_delete_post`) or otherwise fails, instead of leaving the original draft detached.
+  - `AIPS_History_Repository::delete_by_post_id()` returns false and leaves parent containers in place when deleting child `wp_aips_history_log` rows fails, so a failed log delete cannot orphan those logs.
+  - History updates now persist an explicit `post_id` or `error_message` of null, so regeneration can clear and later restore those fields.
+  - Topic-log disassociation on post delete updates `wp_aips_author_topic_logs` (`$table_name`). The previous `$table` property access aborted cleanup.
 
 ### Fixed
 - Pending Review selection count and bulk publish/delete now use the same posts: after Cards → expanded List → Cards, IDs that are no longer rendered are dropped instead of being counted and then skipped.
