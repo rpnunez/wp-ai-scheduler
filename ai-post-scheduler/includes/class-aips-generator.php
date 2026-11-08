@@ -2121,6 +2121,14 @@ class AIPS_Generator {
 			}
 
 			$title = $base_title . ' - ' . AIPS_DateTime::now()->toDisplay();
+		} elseif ($this->current_history) {
+			$this->current_history->record(
+				'ai_response',
+				'Post title generated successfully',
+				null,
+				$title,
+				array('component' => 'title')
+			);
 		}
 
 		return array(
@@ -2142,6 +2150,15 @@ class AIPS_Generator {
 		if ($metadata !== null) {
 			$excerpt         = self::truncate_excerpt($metadata['excerpt']);
 			$excerpt_success = ($excerpt !== '');
+			if ($this->current_history && $excerpt_success) {
+				$this->current_history->record(
+					'ai_response',
+					'Post excerpt generated successfully',
+					null,
+					$excerpt,
+					array('component' => 'excerpt')
+				);
+			}
 		} else {
 			$excerpt_success = false;
 			$excerpt         = $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);

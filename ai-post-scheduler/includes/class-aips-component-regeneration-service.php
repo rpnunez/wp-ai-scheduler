@@ -20,6 +20,38 @@ if (!defined('ABSPATH')) {
  * the original generation context (template, author, topic).
  */
 class AIPS_Component_Regeneration_Service {
+
+	/**
+	 * Whether a component key is valid for AI Edit regeneration and revisions.
+	 *
+	 * Per-image keys use post_image_{id} so each content image keeps its own
+	 * revision history beside the featured image.
+	 *
+	 * @param string $component Component key.
+	 * @return bool
+	 */
+	public static function is_ai_edit_component($component) {
+		$component = sanitize_key((string) $component);
+		if (in_array($component, array('title', 'excerpt', 'content', 'featured_image', 'post_images'), true)) {
+			return true;
+		}
+
+		return self::post_image_id_from_component($component) > 0;
+	}
+
+	/**
+	 * Generated-row ID encoded in a post_image_{id} component key.
+	 *
+	 * @param string $component Component key.
+	 * @return int Row ID, or 0 when the key is not a single post image.
+	 */
+	public static function post_image_id_from_component($component) {
+		if (preg_match('/^post_image_([1-9][0-9]*)$/', (string) $component, $matches)) {
+			return (int) $matches[1];
+		}
+
+		return 0;
+	}
 	
 	/**
 	 * @var AIPS_Generator Generator instance
@@ -418,7 +450,34 @@ class AIPS_Component_Regeneration_Service {
 			$result['skipped']['featured_image'] = __('Featured image skipped because there was no previous generation and no original image-generation failure.', 'ai-post-scheduler');
 		}
 
+		if ($this->should_regenerate_post_images($post_id, $context['generation_context'])) {
+			$post_images = $this->regenerate_post_images($context, 'all');
+			if (is_wp_error($post_images)) {
+				$result['errors']['post_images'] = $post_images->get_error_message();
+			} else {
+				$result['regenerated']['post_images'] = $post_images;
+			}
+		} else {
+			$result['skipped']['post_images'] = __('Post images skipped because this post has no content images configured.', 'ai-post-scheduler');
+		}
+
 		return $result;
+	}
+
+	/**
+	 * Whether content images should be included in a regenerate-all run.
+	 *
+	 * @param int                     $post_id            Post ID.
+	 * @param AIPS_Generation_Context $generation_context Generation context.
+	 * @return bool
+	 */
+	private function should_regenerate_post_images($post_id, $generation_context) {
+		$existing = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
+		if (!empty($existing)) {
+			return true;
+		}
+
+		return $generation_context->has_content_images();
 	}
 
 	/**
@@ -606,8 +665,7 @@ class AIPS_Component_Regeneration_Service {
 		$source = sanitize_key($source);
 		$reason = sanitize_key($reason);
 
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
-		if (!in_array($component, $valid_components, true)) {
+		if (!self::is_ai_edit_component($component) || 'post_images' === $component) {
 			return new WP_Error('invalid_component', __('Invalid component type.', 'ai-post-scheduler'));
 		}
 
@@ -740,12 +798,30 @@ class AIPS_Component_Regeneration_Service {
 
 		$total_images = max(count($existing_generated), count($images_to_regenerate));
 		$regenerated_results = array();
+		$source_content = $content;
 
 		foreach ($images_to_regenerate as $target_row) {
 			$gen_id = (int) $target_row->id;
 			$order = (int) $target_row->image_index;
+			$component_key = 'post_image_' . $gen_id;
 			$config = $this->resolve_post_image_config($target_row, $generation_context);
 			$placement = !empty($config->placement) ? $config->placement : 'auto';
+			$current_url = !empty($target_row->image_url) ? (string) $target_row->image_url : '';
+			if ('' === $current_url && (int) $target_row->attachment_id > 0) {
+				$current_url = (string) wp_get_attachment_url((int) $target_row->attachment_id);
+			}
+
+			if ((int) $target_row->attachment_id > 0 || '' !== $current_url) {
+				$snapshot = array(
+					'id' => $gen_id,
+					'image_index' => $order,
+					'attachment_id' => (int) $target_row->attachment_id,
+					'url' => $current_url,
+				);
+				if (!$this->post_image_revision_exists($post_id, $component_key, (int) $target_row->attachment_id)) {
+					$this->capture_component_revision($post_id, $history_id, $component_key, $snapshot, 'persisted', 'pre_regenerate_current');
+				}
+			}
 
 			$resolved = $this->generator->resolve_post_image($config, $title, $generation_context->get_topic());
 
@@ -757,6 +833,12 @@ class AIPS_Component_Regeneration_Service {
 				$generated_repo->update($gen_id, array(
 					'status'        => $status,
 					'error_message' => $resolved['error'],
+				));
+
+				$history_container->record_error($resolved['error'], array(
+					'component' => 'post_images',
+					'image_id' => $gen_id,
+					'post_id' => $post_id,
 				));
 
 				$regenerated_results[] = array(
@@ -775,21 +857,21 @@ class AIPS_Component_Regeneration_Service {
 				$title,
 				!empty($config->caption) ? $config->caption : ''
 			);
+			$content = $this->replace_post_image_markup($content, $target_row, $new_markup, $total_images);
 
-			// Replace existing markup or placeholder in content
-			$figure_pattern = AIPS_Post_Images_Service::get_figure_pattern($gen_id);
-			$comment_pattern = '/<!--\s*aips-image-placeholder\s+id=["\']?' . preg_quote((string) $gen_id, '/') . '["\']?\s*-->/i';
-			$replace_with_markup = static function () use ($new_markup) {
-				return $new_markup;
-			};
-
-			if (preg_match($figure_pattern, $content)) {
-				$content = preg_replace_callback($figure_pattern, $replace_with_markup, $content, 1);
-			} elseif (preg_match($comment_pattern, $content)) {
-				$content = preg_replace_callback($comment_pattern, $replace_with_markup, $content, 1);
-			} else {
-				$content = $this->generator->inject_single_post_image($content, $order, $placement, $new_markup, $total_images);
-			}
+			$image_value = array(
+				'id' => $gen_id,
+				'image_index' => $order,
+				'attachment_id' => $resolved['attachment_id'],
+				'url' => $resolved['image_url'],
+			);
+			$history_container->record(
+				'ai_response',
+				sprintf('AI image generation successful for %s', $component_key),
+				null,
+				$image_value,
+				array('component' => $component_key, 'post_id' => $post_id, 'source' => 'ai_generated')
+			);
 
 			$regenerated_results[] = array(
 				'id'            => $gen_id,
@@ -798,13 +880,111 @@ class AIPS_Component_Regeneration_Service {
 				'url'           => $resolved['image_url'],
 				'status'        => 'completed',
 				'error_message' => '',
+				'markup'        => $new_markup,
 			);
 		}
 
 		return array(
 			'post_images' => $regenerated_results,
-			'content'     => $content,
+			'content' => $content,
+			'source_content' => $source_content,
 		);
+	}
+
+	/**
+	 * Stage a restored post image into editor content without writing the post.
+	 *
+	 * @param int    $post_id  Post ID.
+	 * @param int    $image_id Generated image row ID.
+	 * @param mixed  $value    Revision payload.
+	 * @param string $content  Editor content to update.
+	 * @return array|WP_Error
+	 */
+	public function apply_restored_post_image($post_id, $image_id, $value, $content) {
+		$row = (new AIPS_Post_Images_Generated_Repository())->get_by_id($image_id);
+		if (!$row || (int) $row->post_id !== (int) $post_id) {
+			return new WP_Error('invalid_post_image', __('Post image not found.', 'ai-post-scheduler'));
+		}
+
+		if (!is_array($value) || empty($value['attachment_id'])) {
+			return new WP_Error('invalid_post_image_revision', __('Invalid post image revision data.', 'ai-post-scheduler'));
+		}
+
+		$attachment_id = absint($value['attachment_id']);
+		$attachment = get_post($attachment_id);
+		if (!$attachment || 'attachment' !== $attachment->post_type) {
+			return new WP_Error('invalid_post_image_revision', __('Invalid post image revision data.', 'ai-post-scheduler'));
+		}
+
+		$url = wp_get_attachment_url($attachment_id);
+		if (!$url) {
+			return new WP_Error('invalid_post_image_revision', __('Invalid post image revision data.', 'ai-post-scheduler'));
+		}
+
+		$title = get_the_title($post_id);
+		$markup = $this->generator->build_post_image_markup($image_id, $attachment_id, $url, $title, '');
+		$content = $this->replace_post_image_markup($content, $row, $markup, 1);
+
+		return array(
+			'id' => $image_id,
+			'image_index' => (int) $row->image_index,
+			'attachment_id' => $attachment_id,
+			'url' => $url,
+			'status' => 'completed',
+			'content' => $content,
+			'markup' => $markup,
+		);
+	}
+
+	/**
+	 * Whether a post image attachment is already stored as a revision.
+	 *
+	 * @param int    $post_id       Post ID.
+	 * @param string $component_key post_image_{id} key.
+	 * @param int    $attachment_id Attachment ID.
+	 * @return bool
+	 */
+	private function post_image_revision_exists($post_id, $component_key, $attachment_id) {
+		$revisions = $this->history_repository->get_component_revisions($post_id, $component_key, 10);
+		foreach ($revisions as $revision) {
+			$value = isset($revision['value']) ? $revision['value'] : null;
+			$existing_id = is_array($value) && isset($value['attachment_id']) ? (int) $value['attachment_id'] : 0;
+			if ($existing_id === (int) $attachment_id) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Replace one image figure, or insert it when the content has no figure yet.
+	 *
+	 * @param string $content      Post content.
+	 * @param object $row          Generated image row.
+	 * @param string $markup       Replacement figure.
+	 * @param int    $total_images Images being distributed.
+	 * @return string
+	 */
+	private function replace_post_image_markup($content, $row, $markup, $total_images) {
+		$gen_id = (int) $row->id;
+		$order = (int) $row->image_index;
+		$placement = !empty($row->placement) ? $row->placement : 'auto';
+		$figure_pattern = AIPS_Post_Images_Service::get_figure_pattern($gen_id);
+		$comment_pattern = '/<!--\s*aips-image-placeholder\s+id=["\']?' . preg_quote((string) $gen_id, '/') . '["\']?\s*-->/i';
+		$replace_with_markup = static function () use ($markup) {
+			return $markup;
+		};
+
+		if (preg_match($figure_pattern, $content)) {
+			return preg_replace_callback($figure_pattern, $replace_with_markup, $content, 1);
+		}
+
+		if (preg_match($comment_pattern, $content)) {
+			return preg_replace_callback($comment_pattern, $replace_with_markup, $content, 1);
+		}
+
+		return $this->generator->inject_single_post_image($content, $order, $placement, $markup, $total_images);
 	}
 
 	/**

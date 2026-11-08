@@ -487,6 +487,7 @@ class AIPS_History {
                 'post_title'     => __('title', 'ai-post-scheduler'),
                 'post_excerpt'   => __('excerpt', 'ai-post-scheduler'),
                 'featured_image' => __('featured image', 'ai-post-scheduler'),
+                'post_images'    => __('post images', 'ai-post-scheduler'),
                 'post_content'   => __('content', 'ai-post-scheduler'),
             );
             foreach ($component_statuses as $component => $ok) {
@@ -606,6 +607,7 @@ class AIPS_History {
             'post_title' => __('Post Title', 'ai-post-scheduler'),
             'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+            'post_images' => __('Post Images', 'ai-post-scheduler'),
             'metadata' => __('Metadata', 'ai-post-scheduler'),
             'ai_request' => __('AI Request', 'ai-post-scheduler'),
             'ai_response' => __('AI Response', 'ai-post-scheduler'),
@@ -940,6 +942,16 @@ class AIPS_History {
      */
     private function build_history_modal_header_actions($container) {
         $actions = array();
+
+        if (!empty($container['post_id'])) {
+            $actions[] = array(
+                'label'      => __('AI Edit', 'ai-post-scheduler'),
+                'class'      => 'aips-ai-edit-btn aips-history-header-ai-edit',
+                'post_id'    => (int) $container['post_id'],
+                'history_id' => !empty($container['history_id']) ? (int) $container['history_id'] : (!empty($container['id']) ? (int) $container['id'] : 0),
+                'title'      => __('AI Edit — Regenerate post components (title, excerpt, content, image) with AI', 'ai-post-scheduler'),
+            );
+        }
 
         if (!empty($container['post_url'])) {
             $actions[] = array(
@@ -1684,6 +1696,7 @@ class AIPS_History {
             'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
             'excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
             'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+            'post_images' => __('Post Images', 'ai-post-scheduler'),
             'image' => __('Featured Image', 'ai-post-scheduler'),
             'topic' => __('Topic', 'ai-post-scheduler'),
             'research' => __('Research', 'ai-post-scheduler'),

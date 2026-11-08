@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.21
+ * Version: 3.7.23
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.21');
+    define('AIPS_VERSION', '3.7.23');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -607,6 +607,34 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Post_Insights_Controller::class, function( $container ) {
             return new AIPS_Post_Insights_Controller();
         });
+
+        // Register repositories needed for post lifecycle operations
+        $container->singleton(AIPS_Internal_Links_Repository::class, function( $container ) {
+            return new AIPS_Internal_Links_Repository();
+        });
+
+        $container->singleton(AIPS_Author_Topic_Logs_Repository::class, function( $container ) {
+            return new AIPS_Author_Topic_Logs_Repository();
+        });
+
+        $container->singleton(AIPS_Redirects_Repository::class, function( $container ) {
+            return new AIPS_Redirects_Repository();
+        });
+
+        // Register AIPS_Post_Cleanup_Service
+        $container->singleton(AIPS_Post_Cleanup_Service::class, function( $container ) {
+            return new AIPS_Post_Cleanup_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Internal_Links_Repository::class),
+                $container->make(AIPS_Link_Index_Service::class),
+                $container->make(AIPS_Link_Click_Tracking_Service::class),
+                $container->make(AIPS_History_Repository::class),
+                $container->make(AIPS_Redirects_Service::class),
+                $container->make(AIPS_Author_Topic_Logs_Repository::class),
+                $container->make(AIPS_Logger::class)
+            );
+        });
     }
 
     /**
@@ -752,9 +780,7 @@ final class AI_Post_Scheduler {
         }, 20, 2);
 
         add_action('before_delete_post', function ($post_id) {
-            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
-            AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
-            (new AIPS_Post_Images_Generated_Repository())->delete_by_post_id($post_id);
+            AIPS_Container::get_instance()->make(AIPS_Post_Cleanup_Service::class)->on_before_delete_post($post_id);
         });
 
         // Silos: keep the link index and the "In this guide" cache in step with
@@ -1218,6 +1244,9 @@ final class AI_Post_Scheduler {
 
         // "Internal Links" panel in the Classic and Block editors.
         new AIPS_Internal_Links_Editor_Panel();
+
+        // Native "AI Edit" in the Classic and Block editors.
+        new AIPS_Editor_Assets();
 
         // Keep the duplicate scan cron event in line with its setting.
         (new AIPS_Duplicate_Group_Service())->ensure_schedule();

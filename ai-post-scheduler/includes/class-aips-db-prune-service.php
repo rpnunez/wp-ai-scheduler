@@ -177,6 +177,47 @@ class AIPS_DB_Prune_Service {
 		}
 
 		$deleted   = $this->prune_repository->prune_history_logs($cutoff);
+		// Also clear rows orphaned by history deletions (no parent aips_history row).
+		$orphaned  = $this->prune_repository->purge_orphaned_history_logs();
+		$deleted  += $orphaned;
+		$optimized = false;
+
+		if ($deleted > 500) {
+			$optimized = $this->prune_repository->optimize_table('aips_history_log');
+		}
+
+		return array(
+			'deleted'   => $deleted,
+			'orphaned'  => $orphaned,
+			'optimized' => $optimized,
+			'cutoff'    => $cutoff,
+		);
+	}
+
+	/**
+	 * Get the configured AI error log cutoff timestamp.
+	 *
+	 * @return int UTC cutoff timestamp.
+	 */
+	public function get_ai_error_log_cutoff() {
+		$value = (int) $this->config->get_option('aips_ai_error_log_retention_value', 30);
+		$unit  = (string) $this->config->get_option('aips_ai_error_log_retention_unit', 'days');
+
+		return $this->calculate_cutoff($value, $unit);
+	}
+
+	/**
+	 * Prune AI error logs older than the cutoff timestamp.
+	 *
+	 * @param int|null $cutoff Optional explicit cutoff timestamp. If null, uses configured retention.
+	 * @return array<string, mixed> Operation outcome details.
+	 */
+	public function prune_ai_error_logs($cutoff = null) {
+		if (null === $cutoff) {
+			$cutoff = $this->get_ai_error_log_cutoff();
+		}
+
+		$deleted   = $this->prune_repository->prune_ai_error_logs($cutoff);
 		$optimized = false;
 
 		if ($deleted > 500) {

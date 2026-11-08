@@ -441,6 +441,17 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 
 		return compact('service', 'context', 'post_id', 'row_id', 'attachment_id', 'image_service');
 	}
+
+	public function test_post_image_component_keys_are_distinct_from_featured_image() {
+		$this->assertTrue(AIPS_Component_Regeneration_Service::is_ai_edit_component('featured_image'));
+		$this->assertTrue(AIPS_Component_Regeneration_Service::is_ai_edit_component('post_images'));
+		$this->assertTrue(AIPS_Component_Regeneration_Service::is_ai_edit_component('post_image_12'));
+		$this->assertSame(12, AIPS_Component_Regeneration_Service::post_image_id_from_component('post_image_12'));
+		$this->assertSame(0, AIPS_Component_Regeneration_Service::post_image_id_from_component('post_image_'));
+		$this->assertSame(0, AIPS_Component_Regeneration_Service::post_image_id_from_component('featured_image'));
+		$this->assertFalse(AIPS_Component_Regeneration_Service::is_ai_edit_component('post_image_0'));
+		$this->assertFalse(AIPS_Component_Regeneration_Service::is_ai_edit_component('post_image_12abc'));
+	}
 }
 
 class AIPS_Test_Post_Image_Service extends AIPS_Image_Service {

@@ -74,8 +74,17 @@ class AIPS_AI_Edit_Controller {
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
-		if (!$post_id || !$history_id) {
+		if (!$post_id) {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+		}
+
+		if (!$history_id) {
+			$history_record = $this->history_repository->get_by_post_id($post_id);
+			if (is_object($history_record) && !empty($history_record->id)) {
+				$history_id = absint($history_record->id);
+			} else {
+				AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+			}
 		}
 		
 		// Check if user can edit this post
@@ -128,6 +137,8 @@ class AIPS_AI_Edit_Controller {
 		
 		// Build response
 		$response = array(
+			'post_id' => $post_id,
+			'history_id' => $history_id,
 			'context' => $context_display,
 			'components' => array(
 				'title' => array(
@@ -193,9 +204,7 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
-		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image', 'post_images');
-		if (!in_array($component, $valid_components)) {
+		if (!AIPS_Component_Regeneration_Service::is_ai_edit_component($component)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
@@ -229,19 +238,35 @@ class AIPS_AI_Edit_Controller {
 		$context['current_excerpt'] = $post->post_excerpt;
 		$context['current_content'] = $post->post_content;
 
-		if ('manual_edit' === $current_source && null !== $current_value && '' !== $current_value) {
-			$snapshot_result = $this->service->capture_component_revision(
-				$post_id,
-				$history_id,
-				$component,
-				$this->sanitize_component_revision_value($component, $current_value),
-				'manual_edit',
-				$current_reason ? $current_reason : 'pre_regenerate_manual'
-			);
+		// Resolve the current component value to snapshot before regeneration
+		$snapshot_value = null;
+		if (null !== $current_value && '' !== $current_value) {
+			$snapshot_value = $this->sanitize_component_revision_value($component, $current_value);
+		} else {
+			$raw_current = $this->get_post_component_value($post, $component);
+			if (null !== $raw_current && '' !== $raw_current) {
+				$snapshot_value = $this->sanitize_component_revision_value($component, $raw_current);
+			}
+		}
 
-			if (is_wp_error($snapshot_result)) {
-				$this->log_wp_error($snapshot_result, __METHOD__);
-				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+		if (null !== $snapshot_value && !$this->is_component_value_empty($component, $snapshot_value)) {
+			if (!$this->is_component_value_in_revisions($post_id, $component, $snapshot_value)) {
+				$source = !empty($current_source) ? $current_source : 'persisted';
+				$reason = !empty($current_reason) ? $current_reason : ('manual_edit' === $source ? 'pre_regenerate_manual' : 'pre_regenerate_current');
+
+				$snapshot_result = $this->service->capture_component_revision(
+					$post_id,
+					$history_id,
+					$component,
+					$snapshot_value,
+					$source,
+					$reason
+				);
+
+				if (is_wp_error($snapshot_result)) {
+					$this->log_wp_error($snapshot_result, __METHOD__);
+					AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+				}
 			}
 		}
 		
@@ -260,12 +285,14 @@ class AIPS_AI_Edit_Controller {
 			case 'featured_image':
 				$result = $this->service->regenerate_featured_image($context);
 				break;
-			case 'post_images':
-				$image_id = isset($_POST['image_id']) ? sanitize_text_field(wp_unslash($_POST['image_id'])) : 'all';
-				if (isset($_POST['current_content'])) {
-					$context['current_content'] = wp_kses_post(wp_unslash($_POST['current_content']));
+			default:
+				$image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
+				if ('post_images' === $component || $image_id > 0) {
+					if (isset($_POST['current_content'])) {
+						$context['current_content'] = wp_kses_post(wp_unslash($_POST['current_content']));
+					}
+					$result = $this->service->regenerate_post_images($context, $image_id > 0 ? $image_id : 'all');
 				}
-				$result = $this->service->regenerate_post_images($context, $image_id);
 				break;
 		}
 		
@@ -327,26 +354,51 @@ class AIPS_AI_Edit_Controller {
 		$context['current_title'] = $post->post_title;
 		$context['current_excerpt'] = $post->post_excerpt;
 		$context['current_content'] = $post->post_content;
+		if (isset($_POST['current_content'])) {
+			$context['current_content'] = wp_kses_post(wp_unslash($_POST['current_content']));
+		}
+
+		$current_snapshots = array();
+		if (isset($_POST['current_snapshots']) && is_array($_POST['current_snapshots'])) {
+			$current_snapshots = $_POST['current_snapshots'];
+		} elseif (isset($_POST['manual_snapshots']) && is_array($_POST['manual_snapshots'])) {
+			$current_snapshots = $_POST['manual_snapshots'];
+		}
 
 		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
-		foreach ($manual_snapshots as $component => $value) {
-			if (!in_array($component, $valid_components, true)) {
-				continue;
+		foreach ($valid_components as $component) {
+			$snapshot_value = null;
+			$source = 'persisted';
+
+			if (isset($current_snapshots[$component]) && null !== $current_snapshots[$component] && '' !== $current_snapshots[$component]) {
+				$snapshot_value = $this->sanitize_component_revision_value($component, wp_unslash($current_snapshots[$component]));
+				if (isset($manual_snapshots[$component])) {
+					$source = 'manual_edit';
+				}
+			} else {
+				$raw_current = $this->get_post_component_value($post, $component);
+				if (null !== $raw_current && '' !== $raw_current) {
+					$snapshot_value = $this->sanitize_component_revision_value($component, $raw_current);
+				}
 			}
 
-			$sanitized_snapshot_value = $this->sanitize_component_revision_value($component, wp_unslash($value));
-			$snapshot_result = $this->service->capture_component_revision(
-				$post_id,
-				$history_id,
-				$component,
-				$sanitized_snapshot_value,
-				'manual_edit',
-				'pre_regenerate_all_manual'
-			);
+			if (null !== $snapshot_value && !$this->is_component_value_empty($component, $snapshot_value)) {
+				if (!$this->is_component_value_in_revisions($post_id, $component, $snapshot_value)) {
+					$reason = ('manual_edit' === $source) ? 'pre_regenerate_all_manual' : 'pre_regenerate_all_current';
+					$snapshot_result = $this->service->capture_component_revision(
+						$post_id,
+						$history_id,
+						$component,
+						$snapshot_value,
+						$source,
+						$reason
+					);
 
-			if (is_wp_error($snapshot_result)) {
-				$this->log_wp_error($snapshot_result, __METHOD__);
-				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+					if (is_wp_error($snapshot_result)) {
+						$this->log_wp_error($snapshot_result, __METHOD__);
+						AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+					}
+				}
 			}
 		}
 
@@ -426,8 +478,8 @@ class AIPS_AI_Edit_Controller {
 			$updated_components[] = 'content';
 		}
 		
-		// Update post
-		$result = wp_update_post($post_data, true);
+		// Update post (re-slash post data because wp_update_post expects slashed data)
+		$result = wp_update_post(wp_slash($post_data), true);
 		
 		if (is_wp_error($result)) {
 			$this->log_wp_error($result, __METHOD__);
@@ -447,14 +499,14 @@ class AIPS_AI_Edit_Controller {
 
 		// Security: Create a sanitized array of components for the action hook to prevent passing raw POST data
 		$sanitized_components = array();
-		if (isset($components['title'])) {
-			$sanitized_components['title'] = sanitize_text_field(wp_unslash($components['title']));
+		if (isset($post_data['post_title'])) {
+			$sanitized_components['title'] = $post_data['post_title'];
 		}
-		if (isset($components['excerpt'])) {
-			$sanitized_components['excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
+		if (isset($post_data['post_excerpt'])) {
+			$sanitized_components['excerpt'] = $post_data['post_excerpt'];
 		}
-		if (isset($components['content'])) {
-			$sanitized_components['content'] = wp_kses_post(wp_unslash($components['content']));
+		if (isset($post_data['post_content'])) {
+			$sanitized_components['content'] = $post_data['post_content'];
 		}
 		if (isset($components['featured_image_id'])) {
 			$sanitized_components['featured_image_id'] = absint($components['featured_image_id']);
@@ -470,6 +522,8 @@ class AIPS_AI_Edit_Controller {
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
 			'updated_components' => $updated_components,
+			'post_id' => $post_id,
+			'title' => isset($post_data['post_title']) ? $post_data['post_title'] : get_the_title($post_id),
 		));
 	}
 	
@@ -497,9 +551,7 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
-		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image', 'post_images');
-		if (!in_array($component, $valid_components)) {
+		if (!AIPS_Component_Regeneration_Service::is_ai_edit_component($component)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
@@ -545,9 +597,7 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
 		}
 		
-		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image', 'post_images');
-		if (!in_array($component, $valid_components)) {
+		if (!AIPS_Component_Regeneration_Service::is_ai_edit_component($component)) {
 			AIPS_Ajax_Response::error(__('Invalid component type.', 'ai-post-scheduler'));
 		}
 		
@@ -587,74 +637,87 @@ class AIPS_AI_Edit_Controller {
 			AIPS_Ajax_Response::error(__('Revision not found.', 'ai-post-scheduler'));
 		}
 		
-		// Restore the value to the post
+		// Restore the value to the post. A single post image is staged into the
+		// editor content and persisted on Save, matching regeneration.
 		$post_data = array('ID' => $post_id);
 		$restored_value = $revision_to_restore['value'];
+		$post_image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
 
-		switch ($component) {
-			case 'title':
-				$post_data['post_title'] = sanitize_text_field($restored_value);
-				break;
-			case 'excerpt':
-				$post_data['post_excerpt'] = sanitize_textarea_field($restored_value);
-				break;
-			case 'content':
-				$post_data['post_content'] = wp_kses_post($restored_value);
-				break;
-			case 'featured_image':
-				$restored_featured_image = $this->normalize_featured_image_revision_value($restored_value);
-				if (is_wp_error($restored_featured_image)) {
-					AIPS_Ajax_Response::error(__('Invalid featured image revision data.', 'ai-post-scheduler'));
-				}
-
-				$attachment_id = $restored_featured_image['attachment_id'];
-				if ($attachment_id > 0) {
-					$thumbnail_result = set_post_thumbnail($post_id, $attachment_id);
-					if (false === $thumbnail_result) {
-						AIPS_Ajax_Response::error(__('Failed to restore featured image revision.', 'ai-post-scheduler'));
-					}
-				} else {
-					delete_post_thumbnail($post_id);
-				}
-
-				$restored_value = $restored_featured_image;
-				break;
-		}
-		
-		// Update post (unless it's featured image which was already set)
-		if ($component !== 'featured_image') {
-			$result = wp_update_post($post_data, true);
-			
-			if (is_wp_error($result)) {
-				$this->log_wp_error($result, __METHOD__);
-				AIPS_Ajax_Response::error(__('An error occurred while restoring component revision.', 'ai-post-scheduler'));
+		if ($post_image_id > 0) {
+			$content = isset($_POST['current_content'])
+				? wp_kses_post(wp_unslash($_POST['current_content']))
+				: (string) get_post_field('post_content', $post_id);
+			$applied = $this->service->apply_restored_post_image($post_id, $post_image_id, $restored_value, $content);
+			if (is_wp_error($applied)) {
+				$this->log_wp_error($applied, __METHOD__);
+				AIPS_Ajax_Response::error(__('Failed to restore post image revision.', 'ai-post-scheduler'));
 			}
-		}
+			$restored_value = $applied;
+		} else {
+			switch ($component) {
+				case 'title':
+					$post_data['post_title'] = sanitize_text_field($restored_value);
+					break;
+				case 'excerpt':
+					$post_data['post_excerpt'] = sanitize_textarea_field($restored_value);
+					break;
+				case 'content':
+					$post_data['post_content'] = wp_kses_post($restored_value);
+					break;
+				case 'featured_image':
+					$restored_featured_image = $this->normalize_featured_image_revision_value($restored_value);
+					if (is_wp_error($restored_featured_image)) {
+						AIPS_Ajax_Response::error(__('Invalid featured image revision data.', 'ai-post-scheduler'));
+					}
 
-		$sanitized_components = array();
-		switch ($component) {
-			case 'title':
-				$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
-				break;
-			case 'excerpt':
-				$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
-				break;
-			case 'content':
-				$sanitized_components['content'] = wp_kses_post((string) $restored_value);
-				break;
-			case 'featured_image':
-				$sanitized_components['featured_image_id'] = is_array($restored_value) && isset($restored_value['attachment_id'])
-					? absint($restored_value['attachment_id'])
-					: 0;
-				break;
-		}
+					$attachment_id = $restored_featured_image['attachment_id'];
+					if ($attachment_id > 0) {
+						$thumbnail_result = set_post_thumbnail($post_id, $attachment_id);
+						if (false === $thumbnail_result) {
+							AIPS_Ajax_Response::error(__('Failed to restore featured image revision.', 'ai-post-scheduler'));
+						}
+					} else {
+						delete_post_thumbnail($post_id);
+					}
 
-		if ('content' === $component) {
-			$this->sync_post_images_with_content($post_id);
-		}
+					$restored_value = $restored_featured_image;
+					break;
+			}
 
-		do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
-		$this->reconcile_partial_generation_state($post_id);
+			if ($component !== 'featured_image') {
+				$result = wp_update_post(wp_slash($post_data), true);
+
+				if (is_wp_error($result)) {
+					$this->log_wp_error($result, __METHOD__);
+					AIPS_Ajax_Response::error(__('An error occurred while restoring component revision.', 'ai-post-scheduler'));
+				}
+			}
+
+			$sanitized_components = array();
+			switch ($component) {
+				case 'title':
+					$sanitized_components['title'] = sanitize_text_field((string) $restored_value);
+					break;
+				case 'excerpt':
+					$sanitized_components['excerpt'] = sanitize_textarea_field((string) $restored_value);
+					break;
+				case 'content':
+					$sanitized_components['content'] = wp_kses_post((string) $restored_value);
+					break;
+				case 'featured_image':
+					$sanitized_components['featured_image_id'] = is_array($restored_value) && isset($restored_value['attachment_id'])
+						? absint($restored_value['attachment_id'])
+						: 0;
+					break;
+			}
+
+			if ('content' === $component) {
+				$this->sync_post_images_with_content($post_id);
+			}
+
+			do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
+			$this->reconcile_partial_generation_state($post_id);
+		}
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),
@@ -699,21 +762,39 @@ class AIPS_AI_Edit_Controller {
 				return wp_kses_post((string) $value);
 
 			case 'featured_image':
-				if (!is_array($value)) {
-					return array(
-						'attachment_id' => 0,
-						'url' => '',
-					);
-				}
-
-				return array(
-					'attachment_id' => isset($value['attachment_id']) ? absint($value['attachment_id']) : 0,
-					'url' => isset($value['url']) ? esc_url_raw($value['url']) : '',
-				);
+				return $this->sanitize_image_revision_value($value);
 
 			default:
+				if (AIPS_Component_Regeneration_Service::post_image_id_from_component($component) > 0) {
+					$image = $this->sanitize_image_revision_value($value);
+					$image['id'] = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
+					if (is_array($value) && isset($value['image_index'])) {
+						$image['image_index'] = absint($value['image_index']);
+					}
+					return $image;
+				}
 				return '';
 		}
+	}
+
+	/**
+	 * Normalize an image revision payload to attachment id and URL.
+	 *
+	 * @param mixed $value Raw revision value.
+	 * @return array
+	 */
+	private function sanitize_image_revision_value($value) {
+		if (!is_array($value)) {
+			return array(
+				'attachment_id' => 0,
+				'url' => '',
+			);
+		}
+
+		return array(
+			'attachment_id' => isset($value['attachment_id']) ? absint($value['attachment_id']) : 0,
+			'url' => isset($value['url']) ? esc_url_raw($value['url']) : '',
+		);
 	}
 
 	/**
@@ -769,5 +850,129 @@ class AIPS_AI_Edit_Controller {
 			$post_id,
 			(string) get_post_field('post_content', $post_id)
 		);
+	}
+
+	/**
+	 * Retrieve current component value from the post object.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @param string  $component Component name.
+	 * @return mixed
+	 */
+	private function get_post_component_value($post, $component) {
+		if (!$post instanceof WP_Post && !is_object($post)) {
+			return '';
+		}
+
+		switch ($component) {
+			case 'title':
+				return isset($post->post_title) ? $post->post_title : '';
+			case 'excerpt':
+				return isset($post->post_excerpt) ? $post->post_excerpt : '';
+			case 'content':
+				return isset($post->post_content) ? $post->post_content : '';
+			case 'featured_image':
+				$attachment_id = isset($post->ID) ? absint(get_post_thumbnail_id($post->ID)) : 0;
+				return array(
+					'attachment_id' => $attachment_id,
+					'url'           => $attachment_id ? (string) wp_get_attachment_url($attachment_id) : '',
+				);
+			default:
+				$image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
+				if ($image_id > 0 && isset($post->ID)) {
+					return $this->get_generated_post_image_value((int) $post->ID, $image_id);
+				}
+				return '';
+		}
+	}
+
+	/**
+	 * Current generated post-image payload for revision snapshots.
+	 *
+	 * @param int $post_id  Post ID.
+	 * @param int $image_id Generated image row ID.
+	 * @return array
+	 */
+	private function get_generated_post_image_value($post_id, $image_id) {
+		$row = (new AIPS_Post_Images_Generated_Repository())->get_by_id($image_id);
+		if (!$row || (int) $row->post_id !== (int) $post_id) {
+			return array(
+				'id' => $image_id,
+				'attachment_id' => 0,
+				'url' => '',
+			);
+		}
+
+		$attachment_id = (int) $row->attachment_id;
+		$url = !empty($row->image_url) ? (string) $row->image_url : ($attachment_id ? (string) wp_get_attachment_url($attachment_id) : '');
+
+		return array(
+			'id' => (int) $row->id,
+			'image_index' => (int) $row->image_index,
+			'attachment_id' => $attachment_id,
+			'url' => $url,
+		);
+	}
+
+	/**
+	 * Determine whether a component value is empty.
+	 *
+	 * @param string $component Component type.
+	 * @param mixed  $value Value to check.
+	 * @return bool
+	 */
+	private function is_component_value_empty($component, $value) {
+		if ('featured_image' === $component || AIPS_Component_Regeneration_Service::post_image_id_from_component($component) > 0) {
+			if (is_array($value)) {
+				return empty($value['attachment_id']) && empty($value['url']);
+			}
+			return empty($value);
+		}
+
+		return '' === trim((string) $value);
+	}
+
+	/**
+	 * Check if a component value is already captured in recent revisions.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $component Component type.
+	 * @param mixed  $value Value to check.
+	 * @return bool
+	 */
+	private function is_component_value_in_revisions($post_id, $component, $value) {
+		$revisions = $this->history_repository->get_component_revisions($post_id, $component, 10);
+		if (empty($revisions)) {
+			return false;
+		}
+
+		$normalized_target = $this->normalize_revision_comparison_value($component, $value);
+
+		foreach ($revisions as $revision) {
+			$existing_value = isset($revision['value']) ? $revision['value'] : null;
+			if ($normalized_target === $this->normalize_revision_comparison_value($component, $existing_value)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Normalize a component value for string comparison.
+	 *
+	 * @param string $component Component type.
+	 * @param mixed  $value Value to normalize.
+	 * @return string
+	 */
+	private function normalize_revision_comparison_value($component, $value) {
+		if ('featured_image' === $component || AIPS_Component_Regeneration_Service::post_image_id_from_component($component) > 0) {
+			if (is_array($value)) {
+				return (string) (isset($value['attachment_id']) ? absint($value['attachment_id']) : 0);
+			}
+			return (string) absint($value);
+		}
+
+		return trim((string) $value);
 	}
 }

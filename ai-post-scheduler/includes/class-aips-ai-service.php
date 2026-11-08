@@ -712,7 +712,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $provider = $this->provider;
             } else {
                 $error = new WP_Error('ai_unavailable', __('The selected AI embeddings provider is not available.', 'ai-post-scheduler'));
-                $this->log_call('embedding', $text, $options, $error);
+                $this->log_call('embedding', $text, $options, $error, null, $provider);
                 $this->emit_integration_error_notification('embedding', $error, $options);
                 return $error;
             }
@@ -730,16 +730,16 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
                 if (empty($embedding) || !is_array($embedding)) {
                     $error = new WP_Error('empty_response', __('AI provider returned an empty embedding response.', 'ai-post-scheduler'));
-                    $this->log_call('embedding', $text, $options, $error);
+                    $this->log_call('embedding', $text, $options, $error, null, $provider);
                     return $error;
                 }
 
-                $this->log_call('embedding', $text, $options, null, wp_json_encode($embedding));
+                $this->log_call('embedding', $text, $options, null, wp_json_encode($embedding), $provider);
                 return $embedding;
             } catch (Exception $e) {
                 $provider_code = $this->provider->extract_error_code($e->getMessage());
                 $error = new WP_Error($provider_code ?: 'embedding_failed', $e->getMessage());
-                $this->log_call('embedding', $text, $options, $error);
+                $this->log_call('embedding', $text, $options, $error, null, $provider);
                 return $error;
             }
         }, 'embedding', $text, $options);
@@ -818,6 +818,35 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     }
     
     /**
+     * Error codes raised before any request reaches the provider. Calls ending
+     * with these are not counted as AI calls.
+     */
+    private const UNSENT_CALL_ERROR_CODES = array(
+        'ai_unavailable',
+        'embeddings_not_supported',
+        'circuit_breaker_open',
+        'rate_limit_exceeded',
+    );
+
+    /**
+     * Add a call to the lifetime per-provider AI call counter.
+     *
+     * @param string                          $type     Call type.
+     * @param WP_Error|Exception|string|null  $error    Error, if the call failed.
+     * @param AIPS_AI_Provider_Interface|null $provider Provider that served the call.
+     * @return void
+     */
+    private function count_call($type, $error, $provider = null) {
+        if ($error instanceof WP_Error && in_array($error->get_error_code(), self::UNSENT_CALL_ERROR_CODES, true)) {
+            return;
+        }
+
+        $provider = $provider instanceof AIPS_AI_Provider_Interface ? $provider : $this->provider;
+
+        AIPS_AI_Call_Counter::increment($provider->get_id(), $type, $error === null);
+    }
+
+    /**
      * Log an AI call for debugging and auditing.
      *
      * Stores call information in memory and writes to the system logger.
@@ -827,8 +856,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @param array                          $options  The options used for the call.
      * @param WP_Error|Exception|string|null $error    Error object or message, if call failed.
      * @param string|null                    $response The AI response, if successful.
+     * @param AIPS_AI_Provider_Interface|null $provider Provider that served the call. Defaults to the active provider.
      */
-    private function log_call($type, $prompt, $options, $error = null, $response = null) {
+    private function log_call($type, $prompt, $options, $error = null, $response = null, $provider = null) {
+        $this->count_call($type, $error, $provider);
+
         $prompt_for_length   = (string) $prompt;
         $response_for_length = (string) $response;
 

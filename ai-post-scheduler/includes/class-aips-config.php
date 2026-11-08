@@ -256,6 +256,8 @@ class AIPS_Config {
             'aips_telemetry_prune_interval'            => 'daily',
             'aips_history_log_retention_value'         => 60,
             'aips_history_log_retention_unit'          => 'days',
+            'aips_ai_error_log_retention_value'        => 30,
+            'aips_ai_error_log_retention_unit'         => 'days',
             'aips_clean_orphaned_embeddings'           => true,
             'aips_clean_expired_topics'                => true,
             // Cache Monitor

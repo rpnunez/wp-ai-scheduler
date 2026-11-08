@@ -8,55 +8,37 @@ The AI Edit feature allows you to regenerate individual components of AI-generat
 
 ## Accessing AI Edit
 
-The AI Edit feature is available in two locations:
+The AI Edit feature is available across all administrative post listings:
 
-1. **Generated Posts Tab**: Click the "AI Edit" button next to any published post
-2. **Pending Review Tab**: Click the "AI Edit" button next to any draft post
+1. **WordPress All Posts (`wp-admin/edit.php`)**: Hover over any AI-generated post to access the "AI Edit" action directly next to "Edit".
+2. **Generated Posts Tab**: Click the primary "AI Edit" button next to any completed post.
+3. **Pending Review Tab**: Click "AI Edit" from the actions menu next to any draft post.
+4. **History Page & Modal (`admin.php?page=aips-history`)**: Access "AI Edit" directly from the History table row menu or the History Details modal header.
 
 ## Using the Modal
 
-When you click "AI Edit", a modal window will open showing:
+When you click "AI Edit", a tabbed modal window will open showing:
 
-### Generation Context
+### Overview & Generation Context
 - **Template**: The template used to generate the post
 - **Author**: The author associated with the post (if applicable)
 - **Topic**: The topic used for generation (if applicable)
+- **Component Status**: Quick cards showing whether components are unmodified, modified, or regenerated.
 
-### Editable Components
+### Tabbed Editable Components
 
-Each component section includes:
-- Current content
-- "Re-generate" button to create new AI-generated content
-- Text input/textarea for manual editing
-
-#### Available Components:
-1. **Title** - The post title
-2. **Excerpt** - The post excerpt/summary
-3. **Content** - The full post content (supports article structures)
-4. **Featured Image** - The post's featured image
-
-## Regenerating Components
-
-To regenerate a component:
-
-1. Click the "Re-generate" button next to the component
-2. Wait for the AI to generate new content (indicated by a spinning icon)
-3. Review the generated content
-4. Repeat if needed (you can regenerate multiple times)
-
-**Note**: All regenerations use the original template, author, and topic to maintain consistency.
-
-## Manual Editing
-
-You can also manually edit any component directly in the input fields:
-- Changes are tracked automatically
-- Modified components are marked with a blue border and asterisk (*)
+Navigate through tabs for **Title**, **Excerpt**, **Content**, **Featured Image**, and **Post Images**:
+- Each tab displays the editable field and revision history.
+- **Post Images** lists every content image separately from the featured image. Each image has its own Re-generate button, side-by-side comparison, and View Revisions list. Accept a draft or restore a revision, then Save Changes. Cancelling the modal leaves the post unchanged.
+- Clicking **Re-generate** generates new AI content and opens a **Side-by-Side Comparison** (Current Version vs. Newly Regenerated Draft).
+- Click **Accept & Replace** to stage the regenerated draft into your edit field, or **Discard** to keep your current version.
+- Use **Regenerate All** to run all components and review diffs across tabs, with an **Accept All Regenerations** button to stage them simultaneously.
 
 ## Saving Changes
 
-1. Review all your changes (modified components are marked)
-2. Click "Save Changes" button at the bottom
-3. The modal will close and the page will refresh with your updates
+1. Review staged changes (marked with active status badges).
+2. Click **Save Changes** at the bottom.
+3. The modal will close, displaying a confirmation toast notification, and dynamically update the post row in-place without requiring a page reload.
 
 **Keyboard Shortcut**: Press `Ctrl+S` (Windows/Linux) or `Cmd+S` (Mac) to save
 

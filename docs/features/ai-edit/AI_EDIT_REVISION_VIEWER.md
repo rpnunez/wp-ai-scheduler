@@ -2,7 +2,7 @@
 
 ## Overview
 
-The AI Edit feature includes a Revision Viewer that allows users to view and restore previous versions of post components (title, excerpt, content, featured image).
+The AI Edit feature includes a Revision Viewer that allows users to view and restore previous versions of post components (title, excerpt, content, featured image, and each post image).
 
 > **Not to be confused with:** this is unrelated to the **AI Assistance** per-field ✨/🕐 widget (see `docs/features/ai-assistance/AI_ASSISTANCE_DEV_GUIDE.md`). The revision viewer described here is part of AI Edit's post-component regeneration flow, with its own controller, service, and runtime files (listed below).
 
