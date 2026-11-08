@@ -122,6 +122,12 @@ class AIPS_Ajax_Registry {
 		'aips_save_post_components'       => 'AIPS_AI_Edit_Controller',
 		'aips_get_component_revisions'    => 'AIPS_AI_Edit_Controller',
 		'aips_restore_component_revision' => 'AIPS_AI_Edit_Controller',
+		'aips_reset_component_overrides'  => 'AIPS_AI_Edit_Controller',
+
+		// Editor Controller (Gutenberg & Classic Editor)
+		'aips_editor_apply_directive'              => 'AIPS_Editor_Controller',
+		'aips_editor_weave_internal_links'         => 'AIPS_Editor_Controller',
+		'aips_editor_generate_component_variants'  => 'AIPS_Editor_Controller',
 
 		// Generated Posts Controller
 		'aips_get_post_session'           => 'AIPS_Generated_Posts_Controller',
@@ -223,6 +229,7 @@ class AIPS_Ajax_Registry {
 		// Settings Ajax
 		'aips_save_settings'              => 'AIPS_Settings_Ajax',
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
+		'aips_flush_notification_digest' => 'AIPS_Settings_Ajax',
 
 		// Admin Notices
 		'aips_dismiss_notice'             => 'AIPS_Admin_Notices',
@@ -257,6 +264,8 @@ class AIPS_Ajax_Registry {
 		// Diagnostics Controller
 		'aips_get_ai_errors'              => 'AIPS_Diagnostics_Controller',
 		'aips_get_ai_error_details'       => 'AIPS_Diagnostics_Controller',
+		'aips_get_ai_error_summary'       => 'AIPS_Diagnostics_Controller',
+		'aips_export_ai_errors'           => 'AIPS_Diagnostics_Controller',
 
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
@@ -277,6 +286,7 @@ class AIPS_Ajax_Registry {
 		'aips_status_prune_telemetry'    => 'AIPS_System_Status_Controller',
 		'aips_status_purge_telemetry'    => 'AIPS_System_Status_Controller',
 		'aips_status_prune_history_logs' => 'AIPS_System_Status_Controller',
+		'aips_status_prune_ai_errors'    => 'AIPS_System_Status_Controller',
 		'aips_status_clean_orphaned_embeddings' => 'AIPS_System_Status_Controller',
 		'aips_status_optimize_table'     => 'AIPS_System_Status_Controller',
 		'aips_status_get_tables'         => 'AIPS_System_Status_Controller',
