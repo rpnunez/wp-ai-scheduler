@@ -139,12 +139,14 @@ class AIPS_Post_Review {
 		}
 		
 		$page = isset($_POST['page']) ? absint($_POST['page']) : 1;
+		$per_page = isset($_POST['per_page']) ? min(50, max(1, absint($_POST['per_page']))) : 12;
 		$search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 		$post_type = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
 
 		$draft_posts = $this->get_draft_posts(array(
 			'page' => $page,
+			'per_page' => $per_page,
 			'search' => $search,
 			'template_id' => $template_id,
 			'post_type' => $post_type,

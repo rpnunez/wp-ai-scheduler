@@ -120,6 +120,15 @@ $site_ctx = AIPS_Site_Context::get();
 
 		<form id="aips-author-form" data-aips-async="true" novalidate>
 			<input type="hidden" id="author_id" name="author_id" value="">
+			<?php
+			/*
+			 * Put each author setting inside the matching .aips-author-step.
+			 * Review reads the enabled input, select, and textarea controls in
+			 * steps 1–4, so a new field is summarized without a separate list.
+			 * Affiliate overrides belong with Topics & Sources; image settings
+			 * belong with Writing & Audience.
+			 */
+			?>
 
 			<?php
 			$author_source_groups = get_terms(array(

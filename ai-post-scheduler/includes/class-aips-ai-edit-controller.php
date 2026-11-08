@@ -74,8 +74,17 @@ class AIPS_AI_Edit_Controller {
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
-		if (!$post_id || !$history_id) {
+		if (!$post_id) {
 			AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+		}
+
+		if (!$history_id) {
+			$history_record = $this->history_repository->get_by_post_id($post_id);
+			if (is_object($history_record) && !empty($history_record->id)) {
+				$history_id = absint($history_record->id);
+			} else {
+				AIPS_Ajax_Response::error(__('Invalid request.', 'ai-post-scheduler'));
+			}
 		}
 		
 		// Check if user can edit this post
@@ -128,6 +137,8 @@ class AIPS_AI_Edit_Controller {
 		
 		// Build response
 		$response = array(
+			'post_id' => $post_id,
+			'history_id' => $history_id,
 			'context' => $context_display,
 			'components' => array(
 				'title' => array(
@@ -210,19 +221,35 @@ class AIPS_AI_Edit_Controller {
 		$context['current_excerpt'] = $post->post_excerpt;
 		$context['current_content'] = $post->post_content;
 
-		if ('manual_edit' === $current_source && null !== $current_value && '' !== $current_value) {
-			$snapshot_result = $this->service->capture_component_revision(
-				$post_id,
-				$history_id,
-				$component,
-				$this->sanitize_component_revision_value($component, $current_value),
-				'manual_edit',
-				$current_reason ? $current_reason : 'pre_regenerate_manual'
-			);
+		// Resolve the current component value to snapshot before regeneration
+		$snapshot_value = null;
+		if (null !== $current_value && '' !== $current_value) {
+			$snapshot_value = $this->sanitize_component_revision_value($component, $current_value);
+		} else {
+			$raw_current = $this->get_post_component_value($post, $component);
+			if (null !== $raw_current && '' !== $raw_current) {
+				$snapshot_value = $this->sanitize_component_revision_value($component, $raw_current);
+			}
+		}
 
-			if (is_wp_error($snapshot_result)) {
-				$this->log_wp_error($snapshot_result, __METHOD__);
-				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+		if (null !== $snapshot_value && !$this->is_component_value_empty($component, $snapshot_value)) {
+			if (!$this->is_component_value_in_revisions($post_id, $component, $snapshot_value)) {
+				$source = !empty($current_source) ? $current_source : 'persisted';
+				$reason = !empty($current_reason) ? $current_reason : ('manual_edit' === $source ? 'pre_regenerate_manual' : 'pre_regenerate_current');
+
+				$snapshot_result = $this->service->capture_component_revision(
+					$post_id,
+					$history_id,
+					$component,
+					$snapshot_value,
+					$source,
+					$reason
+				);
+
+				if (is_wp_error($snapshot_result)) {
+					$this->log_wp_error($snapshot_result, __METHOD__);
+					AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+				}
 			}
 		}
 		
@@ -302,25 +329,47 @@ class AIPS_AI_Edit_Controller {
 		$context['current_excerpt'] = $post->post_excerpt;
 		$context['current_content'] = $post->post_content;
 
+		$current_snapshots = array();
+		if (isset($_POST['current_snapshots']) && is_array($_POST['current_snapshots'])) {
+			$current_snapshots = $_POST['current_snapshots'];
+		} elseif (isset($_POST['manual_snapshots']) && is_array($_POST['manual_snapshots'])) {
+			$current_snapshots = $_POST['manual_snapshots'];
+		}
+
 		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
-		foreach ($manual_snapshots as $component => $value) {
-			if (!in_array($component, $valid_components, true)) {
-				continue;
+		foreach ($valid_components as $component) {
+			$snapshot_value = null;
+			$source = 'persisted';
+
+			if (isset($current_snapshots[$component]) && null !== $current_snapshots[$component] && '' !== $current_snapshots[$component]) {
+				$snapshot_value = $this->sanitize_component_revision_value($component, wp_unslash($current_snapshots[$component]));
+				if (isset($manual_snapshots[$component])) {
+					$source = 'manual_edit';
+				}
+			} else {
+				$raw_current = $this->get_post_component_value($post, $component);
+				if (null !== $raw_current && '' !== $raw_current) {
+					$snapshot_value = $this->sanitize_component_revision_value($component, $raw_current);
+				}
 			}
 
-			$sanitized_snapshot_value = $this->sanitize_component_revision_value($component, wp_unslash($value));
-			$snapshot_result = $this->service->capture_component_revision(
-				$post_id,
-				$history_id,
-				$component,
-				$sanitized_snapshot_value,
-				'manual_edit',
-				'pre_regenerate_all_manual'
-			);
+			if (null !== $snapshot_value && !$this->is_component_value_empty($component, $snapshot_value)) {
+				if (!$this->is_component_value_in_revisions($post_id, $component, $snapshot_value)) {
+					$reason = ('manual_edit' === $source) ? 'pre_regenerate_all_manual' : 'pre_regenerate_all_current';
+					$snapshot_result = $this->service->capture_component_revision(
+						$post_id,
+						$history_id,
+						$component,
+						$snapshot_value,
+						$source,
+						$reason
+					);
 
-			if (is_wp_error($snapshot_result)) {
-				$this->log_wp_error($snapshot_result, __METHOD__);
-				AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+					if (is_wp_error($snapshot_result)) {
+						$this->log_wp_error($snapshot_result, __METHOD__);
+						AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+					}
+				}
 			}
 		}
 
@@ -440,6 +489,8 @@ class AIPS_AI_Edit_Controller {
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
 			'updated_components' => $updated_components,
+			'post_id' => $post_id,
+			'title' => isset($post_data['post_title']) ? $post_data['post_title'] : get_the_title($post_id),
 		));
 	}
 	
@@ -722,5 +773,97 @@ class AIPS_AI_Edit_Controller {
 	 */
 	private function reconcile_partial_generation_state($post_id) {
 		$this->post_manager->reconcile_generation_status_meta_from_post($post_id);
+	}
+
+	/**
+	 * Retrieve current component value from the post object.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @param string  $component Component name.
+	 * @return mixed
+	 */
+	private function get_post_component_value($post, $component) {
+		if (!$post instanceof WP_Post && !is_object($post)) {
+			return '';
+		}
+
+		switch ($component) {
+			case 'title':
+				return isset($post->post_title) ? $post->post_title : '';
+			case 'excerpt':
+				return isset($post->post_excerpt) ? $post->post_excerpt : '';
+			case 'content':
+				return isset($post->post_content) ? $post->post_content : '';
+			case 'featured_image':
+				$attachment_id = isset($post->ID) ? absint(get_post_thumbnail_id($post->ID)) : 0;
+				return array(
+					'attachment_id' => $attachment_id,
+					'url'           => $attachment_id ? (string) wp_get_attachment_url($attachment_id) : '',
+				);
+			default:
+				return '';
+		}
+	}
+
+	/**
+	 * Determine whether a component value is empty.
+	 *
+	 * @param string $component Component type.
+	 * @param mixed  $value Value to check.
+	 * @return bool
+	 */
+	private function is_component_value_empty($component, $value) {
+		if ('featured_image' === $component) {
+			if (is_array($value)) {
+				return empty($value['attachment_id']) && empty($value['url']);
+			}
+			return empty($value);
+		}
+
+		return '' === trim((string) $value);
+	}
+
+	/**
+	 * Check if a component value is already captured in recent revisions.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $component Component type.
+	 * @param mixed  $value Value to check.
+	 * @return bool
+	 */
+	private function is_component_value_in_revisions($post_id, $component, $value) {
+		$revisions = $this->history_repository->get_component_revisions($post_id, $component, 10);
+		if (empty($revisions)) {
+			return false;
+		}
+
+		$normalized_target = $this->normalize_revision_comparison_value($component, $value);
+
+		foreach ($revisions as $revision) {
+			$existing_value = isset($revision['value']) ? $revision['value'] : null;
+			if ($normalized_target === $this->normalize_revision_comparison_value($component, $existing_value)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Normalize a component value for string comparison.
+	 *
+	 * @param string $component Component type.
+	 * @param mixed  $value Value to normalize.
+	 * @return string
+	 */
+	private function normalize_revision_comparison_value($component, $value) {
+		if ('featured_image' === $component) {
+			if (is_array($value)) {
+				return (string) (isset($value['attachment_id']) ? absint($value['attachment_id']) : 0);
+			}
+			return (string) absint($value);
+		}
+
+		return trim((string) $value);
 	}
 }
