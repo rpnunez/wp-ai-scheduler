@@ -189,8 +189,10 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'duplicate_match', $meta, 'duplicate_match key should be present' );
 		$this->assertEquals( 'Existing Similar Topic', $meta['duplicate_match'] );
 
-		// Verify embedding is stored in metadata.
-		$this->assertArrayHasKey( 'embedding', $meta, 'embedding should be stored in metadata' );
+		// The candidate embedding must NOT be persisted in metadata — it is a
+		// ~50 KB/row float array kept only in-memory for same-request reuse; the
+		// canonical copy lives in aips_embeddings.
+		$this->assertArrayNotHasKey( 'embedding', $meta, 'embedding must not be persisted in metadata' );
 	}
 
 	/**

@@ -369,7 +369,7 @@
             $(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle);
             $(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.closeAllRowActionMenus);
             $(document).on('click', function(e) {
-                if (!$(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
+                if (!$(e.target).closest('.aips-row-action-group, .aips-row-action-menu, .aips-card-footer-right').length) {
                     AIPS.closeAllRowActionMenus();
                 }
             });
@@ -785,6 +785,18 @@
                     $targetTab.show().addClass('active').attr('aria-hidden', 'false');
                     $targetTab.find('.aips-tab-content:not(.active)').hide().attr('aria-hidden', 'true');
                     $targetTab.find('.aips-tab-content.active').show().attr('aria-hidden', 'false');
+                }
+
+                // Scroll page back to top when switching tabs in vertical rail layout or settings
+                try {
+                    var prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+                    window.scrollTo({
+                        top: 0,
+                        left: 0,
+                        behavior: prefersReducedMotion ? 'auto' : 'smooth'
+                    });
+                } catch (scrollErr) {
+                    window.scrollTo(0, 0);
                 }
             } else {
                 var $container = $tabNav.parent();
