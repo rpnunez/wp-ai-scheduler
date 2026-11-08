@@ -90,7 +90,7 @@ class AIPS_Post_History_UI {
 		add_action('admin_init', array($this, 'register_post_type_table_hooks'));
 		add_action('restrict_manage_posts', array($this, 'render_table_filters'));
 		add_action('pre_get_posts', array($this, 'handle_table_query_filters'));
-		add_action('admin_notices', array($this, 'render_admin_notices'));
+		add_action('admin_init', array($this, 'render_admin_notices'));
 
 		// Classic Editor Meta Box
 		add_action('add_meta_boxes', array($this, 'register_sidebar_metabox'));
@@ -531,23 +531,21 @@ class AIPS_Post_History_UI {
 	 */
 	public function render_admin_notices(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if (!empty($_GET['aips_queued_count'])) {
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$count = absint($_GET['aips_queued_count']);
-			?>
-			<div class="notice notice-success is-dismissible">
-				<p>
-					<?php
-					printf(
-						/* translators: %d: number of posts */
-						esc_html__('%d posts queued for background vector indexing. Processing will begin shortly.', 'ai-post-scheduler'),
-						$count
-					);
-					?>
-				</p>
-			</div>
-			<?php
+		if (empty($_GET['aips_queued_count'])) {
+			return;
 		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$count = absint($_GET['aips_queued_count']);
+		$message = sprintf(
+			/* translators: %d: number of posts */
+			esc_html__('%d posts queued for background vector indexing. Processing will begin shortly.', 'ai-post-scheduler'),
+			$count
+		);
+		AIPS_Admin_Notices::add('aips_queued_indexing', $message, array(
+			'type'        => 'success',
+			'dismissible' => true,
+		));
 	}
 
 	/**

@@ -17,5 +17,6 @@ if (!defined('ABSPATH')) {
 		<li><strong><?php esc_html_e('AI Engine Integration:', 'ai-post-scheduler'); ?></strong> <?php esc_html_e('Ensure Meow Apps AI Engine is active and an API key is connected under Meow Apps > AI Engine.', 'ai-post-scheduler'); ?></li>
 		<li><strong><?php esc_html_e('Model Selection:', 'ai-post-scheduler'); ?></strong> <?php esc_html_e('Choose models suited for your content requirements. For long-form drafting, higher-capacity models are recommended; for quick topic expansion, fast/lightweight models offer lower latency.', 'ai-post-scheduler'); ?></li>
 		<li><strong><?php esc_html_e('Token Budgets:', 'ai-post-scheduler'); ?></strong> <?php esc_html_e('Set daily and monthly token thresholds to protect against unexpected API spend.', 'ai-post-scheduler'); ?></li>
+		<li><strong><?php esc_html_e('Post Images:', 'ai-post-scheduler'); ?></strong> <?php esc_html_e('On the General tab, cap how many in-content images a post may generate and which sources (AI prompt, Unsplash, Media Library) templates and authors may use.', 'ai-post-scheduler'); ?></li>
 	</ul>
 </div>

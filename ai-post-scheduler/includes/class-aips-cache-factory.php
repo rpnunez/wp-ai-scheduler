@@ -236,8 +236,9 @@ class AIPS_Cache_Factory {
 		}
 		$registered = true;
 
-		add_action( 'admin_notices', static function() use ( $message ) {
-			echo '<div class="notice notice-warning is-dismissible"><p>' . wp_kses_post( $message ) . '</p></div>';
-		});
+		AIPS_Admin_Notices::add('aips_cache_driver_fallback', $message, array(
+			'type'        => 'warning',
+			'dismissible' => true,
+		));
 	}
 }

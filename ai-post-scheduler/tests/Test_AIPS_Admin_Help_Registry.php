@@ -78,6 +78,17 @@ class Test_AIPS_Admin_Help_Registry extends WP_UnitTestCase {
 		$tabs = AIPS_Admin_Help_Registry::get_default_help_tabs('aips_page_aips-settings', 'aips-settings', '');
 		$this->assertNotEmpty($tabs);
 		$this->assertSame('aips_settings_engine', $tabs[0]['id']);
+
+		$tabs = AIPS_Admin_Help_Registry::get_default_help_tabs('aips_page_aips-diagnostics', 'aips-diagnostics', 'system-info');
+		$this->assertSame('aips_diagnostics_overview', $tabs[0]['id']);
+
+		$tabs = AIPS_Admin_Help_Registry::get_default_help_tabs('aips_page_aips-generated-posts', 'aips-generated-posts', 'aips-pending-review');
+		$this->assertSame('aips_pending_review', $tabs[0]['id']);
+
+		$tabs = AIPS_Admin_Help_Registry::get_default_help_tabs('aips_page_aips-automations', 'aips-automations', 'campaigns');
+		$this->assertNotEmpty($tabs);
+		$ids = wp_list_pluck($tabs, 'id');
+		$this->assertContains('aips_campaigns', $ids);
 	}
 
 	/**

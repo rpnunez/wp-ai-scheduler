@@ -31,11 +31,15 @@ $markdown_report = $provider->get_markdown_report();
 			<?php if (empty($checks)) continue; ?>
 			<?php $section_title = $provider->get_section_title($section); ?>
 
-			<div class="aips-content-panel aips-status-card">
-				<div class="aips-panel-header">
-					<h2><?php echo esc_html($section_title); ?></h2>
-				</div>
-				<div class="aips-panel-body no-padding">
+			<?php
+			AIPS_Admin_UI_Primitives::render_card(
+				array(
+					'class'      => 'aips-status-card',
+					'title'      => $section_title,
+					'body_class' => 'no-padding',
+				),
+				static function () use ($checks, $section) {
+					?>
 					<div class="aips-status-kv">
 						<?php foreach ($checks as $key => $check) : ?>
 							<div class="aips-status-kv-row">
@@ -47,7 +51,7 @@ $markdown_report = $provider->get_markdown_report();
 										<a href="#" class="aips-toggle-log-details" data-target="log-details-info-<?php echo esc_attr($section . '-' . $key); ?>">
 											<?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
 										</a>
-										<div id="log-details-info-<?php echo esc_attr($section . '-' . $key); ?>" class="aips-log-details" style="display:none; margin-top:6px;">
+										<div id="log-details-info-<?php echo esc_attr($section . '-' . $key); ?>" class="aips-log-details" hidden>
 											<textarea class="aips-form-input" rows="6" readonly><?php echo esc_textarea(implode("\n", (array) $check['details'])); ?></textarea>
 										</div>
 									<?php endif; ?>
@@ -78,8 +82,10 @@ $markdown_report = $provider->get_markdown_report();
 							</div>
 						<?php endforeach; ?>
 					</div>
-				</div>
-			</div>
+					<?php
+				}
+			);
+			?>
 		<?php endforeach; ?>
 	</div>
 </div>

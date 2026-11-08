@@ -205,6 +205,41 @@ class AIPS_Admin_Help_Registry {
 			);
 		}
 
+		if (
+			false !== strpos($screen_id, 'diagnostics') ||
+			'aips-diagnostics' === $page
+		) {
+			$tabs[] = array(
+				'id'      => 'aips_diagnostics_overview',
+				'title'   => __('Diagnostics', 'ai-post-scheduler'),
+				'content' => self::render_partial('diagnostics-overview.php'),
+			);
+		}
+
+		if (
+			false !== strpos($screen_id, 'generated-posts') ||
+			'aips-generated-posts' === $page ||
+			in_array($tab, array('aips-pending-review', 'pending-review', 'pending'), true)
+		) {
+			$tabs[] = array(
+				'id'      => 'aips_pending_review',
+				'title'   => __('Pending Review', 'ai-post-scheduler'),
+				'content' => self::render_partial('pending-review.php'),
+			);
+		}
+
+		if (
+			false !== strpos($screen_id, 'campaign') ||
+			in_array($page, array('aips-campaigns', 'aips-campaign-detail', 'aips-campaign-wizard'), true) ||
+			'campaigns' === $tab
+		) {
+			$tabs[] = array(
+				'id'      => 'aips_campaigns',
+				'title'   => __('Campaigns', 'ai-post-scheduler'),
+				'content' => self::render_partial('campaigns.php'),
+			);
+		}
+
 		return $tabs;
 	}
 }

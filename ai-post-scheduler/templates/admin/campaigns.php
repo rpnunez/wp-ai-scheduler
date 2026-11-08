@@ -67,10 +67,15 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 			<div class="aips-stat-card"><div class="aips-stat-content"><span class="aips-stat-number"><?php echo esc_html($stats['archived']); ?></span><span class="aips-stat-label"><?php esc_html_e('Archived', 'ai-post-scheduler'); ?></span></div></div>
 		</div>
 
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Campaigns', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body no-padding">
-				<?php if (!empty($active_campaigns)) : ?>
+		<?php
+		AIPS_Admin_UI_Primitives::render_card(
+			array(
+				'title'      => __('Campaigns', 'ai-post-scheduler'),
+				'body_class' => 'no-padding',
+			),
+			static function () use ($active_campaigns, $render_campaign_rows) {
+				if (!empty($active_campaigns)) :
+					?>
 					<table class="aips-table">
 						<thead>
 							<tr>
@@ -86,20 +91,27 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 						</thead>
 						<tbody><?php $render_campaign_rows($active_campaigns, false); ?></tbody>
 					</table>
-				<?php else : ?>
+					<?php
+				else :
+					?>
 					<div class="aips-empty-state">
 						<div class="dashicons dashicons-megaphone aips-empty-state-icon" aria-hidden="true"></div>
 						<h3 class="aips-empty-state-title"><?php esc_html_e('No Campaigns Yet', 'ai-post-scheduler'); ?></h3>
 						<p class="aips-empty-state-description"><?php esc_html_e('Create your first campaign to group templates, schedules, and generated posts under a single parent record.', 'ai-post-scheduler'); ?></p>
 					</div>
-				<?php endif; ?>
-			</div>
-		</div>
+					<?php
+				endif;
+			}
+		);
 
-		<div class="aips-content-panel">
-			<div class="aips-filter-bar"><strong><?php esc_html_e('Archived', 'ai-post-scheduler'); ?></strong></div>
-			<div class="aips-panel-body no-padding">
-				<?php if (!empty($archived_campaigns)) : ?>
+		AIPS_Admin_UI_Primitives::render_card(
+			array(
+				'title'      => __('Archived', 'ai-post-scheduler'),
+				'body_class' => 'no-padding',
+			),
+			static function () use ($archived_campaigns, $render_campaign_rows) {
+				if (!empty($archived_campaigns)) :
+					?>
 					<table class="aips-table">
 						<thead>
 							<tr>
@@ -115,10 +127,14 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 						</thead>
 						<tbody><?php $render_campaign_rows($archived_campaigns, true); ?></tbody>
 					</table>
-				<?php else : ?>
+					<?php
+				else :
+					?>
 					<div class="aips-empty-state">
 						<h3 class="aips-empty-state-title"><?php esc_html_e('No Archived Campaigns', 'ai-post-scheduler'); ?></h3>
 					</div>
-				<?php endif; ?>
-			</div>
-		</div>
+					<?php
+				endif;
+			}
+		);
+		?>

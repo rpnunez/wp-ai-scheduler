@@ -23,6 +23,7 @@ if (!defined('ABSPATH')) {
 		<li><code>{structure}</code> — <?php esc_html_e('The article outline or section hierarchy if a Structure blueprint is attached.', 'ai-post-scheduler'); ?></li>
 		<li><code>{site_name}</code> — <?php esc_html_e('The current WordPress site title.', 'ai-post-scheduler'); ?></li>
 		<li><code>{date}</code> — <?php esc_html_e('The current formatted publishing date.', 'ai-post-scheduler'); ?></li>
+		<li><code>{slug}</code> — <?php esc_html_e('The generated post slug when slug generation is enabled on the template or author.', 'ai-post-scheduler'); ?></li>
 	</ul>
 	<p><em><?php esc_html_e('Tip: System Prompts define persona rules and formatting constraints; User Prompts should focus on the specific topic and outline.', 'ai-post-scheduler'); ?></em></p>
 </div>
