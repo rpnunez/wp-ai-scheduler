@@ -623,8 +623,12 @@ class AIPS_Notifications {
 			}
 		}
 
-		if ($sent && '' !== $dedupe_key && $dedupe_window > 0) {
-			set_transient($this->get_dedupe_transient_key($dedupe_key), 1, $dedupe_window);
+		if ($sent && '' !== $dedupe_key && $dedupe_window > 0 && !in_array(self::CHANNEL_DB, $channels, true)) {
+			$this->repository->create_notification(array(
+				'type'       => AIPS_Notifications_Repository::EMAIL_DEDUPE_RECEIPT_TYPE,
+				'dedupe_key' => $dedupe_key,
+				'is_read'    => 1,
+			));
 		}
 
 		return $sent;
@@ -735,21 +739,7 @@ class AIPS_Notifications {
 			return false;
 		}
 
-		if (get_transient($this->get_dedupe_transient_key($dedupe_key))) {
-			return true;
-		}
-
 		return $this->repository->was_recently_sent($dedupe_key, $window);
-	}
-
-	/**
-	 * Return the transient key used for dedupe.
-	 *
-	 * @param string $dedupe_key Dedupe key.
-	 * @return string
-	 */
-	private function get_dedupe_transient_key($dedupe_key) {
-		return 'aips_notif_' . md5($dedupe_key);
 	}
 
 	/**

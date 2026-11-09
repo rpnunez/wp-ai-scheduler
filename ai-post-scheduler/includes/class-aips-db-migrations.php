@@ -304,6 +304,12 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.7.25', '<' ) && ! $this->migrate_to_3_7_25() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Notification transient cleanup failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1916,6 +1922,25 @@ class AIPS_DB_Migrations {
 		return true;
 	}
 
+
+	/**
+	 * Remove legacy notification dedupe transients.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_25() {
+		global $wpdb;
+
+		$pattern = $wpdb->esc_like( '_transient_aips_notif_' ) . '%';
+		$timeout_pattern = $wpdb->esc_like( '_transient_timeout_aips_notif_' ) . '%';
+		$result = $wpdb->query( $wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+			$pattern,
+			$timeout_pattern
+		) );
+
+		return false !== $result;
+	}
 
 	/**
 	 * Migration for version 3.7.24.
