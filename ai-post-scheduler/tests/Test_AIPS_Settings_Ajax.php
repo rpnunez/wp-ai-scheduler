@@ -261,6 +261,28 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		$this->assertNotSame('selected', get_option('aips_wp_ai_connector_mode'));
 	}
 
+	public function test_ajax_save_settings_persists_allowed_image_sources_and_digest_types() {
+		update_option('aips_allowed_image_sources', array('ai_prompt', 'unsplash', 'media_library'));
+		update_option('aips_notif_digest_types', array('post_generated', 'post_ready_for_review'));
+
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_allowed_image_sources' => array('media_library', 'not-a-source', 'unsplash'),
+			'aips_notif_digest_types'    => array('template_generated', 'not_eligible', 'post_generated'),
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertTrue($response['success']);
+		$this->assertContains('aips_allowed_image_sources', $response['data']['updated']);
+		$this->assertContains('aips_notif_digest_types', $response['data']['updated']);
+		$this->assertSame(array('media_library', 'unsplash'), get_option('aips_allowed_image_sources'));
+		$this->assertSame(array('template_generated', 'post_generated'), get_option('aips_notif_digest_types'));
+	}
+
 	public function test_ajax_save_settings_ignores_array_payload_for_scalar_option() {
 		update_option('aips_ai_model', 'existing-model');
 
