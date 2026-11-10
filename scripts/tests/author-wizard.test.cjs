@@ -1,4 +1,4 @@
-/* Run with Node and Playwright available on NODE_PATH; requires PHP and Edge. */
+/* Run with Node and Playwright available on NODE_PATH; requires PHP. Uses Edge when present, otherwise Chromium. */
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
@@ -6,8 +6,16 @@ const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
 
+async function launchBrowser() {
+	try {
+		return await chromium.launch({ channel: 'msedge', headless: true });
+	} catch (err) {
+		return await chromium.launch({ headless: true });
+	}
+}
+
 test('Author wizard preserves values, validates hidden steps, and supports direct editing', async () => {
-	const browser = await chromium.launch({ channel: 'msedge', headless: true });
+	const browser = await launchBrowser();
 	try {
 		const page = await browser.newPage();
 		await page.setContent(execFileSync('php', [path.join(__dirname, 'author-wizard-fixture.php')], { encoding: 'utf8' }));
@@ -32,7 +40,8 @@ test('Author wizard preserves values, validates hidden steps, and supports direc
 		assert.equal(await page.locator('#author_name').evaluate(el => el === document.activeElement), true);
 		await page.locator('#author_name').fill('<img src=x onerror=alert(1)>');
 		await page.locator('#author_field_niche').fill('Engineering');
-		await page.locator('.aips-author-next').click();
+		await page.locator('#author_name').press('Enter');
+		assert.equal(await page.locator('.aips-author-step:visible').getAttribute('data-step'), '2');
 		await page.locator('#voice_tone').fill('Friendly');
 		await page.locator('.aips-author-next').click();
 		await page.locator('#author_include_sources').check();
@@ -47,6 +56,7 @@ test('Author wizard preserves values, validates hidden steps, and supports direc
 		await page.locator('.aips-author-next').click();
 		assert.match(await page.locator('#aips-author-review').innerText(), /Friendly/);
 		assert.match(await page.locator('#aips-author-review').innerText(), /Engineering/);
+		assert.doesNotMatch(await page.locator('#aips-author-review').innerText(), /Generate with AI Prompt/);
 		assert.equal(await page.locator('#aips-author-review img').count(), 0);
 		await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished)));
 		if (process.env.AIPS_WIZARD_SCREENSHOTS) await page.screenshot({ path: path.join(root, '.artifacts/author-wizard-review.png') });

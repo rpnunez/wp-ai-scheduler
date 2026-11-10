@@ -1,6 +1,6 @@
 # Author Wizard browser regression
 
-Run from the repository root with PHP 8.2+, Node.js, Playwright, and Microsoft Edge installed:
+Run from the repository root with PHP 8.2+, Node.js, and Playwright. The test uses Microsoft Edge when that channel is available and falls back to Chromium:
 
 ```text
 node --test scripts/tests/author-wizard.test.cjs
