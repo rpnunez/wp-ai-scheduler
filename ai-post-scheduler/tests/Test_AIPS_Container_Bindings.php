@@ -56,6 +56,10 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertTrue($this->container->has(AIPS_History_Repository_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_History_Service::class));
 		$this->assertTrue($this->container->has(AIPS_History_Service_Interface::class));
+		$this->assertTrue($this->container->has(AIPS_History_Modal_Presenter::class));
+		$this->assertTrue($this->container->has(AIPS_History_UI::class));
+		$this->assertTrue($this->container->has(AIPS_History_Controller::class));
+		$this->assertTrue($this->container->has(AIPS_History::class));
 		$this->assertTrue($this->container->has(AIPS_Notifications_Repository::class));
 		$this->assertTrue($this->container->has(AIPS_Notifications_Repository_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_Logger::class));
@@ -136,6 +140,10 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertEquals('singleton', $registered[AIPS_History_Repository_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_History_Service::class]);
 		$this->assertEquals('singleton', $registered[AIPS_History_Service_Interface::class]);
+		$this->assertEquals('singleton', $registered[AIPS_History_Modal_Presenter::class]);
+		$this->assertEquals('singleton', $registered[AIPS_History_UI::class]);
+		$this->assertEquals('singleton', $registered[AIPS_History_Controller::class]);
+		$this->assertEquals('singleton', $registered[AIPS_History::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Notifications_Repository::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Notifications_Repository_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Logger::class]);
@@ -162,9 +170,10 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 
 		$counts = $this->container->get_binding_counts();
 
-		// Should have 46 singleton bindings and no transient bindings
+		// 46 bindings from Part 1's inventory, plus the four History
+		// presentation/controller singletons added in Part 3.
 		$this->assertEquals(0, $counts['transient']);
-		$this->assertEquals(46, $counts['singleton']);
-		$this->assertEquals(46, $counts['total']);
+		$this->assertEquals(50, $counts['singleton']);
+		$this->assertEquals(50, $counts['total']);
 	}
 }

@@ -33,7 +33,7 @@ class AIPS_Ajax_Guard {
 		if (!check_ajax_referer($action, $query_arg, false)) {
 			AIPS_Ajax_Response::error(
 				__('Invalid nonce.', 'ai-post-scheduler'),
-				'security_check_failed',
+				'invalid_nonce',
 				403
 			);
 		}
@@ -55,7 +55,7 @@ class AIPS_Ajax_Guard {
 	 */
 	public static function verify($capability = 'manage_options', $action = 'aips_ajax_nonce', $query_arg = 'nonce') {
 		if (!check_ajax_referer($action, $query_arg, false)) {
-			return new WP_Error('security_check_failed', __('Invalid nonce.', 'ai-post-scheduler'));
+			return new WP_Error('invalid_nonce', __('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
 		if (!current_user_can($capability)) {
