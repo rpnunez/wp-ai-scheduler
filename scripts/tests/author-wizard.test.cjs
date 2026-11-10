@@ -43,6 +43,7 @@ test('Author wizard preserves values, validates hidden steps, and supports direc
 		await page.locator('#author_name').press('Enter');
 		assert.equal(await page.locator('.aips-author-step:visible').getAttribute('data-step'), '2');
 		await page.locator('#voice_tone').fill('Friendly');
+		await page.locator('#article_structure_id').selectOption('3');
 		await page.locator('.aips-author-next').click();
 		await page.locator('#author_include_sources').check();
 		await page.locator('.aips-author-next').click();
@@ -57,6 +58,7 @@ test('Author wizard preserves values, validates hidden steps, and supports direc
 		assert.match(await page.locator('#aips-author-review').innerText(), /Friendly/);
 		assert.match(await page.locator('#aips-author-review').innerText(), /Engineering/);
 		assert.doesNotMatch(await page.locator('#aips-author-review').innerText(), /Generate with AI Prompt/);
+		assert.equal(await page.locator('#aips-author-review dt').filter({ hasText: /^Article Structure$/ }).evaluate(el => el.nextElementSibling.textContent), 'How-To Guide');
 		assert.equal(await page.locator('#aips-author-review img').count(), 0);
 		await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished)));
 		if (process.env.AIPS_WIZARD_SCREENSHOTS) await page.screenshot({ path: path.join(root, '.artifacts/author-wizard-review.png') });

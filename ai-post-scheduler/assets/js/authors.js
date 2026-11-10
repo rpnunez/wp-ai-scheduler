@@ -590,7 +590,7 @@
 				$panel.find('input, select, textarea').filter(':enabled').each(function () {
 					const $field = $(this);
 					if (!self.isAuthorReviewFieldVisible(this, $panel)) { return; }
-					let value = $field.is('select') ? $field.find('option:selected').text() : $field.val();
+					let value = $field.is('select') ? $field.find('option:selected').text().trim() : $field.val();
 					if (this.type === 'checkbox') { value = this.checked ? aipsAuthorsL10n.enabled : aipsAuthorsL10n.disabled; }
 					$('<dt>').text(self.getAuthorReviewFieldLabel($field, $panel)).appendTo($list);
 					$('<dd>').text(value || aipsAuthorsL10n.notSpecified).appendTo($list);

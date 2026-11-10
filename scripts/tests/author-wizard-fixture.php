@@ -31,7 +31,7 @@ class AIPS_Config {
 	public function get_allowed_image_sources() { return array('ai_prompt', 'unsplash', 'media_library'); }
 	public function get_option($key) { return ''; }
 }
-$article_structures = array();
+$article_structures = array((object) array('id' => 3, 'name' => 'How-To Guide'));
 $source = file_get_contents(AIPS_PLUGIN_DIR . 'templates/admin/authors.php');
 $start = strpos($source, '<!-- Author Edit/Create Modal -->');
 $end = strpos($source, '<!-- Author Suggestions Modal -->');
