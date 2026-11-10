@@ -86,6 +86,7 @@
   - Preserved instant database notification logging in the WordPress admin bar and notification center while intercepting only email delivery into the digest.
 
 ### Fixed
+- Settings AJAX save now persists the array options `aips_allowed_image_sources` and `aips_notif_digest_types`. Those keys were missing from the array allowlist, so saving them from the settings screen was silently skipped.
 - **AI Edit cascade, featured-image revisions, and timeline output:**
   - Accepting a title or content draft with Sync Downstream waits for `aips_save_post_components` and sends the accepted text as upstream context, so the cascaded excerpt (including its conversation replay) follows that draft.
   - Featured-image revision snapshots accept a bare attachment ID from the editor, so the current image is captured before regeneration.
