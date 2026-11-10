@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Class AIPS_Settings_UI
  *

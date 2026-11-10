@@ -141,4 +141,49 @@ class AIPS_Schedule_Controller {
     public function ajax_resume_schedule_batch() {
         return $this->job_handler->resume_schedule_batch();
     }
+
+    /**
+     * Record one schedule lifecycle event.
+     *
+     * Kept on the controller so existing callers keep a single entry point
+     * after the mutation handler split.
+     *
+     * @param string   $event_type  History event type.
+     * @param int      $schedule_id Schedule ID.
+     * @param object   $schedule    Schedule row.
+     * @param bool     $success     Whether the change succeeded.
+     * @return void
+     */
+    private function record_schedule_event($event_type, $schedule_id, $schedule, $success) {
+        $this->schedule_mutation_handler()->record_schedule_event($event_type, $schedule_id, $schedule, $success);
+    }
+
+    /**
+     * Record a bulk schedule delete.
+     *
+     * @param array $ids     Schedule IDs.
+     * @param int   $deleted Deleted count.
+     * @param bool  $success Whether the delete succeeded.
+     * @param array $items   Optional typed items.
+     * @return void
+     */
+    private function record_schedule_bulk_delete(array $ids, $deleted, $success, array $items = array()) {
+        $this->schedule_mutation_handler()->record_schedule_bulk_delete($ids, $deleted, $success, $items);
+    }
+
+    /**
+     * Mutation handler, created on demand when the controller was built without one.
+     *
+     * @return AIPS_Schedule_Mutation_Handler
+     */
+    private function schedule_mutation_handler() {
+        if (!$this->mutation_handler instanceof AIPS_Schedule_Mutation_Handler) {
+            $this->mutation_handler = new AIPS_Schedule_Mutation_Handler(
+                isset($this->scheduler) ? $this->scheduler : null,
+                isset($this->schedule_repository) ? $this->schedule_repository : null
+            );
+        }
+
+        return $this->mutation_handler;
+    }
 }

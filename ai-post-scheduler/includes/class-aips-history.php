@@ -450,6 +450,18 @@ class AIPS_History {
 	}
 
 	/**
+	 * Backward-compatible wrapper for the modal presenter's trigger summary.
+	 *
+	 * @param array<int,array<string,mixed>> $logs         Normalized logs.
+	 * @param object                         $history_item History container row.
+	 * @param array<string,mixed>           $container    Base container metadata.
+	 * @return array{source_message:string,method_label:string,method:string,source:array}
+	 */
+	private function extract_history_trigger_info($logs, $history_item, $container) {
+		return $this->modal_presenter->extract_history_trigger_info($logs, $history_item, $container);
+	}
+
+	/**
      * Reflection compatibility forwarder for build_history_timeline_data.
      *
      * @param array  $container    Container.

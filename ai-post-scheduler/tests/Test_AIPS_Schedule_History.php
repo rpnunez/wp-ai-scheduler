@@ -120,6 +120,9 @@ $schedule_repository->method( 'get_by_id' )
 ->willReturn( $schedule_obj );
 
 $this->set_private_property( $this->controller, 'schedule_repository', $schedule_repository );
+$query_handler = ( new ReflectionProperty( $this->controller, 'query_handler' ) );
+$query_handler->setAccessible( true );
+$this->set_private_property( $query_handler->getValue( $this->controller ), 'schedule_repository', $schedule_repository );
 
 $_POST['schedule_id'] = 5;
 $_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
