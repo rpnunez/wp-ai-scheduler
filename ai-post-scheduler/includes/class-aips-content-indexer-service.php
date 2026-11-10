@@ -454,7 +454,7 @@ class AIPS_Content_Indexer_Service {
 
 		if ($cooldown['is_paused']) {
 			$status = $this->get_indexing_status($post_types, $post_status);
-			return array(
+			return $this->with_batch_cooldown(array(
 				'success'             => 0,
 				'failed'              => 0,
 				'last_post_id'        => $last_post_id,
@@ -469,7 +469,7 @@ class AIPS_Content_Indexer_Service {
 					'data'    => $cooldown,
 				),
 				'rate_limits'         => $status['rate_limits'],
-			);
+			), $cooldown);
 		}
 
 		// Entity Scope: Topics only
@@ -495,7 +495,7 @@ class AIPS_Content_Indexer_Service {
 			}
 
 			$status = $this->get_indexing_status($post_types, $post_status);
-			return array(
+			return $this->with_batch_cooldown(array(
 				'success'             => $success,
 				'failed'              => $failed,
 				'last_post_id'        => 0,
@@ -508,7 +508,7 @@ class AIPS_Content_Indexer_Service {
 				'rate_limit_error'    => $rate_err,
 				'rate_limits'         => $status['rate_limits'],
 				'entity_scope'        => 'topics',
-			);
+			));
 		}
 
 		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
@@ -593,7 +593,7 @@ class AIPS_Content_Indexer_Service {
 			$done = empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0 || !empty($rate_limit_error);
 		}
 
-		return array(
+		return $this->with_batch_cooldown(array(
 			'success'             => $success,
 			'failed'              => $failed,
 			'last_post_id'        => $new_last_id,
@@ -606,7 +606,41 @@ class AIPS_Content_Indexer_Service {
 			'rate_limit_error'    => $rate_limit_error,
 			'rate_limits'         => $status['rate_limits'],
 			'entity_scope'        => $entity_scope,
+		));
+	}
+
+	/**
+	 * Attach the cooldown payload the indexer admin script reads.
+	 *
+	 * admin-content-indexer.js shows the banner when data.cooldown.active is
+	 * set, and uses until, remaining_seconds, and reason for the countdown.
+	 * The key is omitted while the rate limiter is not paused.
+	 *
+	 * @param array      $result   Batch result.
+	 * @param array|null $cooldown Limiter status. Read again when omitted so a
+	 *                             pause engaged during the batch is included.
+	 * @return array
+	 */
+	private function with_batch_cooldown(array $result, ?array $cooldown = null): array {
+		if ($cooldown === null) {
+			$cooldown = $this->embeddings_service->get_rate_limiter()->get_cooldown_status();
+		}
+
+		if (empty($cooldown['is_paused'])) {
+			return $result;
+		}
+
+		$paused_until = isset($cooldown['paused_until']) ? (int) $cooldown['paused_until'] : 0;
+		$now          = AIPS_DateTime::now()->timestamp();
+
+		$result['cooldown'] = array(
+			'active'            => true,
+			'until'             => $paused_until,
+			'remaining_seconds' => max(0, $paused_until - $now),
+			'reason'            => isset($cooldown['reason']) ? (string) $cooldown['reason'] : '',
 		);
+
+		return $result;
 	}
 
 	/**

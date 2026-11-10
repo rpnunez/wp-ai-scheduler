@@ -32,8 +32,8 @@ class Test_AIPS_Prompt_Builder_Post_Slug extends WP_UnitTestCase {
 
 		$result = $this->builder->build($template, 'WordPress Development', null, 'Post content here.', 'WordPress Development Guide');
 
-		$this->assertStringContainsString('Generate an SEO-friendly URL slug', $result);
-		$this->assertStringContainsString('lowercase', $result);
+		$this->assertStringContainsString('Generate a clean, SEO-friendly URL slug', $result);
+		$this->assertStringContainsString('Lowercase', $result);
 		$this->assertStringContainsString('hyphens', $result);
 		$this->assertStringContainsString('3 to 6 words', $result);
 		$this->assertStringContainsString('WordPress Development Guide', $result);
@@ -104,14 +104,46 @@ class Test_AIPS_Prompt_Builder_Post_Slug extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Follow-up prompt builder includes base SEO guidelines and output contract.
+	 * A template context voice slug prompt overrides the template, matching title precedence.
+	 */
+	public function test_template_context_voice_slug_prompt_overrides_template() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Template',
+			'prompt_template' => 'Write about {{topic}}.',
+			'slug_prompt'     => 'Template slug prompt for {{topic}}.',
+		);
+		$voice = (object) array(
+			'id'          => 9,
+			'slug_prompt' => 'Voice slug prompt for {{title}}.',
+		);
+		$context = new AIPS_Template_Context($template, $voice, 'Cloud Computing');
+
+		$result = $this->builder->build($context, null, null, 'Content...', 'Edge Networks');
+
+		$this->assertStringContainsString('Voice slug prompt for Edge Networks.', $result);
+		$this->assertStringNotContainsString('Template slug prompt', $result);
+	}
+
+	/**
+	 * Follow-up prompts are built from a generation context.
+	 *
+	 * The follow-up intro and response contract have used this wording since
+	 * the slug step shipped. build_followup() requires a generation context
+	 * (it calls get_topic()); a bare stdClass is not a caller.
 	 */
 	public function test_build_followup() {
-		$template = (object) array('slug_prompt' => 'Keep it ultra brief.');
-		$result = $this->builder->build_followup($template, 'Security');
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Security Template',
+			'prompt_template' => 'Write about {{topic}}.',
+			'slug_prompt'     => 'Keep it ultra brief.',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Security');
+		$result = $this->builder->build_followup($context, 'Security');
 
-		$this->assertStringContainsString('Generate an SEO-friendly URL slug for the article generated above', $result);
+		$this->assertStringContainsString('Now generate an SEO-friendly URL slug for the article.', $result);
 		$this->assertStringContainsString('Keep it ultra brief.', $result);
-		$this->assertStringContainsString('Respond ONLY with the slug string', $result);
+		$this->assertStringContainsString('Respond with ONLY one lowercase hyphenated slug, nothing else.', $result);
 	}
 }
