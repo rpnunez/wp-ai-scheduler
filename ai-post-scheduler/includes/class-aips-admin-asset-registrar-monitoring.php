@@ -62,6 +62,8 @@ class AIPS_Admin_Asset_Registrar_Monitoring {
 	 * @return void
 	 */
 	public function enqueue_history() {
+		( new AIPS_Admin_Asset_Registrar_Global() )->enqueue_ai_edit();
+
 		wp_enqueue_script(
 			'aips-admin-view-session',
 			AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
@@ -458,7 +460,7 @@ class AIPS_Admin_Asset_Registrar_Monitoring {
 	 * @return void
 	 */
 	public function enqueue_ai_errors() {
-		$this->enqueue_history();
+		( new AIPS_Admin_Asset_Registrar_Global() )->enqueue_history_modal_opener_script();
 
 		wp_enqueue_script(
 			'aips-admin-ai-errors',

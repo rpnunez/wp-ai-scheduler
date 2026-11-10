@@ -192,6 +192,13 @@ class AIPS_Diagnostics_Controller {
 	 */
 	public static function get_active_tab_key() {
 		$active_tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		// filter_input() only sees the original request. Tests and other callers
+		// that populate $_GET after startup still need legacy remap + availability.
+		if (!is_string($active_tab) || '' === $active_tab) {
+			if (isset($_GET['tab']) && is_string($_GET['tab'])) {
+				$active_tab = wp_unslash($_GET['tab']);
+			}
+		}
 		$active_tab = $active_tab ? sanitize_key($active_tab) : self::DEFAULT_TAB;
 
 		// Backward compatibility for previous Diagnostics tab keys.

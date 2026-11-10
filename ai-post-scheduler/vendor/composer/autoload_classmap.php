@@ -1477,6 +1477,7 @@ return array(
     'Test_AIPS_Internal_Links_Controller_Suggestions_Query_Count' => $baseDir . '/tests/Test_AIPS_Internal_Links_Controller_Suggestions_Query_Count.php',
     'Test_AIPS_Internal_Links_Indexing_Process' => $baseDir . '/tests/Test_AIPS_Internal_Links_Indexing_Process.php',
     'Test_AIPS_Interval_Calculator' => $baseDir . '/tests/Test_AIPS_Interval_Calculator.php',
+    'Test_AIPS_Issue_2264_Regressions' => $baseDir . '/tests/Test_AIPS_Issue_2264_Regressions.php',
     'Test_AIPS_JSON_Extractor' => $baseDir . '/tests/Test_AIPS_JSON_Extractor.php',
     'Test_AIPS_Job_Dispatcher' => $baseDir . '/tests/Test_AIPS_Job_Dispatcher.php',
     'Test_AIPS_Job_Scheduler' => $baseDir . '/tests/Test_AIPS_Job_Scheduler.php',

@@ -18,6 +18,20 @@ if (!defined('ABSPATH')) {
 class AIPS_Admin_Asset_Registrar_Global {
 
 	/**
+	 * Whether the History modal footer scaffold has been hooked this request.
+	 *
+	 * @var bool
+	 */
+	private static $history_modal_scaffold_registered = false;
+
+	/**
+	 * Whether the AI Edit modal footer scaffold has been hooked this request.
+	 *
+	 * @var bool
+	 */
+	private static $ai_edit_scaffold_registered = false;
+
+	/**
 	 * Enqueue global plugin assets.
 	 *
 	 * @return void
@@ -104,6 +118,7 @@ class AIPS_Admin_Asset_Registrar_Global {
 			'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
 			'noneOption'          => __('None', 'ai-post-scheduler'),
 			'persistTableFilters' => (bool) AIPS_Config::get_instance()->get_option('aips_persist_table_filters'),
+			'hasUnsplashAccessKey' => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
 		));
 	}
 
@@ -201,10 +216,9 @@ class AIPS_Admin_Asset_Registrar_Global {
 			'loadingError'        => __('Error loading history modal.', 'ai-post-scheduler'),
 		));
 
-		static $scaffold_registered = false;
-		if (!$scaffold_registered) {
+		if (!self::$history_modal_scaffold_registered) {
 			add_action('admin_footer', array($this, 'render_history_modal_scaffold'));
-			$scaffold_registered = true;
+			self::$history_modal_scaffold_registered = true;
 		}
 	}
 
@@ -314,10 +328,9 @@ class AIPS_Admin_Asset_Registrar_Global {
 			'noImage'              => __('No image', 'ai-post-scheduler'),
 		));
 
-		static $scaffold_registered = false;
-		if (!$scaffold_registered) {
+		if (!self::$ai_edit_scaffold_registered) {
 			add_action('admin_footer', array($this, 'render_ai_edit_modal_scaffold'));
-			$scaffold_registered = true;
+			self::$ai_edit_scaffold_registered = true;
 		}
 	}
 

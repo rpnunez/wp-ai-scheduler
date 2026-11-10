@@ -169,16 +169,7 @@ class AIPS_Admin_Asset_Context_Resolver {
 			return false;
 		}
 
-		$current_tab = $this->get_current_tab_key();
-		if (!empty($current_tab)) {
-			return $tab === $current_tab;
-		}
-
-		if (class_exists('AIPS_Diagnostics_Controller')) {
-			return $tab === AIPS_Diagnostics_Controller::get_active_tab_key();
-		}
-
-		return 'system-info' === $tab;
+		return $tab === AIPS_Diagnostics_Controller::get_active_tab_key();
 	}
 
 	/**
@@ -193,16 +184,7 @@ class AIPS_Admin_Asset_Context_Resolver {
 			return false;
 		}
 
-		$current_tab = $this->get_current_tab_key();
-		if (!empty($current_tab)) {
-			return $tab === $current_tab;
-		}
-
-		if (class_exists('AIPS_Automations_Controller')) {
-			return $tab === AIPS_Automations_Controller::get_active_tab_key();
-		}
-
-		return 'schedules' === $tab;
+		return $tab === AIPS_Automations_Controller::get_active_tab_key();
 	}
 
 	/**

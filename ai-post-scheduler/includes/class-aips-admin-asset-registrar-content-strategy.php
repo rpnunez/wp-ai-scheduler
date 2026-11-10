@@ -69,6 +69,12 @@ class AIPS_Admin_Asset_Registrar_Content_Strategy {
 			'addNewAuthor'              => __('Add New Author', 'ai-post-scheduler'),
 			'editAuthor'                => __('Edit Author', 'ai-post-scheduler'),
 			'saveAuthor'                => __('Save Author', 'ai-post-scheduler'),
+			'saveChanges'               => __('Save Changes', 'ai-post-scheduler'),
+			'notSpecified'              => __('Not specified', 'ai-post-scheduler'),
+			'enabled'                   => __('Enabled', 'ai-post-scheduler'),
+			'disabled'                  => __('Disabled', 'ai-post-scheduler'),
+			'requiredField'             => __('Please complete this required field.', 'ai-post-scheduler'),
+			'sourceGroupsRequired'      => __('Select at least one Source Group, or turn off Include Sources.', 'ai-post-scheduler'),
 			'loading'                   => __('Loading...', 'ai-post-scheduler'),
 			'saving'                    => __('Saving...', 'ai-post-scheduler'),
 			'generating'                => __('Generating...', 'ai-post-scheduler'),
@@ -388,11 +394,15 @@ class AIPS_Admin_Asset_Registrar_Content_Strategy {
 			'autoGenerateFromContent' => __('Auto-generate from content', 'ai-post-scheduler'),
 			'featuredImageNo'         => __('No', 'ai-post-scheduler'),
 			'featuredImageYes'        => __('Yes (%s)', 'ai-post-scheduler'),
+			'slugNo'                  => __('No', 'ai-post-scheduler'),
+			'slugYesStandard'         => __('Yes (SEO Standard)', 'ai-post-scheduler'),
+			'slugYesCustom'           => __('Yes (Custom Prompt)', 'ai-post-scheduler'),
 			'clickToCopy'             => __('Click to copy', 'ai-post-scheduler'),
 			'exampleTopic'            => __('Example Topic', 'ai-post-scheduler'),
 			'failedToGeneratePreview' => __('Failed to generate preview. Please check that all required fields are filled.', 'ai-post-scheduler'),
 			'previewNetworkError'     => __('An error occurred while generating the preview. Please check your network connection and try again.', 'ai-post-scheduler'),
 			'postTypeTaxonomySupport' => AIPS_Utilities::get_selectable_post_types(),
+			'hasUnsplashAccessKey'    => !empty(trim((string) AIPS_Config::get_instance()->get_option('aips_unsplash_access_key'))),
 		));
 	}
 
