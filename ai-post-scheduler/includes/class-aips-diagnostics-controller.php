@@ -35,9 +35,12 @@ class AIPS_Diagnostics_Controller {
 	 * @param AIPS_History_Repository_Interface|null $history_repository Optional history repository.
 	 */
 	public function __construct( $history_repository = null ) {
+		$container = AIPS_Container::get_instance();
 		$this->history_repository = $history_repository instanceof AIPS_History_Repository_Interface
 			? $history_repository
-			: new AIPS_History_Repository();
+			: ($container->has(AIPS_History_Repository_Interface::class)
+				? $container->make(AIPS_History_Repository_Interface::class)
+				: $container->make(AIPS_History_Repository::class));
 
 		add_action( 'wp_ajax_aips_get_ai_errors', array( $this, 'ajax_get_ai_errors' ) );
 		add_action( 'wp_ajax_aips_get_ai_error_details', array( $this, 'ajax_get_ai_error_details' ) );
@@ -189,6 +192,13 @@ class AIPS_Diagnostics_Controller {
 	 */
 	public static function get_active_tab_key() {
 		$active_tab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		// filter_input() only sees the original request. Tests and other callers
+		// that populate $_GET after startup still need legacy remap + availability.
+		if (!is_string($active_tab) || '' === $active_tab) {
+			if (isset($_GET['tab']) && is_string($_GET['tab'])) {
+				$active_tab = wp_unslash($_GET['tab']);
+			}
+		}
 		$active_tab = $active_tab ? sanitize_key($active_tab) : self::DEFAULT_TAB;
 
 		// Backward compatibility for previous Diagnostics tab keys.

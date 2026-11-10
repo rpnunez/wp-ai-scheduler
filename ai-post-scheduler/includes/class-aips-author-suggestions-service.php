@@ -57,7 +57,7 @@ class AIPS_Author_Suggestions_Service {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service      = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger          = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : AIPS_History_Service::instance());
 		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_Authors();
 	}
 

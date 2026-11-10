@@ -70,9 +70,9 @@ class AIPS_System_Diagnostics_Service {
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository::class)
-			? $container->make(AIPS_History_Repository::class)
-			: new AIPS_History_Repository());
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class)
+			? $container->make(AIPS_History_Repository_Interface::class)
+			: AIPS_History_Repository::instance());
 
 		$this->bulk_batch_job_store = $bulk_batch_job_store ?: ($container->has(AIPS_Bulk_Batch_Job_Store::class)
 			? $container->make(AIPS_Bulk_Batch_Job_Store::class)
@@ -230,14 +230,6 @@ class AIPS_System_Diagnostics_Service {
 				array($this, 'prune_history_logs'),
 				true
 			),
-			'prune_ai_errors' => $this->build_refresh_task_definition(
-				__('AI Error logs prune', 'ai-post-scheduler'),
-				__('Prune AI Error Logs', 'ai-post-scheduler'),
-				'cleanup_repair',
-				'aips_status_prune_ai_errors',
-				array($this, 'prune_ai_errors'),
-				true
-			),
 			'clean_orphaned_embeddings' => $this->build_refresh_task_definition(
 				__('Orphaned embeddings cleanup', 'ai-post-scheduler'),
 				__('Clean Orphaned Embeddings', 'ai-post-scheduler'),
@@ -287,7 +279,6 @@ class AIPS_System_Diagnostics_Service {
 				'steps' => array(
 					'prune_telemetry',
 					'prune_history_logs',
-					'prune_ai_errors',
 					'clean_orphaned_embeddings',
 					'cache_maintenance',
 					'clear_embeddings_cache',

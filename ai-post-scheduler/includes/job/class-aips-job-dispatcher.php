@@ -55,7 +55,7 @@ class AIPS_Job_Dispatcher {
 			: new AIPS_Logger());
 		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
 			? $container->make(AIPS_History_Service_Interface::class)
-			: new AIPS_History_Service());
+			: AIPS_History_Service::instance());
 	}
 
 	/**

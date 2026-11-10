@@ -44,11 +44,18 @@ class AIPS_Template_Type_Selector {
 	
 	/**
 	 * Initialize the selector.
+	 *
+	 * @param AIPS_Article_Structure_Repository|null $structure_repository Optional structure repository.
+	 * @param AIPS_Schedule_Repository|null          $schedule_repository  Optional schedule repository.
+	 * @param AIPS_History_Repository_Interface|null $history_repository   Optional history repository.
 	 */
-	public function __construct() {
-		$this->structure_repository = new AIPS_Article_Structure_Repository();
-		$this->schedule_repository = new AIPS_Schedule_Repository();
-		$this->history_repository = new AIPS_History_Repository();
+	public function __construct($structure_repository = null, $schedule_repository = null, ?AIPS_History_Repository_Interface $history_repository = null) {
+		$container = AIPS_Container::get_instance();
+		$this->structure_repository = $structure_repository ?: new AIPS_Article_Structure_Repository();
+		$this->schedule_repository = $schedule_repository ?: new AIPS_Schedule_Repository();
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class)
+			? $container->make(AIPS_History_Repository_Interface::class)
+			: AIPS_History_Repository::instance());
 		$this->cache = AIPS_Config::get_instance()->get_runtime_cache('aips_template_type_selector', 'array');
 	}
 	

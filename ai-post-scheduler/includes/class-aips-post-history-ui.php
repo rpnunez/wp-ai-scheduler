@@ -68,7 +68,7 @@ class AIPS_Post_History_UI {
 		$container = AIPS_Container::get_instance();
 		$this->history_repository = $history_repository instanceof AIPS_History_Repository_Interface
 			? $history_repository
-			: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
+			: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : $container->make(AIPS_History_Repository::class));
 		$this->config = $config ?: AIPS_Config::get_instance();
 		$this->insights_repo = $insights_repo ?: ($container->has(AIPS_Post_Insights_Repository::class) ? $container->make(AIPS_Post_Insights_Repository::class) : new AIPS_Post_Insights_Repository());
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());

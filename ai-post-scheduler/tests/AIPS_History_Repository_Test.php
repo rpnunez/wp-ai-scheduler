@@ -47,12 +47,12 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'template_id' => $this->test_template_id,
 				'title' => 'Test Schedule',
 				'frequency' => 'daily',
-				'next_run' => current_time('mysql'),
+				'next_run' => time() + DAY_IN_SECONDS,
 				'is_active' => 1,
 				'status' => 'active',
-				'created_at' => gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS),
+				'created_at' => time() - 21 * DAY_IN_SECONDS,
 			),
-			array('%d', '%s', '%s', '%s', '%d', '%s', '%s')
+			array('%d', '%s', '%s', '%d', '%d', '%s', '%d')
 		);
 
 		$this->test_schedule_id = $wpdb->insert_id;
@@ -69,14 +69,15 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				array(
 					'template_id' => $this->test_template_id,
 					'post_id' => null,
+					'record_kind' => 'generation',
 					'status' => 'completed',
 					'generated_title' => 'Test Title ' . $i,
 					'generated_content' => 'Test content ' . $i . ' with more details',
 					'prompt' => 'Test prompt ' . $i . ' with full context',
 					'error_message' => null,
-					'created_at' => current_time('mysql'),
+					'created_at' => time() - 20 * DAY_IN_SECONDS,
 				),
-				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d')
 			);
 			$this->test_history_ids[] = $wpdb->insert_id;
 		}
@@ -181,6 +182,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 	public function test_get_history_list_excludes_large_content_fields() {
 		// Get with all fields
 		$all_result = $this->repository->get_history(array(
+			'template_id' => $this->test_template_id,
 			'fields' => 'all',
 			'per_page' => 10,
 			'page' => 1,
@@ -188,6 +190,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		
 		// Get with list fields
 		$list_result = $this->repository->get_history(array(
+			'template_id' => $this->test_template_id,
 			'fields' => 'list',
 			'per_page' => 10,
 			'page' => 1,
@@ -458,12 +461,13 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			$table,
 			array(
 				'template_id'     => $this->test_template_id,
+				'record_kind'     => 'generation',
 				'status'          => 'partial',
 				'creation_method' => $flow,
 				'created_at'      => $now,
 				'completed_at'    => 0,
 			),
-			array('%d', '%s', '%s', '%d', '%d')
+			array('%d', '%s', '%s', '%s', '%d', '%d')
 		);
 		$this->test_history_ids[] = $wpdb->insert_id;
 
@@ -472,12 +476,13 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			$table,
 			array(
 				'template_id'     => $this->test_template_id,
+				'record_kind'     => 'generation',
 				'status'          => 'completed',
 				'creation_method' => $flow,
 				'created_at'      => $now,
 				'completed_at'    => $now + 42,
 			),
-			array('%d', '%s', '%s', '%d', '%d')
+			array('%d', '%s', '%s', '%s', '%d', '%d')
 		);
 		$this->test_history_ids[] = $wpdb->insert_id;
 

@@ -92,7 +92,7 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 			'AIPS_Generated_Posts_Controller',
 			'AIPS_Structures_Controller',
 			'AIPS_Research_Controller',
-			'AIPS_History',
+			'AIPS_History_Controller',
 			'AIPS_Voices',
 			'AIPS_Post_Review',
 			'AIPS_Admin_Bar',

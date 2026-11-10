@@ -10,7 +10,10 @@ if (!defined('ABSPATH')) {
 }
 ?>
         <?php if (!empty($templates)):
-            $history_service = new AIPS_History();
+            $container = AIPS_Container::get_instance();
+            $history_service = $container->has(AIPS_History::class)
+                ? $container->make(AIPS_History::class)
+                : new AIPS_History();
             $templates_class = new AIPS_Templates();
             $campaigns_repo = AIPS_Campaigns_Repository::instance();
             $campaign_options = $campaigns_repo->get_campaign_filter_options();

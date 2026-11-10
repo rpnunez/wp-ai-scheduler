@@ -41,8 +41,6 @@ class AIPS_DB_Manager {
         'aips_link_clicks',
         'aips_redirects',
         'aips_background_processes',
-        'aips_post_images',
-        'aips_post_images_generated',
     );
 
     public function __construct() {
@@ -112,8 +110,6 @@ class AIPS_DB_Manager {
         $table_link_clicks          = $tables['aips_link_clicks'];
         $table_redirects            = $tables['aips_redirects'];
         $table_background_processes = $tables['aips_background_processes'];
-        $table_post_images          = $tables['aips_post_images'];
-        $table_post_images_generated = $tables['aips_post_images_generated'];
 
         $sql = array();
 
@@ -139,10 +135,13 @@ class AIPS_DB_Manager {
             completed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY uuid (uuid),
+            KEY post_id (post_id),
             KEY post_type (post_type),
+            KEY template_id (template_id),
             KEY campaign_id (campaign_id),
             KEY author_id (author_id),
             KEY topic_id (topic_id),
+            KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
@@ -162,7 +161,6 @@ class AIPS_DB_Manager {
             details longtext,
             PRIMARY KEY  (id),
             KEY history_type_id (history_type_id),
-            KEY history_type_ts (history_type_id, timestamp),
             KEY history_type_timestamp (history_id, history_type_id, timestamp),
             KEY event_status (event_status),
             KEY event_type_timestamp (event_type, timestamp),
@@ -191,12 +189,10 @@ class AIPS_DB_Manager {
             description text,
             prompt_template text NOT NULL,
             title_prompt text,
-            slug_prompt text,
             voice_id bigint(20) DEFAULT NULL,
             post_quantity int DEFAULT 1,
             image_prompt text,
             generate_featured_image tinyint(1) DEFAULT 0,
-            generate_slug tinyint(1) DEFAULT 0,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
             featured_image_unsplash_keywords text,
             featured_image_media_ids text,
@@ -336,13 +332,8 @@ class AIPS_DB_Manager {
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
             post_author bigint(20) DEFAULT NULL,
-            image_prompt text,
             generate_featured_image tinyint(1) DEFAULT 0,
-            generate_slug tinyint(1) DEFAULT 0,
-            slug_prompt text,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
-            featured_image_unsplash_keywords text,
-            featured_image_media_ids text,
             voice_tone varchar(500) DEFAULT NULL,
             writing_style varchar(500) DEFAULT NULL,
             target_audience varchar(500) DEFAULT NULL,
@@ -400,9 +391,11 @@ class AIPS_DB_Manager {
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
+            KEY author_id (author_id),
+            KEY status (status),
             KEY claimed_at (claimed_at),
             KEY generated_at (generated_at),
-            KEY author_id_status_score (author_id, status, score),
+            KEY author_id_status (author_id, status),
             KEY status_score_reviewed (status, score, reviewed_at)
         ) $charset_collate;";
 
@@ -860,46 +853,6 @@ class AIPS_DB_Manager {
             KEY created_at_idx (created_at)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_post_images (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            entity_type varchar(50) NOT NULL,
-            entity_id bigint(20) NOT NULL,
-            image_type varchar(50) NOT NULL DEFAULT 'content',
-            image_order int(11) NOT NULL DEFAULT 0,
-            source varchar(50) NOT NULL DEFAULT 'ai_prompt',
-            image_prompt text,
-            unsplash_keywords text,
-            media_ids text,
-            placement varchar(50) DEFAULT 'auto',
-            caption text,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY entity_lookup (entity_type, entity_id, image_type),
-            KEY entity_order (entity_type, entity_id, image_order)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_post_images_generated (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            post_id bigint(20) NOT NULL,
-            history_id bigint(20) DEFAULT NULL,
-            config_image_id bigint(20) DEFAULT NULL,
-            image_index int(11) NOT NULL DEFAULT 1,
-            attachment_id bigint(20) NOT NULL DEFAULT 0,
-            image_source varchar(50) NOT NULL DEFAULT 'ai_prompt',
-            image_prompt text,
-            image_url text,
-            placement varchar(50) DEFAULT 'auto',
-            status varchar(32) NOT NULL DEFAULT 'completed',
-            error_message text,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY post_id (post_id),
-            KEY config_image_id (config_image_id),
-            KEY post_status (post_id, status)
-        ) $charset_collate;";
-
         return $sql;
     }
 
@@ -958,119 +911,7 @@ class AIPS_DB_Manager {
      * @return array
      */
     public static function get_datetime_column_map() {
-        return array(
-            'aips_history' => array(
-                array( 'created_at', false ),
-                array( 'completed_at', false ),
-            ),
-            'aips_history_log' => array(
-                array( 'timestamp', false ),
-            ),
-            'aips_templates' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_schedule' => array(
-                array( 'next_run', false ),
-                array( 'last_run', false ),
-                array( 'created_at', false ),
-            ),
-            'aips_voices' => array(
-                array( 'created_at', false ),
-            ),
-            'aips_article_structures' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_prompt_sections' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_trending_topics' => array(
-                array( 'researched_at', false ),
-            ),
-            'aips_authors' => array(
-                array( 'topic_generation_next_run', false ),
-                array( 'topic_generation_last_run', false ),
-                array( 'post_generation_next_run', false ),
-                array( 'post_generation_last_run', false ),
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_post_slices' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_author_topics' => array(
-                array( 'generated_at', false ),
-                array( 'reviewed_at', false ),
-            ),
-            'aips_author_topic_logs' => array(
-                array( 'created_at', false ),
-            ),
-            'aips_topic_feedback' => array(
-                array( 'created_at', false ),
-            ),
-            'aips_notifications' => array(
-                array( 'read_at', false ),
-                array( 'created_at', false ),
-            ),
-            'aips_sources' => array(
-                array( 'last_fetched_at', false ),
-                array( 'next_fetch_at', false ),
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_sources_data' => array(
-                array( 'fetched_at', false ),
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_taxonomy' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_post_embeddings' => array(
-                array( 'indexed_at', false ),
-            ),
-            'aips_ai_assistance' => array(
-                array( 'created_at', false ),
-            ),
-            'aips_internal_links' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_affiliate_links' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_link_index' => array(
-                array( 'created_at', false ),
-            ),
-            'aips_link_clicks' => array(
-                array( 'day_start', false ),
-            ),
-            'aips_redirects' => array(
-                array( 'last_hit_at', false ),
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_cache' => array(
-                array( 'expires_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_telemetry' => array(
-                array( 'inserted_at', false ),
-            ),
-            'aips_post_images' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-            'aips_post_images_generated' => array(
-                array( 'created_at', false ),
-                array( 'updated_at', false ),
-            ),
-        );
+        return AIPS_DB_Datetime_Migrator::get_datetime_column_map();
     }
 
     /**
@@ -1095,42 +936,7 @@ class AIPS_DB_Manager {
      *                         was a no-op (column absent or already BIGINT).
      */
     public static function convert_datetime_column_to_bigint( $table, $col_name ) {
-        global $wpdb;
-
-        $col_info = $wpdb->get_row( $wpdb->prepare(
-            "SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            $col_name
-        ) );
-
-        if ( ! $col_info ) {
-            return false; // Column doesn't exist; dbDelta will create it.
-        }
-
-        $type_lower = strtolower( $col_info->Type );
-
-        if ( false !== strpos( $type_lower, 'bigint' ) ) {
-            return false; // Already BIGINT — nothing to do.
-        }
-
-        if ( false === strpos( $type_lower, 'datetime' ) && false === strpos( $type_lower, 'timestamp' ) ) {
-            return false; // Not a temporal column — skip.
-        }
-
-        $tmp_col = $col_name . '_ts_tmp';
-
-        // 1. Add temporary BIGINT column.
-        $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN `{$tmp_col}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
-        // 2. Populate from the existing DATETIME.
-        $wpdb->query( "UPDATE `{$table}` SET `{$tmp_col}` = IFNULL(UNIX_TIMESTAMP(`{$col_name}`), 0)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
-        // 3. Drop the original DATETIME column.
-        $wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN `{$col_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
-        // 4. Rename temp column to the original name.
-        $wpdb->query( "ALTER TABLE `{$table}` CHANGE `{$tmp_col}` `{$col_name}` bigint(20) unsigned NOT NULL DEFAULT 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
-        return true;
+        return AIPS_DB_Datetime_Migrator::convert_datetime_column_to_bigint( $table, $col_name );
     }
 
     public function drop_tables() {

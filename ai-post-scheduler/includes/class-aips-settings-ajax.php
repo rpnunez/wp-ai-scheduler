@@ -34,7 +34,7 @@ class AIPS_Settings_AJAX {
 		$container = AIPS_Container::get_instance();
 
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : AIPS_History_Service::instance());
 
 		add_action('wp_ajax_aips_save_settings', array($this, 'ajax_save_settings'));
 		add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
@@ -72,6 +72,8 @@ class AIPS_Settings_AJAX {
 				'aips_wp_ai_connector_ids',
 				'aips_indexer_post_types',
 				'aips_research_niches',
+				'aips_allowed_image_sources',
+				'aips_notif_digest_types',
 			);
 
 			if (is_array($raw_value) && !in_array($option_name, $array_settings, true)) {
