@@ -377,6 +377,13 @@ class AIPS_Automations_Controller {
 		}
 
 		$active_tab = filter_input(INPUT_GET, 'tab', FILTER_UNSAFE_RAW);
+		// filter_input() only sees the original request. Tests and other callers
+		// that populate $_GET after startup still need legacy remap + availability.
+		if (!is_string($active_tab) || '' === $active_tab) {
+			if (isset($_GET['tab']) && is_string($_GET['tab'])) {
+				$active_tab = wp_unslash($_GET['tab']);
+			}
+		}
 		$active_tab = $active_tab ? sanitize_key($active_tab) : self::DEFAULT_TAB;
 
 		if ($active_tab === 'affiliate-links') {

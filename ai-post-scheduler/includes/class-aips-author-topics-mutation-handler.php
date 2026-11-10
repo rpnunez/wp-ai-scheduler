@@ -188,10 +188,13 @@ class AIPS_Author_Topics_Mutation_Handler {
 		$result = $this->repository->update($topic_id, array('topic_title' => $new_title));
 
 		if ($result) {
-			$this->logs_repository->log_edit($topic_id, get_current_user_id(), $old_title, $new_title);
+			$this->logs_repository->log_edit(
+				$topic_id,
+				get_current_user_id(),
+				"Changed from: {$old_title}"
+			);
 			$this->embeddings_repo->delete('topic', $topic_id);
 			$this->relationships_repo->delete_for_object('topic', $topic_id);
-			$this->feedback_repository->record_edit($topic_id, get_current_user_id(), $old_title, $new_title);
 
 			AIPS_Ajax_Response::success(array(), __('Topic updated successfully.', 'ai-post-scheduler'));
 		} else {

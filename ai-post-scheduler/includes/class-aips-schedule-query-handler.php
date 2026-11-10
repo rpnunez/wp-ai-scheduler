@@ -88,10 +88,10 @@ class AIPS_Schedule_Query_Handler {
 					continue;
 				}
 				foreach ($queue_hooks as $hook) {
-					if (!isset($hooks[$hook]) || !is_array($hooks[$hook])) {
+					if (!isset($hooks[$hook])) {
 						continue;
 					}
-					$count = count($hooks[$hook]);
+					$count = is_array($hooks[$hook]) ? count($hooks[$hook]) : 0;
 					$queue_depth[$hook] += $count;
 					$queue_timeline[] = array(
 						'timestamp' => (int) $timestamp,
@@ -102,8 +102,13 @@ class AIPS_Schedule_Query_Handler {
 			}
 		}
 
-		$active_schedules = (new AIPS_Unified_Schedule_Service())->get_active_schedules_summary();
-		$incomplete_batches = $this->schedule_repository->get_incomplete_batches();
+		$unified_service = new AIPS_Unified_Schedule_Service();
+		$active_schedules = method_exists($unified_service, 'get_active_schedules_summary')
+			? $unified_service->get_active_schedules_summary()
+			: array();
+		$incomplete_batches = method_exists($this->schedule_repository, 'get_incomplete_batches')
+			? $this->schedule_repository->get_incomplete_batches()
+			: array();
 
 		$payload = array(
 			'next_runs' => $next_runs,

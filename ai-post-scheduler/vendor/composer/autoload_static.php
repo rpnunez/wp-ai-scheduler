@@ -1490,6 +1490,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Internal_Links_Controller_Suggestions_Query_Count' => __DIR__ . '/../..' . '/tests/Test_AIPS_Internal_Links_Controller_Suggestions_Query_Count.php',
         'Test_AIPS_Internal_Links_Indexing_Process' => __DIR__ . '/../..' . '/tests/Test_AIPS_Internal_Links_Indexing_Process.php',
         'Test_AIPS_Interval_Calculator' => __DIR__ . '/../..' . '/tests/Test_AIPS_Interval_Calculator.php',
+        'Test_AIPS_Issue_2264_Regressions' => __DIR__ . '/../..' . '/tests/Test_AIPS_Issue_2264_Regressions.php',
         'Test_AIPS_JSON_Extractor' => __DIR__ . '/../..' . '/tests/Test_AIPS_JSON_Extractor.php',
         'Test_AIPS_Job_Dispatcher' => __DIR__ . '/../..' . '/tests/Test_AIPS_Job_Dispatcher.php',
         'Test_AIPS_Job_Scheduler' => __DIR__ . '/../..' . '/tests/Test_AIPS_Job_Scheduler.php',

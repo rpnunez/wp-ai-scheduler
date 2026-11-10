@@ -90,51 +90,18 @@ class AIPS_Admin_Asset_Registrar_Links_Indexer {
 			'regenerating'          => __('Regenerating...', 'ai-post-scheduler'),
 			'regenerate'            => __('Re-generate', 'ai-post-scheduler'),
 			'noPostsSelected'       => __('Please select at least one post.', 'ai-post-scheduler'),
+			'noActionSelected'      => __('Please select a bulk action.', 'ai-post-scheduler'),
 			'noDraftPosts'          => __('No Draft Posts', 'ai-post-scheduler'),
 			'noDraftPostsDesc'      => __('There are no draft posts waiting for review.', 'ai-post-scheduler'),
+			'noPostsFound'          => __('No Posts Found', 'ai-post-scheduler'),
+			'noPostsFoundDesc'      => __('No draft posts match your search criteria. Try a different search term.', 'ai-post-scheduler'),
+			'fetchError'            => __('Failed to load posts.', 'ai-post-scheduler'),
 			'previewTitle'          => __('Post Preview', 'ai-post-scheduler'),
 			'loadingPreview'        => __('Loading preview...', 'ai-post-scheduler'),
 			'previewError'          => __('Failed to load preview.', 'ai-post-scheduler'),
 		));
 
-		wp_enqueue_script(
-			'aips-admin-ai-edit',
-			AIPS_PLUGIN_URL . 'assets/js/admin-ai-edit.js',
-			array('jquery', 'aips-admin-script'),
-			AIPS_VERSION,
-			true
-		);
-
-		wp_enqueue_style(
-			'aips-admin-ai-edit',
-			AIPS_PLUGIN_URL . 'assets/css/admin-ai-edit.css',
-			array('aips-admin-style'),
-			AIPS_VERSION
-		);
-
-		wp_localize_script('aips-admin-ai-edit', 'aipsAIEditL10n', array(
-			'ajaxUrl'              => admin_url('admin-ajax.php'),
-			'nonce'                => wp_create_nonce('aips_ajax_nonce'),
-			'regenerate'           => __('Re-generate', 'ai-post-scheduler'),
-			'regenerating'         => __('Regenerating...', 'ai-post-scheduler'),
-			'regenerateAll'        => __('Regenerate All', 'ai-post-scheduler'),
-			'regeneratingAll'      => __('Regenerating all components...', 'ai-post-scheduler'),
-			'regenerateAllSuccess' => __('Components regenerated successfully.', 'ai-post-scheduler'),
-			'regenerateAllError'   => __('Failed to regenerate all components.', 'ai-post-scheduler'),
-			'regenerateSuccess'    => __('Component regenerated successfully!', 'ai-post-scheduler'),
-			'regenerateError'      => __('Failed to regenerate component.', 'ai-post-scheduler'),
-			'save'                 => __('Save Changes', 'ai-post-scheduler'),
-			'saving'               => __('Saving...', 'ai-post-scheduler'),
-			'saveSuccess'          => __('Post updated successfully!', 'ai-post-scheduler'),
-			'saveError'            => __('Failed to update post.', 'ai-post-scheduler'),
-			'loadError'            => __('Failed to load post components.', 'ai-post-scheduler'),
-			'confirmClose'         => __('You have unsaved changes. Are you sure you want to close?', 'ai-post-scheduler'),
-			'noChanges'            => __('No changes to save.', 'ai-post-scheduler'),
-			'revisionAiGenerated'  => __('AI Generated', 'ai-post-scheduler'),
-			'revisionManualEdit'   => __('Manual Edit', 'ai-post-scheduler'),
-			'revisionRestored'     => __('Restored Version', 'ai-post-scheduler'),
-			'revisionUnknown'      => __('Revision', 'ai-post-scheduler'),
-		));
+		( new AIPS_Admin_Asset_Registrar_Global() )->enqueue_ai_edit();
 	}
 
 	/**
