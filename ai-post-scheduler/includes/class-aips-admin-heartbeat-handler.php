@@ -96,7 +96,8 @@ class AIPS_Admin_Heartbeat_Handler {
 		$queue_count = isset($counts['approved']) ? (int) $counts['approved'] : 0;
 
 		$history_repo = new AIPS_History_Repository();
-		$in_flight    = $history_repo->count_by_status('processing');
+		$history      = $history_repo->get_stats();
+		$in_flight    = isset($history['processing']) ? (int) $history['processing'] : 0;
 
 		$digest_queue = (int) AIPS_Notifications::instance()->get_digest_queue_count();
 
