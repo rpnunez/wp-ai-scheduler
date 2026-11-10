@@ -95,6 +95,71 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 		}
 	}
 
+	public function test_ajax_prune_ai_errors_rejects_invalid_nonce() {
+		$controller = $this->make_controller();
+
+		$_POST = array(
+			'nonce' => 'invalid-nonce',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_prune_ai_errors'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('Invalid nonce.', $response['data']['message']);
+	}
+
+	public function test_ajax_prune_ai_errors_requires_manage_options() {
+		$controller = $this->make_controller();
+		$subscriber_id = $this->factory->user->create(array('role' => 'subscriber'));
+		wp_set_current_user($subscriber_id);
+
+		$_POST = array(
+			'nonce' => wp_create_nonce('aips_status_prune_ai_errors'),
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_prune_ai_errors'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+	}
+
+	public function test_ajax_prune_ai_errors_returns_success_shape() {
+		$diagnostics_service = $this->getMockBuilder('AIPS_System_Diagnostics_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('prune_ai_errors'))
+			->getMock();
+		$diagnostics_service->expects($this->once())
+			->method('prune_ai_errors')
+			->willReturn(array(
+				'success' => true,
+				'deleted' => 0,
+				'message' => 'No AI error logs to prune.',
+			));
+
+		$controller = $this->make_controller($diagnostics_service);
+
+		$_POST = array(
+			'nonce' => wp_create_nonce('aips_status_prune_ai_errors'),
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_prune_ai_errors'));
+
+		$this->assertTrue($response['success']);
+		$this->assertArrayHasKey('deleted', $response['data']);
+	}
+
+	public function test_ajax_registry_includes_prune_and_export_ai_error_actions() {
+		$this->assertSame('AIPS_System_Status_Controller', AIPS_Ajax_Registry::get_controller_for('aips_status_prune_ai_errors'));
+		$this->assertSame('AIPS_Diagnostics_Controller', AIPS_Ajax_Registry::get_controller_for('aips_export_ai_errors'));
+		$this->assertSame('AIPS_Diagnostics_Controller', AIPS_Ajax_Registry::get_controller_for('aips_get_ai_error_summary'));
+		$this->assertSame('AIPS_Settings_Ajax', AIPS_Ajax_Registry::get_controller_for('aips_flush_notification_digest'));
+		$this->assertSame('AIPS_AI_Edit_Controller', AIPS_Ajax_Registry::get_controller_for('aips_reset_component_overrides'));
+		$this->assertSame('AIPS_Editor_Controller', AIPS_Ajax_Registry::get_controller_for('aips_editor_apply_directive'));
+	}
+
 	public function test_ajax_refresh_system_rejects_invalid_nonce() {
 		$controller = $this->make_controller();
 

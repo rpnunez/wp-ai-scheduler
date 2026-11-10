@@ -59,8 +59,8 @@ class AIPS_Post_Review {
 	 * @param AIPS_History_Service_Interface|null $history_service        Optional history service.
 	 * @param AIPS_Bulk_Generator_Service|null    $bulk_generator_service Optional bulk generator service.
 	 */
-	public function __construct($repository = null, ?AIPS_History_Service_Interface $history_service = null, $bulk_generator_service = null) {
-		$container = AIPS_Container::get_instance();
+	public function __construct(?AIPS_Post_Review_Repository $repository = null, ?AIPS_History_Service_Interface $history_service = null, $bulk_generator_service = null) {
+		$container                    = AIPS_Container::get_instance();
 		$this->repository             = $repository ?: new AIPS_Post_Review_Repository();
 		$this->history_service        = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
 			? $container->make(AIPS_History_Service_Interface::class)
