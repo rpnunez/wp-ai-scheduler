@@ -96,6 +96,10 @@ class Test_AIPS_Research_Controller extends WP_UnitTestCase {
 		$response = $this->capture_ajax(array($this->controller, 'ajax_schedule_trending_topics'));
 		$this->assertFalse($response['success']);
 		$this->assertSame('Invalid nonce.', $response['data']['message']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_generate_trending_topics_bulk'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('Invalid nonce.', $response['data']['message']);
 	}
 
 	/**
@@ -116,6 +120,10 @@ class Test_AIPS_Research_Controller extends WP_UnitTestCase {
 		$this->assertSame('permission_denied', $response['data']['code']);
 
 		$response = $this->capture_ajax(array($this->controller, 'ajax_schedule_trending_topics'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_generate_trending_topics_bulk'));
 		$this->assertFalse($response['success']);
 		$this->assertSame('permission_denied', $response['data']['code']);
 	}
@@ -148,10 +156,17 @@ class Test_AIPS_Research_Controller extends WP_UnitTestCase {
 		$this->assertFalse($response['success']);
 		$this->assertSame('Missing required fields.', $response['data']['message']);
 
-		// 5. Schedule with invalid frequency
+		// 5. Schedule with invalid frequency. A saved topic is required so the
+		// request gets past "No valid topics found." and fails on the frequency.
+		$topic_id = $this->repository->create(array(
+			'niche' => 'Frequency Check Niche',
+			'topic' => 'Valid topic for frequency validation',
+		));
+		$this->assertNotFalse($topic_id);
+
 		$_POST = array(
 			'nonce'       => $nonce,
-			'topic_ids'   => array(1),
+			'topic_ids'   => array($topic_id),
 			'template_id' => 1,
 			'start_date'  => '2026-11-01 10:00:00',
 			'frequency'   => 'invalid_freq',
@@ -159,6 +174,7 @@ class Test_AIPS_Research_Controller extends WP_UnitTestCase {
 		$_REQUEST = $_POST;
 		$response = $this->capture_ajax(array($this->controller, 'ajax_schedule_trending_topics'));
 		$this->assertFalse($response['success']);
+		$this->assertSame('Invalid frequency provided.', $response['data']['message']);
 
 		// 6. Gap analysis without niche
 		$_POST = array('nonce' => $nonce);
@@ -372,5 +388,87 @@ class Test_AIPS_Research_Controller extends WP_UnitTestCase {
 		$response = $this->capture_ajax(array($ctrl, 'ajax_generate_topics_from_gap'));
 		$this->assertTrue($response['success']);
 		$this->assertSame(1, $response['data']['count']);
+	}
+
+	/**
+	 * Bulk trending-topic generation: auth failures, then a successful queued-free run.
+	 *
+	 * The generator is constructed inside the handler, so availability is stubbed
+	 * through the container. The bulk harness is injected and must be the code
+	 * that reports success.
+	 *
+	 * @return void
+	 */
+	public function test_generate_trending_topics_bulk_auth_and_success() {
+		$_POST = array('nonce' => 'invalid_nonce_value');
+		$_REQUEST = $_POST;
+		$response = $this->capture_ajax(array($this->controller, 'ajax_generate_trending_topics_bulk'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('Invalid nonce.', $response['data']['message']);
+
+		wp_set_current_user($this->subscriber_user_id);
+		$_POST = array('nonce' => wp_create_nonce('aips_ajax_nonce'));
+		$_REQUEST = $_POST;
+		$response = $this->capture_ajax(array($this->controller, 'ajax_generate_trending_topics_bulk'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+
+		wp_set_current_user($this->admin_user_id);
+
+		$topic_id = $this->repository->create(array(
+			'niche' => 'Bulk Niche',
+			'topic' => 'Bulk topic one',
+		));
+		$this->assertNotFalse($topic_id);
+
+		$template_id = (new AIPS_Template_Repository())->create(array(
+			'name'            => 'Bulk Generate Template',
+			'prompt_template' => 'Write about {topic}',
+			'post_status'     => 'draft',
+			'is_active'       => 1,
+		));
+		$this->assertNotFalse($template_id);
+
+		$container = AIPS_Container::get_instance();
+		$container->clear();
+		AI_Post_Scheduler::get_instance()->register_container_bindings();
+
+		$ai = $this->getMockBuilder('AIPS_AI_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('is_available'))
+			->getMock();
+		$ai->expects($this->once())->method('is_available')->willReturn(true);
+		$container->singleton(AIPS_AI_Service_Interface::class, function () use ($ai) {
+			return $ai;
+		});
+
+		$bulk = $this->getMockBuilder('AIPS_Bulk_Generator_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('run'))
+			->getMock();
+		$bulk->expects($this->once())->method('run')->willReturn(new AIPS_Bulk_Generation_Result(
+			1,
+			0,
+			array(),
+			array(99),
+			false,
+			10,
+			false,
+			null
+		));
+
+		$ctrl = new AIPS_Research_Controller(null, $this->repository, null, null, null, $bulk);
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+			'topic_ids'   => array($topic_id),
+			'template_id' => $template_id,
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($ctrl, 'ajax_generate_trending_topics_bulk'));
+		$this->assertTrue($response['success']);
+		$this->assertSame(1, $response['data']['success_count']);
+		$this->assertSame('1 post generated successfully.', $response['data']['message']);
 	}
 }

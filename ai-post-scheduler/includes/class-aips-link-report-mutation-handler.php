@@ -27,17 +27,17 @@ class AIPS_Link_Report_Mutation_Handler {
 	}
 
 	public function apply_suggestion() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 		$this->respond_with_suggestions($this->query_handler->get_inbound()->apply($this->suggestion_id()), __('Link inserted.', 'ai-post-scheduler'));
 	}
 
 	public function revert_suggestion() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 		$this->respond_with_suggestions($this->query_handler->get_inbound()->revert($this->suggestion_id()), __('Link removed and original text restored.', 'ai-post-scheduler'));
 	}
 
 	public function dismiss_suggestion() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$result = $this->query_handler->get_inbound()->dismiss($this->suggestion_id())
 			? true
@@ -47,7 +47,7 @@ class AIPS_Link_Report_Mutation_Handler {
 	}
 
 	public function autolink_undo_run() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$job_id = isset($_POST['job_id']) ? sanitize_text_field(wp_unslash($_POST['job_id'])) : '';
 		$result = $this->query_handler->get_runs()->undo_run($job_id);

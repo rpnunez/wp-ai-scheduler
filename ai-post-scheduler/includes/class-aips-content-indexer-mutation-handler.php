@@ -65,7 +65,7 @@ class AIPS_Content_Indexer_Mutation_Handler {
 	}
 
 	public function clear_index() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$this->indexer_service->clear_index();
 
@@ -84,7 +84,7 @@ class AIPS_Content_Indexer_Mutation_Handler {
 	}
 
 	public function save_settings() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		if (isset($_POST['embeddings_enabled'])) {
 			$embeddings_enabled = filter_var($_POST['embeddings_enabled'], FILTER_VALIDATE_BOOLEAN);
@@ -237,7 +237,7 @@ class AIPS_Content_Indexer_Mutation_Handler {
 	}
 
 	public function save_pillar() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$cluster_id     = isset($_POST['cluster_id']) ? sanitize_text_field($_POST['cluster_id']) : '';
 		$pillar_post_id = isset($_POST['pillar_post_id']) ? absint($_POST['pillar_post_id']) : 0;
@@ -256,7 +256,7 @@ class AIPS_Content_Indexer_Mutation_Handler {
 	}
 
 	public function rename_post_cluster() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$cluster_id  = isset($_POST['cluster_id']) ? sanitize_text_field($_POST['cluster_id']) : '';
 		$custom_name = isset($_POST['custom_name']) ? sanitize_text_field($_POST['custom_name']) : '';
@@ -271,7 +271,7 @@ class AIPS_Content_Indexer_Mutation_Handler {
 	}
 
 	public function commit_gap_topics() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		$topics    = isset($_POST['topics']) && is_array($_POST['topics']) ? array_map('sanitize_text_field', $_POST['topics']) : array();
@@ -319,7 +319,7 @@ class AIPS_Content_Indexer_Mutation_Handler {
 	}
 
 	public function resume_cooldown() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$this->rate_limiter->clear_cooldown();
 

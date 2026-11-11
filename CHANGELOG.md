@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+- Restored the Schedules status-strip payload (`schedule_counts`, `rate_limiter`, `timeline`, `last_error`, `retry_pending`, and `quick_links`, including notifications) so the admin strip can render.
+- Nonce and capability failures from `AIPS_Ajax_Guard::check_admin()` now return HTTP 200 with each endpoint family's original error codes (`invalid_nonce` / `forbidden` for Content Indexer, `invalid_nonce` / `permission_denied` for Link Report, `Unauthorized` for the schedule status strip).
+- Editing an author topic no longer deletes its embeddings or semantic relationships.
+
 ### Changed
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
 
@@ -7,8 +12,9 @@
 - Added AJAX request-boundary contract test suites covering authorization, nonce verification, input validation, response shapes, and job-state transitions for Link Report (`Test_AIPS_Link_Report_Controller`), Cache Monitor (`Test_AIPS_Cache_Monitor_Controller`), Taxonomy (`Test_AIPS_Taxonomy_Controller`), and Research (`Test_AIPS_Research_Controller`).
 - Added DI container construction test suite (`Test_AIPS_History_Container_Construction`) for `AIPS_History_Repository` and `AIPS_History_Service` interfaces, and updated container binding assertions.
 - Replaced direct constructions of `AIPS_History_Service` and `AIPS_History_Repository` with `AIPS_Container` interface resolutions across controllers and services (`AIPS_Research_Controller`, `AIPS_Campaigns_Controller`, `AIPS_Templates_Controller`, `AIPS_Post_Review`).
-- Created `docs/COMPATIBILITY_INVENTORY.md` cataloging deprecated adapters and shims (`AIPS_Admin_Flow_Controller`, `AIPS_Cache_Invalidation_Bus`, `AIPS_Cache_Policy`, `AIPS_History_Query_Service`, `AIPS_Post_Creator`, `AIPS_Upgrades`) with runtime callers, supported contracts, owners, sunset timelines, and target removal for 4.0.0.
-- Formally marked `AIPS_Admin_Flow_Controller` with `@deprecated 3.8.0` and `_deprecated_constructor()`.
+- Created `docs/COMPATIBILITY_INVENTORY.md` cataloging deprecated adapters and shims (`AIPS_Admin_Flow_Controller`, `AIPS_Cache_Invalidation_Bus`, `AIPS_Cache_Policy`, `AIPS_History_Query_Service`, `AIPS_Post_Creator`, `AIPS_Upgrades`) with runtime callers, supported contracts, owners, and sunset timelines. `AIPS_Cache_Policy` and `AIPS_Cache_Invalidation_Bus` stay in production use, so they are not 4.0.0 removal candidates. Phantom `AIPS_Prompt_Builder::build_prompt()` and `AIPS_DB_Migrations::migrate_history_table()` entries are not part of the inventory.
+- Formally marked `AIPS_Admin_Flow_Controller` with `@deprecated 3.8.0` and `_deprecated_class()` (replacement `AIPS_Campaigns_Controller`).
+- Request-boundary tests cover link-report suggest / apply / revert / dismiss, research bulk trending-topic generation, taxonomy search matches, and cache flush-all, including nonce and capability failures. Auto-link tests clear the container before installing the run-service mock and assert that mock is called.
 - Extended request-boundary coverage to post-main AJAX: AI Errors export/summary/details, AI error prune, notification digest flush, Pending Review cards, plus registry maps for AI Edit / Editor actions.
 - Resolved Diagnostics and component-regeneration History repositories through `AIPS_Container` instead of unconditional `new`.
 

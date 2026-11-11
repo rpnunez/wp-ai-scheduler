@@ -1406,6 +1406,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Admin_Menu' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Menu.php',
         'Test_AIPS_Admin_Page_Context' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_Page_Context.php',
         'Test_AIPS_Admin_UI_Primitives' => __DIR__ . '/../..' . '/tests/Test_AIPS_Admin_UI_Primitives.php',
+        'Test_AIPS_Ajax_Guard_Responses' => __DIR__ . '/../..' . '/tests/Test_AIPS_Ajax_Guard_Responses.php',
         'Test_AIPS_Ajax_Registry_Consistency' => __DIR__ . '/../..' . '/tests/Test_AIPS_Ajax_Registry_Consistency.php',
         'Test_AIPS_Ajax_Registry_Response' => __DIR__ . '/../..' . '/tests/Test_AIPS_Ajax_Registry_Response.php',
         'Test_AIPS_Author_Post_Concurrency' => __DIR__ . '/../..' . '/tests/Test_AIPS_Author_Post_Concurrency.php',

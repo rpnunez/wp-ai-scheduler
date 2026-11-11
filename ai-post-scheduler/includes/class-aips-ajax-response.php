@@ -85,6 +85,17 @@ class AIPS_Ajax_Response {
 			$response = array_merge($response, $data);
 		}
 
+		/**
+		 * Fires immediately before an AJAX error response is sent.
+		 *
+		 * WordPress only emits the HTTP status when headers are still unsent, so
+		 * tests observe the status argument here.
+		 *
+		 * @param int    $http_status HTTP status passed to wp_send_json_error().
+		 * @param string $code        Error code.
+		 */
+		do_action('aips_ajax_error_response', (int) $http_status, (string) $code);
+
 		wp_send_json_error($response, $http_status);
 	}
 

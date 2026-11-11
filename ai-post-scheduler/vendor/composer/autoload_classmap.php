@@ -1371,6 +1371,7 @@ return array(
     'Test_AIPS_Admin_Menu' => $baseDir . '/tests/Test_AIPS_Admin_Menu.php',
     'Test_AIPS_Admin_Page_Context' => $baseDir . '/tests/Test_AIPS_Admin_Page_Context.php',
     'Test_AIPS_Admin_UI_Primitives' => $baseDir . '/tests/Test_AIPS_Admin_UI_Primitives.php',
+    'Test_AIPS_Ajax_Guard_Responses' => $baseDir . '/tests/Test_AIPS_Ajax_Guard_Responses.php',
     'Test_AIPS_Ajax_Registry_Consistency' => $baseDir . '/tests/Test_AIPS_Ajax_Registry_Consistency.php',
     'Test_AIPS_Ajax_Registry_Response' => $baseDir . '/tests/Test_AIPS_Ajax_Registry_Response.php',
     'Test_AIPS_Author_Post_Concurrency' => $baseDir . '/tests/Test_AIPS_Author_Post_Concurrency.php',

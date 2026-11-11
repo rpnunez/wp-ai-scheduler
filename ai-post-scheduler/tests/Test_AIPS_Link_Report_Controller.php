@@ -95,6 +95,22 @@ class Test_AIPS_Link_Report_Controller extends WP_UnitTestCase {
 		$response = $this->capture_ajax(array($this->controller, 'ajax_autolink_start'));
 		$this->assertFalse($response['success']);
 		$this->assertSame('invalid_nonce', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_suggest'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('invalid_nonce', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_apply_suggestion'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('invalid_nonce', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_revert_suggestion'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('invalid_nonce', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_dismiss_suggestion'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('invalid_nonce', $response['data']['code']);
 	}
 
 	/**
@@ -115,6 +131,22 @@ class Test_AIPS_Link_Report_Controller extends WP_UnitTestCase {
 		$this->assertSame('permission_denied', $response['data']['code']);
 
 		$response = $this->capture_ajax(array($this->controller, 'ajax_autolink_start'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_suggest'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_apply_suggestion'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_revert_suggestion'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_dismiss_suggestion'));
 		$this->assertFalse($response['success']);
 		$this->assertSame('permission_denied', $response['data']['code']);
 	}
@@ -315,17 +347,16 @@ class Test_AIPS_Link_Report_Controller extends WP_UnitTestCase {
 			->onlyMethods(array('start', 'pause', 'resume', 'cancel', 'undo_run', 'ensure_scheduled', 'get_current', 'get_history'))
 			->getMock();
 
-		$mock_runs->method('start')->willReturn(array('total' => 10, 'job_id' => 'autolink_001'));
-		$mock_runs->method('pause')->willReturn(true);
-		$mock_runs->method('resume')->willReturn(true);
-		$mock_runs->method('cancel')->willReturn(true);
-		$mock_runs->method('undo_run')->willReturn(array('reverted' => 5, 'conflicts' => 0));
-		$mock_runs->method('get_current')->willReturn(null);
-		$mock_runs->method('get_history')->willReturn(array());
+		$mock_runs->expects($this->once())->method('start')->willReturn(array('total' => 10, 'job_id' => 'autolink_001'));
+		$mock_runs->expects($this->once())->method('ensure_scheduled');
+		$mock_runs->expects($this->once())->method('pause')->willReturn(true);
+		$mock_runs->expects($this->once())->method('resume')->willReturn(true);
+		$mock_runs->expects($this->once())->method('cancel')->willReturn(true);
+		$mock_runs->expects($this->once())->method('undo_run')->willReturn(array('reverted' => 5, 'conflicts' => 0));
+		$mock_runs->expects($this->exactly(6))->method('get_current')->willReturn(null);
+		$mock_runs->expects($this->exactly(6))->method('get_history')->willReturn(array());
 
-		AIPS_Container::get_instance()->singleton(AIPS_Autolink_Run_Service::class, function () use ($mock_runs) {
-			return $mock_runs;
-		});
+		$this->bind_autolink_mock($mock_runs);
 
 		$ctrl = new AIPS_Link_Report_Controller($this->service);
 
@@ -379,16 +410,12 @@ class Test_AIPS_Link_Report_Controller extends WP_UnitTestCase {
 			->onlyMethods(array('pause', 'resume', 'cancel', 'undo_run', 'get_current', 'get_history'))
 			->getMock();
 
-		$mock_runs->method('pause')->willReturn(false);
-		$mock_runs->method('resume')->willReturn(false);
-		$mock_runs->method('cancel')->willReturn(false);
-		$mock_runs->method('undo_run')->willReturn(new WP_Error('not_found', 'Run not found'));
-		$mock_runs->method('get_current')->willReturn(null);
-		$mock_runs->method('get_history')->willReturn(array());
+		$mock_runs->expects($this->once())->method('pause')->willReturn(false);
+		$mock_runs->expects($this->once())->method('resume')->willReturn(false);
+		$mock_runs->expects($this->once())->method('cancel')->willReturn(false);
+		$mock_runs->expects($this->once())->method('undo_run')->willReturn(new WP_Error('not_found', 'Run not found'));
 
-		AIPS_Container::get_instance()->singleton(AIPS_Autolink_Run_Service::class, function () use ($mock_runs) {
-			return $mock_runs;
-		});
+		$this->bind_autolink_mock($mock_runs);
 
 		$ctrl = new AIPS_Link_Report_Controller($this->service);
 
@@ -414,5 +441,83 @@ class Test_AIPS_Link_Report_Controller extends WP_UnitTestCase {
 		$response = $this->capture_ajax(array($ctrl, 'ajax_autolink_undo_run'));
 		$this->assertFalse($response['success']);
 		$this->assertSame('not_found', $response['data']['code']);
+	}
+
+	/**
+	 * Suggest, apply, revert, and dismiss go through the inbound service.
+	 *
+	 * @return void
+	 */
+	public function test_suggestion_endpoints_success() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'  => 'Suggest Target',
+			'post_status' => 'publish',
+		));
+
+		$inbound = $this->getMockBuilder('AIPS_Inbound_Links_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('generate_for_target', 'apply', 'revert', 'dismiss', 'get_suggestions'))
+			->getMock();
+
+		$inbound->expects($this->once())->method('generate_for_target')->with($post_id)->willReturn(array(
+			'suggestions' => array(array('id' => 7, 'anchor' => 'example')),
+			'phrases'     => array('example'),
+		));
+		$inbound->expects($this->once())->method('apply')->with(7)->willReturn(true);
+		$inbound->expects($this->once())->method('revert')->with(7)->willReturn(true);
+		$inbound->expects($this->once())->method('dismiss')->with(7)->willReturn(true);
+		$inbound->expects($this->exactly(3))->method('get_suggestions')->with($post_id)->willReturn(array());
+
+		$ctrl  = new AIPS_Link_Report_Controller($this->service, $inbound);
+		$nonce = wp_create_nonce('aips_ajax_nonce');
+
+		$_POST = array(
+			'nonce'   => $nonce,
+			'post_id' => $post_id,
+		);
+		$_REQUEST = $_POST;
+		$response = $this->capture_ajax(array($ctrl, 'ajax_suggest'));
+		$this->assertTrue($response['success']);
+		$this->assertSame($post_id, $response['data']['post_id']);
+		$this->assertSame('Suggest Target', $response['data']['title']);
+		$this->assertCount(1, $response['data']['suggestions']);
+
+		$_POST = array(
+			'nonce'         => $nonce,
+			'post_id'       => $post_id,
+			'suggestion_id' => 7,
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($ctrl, 'ajax_apply_suggestion'));
+		$this->assertTrue($response['success']);
+		$this->assertSame('Link inserted.', $response['data']['message']);
+		$this->assertSame($post_id, $response['data']['post_id']);
+
+		$response = $this->capture_ajax(array($ctrl, 'ajax_revert_suggestion'));
+		$this->assertTrue($response['success']);
+		$this->assertSame('Link removed and original text restored.', $response['data']['message']);
+
+		$response = $this->capture_ajax(array($ctrl, 'ajax_dismiss_suggestion'));
+		$this->assertTrue($response['success']);
+		$this->assertSame('Suggestion dismissed.', $response['data']['message']);
+	}
+
+	/**
+	 * Drop a previously resolved auto-link singleton, then bind the mock.
+	 *
+	 * `singleton()` replaces the factory but `make()` keeps returning an
+	 * instance that was already resolved. `clear()` drops that cache so the
+	 * next `make()` is the mock.
+	 *
+	 * @param AIPS_Autolink_Run_Service $mock_runs Mock run service.
+	 * @return void
+	 */
+	private function bind_autolink_mock($mock_runs) {
+		$container = AIPS_Container::get_instance();
+		$container->clear();
+		$container->singleton(AIPS_Autolink_Run_Service::class, function () use ($mock_runs) {
+			return $mock_runs;
+		});
 	}
 }

@@ -33,7 +33,7 @@ class AIPS_Link_Report_Job_Handler {
 	}
 
 	public function start_backfill() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		if (!$this->service->is_enabled()) {
 			AIPS_Ajax_Response::error(__('The link index is disabled in Settings.', 'ai-post-scheduler'), 'disabled');
@@ -67,7 +67,7 @@ class AIPS_Link_Report_Job_Handler {
 	}
 
 	public function pause_backfill() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		if (!$this->service->pause_backfill()) {
 			AIPS_Ajax_Response::error(__('There is no running link scan to pause.', 'ai-post-scheduler'), 'not_running');
@@ -80,7 +80,7 @@ class AIPS_Link_Report_Job_Handler {
 	}
 
 	public function resume_backfill() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		if (!$this->service->resume_backfill()) {
 			AIPS_Ajax_Response::error(__('There is no paused link scan to resume.', 'ai-post-scheduler'), 'not_paused');
@@ -93,7 +93,7 @@ class AIPS_Link_Report_Job_Handler {
 	}
 
 	public function cancel_backfill() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		if (!$this->service->cancel_backfill()) {
 			AIPS_Ajax_Response::error(__('There is no link scan to cancel.', 'ai-post-scheduler'), 'not_running');
@@ -107,7 +107,7 @@ class AIPS_Link_Report_Job_Handler {
 	}
 
 	public function suggest() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$target_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$result    = $this->query_handler->get_inbound()->generate_for_target($target_id);
@@ -125,7 +125,7 @@ class AIPS_Link_Report_Job_Handler {
 	}
 
 	public function autolink_start() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$scope   = isset($_POST['scope']) ? sanitize_key(wp_unslash($_POST['scope'])) : AIPS_Autolink_Run_Service::SCOPE_ORPHANS;
 		$dry_run = isset($_POST['dry_run']) && filter_var(wp_unslash($_POST['dry_run']), FILTER_VALIDATE_BOOLEAN);
@@ -145,17 +145,17 @@ class AIPS_Link_Report_Job_Handler {
 	}
 
 	public function autolink_pause() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 		$this->respond_with_run($this->query_handler->get_runs()->pause(), __('Auto-link run paused.', 'ai-post-scheduler'), __('There is no running auto-link run to pause.', 'ai-post-scheduler'));
 	}
 
 	public function autolink_resume() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 		$this->respond_with_run($this->query_handler->get_runs()->resume(), __('Auto-link run resumed.', 'ai-post-scheduler'), __('There is no paused auto-link run to resume.', 'ai-post-scheduler'));
 	}
 
 	public function autolink_cancel() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 		$this->respond_with_run($this->query_handler->get_runs()->cancel(), __('Auto-link run cancelled. Links already inserted can be undone from the run history.', 'ai-post-scheduler'), __('There is no auto-link run to cancel.', 'ai-post-scheduler'));
 	}
 

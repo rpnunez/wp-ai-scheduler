@@ -51,7 +51,7 @@ class AIPS_Content_Indexer_Job_Handler {
 	}
 
 	public function process_batch() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		if (!$this->config->get_option('aips_embeddings_enabled', true)) {
 			AIPS_Ajax_Response::error(__('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
@@ -68,7 +68,7 @@ class AIPS_Content_Indexer_Job_Handler {
 	}
 
 	public function run_cannibalization_audit() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$threshold   = isset($_POST['threshold']) ? (float) $_POST['threshold'] : (float) $this->config->get_option('aips_deduplication_threshold', 0.85);
 		$limit       = isset($_POST['limit']) ? absint($_POST['limit']) : (int) $this->config->get_option('aips_audit_result_limit', 50);
@@ -94,7 +94,7 @@ class AIPS_Content_Indexer_Job_Handler {
 	}
 
 	public function generate_gap_ideas() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$cluster_id = isset($_POST['cluster_id']) ? sanitize_text_field($_POST['cluster_id']) : '';
 		$post_id    = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;

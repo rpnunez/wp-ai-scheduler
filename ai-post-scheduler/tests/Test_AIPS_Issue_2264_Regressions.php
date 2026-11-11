@@ -291,6 +291,173 @@ class Test_AIPS_Issue_2264_Regressions extends WP_UnitTestCase {
 		$this->assertSame( 0, $response['data']['queue_depth']['aips_process_schedule_batch'] );
 	}
 
+	public function test_edit_author_topic_keeps_embeddings_and_relationships() {
+		$authors       = new AIPS_Authors_Repository();
+		$topics        = new AIPS_Author_Topics_Repository();
+		$embeddings    = new AIPS_Embeddings_Repository();
+		$relationships = new AIPS_Relationships_Repository();
+
+		$author_id = $authors->create( array(
+			'name'        => 'Embedding Author',
+			'field_niche' => 'Testing',
+			'is_active'   => 1,
+		) );
+		$topic_id = $topics->create( array(
+			'author_id'   => $author_id,
+			'topic_title' => 'Keep related title',
+			'status'      => 'pending',
+		) );
+		$other_id = $topics->create( array(
+			'author_id'   => $author_id,
+			'topic_title' => 'Related neighbor',
+			'status'      => 'approved',
+		) );
+
+		$this->assertNotEmpty( $topic_id );
+		$this->assertNotFalse( $embeddings->upsert( 'topic', $topic_id, array( 0.1, 0.2, 0.3, 0.4 ), 'test-model', 4, 'hash-edit', '' ) );
+		$this->assertNotFalse( $relationships->upsert( 'topic', $topic_id, 'topic', $other_id, 0.91, 'related_post' ) );
+		$this->assertNotNull( $embeddings->get_by_object( 'topic', $topic_id ) );
+		$this->assertNotEmpty( $relationships->get_related( 'topic', $topic_id, 5, 0.6, 'related_post' ) );
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce( 'aips_ajax_nonce' ),
+			'topic_id'    => $topic_id,
+			'topic_title' => 'Edited but still related',
+		);
+		$_REQUEST = $_POST;
+
+		$handler  = new AIPS_Author_Topics_Mutation_Handler();
+		$response = $this->call_ajax( array( $handler, 'edit_topic' ) );
+
+		$this->assertTrue( $response['success'] );
+		$updated = $topics->get_by_id( $topic_id );
+		$this->assertSame( 'Edited but still related', $updated->topic_title );
+		$this->assertNotNull( $embeddings->get_by_object( 'topic', $topic_id ) );
+		$related = $relationships->get_related( 'topic', $topic_id, 5, 0.6, 'related_post' );
+		$this->assertNotEmpty( $related );
+		$this->assertSame( (int) $other_id, (int) $related[0]->target_id );
+	}
+
+	public function test_schedule_status_read_model_matches_admin_strip() {
+		global $wpdb;
+
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name'            => 'Status Strip Template',
+				'prompt_template' => 'Write about {{topic}}',
+				'is_active'       => 1,
+				'post_quantity'   => 1,
+			)
+		);
+		$template_id = (int) $wpdb->insert_id;
+		$repository  = new AIPS_Schedule_Repository();
+		$now         = time();
+		$upcoming_at = $now + HOUR_IN_SECONDS;
+
+		$upcoming_id = $repository->create( array(
+			'template_id' => $template_id,
+			'title'       => 'Upcoming strip schedule',
+			'frequency'   => 'daily',
+			'next_run'    => $upcoming_at,
+			'is_active'   => 1,
+			'topic'       => 'Upcoming',
+		) );
+		$repository->create( array(
+			'template_id' => $template_id,
+			'title'       => 'Overdue strip schedule',
+			'frequency'   => 'daily',
+			'next_run'    => $now - HOUR_IN_SECONDS,
+			'is_active'   => 1,
+			'topic'       => 'Overdue',
+		) );
+		$repository->create( array(
+			'template_id' => $template_id,
+			'title'       => 'Later strip schedule',
+			'frequency'   => 'daily',
+			'next_run'    => $now + ( 2 * DAY_IN_SECONDS ),
+			'is_active'   => 1,
+			'topic'       => 'Later',
+		) );
+		$this->assertNotEmpty( $upcoming_id );
+
+		$jobs   = new AIPS_Bulk_Batch_Job_Store();
+		$job_id = $jobs->create( 'author_topic_post', array( array( 'id' => 1 ) ) );
+		$this->assertIsString( $job_id );
+		$this->assertTrue( $jobs->mark_failed( $job_id ) );
+
+		$original_cron = get_option( 'cron' );
+		$queue_at      = $now + 180;
+		update_option( 'cron', array(
+			$queue_at => array(
+				'aips_retry_failed_author_slices_topics' => array(
+					'event-key' => array(
+						'schedule' => false,
+						'args'     => array(),
+					),
+				),
+				'aips_process_schedule_batch' => 'not-an-array',
+			),
+			'version' => 2,
+		) );
+
+		$_POST = array(
+			'nonce' => wp_create_nonce( 'aips_ajax_nonce' ),
+		);
+		$_REQUEST = $_POST;
+		AIPS_Cache_Factory::make()->delete( 'aips_schedule_status_strip_v2' );
+
+		try {
+			$handler  = new AIPS_Schedule_Query_Handler();
+			$response = $this->call_ajax( array( $handler, 'get_schedule_status_read_model' ) );
+		} finally {
+			update_option( 'cron', $original_cron );
+			AIPS_Cache_Factory::make()->delete( 'aips_schedule_status_strip_v2' );
+		}
+
+		$this->assertIsArray( $response, 'Schedule status response was not JSON.' );
+		$this->assertTrue( $response['success'], wp_json_encode( $response ) );
+		$data = $response['data'];
+
+		$this->assertSame(
+			array(
+				'active'       => 3,
+				'upcoming_24h' => 1,
+				'overdue'      => 1,
+			),
+			$data['schedule_counts']
+		);
+
+		$this->assertArrayHasKey( 'enabled', $data['rate_limiter'] );
+		$this->assertArrayHasKey( 'remaining', $data['rate_limiter'] );
+		$this->assertArrayHasKey( 'max_requests', $data['rate_limiter'] );
+		$this->assertIsNumeric( $data['rate_limiter']['remaining'] );
+		$this->assertIsNumeric( $data['rate_limiter']['max_requests'] );
+
+		$this->assertCount( 1, $data['timeline'] );
+		$this->assertSame( (int) $upcoming_id, (int) $data['timeline'][0]['id'] );
+		$this->assertSame( 'template_schedule', $data['timeline'][0]['type'] );
+		$this->assertSame( 'Upcoming strip schedule', $data['timeline'][0]['title'] );
+		$this->assertSame( 'aips_generate_scheduled_posts', $data['timeline'][0]['cron_hook'] );
+		$this->assertSame( $upcoming_at, (int) $data['timeline'][0]['timestamp'] );
+
+		$this->assertTrue( $data['last_error'] );
+		$this->assertTrue( $data['retry_pending'] );
+		$this->assertSame( 0, $data['queue_depth']['aips_process_schedule_batch'] );
+		$this->assertGreaterThan( 0, $data['queue_depth']['aips_retry_failed_author_slices_topics'] );
+
+		$this->assertArrayHasKey( 'history', $data['quick_links'] );
+		$this->assertArrayHasKey( 'notifications', $data['quick_links'] );
+		$this->assertArrayHasKey( 'telemetry', $data['quick_links'] );
+		$this->assertArrayHasKey( 'system_status', $data['quick_links'] );
+		$this->assertStringContainsString( 'aips-history', $data['quick_links']['history'] );
+		$this->assertStringContainsString( 'notifications', $data['quick_links']['notifications'] );
+		$this->assertStringContainsString( 'telemetry', $data['quick_links']['telemetry'] );
+		$this->assertStringContainsString( 'system-status', $data['quick_links']['system_status'] );
+		$this->assertArrayNotHasKey( 'active_schedules', $data );
+		$this->assertArrayNotHasKey( 'incomplete_batches', $data );
+	}
+
 	public function test_history_log_retention_field_uses_shared_markup() {
 		$ui = new AIPS_Settings_UI();
 		ob_start();

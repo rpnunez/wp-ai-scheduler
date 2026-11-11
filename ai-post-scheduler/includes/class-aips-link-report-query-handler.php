@@ -42,7 +42,7 @@ class AIPS_Link_Report_Query_Handler {
 	}
 
 	public function get_report() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$allowed_types = $this->service->get_post_types();
 		$post_type     = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
@@ -95,7 +95,7 @@ class AIPS_Link_Report_Query_Handler {
 	}
 
 	public function get_post_links() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$post    = $post_id ? get_post($post_id) : null;
@@ -162,7 +162,7 @@ class AIPS_Link_Report_Query_Handler {
 	}
 
 	public function get_suggestions() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$target_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		if (!$target_id || !get_post($target_id)) {
@@ -177,7 +177,7 @@ class AIPS_Link_Report_Query_Handler {
 	}
 
 	public function get_post_panel() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$post    = $post_id ? get_post($post_id) : null;
@@ -189,7 +189,7 @@ class AIPS_Link_Report_Query_Handler {
 	}
 
 	public function backfill_status() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 
 		$this->service->ensure_scan_scheduled();
 
@@ -200,7 +200,7 @@ class AIPS_Link_Report_Query_Handler {
 	}
 
 	public function autolink_status() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_LINK_REPORT);
 		$this->get_runs()->ensure_scheduled();
 
 		AIPS_Ajax_Response::success(array(
