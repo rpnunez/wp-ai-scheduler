@@ -46,6 +46,20 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 	protected $all_feedback_stats = array();
 
 	/**
+	 * Bulk author topic status counts.
+	 *
+	 * @var array<int, array{pending:int, approved:int, rejected:int, posts_generated:int}>
+	 */
+	protected $all_topic_status_counts = array();
+
+	/**
+	 * Bulk author generated post counts.
+	 *
+	 * @var array<int, int>
+	 */
+	protected $all_post_generation_counts = array();
+
+	/**
 	 * Total items count across statuses.
 	 *
 	 * @var array{all:int, active:int, inactive:int}
@@ -191,12 +205,6 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		$this->counts['active']   = $active_count;
 		$this->counts['inactive'] = $inactive_count;
 
-		// Bulk prefetch feedback statistics to avoid N+1 queries
-		if (!empty($all_authors)) {
-			$feedback_repository = new AIPS_Feedback_Repository();
-			$author_ids = array_map(function($a) { return (int) $a->id; }, $all_authors);
-			$this->all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
-		}
 
 		// Filter by status if requested
 		$status_filter = isset($_GET['author_status']) ? sanitize_key(wp_unslash($_GET['author_status'])) : 'all';
@@ -251,6 +259,15 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 			'per_page'    => $per_page,
 			'total_pages' => ceil($total_items / $per_page),
 		));
+
+		// Bulk prefetch feedback statistics, topic status counts, and post generation counts for page items to avoid N+1 queries
+		if (!empty($this->items)) {
+			$page_author_ids                  = array_map(function($a) { return (int) $a->id; }, $this->items);
+			$feedback_repository              = new AIPS_Feedback_Repository();
+			$this->all_feedback_stats         = $feedback_repository->get_statistics_bulk($page_author_ids);
+			$this->all_topic_status_counts    = $this->topics_repository->get_status_counts_bulk($page_author_ids);
+			$this->all_post_generation_counts = $this->logs_repository->get_post_generation_counts_bulk($page_author_ids);
+		}
 	}
 
 	/**
@@ -357,9 +374,9 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 	 */
 	protected function column_content($item) {
 		$author_id     = (int) $item->id;
-		$status_counts = $this->topics_repository->get_status_counts($author_id);
+		$status_counts = isset($this->all_topic_status_counts[$author_id]) ? $this->all_topic_status_counts[$author_id] : $this->topics_repository->get_status_counts($author_id);
 		$total_topics  = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
-		$posts_count   = $this->logs_repository->count_generated_posts_by_author($author_id);
+		$posts_count   = isset($this->all_post_generation_counts[$author_id]) ? $this->all_post_generation_counts[$author_id] : $this->logs_repository->count_generated_posts_by_author($author_id);
 
 		$topics_url = add_query_arg(array(
 			'page'      => 'aips-automations',

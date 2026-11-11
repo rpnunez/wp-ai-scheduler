@@ -52,6 +52,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
 		delete_option( 'aips_pending_index_queue' );
 		delete_option( 'aips_pending_topic_index_queue' );
+		delete_option( 'aips_indexer_paused_until' );
+		delete_option( 'aips_indexer_pause_reason' );
 		parent::tearDown();
 	}
 
@@ -264,6 +266,31 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'success', $batch_res );
 		$this->assertArrayHasKey( 'total_indexed', $batch_res );
 		$this->assertGreaterThanOrEqual( 2, $batch_res['success'] );
+	}
+
+	/**
+	 * A paused rate limiter must tell the admin UI to show the cooldown banner.
+	 */
+	public function test_process_indexing_batch_includes_cooldown_when_paused() {
+		$until = time() + 600;
+		update_option( 'aips_indexer_paused_until', $until, false );
+		update_option( 'aips_indexer_pause_reason', 'Provider quota', false );
+
+		$batch_res = $this->indexer_service->process_indexing_batch( 10, 0 );
+
+		$this->assertArrayHasKey( 'cooldown', $batch_res );
+		$this->assertTrue( $batch_res['cooldown']['active'] );
+		$this->assertSame( $until, $batch_res['cooldown']['until'] );
+		$this->assertGreaterThan( 0, $batch_res['cooldown']['remaining_seconds'] );
+		$this->assertLessThanOrEqual( 600, $batch_res['cooldown']['remaining_seconds'] );
+		$this->assertSame( 'Provider quota', $batch_res['cooldown']['reason'] );
+		$this->assertSame( 0, $batch_res['success'] );
+
+		delete_option( 'aips_indexer_paused_until' );
+		delete_option( 'aips_indexer_pause_reason' );
+
+		$clear = $this->indexer_service->process_indexing_batch( 10, 0 );
+		$this->assertArrayNotHasKey( 'cooldown', $clear );
 	}
 
 	/**
