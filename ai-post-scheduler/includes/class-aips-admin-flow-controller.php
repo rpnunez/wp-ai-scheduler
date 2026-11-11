@@ -29,8 +29,8 @@ class AIPS_Admin_Flow_Controller extends AIPS_Campaigns_Controller {
 	 * @param mixed ...$args Forwarded arguments.
 	 */
 	public function __construct(...$args) {
-		if (function_exists('_deprecated_constructor')) {
-			_deprecated_constructor(__CLASS__, '3.8.0', 'AIPS_Campaigns_Controller');
+		if (function_exists('_deprecated_class')) {
+			_deprecated_class(__CLASS__, '3.8.0', 'AIPS_Campaigns_Controller');
 		}
 		parent::__construct(...$args);
 	}

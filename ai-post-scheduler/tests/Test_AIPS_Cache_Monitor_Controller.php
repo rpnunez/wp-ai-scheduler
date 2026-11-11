@@ -229,6 +229,7 @@ class Test_AIPS_Cache_Monitor_Controller extends WP_UnitTestCase {
 			))
 			->getMock();
 
+		$mock_service->expects($this->once())->method('flush_all_plugin_cache');
 		$mock_service->method('delete_entry')->willReturn(1);
 		$mock_service->method('delete_entries_bulk')->willReturn(2);
 		$mock_service->method('flush_group')->willReturn(5);

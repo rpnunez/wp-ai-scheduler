@@ -96,6 +96,10 @@ class Test_AIPS_Taxonomy_Controller extends WP_UnitTestCase {
 		$response = $this->capture_ajax(array($this->controller, 'ajax_approve_taxonomy'));
 		$this->assertFalse($response['success']);
 		$this->assertSame('Invalid nonce.', $response['data']['message']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_search_posts'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('Invalid nonce.', $response['data']['message']);
 	}
 
 	/**
@@ -116,6 +120,10 @@ class Test_AIPS_Taxonomy_Controller extends WP_UnitTestCase {
 		$this->assertSame('permission_denied', $response['data']['code']);
 
 		$response = $this->capture_ajax(array($this->controller, 'ajax_delete_taxonomy'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+
+		$response = $this->capture_ajax(array($this->controller, 'ajax_search_posts'));
 		$this->assertFalse($response['success']);
 		$this->assertSame('permission_denied', $response['data']['code']);
 	}
@@ -314,6 +322,16 @@ class Test_AIPS_Taxonomy_Controller extends WP_UnitTestCase {
 		$response = $this->capture_ajax(array($this->controller, 'ajax_search_posts'));
 		$this->assertTrue($response['success']);
 		$this->assertArrayHasKey('posts', $response['data']);
-		$this->assertIsArray($response['data']['posts']);
+
+		$match = null;
+		foreach ($response['data']['posts'] as $row) {
+			if ((int) $row['id'] === (int) $post_id) {
+				$match = $row;
+				break;
+			}
+		}
+
+		$this->assertNotNull($match);
+		$this->assertSame('Taxonomy Searchable Post', $match['title']);
 	}
 }
