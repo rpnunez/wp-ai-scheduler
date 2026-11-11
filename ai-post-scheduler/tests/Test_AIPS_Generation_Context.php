@@ -244,6 +244,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'name' => 'Test Template',
 			'prompt_template' => 'Write about {{topic}}',
 			'title_prompt' => 'Template title prompt',
+			'slug_prompt' => 'Template slug prompt',
 			'post_status' => 'draft',
 			'post_type' => 'page',
 			'post_category' => 1,
@@ -255,14 +256,16 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'id' => 456,
 			'name' => 'Test Voice',
 			'title_prompt' => 'Voice title prompt',
+			'slug_prompt' => 'Voice slug prompt',
 			'content_instructions' => 'Voice instructions',
 			'excerpt_instructions' => 'Voice excerpt',
 		);
 		
 		$context = new AIPS_Template_Context($template, $voice, 'Test Topic');
 		
-		// Voice title prompt should take precedence
+		// Voice title and slug prompts should take precedence
 		$this->assertEquals('Voice title prompt', $context->get_title_prompt());
+		$this->assertEquals('Voice slug prompt', $context->get_slug_prompt());
 		$this->assertEquals(456, $context->get_voice_id());
 	}
 }
