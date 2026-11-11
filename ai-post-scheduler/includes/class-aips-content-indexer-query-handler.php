@@ -65,7 +65,7 @@ class AIPS_Content_Indexer_Query_Handler {
 	}
 
 	public function get_status() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$post_types  = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 		$status      = $this->indexer_service->get_indexing_status($post_types);
@@ -88,7 +88,7 @@ class AIPS_Content_Indexer_Query_Handler {
 	}
 
 	public function get_graph() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$post_id        = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$source_type    = isset($_POST['source_type']) ? sanitize_key($_POST['source_type']) : 'post';
@@ -124,7 +124,7 @@ class AIPS_Content_Indexer_Query_Handler {
 	}
 
 	public function search_posts() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$query      = isset($_POST['q']) ? sanitize_text_field($_POST['q']) : '';
 		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
@@ -162,7 +162,7 @@ class AIPS_Content_Indexer_Query_Handler {
 	}
 
 	public function fetch_meow_environments() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$meow = new AIPS_Meow_AI_Provider();
 		if (!$meow->is_available()) {
@@ -178,7 +178,7 @@ class AIPS_Content_Indexer_Query_Handler {
 	}
 
 	public function get_post_clusters() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_CONTENT_INDEXER);
 
 		$threshold = isset($_POST['threshold']) ? (float) $_POST['threshold'] : (float) $this->config->get_option('aips_indexer_post_cluster_threshold', 0.65);
 		$min_size  = isset($_POST['min_size']) ? max(2, absint($_POST['min_size'])) : 2;

@@ -47,7 +47,7 @@ class AIPS_Schedule_Query_Handler {
 	 * Get schedule status read model for the status strip.
 	 */
 	public function get_schedule_status_read_model() {
-		AIPS_Ajax_Guard::check_admin();
+		AIPS_Ajax_Guard::check_admin('manage_options', 'aips_ajax_nonce', 'nonce', AIPS_Ajax_Guard::PROFILE_SCHEDULE_STATUS);
 
 		$cache = AIPS_Cache_Factory::make();
 		$cache_key = 'aips_schedule_status_strip_v2';
@@ -94,32 +94,101 @@ class AIPS_Schedule_Query_Handler {
 					$count = is_array($hooks[$hook]) ? count($hooks[$hook]) : 0;
 					$queue_depth[$hook] += $count;
 					$queue_timeline[] = array(
-						'timestamp' => (int) $timestamp,
 						'hook' => $hook,
+						'timestamp' => (int) $timestamp,
 						'count' => $count,
 					);
 				}
 			}
 		}
 
+		// Build schedule timeline from the same unified source the table uses,
+		// so the strip matches "Next Run" values shown to operators.
 		$unified_service = new AIPS_Unified_Schedule_Service();
-		$active_schedules = method_exists($unified_service, 'get_active_schedules_summary')
-			? $unified_service->get_active_schedules_summary()
-			: array();
-		$incomplete_batches = method_exists($this->schedule_repository, 'get_incomplete_batches')
-			? $this->schedule_repository->get_incomplete_batches()
-			: array();
+		$all_schedules = $unified_service->get_all_grouped('', false);
+		$timeline = array();
+		$active_schedules = 0;
+		$overdue_schedules = 0;
+
+		foreach ($all_schedules as $schedule) {
+			$is_active = !empty($schedule['is_active']);
+			if ($is_active) {
+				$active_schedules++;
+			}
+
+			$next_run = isset($schedule['next_run']) ? (int) $schedule['next_run'] : 0;
+			if (!$is_active || $next_run <= 0) {
+				continue;
+			}
+
+			if ($next_run < $now) {
+				$overdue_schedules++;
+				continue;
+			}
+
+			if ($next_run > $next_24h) {
+				continue;
+			}
+
+			$timeline[] = array(
+				'id' => isset($schedule['id']) ? (int) $schedule['id'] : 0,
+				'type' => isset($schedule['type']) ? (string) $schedule['type'] : '',
+				'title' => isset($schedule['title']) ? sanitize_text_field((string) $schedule['title']) : '',
+				'cron_hook' => isset($schedule['cron_hook']) ? (string) $schedule['cron_hook'] : '',
+				'timestamp' => $next_run,
+			);
+		}
+
+		usort($timeline, function ($a, $b) {
+			return (int) $a['timestamp'] - (int) $b['timestamp'];
+		});
+
+		$bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
+		$bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
+
+		$last_success = array();
+		foreach ($families as $family => $hook) {
+			$runs = $this->history_repository->get_history(array(
+				'creation_method' => $family,
+				'status' => 'completed',
+				'per_page' => 1,
+			));
+			$completed_at = (is_array($runs) && isset($runs[0]) && !empty($runs[0]->completed_at))
+				? (int) $runs[0]->completed_at
+				: null;
+			$last_success[$family] = $completed_at;
+		}
+
+		$rate_limiter_status = array(
+			'enabled' => false,
+			'remaining' => 0,
+			'max_requests' => 0,
+		);
+		if (class_exists('AIPS_Resilience_Service')) {
+			$resilience_service = new AIPS_Resilience_Service();
+			if (method_exists($resilience_service, 'get_rate_limiter_status')) {
+				$rate_limiter_status = $resilience_service->get_rate_limiter_status();
+			}
+		}
 
 		$payload = array(
 			'next_runs' => $next_runs,
-			'queue_depth' => $queue_depth,
+			'timeline' => $timeline,
 			'queue_timeline' => $queue_timeline,
-			'active_schedules' => $active_schedules,
-			'incomplete_batches' => $incomplete_batches,
-			'timestamp' => $now,
-			'links' => array(
-				'schedules' => AIPS_Admin_Menu_Helper::get_page_url('schedules'),
+			'queue_depth' => $queue_depth,
+			'bulk_jobs' => $bulk_counts,
+			'schedule_counts' => array(
+				'active' => $active_schedules,
+				'upcoming_24h' => count($timeline),
+				'overdue' => $overdue_schedules,
+			),
+			'last_success' => $last_success,
+			'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
+			'last_error' => $bulk_counts['failed'] > 0,
+			'rate_limiter' => $rate_limiter_status,
+			'quick_links' => array(
 				'history' => AIPS_Admin_Menu_Helper::get_page_url('history'),
+				'notifications' => AIPS_Admin_Menu_Helper::get_page_url('settings', array('tab' => 'notifications')),
 				'telemetry' => AIPS_Admin_Menu_Helper::get_page_url('telemetry'),
 				'system_status' => AIPS_Admin_Menu_Helper::get_page_url('system-status'),
 			),

@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+- Restored the Schedules status-strip payload (`schedule_counts`, `rate_limiter`, `timeline`, `last_error`, `retry_pending`, and `quick_links`, including notifications) so the admin strip can render.
+- Nonce and capability failures from `AIPS_Ajax_Guard::check_admin()` now return HTTP 200 with each endpoint family's original error codes (`invalid_nonce` / `forbidden` for Content Indexer, `invalid_nonce` / `permission_denied` for Link Report, `Unauthorized` for the schedule status strip).
+- Editing an author topic no longer deletes its embeddings or semantic relationships.
+
 ### Changed
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
 
