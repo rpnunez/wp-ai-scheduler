@@ -58,7 +58,7 @@ class AIPS_Generated_Posts_Controller {
 		$this->history_repository = $history_repository ?: (
 			$container->has(AIPS_History_Repository_Interface::class)
 				? $container->make(AIPS_History_Repository_Interface::class)
-				: $container->make(AIPS_History_Repository::class)
+				: AIPS_History_Repository::instance()
 		);
 		$this->schedule_repository = new AIPS_Schedule_Repository();
 		$this->post_review_repository = new AIPS_Post_Review_Repository();

@@ -192,7 +192,7 @@ class Test_AIPS_Ajax_Registry_Consistency extends WP_UnitTestCase {
 
 		$result = AIPS_Ajax_Guard::verify();
 		$this->assertInstanceOf('WP_Error', $result);
-		$this->assertSame('invalid_nonce', $result->get_error_code());
+		$this->assertSame('security_check_failed', $result->get_error_code());
 	}
 
 	/**

@@ -66,7 +66,7 @@ class AIPS_Author_Topics_Mutation_Handler {
 		$this->logs_repository    = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository= $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->penalty_service    = $penalty_service ?: new AIPS_Topic_Penalty_Service();
-		$this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : $container->make(AIPS_History_Service::class));
+		$this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : AIPS_History_Service::instance());
 		$this->embeddings_repo    = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->relationships_repo = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
 	}

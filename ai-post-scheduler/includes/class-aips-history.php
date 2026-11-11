@@ -65,7 +65,7 @@ class AIPS_History {
 		$this->repository = $repository ?: (
 			$container->has(AIPS_History_Repository_Interface::class)
 				? $container->make(AIPS_History_Repository_Interface::class)
-				: $container->make(AIPS_History_Repository::class)
+				: AIPS_History_Repository::instance()
 		);
 
 		$this->modal_presenter = $modal_presenter ?: (

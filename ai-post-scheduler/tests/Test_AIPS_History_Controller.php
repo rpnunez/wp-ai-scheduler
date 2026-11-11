@@ -152,17 +152,27 @@ class Test_AIPS_History_Controller extends WP_UnitTestCase {
         );
         $_REQUEST = $_POST;
 
+        $http_status = null;
+        $listener = static function ( $status ) use ( &$http_status ) {
+            $http_status = $status;
+        };
+        add_action('aips_ajax_error_response', $listener, 10, 2);
+
         $response = $this->call_ajax($method);
+        remove_action('aips_ajax_error_response', $listener, 10);
 
         $this->assertIsArray($response);
         $this->assertFalse($response['success'], "Action {$action} should reject invalid nonce");
         $this->assertSame('Invalid nonce.', $response['data']['message'] ?? '');
+        $this->assertSame('error', $response['data']['code'] ?? '');
+        $this->assertSame(200, $http_status, "Action {$action} nonce failure should stay HTTP 200");
     }
 
     public function endpoint_provider(): array {
         return array(
             array('aips_bulk_delete_history', 'ajax_bulk_delete_history'),
             array('aips_clear_history', 'ajax_clear_history'),
+            array('aips_export_history', 'ajax_export_history'),
             array('aips_get_history_details', 'ajax_get_history_details'),
             array('aips_get_history_logs', 'ajax_get_history_logs'),
             array('aips_get_history_modal_html', 'ajax_get_history_modal_html'),

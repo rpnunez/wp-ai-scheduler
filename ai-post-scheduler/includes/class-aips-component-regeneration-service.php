@@ -111,7 +111,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->history_repository = $history_repository ?: (
 			$container->has(AIPS_History_Repository_Interface::class)
 				? $container->make(AIPS_History_Repository_Interface::class)
-				: $container->make(AIPS_History_Repository::class)
+				: AIPS_History_Repository::instance()
 		);
 		$this->generation_context_factory = new AIPS_Generation_Context_Factory();
 		$this->template_processor = new AIPS_Template_Processor();

@@ -50,7 +50,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	 */
 	public function __construct($history_repository = null, $author_topics_repository = null, $post_slices_repository = null) {
 		$container = AIPS_Container::get_instance();
-		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : $container->make(AIPS_History_Repository::class));
+		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : AIPS_History_Repository::instance());
 		$this->author_topics_repository = $author_topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->post_slices_repository = $post_slices_repository;
 	}

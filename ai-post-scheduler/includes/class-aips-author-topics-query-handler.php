@@ -54,7 +54,7 @@ class AIPS_Author_Topics_Query_Handler {
 		$this->logs_repository      = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository  = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());
-		$this->history_repository   = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : $container->make(AIPS_History_Repository::class));
+		$this->history_repository   = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : AIPS_History_Repository::instance());
 	}
 
 	public function get_topic_logs() {

@@ -43,7 +43,7 @@ class AIPS_History_Controller {
 		$this->repository = $repository ?: (
 			$container->has(AIPS_History_Repository_Interface::class)
 				? $container->make(AIPS_History_Repository_Interface::class)
-				: $container->make(AIPS_History_Repository::class)
+				: AIPS_History_Repository::instance()
 		);
 
 		$this->modal_presenter = $modal_presenter ?: (
@@ -83,7 +83,7 @@ class AIPS_History_Controller {
      * @return void
      */
 	public function ajax_bulk_delete_history() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) && ! check_ajax_referer('aips_history_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -116,7 +116,7 @@ class AIPS_History_Controller {
      * @return void
      */
 	public function ajax_clear_history() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) && ! check_ajax_referer('aips_history_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -170,7 +170,7 @@ class AIPS_History_Controller {
      * @return void
      */
 	public function ajax_export_history() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) && ! check_ajax_referer('aips_history_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -253,7 +253,7 @@ class AIPS_History_Controller {
      * @return void
      */
 	public function ajax_get_history_details() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) && ! check_ajax_referer('aips_history_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -300,7 +300,7 @@ class AIPS_History_Controller {
      * @return void
      */
 	public function ajax_get_history_logs() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) && ! check_ajax_referer('aips_history_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -331,7 +331,7 @@ class AIPS_History_Controller {
      * @return void
      */
 	public function ajax_get_history_modal_html() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) && ! check_ajax_referer('aips_history_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -373,7 +373,7 @@ class AIPS_History_Controller {
      * @return void
      */
 	public function ajax_reload_history() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) && ! check_ajax_referer('aips_history_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 
@@ -435,7 +435,7 @@ class AIPS_History_Controller {
      * @return void
      */
 	public function ajax_retry_generation() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) && ! check_ajax_referer('aips_history_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 

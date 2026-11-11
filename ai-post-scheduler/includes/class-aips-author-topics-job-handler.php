@@ -46,7 +46,7 @@ class AIPS_Author_Topics_Job_Handler {
 		$container = AIPS_Container::get_instance();
 		$this->repository             = $repository ?: new AIPS_Author_Topics_Repository();
 		$this->post_generator         = $post_generator ?: new AIPS_Author_Post_Generator();
-		$this->history_service        = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : $container->make(AIPS_History_Service::class));
+		$this->history_service        = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : AIPS_History_Service::instance());
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service($this->history_service);
 	}
 

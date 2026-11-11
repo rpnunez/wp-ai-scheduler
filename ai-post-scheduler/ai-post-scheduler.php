@@ -392,18 +392,18 @@ final class AI_Post_Scheduler {
             return AIPS_Config::get_instance();
         });
 
-        // Register AIPS_History_Repository
-        $container->singleton(AIPS_History_Repository::class, function( $container ) {
-            return AIPS_History_Repository::instance();
+        // Container owns the History singletons. ::instance() delegates here
+        // when the class is bound, so AIPS_Container::clear() returns a new object.
+        $container->singleton(AIPS_History_Repository::class, function() {
+            return new AIPS_History_Repository();
         });
 
 		$container->singleton(AIPS_History_Repository_Interface::class, function( $container ) {
 			return $container->make(AIPS_History_Repository::class);
 		});
 
-        // Register AIPS_History_Service
-        $container->singleton(AIPS_History_Service::class, function( $container ) {
-            return AIPS_History_Service::instance();
+        $container->singleton(AIPS_History_Service::class, function() {
+            return new AIPS_History_Service();
         });
 
 		$container->singleton(AIPS_History_Service_Interface::class, function( $container ) {

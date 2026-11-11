@@ -279,14 +279,49 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     private static $instance = null;
 
     /**
+     * Whether the cached instance came from the container.
+     *
+     * @var bool
+     */
+    private static $instance_from_container = false;
+
+    /**
      * Get the shared singleton instance.
+     *
+     * The container is the source of truth while this class is bound, so
+     * AIPS_Container::clear() does not keep returning the previous object.
+     * A local instance is used only when the container has no binding.
      *
      * @return self
      */
     public static function instance(): self {
+        $container = AIPS_Container::get_instance();
+
+        if ( $container->has( self::class ) ) {
+            try {
+                $resolved = $container->make( self::class );
+            } catch ( \RuntimeException $exception ) {
+                if ( ! str_contains( $exception->getMessage(), 'Circular dependency' ) ) {
+                    throw $exception;
+                }
+                $resolved = null;
+            }
+
+            if ( $resolved instanceof self ) {
+                self::$instance = $resolved;
+                self::$instance_from_container = true;
+                return self::$instance;
+            }
+        } elseif ( self::$instance_from_container ) {
+            self::$instance = null;
+            self::$instance_from_container = false;
+        }
+
         if ( self::$instance === null ) {
             self::$instance = new self();
+            self::$instance_from_container = false;
         }
+
         return self::$instance;
     }
 

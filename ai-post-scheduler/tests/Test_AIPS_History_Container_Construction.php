@@ -115,4 +115,29 @@ class Test_AIPS_History_Container_Construction extends WP_UnitTestCase {
 		$resolved = $this->container->make(AIPS_History_Service_Interface::class);
 		$this->assertSame($mock_service, $resolved);
 	}
+
+	/**
+	 * Container::clear() must not keep serving the History objects cached
+	 * behind ::instance().
+	 */
+	public function test_container_clear_yields_fresh_history_singletons() {
+		$repo_first    = $this->container->make(AIPS_History_Repository::class);
+		$service_first = $this->container->make(AIPS_History_Service::class);
+
+		$this->assertSame($repo_first, AIPS_History_Repository::instance());
+		$this->assertSame($service_first, AIPS_History_Service::instance());
+
+		$this->container->clear();
+		AI_Post_Scheduler::get_instance()->register_container_bindings();
+
+		$repo_second    = $this->container->make(AIPS_History_Repository::class);
+		$service_second = $this->container->make(AIPS_History_Service::class);
+
+		$this->assertNotSame($repo_first, $repo_second);
+		$this->assertNotSame($service_first, $service_second);
+		$this->assertSame($repo_second, AIPS_History_Repository::instance());
+		$this->assertSame($service_second, AIPS_History_Service::instance());
+		$this->assertSame($repo_second, $this->container->make(AIPS_History_Repository_Interface::class));
+		$this->assertSame($service_second, $this->container->make(AIPS_History_Service_Interface::class));
+	}
 }

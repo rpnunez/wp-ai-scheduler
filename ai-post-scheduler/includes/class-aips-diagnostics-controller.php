@@ -40,7 +40,7 @@ class AIPS_Diagnostics_Controller {
 			? $history_repository
 			: ($container->has(AIPS_History_Repository_Interface::class)
 				? $container->make(AIPS_History_Repository_Interface::class)
-				: $container->make(AIPS_History_Repository::class));
+				: AIPS_History_Repository::instance());
 
 		add_action( 'wp_ajax_aips_get_ai_errors', array( $this, 'ajax_get_ai_errors' ) );
 		add_action( 'wp_ajax_aips_get_ai_error_details', array( $this, 'ajax_get_ai_error_details' ) );
