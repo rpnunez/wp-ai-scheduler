@@ -38,6 +38,25 @@ class AIPS_Research_Controller {
     }
 
     /**
+     * Reset the shared singleton instance (primarily for tests).
+     *
+     * @return void
+     */
+    public static function reset_instance(): void {
+        self::$instance = null;
+    }
+
+    /**
+     * Set a custom singleton instance (primarily for tests).
+     *
+     * @param self|null $instance Instance to set.
+     * @return void
+     */
+    public static function set_instance(?self $instance): void {
+        self::$instance = $instance;
+    }
+
+    /**
      * @var AIPS_Research_Service Research service instance
      */
     private $research_service;
@@ -48,12 +67,12 @@ class AIPS_Research_Controller {
     private $repository;
     
     /**
-     * @var AIPS_Logger Logger instance
+     * @var AIPS_Logger_Interface Logger instance
      */
     private $logger;
 
     /**
-     * @var AIPS_History_Service History service instance
+     * @var AIPS_History_Service_Interface History service instance
      */
     private $history_service;
 
@@ -69,14 +88,29 @@ class AIPS_Research_Controller {
     
     /**
      * Initialize the controller.
+     *
+     * @param AIPS_Research_Service|null          $research_service       Research service instance.
+     * @param AIPS_Trending_Topics_Repository|null $repository             Repository instance.
+     * @param AIPS_Logger_Interface|null          $logger                 Logger instance.
+     * @param AIPS_History_Service_Interface|null $history_service        History service instance.
+     * @param AIPS_Content_Auditor|null           $content_auditor        Content auditor instance.
+     * @param AIPS_Bulk_Generator_Service|null    $bulk_generator_service Bulk generator service.
      */
-    public function __construct() {
-        $this->research_service       = new AIPS_Research_Service();
-        $this->repository             = new AIPS_Trending_Topics_Repository();
-        $this->logger                 = new AIPS_Logger();
-        $this->history_service        = new AIPS_History_Service();
-        $this->content_auditor        = new AIPS_Content_Auditor();
-        $this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
+    public function __construct(
+        ?AIPS_Research_Service $research_service = null,
+        ?AIPS_Trending_Topics_Repository $repository = null,
+        ?AIPS_Logger_Interface $logger = null,
+        ?AIPS_History_Service_Interface $history_service = null,
+        ?AIPS_Content_Auditor $content_auditor = null,
+        ?AIPS_Bulk_Generator_Service $bulk_generator_service = null
+    ) {
+        $container                    = AIPS_Container::get_instance();
+        $this->research_service       = $research_service ?: new AIPS_Research_Service();
+        $this->repository             = $repository ?: new AIPS_Trending_Topics_Repository();
+        $this->logger                 = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+        $this->history_service        = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+        $this->content_auditor        = $content_auditor ?: new AIPS_Content_Auditor();
+        $this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
         
         $this->init_hooks();
     }
@@ -373,7 +407,8 @@ class AIPS_Research_Controller {
         );
         
         // Use schedule repository to create schedules
-        $schedule_repository = new AIPS_Schedule_Repository();
+        $container           = AIPS_Container::get_instance();
+        $schedule_repository = $container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository();
         $interval_calculator = new AIPS_Interval_Calculator();
         
         $base_time = strtotime($start_date);

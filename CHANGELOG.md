@@ -3,6 +3,16 @@
 ### Changed
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
 
+### Technical Debt Phase 1 (#2263)
+- Added AJAX request-boundary contract test suites covering authorization, nonce verification, input validation, response shapes, and job-state transitions for Link Report (`Test_AIPS_Link_Report_Controller`), Cache Monitor (`Test_AIPS_Cache_Monitor_Controller`), Taxonomy (`Test_AIPS_Taxonomy_Controller`), and Research (`Test_AIPS_Research_Controller`).
+- Added DI container construction test suite (`Test_AIPS_History_Container_Construction`) for `AIPS_History_Repository` and `AIPS_History_Service` interfaces, and updated container binding assertions.
+- Replaced direct constructions of `AIPS_History_Service` and `AIPS_History_Repository` with `AIPS_Container` interface resolutions across controllers and services (`AIPS_Research_Controller`, `AIPS_Campaigns_Controller`, `AIPS_Templates_Controller`, `AIPS_Post_Review`).
+- Created `docs/COMPATIBILITY_INVENTORY.md` cataloging deprecated adapters and shims (`AIPS_Admin_Flow_Controller`, `AIPS_Cache_Invalidation_Bus`, `AIPS_Cache_Policy`, `AIPS_History_Query_Service`, `AIPS_Post_Creator`, `AIPS_Upgrades`) with runtime callers, supported contracts, owners, and sunset timelines. `AIPS_Cache_Policy` and `AIPS_Cache_Invalidation_Bus` stay in production use, so they are not 4.0.0 removal candidates. Phantom `AIPS_Prompt_Builder::build_prompt()` and `AIPS_DB_Migrations::migrate_history_table()` entries are not part of the inventory.
+- Formally marked `AIPS_Admin_Flow_Controller` with `@deprecated 3.8.0` and `_deprecated_class()` (replacement `AIPS_Campaigns_Controller`).
+- Request-boundary tests cover link-report suggest / apply / revert / dismiss, research bulk trending-topic generation, taxonomy search matches, and cache flush-all, including nonce and capability failures. Auto-link tests clear the container before installing the run-service mock and assert that mock is called.
+- Extended request-boundary coverage to post-main AJAX: AI Errors export/summary/details, AI error prune, notification digest flush, Pending Review cards, plus registry maps for AI Edit / Editor actions.
+- Resolved Diagnostics and component-regeneration History repositories through `AIPS_Container` instead of unconditional `new`.
+
 ### Performance
 - **AI Prompt Bloat Optimization & Input Token Reduction:**
   - Pruned redundant `content_format` and `post_slice` diversity blocks in `AIPS_Prompt_Builder_Post_Metadata::append_diversity_blocks()` during metadata follow-up turns on established conversations, saving ~300 input tokens per post.
