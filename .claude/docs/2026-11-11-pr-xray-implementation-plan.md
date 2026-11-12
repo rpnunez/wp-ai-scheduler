@@ -29,7 +29,7 @@
 - [x] Align existing subsystem sweep workflows.
 - [x] Update discovery documentation and renamed references.
 - [x] Run structural, scope, contract, packaging, and workflow dry-run checks.
-- [ ] Open the PR, perform a full branch review, resolve findings, and update the PR.
+- [x] Open the PR, perform a full branch review, resolve findings, and update the PR.
 
 ## Verification
 
