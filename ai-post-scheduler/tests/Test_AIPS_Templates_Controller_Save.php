@@ -180,4 +180,32 @@ class Test_AIPS_Templates_Controller_Save extends WP_UnitTestCase {
 		$this->assertTrue($response['success']);
 		$this->assertArrayNotHasKey('post_type', $this->templates_stub->saved_data);
 	}
+
+	public function test_ajax_save_template_handles_generate_slug_and_slug_prompt() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Slug Template';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['generate_slug'] = '1';
+		$_POST['slug_prompt'] = 'Keep it under 4 words';
+		$_REQUEST = $_POST;
+
+		$response = $this->run_save();
+
+		$this->assertTrue($response['success']);
+		$this->assertSame(1, $this->templates_stub->saved_data['generate_slug']);
+		$this->assertSame('Keep it under 4 words', $this->templates_stub->saved_data['slug_prompt']);
+	}
+
+	public function test_ajax_save_template_defaults_generate_slug_to_zero_when_absent() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Slug Template Disabled';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_REQUEST = $_POST;
+
+		$response = $this->run_save();
+
+		$this->assertTrue($response['success']);
+		$this->assertSame(0, $this->templates_stub->saved_data['generate_slug']);
+		$this->assertSame('', $this->templates_stub->saved_data['slug_prompt']);
+	}
 }

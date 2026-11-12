@@ -414,6 +414,34 @@ if (!defined('ABSPATH')) {
                                 </div>
                             </details>
                         </div>
+
+                        <hr style="margin: 20px 0;">
+
+                        <h3>
+                            <?php esc_html_e('Slug Settings', 'ai-post-scheduler'); ?>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Configure whether AI generates an SEO-friendly post slug or lets WordPress auto-generate it from the title.', 'ai-post-scheduler'); ?>"></span>
+                        </h3>
+
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="generate_slug" name="generate_slug" value="1">
+                                <?php esc_html_e('Generate Post Slug?', 'ai-post-scheduler'); ?>
+                            </label>
+                            <p class="description"><?php esc_html_e('If checked, AI will generate a concise, SEO-friendly URL slug (3–6 words, no stop words). If unchecked, WordPress will generate the slug from the post title.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div class="aips-slug-settings" style="display: none;">
+                            <div class="aips-form-row">
+                                <label for="slug_prompt">
+                                    <?php esc_html_e('Slug Prompt', 'ai-post-scheduler'); ?>
+                                    <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional. Instruct the AI how to generate the URL slug. Leave empty to use standard SEO-optimized guidelines.', 'ai-post-scheduler'); ?>"></span>
+                                </label>
+                                <input type="text" id="slug_prompt" name="slug_prompt" class="regular-text aips-ai-var-input" placeholder="<?php esc_attr_e('Leave empty for standard SEO-optimized slug', 'ai-post-scheduler'); ?>">
+                                <p class="description">
+                                    <?php esc_html_e('Optional custom instructions for slug generation. Supports AI variables.', 'ai-post-scheduler'); ?>
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Step 2: Content -->
@@ -517,7 +545,7 @@ if (!defined('ABSPATH')) {
                         </div>
                     </div>
 
-                    <!-- Step 3: Featured Image -->
+                    <!-- Step 3: Featured & Post Images -->
                     <div class="aips-wizard-step-content" data-step="3" style="display: none;">
                         <h3><?php esc_html_e('Featured Image Options', 'ai-post-scheduler'); ?></h3>
                         <p class="description"><?php esc_html_e('Configure whether and how to generate featured images for your posts.', 'ai-post-scheduler'); ?></p>
@@ -531,45 +559,32 @@ if (!defined('ABSPATH')) {
                         </div>
 
                         <div class="aips-featured-image-settings" style="display: none;">
-                            <div class="aips-form-row">
-                                <label for="featured_image_source"><?php esc_html_e('Featured Image Source', 'ai-post-scheduler'); ?></label>
-                                <select id="featured_image_source" name="featured_image_source">
-                                    <option value="ai_prompt"><?php esc_html_e('Generate with AI Prompt', 'ai-post-scheduler'); ?></option>
-                                    <option value="unsplash"><?php esc_html_e('Unsplash (keywords)', 'ai-post-scheduler'); ?></option>
-                                    <option value="media_library"><?php esc_html_e('Media Library (select images)', 'ai-post-scheduler'); ?></option>
-                                </select>
-                                <p class="description"><?php esc_html_e('Choose how the featured image should be sourced for this template.', 'ai-post-scheduler'); ?></p>
-                            </div>
+                            <?php
+                            $image_field_name_prefix = 'featured_image';
+                            $image_field_id_prefix   = 'featured_image';
+                            $image_prompt_field_id   = 'image_prompt';
+                            $image_values            = array();
+                            $is_post_image           = false;
+                            include AIPS_PLUGIN_DIR . 'templates/admin/partials/image-settings-field.php';
+                            ?>
+                        </div>
 
-                            <div class="aips-form-row aips-image-source aips-image-source-ai">
-                                <label for="image_prompt"><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></label>
-                                <textarea id="image_prompt" name="image_prompt" rows="3" class="large-text" placeholder="<?php esc_attr_e('Describe the image you want generated...', 'ai-post-scheduler'); ?>"></textarea>
-                                <p class="description"><?php esc_html_e('Used when generating the image with AI.', 'ai-post-scheduler'); ?></p>
-                            </div>
-
-                            <div class="aips-form-row aips-image-source aips-image-source-unsplash" style="display: none;">
-                                <label for="featured_image_unsplash_keywords"><?php esc_html_e('Unsplash Keywords', 'ai-post-scheduler'); ?></label>
-                                <input type="text" id="featured_image_unsplash_keywords" name="featured_image_unsplash_keywords" class="regular-text" placeholder="<?php esc_attr_e('e.g. sunrise, mountains, drone view', 'ai-post-scheduler'); ?>">
-                                <p class="description"><?php esc_html_e('Unsplash will return a random image that matches these keywords.', 'ai-post-scheduler'); ?></p>
-                                <div class="notice notice-warning inline aips-unsplash-missing-key-notice">
-                                    <p>
-                                        <?php esc_html_e('Unsplash Access Key is not configured. Generations will skip image fetching until an access key is provided in', 'ai-post-scheduler'); ?>
-                                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings#aips_api_keys_section')); ?>" target="_blank">
-                                            <?php esc_html_e('Settings &rarr; API Keys', 'ai-post-scheduler'); ?>
-                                        </a>.
-                                    </p>
+                        <div class="aips-post-images-section-container">
+                            <div class="aips-post-images-header-row">
+                                <div>
+                                    <h3 style="margin: 0;"><?php esc_html_e('Post Content Images', 'ai-post-scheduler'); ?></h3>
+                                    <p class="description"><?php esc_html_e('Configure images to be generated and distributed throughout your post content.', 'ai-post-scheduler'); ?></p>
                                 </div>
+                                <button type="button" class="aips-btn aips-btn-secondary aips-btn-sm aips-add-post-image-btn" id="aips-template-add-post-image-btn" data-container="#aips-template-post-images-list" data-prefix="template_post_images" data-max-limit="<?php echo esc_attr(AIPS_Config::get_instance()->get_max_post_images_limit()); ?>">
+                                    <span class="dashicons dashicons-plus-alt2" style="vertical-align: text-top;"></span>
+                                    <?php esc_html_e('Add Post Image', 'ai-post-scheduler'); ?>
+                                </button>
                             </div>
-
-                            <div class="aips-form-row aips-image-source aips-image-source-media" style="display: none;">
-                                <label><?php esc_html_e('Media Library Images', 'ai-post-scheduler'); ?></label>
-                                <div class="aips-media-library-picker">
-                                    <input type="hidden" id="featured_image_media_ids" name="featured_image_media_ids" value="">
-                                    <button type="button" class="aips-btn aips-btn-secondary" id="featured_image_media_select"><?php esc_html_e('Select Images', 'ai-post-scheduler'); ?></button>
-                                    <button type="button" class="aips-btn aips-btn-ghost" id="featured_image_media_clear"><?php esc_html_e('Clear Selection', 'ai-post-scheduler'); ?></button>
-                                    <div id="featured_image_media_preview" class="description" style="margin-top: 6px;"><?php esc_html_e('No images selected.', 'ai-post-scheduler'); ?></div>
+                            <div class="aips-post-images-list" id="aips-template-post-images-list" data-context="template">
+                                <div class="aips-post-images-empty-state">
+                                    <span class="dashicons dashicons-format-image" style="font-size: 32px; width: 32px; height: 32px; color: var(--aips-gray-400); margin-bottom: 8px;"></span>
+                                    <p><?php esc_html_e('No post content images configured. Click "Add Post Image" to generate images within article sections.', 'ai-post-scheduler'); ?></p>
                                 </div>
-                                <p class="description"><?php esc_html_e('One image will be chosen at random from the selected media library items.', 'ai-post-scheduler'); ?></p>
                             </div>
                         </div>
                     </div>
@@ -606,6 +621,10 @@ if (!defined('ABSPATH')) {
                                 <div class="aips-summary-item">
                                     <strong><?php esc_html_e('Post Quantity:', 'ai-post-scheduler'); ?></strong>
                                     <span id="summary_quantity">1</span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong><?php esc_html_e('Generate Post Slug:', 'ai-post-scheduler'); ?></strong>
+                                    <span id="summary_generate_slug"><?php esc_html_e('No', 'ai-post-scheduler'); ?></span>
                                 </div>
                                 <div class="aips-summary-item">
                                     <strong><?php esc_html_e('Featured Image:', 'ai-post-scheduler'); ?></strong>
@@ -998,4 +1017,5 @@ if (!defined('ABSPATH')) {
         </tr>
     </script>
 
+    <?php include AIPS_PLUGIN_DIR . 'templates/admin/partials/post-image-card-template.php'; ?>
     <?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>

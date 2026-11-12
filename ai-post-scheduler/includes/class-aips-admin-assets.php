@@ -148,6 +148,7 @@ class AIPS_Admin_Assets {
 		}
 
         if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS)) {
+			wp_enqueue_media();
 			$this->enqueue_authors_assets($hook);
 		}
 
@@ -156,6 +157,7 @@ class AIPS_Admin_Assets {
             || $this->hook_contains($hook, self::PAGE_STUDIO)
             || in_array($page, array(self::PAGE_TEMPLATES, self::PAGE_VOICES, self::PAGE_STRUCTURES, self::PAGE_POST_SLICES), true)
         ) {
+			wp_enqueue_media();
 			$this->enqueue_templates_assets();
 			$this->enqueue_voices_assets();
 			$this->enqueue_structures_assets();
@@ -369,6 +371,12 @@ class AIPS_Admin_Assets {
 			'colActions'          => __('Actions', 'ai-post-scheduler'),
 			'promptEmpty'         => __('No prompt recorded for this error.', 'ai-post-scheduler'),
 			'optionsEmpty'        => __('No request parameters recorded.', 'ai-post-scheduler'),
+			'copySupportReport'   => __('Copy Support Report', 'ai-post-scheduler'),
+			'pinging'             => __('Testing Connection…', 'ai-post-scheduler'),
+			'pingSuccess'         => __('Connection OK: %dms', 'ai-post-scheduler'),
+			'pingFailed'          => __('Connection Failed', 'ai-post-scheduler'),
+			'exportFailed'        => __('Failed to export error logs.', 'ai-post-scheduler'),
+			'nonce'               => wp_create_nonce('aips_ajax_nonce'),
 		));
 	}
 
@@ -797,6 +805,10 @@ class AIPS_Admin_Assets {
             'revisionRestored'     => __('Restored Version', 'ai-post-scheduler'),
             'revisionOriginal'     => __('Original Version', 'ai-post-scheduler'),
             'revisionUnknown'      => __('Revision', 'ai-post-scheduler'),
+            'imageStatusCompleted' => __('Completed', 'ai-post-scheduler'),
+            'imageStatusFailed'    => __('Failed', 'ai-post-scheduler'),
+            'imageStatusPending'   => __('Pending', 'ai-post-scheduler'),
+            'noImage'              => __('No image', 'ai-post-scheduler'),
         ));
 
         static $scaffold_registered = false;
@@ -1202,6 +1214,9 @@ class AIPS_Admin_Assets {
                 'featuredImageNo'         => __('No', 'ai-post-scheduler'),
                 /* translators: %s: featured image source name */
                 'featuredImageYes'        => __('Yes (%s)', 'ai-post-scheduler'),
+                'slugNo'                  => __('No', 'ai-post-scheduler'),
+                'slugYesStandard'         => __('Yes (SEO Standard)', 'ai-post-scheduler'),
+                'slugYesCustom'           => __('Yes (Custom Prompt)', 'ai-post-scheduler'),
                 // AI variable tag tooltip
                 'clickToCopy'             => __('Click to copy', 'ai-post-scheduler'),
                 // Template content preview

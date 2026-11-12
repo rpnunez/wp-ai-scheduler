@@ -18,10 +18,14 @@ class AIPS_Editor_Directive_Service {
 	/**
 	 * Preset directive keys.
 	 */
-	const PRESET_PUNCHY     = 'punchy';
-	const PRESET_EXPAND     = 'expand';
-	const PRESET_SIMPLIFY   = 'simplify';
-	const PRESET_TONE_SHIFT = 'tone_shift';
+	const PRESET_PUNCHY         = 'punchy';
+	const PRESET_EXPAND         = 'expand';
+	const PRESET_SIMPLIFY       = 'simplify';
+	const PRESET_TONE_SHIFT     = 'tone_shift';
+	const PRESET_SEO            = 'seo';
+	const PRESET_CONVERSATIONAL = 'conversational';
+	const PRESET_TECHNICAL      = 'technical';
+	const PRESET_SUMMARY        = 'summary';
 
 	/**
 	 * @var AIPS_AI_Service_Interface
@@ -60,10 +64,30 @@ class AIPS_Editor_Directive_Service {
 				'description' => __('Accessible vocabulary, short sentences, and direct clarity.', 'ai-post-scheduler'),
 				'instruction' => 'Simplify the following text. Use clear, accessible language, shorter sentences, and direct explanations. Eliminate passive voice and technical jargon.',
 			),
-			self::PRESET_TONE_SHIFT => array(
+			self::PRESET_TONE_SHIFT     => array(
 				'label'       => __('Tone Polish', 'ai-post-scheduler'),
 				'description' => __('Authoritative, polished, and professional tone.', 'ai-post-scheduler'),
 				'instruction' => 'Refine the tone of the following text to be authoritative, polished, and professional while retaining clarity and natural engagement.',
+			),
+			self::PRESET_SEO            => array(
+				'label'       => __('SEO Focused', 'ai-post-scheduler'),
+				'description' => __('Keyword-prominent, search intent focused phrasing.', 'ai-post-scheduler'),
+				'instruction' => 'Rewrite the following text to optimize for search intent and organic discovery. Make key concepts prominent, clear, and compelling while keeping readability natural.',
+			),
+			self::PRESET_CONVERSATIONAL => array(
+				'label'       => __('Conversational', 'ai-post-scheduler'),
+				'description' => __('Warm, approachable, and direct reader-centric tone.', 'ai-post-scheduler'),
+				'instruction' => 'Rewrite the following text in a warm, approachable, conversational style. Speak directly to the reader with clear, engaging cadence.',
+			),
+			self::PRESET_TECHNICAL      => array(
+				'label'       => __('Technical & Precise', 'ai-post-scheduler'),
+				'description' => __('Rigorous terminology, exact distinctions, and analytical depth.', 'ai-post-scheduler'),
+				'instruction' => 'Rewrite the following text with technical rigor, precise domain terminology, and clear analytical distinctions. Avoid vague generalities.',
+			),
+			self::PRESET_SUMMARY        => array(
+				'label'       => __('Concise Summary', 'ai-post-scheduler'),
+				'description' => __('Distill key takeaways into crisp, high-signal highlights.', 'ai-post-scheduler'),
+				'instruction' => 'Condense the core thesis and critical points into concise, high-signal phrasing without losing essential nuances.',
 			),
 		);
 	}
@@ -189,10 +213,10 @@ class AIPS_Editor_Directive_Service {
 	}
 
 	/**
-	 * Generate 3 creative candidates for post title or excerpt.
+	 * Generate 3 creative candidates for a post title, slug, or excerpt.
 	 *
 	 * @param int    $post_id   Post ID.
-	 * @param string $component 'title' or 'excerpt'.
+	 * @param string $component 'title', 'slug', or 'excerpt'.
 	 * @return array<string>|WP_Error
 	 */
 	public function generate_component_variants(int $post_id, string $component = 'title') {
@@ -217,6 +241,14 @@ class AIPS_Editor_Directive_Service {
 			$prompt .= "Post Content Sample:\n" . $content_sample . "\n\n";
 			$prompt .= "Generate 3 highly engaging, click-worthy, SEO-optimized title variations for this post.\n";
 			$prompt .= "Return ONLY a valid JSON array of 3 strings: [\"Title 1\", \"Title 2\", \"Title 3\"]. No extra text.";
+		} elseif ('slug' === $component) {
+			$prompt  = "You are an expert SEO editor for WordPress permalinks.\n\n";
+			$prompt .= "Current Post Title: \"" . esc_attr($post->post_title) . "\"\n";
+			$prompt .= "Current Post Slug: \"" . esc_attr($post->post_name) . "\"\n";
+			$prompt .= "Post Content Sample:\n" . $content_sample . "\n\n";
+			$prompt .= "Generate 3 SEO URL slug variations for this post.\n";
+			$prompt .= "Each slug must be 3 to 6 words, lowercase, with words separated by hyphens, and must omit stop words.\n";
+			$prompt .= "Return ONLY a valid JSON array of 3 strings: [\"slug-one\", \"slug-two\", \"slug-three\"]. No extra text.";
 		} else {
 			$prompt  = "You are an expert editorial writer for WordPress.\n\n";
 			$prompt .= "Post Title: \"" . esc_attr($post->post_title) . "\"\n";
@@ -231,13 +263,21 @@ class AIPS_Editor_Directive_Service {
 		}
 
 		$raw = trim((string) $response);
+		$variants = array($raw);
 		if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
 			$decoded = json_decode($matches[0], true);
 			if (is_array($decoded) && count($decoded) > 0) {
-				return array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
+				$variants = array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
 			}
 		}
 
-		return array($raw);
+		if ('slug' === $component) {
+			$variants = array_values(array_filter(array_map('sanitize_title', $variants)));
+			if (empty($variants)) {
+				return new WP_Error('slug_generation_failed', __('Failed to generate a valid slug.', 'ai-post-scheduler'));
+			}
+		}
+
+		return $variants;
 	}
 }

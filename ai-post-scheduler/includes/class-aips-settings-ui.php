@@ -469,6 +469,48 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render Post Images section description.
+     */
+    public function post_images_section_callback() {
+        echo '<p class="description">' . esc_html__('Configure global limits and available sources for Post Content Images generation across Templates and Authors.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render Max Post Images Limit field.
+     */
+    public function max_post_images_limit_field_callback() {
+        $value = AIPS_Config::get_instance()->get_max_post_images_limit();
+        ?>
+        <input type="number" name="aips_max_post_images_limit" id="aips_max_post_images_limit" value="<?php echo esc_attr($value); ?>" min="0" max="20" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum number of post images that can be added and generated for a single post (0 to 20). Defaults to 5.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Allowed Image Sources field.
+     */
+    public function allowed_image_sources_field_callback() {
+        $allowed = AIPS_Config::get_instance()->get_allowed_image_sources();
+        $sources = array(
+            'ai_prompt'     => __('AI Prompt Generation', 'ai-post-scheduler'),
+            'unsplash'      => __('Unsplash (keyword search)', 'ai-post-scheduler'),
+            'media_library' => __('WordPress Media Library', 'ai-post-scheduler'),
+        );
+        ?>
+        <fieldset>
+            <legend class="screen-reader-text"><?php esc_html_e('Allowed Image Sources', 'ai-post-scheduler'); ?></legend>
+            <?php foreach ($sources as $key => $label): ?>
+                <label style="display: block; margin-bottom: 6px;">
+                    <input type="checkbox" name="aips_allowed_image_sources[]" value="<?php echo esc_attr($key); ?>" <?php checked(in_array($key, $allowed, true)); ?>>
+                    <?php echo esc_html($label); ?>
+                </label>
+            <?php endforeach; ?>
+            <p class="description"><?php esc_html_e('Controls which image sources are available when configuring Featured Image and Post Images on Templates and Authors.', 'ai-post-scheduler'); ?></p>
+        </fieldset>
+        <?php
+    }
+
+    /**
      * Render the Google Search Console connection (API Keys tab).
      *
      * Search Console data is private, so it needs a service account key
@@ -3283,15 +3325,37 @@ class AIPS_Settings_UI {
 		$value  = (int) $config->get_option('aips_history_log_retention_value', 60);
 		$unit   = (string) $config->get_option('aips_history_log_retention_unit', 'days');
 		?>
-		<div style="display: flex; align-items: center; gap: 8px;">
-			<input type="number" name="aips_history_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" style="width: 80px;">
-			<select name="aips_history_log_retention_unit">
+		<div class="aips-retention-input-row">
+			<input type="number" name="aips_history_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
+			<select name="aips_history_log_retention_unit" class="aips-form-select">
 				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
 				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
 				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
 			</select>
 		</div>
 		<p class="description"><?php esc_html_e('Detailed generation execution events in aips_history_log older than this threshold will be pruned.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render inputs for AI Error Log retention threshold.
+	 *
+	 * @return void
+	 */
+	public function ai_error_log_retention_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$value  = (int) $config->get_option('aips_ai_error_log_retention_value', 30);
+		$unit   = (string) $config->get_option('aips_ai_error_log_retention_unit', 'days');
+		?>
+		<div class="aips-retention-input-row">
+			<input type="number" name="aips_ai_error_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
+			<select name="aips_ai_error_log_retention_unit" class="aips-form-select">
+				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('AI Error logs in aips_history_log older than this threshold will be pruned during maintenance tasks.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 

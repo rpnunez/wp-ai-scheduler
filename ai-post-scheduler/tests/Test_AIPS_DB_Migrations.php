@@ -728,4 +728,125 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertTrue( version_compare( AIPS_VERSION, '3.8.1', '>=' ) );
 		$this->assertSame( AIPS_VERSION, AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
 	}
+
+	/**
+	 * Invoke the private migrate_to_3_7_23() on a fresh instance.
+	 *
+	 * @return bool
+	 */
+	private function run_migrate_3_7_23() {
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_23' );
+		$method->setAccessible( true );
+		return (bool) $method->invoke( $migrations );
+	}
+
+	/**
+	 * Invoke the private migrate_to_3_7_24() on a fresh instance.
+	 *
+	 * @return bool
+	 */
+	private function run_migrate_3_7_24() {
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_24' );
+		$method->setAccessible( true );
+		return (bool) $method->invoke( $migrations );
+	}
+
+	/**
+	 * migrate_to_3_7_23() must add generate_slug and slug_prompt when a site
+	 * already stamped 3.7.22 is missing them. 3.7.20 is the history index
+	 * migration, so the slug columns cannot share that gate. The upgrade then
+	 * continues through 3.7.24 and stamps the current plugin version.
+	 */
+	public function test_migrate_to_3_7_23_adds_slug_columns_after_3_7_22() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$templates = $wpdb->prefix . 'aips_templates';
+		$authors   = $wpdb->prefix . 'aips_authors';
+
+		$drop_slug_columns = function () use ( $wpdb, $templates, $authors ) {
+			$wpdb->query( "ALTER TABLE `{$templates}` DROP COLUMN generate_slug" );
+			$wpdb->query( "ALTER TABLE `{$templates}` DROP COLUMN slug_prompt" );
+			$wpdb->query( "ALTER TABLE `{$authors}` DROP COLUMN generate_slug" );
+			$wpdb->query( "ALTER TABLE `{$authors}` DROP COLUMN slug_prompt" );
+		};
+
+		$assert_slug_columns = function ( $message ) use ( $wpdb, $templates, $authors ) {
+			foreach ( array( $templates, $authors ) as $table ) {
+				$columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$table}`", 0 );
+				$this->assertContains( 'generate_slug', $columns, $table . ' ' . $message );
+				$this->assertContains( 'slug_prompt', $columns, $table . ' ' . $message );
+			}
+		};
+
+		$drop_slug_columns();
+		$this->assertTrue( $this->run_migrate_3_7_23() );
+		$assert_slug_columns( 'must gain slug columns from migrate_to_3_7_23()' );
+
+		$drop_slug_columns();
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.22' );
+		AIPS_DB_Migrations::check_and_run();
+		$assert_slug_columns( 'must gain slug columns on upgrade from 3.7.22' );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+		$this->assertSame( AIPS_VERSION, AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
+	}
+
+	/**
+	 * migrate_to_3_7_24() adds the author featured-image columns that a site
+	 * stamped 3.7.23 (the slug release) would otherwise skip, and it confirms
+	 * the post-image tables. A second run is a no-op. Missing tables fail the
+	 * migration and leave the stored version unchanged.
+	 */
+	public function test_migrate_to_3_7_24_adds_author_image_columns_after_3_7_23() {
+		AIPS_DB_Manager::install_tables();
+
+		global $wpdb;
+		$authors   = $wpdb->prefix . 'aips_authors';
+		$images    = $wpdb->prefix . 'aips_post_images';
+		$generated = $wpdb->prefix . 'aips_post_images_generated';
+
+		$drop_image_columns = function () use ( $wpdb, $authors ) {
+			foreach ( array( 'image_prompt', 'featured_image_unsplash_keywords', 'featured_image_media_ids' ) as $column ) {
+				$wpdb->query( "ALTER TABLE `{$authors}` DROP COLUMN {$column}" );
+			}
+		};
+
+		$assert_image_columns = function ( $message ) use ( $wpdb, $authors, $images, $generated ) {
+			$columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$authors}`", 0 );
+			$this->assertContains( 'image_prompt', $columns, $message );
+			$this->assertContains( 'featured_image_unsplash_keywords', $columns, $message );
+			$this->assertContains( 'featured_image_media_ids', $columns, $message );
+			$this->assertSame( $images, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $images ) ), $message );
+			$this->assertSame( $generated, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $generated ) ), $message );
+		};
+
+		$drop_image_columns();
+		$this->assertTrue( $this->run_migrate_3_7_24() );
+		$assert_image_columns( 'must gain author image columns from migrate_to_3_7_24()' );
+		$this->assertTrue( $this->run_migrate_3_7_24(), 'second run must be idempotent' );
+
+		$drop_image_columns();
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.23' );
+		AIPS_DB_Migrations::check_and_run();
+		$assert_image_columns( 'must gain author image columns on upgrade from 3.7.23' );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+
+		// The test suite rewrites DROP TABLE to DROP TEMPORARY TABLE, which
+		// cannot remove the permanent tables this assertion has to hide.
+		remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+		$wpdb->query( "DROP TABLE `{$images}`" );
+		$wpdb->query( "DROP TABLE `{$generated}`" );
+		try {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.23' );
+			$this->assertFalse( $this->run_migrate_3_7_24(), 'missing post-image tables must fail the migration' );
+			$this->assertSame( '3.7.23', get_option( 'aips_db_version' ), 'a failed migration must not stamp the version' );
+		} finally {
+			AIPS_DB_Manager::install_tables();
+			add_filter( 'query', array( $this, '_create_temporary_tables' ) );
+			add_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+		}
+	}
 }

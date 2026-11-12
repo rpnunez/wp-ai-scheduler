@@ -256,7 +256,7 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.18', '<' ) ) {
 			$this->migrate_to_3_7_18();
 		}
-    
+
 		if ( version_compare( $from_version, '3.7.19', '<' ) && ! $this->migrate_to_3_7_19() ) {
 			// install_tables() has already stamped the schema version. Restore the
 			// previous gate so a failed structural ALTER is retried next request.
@@ -273,15 +273,34 @@ class AIPS_DB_Migrations {
 
 		// migrate_to_3_7_22() consolidates redundant indexes, strips cached
 		// embeddings, clears the embeddings cache group, and deletes orphaned
-		// history_log rows. 3.7.21 is the author featured-image columns
-		// migration (a separate change), so this is the next patch: a site
-		// already stamped 3.7.21 still runs it, and it stays below the
-		// 3.8.0/3.8.1 campaign migrations. It reads the schema install_tables()
-		// has just normalised, so it runs after the Layer-1 apply. A false
-		// return leaves the version unstamped so the next request retries.
+		// history_log rows. It stays below the slug migration and the post-image
+		// migration. It reads the schema install_tables() has just normalised,
+		// so it runs after the Layer-1 apply. A false return leaves the version
+		// unstamped so the next request retries.
 		if ( version_compare( $from_version, '3.7.22', '<' ) && ! $this->migrate_to_3_7_22() ) {
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
 			$this->logger->log( 'Index consolidation migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
+		// migrate_to_3_7_23() adds generate_slug and slug_prompt to templates and
+		// authors. It is gated above 3.7.22 so a site already stamped with main's
+		// index-consolidation release still receives the slug columns. The ALTERs
+		// are idempotent when dbDelta has already added the columns.
+		if ( version_compare( $from_version, '3.7.23', '<' ) && ! $this->migrate_to_3_7_23() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Slug settings migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
+		// migrate_to_3_7_24() adds the author featured-image columns and confirms
+		// the post-image tables. It is gated above 3.7.23 so a site already
+		// stamped 3.7.22 (main) or 3.7.23 (slug) still receives this schema. A
+		// gate below 3.7.21 would never run on those sites. The ALTERs are
+		// idempotent when dbDelta has already applied the schema.
+		if ( version_compare( $from_version, '3.7.24', '<' ) && ! $this->migrate_to_3_7_24() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Post images migration failed; database upgrade will retry.', 'error' );
 			return;
 		}
 
@@ -1358,6 +1377,69 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
+	 * Adds slug-generation settings as part of the 3.7.23 schema upgrade.
+	 *
+	 * Adds generate_slug and slug_prompt to aips_templates and aips_authors.
+	 * Numbered after 3.7.22 because 3.7.20 is the history_type_ts index migration.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_23() {
+		global $wpdb;
+
+		$table_templates = $wpdb->prefix . 'aips_templates';
+		$table_authors   = $wpdb->prefix . 'aips_authors';
+
+		// 1. Templates table: generate_slug and slug_prompt
+		$templates_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_templates ) );
+		if ( $templates_table_exists !== $table_templates ) {
+			return false;
+		}
+
+		$has_gen_slug = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'generate_slug'
+			) );
+		if ( ! $has_gen_slug && false === $wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
+
+		$has_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'slug_prompt'
+			) );
+		if ( ! $has_slug_prompt && false === $wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER title_prompt" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
+
+		// 2. Authors table: generate_slug and slug_prompt
+		$authors_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_authors ) );
+		if ( $authors_table_exists !== $table_authors ) {
+			return false;
+		}
+
+		$has_author_gen_slug = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'generate_slug'
+			) );
+		if ( ! $has_author_gen_slug && false === $wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
+
+		$has_author_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'slug_prompt'
+			) );
+		if ( ! $has_author_slug_prompt && false === $wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER generate_slug" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
+
+		$this->logger->log( 'Migration 3.7.23: Added generate_slug and slug_prompt to templates and authors.', 'info' );
+
+		return true;
+	}
+
+	/**
 	 * Migration for version 3.7.8.
 	 *
 	 * Drops the `history_id` and `history_id_type` indexes on aips_history_log.
@@ -1846,13 +1928,77 @@ class AIPS_DB_Migrations {
 		return true;
 	}
 
+
+	/**
+	 * Migration for version 3.7.24.
+	 *
+	 * Adds the author featured-image columns (image_prompt,
+	 * featured_image_unsplash_keywords, featured_image_media_ids) and confirms
+	 * the post-image tables created by install_tables(). Numbered after 3.7.23
+	 * because that gate belongs to slug settings. Idempotent: each column and
+	 * table is checked with SHOW COLUMNS / SHOW TABLES before any ALTER.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_24() {
+		global $wpdb;
+
+		$authors_table = $wpdb->prefix . 'aips_authors';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $authors_table ) ) !== $authors_table ) {
+			return false;
+		}
+
+		$author_columns = array(
+			'image_prompt'                     => 'text DEFAULT NULL',
+			'featured_image_unsplash_keywords' => 'text DEFAULT NULL',
+			'featured_image_media_ids'         => 'text DEFAULT NULL',
+		);
+		foreach ( $author_columns as $column => $definition ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN `{$column}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+				return false;
+			}
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return false;
+			}
+		}
+
+		$required_tables = array(
+			$wpdb->prefix . 'aips_post_images',
+			$wpdb->prefix . 'aips_post_images_generated',
+		);
+		foreach ( $required_tables as $table ) {
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) !== $table ) {
+				return false;
+			}
+		}
+
+		$post_images = $wpdb->prefix . 'aips_post_images';
+		$generated   = $wpdb->prefix . 'aips_post_images_generated';
+		$required_columns = array(
+			$post_images => array( 'entity_type', 'entity_id', 'image_order', 'source', 'placement' ),
+			$generated   => array( 'post_id', 'history_id', 'config_image_id', 'image_index', 'attachment_id', 'status' ),
+		);
+		foreach ( $required_columns as $table => $columns ) {
+			foreach ( $columns as $column ) {
+				if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					return false;
+				}
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.24: Added author featured-image columns and confirmed post-image tables.', 'info' );
+
+		return true;
+	}
+
 	/**
 	 * Migration for version 3.7.22.
 	 *
-	 * Ordered after 3.7.21 (author featured-image columns, owned by a
-	 * different change) and before the 3.8.0/3.8.1 campaign migrations.
-	 * A site already stamped 3.7.21 still runs this gate, and a later
-	 * upgrade through 3.8.x still runs those campaign migrations.
+	 * Index consolidation that already shipped on main. Author featured-image
+	 * columns and the post-image tables are 3.7.24, above the 3.7.23 slug
+	 * migration, so a site stamped 3.7.22 or 3.7.23 still receives them. A
+	 * site already stamped 3.7.21 still runs this gate.
 	 *
 	 * Three storage/efficiency fixes surfaced by a production DB audit:
 	 *   1. Consolidates redundant single-column indexes that are left-prefixes of

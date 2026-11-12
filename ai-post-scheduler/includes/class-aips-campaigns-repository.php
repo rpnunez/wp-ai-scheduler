@@ -715,6 +715,7 @@ class AIPS_Campaigns_Repository {
 			}
 		}
 
+
 		$deleted = $this->wpdb->delete(
 			$this->campaigns_table,
 			array('id' => $campaign_id),
