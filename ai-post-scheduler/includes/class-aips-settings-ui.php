@@ -3479,22 +3479,30 @@ class AIPS_Settings_UI {
 			</p>
 		</fieldset>
 		<script>
-		document.addEventListener('DOMContentLoaded', function() {
-			var toggleBtn = document.getElementById('aips-toggle-all-gen-post-types');
-			if (toggleBtn) {
-				toggleBtn.addEventListener('click', function(e) {
-					e.preventDefault();
-					var boxes = document.querySelectorAll('.aips-gen-pt-checkbox');
-					var anyUnchecked = false;
-					boxes.forEach(function(box) {
-						if (!box.checked) { anyUnchecked = true; }
+		(function() {
+			function initPostTypeToggle() {
+				var toggleBtn = document.getElementById('aips-toggle-all-gen-post-types');
+				if (toggleBtn && !toggleBtn.dataset.aipsBound) {
+					toggleBtn.dataset.aipsBound = '1';
+					toggleBtn.addEventListener('click', function(e) {
+						e.preventDefault();
+						var boxes = document.querySelectorAll('.aips-gen-pt-checkbox');
+						var anyUnchecked = false;
+						boxes.forEach(function(box) {
+							if (!box.checked) { anyUnchecked = true; }
+						});
+						boxes.forEach(function(box) {
+							box.checked = anyUnchecked;
+						});
 					});
-					boxes.forEach(function(box) {
-						box.checked = anyUnchecked;
-					});
-				});
+				}
 			}
-		});
+			if (document.readyState === 'loading') {
+				document.addEventListener('DOMContentLoaded', initPostTypeToggle);
+			} else {
+				initPostTypeToggle();
+			}
+		})();
 		</script>
 		<?php
 	}
@@ -3538,22 +3546,30 @@ class AIPS_Settings_UI {
 			</p>
 		</fieldset>
 		<script>
-		document.addEventListener('DOMContentLoaded', function() {
-			var toggleBtn = document.getElementById('aips-toggle-all-gen-statuses');
-			if (toggleBtn) {
-				toggleBtn.addEventListener('click', function(e) {
-					e.preventDefault();
-					var boxes = document.querySelectorAll('.aips-gen-status-checkbox');
-					var anyUnchecked = false;
-					boxes.forEach(function(box) {
-						if (!box.checked) { anyUnchecked = true; }
+		(function() {
+			function initStatusToggle() {
+				var toggleBtn = document.getElementById('aips-toggle-all-gen-statuses');
+				if (toggleBtn && !toggleBtn.dataset.aipsBound) {
+					toggleBtn.dataset.aipsBound = '1';
+					toggleBtn.addEventListener('click', function(e) {
+						e.preventDefault();
+						var boxes = document.querySelectorAll('.aips-gen-status-checkbox');
+						var anyUnchecked = false;
+						boxes.forEach(function(box) {
+							if (!box.checked) { anyUnchecked = true; }
+						});
+						boxes.forEach(function(box) {
+							box.checked = anyUnchecked;
+						});
 					});
-					boxes.forEach(function(box) {
-						box.checked = anyUnchecked;
-					});
-				});
+				}
 			}
-		});
+			if (document.readyState === 'loading') {
+				document.addEventListener('DOMContentLoaded', initStatusToggle);
+			} else {
+				initStatusToggle();
+			}
+		})();
 		</script>
 		<?php
 	}

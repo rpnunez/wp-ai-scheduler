@@ -1142,10 +1142,12 @@ class AIPS_Generator {
         // Pre-generation check (e.g. safety limiter, external filters).
         $pre_generate = apply_filters('aips_pre_generate_post', null, $context);
         if (is_wp_error($pre_generate)) {
+            $context_id   = is_object($context) && method_exists($context, 'get_id') ? $context->get_id() : null;
+            $context_type = is_object($context) && method_exists($context, 'get_type') ? $context->get_type() : null;
             $this->logger->log('Post generation aborted by pre-generation filter: ' . $pre_generate->get_error_message(), 'warning', array(
                 'error_code'   => $pre_generate->get_error_code(),
-                'context_id'   => $context->get_id(),
-                'context_type' => $context->get_type(),
+                'context_id'   => $context_id,
+                'context_type' => $context_type,
             ));
             return $pre_generate;
         }

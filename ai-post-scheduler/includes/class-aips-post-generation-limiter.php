@@ -101,6 +101,8 @@ class AIPS_Post_Generation_Limiter {
 	public function init(): void {
 		add_filter('aips_pre_generate_post', array($this, 'check_pre_generate'), 10, 2);
 		add_action('aips_post_generated', array($this, 'clear_cache'), 10, 0);
+		add_action('update_option_aips_generation_limiter_post_types', array($this, 'clear_cache'), 10, 0);
+		add_action('update_option_aips_generation_limiter_post_statuses', array($this, 'clear_cache'), 10, 0);
 	}
 
 	/**
@@ -273,6 +275,7 @@ class AIPS_Post_Generation_Limiter {
 				'update_post_term_cache' => false,
 				'date_query'             => array(
 					array(
+						'column'    => 'post_date_gmt',
 						'after'     => $this->get_period_date_after($period),
 						'inclusive' => true,
 					),
@@ -574,12 +577,22 @@ class AIPS_Post_Generation_Limiter {
 	}
 
 	/**
+	 * Reset session notification flag (primarily for testing and request recycling).
+	 *
+	 * @return void
+	 */
+	public static function reset_session_notified(): void {
+		self::$session_notified = false;
+	}
+
+	/**
 	 * Invalidate all cached counts.
 	 *
 	 * @return void
 	 */
 	public function clear_cache(): void {
 		$this->in_memory_counts = array();
+		self::$session_notified = false;
 		$post_types             = $this->get_counted_post_types();
 		$statuses               = $this->get_counted_post_statuses();
 		$periods                = array('hourly', 'daily', 'weekly', 'monthly');

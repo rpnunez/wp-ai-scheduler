@@ -63,11 +63,13 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 	 * @return int Post ID.
 	 */
 	private function create_test_post(string $status = 'publish', string $post_date = '', bool $mark_aips = true, string $post_type = 'post'): int {
-		$post_id = $this->factory->post->create(
+		$now_mysql = current_time('mysql');
+		$post_id   = $this->factory->post->create(
 			array(
-				'post_type'   => $post_type,
-				'post_status' => $status,
-				'post_date'   => $post_date ?: current_time('mysql'),
+				'post_type'     => $post_type,
+				'post_status'   => $status,
+				'post_date'     => $post_date ?: $now_mysql,
+				'post_date_gmt' => $post_date ? get_gmt_from_date($post_date) : current_time('mysql', 1),
 			)
 		);
 
@@ -413,5 +415,30 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 		// Non-array fallback
 		$non_array = $ui->sanitize_generation_limiter_post_types('post');
 		$this->assertContains('post', $non_array);
+	}
+
+	public function test_cache_invalidation_on_option_update() {
+		$this->limiter->init();
+
+		$this->create_test_post('publish', '', true, 'post');
+		$count1 = $this->limiter->get_count_for_period('hourly');
+		$this->assertSame(1, $count1);
+
+		// Trigger option update hook
+		do_action('update_option_aips_generation_limiter_post_types', array('post'), array('post', 'page'), 'aips_generation_limiter_post_types');
+
+		// Create another post
+		$this->create_test_post('publish', '', true, 'post');
+
+		// Since cache was cleared by the hook, the count should now reflect 2 without explicit manual clear_cache
+		$count2 = $this->limiter->get_count_for_period('hourly');
+		$this->assertSame(2, $count2);
+	}
+
+	public function test_defensive_context_resolution_with_arbitrary_object() {
+		// Context with no get_post_type or get_id should not cause fatal error
+		$arbitrary_context = (object) array('foo' => 'bar');
+		$result = $this->limiter->check_limits(false, $arbitrary_context);
+		$this->assertTrue($result);
 	}
 }
