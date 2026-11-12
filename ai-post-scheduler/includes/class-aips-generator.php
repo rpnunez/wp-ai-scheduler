@@ -1139,6 +1139,17 @@ class AIPS_Generator {
      * @return int|WP_Error ID of created post or WP_Error on failure.
      */
     private function generate_post_from_context($context) {
+        // Pre-generation check (e.g. safety limiter, external filters).
+        $pre_generate = apply_filters('aips_pre_generate_post', null, $context);
+        if (is_wp_error($pre_generate)) {
+            $this->logger->log('Post generation aborted by pre-generation filter: ' . $pre_generate->get_error_message(), 'warning', array(
+                'error_code'   => $pre_generate->get_error_code(),
+                'context_id'   => $context->get_id(),
+                'context_type' => $context->get_type(),
+            ));
+            return $pre_generate;
+        }
+
         $generation_start = microtime(true);
         $component_statuses = array(
             'post_title'     => false,

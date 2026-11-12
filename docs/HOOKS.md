@@ -68,6 +68,15 @@ Fires when a non-scheduled/manual generation flow fails and should create a high
 *   **Arguments:**
     *   `array $payload`: Associative payload containing keys such as `resource_label`, `error_code`, `error_message`, `context_type`, `context_id`, `history_id`, `creation_method`, `url`, `dedupe_key`, and `dedupe_window`.
 
+#### `aips_generation_rate_limit_exceeded`
+Fires when a post generation ceiling is breached by the Safety Limiter.
+
+*   **Arguments:**
+    *   `string $period`: The time period whose ceiling was breached (`hourly`, `daily`, `weekly`, `monthly`).
+    *   `int $limit`: The configured maximum post limit.
+    *   `int $count`: The current count of generated posts in the timeframe.
+    *   `AIPS_Generation_Context|null $context`: The generation context being executed.
+
 #### `aips_quota_alert`
 Fires when the AI service detects quota/rate-limit/circuit-breaker conditions that should notify administrators.
 
@@ -223,6 +232,15 @@ Fires after a batch of mapped fields has been generated and written for one inte
 ---
 
 ## Filter Hooks
+
+### Post Generation
+
+#### `aips_pre_generate_post`
+Filters the generation outcome before post generation begins. Returning a `WP_Error` aborts the generation process.
+
+*   **Arguments:**
+    *   `null|WP_Error $pre_result`: Initial result (`null` allows generation to continue, `WP_Error` aborts).
+    *   `AIPS_Generation_Context $context`: The generation context being executed.
 
 ### Prompt Builder
 

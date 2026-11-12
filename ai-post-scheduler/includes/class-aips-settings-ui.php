@@ -3404,5 +3404,213 @@ class AIPS_Settings_UI {
 		return in_array($value, array('daily', 'twicedaily', 'weekly'), true) ? $value : 'daily';
 	}
 
+	/**
+	 * Render disable generation limiter toggle.
+	 *
+	 * @return void
+	 */
+	public function disable_generation_limiter_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_disable_generation_limiter', false);
+		?>
+		<input type="hidden" name="aips_disable_generation_limiter" value="0">
+		<label for="aips_disable_generation_limiter">
+			<input type="checkbox" name="aips_disable_generation_limiter" id="aips_disable_generation_limiter" value="1" <?php checked($value); ?>>
+			<strong><?php esc_html_e('Disable Generation Limiter System', 'ai-post-scheduler'); ?></strong>
+		</label>
+		<p class="description">
+			<?php esc_html_e('When checked, generation ceilings are deactivated and post creation runs uncapped. Leave unchecked (recommended) to prevent runaway generation bugs.', 'ai-post-scheduler'); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render bypass limits for manual generation toggle.
+	 *
+	 * @return void
+	 */
+	public function generation_limiter_bypass_manual_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_generation_limiter_bypass_manual', true);
+		?>
+		<input type="hidden" name="aips_generation_limiter_bypass_manual" value="0">
+		<label for="aips_generation_limiter_bypass_manual">
+			<input type="checkbox" name="aips_generation_limiter_bypass_manual" id="aips_generation_limiter_bypass_manual" value="1" <?php checked($value); ?>>
+			<?php esc_html_e('Allow manual triggers (e.g. "Generate Now") to bypass generation ceilings', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e('When checked, manual single-post generation initiated directly by an administrator in the admin dashboard will proceed even if the rate ceiling has been met.', 'ai-post-scheduler'); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render counted post statuses multi-checkbox field with Select/Deselect All button.
+	 *
+	 * @return void
+	 */
+	public function generation_limiter_post_statuses_field_callback() {
+		$config           = AIPS_Config::get_instance();
+		$allowed_defaults = array('publish', 'draft', 'pending', 'future', 'private');
+		$selected         = $config->get_option('aips_generation_limiter_post_statuses', $allowed_defaults);
+		if (!is_array($selected)) {
+			$selected = $allowed_defaults;
+		}
+
+		$status_labels = array(
+			'publish' => __('Published', 'ai-post-scheduler'),
+			'draft'   => __('Draft', 'ai-post-scheduler'),
+			'pending' => __('Pending Review', 'ai-post-scheduler'),
+			'future'  => __('Scheduled (Future)', 'ai-post-scheduler'),
+			'private' => __('Private', 'ai-post-scheduler'),
+		);
+		?>
+		<fieldset class="aips-status-checkbox-group">
+			<legend class="screen-reader-text"><?php esc_html_e('Counted Post Statuses', 'ai-post-scheduler'); ?></legend>
+			<div style="margin-bottom: 8px;">
+				<button type="button" class="button button-small" id="aips-toggle-all-gen-statuses">
+					<?php esc_html_e('Select / Deselect All', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+			<?php foreach ($status_labels as $status_key => $label) : ?>
+				<label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+					<input type="checkbox" name="aips_generation_limiter_post_statuses[]" class="aips-gen-status-checkbox" value="<?php echo esc_attr($status_key); ?>" <?php checked(in_array($status_key, $selected, true)); ?>>
+					<?php echo esc_html($label); ?>
+				</label>
+			<?php endforeach; ?>
+			<p class="description">
+				<?php esc_html_e('Select which generated post statuses count toward rate limits. Runaway errors frequently produce Drafts or Pending posts, so capping all statuses is recommended.', 'ai-post-scheduler'); ?>
+			</p>
+		</fieldset>
+		<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			var toggleBtn = document.getElementById('aips-toggle-all-gen-statuses');
+			if (toggleBtn) {
+				toggleBtn.addEventListener('click', function(e) {
+					e.preventDefault();
+					var boxes = document.querySelectorAll('.aips-gen-status-checkbox');
+					var anyUnchecked = false;
+					boxes.forEach(function(box) {
+						if (!box.checked) { anyUnchecked = true; }
+					});
+					boxes.forEach(function(box) {
+						box.checked = anyUnchecked;
+					});
+				});
+			}
+		});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Render generation rate limits inputs grid.
+	 *
+	 * @return void
+	 */
+	public function generation_limits_grid_field_callback() {
+		$config  = AIPS_Config::get_instance();
+		$hourly  = absint($config->get_option('aips_generation_limit_hourly', 10));
+		$daily   = absint($config->get_option('aips_generation_limit_daily', 30));
+		$weekly  = absint($config->get_option('aips_generation_limit_weekly', 150));
+		$monthly = absint($config->get_option('aips_generation_limit_monthly', 500));
+		?>
+		<div class="aips-rate-limits-grid" style="display: flex; gap: 20px; flex-wrap: wrap;">
+			<div class="aips-rate-limit-field">
+				<label for="aips_generation_limit_hourly" style="display: block; font-weight: 600; margin-bottom: 4px;">
+					<?php esc_html_e('Hourly Limit (1 Hour):', 'ai-post-scheduler'); ?>
+				</label>
+				<input type="number" min="0" step="1" name="aips_generation_limit_hourly" id="aips_generation_limit_hourly" value="<?php echo esc_attr((string) $hourly); ?>" class="small-text">
+				<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+			</div>
+			<div class="aips-rate-limit-field">
+				<label for="aips_generation_limit_daily" style="display: block; font-weight: 600; margin-bottom: 4px;">
+					<?php esc_html_e('Daily Limit (24 Hours):', 'ai-post-scheduler'); ?>
+				</label>
+				<input type="number" min="0" step="1" name="aips_generation_limit_daily" id="aips_generation_limit_daily" value="<?php echo esc_attr((string) $daily); ?>" class="small-text">
+				<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+			</div>
+			<div class="aips-rate-limit-field">
+				<label for="aips_generation_limit_weekly" style="display: block; font-weight: 600; margin-bottom: 4px;">
+					<?php esc_html_e('Weekly Limit (7 Days):', 'ai-post-scheduler'); ?>
+				</label>
+				<input type="number" min="0" step="1" name="aips_generation_limit_weekly" id="aips_generation_limit_weekly" value="<?php echo esc_attr((string) $weekly); ?>" class="small-text">
+				<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+			</div>
+			<div class="aips-rate-limit-field">
+				<label for="aips_generation_limit_monthly" style="display: block; font-weight: 600; margin-bottom: 4px;">
+					<?php esc_html_e('Monthly Limit (30 Days):', 'ai-post-scheduler'); ?>
+				</label>
+				<input type="number" min="0" step="1" name="aips_generation_limit_monthly" id="aips_generation_limit_monthly" value="<?php echo esc_attr((string) $monthly); ?>" class="small-text">
+				<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+			</div>
+		</div>
+		<p class="description" style="margin-top: 8px;">
+			<?php esc_html_e('Maximum number of AI-generated posts allowed in each rolling timeframe. Set to 0 to disable an individual timeframe limit.', 'ai-post-scheduler'); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render live usage indicator badge.
+	 *
+	 * @return void
+	 */
+	public function generation_limits_usage_field_callback() {
+		$limiter = AIPS_Container::get_instance()->has(AIPS_Post_Generation_Limiter::class)
+			? AIPS_Container::get_instance()->make(AIPS_Post_Generation_Limiter::class)
+			: new AIPS_Post_Generation_Limiter();
+		$usage   = $limiter->get_usage();
+		?>
+		<div class="aips-usage-indicator-wrapper" style="display: inline-flex; gap: 12px; flex-wrap: wrap;">
+			<?php
+			$labels = array(
+				'hourly'  => __('Past Hour', 'ai-post-scheduler'),
+				'daily'   => __('Past 24h', 'ai-post-scheduler'),
+				'weekly'  => __('Past 7 Days', 'ai-post-scheduler'),
+				'monthly' => __('Past 30 Days', 'ai-post-scheduler'),
+			);
+			foreach ($usage as $period => $data) :
+				$count     = $data['count'];
+				$limit     = $data['limit'];
+				$limit_str = $limit > 0 ? (string) $limit : __('Unlimited', 'ai-post-scheduler');
+				$is_near   = ($limit > 0 && $count >= ($limit * 0.8));
+				$is_over   = ($limit > 0 && $count >= $limit);
+				$color     = $is_over ? '#d63638' : ($is_near ? '#dba617' : '#00a32a');
+				$badge_bg  = $is_over ? '#fcf0f1' : ($is_near ? '#fbf8ee' : '#f0f6f0');
+				?>
+				<div style="background: <?php echo esc_attr($badge_bg); ?>; border: 1px solid <?php echo esc_attr($color); ?>; border-radius: 4px; padding: 6px 12px; font-size: 13px;">
+					<strong><?php echo esc_html(isset($labels[$period]) ? $labels[$period] : $period); ?>:</strong>
+					<span style="color: <?php echo esc_attr($color); ?>; font-weight: 600; margin-left: 4px;">
+						<?php echo esc_html($count . ' / ' . $limit_str); ?>
+					</span>
+				</div>
+			<?php endforeach; ?>
+		</div>
+		<p class="description" style="margin-top: 8px;">
+			<?php esc_html_e('Current post generation count against configured ceilings based on WordPress post records.', 'ai-post-scheduler'); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Sanitize counted post statuses array.
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return array<string> Sanitized post statuses.
+	 */
+	public function sanitize_generation_limiter_post_statuses($value) {
+		$allowed = array('publish', 'draft', 'pending', 'future', 'private');
+		if (!is_array($value) || empty($value)) {
+			return $allowed;
+		}
+		$sanitized = array();
+		foreach ($value as $item) {
+			$item = sanitize_key((string) $item);
+			if (in_array($item, $allowed, true)) {
+				$sanitized[] = $item;
+			}
+		}
+		return !empty($sanitized) ? array_values(array_unique($sanitized)) : $allowed;
+	}
+
 }
 

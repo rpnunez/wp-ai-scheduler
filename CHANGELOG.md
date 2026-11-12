@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+### Added
+- **Post Generation Limiter & Safety Ceilings:**
+  - Added internal control ceiling system in `AIPS_Post_Generation_Limiter` to protect sites against runaway post generation loops.
+  - Added new "Post Generation Limits & Ceilings" container card in Settings > Resilience & Limits tab with:
+    - "Disable Generation Limiter System" toggle (default: active/unchecked).
+    - "Bypass Limits for Manual Generation" toggle (default: enabled/checked to allow admin "Generate Now" triggers).
+    - "Counted Post Statuses" multi-checkbox with interactive "Select / Deselect All" toggle.
+    - Hourly (10), Daily (30), Weekly (150), and Monthly (500) limit thresholds (0 = unlimited).
+    - Live usage indicator badge displaying real-time post counts against each ceiling.
+  - Integrated `aips_pre_generate_post` filter in `AIPS_Generator` before generation initiates.
+  - Dispatches warning log and throttled admin notifications (maximum once per 4 hours and once per user session) when ceilings are hit.
+  - Automated transient count cache invalidation on post generation hook `aips_post_generated`.
+
 ### Changed
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
 
