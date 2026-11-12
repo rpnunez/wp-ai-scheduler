@@ -502,6 +502,10 @@ class AIPS_Campaigns_Repository {
 			'default_categories'           => !empty($campaign->default_categories) ? $campaign->default_categories : null,
 			'default_tags'                 => !empty($campaign->default_tags) ? $campaign->default_tags : null,
 			'campaign_mode'                => $campaign->campaign_mode,
+			'silo_enabled'                 => !empty($campaign->silo_enabled) ? 1 : 0,
+			'pillar_post_id'               => !empty($campaign->pillar_post_id) ? (int) $campaign->pillar_post_id : null,
+			'pillar_template_id'           => !empty($campaign->pillar_template_id) ? (int) $campaign->pillar_template_id : null,
+			'pillar_anchor_keywords'       => isset($campaign->pillar_anchor_keywords) ? $campaign->pillar_anchor_keywords : null,
 			'is_active'                    => 0,
 			'is_archived'                  => 0,
 		));
@@ -534,6 +538,14 @@ class AIPS_Campaigns_Repository {
 			}
 
 			$template_map[(int) $template->id] = (int) $new_template_id;
+		}
+
+		if (!empty($campaign->pillar_template_id) && isset($template_map[(int) $campaign->pillar_template_id])) {
+			$this->wpdb->update(
+				$this->campaigns_table,
+				array('pillar_template_id' => $template_map[(int) $campaign->pillar_template_id]),
+				array('id' => $new_campaign_id)
+			);
 		}
 
 		foreach ($schedules as $schedule) {
@@ -753,7 +765,7 @@ class AIPS_Campaigns_Repository {
 	 */
 	public function get_generated_post_count($campaign_id) {
 		return (int) $this->wpdb->get_var($this->wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d AND (post_id IS NOT NULL OR status IN ('completed', 'partial'))",
+			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d AND record_kind = 'generation' AND (post_id IS NOT NULL OR status IN ('completed', 'partial'))",
 			absint($campaign_id)
 		));
 	}
@@ -1137,7 +1149,27 @@ class AIPS_Campaigns_Repository {
 			$template_id
 		));
 
-		return array_map('absint', $ids);
+		return array_map('absint', $ids ?: array());
+	}
+
+	/**
+	 * Get campaign link rows for a template.
+	 *
+	 * @param int $template_id Template ID.
+	 * @return object[] Array of campaign template link records.
+	 */
+	public function get_campaign_links_by_template($template_id) {
+		$template_id = absint($template_id);
+		if (!$template_id) {
+			return array();
+		}
+
+		$results = $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT campaign_id, template_id, overrides, sort_order FROM {$this->campaign_templates_table} WHERE template_id = %d",
+			$template_id
+		));
+
+		return is_array($results) ? $results : array();
 	}
 
 	/**
@@ -1379,7 +1411,7 @@ class AIPS_Campaigns_Repository {
 			LEFT JOIN (
 				SELECT
 					campaign_id,
-					SUM(CASE WHEN status IN ('completed', 'partial') THEN 1 ELSE 0 END) AS generated_posts_count,
+					SUM(CASE WHEN record_kind = 'generation' AND (post_id IS NOT NULL OR status IN ('completed', 'partial')) THEN 1 ELSE 0 END) AS generated_posts_count,
 					COUNT(*) AS total_history_count
 				FROM {$this->history_table}
 				{$h_where}

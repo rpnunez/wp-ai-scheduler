@@ -152,11 +152,11 @@ class AIPS_Templates_Controller {
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
             'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
-            'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
+            'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? $this->normalize_boolean_flag($_POST['affiliate_links_enabled']) : 0,
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
-            'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'is_active' => isset($_POST['is_active']) ? $this->normalize_boolean_flag($_POST['is_active']) : 0,
         );
 
         if ($data['include_sources'] && empty(array_filter(json_decode($data['source_group_ids'], true)))) {
@@ -315,6 +315,22 @@ class AIPS_Templates_Controller {
             $mappings_repo = new AIPS_Integration_Mappings_Repository();
             $mappings_repo->clone_template_mappings($id, $new_id);
 
+            if (class_exists('AIPS_Campaigns_Repository')) {
+                $campaigns_repo = AIPS_Campaigns_Repository::instance();
+                $campaign_links = $campaigns_repo->get_campaign_links_by_template($id);
+                if (!empty($campaign_links)) {
+                    foreach ($campaign_links as $link) {
+                        $overrides = !empty($link->overrides) ? json_decode($link->overrides, true) : array();
+                        $campaigns_repo->link_template(
+                            (int) $link->campaign_id,
+                            (int) $new_id,
+                            is_array($overrides) ? $overrides : array(),
+                            isset($link->sort_order) ? (int) $link->sort_order : 0
+                        );
+                    }
+                }
+            }
+
             $this->record_template_event(AIPS_History_Event_Type::TEMPLATE_CLONED, absint($new_id), $new_data['name'], true, array('cloned_from' => $id));
 
             do_action('aips_template_changed', array(
@@ -431,7 +447,7 @@ class AIPS_Templates_Controller {
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
             'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
-            'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
+            'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? $this->normalize_boolean_flag($_POST['affiliate_links_enabled']) : 0,
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),

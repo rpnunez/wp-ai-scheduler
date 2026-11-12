@@ -2138,13 +2138,29 @@ class AIPS_DB_Migrations {
 		// Backfill existing template links and drop campaign_id from templates table.
 		$has_template_campaign_col = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$templates_table}` LIKE %s", 'campaign_id' ) );
 		if ( $has_template_campaign_col ) {
+			// Only backfill templates that point to existing, valid campaigns.
 			$backfilled = $wpdb->query( "
 				INSERT IGNORE INTO `{$campaign_templates_table}` (campaign_id, template_id, created_at)
-				SELECT campaign_id, id, created_at
-				FROM `{$templates_table}`
-				WHERE campaign_id IS NOT NULL AND campaign_id > 0
+				SELECT t.campaign_id, t.id, t.created_at
+				FROM `{$templates_table}` t
+				INNER JOIN `{$campaigns_table}` c ON c.id = t.campaign_id
+				WHERE t.campaign_id IS NOT NULL AND t.campaign_id > 0
 			" );
 			if ( false === $backfilled ) {
+				return false;
+			}
+
+			// Verify that every template referencing an existing campaign was successfully migrated.
+			$unmigrated_count = (int) $wpdb->get_var( "
+				SELECT COUNT(*)
+				FROM `{$templates_table}` t
+				INNER JOIN `{$campaigns_table}` c ON c.id = t.campaign_id
+				LEFT JOIN `{$campaign_templates_table}` ct ON ct.campaign_id = t.campaign_id AND ct.template_id = t.id
+				WHERE t.campaign_id IS NOT NULL AND t.campaign_id > 0 AND ct.template_id IS NULL
+			" );
+
+			if ( $unmigrated_count > 0 ) {
+				$this->logger->log( sprintf( 'migrate_to_3_8_0: backfill verification failed. %d templates not migrated to pivot table', $unmigrated_count ), 'error' );
 				return false;
 			}
 

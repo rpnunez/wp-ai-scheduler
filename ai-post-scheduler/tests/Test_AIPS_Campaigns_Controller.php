@@ -397,8 +397,13 @@ class Test_AIPS_Campaigns_Controller extends WP_UnitTestCase {
 	public function test_ajax_run_campaign_all_templates_without_templates_returns_error() {
 		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
 			->disableOriginalConstructor()
-			->onlyMethods(array('get_templates_by_campaign'))
+			->onlyMethods(array('get_campaign_by_id', 'get_templates_by_campaign'))
 			->getMock();
+		$repository->method('get_campaign_by_id')->willReturn((object) array(
+			'id'          => 14,
+			'is_active'   => 1,
+			'is_archived' => 0,
+		));
 		$repository->method('get_templates_by_campaign')->willReturn(array());
 
 		$controller = new AIPS_Campaigns_Controller($repository);
@@ -413,6 +418,31 @@ class Test_AIPS_Campaigns_Controller extends WP_UnitTestCase {
 
 		$this->assertFalse($response['success']);
 		$this->assertSame('no_templates', $response['data']['code']);
+	}
+
+	public function test_ajax_run_campaign_all_templates_inactive_campaign_returns_error() {
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_campaign_by_id'))
+			->getMock();
+		$repository->method('get_campaign_by_id')->willReturn((object) array(
+			'id'          => 14,
+			'is_active'   => 0,
+			'is_archived' => 0,
+		));
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+			'campaign_id' => 14,
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_run_campaign_all_templates'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('campaign_not_runnable', $response['data']['code']);
 	}
 
 	private function capture_ajax(callable $callable) {

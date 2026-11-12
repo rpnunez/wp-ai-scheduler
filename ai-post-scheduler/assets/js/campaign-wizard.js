@@ -1033,7 +1033,7 @@
 
 			// Post Type field
 			var $ptCol = $('<div />');
-			$('<label />', { text: 'Post Type' }).appendTo($ptCol);
+			$('<label />', { text: (window.aipsCampaignWizardL10n && aipsCampaignWizardL10n.postTypeLabel) || 'Post Type' }).appendTo($ptCol);
 			var $select = $('<select />', {
 				name: 'post_type_rules[' + nextIndex + '][post_type]',
 				'class': 'regular-text'
@@ -1049,18 +1049,18 @@
 
 			// Prompt Override field
 			var $promptCol = $('<div />');
-			$('<label />', { text: 'Prompt Override (Optional)' }).appendTo($promptCol);
+			$('<label />', { text: (window.aipsCampaignWizardL10n && aipsCampaignWizardL10n.promptOverrideLabel) || 'Prompt Override (Optional)' }).appendTo($promptCol);
 			$('<input />', {
 				type: 'text',
 				name: 'post_type_rules[' + nextIndex + '][prompt_override]',
 				'class': 'regular-text',
-				placeholder: 'Leave empty to use main template'
+				placeholder: (window.aipsCampaignWizardL10n && aipsCampaignWizardL10n.promptOverridePlaceholder) || 'Leave empty to use main template'
 			}).appendTo($promptCol);
 			$promptCol.appendTo($grid);
 
 			// Quantity field
 			var $qtyCol = $('<div />');
-			$('<label />', { text: 'Quantity' }).appendTo($qtyCol);
+			$('<label />', { text: (window.aipsCampaignWizardL10n && aipsCampaignWizardL10n.quantityLabel) || 'Quantity' }).appendTo($qtyCol);
 			$('<input />', {
 				type: 'number',
 				name: 'post_type_rules[' + nextIndex + '][quantity]',
@@ -1076,7 +1076,7 @@
 			var $removeBtn = $('<button />', {
 				type: 'button',
 				'class': 'button button-small aips-remove-post-type-rule',
-				title: 'Remove'
+				title: (window.aipsCampaignWizardL10n && aipsCampaignWizardL10n.removeRuleTitle) || 'Remove'
 			});
 			$('<span />', { 'class': 'dashicons dashicons-no-alt' }).appendTo($removeBtn);
 			$removeBtn.appendTo($actionCol);

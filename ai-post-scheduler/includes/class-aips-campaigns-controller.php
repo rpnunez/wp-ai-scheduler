@@ -514,7 +514,6 @@ class AIPS_Campaigns_Controller {
 		}
 
 		if ($result) {
-			$this->record_campaign_lifecycle_activity($campaign_id, AIPS_History_Event_Type::CAMPAIGN_DELETED, __('deleted', 'ai-post-scheduler'));
 			AIPS_Ajax_Response::success(array(), __('Campaign deleted successfully.', 'ai-post-scheduler'));
 		}
 
@@ -605,9 +604,25 @@ class AIPS_Campaigns_Controller {
 		}
 
 		if (!empty($raw['post_category'])) {
-			$clean['post_category'] = is_array($raw['post_category'])
-				? array_map('sanitize_text_field', array_filter($raw['post_category'], 'is_scalar'))
-				: sanitize_text_field((string) $raw['post_category']);
+			if (is_array($raw['post_category'])) {
+				$clean['post_category'] = array_values(array_filter(array_map('absint', $raw['post_category'])));
+			} elseif (is_numeric($raw['post_category'])) {
+				$clean['post_category'] = array(absint($raw['post_category']));
+			} else {
+				$cats    = array_map('trim', explode(',', (string) $raw['post_category']));
+				$cat_ids = array();
+				foreach ($cats as $cat) {
+					if (is_numeric($cat)) {
+						$cat_ids[] = absint($cat);
+					} else {
+						$term = get_term_by('name', $cat, 'category');
+						if ($term && !is_wp_error($term)) {
+							$cat_ids[] = (int) $term->term_id;
+						}
+					}
+				}
+				$clean['post_category'] = array_values(array_unique(array_filter($cat_ids)));
+			}
 		}
 
 		if (!empty($raw['post_tags'])) {
@@ -796,7 +811,6 @@ class AIPS_Campaigns_Controller {
 		}
 
 		$generator = new AIPS_Generator();
-		$structure_selector = new AIPS_Template_Type_Selector();
 		$generated_count = 0;
 		$errors = array();
 

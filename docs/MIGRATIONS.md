@@ -22,6 +22,16 @@ The AI Post Scheduler uses WordPress's built-in `dbDelta()` function to manage d
 
 ## Version-Specific Data Migrations
 
+### 3.8.0 - Campaigns container refactor and M:N template pivot table
+
+Runs after `install_tables()` creates `aips_campaign_templates` and adds default configuration columns to `aips_campaigns`:
+
+- Adds strategy and defaults columns to `aips_campaigns`: `prompt_directives`, `default_article_structure_id`, `default_post_status`, `default_voice_id`, `default_author_id`, `default_categories`, `default_tags`.
+- Backfills existing template assignments from `aips_templates.campaign_id` into `aips_campaign_templates`, linking valid active campaigns.
+- Validates row counts between `aips_templates` with positive campaign assignments and `aips_campaign_templates`.
+- Drops the legacy `aips_templates.campaign_id` column and index only after backfill count verification succeeds.
+- Repairs historical records attributing campaigns through the pivot table or post meta.
+
 ### 3.7.18 - Author topic auto-approval consolidation
 
 Runs after `install_tables()` adds `aips_authors.topic_auto_approval_min_relevance`:

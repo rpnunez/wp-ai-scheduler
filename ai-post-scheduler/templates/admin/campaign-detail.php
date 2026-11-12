@@ -809,7 +809,13 @@ $unlinked_templates = array_filter($all_templates, function($t) use ($linked_tem
 			<input type="hidden" name="template_id" id="aips-override-template-id" value="">
 			<div class="aips-modal-body">
 				<p class="description">
-					<?php esc_html_e('Override campaign-level defaults specifically for template: ', 'ai-post-scheduler'); ?><strong id="aips-override-template-name-label"></strong>.
+					<?php
+					printf(
+						/* translators: %s: template name element */
+						esc_html__('Override campaign-level defaults specifically for template: %s', 'ai-post-scheduler'),
+						'<strong id="aips-override-template-name-label"></strong>'
+					);
+					?>
 					<?php esc_html_e('Leave options unselected or blank to inherit the Campaign default.', 'ai-post-scheduler'); ?>
 				</p>
 				<div class="aips-grid-2col">

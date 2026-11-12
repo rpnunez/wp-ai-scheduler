@@ -1907,6 +1907,7 @@
 			form.append($('<input type="hidden" name="correlation_id">').val(this.correlationId));
 			form.append($('<input type="hidden" name="date_from">').val(this.dateFrom));
 			form.append($('<input type="hidden" name="date_to">').val(this.dateTo));
+			form.append($('<input type="hidden" name="campaign_id">').val($('#aips-history-campaign-id').val() || 0));
 			$('body').append(form);
 			form.submit();
 			form.remove();

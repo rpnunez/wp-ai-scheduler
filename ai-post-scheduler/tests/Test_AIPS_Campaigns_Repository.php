@@ -70,7 +70,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
-	public function test_get_campaigns_applies_archived_and_id_filters_and_uses_total_history_for_delete_guard() {
+	public function test_get_campaigns_applies_archived_and_id_filters_and_uses_generated_posts_for_delete_guard() {
 		$this->wpdb_stub->results_to_return = array(
 			(object) array(
 				'id' => 42,
@@ -87,7 +87,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 
 		$this->assertCount(1, $campaigns);
 		$this->assertSame(2, $campaigns[0]->total_history_count);
-		$this->assertFalse($campaigns[0]->can_delete);
+		$this->assertTrue($campaigns[0]->can_delete);
 		$this->assertStringContainsString('WHERE c.is_archived = 1 AND c.id = 42', $this->wpdb_stub->last_get_results_query);
 	}
 

@@ -324,11 +324,11 @@ class AIPS_Campaign_Context implements AIPS_Generation_Context {
 	 * @return int
 	 */
 	public function get_post_author() {
-		if (!empty($this->overrides['post_author'])) {
+		if (isset($this->overrides['post_author']) && $this->overrides['post_author'] !== '') {
 			return absint($this->overrides['post_author']);
 		}
 
-		if (!empty($this->campaign->default_author_id)) {
+		if (isset($this->campaign->default_author_id) && $this->campaign->default_author_id !== '' && $this->campaign->default_author_id !== null) {
 			return absint($this->campaign->default_author_id);
 		}
 
@@ -390,7 +390,7 @@ class AIPS_Campaign_Context implements AIPS_Generation_Context {
 	public function get_voice() {
 		$voice_id = $this->get_voice_id();
 		if ($voice_id) {
-			$voices_repo = new AIPS_Voices_Repository();
+			$voices_repo = AIPS_Container::get_instance()->make(AIPS_Voices_Repository::class);
 			return $voices_repo->get_by_id($voice_id);
 		}
 
@@ -399,6 +399,54 @@ class AIPS_Campaign_Context implements AIPS_Generation_Context {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Check whether content images are enabled for this context.
+	 *
+	 * @return bool
+	 */
+	public function has_content_images() {
+		if (method_exists($this->inner_context, 'has_content_images')) {
+			return (bool) $this->inner_context->has_content_images();
+		}
+		return false;
+	}
+
+	/**
+	 * Get content images configuration.
+	 *
+	 * @return array
+	 */
+	public function get_content_images() {
+		if (method_exists($this->inner_context, 'get_content_images')) {
+			return (array) $this->inner_context->get_content_images();
+		}
+		return array();
+	}
+
+	/**
+	 * Check whether a custom post slug should be generated.
+	 *
+	 * @return bool
+	 */
+	public function should_generate_slug() {
+		if (method_exists($this->inner_context, 'should_generate_slug')) {
+			return (bool) $this->inner_context->should_generate_slug();
+		}
+		return false;
+	}
+
+	/**
+	 * Get the prompt for post slug generation.
+	 *
+	 * @return string
+	 */
+	public function get_slug_prompt() {
+		if (method_exists($this->inner_context, 'get_slug_prompt')) {
+			return (string) $this->inner_context->get_slug_prompt();
+		}
+		return '';
 	}
 
 	/**

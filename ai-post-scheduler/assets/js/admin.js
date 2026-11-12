@@ -3546,42 +3546,51 @@
             }
 
             var confirmMsg = (window.aipsAdminL10n && aipsAdminL10n.confirmRunCampaignAll) || 'Run all active templates linked to this campaign now?';
-            if (!confirm(confirmMsg)) {
-                return;
-            }
+            var title = (window.aipsAdminL10n && aipsAdminL10n.runAllTitle) || 'Run All Templates';
 
-            var loadingText = (window.aipsAdminL10n && aipsAdminL10n.processing) || 'Processing...';
-            var origHtml = $btn.html();
-            $btn.prop('disabled', true);
-
-            var $spinner = $('<span />', { 'class': 'spinner is-active aips-btn-spinner' });
-            $btn.empty().append($spinner).append(document.createTextNode(' ' + loadingText));
-
-            $.ajax({
-                url: typeof aipsAjax !== 'undefined' ? aipsAjax.ajaxUrl : ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'aips_run_campaign_all_templates',
-                    campaign_id: campaignId,
-                    nonce: typeof aipsAjax !== 'undefined' ? aipsAjax.nonce : (window.aips_admin?.nonce || '')
+            AIPS.Utilities.confirm(confirmMsg, title, [
+                {
+                    label: (window.aipsAdminL10n && aipsAdminL10n.confirmCancelButton) || 'Cancel',
+                    className: 'aips-btn aips-btn-secondary'
                 },
-                success: function(response) {
-                    $btn.prop('disabled', false).html(origHtml);
-                    if (response.success) {
-                        var successMsg = response.data?.message || (window.aipsAdminL10n && aipsAdminL10n.campaignRunAllSuccess) || 'Campaign execution complete.';
-                        alert(successMsg);
-                        location.reload();
-                    } else {
-                        var errorMsg = response.data?.message || (window.aipsAdminL10n && aipsAdminL10n.campaignRunAllError) || 'Failed to execute campaign templates.';
-                        alert(errorMsg);
+                {
+                    label: (window.aipsAdminL10n && aipsAdminL10n.runNow) || 'Run Now',
+                    className: 'aips-btn aips-btn-primary',
+                    action: function() {
+                        var loadingText = (window.aipsAdminL10n && aipsAdminL10n.processing) || 'Processing...';
+                        var origHtml = $btn.html();
+                        $btn.prop('disabled', true);
+
+                        var $spinner = $('<span />', { 'class': 'spinner is-active aips-btn-spinner' });
+                        $btn.empty().append($spinner).append(document.createTextNode(' ' + loadingText));
+
+                        $.ajax({
+                            url: typeof aipsAjax !== 'undefined' ? aipsAjax.ajaxUrl : ajaxurl,
+                            type: 'POST',
+                            data: {
+                                action: 'aips_run_campaign_all_templates',
+                                campaign_id: campaignId,
+                                nonce: typeof aipsAjax !== 'undefined' ? aipsAjax.nonce : (window.aips_admin?.nonce || '')
+                            },
+                            success: function(response) {
+                                $btn.prop('disabled', false).html(origHtml);
+                                if (response.success) {
+                                    var successMsg = response.data?.message || (window.aipsAdminL10n && aipsAdminL10n.campaignRunAllSuccess) || 'Campaign execution complete.';
+                                    AIPS.Utilities.showToast(successMsg, 'success');
+                                } else {
+                                    var errorMsg = response.data?.message || (window.aipsAdminL10n && aipsAdminL10n.campaignRunAllError) || 'Failed to execute campaign templates.';
+                                    AIPS.Utilities.showToast(errorMsg, 'error');
+                                }
+                            },
+                            error: function() {
+                                $btn.prop('disabled', false).html(origHtml);
+                                var netError = (window.aipsAdminL10n && aipsAdminL10n.networkError) || 'Network error while running campaign templates.';
+                                AIPS.Utilities.showToast(netError, 'error');
+                            }
+                        });
                     }
-                },
-                error: function() {
-                    $btn.prop('disabled', false).html(origHtml);
-                    var netError = (window.aipsAdminL10n && aipsAdminL10n.networkError) || 'Network error while running campaign templates.';
-                    alert(netError);
                 }
-            });
+            ]);
         },
 
         /** Execute a unified schedule using the selected schedule-advance mode. */

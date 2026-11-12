@@ -219,6 +219,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 						<?php endforeach; ?>
 						</optgroup>
 					</select>
+					<p class="description"><?php esc_html_e('For "Run All Campaign Templates", the template post quantity is generated for each active linked template.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-form-row">
 					<label class="aips-checkbox-label">

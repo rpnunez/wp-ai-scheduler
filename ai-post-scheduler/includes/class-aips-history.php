@@ -266,13 +266,14 @@ class AIPS_History {
         $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
         $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
         $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
+        $campaign_id = isset($_POST['campaign_id']) ? absint($_POST['campaign_id']) : 0;
 
         // Get max records limit from configuration
         $config = AIPS_Config::get_instance();
         $max_records = (int) $config->get_option('history_export_max_records', 10000);
 
         // Fetch all matching records
-        $history = $this->get_history(array(
+        $query_args = array(
             'page' => 1,
             'per_page' => $max_records,
             'status' => $status_filter,
@@ -283,7 +284,11 @@ class AIPS_History {
             'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
-        ));
+        );
+        if ($campaign_id > 0) {
+            $query_args['campaign_id'] = $campaign_id;
+        }
+        $history = $this->get_history($query_args);
 
         $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
         $filename = sanitize_file_name($filename);

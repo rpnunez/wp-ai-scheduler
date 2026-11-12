@@ -1163,12 +1163,17 @@ class AIPS_Generator {
         // Extract source information from context
         $history_metadata = array();
 
-        if ($context instanceof AIPS_Template_Context) {
-            $history_metadata['template_id'] = $context->get_id();
-        } elseif ($context instanceof AIPS_Topic_Context) {
+        $effective_context = $context;
+        if ($context instanceof AIPS_Campaign_Context && method_exists($context, 'get_inner_context')) {
+            $effective_context = $context->get_inner_context();
+        }
+
+        if ($effective_context instanceof AIPS_Template_Context) {
+            $history_metadata['template_id'] = $effective_context->get_id();
+        } elseif ($effective_context instanceof AIPS_Topic_Context) {
             // For topic context, store author_id and topic_id
-            $history_metadata['topic_id'] = $context->get_id();
-            $author = $context->get_author();
+            $history_metadata['topic_id'] = $effective_context->get_id();
+            $author = $effective_context->get_author();
             if ($author && isset($author->id)) {
                 $history_metadata['author_id'] = $author->id;
             }
@@ -1342,10 +1347,12 @@ class AIPS_Generator {
                 if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
                     $campaigns_repo->flush_campaign_cache($campaign_id);
                 }
-                $this->maybe_claim_campaign_pillar($context, $post_id);
+                if (!$generation_incomplete && 'publish' === get_post_status($post_id)) {
+                    $this->maybe_claim_campaign_pillar($context, $post_id);
+                }
             }
-        } elseif ($context instanceof AIPS_Template_Context) {
-            $template = $context->get_template();
+        } elseif ($effective_context instanceof AIPS_Template_Context) {
+            $template = $effective_context->get_template();
             if ($template && !empty($template->campaign_id) && class_exists('AIPS_Campaigns_Repository')) {
                 $campaigns_repo = AIPS_Campaigns_Repository::instance();
                 if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
@@ -1417,8 +1424,8 @@ class AIPS_Generator {
 
         // Trigger hook for other systems to respond to the new post
         // For backward compatibility, extract template if it's a template context
-        if ($context instanceof AIPS_Template_Context) {
-            $template_obj = $context->get_template();
+        if ($effective_context instanceof AIPS_Template_Context) {
+            $template_obj = $effective_context->get_template();
             do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id(), $context);
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
@@ -1514,13 +1521,18 @@ class AIPS_Generator {
         $resource_label = __('Manual generation', 'ai-post-scheduler');
         $dedupe_parts = array('generation_failed', $context->get_type(), $context->get_id(), $error->get_error_code());
 
-        if ($context instanceof AIPS_Template_Context) {
-            $template = $context->get_template();
+        $effective_context = $context;
+        if ($context instanceof AIPS_Campaign_Context && method_exists($context, 'get_inner_context')) {
+            $effective_context = $context->get_inner_context();
+        }
+
+        if ($effective_context instanceof AIPS_Template_Context) {
+            $template = $effective_context->get_template();
             if ($template && !empty($template->name)) {
                 $resource_label = sprintf(__('template "%s"', 'ai-post-scheduler'), $template->name);
             }
-        } elseif ($context instanceof AIPS_Topic_Context && !empty($context->get_topic())) {
-            $resource_label = sprintf(__('author topic "%s"', 'ai-post-scheduler'), $context->get_topic());
+        } elseif ($effective_context instanceof AIPS_Topic_Context && !empty($effective_context->get_topic())) {
+            $resource_label = sprintf(__('author topic "%s"', 'ai-post-scheduler'), $effective_context->get_topic());
         }
 
         do_action('aips_generation_failed', array(
