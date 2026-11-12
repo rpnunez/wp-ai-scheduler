@@ -78,9 +78,14 @@
 
 			$('#aips-settings-form').off('submit.aipsSettings').on('submit.aipsSettings', AIPS.onSettingsFormSubmit);
 			$(document).off('aips:tabSwitch.aipsSettings').on('aips:tabSwitch.aipsSettings', AIPS.onSettingsTabSwitch);
+			$(document).off('click.aipsSettingsTab', '#aips-settings-tab-nav .aips-rail-item, #aips-settings-tab-nav .aips-tab-link')
+				.on('click.aipsSettingsTab', '#aips-settings-tab-nav .aips-rail-item, #aips-settings-tab-nav .aips-tab-link', function() {
+					AIPS.scrollToTop();
+				});
 			if (AIPS.testConnection) {
 				$(document).off('click.aipsTestConn', '#aips-test-connection').on('click.aipsTestConn', '#aips-test-connection', AIPS.testConnection);
 			}
+			$(document).off('click.aipsFlushDigest', '#aips-flush-digest-btn').on('click.aipsFlushDigest', '#aips-flush-digest-btn', AIPS.onFlushNotificationDigest);
 			$(document).on('click', '[data-aips-connector-move]', AIPS.onConnectorMove);
 			$(document).on('change', 'input[name="aips_embeddings_scope"], #aips_embeddings_scope', function() {
 				var val = $(this).val();
@@ -100,44 +105,56 @@
 			$(document).on('click', '#aips-copy-shortcode-btn', AIPS.onCopyShortcode);
 			$(document).on('click', '#aips-restore-defaults-btn', function(e) {
 				e.preventDefault();
-				if (!confirm((typeof aipsSettingsL10n !== 'undefined' && aipsSettingsL10n.confirmRestoreDefaults) ? aipsSettingsL10n.confirmRestoreDefaults : 'Are you sure you want to restore default article structures and components? Missing defaults will be re-created.')) {
-					return;
-				}
 				var $btn = $(this);
-				var $spinner = $('#aips-restore-defaults-spinner');
-				var $result = $('#aips-restore-defaults-result');
+				var l10n = (typeof aipsSettingsL10n !== 'undefined') ? aipsSettingsL10n : {};
+				var confirmMessage = l10n.confirmRestoreDefaults || 'Are you sure you want to restore default article structures and components? Missing defaults will be re-created.';
+				var confirmHeading = l10n.confirmRestoreDefaultsTitle || 'Restore Defaults';
 
-				$btn.prop('disabled', true);
-				$spinner.addClass('is-active').show();
-				$result.text('').removeClass('aips-text-success aips-text-danger');
+				var runRestore = function() {
+					var $spinner = $('#aips-restore-defaults-spinner');
+					var $result = $('#aips-restore-defaults-result');
 
-				var ajaxUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.ajaxUrl) ? aipsAjax.ajaxUrl : ajaxurl;
-				var nonce = (typeof aipsAjax !== 'undefined' && aipsAjax.nonce) ? aipsAjax.nonce : '';
+					$btn.prop('disabled', true);
+					$spinner.addClass('is-active').show();
+					$result.text('').removeClass('aips-text-success aips-text-danger');
 
-				$.ajax({
-					url: ajaxUrl,
-					type: 'POST',
-					dataType: 'json',
-					data: {
-						action: 'aips_restore_default_structures',
-						nonce: nonce
-					},
-					success: function(resp) {
-						$spinner.removeClass('is-active').hide();
-						$btn.prop('disabled', false);
-						if (resp && resp.success) {
-							$result.removeClass('aips-text-danger').addClass('aips-text-success').text(resp.data && resp.data.message ? resp.data.message : 'Defaults restored successfully!');
-						} else {
-							var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Failed to restore defaults.';
-							$result.removeClass('aips-text-success').addClass('aips-text-danger').text(msg);
+					var ajaxUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.ajaxUrl) ? aipsAjax.ajaxUrl : ajaxurl;
+					var nonce = (typeof aipsAjax !== 'undefined' && aipsAjax.nonce) ? aipsAjax.nonce : '';
+
+					$.ajax({
+						url: ajaxUrl,
+						type: 'POST',
+						dataType: 'json',
+						data: {
+							action: 'aips_restore_default_structures',
+							nonce: nonce
+						},
+						success: function(resp) {
+							$spinner.removeClass('is-active').hide();
+							$btn.prop('disabled', false);
+							if (resp && resp.success) {
+								$result.removeClass('aips-text-danger').addClass('aips-text-success').text(resp.data && resp.data.message ? resp.data.message : 'Defaults restored successfully!');
+							} else {
+								var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Failed to restore defaults.';
+								$result.removeClass('aips-text-success').addClass('aips-text-danger').text(msg);
+							}
+						},
+						error: function(xhr, status, error) {
+							$spinner.removeClass('is-active').hide();
+							$btn.prop('disabled', false);
+							$result.removeClass('aips-text-success').addClass('aips-text-danger').text('An error occurred: ' + error);
 						}
-					},
-					error: function(xhr, status, error) {
-						$spinner.removeClass('is-active').hide();
-						$btn.prop('disabled', false);
-						$result.removeClass('aips-text-success').addClass('aips-text-danger').text('An error occurred: ' + error);
-					}
-				});
+					});
+				};
+
+				if (AIPS.Utilities && typeof AIPS.Utilities.confirm === 'function') {
+					AIPS.Utilities.confirm(confirmMessage, confirmHeading, [
+						{ label: l10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+						{ label: l10n.restore || 'Restore Defaults', className: 'aips-btn aips-btn-primary', action: runRestore }
+					]);
+				} else {
+					runRestore();
+				}
 			});
 			$(document).on('change', '#aips-meow-envs-select', function() {
 				var selected = $(this).find(':selected');
@@ -166,6 +183,58 @@
 			}
 			$(document).on('change', '#aips_author_topic_auto_approval_mode', updateAuthorApprovalFields);
 			updateAuthorApprovalFields();
+		},
+
+		/**
+		 * Flush and send pending notification digest immediately.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onFlushNotificationDigest: function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var originalHtml = $btn.html();
+			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> ' + 'Sending...');
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_flush_notification_digest',
+					nonce: aipsAjax.nonce
+				},
+				success: function(response) {
+					$btn.prop('disabled', false).html(originalHtml);
+					if (response && response.success) {
+						var msg = (response.data && response.data.message) ? response.data.message : 'Digest sent successfully.';
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(msg, 'success');
+						} else {
+							alert(msg);
+						}
+						if (response.data && typeof response.data.queue_count !== 'undefined') {
+							$('#aips-digest-queue-count').text(response.data.queue_count);
+						}
+					} else {
+						var errMsg = (response && response.data && response.data.message) ? response.data.message : 'Failed to send digest.';
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(errMsg, 'error');
+						} else {
+							alert(errMsg);
+						}
+					}
+				},
+				error: function() {
+					$btn.prop('disabled', false).html(originalHtml);
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Network error while flushing digest.', 'error');
+					} else {
+						alert('Network error while flushing digest.');
+					}
+				}
+			});
 		},
 
 		/**
@@ -517,6 +586,45 @@
 				try {
 					localStorage.setItem('aips_active_tab_aips-settings', tabId);
 				} catch (err) {}
+
+				AIPS.scrollToTop();
+			}
+		},
+
+		/**
+		 * Scroll the page to the top when navigating between settings tabs.
+		 *
+		 * @param {boolean} [smooth=true] Whether to use smooth scrolling.
+		 * @return {void}
+		 */
+		scrollToTop: function(smooth) {
+			if (typeof smooth === 'undefined') {
+				smooth = true;
+			}
+			var prefersReducedMotion = false;
+			try {
+				prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+			} catch (e) {}
+
+			var behavior = (smooth && !prefersReducedMotion) ? 'smooth' : 'auto';
+
+			if (typeof window.scrollTo === 'function') {
+				try {
+					window.scrollTo({
+						top: 0,
+						left: 0,
+						behavior: behavior
+					});
+				} catch (err) {
+					window.scrollTo(0, 0);
+				}
+			} else {
+				window.scrollTo(0, 0);
+			}
+
+			if (!smooth || prefersReducedMotion) {
+				document.documentElement.scrollTop = 0;
+				document.body.scrollTop = 0;
 			}
 		}
 

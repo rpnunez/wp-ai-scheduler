@@ -681,6 +681,8 @@ class AIPS_Campaigns_Repository {
 					$this->build_campaign_error('campaign_template_delete_failed', __('Failed to delete campaign template.', 'ai-post-scheduler'))
 				);
 			}
+
+			(new AIPS_Post_Images_Repository())->delete_for_entity('template', (int) $template->id);
 		}
 
 		$deleted = $this->wpdb->delete(

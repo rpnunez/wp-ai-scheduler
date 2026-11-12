@@ -136,6 +136,12 @@ class AIPS_Structure_Section_Rel_Repository {
 		$existing_ids = array_map(function($r) { return (int) $r->id; }, $existing_rows);
 		$kept_ids = array();
 
+		// Atomic group sync: all updates, inserts, and the purge happen in one
+		// transaction. Any failed write rolls the whole thing back and returns
+		// false so the caller can surface the error instead of reporting success
+		// after partially rewriting the structure's sections.
+		$this->wpdb->query('START TRANSACTION');
+
 		foreach ($sections as $index => $section) {
 			$rel_id            = isset($section['id']) ? absint($section['id']) : 0;
 			$component_id      = isset($section['component_id']) && absint($section['component_id']) > 0 ? absint($section['component_id']) : null;
@@ -164,13 +170,18 @@ class AIPS_Structure_Section_Rel_Repository {
 
 			if ($rel_id > 0 && in_array($rel_id, $existing_ids, true)) {
 				// Update existing
-				$this->wpdb->update(
+				$updated = $this->wpdb->update(
 					$this->table_name,
 					$row_data,
 					array('id' => $rel_id, 'structure_id' => $structure_id),
 					array('%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d'),
 					array('%d', '%d')
 				);
+
+				if (false === $updated) {
+					$this->wpdb->query('ROLLBACK');
+					return false;
+				}
 
 				$kept_ids[] = $rel_id;
 			} else {
@@ -183,9 +194,12 @@ class AIPS_Structure_Section_Rel_Repository {
 					array('%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d')
 				);
 
-				if ($result && $this->wpdb->insert_id) {
-					$kept_ids[] = (int) $this->wpdb->insert_id;
+				if (false === $result || !$this->wpdb->insert_id) {
+					$this->wpdb->query('ROLLBACK');
+					return false;
 				}
+
+				$kept_ids[] = (int) $this->wpdb->insert_id;
 			}
 		}
 
@@ -200,8 +214,13 @@ class AIPS_Structure_Section_Rel_Repository {
 				array_merge(array($structure_id), $to_delete)
 			);
 
-			$this->wpdb->query($query);
+			if (false === $this->wpdb->query($query)) {
+				$this->wpdb->query('ROLLBACK');
+				return false;
+			}
 		}
+
+		$this->wpdb->query('COMMIT');
 
 		$this->invalidate_cache_domain('structure_section', array('structure_id' => $structure_id), 'structure_sections_synced');
 
@@ -233,6 +252,10 @@ class AIPS_Structure_Section_Rel_Repository {
 		$now = AIPS_DateTime::now()->timestamp();
 		$cloned_count = 0;
 
+		// Clone every child mapping all-or-nothing: a failed insert rolls back the
+		// whole clone and returns 0 so the target is not left with a partial copy.
+		$this->wpdb->query('START TRANSACTION');
+
 		foreach ($source_sections as $sec) {
 			$insert_data = array(
 				'structure_id'      => $target_structure_id,
@@ -255,10 +278,15 @@ class AIPS_Structure_Section_Rel_Repository {
 				array('%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d')
 			);
 
-			if ($result) {
-				$cloned_count++;
+			if (false === $result) {
+				$this->wpdb->query('ROLLBACK');
+				return 0;
 			}
+
+			$cloned_count++;
 		}
+
+		$this->wpdb->query('COMMIT');
 
 		$this->invalidate_cache_domain('structure_section', array('structure_id' => $target_structure_id), 'structure_sections_cloned');
 

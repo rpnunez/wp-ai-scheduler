@@ -150,8 +150,11 @@ class AIPS_Deduplication_Service {
 				$metadata = array();
 			}
 
-			$metadata['embedding'] = $embedding;
-			$topic['embedding']    = $embedding;
+			// Keep the vector in memory for same-request reuse (relevance scoring,
+			// auto-approval), but never persist it: a ~1,536-float array bloats
+			// aips_author_topics.metadata by ~50 KB/row and the canonical copy
+			// lives in aips_embeddings.
+			$topic['embedding'] = $embedding;
 
 			if ($best_similarity >= $threshold) {
 				$metadata['potential_duplicate']  = true;

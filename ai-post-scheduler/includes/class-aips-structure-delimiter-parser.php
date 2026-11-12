@@ -372,7 +372,9 @@ class AIPS_Structure_Delimiter_Parser {
 			return 'gutenberg';
 		}
 
-		return 'gutenberg'; // Default modern WordPress standard
+		// Block editor is disabled (Classic Editor site): emit shortcodes so the
+		// Auto-Detect mode delivers the advertised Classic-compatible output.
+		return 'shortcode';
 	}
 
 	/**
@@ -399,11 +401,12 @@ class AIPS_Structure_Delimiter_Parser {
 				continue;
 			}
 
-			$cells = array_values(array_filter(array_map('trim', explode('|', trim($line, '|'))), function($c) {
-				return $c !== '';
-			}));
+			// Preserve empty cells so values stay aligned under the correct column:
+			// filtering blanks out of "| Price | | $49 |" would misplace $49 under
+			// the first product. Only skip rows that are entirely empty.
+			$cells = array_map('trim', explode('|', trim($line, '|')));
 
-			if (empty($cells)) {
+			if ('' === implode('', $cells)) {
 				continue;
 			}
 

@@ -562,3 +562,25 @@ if (!isset($sections) || !is_array($sections)) {
 <option value="{{section_key}}">{{name}}</option>
 </script>
 
+<script type="text/html" id="aips-tmpl-builder-card">
+<div class="aips-builder-card">
+	<div class="aips-card-drag-handle" title="<?php esc_attr_e('Drag to reorder', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-menu"></span></div>
+	<div class="aips-card-content">
+		<div class="aips-card-title-row">
+			<span class="aips-card-heading-tag">{{headingTag}}</span>
+			<strong class="aips-card-heading-text">{{headingText}}</strong>
+			<span class="aips-card-word-count-badge">{{wordCountLabel}}</span>
+		</div>
+		<div class="aips-card-prompt-preview">{{promptSnippet}}</div>
+	</div>
+	<div class="aips-card-actions">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-card-configure-btn" title="<?php esc_attr_e('Configure section', 'ai-post-scheduler'); ?>">
+			<span class="dashicons dashicons-admin-generic"></span> <?php esc_html_e('Configure', 'ai-post-scheduler'); ?>
+		</button>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-card-remove-btn" title="<?php esc_attr_e('Remove section', 'ai-post-scheduler'); ?>">
+			<span class="dashicons dashicons-trash"></span>
+		</button>
+	</div>
+</div>
+</script>
+

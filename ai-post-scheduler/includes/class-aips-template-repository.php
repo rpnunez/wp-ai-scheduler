@@ -172,11 +172,13 @@ class AIPS_Template_Repository {
             'name' => sanitize_text_field($data['name']),
             'prompt_template' => wp_kses_post($data['prompt_template']),
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
+            'slug_prompt' => isset($data['slug_prompt']) ? sanitize_textarea_field($data['slug_prompt']) : '',
             'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : null,
             'article_structure_id' => !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
             'post_quantity' => isset($data['post_quantity']) ? absint($data['post_quantity']) : 1,
             'image_prompt' => isset($data['image_prompt']) ? wp_kses_post($data['image_prompt']) : '',
             'generate_featured_image' => filter_var(isset($data['generate_featured_image']) ? $data['generate_featured_image'] : 0, FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
+            'generate_slug' => filter_var(isset($data['generate_slug']) ? $data['generate_slug'] : 0, FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'featured_image_source' => in_array($source, $allowed_sources, true) ? $source : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($data['featured_image_unsplash_keywords']) ? sanitize_textarea_field($data['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($data['featured_image_media_ids']) ? sanitize_text_field($data['featured_image_media_ids']) : '',
@@ -195,7 +197,10 @@ class AIPS_Template_Repository {
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        // Format order must match $insert_data key order exactly. article_structure_id
+        // (%d) sits between voice_id and post_quantity; omitting it here shifts %d onto
+        // image_prompt / post_tags / source_group_ids and corrupts those text/JSON values.
+        $format = array('%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         // Read insert_id before cache invalidation: invalidation can write
@@ -236,6 +241,11 @@ class AIPS_Template_Repository {
             $format[] = '%s';
         }
 
+        if (isset($data['slug_prompt'])) {
+            $update_data['slug_prompt'] = sanitize_textarea_field($data['slug_prompt']);
+            $format[] = '%s';
+        }
+
         if (isset($data['voice_id'])) {
             $update_data['voice_id'] = $data['voice_id'] ? absint($data['voice_id']) : null;
             $format[] = '%d';
@@ -258,6 +268,11 @@ class AIPS_Template_Repository {
 
         if (isset($data['generate_featured_image'])) {
             $update_data['generate_featured_image'] = $data['generate_featured_image'] ? 1 : 0;
+            $format[] = '%d';
+        }
+
+        if (isset($data['generate_slug'])) {
+            $update_data['generate_slug'] = $data['generate_slug'] ? 1 : 0;
             $format[] = '%d';
         }
 

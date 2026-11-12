@@ -35,4 +35,4 @@ Use this skill to break a feature into implementation slices that are independen
 
 ## Useful agents
 - `.claude/agents/feature-slicer.md` — detailed slice planning pass
-- `.claude/agents/pr-triage.md` — overlap/duplicate check before starting
+- `.claude/agents/pr-portfolio-analyst.md` — overlap/duplicate check before starting

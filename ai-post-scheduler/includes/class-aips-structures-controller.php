@@ -82,7 +82,9 @@ class AIPS_Structures_Controller {
 		$description     = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
 		$archetype       = isset($_POST['archetype']) ? sanitize_key(wp_unslash($_POST['archetype'])) : 'custom';
 		$editor_mode     = isset($_POST['editor_mode']) ? sanitize_key(wp_unslash($_POST['editor_mode'])) : 'auto';
-		$enable_schema   = isset($_POST['enable_schema']) ? 1 : 0;
+		// The browser always sends enable_schema (0 when unchecked), so isset() is
+		// always true. Parse the value itself so the toggle can be turned off.
+		$enable_schema   = isset($_POST['enable_schema']) && filter_var(wp_unslash($_POST['enable_schema']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
 		$prompt_template = isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '';
 		$is_active       = isset($_POST['is_active']) ? 1 : 0;
 
@@ -267,10 +269,21 @@ class AIPS_Structures_Controller {
 			'url'         => home_url('/sample-post'),
 		));
 
+		// In shortcode mode the parsed content holds literal [aips_*] tags. The
+		// browser does not run WordPress shortcodes, so register and expand them
+		// here; otherwise the Visual Preview tab shows raw shortcode text instead
+		// of the rendered components. do_shortcode() is a no-op for Gutenberg
+		// output, which contains no shortcodes.
+		$visual_preview = $parse_res['content'];
+		if (class_exists('AIPS_Structure_Shortcodes')) {
+			AIPS_Structure_Shortcodes::register();
+			$visual_preview = do_shortcode($visual_preview);
+		}
+
 		AIPS_Ajax_Response::success(array(
 			'prompt'           => $assembled_prompt,
 			'raw_ai_output'    => $simulated_output,
-			'visual_preview'   => $parse_res['content'],
+			'visual_preview'   => $visual_preview,
 			'schema_json_ld'   => $schema_graph,
 			'extracted_data'   => $parse_res['extracted_data'],
 		));

@@ -150,9 +150,12 @@ class AIPS_Article_Structure_Manager {
 		}
 
 		if (is_array($relational_sections) && class_exists('AIPS_Structure_Section_Rel_Repository')) {
-			AIPS_Structure_Section_Rel_Repository::instance()->sync_structure_sections($id, $relational_sections);
+			$synced = AIPS_Structure_Section_Rel_Repository::instance()->sync_structure_sections($id, $relational_sections);
+			if (false === $synced) {
+				return new WP_Error('sections_sync_failed', __('The structure was created but its sections could not be saved. Please try again.', 'ai-post-scheduler'));
+			}
 		}
-		
+
 		do_action('aips_structure_created', $id, $structure_data);
 
 		return $id;
@@ -231,9 +234,12 @@ class AIPS_Article_Structure_Manager {
 		}
 
 		if (is_array($relational_sections) && class_exists('AIPS_Structure_Section_Rel_Repository')) {
-			AIPS_Structure_Section_Rel_Repository::instance()->sync_structure_sections($structure_id, $relational_sections);
+			$synced = AIPS_Structure_Section_Rel_Repository::instance()->sync_structure_sections($structure_id, $relational_sections);
+			if (false === $synced) {
+				return new WP_Error('sections_sync_failed', __('The structure was updated but its sections could not be saved. Please try again.', 'ai-post-scheduler'));
+			}
 		}
-		
+
 		do_action('aips_structure_updated', $structure_id, $structure_data);
 
 		return true;

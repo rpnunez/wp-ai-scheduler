@@ -67,8 +67,7 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 		// If structure has relational sections, assemble section prompt blocks
 		if (!empty($relational_sections)) {
 			$section_instructions = array();
-			$search = array();
-			$replace = array();
+			$section_block_by_key = array();
 
 			foreach ($relational_sections as $sec) {
 				$sec_key = $sec->section_key;
@@ -80,7 +79,7 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 					if ($sec->heading_level === 'none') {
 						$h_prefix = '';
 					}
-					
+
 					$sec_block[] = sprintf('Section Heading: %s%s', $h_prefix, $sec->heading_text);
 				}
 
@@ -98,14 +97,33 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 
 				$assembled_sec = implode("\n", $sec_block);
 				$section_instructions[] = $assembled_sec;
-
-				$search[] = "{{section:$sec_key}}";
-				$replace[] = $assembled_sec;
+				$section_block_by_key[$sec_key] = $assembled_sec;
 			}
 
-			// If prompt_template contains {{section:...}} placeholders, replace them
-			if (!empty($search) && !empty($prompt) && strpos($prompt, '{{section:') !== false) {
-				$prompt = str_replace($search, $replace, $prompt);
+			// Reconcile the template with the saved card list so builder changes
+			// (reorder, remove, add) reach the generated prompt. Cards that still
+			// have a {{section:key}} placeholder are substituted in place; cards
+			// without one (newly added) are appended; placeholders whose card was
+			// removed are stripped so they do not leak into the prompt.
+			if (!empty($prompt) && strpos($prompt, '{{section:') !== false) {
+				$appended = array();
+
+				foreach ($section_block_by_key as $sec_key => $block) {
+					$placeholder = '{{section:' . $sec_key . '}}';
+
+					if (strpos($prompt, $placeholder) !== false) {
+						$prompt = str_replace($placeholder, $block, $prompt);
+					} else {
+						$appended[] = $block;
+					}
+				}
+
+				// Strip orphaned placeholders left by removed cards.
+				$prompt = preg_replace('/\{\{section:[^}]*\}\}/', '', $prompt);
+
+				if (!empty($appended)) {
+					$prompt .= "\n\n" . implode("\n\n", $appended);
+				}
 			} elseif (empty($prompt)) {
 				// If no custom prompt_template, join section instructions
 				$prompt = sprintf(

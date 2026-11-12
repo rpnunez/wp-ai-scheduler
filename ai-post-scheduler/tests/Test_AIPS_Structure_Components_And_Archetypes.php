@@ -59,7 +59,7 @@ class Test_AIPS_Structure_Components_And_Archetypes extends WP_UnitTestCase {
 		$this->assertArrayHasKey('extracted_data', $gutenberg_result);
 
 		// Verify Gutenberg core block comments
-		$this->assertStringContainsString('<!-- wp:list {"ordered":true}', $gutenberg_result['content']);
+		$this->assertStringContainsString('<!-- wp:list {"ordered":true,"className":"aips-step-list-block"}', $gutenberg_result['content']);
 		$this->assertStringContainsString('<!-- wp:columns', $gutenberg_result['content']);
 		$this->assertStringContainsString('<!-- wp:details', $gutenberg_result['content']);
 

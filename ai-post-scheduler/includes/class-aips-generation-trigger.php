@@ -36,7 +36,7 @@ class AIPS_Generation_Trigger {
 			'post_review_action', 'campaign_lifecycle', 'template_lifecycle', 'author_lifecycle', 'source_lifecycle',
 			'bulk_delete', 'bulk_delete_feedback',
 			'bulk_generate', 'bulk_generate_now', 'bulk_generation', 'bulk_regenerate',
-			'regenerate', 'retry',
+			'ai_edit', 'regenerate', 'retry',
 			// Background bulk jobs: started by a user, executed by cron slices.
 			'planner_post', 'trending_topic_post', 'author_topic_post',
 		);
