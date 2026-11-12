@@ -12,36 +12,54 @@ Project-scoped subagents live in `.claude/agents/` and are auto-delegated by Cla
 
 | Subagent | When to use |
 |---|---|
-| `qa-reviewer` | Test planning, bug hunting, edge-case analysis, implementation verification |
-| `ajax-controller-reviewer` | Reviewing nonce/capability/sanitization compliance in AJAX controllers |
-| `db-migration-reviewer` | Reviewing schema changes against `AIPS_DB_Manager`/`AIPS_DB_Migrations` patterns |
+| `qa-reviewer` | Read-only acceptance-criteria, test-quality, edge-case, and verification review for PR Xray |
+| `ajax-controller-reviewer` | Reviewing complete AJAX action paths, authorization, typed input, responses, and denied paths |
+| `db-migration-reviewer` | Reviewing schema, migrations, persistence, queries, upgrade safety, and data preservation |
+| `background-job-reviewer` | Reviewing cron, batch, managed background processes, lifecycle state, idempotency, and cleanup |
+| `l10n-reviewer` | Reviewing translation APIs, placeholders, plurals, language stores, and output-context escaping |
 | `feature-slicer` | Breaking a feature request into independently testable, mergeable slices |
-| `generation-pipeline-reviewer` | Reviewing changes to generation context, prompt builders, or resilience flows |
-| `pr-triage` | Overlap detection, risk classification, and review readiness for pull requests |
+| `generation-pipeline-reviewer` | Reviewing generation semantics across contexts, prompts, providers, entry points, and recovery |
+| `bootstrap-dependency-reviewer` | Reviewing autoloading, boot contexts, container bindings, class moves, and optional dependencies |
+| `pr-portfolio-analyst` | Ranking multiple PRs by readiness, overlap, blockers, risk, and merge order |
+| `pr-xray-coordinator` | Resolving one PR's intent, commits, risk, reviewer routing, and coverage ownership |
+| `pr-xray-adjudicator` | Validating and consolidating PR Xray evidence and assigning the final verdict |
+| `pr-xray-report-assembler` | Writing PR Xray reports and creating a validated downloadable ZIP |
 
 Skills (step-by-step implementation guides) live in `.claude/skills/`:
-`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`.
+`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-portfolio-triage`, `pr-xray`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`).
 
-Saved workflow: `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit nonce/capability/sanitization/escaping compliance.
+Saved multi-agent workflows live in `.claude/workflows/`:
+- `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit security compliance.
+- `.claude/workflows/db-migration-audit.md` — audits table schemas, `$wpdb` repository isolation, and migrations.
+- `.claude/workflows/generation-pipeline-sweep.md` — sweeps generation contexts, prompt builders, logging, and retry backoff.
+- `.claude/workflows/pr-portfolio-triage.md` — ranks and routes multiple open PRs without claiming deep-review approval.
+- `.claude/workflows/pr-xray.md` — deep single-PR review with routed domain reviewers, adjudication, and report packaging.
 
 ## Commands
 
-All Composer and PHPUnit commands run from `ai-post-scheduler/`.
+Run PHPUnit ONLY as specified in the "Agent test protocol" in `TESTING.md`: `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` (all files in one invocation; stops the containers it started). Do not use PowerShell/`bash.exe -lc` wrappers, `scripts/run-docker-test.sh` directly, `&&`/`;` chains or `grep`/`head`/`tail` pipes, and do not run `./start-dev.sh` just to test. Run `make composer-install` once for the dev dependencies. Clean up: stop any containers you started (never `make down`/`-v`), delete scratch files, and report what you started/stopped.
 
 ```bash
-# Full test suite (Docker-backed; handles DB setup automatically)
-bash scripts/run-wp-tests-docker.sh
+# Tests in the web container, against a separate wp_tests DB
+make test-session ARGS="tests/Test_AIPS_DB_Migrations.php"   # single file, stops what it started (preferred)
+make test ARGS="tests/Test_AIPS_DB_Migrations.php"           # same, leaves the stack up
+make test                                            # full suite
+make test ARGS="--fresh"                             # recreate wp_tests first
+make test-coverage                                   # HTML in ai-post-scheduler/coverage/ (let it finish)
 
-# Directly (when WP test env is already installed in the shell)
+# Same thing without make
+bash scripts/run-docker-test.sh tests/Test_AIPS_DB_Migrations.php
+
+# CI-parity host runner (needs host PHP + Composer)
+make test-ci            # = bash scripts/run-wp-tests-docker.sh
+
+# Directly (when a WP test env is already installed in the shell); run from ai-post-scheduler/
 cd ai-post-scheduler
 composer test
 composer test:verbose
 composer test:coverage
 
-# Single test file
-cd ai-post-scheduler && vendor/bin/phpunit tests/test-template-processor.php
-
-# Skip DB creation (agent/CI environments without create permissions)
+# Skip DB creation (host/CI environments without create permissions)
 export AIPS_WP_TEST_SKIP_DB_CREATE=true
 cd ai-post-scheduler && composer test
 
@@ -52,17 +70,19 @@ cd ai-post-scheduler && composer lint:repository-boundary
 Docker development environment:
 
 ```bash
-./start-dev.sh          # First-time provisioning
-make up                 # Start services
-make down               # Stop (keeps volumes)
+./start-dev.sh          # First-time provisioning (also: make start-dev). Prompts for GOOGLE_API_KEY;
+                        # --import-sql dump.sql seeds the DB; logs to .artifacts/start-dev-*.log
+make start              # Start existing containers
+make stop               # Stop (keeps containers and data)
+make down               # Remove containers (keeps volumes)
 make shell              # Bash in WordPress container
 make logs               # Follow all container logs
-make test               # Run tests via Docker wrapper
-make test-coverage      # Coverage via Docker wrapper
+make test               # PHPUnit in the web container
+make test-coverage      # Coverage (text + HTML)
 make urls               # Print all service URLs
 ```
 
-Local URLs (Docker): WordPress `http://localhost:8080` · Admin `http://localhost:8080/wp-admin` (admin/admin) · phpMyAdmin `http://localhost:8082`
+Local URLs (Docker, default ports; ports are auto-assigned per checkout and stored in `.env`, run `make urls`): WordPress `http://localhost:8080` · Admin `http://localhost:8080/wp-admin` (admin/admin) · phpMyAdmin `http://localhost:8082`
 
 Performance benchmarks:
 
@@ -130,6 +150,10 @@ All background jobs are scheduled through `AIPS_Job_Scheduler` (→ `AIPS_Job_Di
 
 `AIPS_Bulk_Batch_Processor` dispatches `aips_process_bulk_batch` single-event cron slices. Job types (`author_topic_post`, `planner_post`, `trending_topic_post`) are registered as strategies via `$processor->register(type, callable)` in `boot_cron()`. Job state lives in `AIPS_Bulk_Batch_Job_Store`.
 
+### Background processes
+
+Long-running jobs (indexing, scans) are exposed through `AIPS_Background_Process_Interface` and registered in `AIPS_Background_Process_Manager` (filter `aips_background_processes`). Managed jobs extend `AIPS_Managed_Background_Process` (one `aips_bg_process_tick` cron slice at a time, runs stored in `aips_background_processes`, quota/cooldown waits, per-run AI budget); `AIPS_Embeddings_Background_Process` adds the embeddings quota/cooldown rules for AI-backed jobs (`AIPS_Internal_Links_Indexing_Process`, `AIPS_Author_Embeddings_Process`); `AIPS_Relationships_Recompute_Process` is the CPU-only example. Pipelines that schedule themselves get a thin adapter (`AIPS_Content_Indexer_Queue_Process`, `AIPS_Link_Index_Scan_Process`, `AIPS_Bulk_Generation_Process`, which pauses by unscheduling a bulk job's slices and restoring them on resume). The UI (admin bar pulse, Internal Links card, Diagnostics → Background Processes) is driven by `assets/js/background-processes.js` over the Heartbeat API; never poll separately. New heavy jobs should register here rather than schedule their own cron chain.
+
 ### JavaScript module pattern
 
 Each JS file in `assets/js/` follows the same structure:
@@ -161,4 +185,4 @@ Admin pages follow: `div.wrap.aips-wrap` → `div.aips-page-container` → `div.
 
 ## Testing policy
 
-Do not run `composer test` or PHPUnit unless the user explicitly asks or the task requires it. For code changes, prefer static/syntax checks on touched files and note unrun test suites in the response. When tests are needed, use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
+Run PHPUnit for code changes: run the tests that cover (or were added for) the touched code, plus static/syntax checks on touched files, and note any suite you could not run in the response. Run tests with `make test-session ARGS="tests/Test_X.php"` (see the Agent test protocol in `TESTING.md`); for host-side `composer test`, use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.

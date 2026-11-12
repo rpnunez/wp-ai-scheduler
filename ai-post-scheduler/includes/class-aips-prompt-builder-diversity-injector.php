@@ -68,7 +68,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 			$titles = $this->get_recent_post_titles(
 				array(
 					'template_id' => (int) $subject->get_id(),
-					'status'      => 'completed',
+					'status'      => 'generated',
 					'per_page'    => $limit,
 					'fields'      => 'list',
 					'orderby'     => 'completed_at',
@@ -81,7 +81,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 				$titles = $this->get_recent_post_titles(
 					array(
 						'author_id' => (int) $author->id,
-						'status'    => 'completed',
+						'status'    => 'generated',
 						'per_page'  => $limit,
 						'fields'    => 'list',
 						'orderby'   => 'completed_at',
@@ -93,7 +93,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 			$titles = $this->get_recent_post_titles(
 				array(
 					'template_id' => (int) $subject->id,
-					'status'      => 'completed',
+					'status'      => 'generated',
 					'per_page'    => $limit,
 					'fields'      => 'list',
 					'orderby'     => 'completed_at',
@@ -315,20 +315,19 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 	 * @return int
 	 */
 	private function get_completed_generation_count($subject) {
-		static $cache = array();
-
+		// Deliberately not memoized: the count drives the rotation index, and it
+		// changes after every completed generation. A static memo (shared across
+		// all instances and keyed without the repository) froze the rotation for
+		// every later post built in the same long-running cron/batch request.
 		$args = array(
-			'status'   => 'completed',
+			'status'   => 'generated',
 			'per_page' => 1,
 			'page'     => 1,
 			'fields'   => 'list',
 		);
 
-		$cache_key = '';
-
 		if ($subject instanceof AIPS_Template_Context) {
 			$args['template_id'] = (int) $subject->get_id();
-			$cache_key = 't:' . $args['template_id'];
 		} elseif ($subject instanceof AIPS_Topic_Context) {
 			$author = $subject->get_author();
 			if (!$author || empty($author->id)) {
@@ -336,16 +335,10 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 			}
 
 			$args['author_id'] = (int) $author->id;
-			$cache_key = 'a:' . $args['author_id'];
 		} elseif (is_object($subject) && !empty($subject->id)) {
 			$args['template_id'] = (int) $subject->id;
-			$cache_key = 't_legacy:' . $args['template_id'];
 		} else {
 			return 0;
-		}
-
-		if (isset($cache[$cache_key])) {
-			return $cache[$cache_key];
 		}
 
 		$history = $this->history_repository->get_history($args);
@@ -353,10 +346,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 			return 0;
 		}
 
-		$total = max(0, (int) $history['total']);
-		$cache[$cache_key] = $total;
-
-		return $total;
+		return max(0, (int) $history['total']);
 	}
 
 	/**

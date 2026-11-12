@@ -12,8 +12,16 @@ if (!defined('ABSPATH')) {
             if ($created_at > 0) {
                 $group_label = $history_handler->get_timeline_group_label($created_at, isset($now_timestamp) ? (int) $now_timestamp : null);
             }
-            $title = !empty($item->event_label) ? $item->event_label : (!empty($item->generated_title) ? $item->generated_title : __('Generation Event', 'ai-post-scheduler'));
-            $status = !empty($item->status) ? $item->status : __('unknown', 'ai-post-scheduler');
+            // Title precedence: generated title, then the creation method's label, then the SQL fallback.
+            $item_method = isset($item->creation_method) ? (string) $item->creation_method : '';
+            if (!empty($item->generated_title)) {
+                $title = $item->generated_title;
+            } elseif (AIPS_History::has_creation_method_label($item_method)) {
+                $title = AIPS_History::get_creation_method_label($item_method);
+            } else {
+                $title = !empty($item->event_label) ? $item->event_label : __('Generation Event', 'ai-post-scheduler');
+            }
+            $status = !empty($item->effective_status) ? $item->effective_status : (!empty($item->status) ? $item->status : __('unknown', 'ai-post-scheduler'));
             $domain = !empty($item->event_domain) ? $item->event_domain : __('unknown', 'ai-post-scheduler');
             $formatted_date = !empty($item->formatted_date) ? $item->formatted_date : '';
             ?>

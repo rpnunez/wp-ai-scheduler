@@ -22,6 +22,17 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Prompt_Builder_Post_Content {
 
+	private $sources_selection = array();
+
+	public function get_sources_selection() {
+		return $this->sources_selection;
+	}
+
+	public function set_sources_selection(array $selection) {
+		$this->sources_selection = $selection;
+	}
+
+
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
 	 */
@@ -59,6 +70,7 @@ class AIPS_Prompt_Builder_Post_Content {
 	 * @return string
 	 */
 	public function build($template_or_context, $topic = null, $voice = null) {
+		$this->sources_selection = array();
 		if ($template_or_context instanceof AIPS_Generation_Context) {
 			return $this->build_from_context($template_or_context);
 		}
@@ -123,7 +135,14 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
-		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
+		$post_images_block = $this->build_post_images_block($context);
+		if (!empty($post_images_block)) {
+			$processed_prompt .= "\n\n" . $post_images_block;
+		}
+
+		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+
+		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic, $this);
 	}
 
 	/**
@@ -163,6 +182,94 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
-		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
+		$post_images_block = $this->build_post_images_block($template);
+		if (!empty($post_images_block)) {
+			$processed_prompt .= "\n\n" . $post_images_block;
+		}
+
+		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+
+		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic, $this);
+	}
+
+	/**
+	 * Inject semantically related published articles into prompt context when enabled.
+	 *
+	 * @param string      $prompt Current assembled prompt.
+	 * @param string|null $topic  Target topic.
+	 * @return string
+	 */
+	private function inject_related_context($prompt, $topic) {
+		if (empty($topic) || !AIPS_Config::get_instance()->get_option('aips_generation_inject_related_context', true)) {
+			return $prompt;
+		}
+
+		$container = AIPS_Container::get_instance();
+		if (!$container->has(AIPS_Related_Posts_Service::class)) {
+			return $prompt;
+		}
+
+		$related_service = $container->make(AIPS_Related_Posts_Service::class);
+		$related = $related_service->get_related_posts_for_topic($topic, 3, 0.55);
+
+		if (empty($related)) {
+			return $prompt;
+		}
+
+		$rel_context = "Context & Related Published Articles (you may naturally reference or link to these where relevant):\n";
+		foreach ($related as $rel_post) {
+			$rel_context .= "- \"{$rel_post['title']}\" (URL: {$rel_post['url']})\n";
+		}
+
+		return $prompt . "\n\n" . $rel_context;
+	}
+
+	/**
+	 * Build post content images instructions block.
+	 *
+	 * @param object|AIPS_Generation_Context $template_or_context
+	 * @return string
+	 */
+	private function build_post_images_block($template_or_context) {
+		$images = array();
+		if ($template_or_context instanceof AIPS_Generation_Context) {
+			if ($template_or_context->has_content_images()) {
+				$images = $template_or_context->get_content_images();
+			}
+		} elseif (is_object($template_or_context)) {
+			if (!empty($template_or_context->post_images) && is_array($template_or_context->post_images)) {
+				$images = $template_or_context->post_images;
+			} elseif (!empty($template_or_context->id)) {
+				$repo = new AIPS_Post_Images_Repository();
+				$images = $repo->get_content_images_for_entity('template', (int) $template_or_context->id);
+			}
+		}
+
+		$images = AIPS_Post_Images_Service::limited_content_images($images);
+
+		if (empty($images)) {
+			return '';
+		}
+
+		$lines = array(
+			'Image Placement Instructions:',
+			'You must include the following image placeholders on their own line between paragraphs or sections in the article body:'
+		);
+
+		foreach ($images as $img) {
+			$img_order = (int) $img->placeholder_index;
+			$placement = !empty($img->placement) ? $img->placement : 'auto';
+			$desc = "Placeholder: [post_image index=\"{$img_order}\"]";
+			if ($placement !== 'auto' && preg_match('/^after_section_(\d+)$/', $placement, $m)) {
+				$desc .= " (place immediately after Section {$m[1]} / Heading {$m[1]})";
+			} else {
+				$desc .= " (place naturally where most relevant within the article)";
+			}
+			$lines[] = "- {$desc}";
+		}
+
+		$lines[] = 'Do not wrap these placeholders in code blocks, quotes, or markdown formatting. Place each on its own separate line.';
+
+		return implode("\n", $lines);
 	}
 }

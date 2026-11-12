@@ -124,7 +124,7 @@ class AIPS_Sources_Controller {
 		$url            = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
 		$label          = isset($_POST['label']) ? sanitize_text_field(wp_unslash($_POST['label'])) : '';
 		$description    = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
-		$is_active      = isset($_POST['is_active']) ? 1 : 0;
+		$is_active      = isset($_POST['is_active']) && filter_var($_POST['is_active'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
 		$fetch_interval = isset($_POST['fetch_interval']) ? sanitize_text_field(wp_unslash($_POST['fetch_interval'])) : '';
 		$term_ids       = isset($_POST['term_ids']) && is_array($_POST['term_ids'])
 			? array_map('absint', $_POST['term_ids'])
@@ -168,13 +168,21 @@ class AIPS_Sources_Controller {
 			if ($fetch_interval) {
 				$schedule_result = $this->repo->set_fetch_schedule($id, $fetch_interval);
 				if (false === $schedule_result) {
+					AIPS_Sources_Cron::instance()->schedule();
 					AIPS_Ajax_Response::error(__('Source was updated, but saving the auto-fetch schedule failed. Please try again.', 'ai-post-scheduler'));
 				}
 			} else {
-				$this->repo->set_fetch_schedule($id, null);
+				if (false === $this->repo->set_fetch_schedule($id, null)) {
+					AIPS_Sources_Cron::instance()->schedule();
+					AIPS_Ajax_Response::error(__('Source was updated, but disabling auto-fetch failed. Please try again.', 'ai-post-scheduler'));
+				}
 			}
 
-			$this->repo->set_source_terms($id, $term_ids);
+			if (false === $this->repo->set_source_terms($id, $term_ids)) {
+				AIPS_Sources_Cron::instance()->schedule();
+				AIPS_Ajax_Response::error(__('Source was saved, but replacing its groups failed. Previous groups were kept; please try again.', 'ai-post-scheduler'));
+			}
+			AIPS_Sources_Cron::instance()->schedule();
 
 			$source           = $this->repo->get_by_id($id);
 			$source->term_ids = $this->repo->get_source_term_ids($id);
@@ -200,7 +208,11 @@ class AIPS_Sources_Controller {
 				}
 			}
 
-			$this->repo->set_source_terms($new_id, $term_ids);
+			if (false === $this->repo->set_source_terms($new_id, $term_ids)) {
+				AIPS_Sources_Cron::instance()->schedule();
+				AIPS_Ajax_Response::error(__('Source was saved, but replacing its groups failed. Previous groups were kept; please try again.', 'ai-post-scheduler'));
+			}
+			AIPS_Sources_Cron::instance()->schedule();
 
 			$source           = $this->repo->get_by_id($new_id);
 			$source->term_ids = $this->repo->get_source_term_ids($new_id);
@@ -242,6 +254,7 @@ class AIPS_Sources_Controller {
 			AIPS_Ajax_Response::error(__('Failed to delete source.', 'ai-post-scheduler'));
 		}
 
+		AIPS_Sources_Cron::instance()->schedule();
 		AIPS_Ajax_Response::success(array(), __('Source deleted.', 'ai-post-scheduler'));
 	}
 
@@ -262,7 +275,7 @@ class AIPS_Sources_Controller {
 		}
 
 		$id        = isset($_POST['source_id']) ? absint($_POST['source_id']) : 0;
-		$is_active = isset($_POST['is_active']) ? (int) $_POST['is_active'] : 0;
+		$is_active = isset($_POST['is_active']) && filter_var($_POST['is_active'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
 
 		if (!$id) {
 			AIPS_Ajax_Response::error(__('Invalid source ID.', 'ai-post-scheduler'));
@@ -273,6 +286,7 @@ class AIPS_Sources_Controller {
 			AIPS_Ajax_Response::error(__('Failed to update source status.', 'ai-post-scheduler'));
 		}
 
+		AIPS_Sources_Cron::instance()->schedule();
 		AIPS_Ajax_Response::success(array(), __('Source status updated.', 'ai-post-scheduler'));
 	}
 
@@ -408,8 +422,14 @@ class AIPS_Sources_Controller {
 
 		$row = $this->data_repo->get_by_id($id);
 		if (!$row) {
-			AIPS_Ajax_Response::error(__('Source data record not found.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(__('Archived snapshot unavailable. It may have been removed manually or by archive retention.', 'ai-post-scheduler'));
 			return;
+		}
+
+		$datetime_format = get_option('date_format') . ' ' . get_option('time_format');
+		foreach (array('fetched_at', 'created_at', 'updated_at') as $field) {
+			$timestamp                   = isset($row->$field) ? (int) $row->$field : 0;
+			$row->{$field . '_display'} = $timestamp > 0 ? wp_date($datetime_format, $timestamp) : __('Not recorded', 'ai-post-scheduler');
 		}
 
 		AIPS_Ajax_Response::success(array(
@@ -442,7 +462,7 @@ class AIPS_Sources_Controller {
 
 		$existing = $this->data_repo->get_by_id($id);
 		if (!$existing) {
-			AIPS_Ajax_Response::error(__('Source data record not found.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(__('Archived snapshot unavailable. It may have been removed manually or by archive retention.', 'ai-post-scheduler'));
 			return;
 		}
 
@@ -477,9 +497,10 @@ class AIPS_Sources_Controller {
 			'fetched_at'       => $fetched_at,
 		);
 
-		$result = $this->data_repo->update($id, $data);
-		if (!$result) {
-			AIPS_Ajax_Response::error(__('Failed to update source data.', 'ai-post-scheduler'));
+		$result = $this->data_repo->update_with_result($id, $data);
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message(), 'code' => $result->get_error_code()));
+			return;
 		}
 
 		AIPS_Ajax_Response::success(array(
@@ -550,7 +571,36 @@ class AIPS_Sources_Controller {
 			$this->repo
 		);
 
-		$result = $fetcher->fetch($source);
+		$lease = new AIPS_Sources_Fetch_Lease();
+		$owner = $lease->acquire();
+		if (false === $owner) {
+			AIPS_Ajax_Response::error(__('Another source fetch is running. Please retry in a minute.', 'ai-post-scheduler'));
+			return;
+		}
+		try {
+			$result = $fetcher->fetch($source);
+		} catch (Throwable $error) {
+			$this->repo->update_after_fetch($id, false, $error->getMessage());
+			$result = array('success' => false, 'char_count' => 0, 'error' => $error->getMessage());
+		} finally {
+			try {
+				AIPS_Sources_Cron::instance()->reconcile_owned(true);
+			} finally {
+				$lease->release($owner);
+			}
+		}
+
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::SOURCE_FETCHED,
+			!empty($result['success']),
+			!empty($result['success'])
+				? sprintf(__('Fetched source #%1$d (%2$d characters)', 'ai-post-scheduler'), $id, (int) ($result['char_count'] ?? 0))
+				: sprintf(__('Fetch failed for source #%1$d: %2$s', 'ai-post-scheduler'), $id, (string) ($result['error'] ?? '')),
+			'source_fetch',
+			array('event' => __('Source fetch', 'ai-post-scheduler'), 'detail' => sprintf(__('Source #%d', 'ai-post-scheduler'), $id)),
+			'manual',
+			array('source_id' => $id)
+		);
 
 		// Return updated source row + fetch result so the UI can refresh.
 		$updated_source           = $this->repo->get_by_id($id);

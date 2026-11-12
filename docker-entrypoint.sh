@@ -23,11 +23,18 @@ set -e
 : "${WP_ADMIN_EMAIL:=admin@example.com}" # WordPress admin email
 : "${WP_SITE_TITLE:=WP Site}"           # WordPress site title
 : "${WP_SITE_URL:=http://localhost:8080}" # WordPress site URL
+: "${AIPS_AI_PROVIDER:=wp_ai_client}"    # Active AI Provider for AIPS (wp_ai_client or meow)
+: "${DEFAULT_AI_CONNECTOR_PLUGIN:=ai-provider-for-google}" # Default AI connector plugin
 : "${ENTRYPOINT_DEBUG:=1}"              # Enable/disable debug output from the entrypoint script
+: "${WP_CORE_SOURCE:=image}"            # WordPress core source: "image" (bundled, pinned) or "trunk" (git clone of WordPress trunk)
+: "${WP_TABLE_PREFIX:=wp_}"             # Database table prefix (set by start-dev.sh when importing a dump)
+: "${PHPMYADMIN_PORT:=8082}"            # Host port for phpMyAdmin (display only)
+
+
 
 # Extract database host and port from WORDPRESS_DB_HOST.
-DB_HOST="$(echo ${WORDPRESS_DB_HOST} | cut -d: -f1)"
-DB_PORT="$(echo ${WORDPRESS_DB_HOST} | cut -s -d: -f2)"
+DB_HOST="$(echo "${WORDPRESS_DB_HOST}" | cut -d: -f1)"
+DB_PORT="$(echo "${WORDPRESS_DB_HOST}" | cut -s -d: -f2)"
 DB_PORT="${DB_PORT:-3306}"
 
 echo "============================================================"
@@ -40,10 +47,17 @@ echo "============================================================"
 #============================================================
 echo "[entrypoint] Waiting for MySQL at ${DB_HOST}:${DB_PORT} ..."
 
-# Loop to check if MySQL is ready to accept connections.
-retry=0
+# Prefer mariadb-admin (newer Debian drops the mysql* names), fall back to mysqladmin.
+if command -v mariadb-admin >/dev/null 2>&1; then
+  DB_ADMIN_BIN="mariadb-admin"
+else
+  DB_ADMIN_BIN="mysqladmin"
+fi
 
-until mysqladmin ping -h"$DB_HOST" -P"$DB_PORT" -u root -p"$MYSQL_ROOT_PASSWORD" --silent; do
+# Ping with the application user so the root password isn't needed here.
+# MYSQL_PWD keeps the password out of the process list.
+retry=0
+until MYSQL_PWD="$WORDPRESS_DB_PASSWORD" "$DB_ADMIN_BIN" ping -h"$DB_HOST" -P"$DB_PORT" -u"$WORDPRESS_DB_USER" --silent; do
   retry=$((retry+1))
 
   # Timeout after 60 attempts (approx 2 minutes).
@@ -61,24 +75,32 @@ echo "[entrypoint] MySQL is up."
 #============================================================
 # WordPress Core Installation
 #============================================================
-# Check if wp-config.php exists. If not, perform a fresh WordPress installation.
+# Step 1: make sure WordPress core files exist in the (volume-backed) web root.
+if [ ! -f /var/www/html/wp-includes/version.php ]; then
+  if [ "${WP_CORE_SOURCE}" = "trunk" ]; then
+    echo "[entrypoint] WP_CORE_SOURCE=trunk — cloning WordPress trunk from GitHub..."
+    rm -rf /tmp/wpcore
+    if ! git clone --depth 1 https://github.com/WordPress/WordPress.git /tmp/wpcore; then
+      echo "[entrypoint] ERROR: Failed to clone WordPress trunk. Set WP_CORE_SOURCE=image to use the bundled core."
+      exit 1
+    fi
+    rm -rf /tmp/wpcore/.git
+    cp -rn /tmp/wpcore/. /var/www/html/
+    rm -rf /tmp/wpcore
+  else
+    echo "[entrypoint] Copying bundled WordPress core from the image..."
+    cp -rn /usr/src/wordpress/. /var/www/html/
+  fi
+  # WP-CLI runs as root; hand the core files to the web server user.
+  # The bind-mounted plugin directory is skipped (slow on Windows/macOS hosts).
+  find /var/www/html -path /var/www/html/wp-content/plugins/ai-post-scheduler -prune -o -exec chown www-data:www-data {} +
+fi
+
+# Step 2: create wp-config.php if missing.
 if [ ! -f /var/www/html/wp-config.php ]; then
-  echo "[entrypoint] WordPress not found in /var/www/html — downloading..."
-
-  # Download WordPress core files. --allow-root is needed because we are running as root in Docker.
-  wp core download --path=/var/www/html --allow-root
-
   echo "[entrypoint] Creating wp-config.php..."
-  # Generate wp-config.php with database credentials.
-  # --skip-check avoids connecting to the DB during config creation (we verified it above, but this is safer for config generation).
-  wp config create \
-    --path=/var/www/html \
-    --dbname="$WORDPRESS_DB_NAME" \
-    --dbuser="$WORDPRESS_DB_USER" \
-    --dbpass="$WORDPRESS_DB_PASSWORD" \
-    --dbhost="$WORDPRESS_DB_HOST" \
-    --skip-check \
-    --allow-root
+  # --skip-check avoids connecting to the DB during config creation (we verified it above).
+  wp config create     --path=/var/www/html     --dbname="$WORDPRESS_DB_NAME"     --dbuser="$WORDPRESS_DB_USER"     --dbpass="$WORDPRESS_DB_PASSWORD"     --dbhost="$WORDPRESS_DB_HOST"     --dbprefix="$WP_TABLE_PREFIX"     --skip-check     --allow-root
 
   # Enable debug mode
   # --raw --type=constant ensures they are written as PHP booleans (true/false) not strings.
@@ -90,47 +112,150 @@ if [ ! -f /var/www/html/wp-config.php ]; then
   # Set memory limits
   wp config set WP_MEMORY_LIMIT '512M' --type=constant --path=/var/www/html --allow-root
   wp config set WP_MAX_MEMORY_LIMIT '512M' --type=constant --path=/var/www/html --allow-root
-  
-  # Disable fatal error handler for better debugging
-  wp config set WP_DISABLE_FATAL_ERROR_HANDLER true --raw --type=constant --path=/var/www/html --allow-root
 
-  # Create the WordPress database if it doesn't already exist.
+  # Configure fatal error handler
+  wp config set WP_DISABLE_FATAL_ERROR_HANDLER false --raw --type=constant --path=/var/www/html --allow-root
+
+  # Create the WordPress database if it doesn't already exist (|| true: it normally does).
   echo "[entrypoint] Creating database (if not exists)..."
-
-  # || true ensures the script continues even if the DB already exists.
-  wp db create --path=/var/www/html --allow-root || true
-
-  # Run the standard WordPress installation process.
-  echo "[entrypoint] Installing WordPress core..."
-
-  wp core install \
-    --path=/var/www/html \
-    --url="$WP_SITE_URL" \
-    --title="$WP_SITE_TITLE" \
-    --admin_user="$WP_ADMIN_USER" \
-    --admin_password="$WP_ADMIN_PASSWORD" \
-    --admin_email="$WP_ADMIN_EMAIL" \
-    --skip-email \
-    --allow-root
+  wp db create --path=/var/www/html --allow-root 2>/dev/null || true
 else
-  echo "[entrypoint] wp-config.php exists; skipping core download/install."
+  echo "[entrypoint] wp-config.php exists; skipping config creation."
+  # Keep the table prefix in sync (it changes when start-dev.sh imports a dump with a different prefix).
+  CURRENT_PREFIX="$(wp config get table_prefix --path=/var/www/html --allow-root 2>/dev/null || true)"
+  if [ -n "$CURRENT_PREFIX" ] && [ "$CURRENT_PREFIX" != "$WP_TABLE_PREFIX" ]; then
+    echo "[entrypoint] Updating table_prefix: ${CURRENT_PREFIX} -> ${WP_TABLE_PREFIX}"
+    wp config set table_prefix "$WP_TABLE_PREFIX" --type=variable --path=/var/www/html --allow-root
+  fi
+fi
+
+# Step 3: install WordPress (database tables) if not already installed.
+if ! wp core is-installed --path=/var/www/html --allow-root 2>/dev/null; then
+  echo "[entrypoint] Installing WordPress core..."
+  wp core install     --path=/var/www/html     --url="$WP_SITE_URL"     --title="$WP_SITE_TITLE"     --admin_user="$WP_ADMIN_USER"     --admin_password="$WP_ADMIN_PASSWORD"     --admin_email="$WP_ADMIN_EMAIL"     --skip-email     --allow-root
+else
+  echo "[entrypoint] WordPress is already installed."
 fi
 
 #============================================================
-# AI Post Scheduler Plugin Installation
+# WordPress AI Infrastructure & Connectors Setup
 #============================================================
 
 # Ensure the plugins directory exists.
 mkdir -p /var/www/html/wp-content/plugins
+
+# Step 1: Install and activate the official WordPress AI plugin (ai)
+echo "[entrypoint] Checking for official WordPress AI plugin (ai)..."
+if ! wp plugin is-installed ai --path=/var/www/html --allow-root 2>/dev/null; then
+  echo "[entrypoint] Installing official WordPress AI plugin (ai)..."
+  wp plugin install ai --activate --path=/var/www/html --allow-root || {
+    echo "[entrypoint] WARNING: Failed to install official WordPress AI plugin (ai)."
+  }
+else
+  echo "[entrypoint] Official WordPress AI plugin (ai) is already installed."
+  if ! wp plugin is-active ai --path=/var/www/html --allow-root 2>/dev/null; then
+    echo "[entrypoint] Activating official WordPress AI plugin (ai)..."
+    wp plugin activate ai --path=/var/www/html --allow-root 2>/dev/null || true
+  fi
+fi
+
+# Step 2: Install and activate default AI connector plugin
+CONNECTOR_PLUGIN="${DEFAULT_AI_CONNECTOR_PLUGIN:-ai-provider-for-google}"
+if [ -n "${CONNECTOR_PLUGIN}" ]; then
+  echo "[entrypoint] Checking for AI connector plugin (${CONNECTOR_PLUGIN})..."
+  if ! wp plugin is-installed "${CONNECTOR_PLUGIN}" --path=/var/www/html --allow-root 2>/dev/null; then
+    echo "[entrypoint] Installing AI connector plugin (${CONNECTOR_PLUGIN})..."
+    wp plugin install "${CONNECTOR_PLUGIN}" --activate --path=/var/www/html --allow-root || {
+      echo "[entrypoint] WARNING: Failed to install connector plugin ${CONNECTOR_PLUGIN}."
+    }
+  else
+    echo "[entrypoint] AI connector plugin (${CONNECTOR_PLUGIN}) is already installed."
+    if ! wp plugin is-active "${CONNECTOR_PLUGIN}" --path=/var/www/html --allow-root 2>/dev/null; then
+      echo "[entrypoint] Activating AI connector plugin (${CONNECTOR_PLUGIN})..."
+      wp plugin activate "${CONNECTOR_PLUGIN}" --path=/var/www/html --allow-root 2>/dev/null || true
+    fi
+  fi
+fi
+
+# Step 3: Configure AI connector credentials in WordPress (only if corresponding connector plugin is installed)
+if wp plugin is-installed ai-provider-for-google --path=/var/www/html --allow-root 2>/dev/null; then
+  # Ignore empty values and placeholders like 'your_google_api_key_here'
+  # (same pattern as is_placeholder_key() in start-dev.sh).
+  GOOGLE_API_KEY_LC="$(printf '%s' "${GOOGLE_API_KEY:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+  case "${GOOGLE_API_KEY_LC}" in
+    ""|*your_*|*api_key*|*_here*)
+      echo "[entrypoint] GOOGLE_API_KEY is empty or a placeholder; skipping Google connector credentials."
+      ;;
+    *)
+    echo "[entrypoint] Configuring GOOGLE_API_KEY constant and connector settings..."
+    wp config set GOOGLE_API_KEY "${GOOGLE_API_KEY}" --type=constant --path=/var/www/html --allow-root 2>/dev/null || true
+    wp option update connectors_ai_google_api_key "${GOOGLE_API_KEY}" --path=/var/www/html --allow-root 2>/dev/null || true
+    wp option update connectors_ai_provider_google_api_key "${GOOGLE_API_KEY}" --path=/var/www/html --allow-root 2>/dev/null || true
+      ;;
+  esac
+fi
+
+if wp plugin is-installed ai-provider-for-openai --path=/var/www/html --allow-root 2>/dev/null; then
+  if [ -n "${OPENAI_API_KEY}" ]; then
+    echo "[entrypoint] Configuring OPENAI_API_KEY constant..."
+    wp config set OPENAI_API_KEY "${OPENAI_API_KEY}" --type=constant --path=/var/www/html --allow-root 2>/dev/null || true
+  fi
+fi
+
+if wp plugin is-installed ai-provider-for-anthropic --path=/var/www/html --allow-root 2>/dev/null; then
+  if [ -n "${ANTHROPIC_API_KEY}" ]; then
+    echo "[entrypoint] Configuring ANTHROPIC_API_KEY constant..."
+    wp config set ANTHROPIC_API_KEY "${ANTHROPIC_API_KEY}" --type=constant --path=/var/www/html --allow-root 2>/dev/null || true
+  fi
+fi
+
+# Step 4: Configure active AI provider for AIPS (wp_ai_client vs meow)
+NORMALIZED_PROVIDER="$(echo "${AIPS_AI_PROVIDER}" | tr '[:upper:]' '[:lower:]')"
+if [[ "${NORMALIZED_PROVIDER}" == *"meow"* ]]; then
+  TARGET_AIPS_PROVIDER="meow"
+else
+  TARGET_AIPS_PROVIDER="wp_ai_client"
+fi
+
+if [ "${TARGET_AIPS_PROVIDER}" = "meow" ]; then
+  echo "[entrypoint] AIPS_AI_PROVIDER is set to meow. Checking for Meow Apps AI Engine plugin..."
+  if ! wp plugin is-installed ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
+    echo "[entrypoint] Installing Meow Apps AI Engine plugin..."
+    wp plugin install ai-engine --activate --path=/var/www/html --allow-root || {
+      echo "[entrypoint] WARNING: Failed to install Meow Apps AI Engine via WP-CLI."
+    }
+  else
+    echo "[entrypoint] Meow Apps AI Engine is already installed."
+    if ! wp plugin is-active ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
+      echo "[entrypoint] Activating Meow Apps AI Engine..."
+      wp plugin activate ai-engine --path=/var/www/html --allow-root 2>/dev/null || true
+    fi
+  fi
+  wp option update aips_ai_provider meow --path=/var/www/html --allow-root 2>/dev/null || true
+else
+  echo "[entrypoint] Setting AIPS active provider to wp_ai_client..."
+  wp option update aips_ai_provider wp_ai_client --path=/var/www/html --allow-root 2>/dev/null || true
+
+  # Still activate Meow Apps AI Engine if present
+  if wp plugin is-installed ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
+    if ! wp plugin is-active ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
+      echo "[entrypoint] Activating installed AI Engine..."
+      wp plugin activate ai-engine --path=/var/www/html --allow-root 2>/dev/null || true
+    fi
+  fi
+fi
+
+
+#============================================================
+# AI Post Scheduler Plugin Installation & Activation
+#============================================================
 
 PLUGIN_SLUG="ai-post-scheduler"
 
 # Check if plugin is mounted as a volume (development mode)
 if [ -d "/var/www/html/wp-content/plugins/${PLUGIN_SLUG}" ]; then
   echo "[entrypoint] Plugin ${PLUGIN_SLUG} found (mounted volume for development)."
-  # Set appropriate ownership for the mounted plugin
   chown -R www-data:www-data /var/www/html/wp-content/plugins/${PLUGIN_SLUG}
-# Otherwise, copy from image if available and not already copied
 elif [ -d "/plugin-src/${PLUGIN_SLUG}" ]; then
   echo "[entrypoint] Copying plugin ${PLUGIN_SLUG} from image into WordPress plugins..."
   cp -R /plugin-src/"${PLUGIN_SLUG}" /var/www/html/wp-content/plugins/
@@ -139,10 +264,15 @@ else
   echo "[entrypoint] WARNING: Plugin ${PLUGIN_SLUG} not found in /plugin-src or mounted volume!"
 fi
 
-# Set appropriate ownership for WordPress files. www-data is the user Apache runs as.
-chown -R www-data:www-data /var/www/html
+# Ensure Composer autoloader is present in plugin
+if [ -d "/var/www/html/wp-content/plugins/${PLUGIN_SLUG}" ]; then
+  if [ ! -f "/var/www/html/wp-content/plugins/${PLUGIN_SLUG}/vendor/autoload.php" ]; then
+    echo "[entrypoint] Installing composer dependencies for ${PLUGIN_SLUG}..."
+    composer install --working-dir="/var/www/html/wp-content/plugins/${PLUGIN_SLUG}" --no-dev --no-interaction || true
+  fi
+fi
 
-# Check if the plugin is active and activate if needed.
+# Check if the plugin is active and activate if needed (after AI prerequisites are ready).
 if wp plugin is-active "${PLUGIN_SLUG}" --path=/var/www/html --allow-root 2>/dev/null; then
   echo "[entrypoint] Plugin ${PLUGIN_SLUG} is already active."
 else
@@ -152,45 +282,66 @@ else
   }
 fi
 
-# Install and activate Meow Apps AI Engine if not present (required dependency)
-echo "[entrypoint] Checking for Meow Apps AI Engine plugin..."
-if ! wp plugin is-installed ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
-  echo "[entrypoint] Installing Meow Apps AI Engine (required dependency)..."
-  # Note: This is a placeholder. The actual plugin might need manual installation or API key
-  # wp plugin install ai-engine --activate --path=/var/www/html --allow-root || {
-  echo "[entrypoint] NOTE: Meow Apps AI Engine is required for this plugin to function."
-  echo "[entrypoint] Please install it manually from WordPress admin or via WP-CLI."
-  # }
+
+# WP-CLI ran as root: make sure plugins/uploads/config stay writable by Apache
+# so wp-admin can install, update and upload. The bind-mounted plugin is skipped.
+find /var/www/html -path /var/www/html/wp-content/plugins/ai-post-scheduler -prune -o   \( -not -user www-data -o -not -group www-data \) -exec chown www-data:www-data {} + 2>/dev/null || true
+
+# Pre-create the PHP error log (see dev-php.ini) so www-data can write to it.
+touch /var/log/php_errors.log
+chown www-data:www-data /var/log/php_errors.log
+
+#============================================================
+# Xdebug runtime configuration
+#============================================================
+#
+# Xdebug is opt-in via .env. `xdebug.start_with_request=yes` (the previous
+# hardcoded default) imposes a substantial per-request cost even with no IDE
+# attached, so we default XDEBUG_MODE to `off` and generate the ini here at
+# boot from environment variables rather than baking values into dev-php.ini.
+
+XDEBUG_MODE="${XDEBUG_MODE:-off}"
+XDEBUG_RUNTIME_INI="/usr/local/etc/php/conf.d/zz-xdebug-runtime.ini"
+
+if [ "$XDEBUG_MODE" = "off" ] || [ -z "$XDEBUG_MODE" ]; then
+  # Write an explicit `xdebug.mode = off` ini. Deleting the file is NOT enough:
+  # Xdebug's compiled defaults are `mode = develop` and `start_with_request =
+  # default` (which resolves to "yes"), so with no ini Xdebug would still run
+  # develop-mode instrumentation on every request. `mode = off` disables all
+  # Xdebug features (Xdebug 3 semantics) with negligible overhead.
+  if php -m | grep -qi '^xdebug$'; then
+    cat > "$XDEBUG_RUNTIME_INI" <<EOF
+[xdebug]
+xdebug.mode = off
+EOF
+  else
+    rm -f "$XDEBUG_RUNTIME_INI"
+  fi
+  echo "[entrypoint] Xdebug: disabled (XDEBUG_MODE=off)"
+elif php -m | grep -qi '^xdebug$'; then
+  XDEBUG_LOG_FILE="${XDEBUG_LOG:-/tmp/xdebug.log}"
+  mkdir -p "$(dirname "$XDEBUG_LOG_FILE")"
+  touch "$XDEBUG_LOG_FILE"
+  chown www-data:www-data "$XDEBUG_LOG_FILE"
+  chmod 664 "$XDEBUG_LOG_FILE"
+
+  cat > "$XDEBUG_RUNTIME_INI" <<EOF
+[xdebug]
+xdebug.mode = ${XDEBUG_MODE}
+xdebug.start_with_request = ${XDEBUG_START_WITH_REQUEST:-trigger}
+xdebug.client_host = ${XDEBUG_CLIENT_HOST:-host.docker.internal}
+xdebug.client_port = ${XDEBUG_CLIENT_PORT:-9003}
+xdebug.idekey = ${XDEBUG_IDEKEY:-PHPSTORM}
+xdebug.log = ${XDEBUG_LOG_FILE}
+xdebug.log_level = ${XDEBUG_LOG_LEVEL:-7}
+xdebug.discover_client_host = false
+xdebug.var_display_max_depth = 5
+xdebug.var_display_max_children = 128
+xdebug.var_display_max_data = 512
+EOF
+  echo "[entrypoint] Xdebug: enabled (mode=${XDEBUG_MODE}, start_with_request=${XDEBUG_START_WITH_REQUEST:-trigger})"
 else
-  echo "[entrypoint] Meow Apps AI Engine is already installed."
-  if ! wp plugin is-active ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
-    echo "[entrypoint] Activating AI Engine..."
-    wp plugin activate ai-engine --path=/var/www/html --allow-root 2>/dev/null || true
-  fi
-fi
-
-#============================================================
-# Xdebug log file setup
-#============================================================
-
-# Xdebug is configured to write to /tmp/xdebug.log by default. Always create
-# that file so the container has a guaranteed writable target at boot.
-XDEBUG_DEFAULT_LOG_FILE="/tmp/xdebug.log"
-XDEBUG_OVERRIDE_LOG_FILE="${XDEBUG_LOG:-}"
-
-if php -m | grep -qi '^xdebug$'; then
-  mkdir -p "$(dirname "$XDEBUG_DEFAULT_LOG_FILE")"
-  touch "$XDEBUG_DEFAULT_LOG_FILE"
-  chown www-data:www-data "$XDEBUG_DEFAULT_LOG_FILE"
-  chmod 664 "$XDEBUG_DEFAULT_LOG_FILE"
-
-  # If an override path is provided, prepare that path too.
-  if [ -n "$XDEBUG_OVERRIDE_LOG_FILE" ] && [ "$XDEBUG_OVERRIDE_LOG_FILE" != "$XDEBUG_DEFAULT_LOG_FILE" ]; then
-    mkdir -p "$(dirname "$XDEBUG_OVERRIDE_LOG_FILE")"
-    touch "$XDEBUG_OVERRIDE_LOG_FILE"
-    chown www-data:www-data "$XDEBUG_OVERRIDE_LOG_FILE"
-    chmod 664 "$XDEBUG_OVERRIDE_LOG_FILE"
-  fi
+  echo "[entrypoint] Xdebug: XDEBUG_MODE=${XDEBUG_MODE} requested but xdebug extension is not loaded; skipping."
 fi
 
 #============================================================
@@ -213,7 +364,7 @@ if [ "${ENTRYPOINT_DEBUG}" = "1" ]; then
     echo ""
     echo "Site URL: ${WP_SITE_URL}"
     echo "Admin User: ${WP_ADMIN_USER}"
-    echo "Admin Password: ${WP_ADMIN_PASSWORD}"
+    echo "Admin Password: ${WP_ADMIN_PASSWORD}"  # dev-only; shown because ENTRYPOINT_DEBUG=1
   fi
 
   echo ""
@@ -222,10 +373,15 @@ if [ "${ENTRYPOINT_DEBUG}" = "1" ]; then
 
   echo ""
   echo "---- Xdebug Status ----"
-  php -v | grep -i xdebug || echo "Xdebug not detected"
-  echo ""
-  echo "Xdebug configuration:"
-  php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request" || true
+  echo "XDEBUG_MODE (env): ${XDEBUG_MODE:-off}"
+  if [ "${XDEBUG_MODE:-off}" = "off" ]; then
+    echo "Xdebug is DISABLED. Set XDEBUG_MODE in .env (e.g. debug) and restart the web container to enable."
+  else
+    php -v | grep -i xdebug || echo "Xdebug extension not detected"
+    echo ""
+    echo "Xdebug configuration:"
+    php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request" || true
+  fi
 
   echo ""
   echo "---- PHP Info ----"
@@ -235,15 +391,18 @@ if [ "${ENTRYPOINT_DEBUG}" = "1" ]; then
   echo "============================================================"
   echo "  Development environment ready!"
   echo "  WordPress: ${WP_SITE_URL}"
-  echo "  phpMyAdmin: http://localhost:8082"
-  echo "  Xdebug: Listening on port 9003"
+  echo "  phpMyAdmin: http://localhost:${PHPMYADMIN_PORT}"
+  if [ "${XDEBUG_MODE:-off}" = "off" ]; then
+    echo "  Xdebug: disabled (set XDEBUG_MODE in .env to enable)"
+  else
+    echo "  Xdebug: mode=${XDEBUG_MODE}, port ${XDEBUG_CLIENT_PORT:-9003}, start_with_request=${XDEBUG_START_WITH_REQUEST:-trigger}"
+  fi
   echo "============================================================"
   echo ""
 
   # Tail Apache logs for real-time monitoring in background
-  if [ -f /var/log/apache2/error.log ]; then
-    tail -n +1 -F /var/log/apache2/error.log &
-  fi
+  touch /var/log/apache2/error.log
+  tail -n +1 -F /var/log/apache2/error.log &
 fi
 
 # --- Start Apache ---

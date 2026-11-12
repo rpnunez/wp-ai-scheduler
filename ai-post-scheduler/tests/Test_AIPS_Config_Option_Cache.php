@@ -522,4 +522,29 @@ class Test_AIPS_Config_Option_Cache extends WP_UnitTestCase {
 			'Second read must come from the cache, not the option store.'
 		);
 	}
+
+	/**
+	 * Options in the persistent-cache list must not keep serving a stale value
+	 * after they are written through plain update_option()/delete_option()
+	 * (e.g. the onboarding wizard reset), only through set_option().
+	 */
+	public function test_persistent_cache_option_is_invalidated_by_external_writes() {
+		update_option( 'aips_onboarding_completed', 1 );
+		$this->config->flush_option_cache();
+
+		$this->assertEquals( 1, $this->config->get_option( 'aips_onboarding_completed' ) );
+		$this->assertTrue(
+			AIPS_Cache_Factory::instance()->has( 'aips_onboarding_completed' ),
+			'Precondition: value is held in the persistent cache.'
+		);
+
+		delete_option( 'aips_onboarding_completed' );
+		$this->assertFalse( AIPS_Cache_Factory::instance()->has( 'aips_onboarding_completed' ) );
+		$this->assertFalse( (bool) $this->config->get_option( 'aips_onboarding_completed' ), 'Reset must be visible immediately.' );
+
+		update_option( 'aips_onboarding_completed', 1 );
+		$this->assertEquals( 1, $this->config->get_option( 'aips_onboarding_completed' ) );
+		update_option( 'aips_onboarding_completed', 0 );
+		$this->assertEquals( 0, $this->config->get_option( 'aips_onboarding_completed' ), 'update_option must invalidate the persistent entry.' );
+	}
 }

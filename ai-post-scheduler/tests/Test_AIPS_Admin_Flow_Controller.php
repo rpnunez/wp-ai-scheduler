@@ -88,7 +88,9 @@ class Test_AIPS_Admin_Flow_Controller extends WP_UnitTestCase {
 		$reflection = new ReflectionClass('AIPS_Admin_Flow_Controller');
 		$controller = $reflection->newInstanceWithoutConstructor();
 
-		$config_property = $reflection->getProperty('config');
+		// $config is declared private on the AIPS_Campaigns_Controller parent,
+		// so it must be reflected from that class to be visible.
+		$config_property = ( new ReflectionClass( 'AIPS_Campaigns_Controller' ) )->getProperty('config');
 		$config_property->setAccessible(true);
 		$config_property->setValue($controller, new class() {
 			public function get_option($option_name) {

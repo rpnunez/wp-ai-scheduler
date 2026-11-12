@@ -52,6 +52,7 @@ if (!defined('ABSPATH')) {
 		<div id="aips-ai-assist-history-alltime-tab" class="aips-tab-content" style="display:none;">
 			<p class="description"><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
 		</div>
+		<p><button type="button" class="button-link-delete aips-ai-assist-history-clear"><?php esc_html_e('Clear all AI Assistance history', 'ai-post-scheduler'); ?></button></p>
 	</div>
 </div>
 
@@ -60,10 +61,12 @@ if (!defined('ABSPATH')) {
 <div class="aips-ai-assist-history-item">
 	<div class="aips-ai-assist-history-response">{{response}}</div>
 	<div class="aips-ai-assist-history-meta">{{created_at}}</div>
+	<div class="aips-ai-assist-history-meta"><?php esc_html_e('Context:', 'ai-post-scheduler'); ?> {{context}}</div>
 	<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-assist-history-use"
 		data-field-id="{{fieldId}}"
 		data-record-id="{{id}}">
 		<?php esc_html_e('Use This Value', 'ai-post-scheduler'); ?>
 	</button>
+	<button type="button" class="button-link-delete aips-ai-assist-history-delete" data-record-id="{{id}}"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></button>
 </div>
 </script>

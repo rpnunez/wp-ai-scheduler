@@ -102,6 +102,48 @@ class AIPS_Research_Controller {
     }
     
     /**
+     * Record a research run in its own History container.
+     *
+     * @param string               $label          Human-readable run type.
+     * @param string               $niche          Niche researched.
+     * @param WP_Error|int|array   $result         WP_Error on failure, otherwise the number of topics/gaps produced.
+     * @param string               $trigger_method 'manual' or 'scheduled'.
+     * @param array<string,mixed>  $extra          Extra input fields to store with the event.
+     * @return void
+     */
+    private function record_research_run($label, $niche, $result, $trigger_method = 'manual', array $extra = array()) {
+        $input = array_merge(array('niche' => $niche, 'run_type' => $label), $extra);
+
+        if (is_wp_error($result)) {
+            $event = AIPS_History_Event::failure(
+                AIPS_History_Event_Type::RESEARCH_RUN,
+                sprintf(__('%1$s failed for "%2$s": %3$s', 'ai-post-scheduler'), $label, $niche, $result->get_error_message()),
+                null,
+                array(),
+                $input
+            );
+        } else {
+            $count = is_array($result) ? count($result) : (int) $result;
+            $input['result_count'] = $count;
+            $event = AIPS_History_Event::success(
+                AIPS_History_Event_Type::RESEARCH_RUN,
+                sprintf(__('%1$s completed for "%2$s": %3$d results', 'ai-post-scheduler'), $label, $niche, $count),
+                null,
+                array(),
+                $input
+            );
+        }
+
+        (new AIPS_History_Event_Recorder($this->history_service))->record_lifecycle(
+            $event,
+            'research_run',
+            array('event' => $label, 'detail' => sprintf(__('Niche "%s"', 'ai-post-scheduler'), $niche)),
+            array(),
+            $trigger_method
+        );
+    }
+
+    /**
      * AJAX handler: Research trending topics.
      *
      * Executes AI research and stores results in database.
@@ -127,6 +169,7 @@ class AIPS_Research_Controller {
         $topics = $this->research_service->research_trending_topics($niche, $count, $keywords);
         
         if (is_wp_error($topics)) {
+            $this->record_research_run(__('Research trending topics', 'ai-post-scheduler'), $niche, $topics);
             AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
         }
         
@@ -134,11 +177,13 @@ class AIPS_Research_Controller {
         $saved_count = $this->repository->save_research_batch($topics, $niche);
         
         if ($saved_count === false) {
+            $this->record_research_run(__('Research trending topics', 'ai-post-scheduler'), $niche, new WP_Error('save_failed', __('Failed to save research results.', 'ai-post-scheduler')));
             AIPS_Ajax_Response::error(__('Failed to save research results.', 'ai-post-scheduler'));
         }
         
         // Get top 5 for display
         $top_topics = $this->research_service->get_top_topics($topics, 5);
+        $this->record_research_run(__('Research trending topics', 'ai-post-scheduler'), $niche, (int) $saved_count);
         
         AIPS_Ajax_Response::success(array(
             'topics' => $topics,
@@ -762,6 +807,7 @@ class AIPS_Research_Controller {
             $topics = $this->research_service->research_trending_topics($niche, $count, $keywords);
             
             if (is_wp_error($topics)) {
+                $this->record_research_run(__('Scheduled research', 'ai-post-scheduler'), $niche, $topics, 'scheduled');
                 $this->logger->log("Research failed for {$niche}: " . $topics->get_error_message(), 'error');
                 continue;
             }
@@ -769,6 +815,14 @@ class AIPS_Research_Controller {
             // Save results
             $saved_count = $this->repository->save_research_batch($topics, $niche);
             
+            // Record every niche run, including ones that saved nothing (e.g. all duplicates).
+            $this->record_research_run(
+                __('Scheduled research', 'ai-post-scheduler'),
+                $niche,
+                ($saved_count === false) ? new WP_Error('save_failed', __('Failed to save research results.', 'ai-post-scheduler')) : (int) $saved_count,
+                'scheduled'
+            );
+
             if ($saved_count) {
                 $total_researched += $saved_count;
                 $this->logger->log("Saved {$saved_count} topics for {$niche}", 'info');
@@ -802,8 +856,10 @@ class AIPS_Research_Controller {
         $gaps = $this->content_auditor->perform_gap_analysis($niche);
 
         if (is_wp_error($gaps)) {
+            $this->record_research_run(__('Content gap analysis', 'ai-post-scheduler'), $niche, $gaps);
             AIPS_Ajax_Response::error(array('message' => $gaps->get_error_message()));
         }
+        $this->record_research_run(__('Content gap analysis', 'ai-post-scheduler'), $niche, is_array($gaps) ? count($gaps) : 0);
 
         AIPS_Ajax_Response::success(array(
             'gaps' => $gaps,
@@ -836,11 +892,19 @@ class AIPS_Research_Controller {
         $topics = $this->research_service->research_trending_topics($niche, 5, array($gap_topic));
 
         if (is_wp_error($topics)) {
+            $this->record_research_run(__('Topics from content gap', 'ai-post-scheduler'), $niche, $topics, 'manual', array('gap_topic' => $gap_topic));
             AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
         }
 
         // Save to database
         $saved_count = $this->repository->save_research_batch($topics, $niche);
+        $this->record_research_run(
+            __('Topics from content gap', 'ai-post-scheduler'),
+            $niche,
+            ($saved_count === false) ? new WP_Error('save_failed', __('Failed to save research results.', 'ai-post-scheduler')) : (int) $saved_count,
+            'manual',
+            array('gap_topic' => $gap_topic)
+        );
 
         AIPS_Ajax_Response::success(array(
             'message' => sprintf(__('Generated and saved %d topics based on "%s".', 'ai-post-scheduler'), count($topics), $gap_topic),
@@ -884,6 +948,7 @@ class AIPS_Research_Controller {
         $topics = $this->research_service->research_from_sources($term_ids, $niche, $count, $keywords);
 
         if (is_wp_error($topics)) {
+            $this->record_research_run(__('Research from sources', 'ai-post-scheduler'), $niche, $topics, 'manual', array('term_ids' => $term_ids));
             AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
         }
 
@@ -892,6 +957,7 @@ class AIPS_Research_Controller {
         if ($saved_count === false) {
             AIPS_Ajax_Response::error(__('Failed to save research results.', 'ai-post-scheduler'));
         }
+        $this->record_research_run(__('Research from sources', 'ai-post-scheduler'), $niche, (int) $saved_count, 'manual', array('term_ids' => $term_ids));
 
         $top_topics = $this->research_service->get_top_topics($topics, 5);
 

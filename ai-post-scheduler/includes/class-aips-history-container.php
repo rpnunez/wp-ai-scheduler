@@ -189,6 +189,46 @@ class AIPS_History_Container {
 
 		return $history_container;
 	}
+
+	/**
+	 * Resolve an existing History Container, or create one for the post if none exists.
+	 *
+	 * @param AIPS_History_Repository_Interface $repository Repository instance.
+	 * @param int                               $post_id    Post ID.
+	 * @param int                               $history_id Optional history ID.
+	 * @return AIPS_History_Container|WP_Error Container on success, WP_Error on failure.
+	 */
+	public static function resolve_or_create(AIPS_History_Repository_Interface $repository, $post_id = 0, $history_id = 0) {
+		$container = self::resolve_existing($repository, $post_id, $history_id);
+		if (!is_wp_error($container)) {
+			return $container;
+		}
+
+		$post_id = absint($post_id);
+		if ($post_id <= 0) {
+			return $container;
+		}
+
+		$post = get_post($post_id);
+		$metadata = array(
+			'post_id'         => $post_id,
+			'post_type'       => $post ? $post->post_type : 'post',
+			'generated_title' => $post ? $post->post_title : '',
+			'creation_method' => 'ai_edit',
+			// A generation row is what get_by_post_id() returns. An unclassified
+			// ai_edit container is stored as an event and the next save cannot
+			// find it, so each AI Edit would open a new orphan container.
+			'record_kind'     => AIPS_History_Record_Kind::GENERATION,
+			'status'          => 'completed',
+		);
+
+		$new_container = new self($repository, 'post_generation', $metadata);
+		if ($new_container->get_id()) {
+			return $new_container;
+		}
+
+		return $container;
+	}
 	
 	/**
 	 * Persist this history container to the database
@@ -290,16 +330,26 @@ class AIPS_History_Container {
 		
 		// Add output if provided
 		if ($output !== null) {
-			// Base64 encode if it's a large string (likely AI response)
 			if (is_string($output) && strlen($output) > 500) {
-				$details['output'] = base64_encode($output);
-				$details['output_encoded'] = true;
+				// Store the real AI response text. This used to be base64-encoded,
+				// which inflated the row ~33% and rendered as an unreadable Base64 blob
+				// in the History "AI Response" view. We only sanitize to valid UTF-8 so
+				// wp_json_encode() of details can never fail on stray bytes. Legacy rows
+				// that still carry base64 (with the output_encoded flag) are decoded on
+				// read by the display layer.
+				$details['output'] = function_exists('wp_check_invalid_utf8')
+					? wp_check_invalid_utf8($output, true)
+					: $output;
 			} else {
 				$details['output'] = is_array($output) || is_object($output) ? $output : array('value' => $output);
 			}
 		}
 		
 		// Merge additional context
+		if (!empty($this->metadata['post_id']) && !isset($context['post_id'])) {
+			$context['post_id'] = absint($this->metadata['post_id']);
+		}
+
 		if (!empty($context)) {
 			$details['context'] = $context;
 		}
@@ -343,7 +393,10 @@ class AIPS_History_Container {
 			'info' => AIPS_History_Type::INFO,
 			'debug' => AIPS_History_Type::DEBUG,
 			'log' => AIPS_History_Type::LOG,
+			'trigger_source' => AIPS_History_Type::ACTIVITY,
+			'trigger_method' => AIPS_History_Type::ACTIVITY,
 			'metric_generation_result' => AIPS_History_Type::METRIC,
+			'session_metadata' => AIPS_History_Type::SESSION_METADATA,
 		);
 		
 		return isset($map[$log_type]) ? $map[$log_type] : AIPS_History_Type::LOG;
@@ -405,6 +458,47 @@ class AIPS_History_Container {
 	}
 	
 	/**
+	 * Complete this history container as terminated.
+	 *
+	 * Used when an operator setting stops the run before any work is attempted.
+	 * The run neither succeeded nor failed, so it is closed with its own
+	 * terminal status rather than being left open in 'processing'.
+	 *
+	 * @param string $message Human-readable reason the run was terminated.
+	 * @param array  $result_data Optional additional columns to persist.
+	 * @return bool True on success, false on failure
+	 */
+	public function complete_terminated($message, $result_data = array()) {
+		if (!$this->is_persisted) {
+			return false;
+		}
+
+		if ($this->session) {
+			$this->session->complete(array(
+				'success' => false,
+				'error'   => $message,
+			));
+		}
+
+		$update_data = apply_filters('aips_history_record_data', array_merge(
+			array(
+				'status'        => AIPS_History_Event_Status::TERMINATED,
+				'error_message' => $message,
+				'completed_at'  => AIPS_DateTime::now()->timestamp(),
+			),
+			$result_data
+		), $this->history_id);
+
+		$success = $this->repository->update($this->history_id, $update_data) !== false;
+
+		if ($success) {
+			do_action('aips_history_updated', $this->history_id, $update_data, 'processing');
+		}
+
+		return $success;
+	}
+
+	/**
 	 * Complete this history container with success
 	 *
 	 * @param array $result_data Result data (e.g., post_id, title, content)
@@ -423,13 +517,55 @@ class AIPS_History_Container {
 			));
 		}
 		
-		// Update history status
+		return $this->close_with_status('completed', $result_data);
+	}
+
+	/**
+	 * Complete this history container as partially successful.
+	 *
+	 * Some intended outcomes succeeded and others did not (for example a post was
+	 * created but a component failed).
+	 *
+	 * @param string $message     Human-readable summary of what did not succeed.
+	 * @param array  $result_data Optional additional columns to persist.
+	 * @return bool True on success, false on failure
+	 */
+	public function complete_partial($message = '', $result_data = array()) {
+		if (!$this->is_persisted) {
+			return false;
+		}
+
+		if ($this->session) {
+			$this->session->complete(array_merge(
+				array('success' => true, 'partial' => true),
+				$result_data
+			));
+		}
+
+		if ($message !== '') {
+			$result_data['error_message'] = $message;
+		}
+
+		return $this->close_with_status('partial', $result_data);
+	}
+
+	/**
+	 * Persist a terminal status for this container.
+	 *
+	 * The status is applied after the caller's data, so a `status` key inside
+	 * $result_data can never override the outcome the completing method names.
+	 *
+	 * @param string $status      Terminal status to write.
+	 * @param array  $result_data Additional columns to persist.
+	 * @return bool True on success, false on failure
+	 */
+	private function close_with_status($status, array $result_data) {
+		unset($result_data['status']);
+
 		$update_data = array_merge(
-			array(
-				'status' => 'completed',
-				'completed_at' => AIPS_DateTime::now()->timestamp(),
-			),
-			$result_data
+			array('completed_at' => AIPS_DateTime::now()->timestamp()),
+			$result_data,
+			array('status' => $status)
 		);
 
 		$update_data = apply_filters('aips_history_record_data', $update_data, $this->history_id);

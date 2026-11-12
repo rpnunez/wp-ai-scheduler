@@ -414,6 +414,46 @@ class Test_AIPS_Bulk_Generator_Service extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The summary container for a bulk run is a job, not a generation: it shares the
+	 * 'bulk_generate' name with the Planner's per-post runs.
+	 */
+	public function test_summary_container_is_tagged_as_a_job() {
+		$this->service->run(
+			array( 1 ),
+			$this->fn_success( 42 ),
+			array( 'history_type' => 'bulk_generate' )
+		);
+
+		$this->assertSame( 'job', $this->history_service->containers_created[0]['metadata']['record_kind'] );
+	}
+
+	/**
+	 * The queued (cron) path logs its own summary container; it is a job too.
+	 */
+	public function test_queued_summary_container_is_tagged_as_a_job() {
+		$queue = $this->createMock( AIPS_Batch_Queue_Service::class );
+		$queue->method( 'needs_batch_queue' )->willReturn( true );
+		$queue->method( 'dispatch_generic' )->willReturn( array(
+			'num_batches'       => 1,
+			'posts_per_batch'   => 3,
+			'window_seconds'    => 60,
+			'scheduled_batches' => 1,
+		) );
+		$store = $this->createMock( AIPS_Bulk_Batch_Job_Store::class );
+		$store->method( 'create' )->willReturn( 'job-uuid' );
+
+		$service = new AIPS_Bulk_Generator_Service( $this->history_service, $store, $queue );
+		$service->run(
+			array( 1, 2, 3 ),
+			$this->fn_success( 42 ),
+			array( 'queue_job_type' => 'planner_post', 'history_type' => 'bulk_generate' )
+		);
+
+		$this->assertCount( 1, $this->history_service->containers_created );
+		$this->assertSame( 'job', $this->history_service->containers_created[0]['metadata']['record_kind'] );
+	}
+
+	/**
 	 * History container metadata contains trigger_name.
 	 */
 	public function test_trigger_name_appears_in_history_metadata() {

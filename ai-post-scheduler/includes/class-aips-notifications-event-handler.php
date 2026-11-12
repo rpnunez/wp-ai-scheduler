@@ -111,6 +111,12 @@ class AIPS_Notifications_Event_Handler {
 				'accepted_args' => 1,
 			),
 			array(
+				'hook'          => 'aips_notif_digest_cron',
+				'method'        => 'handle_digest_cron',
+				'priority'      => 10,
+				'accepted_args' => 0,
+			),
+			array(
 				'hook'          => 'aips_export_cleanup_completed',
 				'method'        => 'handle_history_cleanup_notification',
 				'priority'      => 10,
@@ -480,6 +486,18 @@ class AIPS_Notifications_Event_Handler {
 	}
 
 	/**
+	 * Hook handler for summarized notification digest cron.
+	 *
+	 * Evaluates whether the oldest pending queued digest notification
+	 * has exceeded the maximum delay window.
+	 *
+	 * @return void
+	 */
+	public function handle_digest_cron() {
+		$this->notifications->check_digest_timeout();
+	}
+
+	/**
 	 * Hook handler for cleanup-completed notifications.
 	 *
 	 * @param array $payload Cleanup payload.
@@ -594,8 +612,10 @@ class AIPS_Notifications_Event_Handler {
 	 */
 	private function extract_creation_method($context) {
 		if (is_object($context) && method_exists($context, 'get_creation_method')) {
-			$method = sanitize_key((string) $context->get_creation_method());
-			if (in_array($method, array('manual', 'scheduled'), true)) {
+			// Classify via the shared trigger vocabulary so retry/regenerate/bulk-job
+			// creation methods are still treated as manual runs.
+			$method = AIPS_Generation_Trigger::classify_creation_method($context->get_creation_method());
+			if ($method === AIPS_Generation_Trigger::METHOD_MANUAL || $method === AIPS_Generation_Trigger::METHOD_AUTOMATIC) {
 				return $method;
 			}
 		}

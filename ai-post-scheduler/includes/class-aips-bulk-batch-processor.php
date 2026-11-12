@@ -202,6 +202,47 @@ class AIPS_Bulk_Batch_Processor {
 			return;
 		}
 
+		// Stopped by an administrator (Diagnostics > Background Processes): do nothing.
+		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED ) {
+			$this->logger->log(
+				sprintf( 'Bulk batch processor: job %s was stopped; skipping slice at %d.', $job_id, $start_index ),
+				'info'
+			);
+			if ( ! empty( $correlation_id ) ) {
+				AIPS_Correlation_ID::reset();
+			}
+			return;
+		}
+
+		// Paused while this slice was already firing: put it back so it runs after the
+		// job is resumed instead of being lost.
+		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED ) {
+			// pause() records the slices it unschedules and resume() schedules them again.
+			// If this slice is among them, requeuing it here would run it twice.
+			$recorded         = isset( $job->options['paused_slices'] ) && is_array( $job->options['paused_slices'] )
+				? $job->options['paused_slices']
+				: array();
+			$already_recorded = false;
+			foreach ( $recorded as $slice ) {
+				if ( isset( $slice['args'][1] ) && (int) $slice['args'][1] === $start_index ) {
+					$already_recorded = true;
+					break;
+				}
+			}
+
+			if ( ! $already_recorded ) {
+				wp_schedule_single_event(
+					time() + 300,
+					self::HOOK,
+					array( $job_id, $start_index, $batch_size, $total_quantity, $correlation_id )
+				);
+			}
+			if ( ! empty( $correlation_id ) ) {
+				AIPS_Correlation_ID::reset();
+			}
+			return;
+		}
+
 		// Look up the registered strategy.
 		$job_type = $job->job_type;
 		if ( ! $this->has_strategy( $job_type ) ) {
@@ -245,6 +286,15 @@ class AIPS_Bulk_Batch_Processor {
 				'total_quantity' => $total_quantity,
 				'correlation_id' => $correlation_id,
 			)
+		);
+
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'  => __( 'Bulk batch slice', 'ai-post-scheduler' ),
+				'detail' => sprintf( __( 'Bulk job %1$s (%2$s)', 'ai-post-scheduler' ), $job_id, $job_type ),
+			),
+			'scheduled'
 		);
 
 		$history->record(

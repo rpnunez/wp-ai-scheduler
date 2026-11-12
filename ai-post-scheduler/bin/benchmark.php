@@ -152,6 +152,7 @@ $benchmarks['admin_dashboard'] = run_benchmark('Admin Dashboard Load', function(
 
 	// Load admin functions
 	if (file_exists(ABSPATH . 'wp-admin/includes/admin.php')) {
+		require_once ABSPATH . 'wp-admin/includes/admin.php';
 		// Set current screen
 		set_current_screen('dashboard');
 
@@ -231,6 +232,15 @@ $benchmarks['schedule_check'] = run_benchmark('Schedule Check (Heavy Query)', fu
 	}
 });
 print_metrics($benchmarks['schedule_check']);
+
+// Benchmark 6: Post Cluster Detection (Similarity & Graph)
+$benchmarks['cluster_detection'] = run_benchmark('Post Cluster Detection', function() {
+	if (class_exists('AIPS_Similarity_Evaluator')) {
+		$evaluator = new AIPS_Similarity_Evaluator();
+		$evaluator->detect_post_clusters(0.7, 2);
+	}
+});
+print_metrics($benchmarks['cluster_detection']);
 
 echo str_repeat('-', 120) . "\n\n";
 

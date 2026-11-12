@@ -129,6 +129,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_text($prompt, $options = array()) {
+        $on_submission = $this->take_submission_callback($options);
         if (!$this->provider->is_available()) {
             $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, $options, $error);
@@ -167,8 +168,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state (record_failure / record_success) is managed by execute_safely — do NOT
         // call those methods inside this closure.
-        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params, $on_submission) {
             try {
+                $on_submission();
                 $result = $this->provider->generate_text($prompt, $params);
 
                 $this->logger->log('Received response from provider text generation', 'debug', array(
@@ -217,6 +219,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array|WP_Error The parsed JSON data as an array, or WP_Error on failure.
      */
     public function generate_json($prompt, $options = array()) {
+        $on_submission = $this->take_submission_callback($options);
         $available = $this->provider->is_available();
 
         $this->logger->log(
@@ -243,7 +246,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         if (!$this->provider->supports_native_json()) {
             $this->logger->log('Using fallback JSON generation (native JSON not supported)', 'info');
 
-            return $this->fallback_json_generation($prompt, $options);
+            return $this->fallback_json_generation($prompt, $options + array('_aips_on_submission' => $on_submission));
         }
 
         $params = $this->prepare_options($options, $prompt);
@@ -255,10 +258,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // generate_text() → execute_safely(), creating a nested resilience context inside a
         // retry iteration.  Instead, return WP_Error('json_query_unavailable', …) as a
         // sentinel so the caller can invoke the fallback after execute_safely() returns.
-        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params, $on_submission) {
             try {
                 // Use the provider's native structured-JSON path. It returns a
                 // decoded array, or null to request the text-based fallback.
+                $on_submission();
                 $result = $this->provider->generate_json($prompt, $params);
 
                 if ($result === null) {
@@ -321,7 +325,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // pass — no nesting within the retry closure above.
         if (is_wp_error($result) && $result->get_error_code() === 'json_query_unavailable') {
             $this->logger->log('Falling back to text-based JSON generation after simpleJsonQuery failure', 'info');
-            return $this->fallback_json_generation($prompt, $options);
+            return $this->fallback_json_generation($prompt, $options + array('_aips_on_submission' => $on_submission));
         }
 
         // Log resilience failures (circuit breaker, rate limit)
@@ -364,6 +368,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array|WP_Error
      */
     public function generate_json_from_text($prompt, $options = array()) {
+        $on_submission = $this->take_submission_callback($options);
         if (!$this->provider->is_available()) {
             $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, $options, $error);
@@ -394,8 +399,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
         $this->logger->log('Calling AI Engine for text-based JSON generation: ' . wp_json_encode($log_context), 'info');
 
-        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options, $params, $on_submission) {
             try {
+                $on_submission();
                 $text_response = $this->provider->generate_text($prompt, $params);
 
                 if (!$text_response || empty($text_response)) {
@@ -404,33 +410,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                     return $error;
                 }
 
-                $extract_result = $this->extract_json_fragment((string) $text_response);
+                $data = AIPS_JSON_Extractor::decode_json_response((string) $text_response);
 
-                if (is_wp_error($extract_result)) {
-                    $error = new WP_Error('json_parse_error', $extract_result->get_error_message());
+                if (is_wp_error($data)) {
+                    $error = new WP_Error('json_parse_error', $data->get_error_message());
 
                     $this->logger->log('JSON extraction failed for text-based JSON generation.', 'error', array(
-                        'response_preview' => substr((string) $text_response, 0, 220),
-                        'response_full' => (string) $text_response,
-                    ));
-
-                    $this->log_call('json', $prompt, $options, $error);
-
-                    return $error;
-                }
-
-                $data = json_decode($extract_result, true);
-
-                if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-                    $error = new WP_Error(
-                        'json_parse_error',
-                        sprintf(
-                            __('Failed to parse JSON: %s', 'ai-post-scheduler'),
-                            json_last_error_msg()
-                        )
-                    );
-
-                    $this->logger->log('JSON decode failed for text-based JSON generation.', 'error', array(
                         'response_preview' => substr((string) $text_response, 0, 220),
                         'response_full' => (string) $text_response,
                     ));
@@ -461,110 +446,6 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
         return $result;
-    }
-
-    /**
-     * Extract the first balanced JSON object/array from text.
-     *
-     * @param string $text Raw AI text response.
-     * @return string|WP_Error Balanced JSON fragment or WP_Error.
-     */
-    private function extract_json_fragment($text) {
-        $text = trim((string) $text);
-
-        // Remove common markdown wrappers.
-        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
-        $text = preg_replace('/```\s*$/', '', $text);
-        $text = trim((string) $text);
-
-        $start_pos_obj = strpos($text, '{');
-        $start_pos_arr = strpos($text, '[');
-
-        if ($start_pos_obj === false && $start_pos_arr === false) {
-            return new WP_Error('json_extract_failed', __('No JSON start token found in AI response.', 'ai-post-scheduler'));
-        }
-
-        if ($start_pos_obj === false) {
-            $start_pos = $start_pos_arr;
-        } elseif ($start_pos_arr === false) {
-            $start_pos = $start_pos_obj;
-        } else {
-            $start_pos = min($start_pos_obj, $start_pos_arr);
-        }
-
-        $slice = substr($text, $start_pos);
-
-        $in_string = false;
-        $escape    = false;
-        $stack     = array();
-        $length    = strlen($slice);
-
-        for ($i = 0; $i < $length; $i++) {
-            $ch = $slice[$i];
-
-            if ($in_string) {
-                if ($escape) {
-                    $escape = false;
-                } elseif ($ch === '\\') {
-                    $escape = true;
-                } elseif ($ch === '"') {
-                    $in_string = false;
-                }
-
-                continue;
-            }
-
-            if ($ch === '"') {
-                $in_string = true;
-                continue;
-            }
-
-            if ($ch === '{' || $ch === '[') {
-                $stack[] = $ch;
-                continue;
-            }
-
-            if ($ch === '}' || $ch === ']') {
-                if (empty($stack)) {
-                    return new WP_Error('json_extract_failed', __('JSON appears malformed (unexpected closing token).', 'ai-post-scheduler'));
-                }
-
-                $open = array_pop($stack);
-                if (($open === '{' && $ch !== '}') || ($open === '[' && $ch !== ']')) {
-                    return new WP_Error('json_extract_failed', __('JSON appears malformed (mismatched tokens).', 'ai-post-scheduler'));
-                }
-
-                if (empty($stack)) {
-                    $candidate = substr($slice, 0, $i + 1);
-                    return $this->sanitize_json_candidate($candidate);
-                }
-            }
-        }
-
-        return new WP_Error('json_extract_failed', __('JSON appears truncated before closing token.', 'ai-post-scheduler'));
-    }
-
-    /**
-     * Normalize control characters in a candidate JSON fragment.
-     *
-     * @param string $candidate Candidate JSON fragment.
-     * @return string
-     */
-    private function sanitize_json_candidate($candidate) {
-        return preg_replace_callback(
-            '/"((?:[^"\\\\]|\\\\.)*)"/'
-            ,
-            function ($m) {
-                $inner = $m[1];
-                $inner = str_replace("\r", '\\r', $inner);
-                $inner = str_replace("\n", '\\n', $inner);
-                $inner = str_replace("\t", '\\t', $inner);
-                $inner = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $inner);
-
-                return '"' . $inner . '"';
-            },
-            (string) $candidate
-        );
     }
 
     /**
@@ -658,9 +539,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      *
      * @param string     $prompt Unused; retained so the signature stays compatible
      *                           with callers and the request-type dispatch below.
-     * @param string|int $type   Request type: 'title', 'excerpt', 'content', or a
+     * @param string|int $type   Request type: 'title', 'slug', 'excerpt', 'content', or a
      *                           custom integer expected-output token count. Unknown
-     *                           string types fall back to 'content' sizing.
+     *                           string types fall back to 'content' sizing. Slug uses
+     *                           the title token budget.
      * @return int The calculated maxTokens value (always >= 1).
      */
     private function calculate_max_tokens($prompt, $type = 'content') {
@@ -674,6 +556,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $config = AIPS_Config::get_instance();
             switch ($type) {
                 case 'title':
+                case 'slug':
                     // Short titles: ~10-20 words.
                     $output_tokens = (int) $config->get_option('aips_max_tokens_title');
 					$minimum_tokens = self::SHORT_FORM_MIN_TOKENS;
@@ -705,6 +588,21 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 'include_prompt_tokens' => false,
             )
         );
+    }
+
+    /** Remove internal bookkeeping before logging or preparing provider options. */
+    private function take_submission_callback(array &$options): Closure {
+        $callback = $options['_aips_on_submission'] ?? null;
+        unset($options['_aips_on_submission']);
+        $submitted = false;
+        return static function () use ($callback, &$submitted) {
+            if (!$submitted) {
+                $submitted = true;
+                if (is_callable($callback)) {
+                    $callback();
+                }
+            }
+        };
     }
 
     /**
@@ -807,35 +705,43 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array|WP_Error The embedding vector or WP_Error on failure.
      */
     public function generate_embedding($text, $options = array()) {
-        if (!$this->provider->is_available()) {
-            $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
-            $this->log_call('embedding', $text, $options, $error);
-            $this->emit_integration_error_notification('embedding', $error, $options);
-            return $error;
+        $config      = AIPS_Config::get_instance();
+        $provider_id = !empty($options['provider']) ? (string) $options['provider'] : (string) $config->get_option('aips_embeddings_provider');
+        $provider    = !empty($provider_id) ? AIPS_AI_Provider_Factory::create($provider_id) : $this->provider;
+
+        if (!$provider->is_available()) {
+            if ($provider !== $this->provider && $this->provider->is_available() && $this->provider->supports_embeddings()) {
+                $provider = $this->provider;
+            } else {
+                $error = new WP_Error('ai_unavailable', __('The selected AI embeddings provider is not available.', 'ai-post-scheduler'));
+                $this->log_call('embedding', $text, $options, $error, null, $provider);
+                $this->emit_integration_error_notification('embedding', $error, $options);
+                return $error;
+            }
         }
 
-        if (!$this->provider->supports_embeddings()) {
+        if (!$provider->supports_embeddings()) {
             return new WP_Error('embeddings_not_supported', __('Embeddings are not supported by the current AI provider.', 'ai-post-scheduler'));
         }
 
         $params = is_array($options) ? $options : array();
 
-        $result = $this->resilience_service->execute_safely(function() use ($text, $params, $options) {
+        $result = $this->resilience_service->execute_safely(function() use ($provider, $text, $params, $options) {
             try {
-                $embedding = $this->provider->generate_embedding($text, $params);
+                $embedding = $provider->generate_embedding($text, $params);
 
                 if (empty($embedding) || !is_array($embedding)) {
                     $error = new WP_Error('empty_response', __('AI provider returned an empty embedding response.', 'ai-post-scheduler'));
-                    $this->log_call('embedding', $text, $options, $error);
+                    $this->log_call('embedding', $text, $options, $error, null, $provider);
                     return $error;
                 }
 
-                $this->log_call('embedding', $text, $options, null, wp_json_encode($embedding));
+                $this->log_call('embedding', $text, $options, null, wp_json_encode($embedding), $provider);
                 return $embedding;
             } catch (Exception $e) {
                 $provider_code = $this->provider->extract_error_code($e->getMessage());
                 $error = new WP_Error($provider_code ?: 'embedding_failed', $e->getMessage());
-                $this->log_call('embedding', $text, $options, $error);
+                $this->log_call('embedding', $text, $options, $error, null, $provider);
                 return $error;
             }
         }, 'embedding', $text, $options);
@@ -914,6 +820,35 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     }
     
     /**
+     * Error codes raised before any request reaches the provider. Calls ending
+     * with these are not counted as AI calls.
+     */
+    private const UNSENT_CALL_ERROR_CODES = array(
+        'ai_unavailable',
+        'embeddings_not_supported',
+        'circuit_breaker_open',
+        'rate_limit_exceeded',
+    );
+
+    /**
+     * Add a call to the lifetime per-provider AI call counter.
+     *
+     * @param string                          $type     Call type.
+     * @param WP_Error|Exception|string|null  $error    Error, if the call failed.
+     * @param AIPS_AI_Provider_Interface|null $provider Provider that served the call.
+     * @return void
+     */
+    private function count_call($type, $error, $provider = null) {
+        if ($error instanceof WP_Error && in_array($error->get_error_code(), self::UNSENT_CALL_ERROR_CODES, true)) {
+            return;
+        }
+
+        $provider = $provider instanceof AIPS_AI_Provider_Interface ? $provider : $this->provider;
+
+        AIPS_AI_Call_Counter::increment($provider->get_id(), $type, $error === null);
+    }
+
+    /**
      * Log an AI call for debugging and auditing.
      *
      * Stores call information in memory and writes to the system logger.
@@ -923,8 +858,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @param array                          $options  The options used for the call.
      * @param WP_Error|Exception|string|null $error    Error object or message, if call failed.
      * @param string|null                    $response The AI response, if successful.
+     * @param AIPS_AI_Provider_Interface|null $provider Provider that served the call. Defaults to the active provider.
      */
-    private function log_call($type, $prompt, $options, $error = null, $response = null) {
+    private function log_call($type, $prompt, $options, $error = null, $response = null, $provider = null) {
+        $this->count_call($type, $error, $provider);
+
         $prompt_for_length   = (string) $prompt;
         $response_for_length = (string) $response;
 

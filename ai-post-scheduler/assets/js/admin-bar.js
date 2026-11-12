@@ -70,6 +70,33 @@
 		},
 
 		/**
+		 * Show a toast, falling back to the background-process notice on pages
+		 * where the plugin's utilities are not loaded.
+		 *
+		 * @param {string} message Text.
+		 * @param {string} type    success or error.
+		 */
+		adminBarToast: function (message, type) {
+			if (AIPS.Utilities && AIPS.Utilities.showToast) {
+				AIPS.Utilities.showToast(message, type);
+				return;
+			}
+
+			if (AIPS.BackgroundProcesses && AIPS.BackgroundProcesses.toast) {
+				AIPS.BackgroundProcesses.toast(message, type);
+				return;
+			}
+
+			var $toast = $('<div class="aips-bg-toast" role="status"></div>')
+				.addClass('aips-bg-toast-' + (type || 'info'))
+				.text(message);
+			$('body').append($toast);
+			setTimeout(function () {
+				$toast.remove();
+			}, 5000);
+		},
+
+		/**
 		 * Handle click on a "Mark as read" button for a single notification.
 		 *
 		 * @param {Event} e Click event.
@@ -99,7 +126,7 @@
 						// If no notification rows remain, show the empty-state placeholder.
 						if ($('#wpadminbar li.aips-toolbar-notification').length === 0) {
 							$('#wp-admin-bar-aips-toolbar-notifications-header').remove();
-							$('#wp-admin-bar-aips-toolbar-notifications .ab-submenu').append(
+							$('#wp-admin-bar-aips-toolbar-notifications').append(
 								AIPS.adminBarNoNotificationsHtml()
 							);
 						}
@@ -107,12 +134,12 @@
 					AIPS.adminBarUpdateBadge(response.data.unread_count);
 				} else {
 					$btn.prop('disabled', false);
-					alert(l10n.markReadError || 'Error marking notification as read.');
+					AIPS.adminBarToast(l10n.markReadError || 'Error marking notification as read.', 'error');
 				}
 			})
 			.fail(function () {
 				$btn.prop('disabled', false);
-				alert(l10n.markReadError || 'Error marking notification as read.');
+				AIPS.adminBarToast(l10n.markReadError || 'Error marking notification as read.', 'error');
 			});
 		},
 
@@ -141,19 +168,19 @@
 					$('#wp-admin-bar-aips-toolbar-notifications-header').remove();
 
 					// Add "no notifications" placeholder inside the submenu <ul>.
-					$('#wp-admin-bar-aips-toolbar-notifications .ab-submenu').append(
+					$('#wp-admin-bar-aips-toolbar-notifications').append(
 						AIPS.adminBarNoNotificationsHtml()
 					);
 
 					AIPS.adminBarUpdateBadge(response.data.unread_count || 0);
 				} else {
 					$btn.prop('disabled', false);
-					alert(l10n.markAllReadError || 'Error marking all notifications as read.');
+					AIPS.adminBarToast(l10n.markAllReadError || 'Error marking all notifications as read.', 'error');
 				}
 			})
 			.fail(function () {
 				$btn.prop('disabled', false);
-				alert(l10n.markAllReadError || 'Error marking all notifications as read.');
+				AIPS.adminBarToast(l10n.markAllReadError || 'Error marking all notifications as read.', 'error');
 			});
 		},
 

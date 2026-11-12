@@ -55,6 +55,7 @@ class AIPS_Date_Time_DB_Repair {
 			'normalized_null_values'   => 0,
 			'fixed_schedule_next_runs' => 0,
 			'fixed_author_next_runs'   => 0,
+			'fixed_author_last_runs'   => 0,
 			'fixed_source_next_runs'   => 0,
 		);
 
@@ -62,6 +63,7 @@ class AIPS_Date_Time_DB_Repair {
 		$summary['normalized_null_values'] = $this->normalize_null_timestamp_values();
 		$summary['fixed_schedule_next_runs'] = $this->repair_template_schedule_next_runs();
 		$summary['fixed_author_next_runs']   = $this->repair_author_next_runs();
+		$summary['fixed_author_last_runs']   = $this->repair_author_last_runs();
 		$summary['fixed_source_next_runs']   = $this->repair_source_next_runs();
 
 		return $summary;
@@ -260,6 +262,77 @@ class AIPS_Date_Time_DB_Repair {
 
 			if ( false !== $result ) {
 				$fixed += count( $update_data );
+			}
+		}
+
+		return $fixed;
+	}
+
+	/**
+	 * Backfill missing author last-run timestamps from existing topic and post logs.
+	 *
+	 * @return int Number of updated fields.
+	 */
+	public function repair_author_last_runs() {
+		$authors_table = $this->wpdb->prefix . 'aips_authors';
+		$topics_table  = $this->wpdb->prefix . 'aips_author_topics';
+		$logs_table    = $this->wpdb->prefix . 'aips_author_topic_logs';
+
+		if ( $this->table_exists( $authors_table ) !== $authors_table ) {
+			return 0;
+		}
+
+		$fixed = 0;
+
+		// 1. Backfill topic_generation_last_run where 0 or null but topics exist
+		if ( $this->table_exists( $topics_table ) === $topics_table ) {
+			$topic_maxes = $this->wpdb->get_results(
+				"SELECT author_id, MAX(generated_at) as max_ts FROM `{$topics_table}` WHERE generated_at >= " . self::MIN_VALID_TIMESTAMP . " GROUP BY author_id",
+				ARRAY_A
+			);
+			if ( ! empty( $topic_maxes ) ) {
+				foreach ( $topic_maxes as $row ) {
+					$author_id = (int) $row['author_id'];
+					$max_ts    = (int) $row['max_ts'];
+					if ( $author_id > 0 && $max_ts >= self::MIN_VALID_TIMESTAMP ) {
+						$updated = $this->wpdb->query( $this->wpdb->prepare(
+							"UPDATE `{$authors_table}` SET topic_generation_last_run = %d WHERE id = %d AND (topic_generation_last_run IS NULL OR topic_generation_last_run = 0)",
+							$max_ts,
+							$author_id
+						) );
+						if ( $updated ) {
+							$fixed += (int) $updated;
+						}
+					}
+				}
+			}
+		}
+
+		// 2. Backfill post_generation_last_run where 0 or null but post generation logs exist
+		if ( $this->table_exists( $logs_table ) === $logs_table && $this->table_exists( $topics_table ) === $topics_table ) {
+			$post_maxes = $this->wpdb->get_results(
+				"SELECT at.author_id, MAX(atl.created_at) as max_ts
+				 FROM `{$logs_table}` atl
+				 INNER JOIN `{$topics_table}` at ON atl.author_topic_id = at.id
+				 WHERE atl.action = 'post_generated' AND atl.created_at >= " . self::MIN_VALID_TIMESTAMP . "
+				 GROUP BY at.author_id",
+				ARRAY_A
+			);
+			if ( ! empty( $post_maxes ) ) {
+				foreach ( $post_maxes as $row ) {
+					$author_id = (int) $row['author_id'];
+					$max_ts    = (int) $row['max_ts'];
+					if ( $author_id > 0 && $max_ts >= self::MIN_VALID_TIMESTAMP ) {
+						$updated = $this->wpdb->query( $this->wpdb->prepare(
+							"UPDATE `{$authors_table}` SET post_generation_last_run = %d WHERE id = %d AND (post_generation_last_run IS NULL OR post_generation_last_run = 0)",
+							$max_ts,
+							$author_id
+						) );
+						if ( $updated ) {
+							$fixed += (int) $updated;
+						}
+					}
+				}
 			}
 		}
 

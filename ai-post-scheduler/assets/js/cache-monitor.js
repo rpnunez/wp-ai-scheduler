@@ -146,23 +146,29 @@
 		AIPS.Utilities.confirm(
 			confirmMsg,
 			aipsCacheMonitor.i18n.flushAllTitle || 'Flush All Plugin Cache',
-			[ {
-				label:     aipsCacheMonitor.i18n.confirmBtn || 'Confirm Flush',
-				className: 'aips-btn-danger',
-				action:    function () {
-					$.post( ajaxUrl, {
-						action:    'aips_cache_monitor_flush_all',
-						nonce:     actionNonce,
-						confirmed: 1
-					} ).done( function ( res ) {
-						if ( res.success ) {
-							AIPS.Utilities.showToast( res.data.message, 'success' );
-						} else {
-							AIPS.Utilities.showToast( res.data.message, 'error' );
-						}
+			[
+				{
+					label:     aipsCacheMonitor.i18n.cancelBtn || 'Cancel',
+					className: 'aips-btn aips-btn-secondary'
+				},
+				{
+					label:     aipsCacheMonitor.i18n.confirmBtn || 'Confirm Flush',
+					className: 'aips-btn aips-btn-danger-solid',
+					action:    function () {
+						$.post( ajaxUrl, {
+							action:    'aips_cache_monitor_flush_all',
+							nonce:     actionNonce,
+							confirmed: 1
+						} ).done( function ( res ) {
+							if ( res.success ) {
+								AIPS.Utilities.showToast( res.data.message, 'success' );
+							} else {
+								AIPS.Utilities.showToast( res.data.message, 'error' );
+							}
 						} );
+					}
 				}
-			} ]
+			]
 		);
 	} );
 
@@ -179,24 +185,30 @@
 		AIPS.Utilities.confirm(
 			confirmMsg,
 			aipsCacheMonitor.i18n.flushGroupTitle || 'Flush Cache Group',
-			[ {
-				label:     aipsCacheMonitor.i18n.flushGroupBtn || 'Flush Group',
-				className: 'aips-btn-danger',
-				action:    function () {
-					$.post( ajaxUrl, {
-						action:      'aips_cache_monitor_flush_group',
-						nonce:       actionNonce,
-						cache_group: group
-					} ).done( function ( res ) {
-						if ( res.success ) {
-							AIPS.Utilities.showToast( res.data.message, 'success' );
-							setTimeout( function () { location.reload(); }, 1200 );
-						} else {
-							AIPS.Utilities.showToast( res.data.message, 'error' );
-						}
+			[
+				{
+					label:     aipsCacheMonitor.i18n.cancelBtn || 'Cancel',
+					className: 'aips-btn aips-btn-secondary'
+				},
+				{
+					label:     aipsCacheMonitor.i18n.flushGroupBtn || 'Flush Group',
+					className: 'aips-btn aips-btn-danger-solid',
+					action:    function () {
+						$.post( ajaxUrl, {
+							action:      'aips_cache_monitor_flush_group',
+							nonce:       actionNonce,
+							cache_group: group
+						} ).done( function ( res ) {
+							if ( res.success ) {
+								AIPS.Utilities.showToast( res.data.message, 'success' );
+								setTimeout( function () { location.reload(); }, 1200 );
+							} else {
+								AIPS.Utilities.showToast( res.data.message, 'error' );
+							}
 						} );
+					}
 				}
-			} ]
+			]
 		);
 	} );
 
@@ -522,7 +534,7 @@
 					var rowStyle   = row.is_expired ? ' style="opacity:0.55;"' : '';
 
 					html += '<tr data-hash="' + escAttr( row.key_hash ) + '"' + rowStyle + '>';
-					html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" /></td>';
+					html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" aria-label="' + escAttr( aipsCacheMonitor.i18n.selectEntry || 'Select entry' ) + '" /></td>';
 					html += '<td class="cell-primary">';
 					html += '<code class="aips-key-hash" title="' + escAttr( row.key_hash ) + '">' + esc( row.key_hash.substring( 0, 12 ) + '…' ) + '</code>';
 					html += '<div class="row-actions">';

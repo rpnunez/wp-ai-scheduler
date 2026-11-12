@@ -47,9 +47,10 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 *                                              title and image prompts.
 	 * @param string                  $image_prompt Raw image prompt template, or '' when the
 	 *                                              post has no AI-generated featured image.
+	 * @param bool|null               $include_slug Whether to include slug generation (null = auto-detect).
 	 * @return string
 	 */
-	public function build($context, array $ai_variables = array(), $image_prompt = '') {
+	public function build($context, array $ai_variables = array(), $image_prompt = '', $include_slug = null) {
 		$topic_str = $context->get_topic();
 		$sections  = array();
 
@@ -61,7 +62,40 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$sections[] = "TITLE INSTRUCTIONS:\n" . $title_instructions;
 		}
 
-		$sections[] = "EXCERPT INSTRUCTIONS:\nBetween 40 and 60 words. Write naturally as a human would. Plain text, no formatting.";
+		$excerpt_instructions = "Between 40 and 60 words. Write naturally as a human would. Plain text, no formatting.";
+		if ($context->get_type() === 'template') {
+			$voice_obj = $context->get_voice();
+			if ($voice_obj && !empty($voice_obj->excerpt_instructions)) {
+				$excerpt_instructions .= "\n" . $this->template_processor->process($voice_obj->excerpt_instructions, $topic_str);
+			}
+		} elseif ($context->get_type() === 'topic' && method_exists($context, 'get_author')) {
+			$author_obj = $context->get_author();
+			if ($author_obj) {
+				$author_style = array();
+				if (!empty($author_obj->voice_tone)) {
+					$author_style[] = 'Tone: ' . $author_obj->voice_tone;
+				}
+				if (!empty($author_obj->writing_style)) {
+					$author_style[] = 'Writing Style: ' . $author_obj->writing_style;
+				}
+				if (!empty($author_style)) {
+					$excerpt_instructions .= "\n" . implode("\n", $author_style);
+				}
+			}
+		}
+		$sections[] = "EXCERPT INSTRUCTIONS:\n" . $excerpt_instructions;
+
+		$include_slug = $include_slug !== null ? $include_slug : (method_exists($context, 'should_generate_slug') && $context->should_generate_slug());
+
+		if ($include_slug) {
+			$slug_builder      = new AIPS_Prompt_Builder_Post_Slug($this->template_processor);
+			$slug_instructions = $slug_builder->resolve_slug_instructions($context, $topic_str);
+			$slug_section      = "SLUG INSTRUCTIONS:\n" . $slug_builder->get_slug_guidelines();
+			if (!empty($slug_instructions)) {
+				$slug_section .= "\n\nSpecific instructions:\n" . $slug_instructions;
+			}
+			$sections[] = $slug_section;
+		}
 
 		if (!empty($image_prompt)) {
 			$sections[] = "FEATURED IMAGE INSTRUCTIONS:\nUsing the template below, produce a finished image generation prompt describing the article's featured image. Substitute every placeholder with a concrete value drawn from the article.\n\n" . $image_prompt;
@@ -71,10 +105,9 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$sections[] = $this->build_variables_section($ai_variables);
 		}
 
-		$sections[] = $this->build_response_shape($ai_variables, !empty($image_prompt));
-
 		$prompt = implode("\n\n", $sections);
 		$prompt = $this->append_diversity_blocks($prompt, $context);
+		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt), $include_slug);
 
 		/**
 		 * Filters the combined metadata prompt used by conversational generation.
@@ -98,13 +131,18 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 *
 	 * @param string[] $ai_variables  AI variable names to resolve.
 	 * @param bool     $include_image Whether an image prompt was requested.
+	 * @param bool     $include_slug  Whether a post slug was requested.
 	 * @return array
 	 */
-	public function get_schema(array $ai_variables = array(), $include_image = false) {
+	public function get_schema(array $ai_variables = array(), $include_image = false, $include_slug = false) {
 		$properties = array(
 			'title'   => array('type' => 'string'),
 			'excerpt' => array('type' => 'string'),
 		);
+
+		if ($include_slug) {
+			$properties['slug'] = array('type' => 'string');
+		}
 
 		if ($include_image) {
 			$properties['image_prompt'] = array('type' => 'string');
@@ -118,15 +156,29 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			}
 
 			$properties['ai_variables'] = array(
-				'type'       => 'object',
-				'properties' => $variable_properties,
+				'type'                 => 'object',
+				'properties'           => $variable_properties,
+				'required'             => array_values($ai_variables),
+				'additionalProperties' => false,
 			);
 		}
 
+		$required = array('title', 'excerpt');
+		if ($include_slug) {
+			$required[] = 'slug';
+		}
+		if ($include_image) {
+			$required[] = 'image_prompt';
+		}
+		if (!empty($ai_variables)) {
+			$required[] = 'ai_variables';
+		}
+
 		return array(
-			'type'       => 'object',
-			'properties' => $properties,
-			'required'   => array('title', 'excerpt'),
+			'type'                 => 'object',
+			'properties'           => $properties,
+			'required'             => $required,
+			'additionalProperties' => false,
 		);
 	}
 
@@ -176,13 +228,18 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 *
 	 * @param string[] $ai_variables  AI variable names.
 	 * @param bool     $include_image Whether an image prompt was requested.
+	 * @param bool     $include_slug  Whether a post slug was requested.
 	 * @return string
 	 */
-	private function build_response_shape(array $ai_variables, $include_image) {
+	private function build_response_shape(array $ai_variables, $include_image, $include_slug = false) {
 		$shape = array(
 			'"title": "the finished post title, with no surrounding quotes"',
 			'"excerpt": "the 40-60 word excerpt"',
 		);
+
+		if ($include_slug) {
+			$shape[] = '"slug": "the finished lowercase hyphenated URL slug"';
+		}
 
 		if ($include_image) {
 			$shape[] = '"image_prompt": "the finished featured image prompt"';
@@ -204,21 +261,19 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	/**
 	 * Append the shared diversity blocks so titles stay varied across posts.
 	 *
+	 * Only injects avoid_titles block; content-format and post-slice guidance
+	 * were already established during content generation in turn 1 and are not
+	 * repeated here to prevent input prompt bloat.
+	 *
 	 * @param string $prompt  Prompt built so far.
 	 * @param mixed  $subject Generation context.
 	 * @return string
 	 */
 	private function append_diversity_blocks($prompt, $subject) {
-		$blocks = array(
-			$this->diversity_injector->build_avoid_titles_block($subject),
-			$this->diversity_injector->build_content_format_block($subject),
-			$this->diversity_injector->build_post_slice_block($subject),
-		);
+		$avoid_titles_block = $this->diversity_injector->build_avoid_titles_block($subject);
 
-		foreach ($blocks as $block) {
-			if (!empty($block)) {
-				$prompt .= "\n\n" . $block;
-			}
+		if (!empty($avoid_titles_block)) {
+			$prompt .= "\n\n" . $avoid_titles_block;
 		}
 
 		return $prompt;

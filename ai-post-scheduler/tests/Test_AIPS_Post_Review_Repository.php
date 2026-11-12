@@ -37,13 +37,13 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 	/**
 	 * Helper method to create a test post with history.
 	 */
-	private function create_test_post_with_history($post_status = 'draft', $template_id = 1) {
+	private function create_test_post_with_history($post_status = 'draft', $template_id = 1, $post_type = 'post') {
 		// Create a draft post
 		$post_id = wp_insert_post(array(
 			'post_title' => 'Test Draft Post ' . uniqid(),
 			'post_content' => 'Test content',
 			'post_status' => $post_status,
-			'post_type' => 'post',
+			'post_type' => $post_type,
 		));
 		
 		$this->test_post_ids[] = $post_id;
@@ -55,6 +55,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 			'post_id' => $post_id,
 			'template_id' => $template_id,
 			'status' => 'completed',
+			'record_kind' => 'generation',
 			'generated_title' => 'Test Generated Title',
 			'generated_content' => 'Test generated content',
 			'created_at' => current_time('mysql'),
@@ -85,6 +86,14 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		$this->assertArrayHasKey('total', $result);
 		$this->assertGreaterThanOrEqual(2, $result['total']);
 		$this->assertGreaterThanOrEqual(2, count($result['items']));
+
+		$first_item = $result['items'][0];
+		$this->assertTrue(property_exists($first_item, 'snippet'));
+		$this->assertTrue(property_exists($first_item, 'featured_image'));
+		$this->assertTrue(property_exists($first_item, 'created_at_formatted'));
+		$this->assertTrue(property_exists($first_item, 'post_type_label'));
+		$this->assertTrue(property_exists($first_item, 'edit_url'));
+		$this->assertSame('Test content', $first_item->snippet);
 	}
 	
 	/**
@@ -140,7 +149,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual(1, $result['total']);
 		$found = false;
 		foreach ($result['items'] as $item) {
-			if ($item->post_id === $test_data['post_id']) {
+			if ((int) $item->post_id === (int) $test_data['post_id']) {
 				$found = true;
 				break;
 			}
@@ -164,6 +173,28 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		foreach ($result['items'] as $item) {
 			$this->assertEquals(1, $item->template_id);
 		}
+	}
+
+	/**
+	 * Test filtering draft posts by post_type.
+	 */
+	public function test_draft_posts_post_type_filter() {
+		register_post_type('aips_review_test_cpt', array('public' => true, 'label' => 'AIPS Review Test CPT'));
+
+		$this->create_test_post_with_history('draft', 1, 'post');
+		$this->create_test_post_with_history('draft', 1, 'aips_review_test_cpt');
+
+		$result = $this->repository->get_draft_posts(array(
+			'post_type' => 'aips_review_test_cpt',
+		));
+
+		$this->assertGreaterThanOrEqual(1, $result['total']);
+		foreach ($result['items'] as $item) {
+			$this->assertEquals('draft', $item->post_status);
+			$this->assertEquals(get_post_type($item->post_id), 'aips_review_test_cpt');
+		}
+
+		unregister_post_type('aips_review_test_cpt');
 	}
 
 	/**

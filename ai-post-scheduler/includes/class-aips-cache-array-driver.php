@@ -57,6 +57,17 @@ class AIPS_Cache_Array_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorab
 	/**
 	 * {@inheritdoc}
 	 */
+	public function get_multiple( array $keys, $group = 'default' ) {
+		$results = array();
+		foreach ( $keys as $key ) {
+			$results[ (string) $key ] = $this->get( $key, $group );
+		}
+		return $results;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function set( $key, $value, $ttl = 0, $group = 'default' ) {
 		$k = $this->make_key( $key, $group );
 		$this->store[ $k ]    = $value;

@@ -244,7 +244,7 @@ class AIPS_Campaigns_Repository {
 		$history_stats = $this->wpdb->get_row($this->wpdb->prepare(
 			"SELECT
 				SUM(CASE WHEN h.status = 'failed' THEN 1 ELSE 0 END) AS failed_generation_count,
-				COUNT(DISTINCT CASE WHEN h.status = 'completed' AND h.post_id IS NOT NULL AND p.post_status IN ('draft', 'pending') THEN h.post_id END) AS pending_review_count
+				COUNT(DISTINCT CASE WHEN h.status IN ('completed', 'partial') AND h.post_id IS NOT NULL AND p.post_status IN ('draft', 'pending') THEN h.post_id END) AS pending_review_count
 			FROM {$this->history_table} h
 			LEFT JOIN {$posts_table} p ON h.post_id = p.ID
 			WHERE h.campaign_id = %d",
@@ -342,6 +342,8 @@ class AIPS_Campaigns_Repository {
 		}
 
 		$posts_table = $this->wpdb->posts;
+		// Newest generation run of this campaign per post; event rows are never "the post's run".
+		$latest_run  = AIPS_History_Repository::latest_generation_run_subquery(array('campaign_id' => $campaign_id));
 
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT
@@ -356,19 +358,11 @@ class AIPS_Campaigns_Repository {
 				p.post_modified,
 				t.name AS template_name
 			FROM {$this->history_table} h
-			INNER JOIN (
-				SELECT post_id, MAX(id) AS latest_history_id
-				FROM {$this->history_table}
-				WHERE campaign_id = %d
-				AND status = 'completed'
-				AND post_id IS NOT NULL
-				GROUP BY post_id
-			) latest ON latest.latest_history_id = h.id
+			INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
 			INNER JOIN {$posts_table} p ON h.post_id = p.ID
 			LEFT JOIN {$this->templates_table} t ON h.template_id = t.id
 			ORDER BY COALESCE(NULLIF(h.completed_at, 0), h.created_at) DESC, h.id DESC
 			LIMIT %d",
-			$campaign_id,
 			$limit
 		));
 	}
@@ -687,6 +681,8 @@ class AIPS_Campaigns_Repository {
 					$this->build_campaign_error('campaign_template_delete_failed', __('Failed to delete campaign template.', 'ai-post-scheduler'))
 				);
 			}
+
+			(new AIPS_Post_Images_Repository())->delete_for_entity('template', (int) $template->id);
 		}
 
 		$deleted = $this->wpdb->delete(
@@ -732,6 +728,19 @@ class AIPS_Campaigns_Repository {
 			"SELECT COUNT(*) FROM {$this->history_table} WHERE campaign_id = %d",
 			absint($campaign_id)
 		));
+	}
+
+	/**
+	 * Invalidate cache for a specific campaign or all campaigns.
+	 *
+	 * @param int $campaign_id Optional campaign ID. If omitted or 0, invalidates all campaigns.
+	 * @return void
+	 */
+	public function flush_campaign_cache($campaign_id = 0) {
+		$campaign_id = absint($campaign_id);
+		$context     = $campaign_id > 0 ? array('campaign_id' => $campaign_id) : array();
+
+		$this->invalidate_cache_domain('campaign', $context, 'campaign_flushed');
 	}
 
 	/**
@@ -1012,7 +1021,7 @@ class AIPS_Campaigns_Repository {
 			LEFT JOIN (
 				SELECT
 					campaign_id,
-					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS generated_posts_count,
+					SUM(CASE WHEN status IN ('completed', 'partial') THEN 1 ELSE 0 END) AS generated_posts_count,
 					COUNT(*) AS total_history_count
 				FROM {$this->history_table}
 				WHERE campaign_id IS NOT NULL

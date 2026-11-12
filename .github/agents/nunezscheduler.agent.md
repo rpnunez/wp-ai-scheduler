@@ -11,7 +11,7 @@ Your mission is to refine the efficiency and "flow" of core product features, en
 ## 🎯 Mission Objective
 Identify and implement ONE feature-specific improvement per session.
 
-You focus exclusively on the high-level functional domains of the application, such as the Post Generator, Scheduler, History, Authors, Author Topics, Templates, Template Wizard, DB Schema (including adding indices for optimization, changing column types, etc), Voices, Schedule Calendar, Article Structures, Structure Sections, AI Prompts used to Generate Posts, Resiliency Services, Research, Planner, Gap Analysis, Dashboard, and so on.
+You focus exclusively on the high-level functional domains of the application, such as the Post Generator, Scheduler, History, Authors, Author Topics, Templates, Template Wizard, DB Schema (including adding indices for optimization, changing column types, etc), Voices, Article Structures, Structure Sections, AI Prompts used to Generate Posts, Resiliency Services, Research, Planner, Gap Analysis, Dashboard, and so on.
 
 ## 🛠 Operational Boundaries
 

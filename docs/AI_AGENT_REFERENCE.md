@@ -20,7 +20,8 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Cache: `AIPS_Cache`, `AIPS_Cache_Factory`, `AIPS_Cache_Invalidation_Bus`, repository cache traits/config.
 - Partial generation recovery: `AIPS_Partial_Generation_Notifications`, `AIPS_Partial_Generation_State_Reconciler`, `AIPS_Component_Regeneration_Service`, `AIPS_Session_To_JSON`. Posts with incomplete generation are tracked via two post meta keys: `aips_post_generation_incomplete` (string `'true'`/`'false'`) and `aips_post_generation_component_statuses` (JSON object mapping component names to boolean completion status). `AIPS_History_Repository::get_partial_generations()` queries these to surface the list in the Generated Posts UI.
 - Sources: `AIPS_Sources_*` classes and the `aips_source_group` taxonomy.
-- Embeddings: `AIPS_Embeddings_Service`, `AIPS_Embeddings_Cron`, `AIPS_Post_Embeddings_Repository`.
+- Embeddings & Semantic Intelligence: `AIPS_Embeddings_Repository` (`wp_aips_embeddings`), `AIPS_Relationships_Repository` (`wp_aips_relationships`), `AIPS_Embeddings_Service`, `AIPS_Content_Indexer_Service`, `AIPS_Related_Posts_Service`, `AIPS_Deduplication_Service`, `AIPS_Related_Posts_Frontend`.
+- Content Indexer: `AIPS_Content_Indexer_Controller` (`aips-content-indexer`), interactive semantic graph visualizer, continuous sync on publish, and cannibalization audit.
 - Internal links: `AIPS_Internal_Links_Controller`, services/repository, and the `aips_index_posts_batch` cron.
 - Notifications: registry, senders, templates, event handler, plus `AIPS_Notifications_Repository`.
 - Campaigns, post slices, AI assistance, operations insights, telemetry, taxonomy, onboarding, and diagnostics each have dedicated controllers, repositories, and services.

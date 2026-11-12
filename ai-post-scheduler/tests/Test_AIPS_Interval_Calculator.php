@@ -103,6 +103,17 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
     }
 
     /**
+     * Test calculate_next_run for every 2 hours
+     */
+    public function test_calculate_next_run_every_2_hours() {
+        $start = '2030-06-15 10:00:00';
+        $next = $this->calculator->calculate_next_run('every_2_hours', $start);
+        
+        $expected = '2030-06-15 12:00:00';
+        $this->assertEquals($expected, $next);
+    }
+
+    /**
      * Test calculate_next_run for every 4 hours
      */
     public function test_calculate_next_run_every_4_hours() {
@@ -121,6 +132,17 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $next = $this->calculator->calculate_next_run('every_6_hours', $start);
         
         $expected = '2030-06-15 16:00:00';
+        $this->assertEquals($expected, $next);
+    }
+
+    /**
+     * Test calculate_next_run for every 8 hours
+     */
+    public function test_calculate_next_run_every_8_hours() {
+        $start = '2030-06-15 10:00:00';
+        $next = $this->calculator->calculate_next_run('every_8_hours', $start);
+        
+        $expected = '2030-06-15 18:00:00';
         $this->assertEquals($expected, $next);
     }
 

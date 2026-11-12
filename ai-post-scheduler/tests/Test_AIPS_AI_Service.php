@@ -15,10 +15,15 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
 
     public function setUp(): void {
         parent::setUp();
+        // AIPS_AI_Provider_Factory caches provider instances (and the Meow
+        // adapter caches $GLOBALS['mwai'] once resolved) per process, so a
+        // provider left over from an earlier test would otherwise stick.
+        AIPS_AI_Provider_Factory::reset_cache();
         $this->service = new AIPS_AI_Service();
     }
 
     public function tearDown(): void {
+        AIPS_AI_Provider_Factory::reset_cache();
         parent::tearDown();
     }
 

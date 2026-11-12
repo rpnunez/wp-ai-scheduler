@@ -164,8 +164,8 @@ class AIPS_Notification_Senders {
 	 */
 	public function integration_error( array $payload ) {
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('AI integration unavailable.', 'ai-post-scheduler');
-		$title         = __('AI integration error', 'ai-post-scheduler');
-		$message       = sprintf(__('The AI integration is unavailable. Error: %s', 'ai-post-scheduler'), $error_message);
+		$title         = !empty($payload['title']) ? $payload['title'] : __('AI integration error', 'ai-post-scheduler');
+		$message       = !empty($payload['message']) ? $payload['message'] : sprintf(__('The AI integration is unavailable. Error: %s', 'ai-post-scheduler'), $error_message);
 
 		call_user_func(
 			$this->dispatcher,
@@ -527,6 +527,53 @@ class AIPS_Notification_Senders {
 	}
 
 	/**
+	 * Send a summarized notification digest.
+	 *
+	 * @param array $payload Payload containing 'items' and optional 'count'.
+	 * @return void
+	 */
+	public function summarized_digest( array $payload ) {
+		$items = isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array();
+		$count = isset($payload['count']) ? absint($payload['count']) : count($items);
+
+		$title = sprintf(
+			/* translators: %d: number of batched updates */
+			_n('Notification Digest: %d update', 'Notification Digest: %d updates', $count, 'ai-post-scheduler'),
+			$count
+		);
+
+		$message = sprintf(
+			/* translators: %d: number of batched updates */
+			_n('AI Post Scheduler has batched %d update for your review.', 'AI Post Scheduler has batched %d updates for your review.', $count, 'ai-post-scheduler'),
+			$count
+		);
+
+		$all_posts_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$items_html    = AIPS_Notification_Templates::render_summarized_digest_items($items);
+
+		$vars = array(
+			'{{site_name}}'         => esc_html(get_bloginfo('name')),
+			'{{item_count}}'        => (string) $count,
+			'{{digest_items_html}}' => $items_html,
+			'{{all_posts_url}}'     => esc_url($all_posts_url),
+		);
+
+		call_user_func(
+			$this->dispatcher,
+			'summarized_digest',
+			array(
+				'title'         => $title,
+				'message'       => $message,
+				'url'           => $all_posts_url,
+				'level'         => 'info',
+				'meta'          => $payload,
+				'channels'      => array(AIPS_Notifications::CHANNEL_EMAIL),
+				'vars'          => $vars,
+			)
+		);
+	}
+
+	/**
 	 * Send a weekly summary notification.
 	 *
 	 * @param array $payload Summary payload.
@@ -636,7 +683,7 @@ class AIPS_Notification_Senders {
 			array(
 				'title'   => sprintf(__('Seeder completed: %s', 'ai-post-scheduler'), $type),
 				'message' => $message_raw,
-				'url'     => AIPS_Admin_Menu_Helper::get_page_url('aips-seeder'),
+				'url'     => AIPS_Admin_Menu_Helper::get_page_url('dev_tools'),
 				'level'   => 'info',
 				'meta'    => $payload,
 			)
@@ -820,6 +867,74 @@ class AIPS_Notification_Senders {
 				),
 				'dedupe_key'    => 'research_topics_ready_' . sanitize_key($niche) . '_' . gmdate('YmdH'),
 				'dedupe_window' => 300,
+			)
+		);
+	}
+	/**
+	 * Send a posts-consolidated notification.
+	 *
+	 * @param array $payload Consolidation payload: consolidation_id, keep_id,
+	 *                       retire_id, keep_title, retire_title, retire_url,
+	 *                       links_repointed, redirect_provider, content_mode.
+	 * @return void
+	 */
+	public function post_consolidated( array $payload ) {
+		$keep_title   = !empty($payload['keep_title'])   ? sanitize_text_field($payload['keep_title'])   : __('(untitled)', 'ai-post-scheduler');
+		$retire_title = !empty($payload['retire_title']) ? sanitize_text_field($payload['retire_title']) : __('(untitled)', 'ai-post-scheduler');
+		$links        = isset($payload['links_repointed']) ? (int) $payload['links_repointed'] : 0;
+		$provider     = !empty($payload['redirect_provider']) ? sanitize_text_field($payload['redirect_provider']) : '';
+
+		$message = sprintf(
+			/* translators: 1: retired post title, 2: kept post title, 3: number of links re-pointed */
+			__('"%1$s" was moved to draft and consolidated into "%2$s". %3$d internal link(s) were re-pointed.', 'ai-post-scheduler'),
+			$retire_title,
+			$keep_title,
+			$links
+		);
+		if ($provider !== '') {
+			/* translators: %s: redirect provider name */
+			$message .= ' ' . sprintf(__('Its old URL redirects to the kept post (served by %s).', 'ai-post-scheduler'), $provider);
+		}
+
+		call_user_func(
+			$this->dispatcher,
+			'post_consolidated',
+			array(
+				'title'   => sprintf(__('Posts consolidated: %s', 'ai-post-scheduler'), $keep_title),
+				'message' => $message,
+				'url'     => admin_url('admin.php?page=aips-generated-posts&tab=cannibalization'),
+				'level'   => 'info',
+				'meta'    => $payload,
+			)
+		);
+	}
+
+	/**
+	 * Scheduled duplicate scan found new groups of near-duplicate posts.
+	 *
+	 * @param array $payload Keys: new_groups, group_count, post_count.
+	 * @return void
+	 */
+	public function duplicate_groups_found( array $payload ) {
+		$new    = isset($payload['new_groups']) ? (int) $payload['new_groups'] : 0;
+		$groups = isset($payload['group_count']) ? (int) $payload['group_count'] : 0;
+		$posts  = isset($payload['post_count']) ? (int) $payload['post_count'] : 0;
+
+		call_user_func(
+			$this->dispatcher,
+			'duplicate_groups_found',
+			array(
+				'title'   => __('New duplicate posts to review', 'ai-post-scheduler'),
+				'message' => sprintf(
+					/* translators: 1: new groups, 2: total groups awaiting review, 3: posts in those groups */
+					__('%1$d new group(s) of near-duplicate posts were found. %2$d group(s) (%3$d posts) are waiting for review.', 'ai-post-scheduler'),
+					$new,
+					$groups,
+					$posts
+				),
+				'url'     => admin_url('admin.php?page=aips-generated-posts&tab=cannibalization'),
+				'level'   => 'info',
+				'meta'    => $payload,
 			)
 		);
 	}

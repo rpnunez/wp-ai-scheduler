@@ -3,7 +3,7 @@
  * Sources Cron Handler
  *
  * Manages WP-CRON scheduling for the periodic source-fetching loop.
- * Registers a recurring cron hook and dispatches fetch jobs to
+ * Reconciles earliest-due single events and dispatches fetch jobs to
  * AIPS_Sources_Fetcher for each source that is due for a refresh.
  *
  * @package AI_Post_Scheduler
@@ -30,14 +30,8 @@ class AIPS_Sources_Cron {
 	 */
 	const HOOK = 'aips_fetch_sources';
 
-	/**
-	 * Default cron recurrence for the dispatcher loop.
-	 * The loop itself fires frequently; individual sources are skipped
-	 * until their own next_fetch_at threshold is reached.
-	 *
-	 * @var string
-	 */
-	const DISPATCHER_RECURRENCE = 'daily';
+	const CONTINUATION_HOOK = 'aips_fetch_sources_continue';
+	const RUN_BUDGET = 20;
 
 	/**
 	 * Maximum sources processed per cron run to prevent timeouts.
@@ -77,24 +71,27 @@ class AIPS_Sources_Cron {
 	 * @var AIPS_Logger
 	 */
 	private $logger;
+	private $lease;
 
 	/**
 	 * @param AIPS_Sources_Repository|null $sources_repo Optional (injectable for tests).
 	 * @param AIPS_Sources_Fetcher|null    $fetcher      Optional (injectable for tests).
 	 * @param AIPS_Logger|null             $logger       Optional (injectable for tests).
 	 */
-	public function __construct( $sources_repo = null, $fetcher = null, $logger = null ) {
+	public function __construct( $sources_repo = null, $fetcher = null, $logger = null, $lease = null ) {
 		$this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
 		$this->fetcher      = $fetcher      ?: new AIPS_Sources_Fetcher();
 		$this->logger       = $logger       ?: new AIPS_Logger();
 
+		$this->lease = $lease ?: new AIPS_Sources_Fetch_Lease();
 		add_action( self::HOOK, array( $this, 'run' ) );
+		add_action( self::CONTINUATION_HOOK, array( $this, 'run' ) );
 
 		$this->schedule();
 	}
 
 	/**
-	 * Ensure the recurring WP-CRON event exists.
+	 * Reconcile the single WP-CRON event under worker ownership.
 	 *
 	 * Called during construction so the event is (re-)registered on every
 	 * page load where the plugin is active, which mirrors the pattern used
@@ -102,9 +99,45 @@ class AIPS_Sources_Cron {
 	 *
 	 * @return void
 	 */
-	public function schedule() {
-		if ( ! wp_next_scheduled( self::HOOK ) ) {
-			wp_schedule_event( AIPS_DateTime::now()->timestamp(), self::DISPATCHER_RECURRENCE, self::HOOK );
+	public function schedule(): void {
+		$owner = $this->lease->acquire();
+		if ( false === $owner ) {
+			$this->schedule_continuation();
+			return;
+		}
+		try {
+			$this->reconcile_owned();
+		} finally {
+			$this->lease->release( $owner );
+		}
+	}
+
+	/** Re-read due state while the caller holds the shared worker lease. */
+	public function reconcile_owned( $after_run = false ): void {
+		$next = $this->sources_repo->get_next_fetch_at();
+		$now = AIPS_DateTime::now()->timestamp();
+		if ( null === $next ) {
+			wp_clear_scheduled_hook( self::HOOK );
+			wp_clear_scheduled_hook( self::CONTINUATION_HOOK );
+			return;
+		}
+		if ( $next <= $now && ( $after_run || wp_next_scheduled( self::CONTINUATION_HOOK ) ) ) {
+			wp_clear_scheduled_hook( self::HOOK );
+			$this->schedule_continuation();
+			return;
+		}
+		wp_clear_scheduled_hook( self::CONTINUATION_HOOK );
+		$target = max( $now, $next );
+		$event = wp_get_scheduled_event( self::HOOK );
+		if ( $event && false === $event->schedule && (int) $event->timestamp === $target ) { return; }
+		// This also removes the legacy recurring dispatcher on existing sites.
+		wp_clear_scheduled_hook( self::HOOK );
+		wp_schedule_single_event( $target, self::HOOK );
+	}
+
+	private function schedule_continuation(): void {
+		if ( ! wp_next_scheduled( self::CONTINUATION_HOOK ) ) {
+			wp_schedule_single_event( AIPS_DateTime::now()->timestamp() + 60, self::CONTINUATION_HOOK );
 		}
 	}
 
@@ -118,6 +151,21 @@ class AIPS_Sources_Cron {
 	 * @return void
 	 */
 	public function run() {
+		$owner = $this->lease->acquire();
+		if ( false === $owner ) {
+			$this->schedule_continuation();
+			return;
+		}
+		try {
+			$this->run_owned();
+		} finally {
+			try { $this->reconcile_owned( true ); }
+			finally { $this->lease->release( $owner ); }
+		}
+	}
+
+	private function run_owned(): void {
+		$started = microtime( true );
 		/**
 		 * Filters the maximum number of sources processed per cron run.
 		 *
@@ -136,8 +184,23 @@ class AIPS_Sources_Cron {
 			'info'
 		);
 
+		$fetched_ids = array();
+		$failed      = array();
+
 		foreach ( $due_sources as $source ) {
-			$result = $this->fetcher->fetch( $source );
+			if ( microtime( true ) - $started >= self::RUN_BUDGET ) { break; }
+			try {
+				$result = $this->fetcher->fetch( $source );
+			} catch ( Throwable $error ) {
+				$result = array( 'success' => false, 'error' => $error->getMessage() );
+				$this->sources_repo->update_after_fetch( $source->id, false, $error->getMessage() );
+			}
+
+			if ( ! empty( $result['success'] ) ) {
+				$fetched_ids[] = (int) $source->id;
+			} else {
+				$failed[ (int) $source->id ] = (string) ( $result['error'] ?? '' );
+			}
 
 			if ( ! $result['success'] ) {
 				$this->logger->log(
@@ -150,5 +213,22 @@ class AIPS_Sources_Cron {
 				);
 			}
 		}
+
+		// One History container per cron run (not per source) to keep the log small.
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::SOURCE_FETCHED,
+			empty( $failed ),
+			sprintf(
+				/* translators: 1: sources fetched, 2: sources due, 3: sources that failed */
+				__( 'Fetched %1$d of %2$d due sources (%3$d failed)', 'ai-post-scheduler' ),
+				count( $fetched_ids ),
+				count( $fetched_ids ) + count( $failed ),
+				count( $failed )
+			),
+			'source_fetch',
+			array( 'event' => __( 'Source fetch', 'ai-post-scheduler' ), 'detail' => __( 'Scheduled run', 'ai-post-scheduler' ) ),
+			'scheduled',
+			array( 'fetched_source_ids' => $fetched_ids, 'failed' => $failed )
+		);
 	}
 }

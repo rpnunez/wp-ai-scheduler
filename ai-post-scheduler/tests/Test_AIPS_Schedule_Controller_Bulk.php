@@ -435,13 +435,14 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 
 		$mock_repo = $this->getMockBuilder( 'AIPS_Schedule_Repository' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'delete_bulk' ) )
+			->onlyMethods( array( 'delete_bulk', 'get_campaign_owned_ids' ) )
 			->getMock();
 
 		$mock_repo->expects( $this->once() )
 			->method( 'delete_bulk' )
 			->with( array( 10, 20 ) )
 			->willReturn( 2 );
+		$mock_repo->method( 'get_campaign_owned_ids' )->willReturn( array() );
 
 		$controller = new AIPS_Schedule_Controller( $this->scheduler, $mock_repo );
 

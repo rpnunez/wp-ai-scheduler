@@ -96,7 +96,7 @@ class AIPS_Sources_Fetcher {
 		if ( ! wp_http_validate_url( $url ) ) {
 			$error_msg = 'Invalid or unsafe source URL.';
 			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, 0 );
-			$this->sources_repo->update_after_fetch( $source_id, false );
+			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: rejected unsafe URL for source #%d (%s)', $source_id, $url ), 'warning' );
 			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
@@ -105,8 +105,12 @@ class AIPS_Sources_Fetcher {
 		$start = microtime( true );
 		$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: starting fetch for source #%d (%s)', $source_id, $url ), 'info' );
 
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+		$default_max_bytes = (int) $defaults['aips_source_fetch_max_response_bytes'];
+		$max_bytes = max( 1, min( $default_max_bytes, (int) get_option( 'aips_source_fetch_max_response_bytes', $default_max_bytes ) ) );
 		$response = wp_safe_remote_get( $url, array(
 			'timeout'            => 15,
+			'limit_response_size' => $max_bytes,
 			'user-agent'         => 'Mozilla/5.0 (compatible; AIPS-Source-Fetcher/2.4; +https://wordpress.org)',
 			'sslverify'          => true,
 			'reject_unsafe_urls' => true,
@@ -115,7 +119,7 @@ class AIPS_Sources_Fetcher {
 		if ( is_wp_error( $response ) ) {
 			$error_msg = $response->get_error_message();
 			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, 0 );
-			$this->sources_repo->update_after_fetch( $source_id, false );
+			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: fetch failed for source #%d — %s', $source_id, $error_msg ), 'warning' );
 			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
@@ -124,12 +128,19 @@ class AIPS_Sources_Fetcher {
 		$http_status = wp_remote_retrieve_response_code( $response );
 		$body        = wp_remote_retrieve_body( $response );
 
-		if ( $http_status < 200 || $http_status >= 400 ) {
+		if ( $http_status < 200 || $http_status >= 300 ) {
 			$error_msg = sprintf( 'HTTP %d', $http_status );
 			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, $http_status );
-			$this->sources_repo->update_after_fetch( $source_id, false );
+			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: HTTP error for source #%d — %s', $source_id, $error_msg ), 'warning' );
+			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+		}
+
+		if ( strlen( $body ) >= $max_bytes ) {
+			$error_msg = __( 'Source response reached the body limit and may be truncated.', 'ai-post-scheduler' );
+			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, $http_status );
+			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
 		}
 
@@ -155,14 +166,20 @@ class AIPS_Sources_Fetcher {
 
 		$page_title       = $parsed['page_title'];
 		$meta_description = $parsed['meta_description'];
-		$extracted_text   = $parsed['extracted_text'];
+		$extracted_text   = AIPS_Sources_Data_Repository::normalize_text( $parsed['extracted_text'] );
+		if ( '' === $extracted_text ) {
+			$error_msg = __( 'Source returned no usable text. Check the URL and response format.', 'ai-post-scheduler' );
+			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, $http_status );
+			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
+			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
+		}
 
 		$max_chars = absint( get_option( 'aips_source_fetch_max_chars', self::DEFAULT_MAX_CHARS ) );
 		if ( $max_chars < 500 ) {
 			$max_chars = self::DEFAULT_MAX_CHARS;
 		}
 		if ( mb_strlen( $extracted_text ) > $max_chars ) {
-			$extracted_text = mb_substr( $extracted_text, 0, $max_chars );
+			$extracted_text = AIPS_Sources_Data_Repository::normalize_text( mb_substr( $extracted_text, 0, $max_chars, 'UTF-8' ) );
 		}
 
 		$store_raw_html = (bool) get_option( 'aips_source_store_raw_html', false );
@@ -185,7 +202,7 @@ class AIPS_Sources_Fetcher {
 		if ( ! $insert_ok ) {
 			$error_msg = 'Failed to store fetched content in database.';
 			$this->data_repo->mark_fetch_failed( $source_id, $error_msg, $http_status );
-			$this->sources_repo->update_after_fetch( $source_id, false );
+			$this->sources_repo->update_after_fetch( $source_id, false, $error_msg );
 
 			$this->logger->log( sprintf( 'AIPS_Sources_Fetcher: insert failed for source #%d', $source_id ), 'warning' );
 			return array( 'success' => false, 'char_count' => 0, 'error' => $error_msg );
@@ -336,10 +353,10 @@ class AIPS_Sources_Fetcher {
 	 * @return array { string page_title, string meta_description, string extracted_text }
 	 */
 	private function parse_feed( $body ) {
-		libxml_use_internal_errors( true );
+		$previous_errors = libxml_use_internal_errors( true );
 		$xml = @simplexml_load_string( $body, 'SimpleXMLElement', LIBXML_NONET );
 		libxml_clear_errors();
-		libxml_use_internal_errors( false );
+		libxml_use_internal_errors( $previous_errors );
 
 		if ( false === $xml ) {
 			return array( 'page_title' => '', 'meta_description' => '', 'extracted_text' => '' );

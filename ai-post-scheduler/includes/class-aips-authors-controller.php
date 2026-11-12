@@ -126,8 +126,13 @@ class AIPS_Authors_Controller {
 			'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : null,
 			'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
 			'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+			'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
 			'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
-			'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
+			'generate_slug' => isset($_POST['generate_slug']) ? 1 : 0,
+			'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['slug_prompt'])) : '',
+			'featured_image_source' => (new AIPS_Post_Images_Service())->normalize_source(isset($_POST['featured_image_source']) ? wp_unslash($_POST['featured_image_source']) : 'ai_prompt'),
+			'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
+			'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
 			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field(wp_unslash($_POST['voice_tone'])) : '',
 			'writing_style' => isset($_POST['writing_style']) ? sanitize_text_field(wp_unslash($_POST['writing_style'])) : '',
 			// New expanded author profile fields
@@ -141,14 +146,24 @@ class AIPS_Authors_Controller {
 			'manual_post_generation_quantity' => isset($_POST['manual_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['manual_post_generation_quantity']))) : 1,
 			'scheduled_post_generation_quantity' => isset($_POST['scheduled_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['scheduled_post_generation_quantity']))) : 1,
 			// Source group fields
-			'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+			'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
 			'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
 				: wp_json_encode(array()),
+			// Topic auto-approval configuration
+			'topic_auto_approval_mode' => isset($_POST['topic_auto_approval_mode']) && in_array($_POST['topic_auto_approval_mode'], array('inherit', 'manual', 'all', 'score', 'similarity'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_mode'])) : 'inherit',
+			'topic_auto_approval_min_score' => isset($_POST['topic_auto_approval_min_score']) ? max(1, min(100, absint($_POST['topic_auto_approval_min_score']))) : 70,
+			'topic_auto_approval_min_relevance' => isset($_POST['topic_auto_approval_min_relevance']) ? max(1, min(100, absint($_POST['topic_auto_approval_min_relevance']))) : 65,
+			'topic_auto_approval_max_similarity' => isset($_POST['topic_auto_approval_max_similarity']) ? max(0.50, min(0.99, (float) wp_unslash($_POST['topic_auto_approval_max_similarity']))) : 0.85,
+			'topic_auto_approval_fallback' => isset($_POST['topic_auto_approval_fallback']) && in_array($_POST['topic_auto_approval_fallback'], array('smart_split', 'pending', 'rejected'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_fallback'])) : 'smart_split',
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
+		if ($data['include_sources'] && empty(array_filter(json_decode($data['source_group_ids'], true)))) {
+			AIPS_Ajax_Response::error(__('Select at least one source group when sources are enabled.', 'ai-post-scheduler'));
+		}
+
 		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {
 			$now = AIPS_DateTime::now()->timestamp();
@@ -165,7 +180,13 @@ class AIPS_Authors_Controller {
 			$result = $id !== false;
 		}
 		
+		$this->record_author_event($author_id ? AIPS_History_Event_Type::AUTHOR_UPDATED : AIPS_History_Event_Type::AUTHOR_CREATED, (int) $id, $name, (bool) $result);
 		if ($result) {
+			$post_images_repo = new AIPS_Post_Images_Repository();
+			$submitted_post_images = isset($_POST['author_post_images']) ? $_POST['author_post_images'] : (isset($_POST['post_images']) ? $_POST['post_images'] : array());
+			$author_post_images = (new AIPS_Post_Images_Service())->normalize_submitted_rows($submitted_post_images);
+			$post_images_repo->sync_for_entity('author', $id, $author_post_images, 'content');
+
 			AIPS_Ajax_Response::success(array(
 				'message' => __('Author saved successfully.', 'ai-post-scheduler'),
 				'author_id' => $id
@@ -176,7 +197,38 @@ class AIPS_Authors_Controller {
 	}
 	
 	/**
+	 * Record an author create/update/delete in History.
+	 *
+	 * @param string $event_type  AIPS_History_Event_Type author constant.
+	 * @param int    $author_id   Author ID.
+	 * @param string $author_name Author name (may be empty).
+	 * @param bool   $success     Whether the operation succeeded.
+	 * @return void
+	 */
+	private function record_author_event($event_type, $author_id, $author_name, $success) {
+		$verbs = array(
+			AIPS_History_Event_Type::AUTHOR_CREATED => array(__('created', 'ai-post-scheduler'), __('create', 'ai-post-scheduler')),
+			AIPS_History_Event_Type::AUTHOR_UPDATED => array(__('updated', 'ai-post-scheduler'), __('update', 'ai-post-scheduler')),
+			AIPS_History_Event_Type::AUTHOR_DELETED => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
+		);
+		$verb = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
+
+		AIPS_History_Event_Recorder::instance()->record_entity_change(
+			$event_type,
+			'author_lifecycle',
+			AIPS_History_Subject::TYPE_AUTHOR,
+			$author_id,
+			$author_name,
+			$success,
+			__('Author', 'ai-post-scheduler'),
+			$verb[0],
+			$verb[1]
+		);
+	}
+
+	/**
 	 * AJAX handler for deleting an author.
+
 	 */
 	public function ajax_delete_author() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -193,6 +245,8 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
+		$author_for_history = $this->repository->get_by_id($author_id);
+
 		// Delete child records first to avoid orphaned records
 
 		// Get all topic IDs for this author via repository
@@ -207,8 +261,12 @@ class AIPS_Authors_Controller {
 		// Delete topics via repository
 		$this->topics_repository->delete_by_author($author_id);
 		
+		// Delete image configuration via repository
+		(new AIPS_Post_Images_Repository())->delete_for_entity('author', $author_id);
+
 		// Delete author
 		$result = $this->repository->delete($author_id);
+		$this->record_author_event(AIPS_History_Event_Type::AUTHOR_DELETED, $author_id, ($author_for_history && !empty($author_for_history->name)) ? (string) $author_for_history->name : '', (bool) $result);
 		
 		if ($result) {
 			AIPS_Ajax_Response::success(array(), __('Author deleted successfully.', 'ai-post-scheduler'));
@@ -238,6 +296,8 @@ class AIPS_Authors_Controller {
 		$author = $this->repository->get_by_id($author_id);
 		
 		if ($author) {
+			$post_images_repo = new AIPS_Post_Images_Repository();
+			$author->post_images = $post_images_repo->get_content_images_for_entity('author', $author_id);
 			AIPS_Ajax_Response::success(array('author' => $author));
 		} else {
 			AIPS_Ajax_Response::error(__('Author not found.', 'ai-post-scheduler'));
@@ -263,20 +323,13 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
-		// For the special "posts_generated" tab, we need to consider all topics
-		// for this author, then filter by whether they have generated posts.
-		// For other tabs, we continue to filter by status at the database level
-		// for efficiency, and then further refine by post_count where needed.
-		if ('posts_generated' === $status) {
-			$topics = $this->topics_repository->get_by_author($author_id, null);
+		// Tabs use the same mutually exclusive buckets as the status counts.
+		if (in_array($status, array('pending', 'approved', 'rejected', 'posts_generated'), true)) {
+			$topics = $this->topics_repository->get_by_author_bucket($author_id, $status);
 		} else {
 			$topics = $this->topics_repository->get_by_author($author_id, $status);
 		}
 		$status_counts = $this->topics_repository->get_status_counts($author_id);
-		// Augment status counts with posts_generated using the same logic as the
-		// Posts Generated stat card on the Author Topics page.
-		$posts_generated_count = $this->logs_repository->count_generated_posts_by_author($author_id);
-		$status_counts['posts_generated'] = (int) $posts_generated_count;
 		$topic_ids = array();
 		foreach ($topics as $topic) {
 			$topic_ids[] = (int) $topic->id;
@@ -320,25 +373,6 @@ class AIPS_Authors_Controller {
 			}
 		}
 		unset($topic);
-		
-		// Refine the topic collection based on the active tab semantics:
-		// - "approved" tab: only approved topics that have NO generated posts yet.
-		// - "rejected" tab: only rejected topics that have NO generated posts yet.
-		// - "posts_generated" tab: any topics (regardless of current status)
-		//   that have one or more generated posts associated with them.
-		if ('approved' === $status) {
-			$topics = array_values(array_filter($topics, function ($topic) {
-				return ('approved' === $topic->status && (int) $topic->post_count === 0);
-			}));
-		} elseif ('rejected' === $status) {
-			$topics = array_values(array_filter($topics, function ($topic) {
-				return ('rejected' === $topic->status && (int) $topic->post_count === 0);
-			}));
-		} elseif ('posts_generated' === $status) {
-			$topics = array_values(array_filter($topics, function ($topic) {
-				return (int) $topic->post_count > 0;
-			}));
-		}
 		
 		AIPS_Ajax_Response::success(array(
 			'topics' => $topics,
@@ -422,7 +456,8 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
-		$result = $this->topics_scheduler->generate_now($author_id);
+		$apply_auto_approval = !isset($_POST['apply_auto_approval']) || filter_var(wp_unslash($_POST['apply_auto_approval']), FILTER_VALIDATE_BOOLEAN);
+		$result = $this->topics_scheduler->generate_now($author_id, true, $apply_auto_approval);
 
 		if (is_wp_error($result)) {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));

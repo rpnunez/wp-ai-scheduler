@@ -80,6 +80,9 @@ jobs:
           cd ai-post-scheduler
           composer run lint:scheduling-boundary
 
+      - name: Enforce repository boundary (no direct wpdb in controllers/services)
+        run: cd ai-post-scheduler && composer lint:repository-boundary
+
       - name: Run PHPCS (WordPress Coding Standards) if installed
         run: |
           cd ai-post-scheduler

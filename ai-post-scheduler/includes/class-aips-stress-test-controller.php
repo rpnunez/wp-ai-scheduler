@@ -6,8 +6,11 @@
  *
  * Registered AJAX actions (all in AIPS_Ajax_Registry):
  *   aips_stress_test_run
- *   aips_stress_test_cleanup
  *   aips_stress_test_status
+ *
+ * Stress test data cleanup ("Delete Data" button) is handled by the shared
+ * aips_status_clean_stress_test_data endpoint on AIPS_System_Status_Controller,
+ * not by this controller — see AIPS_System_Diagnostics_Service::clean_stress_test_data().
  *
  * Each case runs in its own request so a slow provider cannot blow the PHP time
  * limit for the whole suite; the browser sequences them.
@@ -46,8 +49,11 @@ class AIPS_Stress_Test_Controller {
         $this->service = $service ?: new AIPS_Stress_Test_Service();
 
         add_action('wp_ajax_aips_stress_test_run', array($this, 'ajax_run'));
-        add_action('wp_ajax_aips_stress_test_cleanup', array($this, 'ajax_cleanup'));
         add_action('wp_ajax_aips_stress_test_status', array($this, 'ajax_status'));
+        add_action('wp_ajax_aips_stress_test_save_run', array($this, 'ajax_save_run'));
+        add_action('wp_ajax_aips_stress_test_get_history', array($this, 'ajax_get_history'));
+        add_action('wp_ajax_aips_stress_test_get_run', array($this, 'ajax_get_run'));
+        add_action('wp_ajax_aips_stress_test_diff_runs', array($this, 'ajax_diff_runs'));
     }
 
     // -----------------------------------------------------------------------
@@ -57,11 +63,9 @@ class AIPS_Stress_Test_Controller {
     /**
      * Render the Stress Test admin page.
      *
-     * @param bool $embedded Whether the page is rendered inside a Diagnostics tab,
-     *                       in which case the outer page chrome is suppressed.
      * @return void
      */
-    public function render_page($embedded = false) {
+    public function render_page() {
         if (!current_user_can('manage_options')) {
             wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
         }
@@ -103,30 +107,6 @@ class AIPS_Stress_Test_Controller {
     }
 
     /**
-     * Delete every post and attachment the page created.
-     *
-     * @return void
-     */
-    public function ajax_cleanup() {
-        $this->verify_request();
-
-        $deleted = $this->service->cleanup_test_data();
-
-        AIPS_Ajax_Response::success(
-            array(
-                'deleted'   => $deleted,
-                'test_data' => $this->service->count_test_data(),
-            ),
-            sprintf(
-                /* translators: 1: post count, 2: attachment count */
-                __('Removed %1$d posts and %2$d attachments.', 'ai-post-scheduler'),
-                $deleted['posts'],
-                $deleted['attachments']
-            )
-        );
-    }
-
-    /**
      * Current environment snapshot and leftover test-data counts.
      *
      * @return void
@@ -138,6 +118,94 @@ class AIPS_Stress_Test_Controller {
             'environment' => $this->service->get_environment(),
             'test_data'   => $this->service->count_test_data(),
         ));
+    }
+
+    /**
+     * Save a completed stress test suite run into History.
+     *
+     * @return void
+     */
+    public function ajax_save_run() {
+        $this->verify_request();
+
+        $run_data_raw = isset($_POST['run_data']) ? wp_unslash($_POST['run_data']) : '';
+        $run_data     = is_string($run_data_raw) ? json_decode($run_data_raw, true) : (is_array($run_data_raw) ? $run_data_raw : null);
+
+        if (!is_array($run_data) || empty($run_data['results'])) {
+            AIPS_Ajax_Response::error(__('Invalid run data payload.', 'ai-post-scheduler'), 'invalid_payload');
+        }
+
+        $history_id = $this->service->save_run_to_history($run_data);
+
+        if (!$history_id) {
+            AIPS_Ajax_Response::error(__('Failed to save stress test run to history.', 'ai-post-scheduler'), 'save_failed');
+        }
+
+        AIPS_Ajax_Response::success(
+            array('history_id' => (int) $history_id),
+            __('Stress test run saved to history.', 'ai-post-scheduler')
+        );
+    }
+
+    /**
+     * Retrieve recent stress test runs list for UI selection.
+     *
+     * @return void
+     */
+    public function ajax_get_history() {
+        $this->verify_request();
+
+        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 20;
+        $runs  = $this->service->get_run_history($limit);
+
+        AIPS_Ajax_Response::success(array('runs' => $runs));
+    }
+
+    /**
+     * Retrieve single run details from History.
+     *
+     * @return void
+     */
+    public function ajax_get_run() {
+        $this->verify_request();
+
+        $history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+
+        if (!$history_id) {
+            AIPS_Ajax_Response::error(__('Invalid history ID.', 'ai-post-scheduler'), 'invalid_id');
+        }
+
+        $run = $this->service->get_run_by_id($history_id);
+
+        if (!$run) {
+            AIPS_Ajax_Response::error(__('Run not found in history.', 'ai-post-scheduler'), 'not_found', 404);
+        }
+
+        AIPS_Ajax_Response::success(array('run' => $run));
+    }
+
+    /**
+     * Compute and return diff comparison between two runs.
+     *
+     * @return void
+     */
+    public function ajax_diff_runs() {
+        $this->verify_request();
+
+        $run_a_id = isset($_POST['run_a_id']) ? absint($_POST['run_a_id']) : 0;
+        $run_b_id = isset($_POST['run_b_id']) ? absint($_POST['run_b_id']) : 0;
+
+        if (!$run_a_id || !$run_b_id) {
+            AIPS_Ajax_Response::error(__('Both Run A and Run B IDs are required.', 'ai-post-scheduler'), 'missing_params');
+        }
+
+        $diff = $this->service->diff_runs($run_a_id, $run_b_id);
+
+        if (is_wp_error($diff)) {
+            AIPS_Ajax_Response::error($diff->get_error_message(), $diff->get_error_code());
+        }
+
+        AIPS_Ajax_Response::success(array('diff' => $diff));
     }
 
     /**

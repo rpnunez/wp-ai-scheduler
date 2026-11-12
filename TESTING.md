@@ -1,160 +1,221 @@
 # Testing
 
-This repository maintains a single PHPUnit test suite: the full WordPress test-library suite.
+This repository maintains a single PHPUnit suite: the full WordPress test-library suite (`ai-post-scheduler/tests/`, about 209 test files).
 
-The supported local workflow is Docker-backed MySQL plus the WordPress PHPUnit test library installer. Do not rely on host-only or limited-mode test execution.
+The recommended way to run it is **inside the running dev stack**: PHPUnit executes in the `web` container against a separate `wp_tests` database on the `db` container. No host PHP, Composer, or `svn` is needed, and your development data is never touched.
+
+## Agent test protocol (mandatory for AI agents and humans alike)
+
+This is the single supported way to run tests. Every other instruction file (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.codex/`, `.jules/`) points here.
+
+**Run:**
+
+```bash
+make test-session ARGS="tests/Test_A.php tests/Test_B.php"   # preferred: runs, then stops what it started
+make test ARGS="tests/Test_A.php"                            # same run, but leaves the stack up
+```
+
+Several `*.php` files run as a single PHPUnit process (PHPUnit 9 only takes one path, so the runner lists them in a temporary config), giving one summary and one set of coverage/log outputs. Options such as `--filter` apply to every file. A run where zero tests executed exits non-zero. Quote regex filters: `ARGS="--filter 'Test_A|Test_B'"`. The argument parsing is covered by `bash scripts/tests/test-run-docker-test.sh`.
+
+Rules:
+
+1. **Entrypoint is `make`.** Do not call `scripts/run-docker-test.sh` directly, do not wrap it in `bash.exe -lc "..."`, and do not hand-roll `docker compose exec ... phpunit`. On Windows run `make` from Git Bash (PowerShell/cmd also work: the Makefile pins Git for Windows' POSIX tools, so Git for Windows must be installed in `C:\Program Files\Git`).
+2. **One invocation per batch.** Pass every file (and any flags) in a single `ARGS`. Do not loop over files, and do not chain runs with `&&` / `;`: each run re-checks the stack and recreates the DB, and a failure in one hides the rest.
+3. **Do not filter output.** No piping to `grep`, `head` or `tail`; it hides failure detail and forces a rerun. If output is long, redirect it to a file in your scratch directory and read that.
+4. **Never run `./start-dev.sh` just to test.** It is first-time provisioning (image build, `.env`, API-key prompt). The test runner starts `db` and `web` itself. Use `start-dev.sh` only when the checkout has never been provisioned, with `AIPS_SKIP_API_KEY_CHECK=1` when no key is available.
+5. **Scope.** Run the tests that cover the touched code. Run the full suite (`make test-session`) only before opening a PR or when asked. Install dev dependencies once with `make composer-install` if `vendor/bin/phpunit` is missing.
+
+**Clean up after yourself.** Leave the machine the way you found it:
+
+1. Before testing, note whether the stack was already running (`docker compose ps`). `make test-session` does this and the next step for you.
+2. If you started the stack, stop it when finished: `make stop` (or `make test-stop`, which also stops phpMyAdmin). If it was already running, leave it alone; it may belong to the user or to another agent.
+3. Never use `make down`, `docker compose down -v`, `make clean`, `make prune` or any reset to clean up. They destroy containers or data volumes.
+4. Delete files you generated and do not intend to keep: `ai-post-scheduler/coverage/`, `ai-post-scheduler/.artifacts/`, scratch SQL/output files, stray background jobs or watchers you started.
+5. Say in your final report what you started and what you stopped (for example "stack was already up, left running" or "started db+web, stopped them").
 
 ## Requirements
 
-- Docker Desktop (or Docker Engine + Docker Compose)
-- Bash
-  - Git Bash on Windows
-  - WSL2
-  - macOS/Linux shell
-- `curl` or `wget`
-- `svn` (optional; used when available, otherwise the installer falls back to the packaged `wp-phpunit` test library)
+- Docker Desktop (or Docker Engine + Docker Compose v2), running
+- Bash (Git Bash on Windows, WSL2, or a macOS/Linux shell)
+- The dev stack, started once with `./start-dev.sh` (or `make start-dev`). See [README.md](README.md#development).
 
-## One-Command Test Runs
+`./start-dev.sh` **is** the supported way to get a working test environment: it builds the image (PHP, Xdebug, WP-CLI, Composer) and starts the database and web containers. The container entrypoint only installs the plugin's *production* Composer dependencies, so the first time (or whenever `ai-post-scheduler/vendor/bin/phpunit` is missing) run `make composer-install` to install the dev dependencies (PHPUnit and the WordPress test library) into the bind-mounted `vendor/` directory.
 
-From the repository root:
+## Running tests
+
+From the repository root, with the stack up:
 
 ```bash
-bash scripts/run-wp-tests-docker.sh
+make test                                            # whole suite
+make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # one file
+make test ARGS="--filter test_some_method"           # any PHPUnit arguments
+make test ARGS="--fresh"                             # recreate the wp_tests database first
+make test-verbose                                    # PHPUnit --verbose
+make test-coverage                                   # coverage (see below)
 ```
 
-You do **not** need to run `./start-dev.sh` first.
-
-You also do **not** need to manually start the containers first.
-
-The test wrapper handles the database container itself by running:
+`make` is a thin wrapper around `scripts/run-docker-test.sh`, which you can also call directly with the same arguments:
 
 ```bash
-docker compose up -d db
+bash scripts/run-docker-test.sh tests/Test_AIPS_DB_Migrations.php
 ```
 
-So the minimum requirement is just:
-- Docker Desktop is running
-- `docker compose` works
-- Composer dependencies are installed, or `composer test` can install them
+What the script does:
 
-That command:
+1. Makes sure the `db` and `web` services are up and healthy (`docker compose up -d --wait`).
+2. Creates the `wp_tests` database (root credentials come from the container's `MYSQL_ROOT_PASSWORD`). `--fresh` drops and recreates it first.
+3. Writes `/tmp/wp-tests-config.php` in the container and exports `WP_TESTS_DIR`, `WP_CORE_DIR`, `WP_PHPUNIT__TESTS_CONFIG`.
+4. Runs `php vendor/bin/phpunit` in the plugin directory. It adds `--no-coverage` by default so PHPUnit does not try to start a coverage driver while Xdebug is off; any explicit `--coverage*`/`--no-coverage` argument is honored instead.
 
-1. Starts the Docker database container if needed
-2. Recreates a disposable test database
-3. Installs WordPress core and `wordpress-tests-lib`
-4. Exports `WP_TESTS_DIR` and `WP_CORE_DIR`
-5. Runs `composer test`
+You do not need to run `./start-dev.sh` every time: once the stack exists, `make start` brings it back, and the test script starts `db`/`web` itself if they are stopped.
 
-To generate coverage:
+## Code coverage
 
 ```bash
-bash scripts/run-wp-tests-docker.sh coverage
+make test-coverage
 ```
 
-## When To Use `./start-dev.sh`
-
-Use `./start-dev.sh` only when you want the full local development stack for manual WordPress work, for example:
-
-- browsing the site at `http://localhost:8080`
-- using wp-admin
-- using phpMyAdmin
-- debugging plugin behavior in the running app
-
-It is **not required** just to run the PHPUnit suite through `bash scripts/run-wp-tests-docker.sh`.
-
-## Direct Commands
-
-If the Docker-backed WordPress test environment is already installed in the current shell:
+Equivalent:
 
 ```bash
-cd ai-post-scheduler
-composer test
+bash scripts/run-docker-test.sh --coverage-filter includes --coverage-html coverage --coverage-text
+```
+
+- `--coverage-filter includes` tells PHPUnit which source to measure (`phpunit.xml` intentionally has no `<coverage>` block, because that would force a coverage driver on every run).
+- `--coverage-html coverage` writes the HTML report to `ai-post-scheduler/coverage/` on your machine (the plugin directory is bind-mounted). Open `ai-post-scheduler/coverage/index.html` (or `dashboard.html`). The folder is gitignored.
+- `--coverage-text` prints a per-class summary in the terminal.
+- Passing a `--coverage*` argument also sets `XDEBUG_MODE=coverage` for that run (an environment variable overrides the runtime `xdebug.mode = off`).
+- Other formats work the same way, e.g. `--coverage-clover .artifacts/clover.xml`. Note that relative output paths are resolved inside the plugin directory (the only bind-mounted folder), so that file lands at `ai-post-scheduler/.artifacts/clover.xml` (gitignored), not in the repo-root `.artifacts/`.
+
+**Let the report finish.** PHPUnit prints the test summary first, then prints `Generating code coverage report in HTML format ...` and renders every page. The stylesheets, scripts and icons (`_css/`, `_js/`, `_icons/`) are copied as the **last** step. If you interrupt (Ctrl+C) while it is generating, you get HTML pages with no styling. Coverage runs are noticeably slower than normal runs; a long quiet period is not a hang.
+
+## Baseline run
+
+A full coverage run of the whole suite on the dev stack (2026-10-09) finished with:
+
+```
+ERRORS!
+Tests: 2127, Assertions: 5968, Errors: 22, Failures: 114, Warnings: 1, Skipped: 68.
+```
+
+These failures have **not been triaged**; treat them as the starting baseline, not a statement that those tests should fail. Compare your own run against it, and when you fix tests, update this number. (Run time was not recorded.)
+
+## CI-style host runner
+
+`scripts/run-wp-tests-docker.sh` (`make test-ci`) is what the GitHub Actions workflows use. It runs **on the host**: it starts the DB container, installs WordPress core and the test library to a host directory (`C:/tmp/wordpress-docker` on Git Bash, `/tmp/wordpress-docker` elsewhere), then runs `composer test` with the host's PHP and Composer. It needs host PHP (with `mysqli`), Composer, and `curl` or `wget`; `svn` is optional (the installer falls back to the packaged `wp-phpunit`).
+
+```bash
+bash scripts/run-wp-tests-docker.sh              # full suite
+bash scripts/run-wp-tests-docker.sh ai-api       # AI/provider-related tests
+bash scripts/run-wp-tests-docker.sh coverage     # coverage
+```
+
+Use it for CI parity; use `make test` for everyday local work.
+
+## Direct Composer commands (no Docker runner)
+
+If a WordPress test environment is already installed in your shell, from `ai-post-scheduler/`:
+
+```bash
+composer test            # runs test:setup (bin/prepare-wp-tests.sh) then PHPUnit
 composer test:verbose
 composer test:coverage
 ```
 
-## Expected Environment Variables
+`composer test:setup` installs Composer dependencies if `vendor/bin/phpunit` is missing and installs WordPress core plus the test library/config via `scripts/install-wp-tests.sh` using `WP_TESTS_DIR` / `WP_CORE_DIR` (defaults `/tmp/wordpress-tests-lib` and `/tmp/wordpress`). For agent/CI environments without DB create permissions, set `AIPS_WP_TEST_SKIP_DB_CREATE=true`. Set `AIPS_WP_TEST_AUTO_INSTALL_SVN=false` to skip best-effort `svn` installation and go straight to the packaged fallback.
 
-The Docker wrapper sets these automatically:
+## Environment variables
 
-```bash
-WP_TESTS_DIR=C:/tmp/wordpress-tests-lib-docker
-WP_CORE_DIR=C:/tmp/wordpress-docker
-```
+| Variable | Default | Used by | Purpose |
+| :--- | :--- | :--- | :--- |
+| `AIPS_WP_TEST_DB_NAME` | `wp_tests` (`wp_ns_tests_docker` for the host runner) | both runners | Name of the disposable test database. |
+| `MYSQL_ROOT_PASSWORD` | `root` | both runners | Root password used to create the test database. |
+| `AIPS_WP_TEST_SKIP_DB_CREATE` | `true` in the container runner | PHPUnit bootstrap | Skip creating the database (the runner already did). |
+| `AIPS_WP_TEST_DB_USER`, `AIPS_WP_TEST_DB_PASS`, `AIPS_WP_TEST_DB_HOST` | `root`, root password, `127.0.0.1:<MYSQL_PORT>` | host runner | Test database connection. |
+| `AIPS_WP_TEST_WP_VERSION` | `latest` | host runner | WordPress version for the test library. |
+| `AIPS_WP_TEST_AUTO_INSTALL_SVN` | unset (`true`) | `composer test:setup` | Set `false` to skip installing `svn`. |
+| `WP_TESTS_DIR`, `WP_CORE_DIR` | set by the runners | PHPUnit bootstrap | Test library and WordPress core paths. If invalid, the bootstrap fails fast. |
 
-If you run PHPUnit directly without those paths being valid, the bootstrap fails fast.
+## Common failures
 
-## Common Failures
+### `vendor/bin/phpunit not found`
 
-### Agent session: `composer test` fails before tests start
-
-`composer test` now runs a pre-flight bootstrap (`ai-post-scheduler/bin/prepare-wp-tests.sh`) that:
-
-1. Installs Composer dependencies if `vendor/bin/phpunit` is missing
-2. Uses `WP_TESTS_DIR` and `WP_CORE_DIR` (defaults to `/tmp/wordpress-tests-lib` and `/tmp/wordpress`) for the setup step
-3. Installs WordPress core + test library/config via `scripts/install-wp-tests.sh` if required files are missing
-
-The pre-flight export applies within `composer test:setup`; `phpunit` then runs in a separate Composer command and uses bootstrap defaults unless those variables are already exported in your shell.
-
-If an agent session still fails early, run from repo root:
+Dev dependencies are missing from the bind-mounted `ai-post-scheduler/vendor/`:
 
 ```bash
-cd ai-post-scheduler
-composer test:setup
-composer test
+make composer-install
 ```
 
-For CI/agent environments without DB create permissions, set:
+### `ERROR 2026 (HY000): TLS/SSL error: SSL is required, but the server does not support it`
+
+The MariaDB 11 client defaults to requiring TLS, but the dev database does not offer it. The runners already pass `--skip-ssl`; if you run `mariadb`/`mysql` by hand against the database container, add `--skip-ssl`.
+
+### `Error establishing a database connection` / unknown database `wp_tests`
+
+Re-create the test database: `make test ARGS="--fresh"`. Make sure the stack is healthy (`make status`).
+
+### Stack not running / unhealthy
 
 ```bash
-export AIPS_WP_TEST_SKIP_DB_CREATE=true
+make start         # or ./start-dev.sh if you have never provisioned this checkout
+make status
+make logs-db
 ```
 
-before running `composer test`.
+### `WordPress test library not found` (host runner / composer)
 
-If you want setup to skip best-effort `svn` installation attempts and go straight to the packaged fallback, set:
+Run `bash scripts/run-wp-tests-docker.sh` (reinstalls the test library and core paths) or `composer test:setup` from `ai-post-scheduler/`.
+
+### Docker Hub errors while starting the stack
+
+`start-dev.sh` retries transient `auth.docker.io` 5xx errors and reuses cached images; see [README.md](README.md#troubleshooting).
+
+## SQL diagnostics (`sql-batch`)
+
+`ai-post-scheduler/bin/sql-batch.php` runs a file of read-only SQL queries against the database of the WordPress install it lives in and writes the results to `REPORT.md` + one JSON file per query + a zip. It reads the DB credentials from `wp-config.php`, so the same file works on dev and production.
+
+Query file format (`{prefix}` becomes `$table_prefix`):
+
+```sql
+-- name: orphaned_history_rows
+-- purpose: Why this query is being run (shown in REPORT.md)
+SELECT COUNT(*) AS n FROM {prefix}aips_history WHERE ...;
+```
+
+Redaction is best effort: it masks sensitive columns (also when aliased), keys inside serialized/JSON values, and the value columns of queries that filter on a secret-looking option/meta name (`api_key`, `secret`, `token`, `password`, ...). A secret selected under another name through an expression or a differently named filter can still appear, so select only the columns you need.
+
+Safety, enforced by the runner: CLI only; only `SELECT` / `WITH` / `SHOW` / `DESCRIBE` / `EXPLAIN` run (anything else is refused); read-only transaction; 60 s per-query timeout; 10,000-row cap; passwords, e-mails, tokens and API keys are replaced with `[REDACTED]` (`--no-redact` to disable); output is never written inside the WordPress directory.
+
+**Dev (Docker)** - start the stack, then:
 
 ```bash
-export AIPS_WP_TEST_AUTO_INSTALL_SVN=false
+make sql-batch QUERIES=.artifacts/sql-queries/my-queries.sql
 ```
 
-### `Required command not found: svn`
+Results land in `.artifacts/sql-results/sql-batch-<timestamp>-<db>/` (read `REPORT.md` first) next to the `.zip`. Validate new queries here before running them on production.
 
-This is no longer a hard requirement for agent sessions.
-
-When `AIPS_WP_TEST_AUTO_INSTALL_SVN` is unset or `true`, `composer test:setup` first makes a best-effort attempt to install `svn` via a supported system package manager. If that fails, setup continues with the packaged fallback.
-
-If `svn` is unavailable, the test installer falls back to `ai-post-scheduler/vendor/wp-phpunit/wp-phpunit` for the WordPress PHPUnit `includes/` and `data/` directories.
-
-If setup still fails, make sure Composer dependencies are installed:
+**Production (SSH or Webuzo Terminal)** - the script ships with the plugin via `git pull`. Run it through the plugin symlink so `wp-config.php` is auto-discovered, or pass `--wp-config`:
 
 ```bash
-cd ai-post-scheduler
-composer install
-composer test:setup
+php /home/USER/sites/SITE/public_html/wp-content/plugins/ai-post-scheduler/bin/sql-batch.php ~/queries.sql
+# or, from the repo path:
+php /home/USER/repos/REPO/ai-post-scheduler/bin/sql-batch.php ~/queries.sql --wp-config=/home/USER/sites/SITE/public_html/wp-config.php
+# or paste the queries without uploading a file:
+php .../bin/sql-batch.php - <<'SQL'
+SELECT ...;
+SQL
 ```
 
-### `WordPress test library not found`
-
-Run:
+It prints `RESULTS_ZIP=...` (default folder `~/sql-results/`). Download that zip (scp or the Webuzo File Manager), then:
 
 ```bash
-bash scripts/run-wp-tests-docker.sh
+make sql-batch-unpack ZIP=~/Downloads/sql-batch-20261013-142200-dbname.zip
 ```
 
-This reinstalls the WordPress test library and core paths.
-
-### Docker DB health timeout
-
-Make sure Docker Desktop is running, then retry:
-
-```bash
-docker compose up -d db
-bash scripts/run-wp-tests-docker.sh
-```
+and point the agent at `.artifacts/sql-results/<run>/REPORT.md`. Unit tests: `make test ARGS="tests/Test_AIPS_Sql_Batch.php"`.
 
 ## Notes
 
-- The test database is disposable and recreated for each Docker-backed run.
-- The supported suite is always full WordPress mode.
-- There is no maintained limited-mode fallback.
+- The test database is disposable. Use `--fresh` to reset it.
+- The supported suite is always full WordPress mode; there is no limited-mode fallback.
+- `./start-dev.sh` writes each run's output to `.artifacts/start-dev-*.log`; keep that in mind when reporting environment problems.

@@ -1,0 +1,392 @@
+<?php
+if (!defined('ABSPATH')) {
+	exit;
+}
+
+$diagnostics_service = AIPS_Container::get_instance()->has(AIPS_System_Diagnostics_Service::class)
+	? AIPS_Container::get_instance()->make(AIPS_System_Diagnostics_Service::class)
+	: new AIPS_System_Diagnostics_Service();
+
+$refresh_task_groups = $diagnostics_service->get_refresh_task_groups();
+$tables_status       = $diagnostics_service->get_tables_status();
+
+$active_ai_provider          = AIPS_AI_Provider_Factory::create();
+$ai_provider_label           = $active_ai_provider->get_label();
+$ai_provider_available       = $active_ai_provider->is_available();
+$ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider->get_unavailable_reason();
+?>
+<div class="aips-status-page aips-system-health-page">
+	<!-- System Health Panel -->
+	<div class="aips-system-health-panel">
+		<div class="aips-system-health-header">
+			<h2><span class="dashicons dashicons-heart"></span> <?php esc_html_e('System Health & Tools', 'ai-post-scheduler'); ?></h2>
+			<p><?php esc_html_e('One-click recovery, cache rebuilding, and database maintenance operations.', 'ai-post-scheduler'); ?></p>
+		</div>
+
+		<!-- System Health Card -->
+		<div class="aips-health-card aips-refresh-task-selector">
+			<?php if (!empty($refresh_task_groups)) : ?>
+			<div class="aips-health-section aips-maintenance-tasks-section">
+				<div class="aips-health-section-header">
+					<div class="aips-health-section-title-wrap">
+						<h3 class="aips-health-section-title">
+							<span class="dashicons dashicons-admin-tools"></span>
+							<?php esc_html_e('Maintenance & Recovery Tasks', 'ai-post-scheduler'); ?>
+						</h3>
+					</div>
+					<div class="aips-health-section-action">
+						<span class="spinner aips-spinner-inline"></span>
+						<button type="button" class="aips-btn aips-btn-primary aips-refresh-system">
+							<span class="dashicons dashicons-update"></span>
+							<span class="aips-refresh-system-label"><?php esc_html_e('Refresh System', 'ai-post-scheduler'); ?></span>
+						</button>
+					</div>
+				</div>
+				<div class="aips-health-section-body">
+					<?php foreach ($refresh_task_groups as $task_group) : ?>
+						<div class="aips-status-op-group">
+							<span class="aips-status-op-group-label"><?php echo esc_html($task_group['label']); ?></span>
+							<div class="aips-checkbox-group aips-refresh-task-list">
+								<?php foreach ($task_group['tasks'] as $task) : ?>
+									<?php $task_input_id = 'aips-refresh-task-' . $task['step']; ?>
+									<label class="aips-checkbox-label" for="<?php echo esc_attr($task_input_id); ?>">
+										<input type="checkbox" id="<?php echo esc_attr($task_input_id); ?>" class="aips-refresh-task" name="aips_refresh_tasks[]" value="<?php echo esc_attr($task['step']); ?>" checked>
+										<span><?php echo esc_html($task['label']); ?></span>
+									</label>
+								<?php endforeach; ?>
+							</div>
+						</div>
+					<?php endforeach; ?>
+				</div>
+				<div class="aips-health-section-footer">
+					<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-refresh-tasks"><?php esc_html_e('Toggle All', 'ai-post-scheduler'); ?></button>
+				</div>
+			</div>
+			<?php endif; ?>
+
+			<?php $cache_subsystems = AIPS_Cache_Policy::get_subsystems(); ?>
+			<div class="aips-health-section aips-cache-subsystems-section">
+				<div class="aips-health-section-header">
+					<div class="aips-health-section-title-wrap">
+						<h3 class="aips-health-section-title">
+							<span class="dashicons dashicons-database"></span>
+							<?php esc_html_e('Cache Subsystems', 'ai-post-scheduler'); ?>
+						</h3>
+					</div>
+					<div class="aips-health-section-action">
+						<span class="spinner aips-spinner-inline"></span>
+						<button type="button" class="aips-btn aips-btn-primary aips-rebuild-cache-btn">
+							<span class="dashicons dashicons-update"></span>
+							<span class="aips-rebuild-cache-label"><?php esc_html_e('Rebuild Cache', 'ai-post-scheduler'); ?></span>
+						</button>
+					</div>
+				</div>
+				<div class="aips-health-section-body">
+					<div class="aips-status-op-group">
+						<span class="aips-status-op-group-label"><?php esc_html_e('Subsystem Caches', 'ai-post-scheduler'); ?></span>
+						<div class="aips-checkbox-group aips-cache-subsystem-list">
+							<?php foreach ($cache_subsystems as $key => $info) : ?>
+								<?php $cache_input_id = 'aips-cache-subsystem-' . $key; ?>
+								<label class="aips-checkbox-label" for="<?php echo esc_attr($cache_input_id); ?>">
+									<input type="checkbox" id="<?php echo esc_attr($cache_input_id); ?>" class="aips-cache-subsystem-task" name="aips_cache_subsystems[]" value="<?php echo esc_attr($key); ?>" checked>
+									<span><?php echo esc_html($info['label']); ?></span>
+								</label>
+							<?php endforeach; ?>
+						</div>
+					</div>
+				</div>
+				<div class="aips-health-section-footer">
+					<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-cache-tasks"><?php esc_html_e('Toggle All', 'ai-post-scheduler'); ?></button>
+				</div>
+			</div>
+		</div>
+
+		<div class="aips-refresh-system-results" style="display:none;"></div>
+		<div class="aips-cache-rebuild-results" style="display:none;"></div>
+		<div class="aips-status-op-result" style="display:none;"></div>
+	</div>
+
+	<!-- Tools Row: Cron + AI Engine -->
+	<div class="aips-status-tools-row">
+		<!-- Cron Status -->
+		<div class="aips-content-panel">
+			<div class="aips-panel-header">
+				<h2>
+					<span class="dashicons dashicons-clock"></span>
+					<?php esc_html_e('Cron Status', 'ai-post-scheduler'); ?>
+				</h2>
+			</div>
+			<div class="aips-panel-body">
+				<?php
+				$next_scheduled = wp_next_scheduled('aips_generate_scheduled_posts');
+				if ($next_scheduled) : ?>
+					<p class="aips-status-message aips-status-success">
+						<span class="aips-badge aips-badge-success">
+							<span class="dashicons dashicons-yes-alt"></span>
+							<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
+						</span>
+						<?php
+						printf(
+							esc_html__('Next scheduled check: %s', 'ai-post-scheduler'),
+							'<strong>' . esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $next_scheduled)) . '</strong>'
+						);
+						?>
+					</p>
+				<?php else : ?>
+					<p class="aips-status-message aips-status-error">
+						<span class="aips-badge aips-badge-warning">
+							<span class="dashicons dashicons-warning"></span>
+							<?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
+						</span>
+						<?php esc_html_e('Cron job is not scheduled. Try deactivating and reactivating the plugin.', 'ai-post-scheduler'); ?>
+					</p>
+				<?php endif; ?>
+
+				<p><?php esc_html_e('If duplicate or stacked cron events have accumulated (which can trigger excessive AI calls), flush and re-register all plugin events with one click.', 'ai-post-scheduler'); ?></p>
+
+				<div class="aips-btn-group aips-action-group">
+					<button type="button" class="aips-btn aips-btn-secondary aips-flush-cron">
+						<span class="dashicons dashicons-controls-repeat"></span>
+						<?php esc_html_e('Flush WP-Cron Events', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
+
+				<div class="aips-flush-cron-result"></div>
+			</div>
+		</div>
+
+		<!-- AI Provider Status -->
+		<div class="aips-content-panel">
+			<div class="aips-panel-header">
+				<h2>
+					<span class="dashicons dashicons-admin-plugins"></span>
+					<?php esc_html_e('AI Provider Status', 'ai-post-scheduler'); ?>
+				</h2>
+			</div>
+			<div class="aips-panel-body">
+				<?php if (!empty($ai_provider_available)): ?>
+					<p class="aips-status-message aips-status-success">
+						<span class="aips-badge aips-badge-success">
+							<span class="dashicons dashicons-yes-alt"></span>
+							<?php esc_html_e('Configured', 'ai-post-scheduler'); ?>
+						</span>
+						<?php
+						printf(
+							/* translators: %s: active AI provider label. */
+							esc_html__('%s is selected and locally configured. Use Test Connection to verify live access.', 'ai-post-scheduler'),
+							esc_html($ai_provider_label)
+						);
+						?>
+					</p>
+					<div class="aips-test-connection-wrapper">
+						<button type="button" id="aips-test-connection" class="aips-btn aips-btn-secondary">
+							<span class="dashicons dashicons-update"></span>
+							<?php esc_html_e('Test Connection', 'ai-post-scheduler'); ?>
+						</button>
+						<span class="spinner aips-spinner-inline"></span>
+						<span id="aips-connection-result" class="aips-connection-result"></span>
+					</div>
+				<?php else: ?>
+					<p class="aips-status-message aips-status-error">
+						<span class="aips-badge aips-badge-error">
+							<span class="dashicons dashicons-dismiss"></span>
+							<?php esc_html_e('Not Available', 'ai-post-scheduler'); ?>
+						</span>
+						<?php
+						if (!empty($ai_provider_unavailable_msg)) {
+							echo esc_html($ai_provider_unavailable_msg);
+						} else {
+							esc_html_e('No AI provider is available. Install the Meow Apps AI Engine plugin or configure a WordPress AI Client connector.', 'ai-post-scheduler');
+						}
+						?>
+					</p>
+					<p class="aips-ai-engine-download-wrap">
+						<a href="https://wordpress.org/plugins/ai-engine/" target="_blank" rel="noopener" class="aips-btn aips-btn-primary">
+							<span class="dashicons dashicons-download"></span>
+							<?php esc_html_e('Download AI Engine', 'ai-post-scheduler'); ?>
+						</a>
+					</p>
+				<?php endif; ?>
+			</div>
+		</div>
+	</div>
+
+	<!-- Database Storage & Table Status -->
+	<div class="aips-content-panel aips-db-tables-panel" id="aips-db-tables-panel">
+		<div class="aips-panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+			<h2>
+				<span class="dashicons dashicons-database"></span>
+				<?php esc_html_e('Database Storage & Table Status', 'ai-post-scheduler'); ?>
+			</h2>
+			<div>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-refresh-tables-btn">
+					<span class="dashicons dashicons-update"></span>
+					<?php esc_html_e('Refresh Sizes', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</div>
+		<div class="aips-panel-body no-padding">
+			<div style="padding: 12px 16px 0;">
+				<p class="description">
+					<?php esc_html_e('Monitor table disk usage, records, and overhead. Large tables such as telemetry and generation history can be pruned safely to reclaim MySQL disk space.', 'ai-post-scheduler'); ?>
+				</p>
+			</div>
+			<div class="aips-table-wrap" style="overflow-x: auto;">
+				<table class="aips-table aips-db-status-table" style="width: 100%;">
+					<thead>
+						<tr>
+							<th><?php esc_html_e('Table Name', 'ai-post-scheduler'); ?></th>
+							<th style="text-align: right;"><?php esc_html_e('Records', 'ai-post-scheduler'); ?></th>
+							<th style="text-align: right;"><?php esc_html_e('Data Size', 'ai-post-scheduler'); ?></th>
+							<th style="text-align: right;"><?php esc_html_e('Index Size', 'ai-post-scheduler'); ?></th>
+							<th style="text-align: center;"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
+							<th style="text-align: right;"><?php esc_html_e('Overhead', 'ai-post-scheduler'); ?></th>
+							<th style="text-align: right;"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+						</tr>
+					</thead>
+					<tbody id="aips-db-tables-tbody">
+						<?php if (!empty($tables_status)) : ?>
+							<?php
+							$tot_records  = 0;
+							$tot_data     = 0;
+							$tot_index    = 0;
+							$tot_overhead = 0;
+							?>
+							<?php foreach ($tables_status as $table) : ?>
+								<?php
+								$tot_records  += isset($table['records']) ? (int) $table['records'] : 0;
+								$tot_data     += isset($table['data_size']) ? (int) $table['data_size'] : 0;
+								$tot_index    += isset($table['index_size']) ? (int) $table['index_size'] : 0;
+								$tot_overhead += isset($table['overhead']) ? (int) $table['overhead'] : 0;
+								$short         = isset($table['short_name']) ? $table['short_name'] : '';
+								?>
+								<tr id="aips-tbl-row-<?php echo esc_attr($short); ?>" data-table="<?php echo esc_attr($short); ?>" data-records="<?php echo esc_attr((int) $table['records']); ?>" data-data-size="<?php echo esc_attr((int) $table['data_size']); ?>" data-index-size="<?php echo esc_attr((int) $table['index_size']); ?>" data-overhead="<?php echo esc_attr((int) $table['overhead']); ?>">
+									<td>
+										<strong><code><?php echo esc_html($table['table']); ?></code></strong>
+										<?php if ('aips_telemetry' === $short && !AIPS_Telemetry::is_enabled()) : ?>
+											<span class="aips-badge aips-badge-info" style="margin-left: 6px; font-size: 11px;">
+												<?php esc_html_e('Collection Inactive', 'ai-post-scheduler'); ?>
+											</span>
+										<?php endif; ?>
+									</td>
+									<td style="text-align: right;" class="aips-cell-records">
+										<?php echo esc_html(isset($table['formatted_records']) ? $table['formatted_records'] : number_format_i18n($table['records'])); ?>
+									</td>
+									<td style="text-align: right;" class="aips-cell-data">
+										<?php echo esc_html(isset($table['formatted_data_size']) ? $table['formatted_data_size'] : size_format($table['data_size'], 2)); ?>
+									</td>
+									<td style="text-align: right;" class="aips-cell-index">
+										<?php echo esc_html(isset($table['formatted_index_size']) ? $table['formatted_index_size'] : size_format($table['index_size'], 2)); ?>
+									</td>
+									<td style="text-align: center;" class="aips-cell-type">
+										<code><?php echo esc_html(isset($table['type']) ? $table['type'] : 'InnoDB'); ?></code>
+									</td>
+									<td style="text-align: right;" class="aips-cell-overhead">
+										<?php
+										$oh_formatted = isset($table['formatted_overhead']) ? $table['formatted_overhead'] : size_format($table['overhead'], 2);
+										if (!empty($table['overhead']) && $table['overhead'] > 1048576) {
+											echo '<span style="color:#d63638; font-weight:600;">' . esc_html($oh_formatted) . '</span>';
+										} else {
+											echo esc_html($oh_formatted);
+										}
+										?>
+									</td>
+									<td style="text-align: right;" class="aips-cell-actions">
+										<div class="aips-btn-group" style="justify-content: flex-end; gap: 4px;">
+											<?php if ('aips_telemetry' === $short) : ?>
+												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-prune-telemetry-btn" title="<?php esc_attr_e('Prune telemetry records older than configured retention period', 'ai-post-scheduler'); ?>">
+													<span class="dashicons dashicons-clock"></span>
+													<?php esc_html_e('Prune Old', 'ai-post-scheduler'); ?>
+												</button>
+												<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-purge-telemetry-btn" title="<?php esc_attr_e('Instantly truncate table and reclaim all disk space', 'ai-post-scheduler'); ?>">
+													<span class="dashicons dashicons-trash"></span>
+													<?php esc_html_e('Purge All', 'ai-post-scheduler'); ?>
+												</button>
+											<?php elseif ('aips_history_log' === $short) : ?>
+												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-prune-history-logs-btn" title="<?php esc_attr_e('Prune generation logs older than configured retention period', 'ai-post-scheduler'); ?>">
+													<span class="dashicons dashicons-clock"></span>
+													<?php esc_html_e('Prune Old', 'ai-post-scheduler'); ?>
+												</button>
+											<?php elseif ('aips_embeddings' === $short || 'aips_post_embeddings' === $short) : ?>
+												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clean-orphaned-embeddings-btn" title="<?php esc_attr_e('Delete embeddings for posts that no longer exist', 'ai-post-scheduler'); ?>">
+													<span class="dashicons dashicons-admin-links"></span>
+													<?php esc_html_e('Clean Orphans', 'ai-post-scheduler'); ?>
+												</button>
+											<?php endif; ?>
+
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-optimize-table-btn" data-table="<?php echo esc_attr($short); ?>" title="<?php esc_attr_e('Run OPTIMIZE TABLE to reclaim free space and defragment indexes', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-performance"></span>
+												<?php esc_html_e('Optimize', 'ai-post-scheduler'); ?>
+											</button>
+										</div>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						<?php else : ?>
+							<tr>
+								<td colspan="7" class="aips-table-empty">
+									<?php esc_html_e('No plugin database tables found.', 'ai-post-scheduler'); ?>
+								</td>
+							</tr>
+						<?php endif; ?>
+					</tbody>
+					<?php if (!empty($tables_status)) : ?>
+						<tfoot>
+							<tr style="font-weight: 600; background: #f6f7f7;">
+								<td><?php esc_html_e('Total Plugin Storage', 'ai-post-scheduler'); ?></td>
+								<td style="text-align: right;" id="aips-tot-records"><?php echo esc_html(number_format_i18n($tot_records)); ?></td>
+								<td style="text-align: right;" id="aips-tot-data"><?php echo esc_html(size_format($tot_data, 2)); ?></td>
+								<td style="text-align: right;" id="aips-tot-index"><?php echo esc_html(size_format($tot_index, 2)); ?></td>
+								<td style="text-align: center;">—</td>
+								<td style="text-align: right;" id="aips-tot-overhead"><?php echo esc_html(size_format($tot_overhead, 2)); ?></td>
+								<td></td>
+							</tr>
+						</tfoot>
+					<?php endif; ?>
+				</table>
+			</div>
+		</div>
+	</div>
+
+	<!-- Database Management -->
+	<div class="aips-content-panel">
+		<div class="aips-panel-header">
+			<h2>
+				<span class="dashicons dashicons-database"></span>
+				<?php esc_html_e('Database Management', 'ai-post-scheduler'); ?>
+			</h2>
+		</div>
+		<div class="aips-panel-body">
+			<p><?php esc_html_e("Use these tools to repair, reinstall, or wipe the plugin's database tables. Destructive actions require confirmation.", 'ai-post-scheduler'); ?></p>
+
+			<div class="aips-btn-group aips-db-actions">
+				<button type="button" class="aips-btn aips-btn-secondary aips-repair-db">
+					<span class="dashicons dashicons-hammer"></span>
+					<?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?>
+				</button>
+
+				<button type="button" class="aips-btn aips-btn-secondary aips-fix-datetime-db">
+					<span class="dashicons dashicons-clock"></span>
+					<?php esc_html_e('Fix Date/Time Values in DB', 'ai-post-scheduler'); ?>
+				</button>
+
+				<button type="button" class="aips-btn aips-btn-secondary aips-reinstall-db">
+					<span class="dashicons dashicons-update"></span>
+					<?php esc_html_e('Reinstall DB Tables', 'ai-post-scheduler'); ?>
+				</button>
+
+				<button type="button" class="aips-btn aips-btn-danger aips-wipe-db">
+					<span class="dashicons dashicons-trash"></span>
+					<?php esc_html_e('Wipe Plugin Data', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+
+			<div class="aips-backup-option-wrap">
+				<label class="aips-backup-label">
+					<input type="checkbox" id="aips-backup-db" value="1">
+					<?php esc_html_e('Back up data before reinstalling (data will be restored afterwards)', 'ai-post-scheduler'); ?>
+				</label>
+			</div>
+		</div>
+	</div>
+</div>

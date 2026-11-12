@@ -26,8 +26,8 @@ jQuery(document).ready(function($) {
         }
 
         AIPS.Utilities.confirm('This will generate dummy data in your database. Are you sure?', 'Notice', [
-            { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-            { label: 'Yes, generate', className: 'aips-btn aips-btn-danger-solid', action: function() {
+            { label: 'No, cancel',  className: 'aips-btn aips-btn-secondary' },
+            { label: 'Yes, generate', className: 'aips-btn aips-btn-primary', action: function() {
                 $submitBtn.prop('disabled', true);
                 $spinner.addClass('is-active');
                 $results.show();

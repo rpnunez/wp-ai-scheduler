@@ -226,11 +226,24 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$results = $repository->get_recent_generated_posts(42, 0);
 
 		$this->assertSame($expected_results, $results);
-		$this->assertStringContainsString('MAX(id) AS latest_history_id', $this->wpdb_stub->last_get_results_query);
-		$this->assertStringContainsString("status = 'completed'", $this->wpdb_stub->last_get_results_query);
-		$this->assertStringContainsString('GROUP BY post_id', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('MAX(r.id) AS latest_history_id', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString("r.status IN ('completed', 'partial')", $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('r.campaign_id = 42', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString("r.record_kind = 'generation'", $this->wpdb_stub->last_get_results_query);
+		$this->assertStringNotContainsString('topic_post_generation', $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString('GROUP BY r.post_id', $this->wpdb_stub->last_get_results_query);
 		$this->assertStringContainsString('INNER JOIN wp_posts p ON h.post_id = p.ID', $this->wpdb_stub->last_get_results_query);
 		$this->assertStringContainsString('LIMIT 1', $this->wpdb_stub->last_get_results_query);
+	}
+
+	public function test_flush_campaign_cache_invalidates_cache_without_error() {
+		$repository = $this->new_repository();
+
+		// Should succeed for specific campaign ID and for 0 (all campaigns) without throwing error.
+		$repository->flush_campaign_cache(42);
+		$repository->flush_campaign_cache(0);
+
+		$this->assertTrue(true);
 	}
 
 	private function get_campaign_payload() {
@@ -273,13 +286,17 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$repository = new AIPS_Campaigns_Repository($this->template_repository, $this->schedule_repository);
 		$reflection = new ReflectionClass($repository);
 
-		$cache_initialized = $reflection->getProperty('cache_initialized');
-		$cache_initialized->setAccessible(true);
-		$cache_initialized->setValue($repository, true);
+		if ($reflection->hasProperty('cache_initialized')) {
+			$cache_initialized = $reflection->getProperty('cache_initialized');
+			$cache_initialized->setAccessible(true);
+			$cache_initialized->setValue($repository, true);
+		}
 
-		$cache = $reflection->getProperty('cache');
-		$cache->setAccessible(true);
-		$cache->setValue($repository, null);
+		if ($reflection->hasProperty('cache')) {
+			$cache = $reflection->getProperty('cache');
+			$cache->setAccessible(true);
+			$cache->setValue($repository, null);
+		}
 
 		return $repository;
 	}
@@ -306,6 +323,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	public $prefix = 'wp_';
 
 	public $posts = 'wp_posts';
+
+	public $options = 'wp_options';
 
 	public $results_to_return = array();
 
@@ -349,6 +368,12 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	}
 
 	public function get_results($query, $output = OBJECT) {
+		// WP core's option loading (wp_load_alloptions) also runs through
+		// $wpdb->get_results(); it must not be answered with campaign fixture rows.
+		if (false !== strpos($query, $this->options)) {
+			return array();
+		}
+
 		$this->last_get_results_query = preg_replace('/\s+/', ' ', trim($query));
 
 		return $this->results_to_return;

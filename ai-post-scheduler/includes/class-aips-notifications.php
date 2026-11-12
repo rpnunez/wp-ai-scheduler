@@ -346,6 +346,16 @@ class AIPS_Notifications {
 	}
 
 	/**
+	 * Send a summarized activity digest notification.
+	 *
+	 * @param array $payload Summary payload containing 'items' and optional 'count'.
+	 * @return void
+	 */
+	public function summarized_digest(array $payload) {
+		$this->senders->summarized_digest($payload);
+	}
+
+	/**
 	 * Send a weekly summary notification.
 	 *
 	 * @param array $payload Summary payload.
@@ -435,6 +445,26 @@ class AIPS_Notifications {
 		$this->senders->research_topics_ready($payload);
 	}
 
+	/**
+	 * Send a posts-consolidated notification.
+	 *
+	 * @param array $payload Consolidation payload (see AIPS_Consolidation_Service).
+	 * @return void
+	 */
+	public function post_consolidated(array $payload) {
+		$this->senders->post_consolidated($payload);
+	}
+
+	/**
+	 * Notify that a scheduled duplicate scan found new groups to review.
+	 *
+	 * @param array $payload Keys: new_groups, group_count, post_count.
+	 * @return void
+	 */
+	public function duplicate_groups_found(array $payload) {
+		$this->senders->duplicate_groups_found($payload);
+	}
+
 
 	/**
 	 * Persist a DB notification via the repository.
@@ -496,6 +526,7 @@ class AIPS_Notifications {
 					'to_email'          => $to_email,
 				)
 			);
+			$history->complete_success();
 
 			return true;
 		}
@@ -515,6 +546,7 @@ class AIPS_Notifications {
 				'to_email'          => $to_email,
 			)
 		);
+		$history->complete_failure(sprintf(__('Notification email failed for %s', 'ai-post-scheduler'), $to_email));
 
 		return false;
 	}
@@ -561,18 +593,32 @@ class AIPS_Notifications {
 		}
 
 		if (in_array(self::CHANNEL_EMAIL, $channels, true)) {
-			$template = $this->templates->get($type);
-			$recipients = $this->parse_notification_emails(isset($options['to_email']) ? $options['to_email'] : '');
+			if ($this->should_intercept_for_digest($type)) {
+				$this->enqueue_digest_notification($type, array(
+					'title'      => $title,
+					'message'    => $message,
+					'url'        => $url,
+					'level'      => $level,
+					'meta'       => $meta,
+					'vars'       => $vars,
+					'to_email'   => isset($options['to_email']) ? $options['to_email'] : '',
+					'dedupe_key' => $dedupe_key,
+				));
+				$sent = true;
+			} else {
+				$template = $this->templates->get($type);
+				$recipients = $this->parse_notification_emails(isset($options['to_email']) ? $options['to_email'] : '');
 
-			if ($template && !empty($recipients)) {
-				$email_sent = false;
-				foreach ($recipients as $recipient) {
-					if ($this->send_email_notification($recipient, $template, $vars)) {
-						$email_sent = true;
+				if ($template && !empty($recipients)) {
+					$email_sent = false;
+					foreach ($recipients as $recipient) {
+						if ($this->send_email_notification($recipient, $template, $vars)) {
+							$email_sent = true;
+						}
 					}
-				}
-				if ($email_sent) {
-					$sent = true;
+					if ($email_sent) {
+						$sent = true;
+					}
 				}
 			}
 		}
@@ -754,6 +800,135 @@ class AIPS_Notifications {
 		}
 
 		return '<ul class="notification-details">' . implode('', $items) . '</ul>';
+	}
+
+	// -----------------------------------------------------------------------
+	// Summarized Notification Digest Queue & Dispatch API
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Check whether a notification type should be queued into the summarized digest.
+	 *
+	 * @param string $type Notification type slug.
+	 * @return bool
+	 */
+	public function should_intercept_for_digest($type) {
+		$config = AIPS_Config::get_instance();
+		$digest_config = $config->get_notification_summarized_digest_config();
+
+		if (!$digest_config['enabled']) {
+			return false;
+		}
+
+		$eligible = AIPS_Notification_Registry::get_digest_eligible_types();
+		if (!isset($eligible[$type])) {
+			return false;
+		}
+
+		return in_array($type, $digest_config['types'], true);
+	}
+
+	/**
+	 * Enqueue a notification into the pending summarized digest queue.
+	 *
+	 * If the threshold is reached or exceeded, flushes the queue immediately.
+	 *
+	 * @param string $type    Notification type.
+	 * @param array  $payload Notification payload.
+	 * @return bool
+	 */
+	public function enqueue_digest_notification($type, array $payload = array()) {
+		$queue = $this->get_digest_queue();
+		$queue[] = array(
+			'type'        => $type,
+			'title'       => isset($payload['title']) ? $payload['title'] : '',
+			'message'     => isset($payload['message']) ? $payload['message'] : '',
+			'url'         => isset($payload['url']) ? $payload['url'] : '',
+			'level'       => isset($payload['level']) ? $payload['level'] : 'info',
+			'meta'        => isset($payload['meta']) && is_array($payload['meta']) ? $payload['meta'] : array(),
+			'vars'        => isset($payload['vars']) && is_array($payload['vars']) ? $payload['vars'] : array(),
+			'to_email'    => isset($payload['to_email']) ? $payload['to_email'] : '',
+			'enqueued_at' => AIPS_DateTime::now()->timestamp(),
+		);
+
+		update_option('aips_notif_digest_queue', $queue, false);
+
+		$config = AIPS_Config::get_instance();
+		$digest_config = $config->get_notification_summarized_digest_config();
+
+		if (count($queue) >= $digest_config['threshold']) {
+			$this->flush_digest_queue();
+		}
+
+		return true;
+	}
+
+	/**
+	 * Get the pending digest queue.
+	 *
+	 * @return array
+	 */
+	public function get_digest_queue() {
+		$queue = get_option('aips_notif_digest_queue', array());
+		return is_array($queue) ? $queue : array();
+	}
+
+	/**
+	 * Get count of pending items in the digest queue.
+	 *
+	 * @return int
+	 */
+	public function get_digest_queue_count() {
+		return count($this->get_digest_queue());
+	}
+
+	/**
+	 * Flush the pending digest queue and send the summarized email.
+	 *
+	 * @return int Number of flushed items, or 0 if nothing was queued.
+	 */
+	public function flush_digest_queue() {
+		$queue = $this->get_digest_queue();
+		if (empty($queue)) {
+			return 0;
+		}
+
+		// Clear queue before sending to prevent concurrent loops.
+		update_option('aips_notif_digest_queue', array(), false);
+
+		$count = count($queue);
+		$this->senders->summarized_digest(array(
+			'items' => $queue,
+			'count' => $count,
+		));
+
+		return $count;
+	}
+
+	/**
+	 * Check whether the oldest queued item exceeds the max delay window.
+	 *
+	 * @return bool True if flushed, false otherwise.
+	 */
+	public function check_digest_timeout() {
+		$queue = $this->get_digest_queue();
+		if (empty($queue)) {
+			return false;
+		}
+
+		$config = AIPS_Config::get_instance();
+		$digest_config = $config->get_notification_summarized_digest_config();
+		$max_delay = $digest_config['max_delay'] > 0 ? $digest_config['max_delay'] : 3600;
+
+		$oldest_timestamp = isset($queue[0]['enqueued_at']) ? absint($queue[0]['enqueued_at']) : 0;
+		$now = AIPS_DateTime::now()->timestamp();
+
+		if (($now - $oldest_timestamp) >= $max_delay) {
+			$this->flush_digest_queue();
+			return true;
+		}
+
+		return false;
 	}
 
 }
