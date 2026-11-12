@@ -1,39 +1,31 @@
 # Generation Pipeline Sweep Workflow
 
-Fan out agents across the AI generation pipeline to verify context object usage, prompt builder isolation, observability logging, and retry backoff resilience.
+Audit generation semantics across all plugin entry points. This is a codebase-wide subsystem sweep; use PR Xray for one change set.
 
-## Purpose
+## Phase 1 — Map the pipeline
 
-Audit all content generation classes, prompt builders, context factories, and retry services against the architectural rules in `AGENTS.md` and `CLAUDE.md`:
-1. Generation requests use context objects (`AIPS_Generation_Context`, `AIPS_Template_Context`, `AIPS_Topic_Context`) via `AIPS_Generation_Context_Factory`.
-2. Prompts are constructed using shared `AIPS_Prompt_Builder*` classes—never string concatenation.
-3. Operations log events using `AIPS_History_Service`, `AIPS_Generation_Logger`, and `AIPS_Correlation_Id`.
-4. Retryable calls utilize `AIPS_Resilience_Service::retry_with_backoff()`.
+Inventory generation contexts/factories, prompt builders, initial and regeneration entry points, scheduled/bulk paths, provider execution, response parsing, partial state, recovery, history, logging, and correlation.
 
-## Phases
+## Phase 2 — Parallel path review
 
-### Phase 1 — Pipeline Component Discovery
-Glob and categorize generation components:
-- Context objects (`class-aips-*-context*.php`)
-- Prompt builders (`class-aips-prompt-builder*.php`)
-- Generation engine and services (`class-aips-generator.php`, `class-aips-generation-*.php`)
-- Resilience and logging handlers (`class-aips-resilience-service.php`, `class-aips-history-service.php`)
+Use `.agents/agents/generation-pipeline-reviewer.md` to trace each entry point end to end. Compare context fields, prompt semantics, provider options, output/status effects, recovery, and tests across paths.
 
-### Phase 2 — Parallel Component Audit
-For each pipeline component:
-1. Check context object utilization and factory instantiation patterns.
-2. Search for ad hoc prompt string concatenation in callers and flag violations.
-3. Verify correlation ID passing across async or batch generation boundaries.
-4. Verify resilience backoff wrappers around external API endpoints.
+Every reviewer returns the shared PR Xray finding envelope.
 
-### Phase 3 — Consolidated Report
-Produce a Markdown report:
-- Pipeline Architecture Compliance Table.
-- Prompt Assembly Violation List (file, line number, issue).
-- Observability and Tracing Coverage.
-- Recommended Action Items.
+## Phase 3 — Cross-path comparison
 
-## Useful references
-- `AGENTS.md` — canonical generation pipeline rules
-- `.claude/agents/generation-pipeline-reviewer.md` — review checklist
-- `.agents/skills/generation-changes/SKILL.md` — implementation guide
+- Identify inconsistent context or prompt behavior across initial, regeneration, scheduled, and bulk generation.
+- Check observability and correlation across asynchronous boundaries.
+- Route scheduling/locking concerns to `.agents/agents/background-job-reviewer.md` rather than duplicating them.
+- Record uncovered paths and verification limits.
+
+## Phase 4 — Report
+
+Use the shared severity/confidence model. Produce a pipeline map, cross-entry-point comparison, adjudicated findings, observability/test gaps, and prioritized remediation. Use the PR Xray report assembler only when artifacts are requested.
+
+## References
+
+- `AGENTS.md`
+- `.agents/agents/generation-pipeline-reviewer.md`
+- `.agents/agents/background-job-reviewer.md`
+- `.agents/references/pr-xray-finding-contract.md`

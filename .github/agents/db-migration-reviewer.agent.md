@@ -1,6 +1,6 @@
 ---
 name: "db-migration-reviewer"
-description: "Reviews database schema changes and migration logic in wp-ai-scheduler against AIPS_DB_Manager and AIPS_DB_Migrations patterns. Use whenever a table schema, column, or index is added, changed, or removed."
+description: "Reviews wp-ai-scheduler schema, migration, repository, query, and persisted-collection changes for install/upgrade safety, data preservation, boundaries, and performance."
 tools: [read, search]
 ---
 

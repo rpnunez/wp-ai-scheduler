@@ -40,4 +40,4 @@ Use this skill to break a feature into implementation slices that are independen
 
 ## Useful agents
 - `.agents/agents/feature-slicer.md` — detailed slice planning pass
-- `.agents/agents/pr-triage.md` — overlap/duplicate check before starting
+- `.agents/agents/pr-portfolio-analyst.md` — overlap/duplicate check before starting

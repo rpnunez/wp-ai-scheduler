@@ -1,6 +1,6 @@
 ---
 name: "l10n-reviewer"
-description: "Reviews translation readiness, text domain usage, string escaping, and localization data stores in wp-ai-scheduler. Use whenever user-facing admin UI strings, PHP i18n functions, JS L10n payloads, or language stores are updated."
+description: "Reviews wp-ai-scheduler translation readiness across PHP and JavaScript, including domains, placeholders, plurals, context, translator guidance, language stores, and output-context escaping."
 tools: [read, search]
 ---
 

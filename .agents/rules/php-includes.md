@@ -29,4 +29,4 @@ Read `wordpress-core.md` too. Long-form rules live in `docs/DEVELOPMENT_GUIDELIN
 - Handle a missing Meow Apps AI Engine dependency gracefully (see `includes/providers/`).
 
 ## Verify
-- Matching reviewers: `ajax-controller-reviewer`, `db-migration-reviewer`, `batch-job-reviewer`, `generation-pipeline-reviewer`, `l10n-reviewer` (see `.agents/agents/`).
+- Matching reviewers: `ajax-controller-reviewer`, `db-migration-reviewer`, `background-job-reviewer`, `generation-pipeline-reviewer`, `l10n-reviewer` (see `.agents/agents/`).

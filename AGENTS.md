@@ -31,22 +31,28 @@ Each agent is written once in `.agents/agents/<name>.md`. `.claude/agents/`, `.c
 
 | Agent | Use for |
 |---|---|
-| `ajax-controller-reviewer` | Nonce/capability/sanitization/registry review of AJAX handlers |
-| `batch-job-reviewer` | Bulk batch processors, cron slicing, job store state |
-| `db-migration-reviewer` | Schema and migration changes |
-| `generation-pipeline-reviewer` | Generation contexts, prompt builders, resilience flows |
-| `l10n-reviewer` | Text domain, i18n escaping, language stores |
+| `ajax-controller-reviewer` | AJAX action paths: authorization, typed input, responses, denied paths |
+| `background-job-reviewer` | Cron, batch slices, managed background processes, lifecycle state, idempotency |
+| `db-migration-reviewer` | Schema, migrations, persistence, queries, upgrade safety |
+| `generation-pipeline-reviewer` | Generation contexts, prompts, providers, entry points, recovery |
+| `l10n-reviewer` | Translation APIs, placeholders, plurals, language stores, escaping |
+| `bootstrap-dependency-reviewer` | Autoloading, boot contexts, container bindings, class moves, optional dependencies |
 | `wordpress-reviewer` | General WordPress correctness, security, compatibility review (read-only) |
-| `qa-reviewer` | Test planning, bug hunting, edge cases, verification |
+| `qa-reviewer` | Acceptance-criteria, test-quality, edge-case and verification review (read-only) |
 | `test-analyst` | Choosing focused checks and finding coverage gaps (read-only) |
 | `codebase-explorer` | Tracing execution paths and the smallest change surface (read-only) |
 | `feature-slicer` | Splitting a feature into mergeable slices |
-| `pr-triage` | Overlap, risk and readiness of pull requests |
+| `pr-portfolio-analyst` | Ranking multiple PRs by readiness, overlap, blockers, risk, merge order |
+| `pr-xray-coordinator` | One PR's intent, commits, risk, reviewer routing, coverage ownership |
+| `pr-xray-adjudicator` | Validating PR Xray evidence and assigning the final verdict |
+| `pr-xray-report-assembler` | Writing PR Xray reports and a validated ZIP under `.artifacts/pr-xray/` (can write) |
 | `atlas` | Architecture, schemas, foundational patterns (can edit) |
 | `nunezscheduler` | Feature-flow optimization for the scheduler (can edit) |
 | `principal-software-engineer` | Principal-level engineering guidance (can edit) |
 
-Skills (task playbooks) live in `.agents/skills/<name>/SKILL.md`: `admin-ui-changes`, `ajax-controller-changes`, `batch-job-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `sql-batch`. Use the one matching your task. Do not duplicate skills or rules into tool-specific folders.
+Skills (task playbooks) live in `.agents/skills/<name>/SKILL.md`: `admin-ui-changes`, `ajax-controller-changes`, `batch-job-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-portfolio-triage`, `pr-xray`, `sql-batch`. Use the one matching your task. Do not duplicate skills or rules into tool-specific folders.
+
+Shared contracts and templates used by more than one agent or skill live in `.agents/references/` and `.agents/templates/` (currently the PR Xray finding, severity, routing and report contracts).
 
 ## Coding conventions
 - Use `AIPS_`-prefixed, underscore-separated PHP class names.

@@ -11,4 +11,5 @@ The roster is in `AGENTS.md`; `.claude/agents/*.md` are thin wrappers around `.a
 ## Skills and workflows
 
 - Skills: `.agents/skills/` (see `AGENTS.md`). `.claude/skills/*/SKILL.md` are stubs pointing there (Claude Code only discovers that folder).
-- Saved multi-agent workflows: `.claude/workflows/` (`ajax-security-sweep`, `db-migration-audit`, `generation-pipeline-sweep`, `full-plugin-pr-audit`).
+- Saved multi-agent workflows: `.claude/workflows/` (`ajax-security-sweep`, `db-migration-audit`, `generation-pipeline-sweep`, `pr-portfolio-triage`, `pr-xray`).
+- Shared PR Xray contracts and report templates: `.agents/references/`, `.agents/templates/`.

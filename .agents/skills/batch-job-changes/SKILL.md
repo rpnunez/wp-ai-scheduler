@@ -45,4 +45,4 @@ Use this skill when adding or modifying bulk batch jobs, WP-Cron handlers, or ba
 - `ai-post-scheduler/tests/Test_AIPS_Bulk_Batch_Processor.php`
 
 ## Useful agents
-- `.agents/agents/batch-job-reviewer.md` — post-implementation review
+- `.agents/agents/background-job-reviewer.md` — post-implementation review across cron, batch, and managed background processes
