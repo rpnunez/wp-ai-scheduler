@@ -8,6 +8,7 @@ if (!defined('AIPS_PLUGIN_DIR')) {
 function esc_html_e($value, $domain) { echo htmlspecialchars($value, ENT_QUOTES); }
 function esc_attr_e($value, $domain) { esc_html_e($value, $domain); }
 function esc_html__($value, $domain) { return htmlspecialchars($value, ENT_QUOTES); }
+function esc_attr__($value, $domain) { return htmlspecialchars($value, ENT_QUOTES); }
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES); }
 function __($value, $domain) { return $value; }
 function esc_attr($value) { return htmlspecialchars((string) $value, ENT_QUOTES); }
