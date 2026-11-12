@@ -37,9 +37,17 @@ class Test_AIPS_Post_History_UI extends WP_UnitTestCase {
 		$admin_id = self::factory()->user->create(array('role' => 'administrator'));
 		wp_set_current_user($admin_id);
 
-		$actions = $ui->add_post_row_action(array(), $post);
+		$actions = $ui->add_post_row_action(array('edit' => '<a href="#">Edit</a>', 'trash' => '<a href="#">Trash</a>'), $post);
 
 		$this->assertArrayHasKey('aips_history', $actions);
+		$this->assertArrayHasKey('aips_ai_edit', $actions);
+		$this->assertStringContainsString('aips-ai-edit-btn', $actions['aips_ai_edit']);
+
+		// Verify AI Edit appears immediately adjacent to Edit
+		$keys = array_keys($actions);
+		$edit_index = array_search('edit', $keys, true);
+		$ai_edit_index = array_search('aips_ai_edit', $keys, true);
+		$this->assertSame($edit_index + 1, $ai_edit_index);
 	}
 
 	public function test_row_action_hidden_for_cpt_post_without_history() {
@@ -57,6 +65,7 @@ class Test_AIPS_Post_History_UI extends WP_UnitTestCase {
 		$actions = $ui->add_post_row_action(array(), $post);
 
 		$this->assertArrayNotHasKey('aips_history', $actions);
+		$this->assertArrayNotHasKey('aips_ai_edit', $actions);
 	}
 
 	public function test_row_action_hidden_for_non_admin() {
@@ -74,6 +83,7 @@ class Test_AIPS_Post_History_UI extends WP_UnitTestCase {
 		$actions = $ui->add_post_row_action(array(), $post);
 
 		$this->assertArrayNotHasKey('aips_history', $actions);
+		$this->assertArrayNotHasKey('aips_ai_edit', $actions);
 	}
 
 	public function test_register_insights_column() {
@@ -164,6 +174,18 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		}
 		public function post_has_history_and_completed($post_id) {
 			return isset($this->history_by_post[$post_id]);
+		}
+		public function get_ai_errors($args = array()) {
+			return array('items' => array(), 'total' => 0, 'total_pages' => 1, 'page' => 1, 'per_page' => 20);
+		}
+		public function get_ai_error_summary_stats($args = array()) {
+			return array('total_errors' => 0, 'categories' => array(), 'top_category' => null, 'top_component' => null);
+		}
+		public function get_ai_error_by_id($log_id) {
+			return null;
+		}
+		public function delete_by_post_id($post_id) {
+			return 0;
 		}
 	}
 }
