@@ -230,8 +230,9 @@ Extracted from `AIPS_AI_Service` to separate reliability concerns:
 ### Post Generation Limiter (`AIPS_Post_Generation_Limiter`)
 Internal control safety ceiling system capping runaway generation:
 
-- Enforces configurable ceilings across rolling hourly (10), daily (30), weekly (150), and monthly (500) windows (0 = unlimited)
-- Ground-truth tracking via native `WP_Query` and `_aips_generated_post = '1'` post meta with 60-second transient caching
+- Enforces configurable ceilings across rolling hourly (50), daily (200), weekly (1,000), and monthly (3,500) windows (0 = unlimited)
+- Two-tier evaluation enforcing both post-type specific limits (when filtered/configured) and global aggregate ceilings
+- Ground-truth tracking via native `WP_Query` combining post types and statuses as an SQL `AND` conjunction (guaranteeing exact single-post counting) and `_aips_generated_post = '1'` post meta with 60-second transient caching
 - Configurable post type filtering (Posts, Pages, registered CPTs) with interactive Select/Deselect All toggle
 - Configurable post status filtering (Published, Draft, Pending, Future, Private) with interactive Select/Deselect All toggle
 - Manual trigger bypass option to permit admin "Generate Now" operations while protecting automated cron loops

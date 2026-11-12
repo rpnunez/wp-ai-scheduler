@@ -178,10 +178,10 @@ class AIPS_Post_Generation_Limiter {
 	 */
 	public function get_limits(?string $post_type = null): array {
 		$limits = array(
-			'hourly'  => absint($this->config->get_option('aips_generation_limit_hourly', 10)),
-			'daily'   => absint($this->config->get_option('aips_generation_limit_daily', 30)),
-			'weekly'  => absint($this->config->get_option('aips_generation_limit_weekly', 150)),
-			'monthly' => absint($this->config->get_option('aips_generation_limit_monthly', 500)),
+			'hourly'  => absint($this->config->get_option('aips_generation_limit_hourly', 50)),
+			'daily'   => absint($this->config->get_option('aips_generation_limit_daily', 200)),
+			'weekly'  => absint($this->config->get_option('aips_generation_limit_weekly', 1000)),
+			'monthly' => absint($this->config->get_option('aips_generation_limit_monthly', 3500)),
 		);
 
 		/**
@@ -231,11 +231,18 @@ class AIPS_Post_Generation_Limiter {
 	/**
 	 * Count generated posts for a specific time period.
 	 *
-	 * Uses native WP_Query with date_query and _aips_generated_post meta query,
-	 * backed by in-memory caching and a 60-second WordPress transient.
+	 * Uses native WP_Query with date_query, post_status, post_type, and _aips_generated_post meta query.
+	 *
+	 * Note on counting integrity:
+	 * In WordPress WP_Query, post_type and post_status are evaluated simultaneously as an SQL AND conjunction
+	 * (e.g. `WHERE post_type IN (...) AND post_status IN (...)`), meaning every matching post ID is evaluated
+	 * and counted exactly once by `found_posts`. There is zero double- or triple-counting of the same post ID
+	 * across post types and post statuses.
+	 *
+	 * Backed by in-memory caching and a 60-second WordPress transient.
 	 *
 	 * @param string      $period    Time period ('hourly', 'daily', 'weekly', 'monthly').
-	 * @param string|null $post_type Optional specific post type to count. If null, counts configured post types.
+	 * @param string|null $post_type Optional specific post type to count. If null, counts across all configured post types.
 	 * @return int Total generated posts within the period.
 	 */
 	public function get_count_for_period(string $period, ?string $post_type = null): int {
@@ -339,25 +346,63 @@ class AIPS_Post_Generation_Limiter {
 			return true;
 		}
 
-		$limits = $this->get_limits($post_type);
-		$order  = array('hourly', 'daily', 'weekly', 'monthly');
+		$order = array('hourly', 'daily', 'weekly', 'monthly');
+		$period_labels = array(
+			'hourly'  => __('hour (60 minutes)', 'ai-post-scheduler'),
+			'daily'   => __('day (24 hours)', 'ai-post-scheduler'),
+			'weekly'  => __('week (7 days)', 'ai-post-scheduler'),
+			'monthly' => __('month (30 days)', 'ai-post-scheduler'),
+		);
 
+		$global_limits = $this->get_limits(null);
+		$type_limits   = $post_type ? $this->get_limits($post_type) : null;
+
+		// Tier 1: Check post-type specific limit if defined and distinct from global
+		if ($post_type && $type_limits && $type_limits !== $global_limits) {
+			foreach ($order as $period) {
+				$limit = isset($type_limits[$period]) ? $type_limits[$period] : 0;
+				if ($limit <= 0) {
+					continue;
+				}
+
+				$count = $this->get_count_for_period($period, $post_type);
+				if ($count >= $limit) {
+					$this->handle_limit_breach($period, $limit, $count, $context, $post_type);
+
+					$label = isset($period_labels[$period]) ? $period_labels[$period] : $period;
+
+					return new WP_Error(
+						'aips_generation_rate_limit_exceeded',
+						sprintf(
+							/* translators: 1: post type, 2: period label, 3: current count, 4: max limit */
+							__('Post generation halted by Safety Limiter: Maximum %1$s limit for the %2$s reached (%3$d/%4$d posts).', 'ai-post-scheduler'),
+							$post_type,
+							$label,
+							$count,
+							$limit
+						),
+						array(
+							'period'    => $period,
+							'limit'     => $limit,
+							'count'     => $count,
+							'post_type' => $post_type,
+						)
+					);
+				}
+			}
+		}
+
+		// Tier 2: Check global aggregate ceiling across all counted post types
 		foreach ($order as $period) {
-			$limit = isset($limits[$period]) ? $limits[$period] : 0;
+			$limit = isset($global_limits[$period]) ? $global_limits[$period] : 0;
 			if ($limit <= 0) {
 				continue; // 0 = unlimited
 			}
 
-			$count = $this->get_count_for_period($period);
+			$count = $this->get_count_for_period($period, null);
 			if ($count >= $limit) {
-				$this->handle_limit_breach($period, $limit, $count, $context);
+				$this->handle_limit_breach($period, $limit, $count, $context, null);
 
-				$period_labels = array(
-					'hourly'  => __('hour (60 minutes)', 'ai-post-scheduler'),
-					'daily'   => __('day (24 hours)', 'ai-post-scheduler'),
-					'weekly'  => __('week (7 days)', 'ai-post-scheduler'),
-					'monthly' => __('month (30 days)', 'ai-post-scheduler'),
-				);
 				$label = isset($period_labels[$period]) ? $period_labels[$period] : $period;
 
 				return new WP_Error(
@@ -423,34 +468,41 @@ class AIPS_Post_Generation_Limiter {
 	/**
 	 * Handle a limit breach event: fires action, logs warning, and dispatches throttled notification.
 	 *
-	 * @param string $period  Period key that exceeded ceiling.
-	 * @param int    $limit   The maximum limit configured.
-	 * @param int    $count   Current count reached.
-	 * @param mixed  $context Generation context.
+	 * @param string      $period    Period key that exceeded ceiling.
+	 * @param int         $limit     The maximum limit configured.
+	 * @param int         $count     Current count reached.
+	 * @param mixed       $context   Generation context.
+	 * @param string|null $post_type Optional post type if breach was for a specific type.
 	 * @return void
 	 */
-	private function handle_limit_breach(string $period, int $limit, int $count, $context = null): void {
+	private function handle_limit_breach(string $period, int $limit, int $count, $context = null, ?string $post_type = null): void {
 		/**
 		 * Action fired when a post generation ceiling is breached.
 		 *
-		 * @param string $period  Period name ('hourly', 'daily', 'weekly', 'monthly').
-		 * @param int    $limit   Configured limit ceiling.
-		 * @param int    $count   Current generated post count in period.
-		 * @param mixed  $context Generation context.
+		 * @param string      $period    Period name ('hourly', 'daily', 'weekly', 'monthly').
+		 * @param int         $limit     Configured limit ceiling.
+		 * @param int         $count     Current generated post count in period.
+		 * @param mixed       $context   Generation context.
+		 * @param string|null $post_type Specific post type if breached for that type, or null for aggregate.
 		 */
-		do_action('aips_generation_rate_limit_exceeded', $period, $limit, $count, $context);
+		do_action('aips_generation_rate_limit_exceeded', $period, $limit, $count, $context, $post_type);
+
+		$message = $post_type
+			? sprintf('Post generation halted by Safety Limiter: %s %s limit reached (%d/%d posts).', $post_type, $period, $count, $limit)
+			: sprintf('Post generation halted by Safety Limiter: %s limit reached (%d/%d posts).', $period, $count, $limit);
 
 		$this->logger->log(
-			sprintf('Post generation halted by Safety Limiter: %s limit reached (%d/%d posts).', $period, $count, $limit),
+			$message,
 			'warning',
 			array(
-				'period' => $period,
-				'limit'  => $limit,
-				'count'  => $count,
+				'period'    => $period,
+				'limit'     => $limit,
+				'count'     => $count,
+				'post_type' => $post_type,
 			)
 		);
 
-		$this->maybe_send_notification($period, $limit, $count);
+		$this->maybe_send_notification($period, $limit, $count, $post_type);
 	}
 
 	/**
@@ -458,12 +510,13 @@ class AIPS_Post_Generation_Limiter {
 	 *
 	 * Throttled to maximum once every 4 hours and once per user session.
 	 *
-	 * @param string $period Period key.
-	 * @param int    $limit  Limit ceiling.
-	 * @param int    $count  Current count.
+	 * @param string      $period    Period key.
+	 * @param int         $limit     Limit ceiling.
+	 * @param int         $count     Current count.
+	 * @param string|null $post_type Optional post type if breached for a specific type.
 	 * @return bool True if notification was sent, false if throttled.
 	 */
-	private function maybe_send_notification(string $period, int $limit, int $count): bool {
+	private function maybe_send_notification(string $period, int $limit, int $count, ?string $post_type = null): bool {
 		// Session throttle: do not send more than once in the same PHP process/session.
 		if (self::$session_notified) {
 			return false;
@@ -482,13 +535,24 @@ class AIPS_Post_Generation_Limiter {
 		);
 		$label = isset($period_labels[$period]) ? $period_labels[$period] : $period;
 
-		$message = sprintf(
-			/* translators: 1: period label, 2: max limit, 3: current count */
-			__('Post generation has been paused because the %1$s ceiling of %2$d posts has been reached (%3$d posts created). You can adjust this ceiling or disable the limiter in Settings > Resilience & Limits.', 'ai-post-scheduler'),
-			$label,
-			$limit,
-			$count
-		);
+		if ($post_type) {
+			$message = sprintf(
+				/* translators: 1: post type, 2: period label, 3: max limit, 4: current count */
+				__('Post generation has been paused because the %1$s %2$s ceiling of %3$d posts has been reached (%4$d posts created). You can adjust this ceiling or disable the limiter in Settings > Resilience & Limits.', 'ai-post-scheduler'),
+				$post_type,
+				$label,
+				$limit,
+				$count
+			);
+		} else {
+			$message = sprintf(
+				/* translators: 1: period label, 2: max limit, 3: current count */
+				__('Post generation has been paused because the %1$s ceiling of %2$d posts has been reached (%3$d posts created). You can adjust this ceiling or disable the limiter in Settings > Resilience & Limits.', 'ai-post-scheduler'),
+				$label,
+				$limit,
+				$count
+			);
+		}
 
 		if ($this->notifications && method_exists($this->notifications, 'create_notification')) {
 			$this->notifications->create_notification(
@@ -498,7 +562,7 @@ class AIPS_Post_Generation_Limiter {
 					'message'    => $message,
 					'url'        => admin_url('admin.php?page=aips-settings&tab=settings-resilience'),
 					'level'      => 'warning',
-					'dedupe_key' => 'generation_limit_exceeded_' . $period,
+					'dedupe_key' => 'generation_limit_exceeded_' . $period . ($post_type ? '_' . $post_type : ''),
 				)
 			);
 		}

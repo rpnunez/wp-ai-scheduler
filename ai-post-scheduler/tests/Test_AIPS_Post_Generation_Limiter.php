@@ -83,10 +83,10 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 		$this->assertTrue($this->limiter->is_manual_bypass_enabled());
 
 		$limits = $this->limiter->get_limits();
-		$this->assertSame(10, $limits['hourly']);
-		$this->assertSame(30, $limits['daily']);
-		$this->assertSame(150, $limits['weekly']);
-		$this->assertSame(500, $limits['monthly']);
+		$this->assertSame(50, $limits['hourly']);
+		$this->assertSame(200, $limits['daily']);
+		$this->assertSame(1000, $limits['weekly']);
+		$this->assertSame(3500, $limits['monthly']);
 
 		$types = $this->limiter->get_counted_post_types();
 		$this->assertContains('post', $types);
@@ -234,7 +234,7 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 		);
 
 		$default_limits = $this->limiter->get_limits();
-		$this->assertSame(10, $default_limits['hourly']);
+		$this->assertSame(50, $default_limits['hourly']);
 
 		$page_limits = $this->limiter->get_limits('page');
 		$this->assertSame(2, $page_limits['hourly']);
@@ -268,16 +268,17 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 
 		add_action(
 			'aips_generation_rate_limit_exceeded',
-			function ($period, $limit, $count, $context) use (&$action_fired, &$captured) {
+			function ($period, $limit, $count, $context, $post_type = null) use (&$action_fired, &$captured) {
 				$action_fired = true;
 				$captured     = array(
-					'period' => $period,
-					'limit'  => $limit,
-					'count'  => $count,
+					'period'    => $period,
+					'limit'     => $limit,
+					'count'     => $count,
+					'post_type' => $post_type,
 				);
 			},
 			10,
-			4
+			5
 		);
 
 		$this->limiter->check_limits(false);
@@ -286,6 +287,65 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 		$this->assertSame('hourly', $captured['period']);
 		$this->assertSame(1, $captured['limit']);
 		$this->assertSame(1, $captured['count']);
+		$this->assertNull($captured['post_type']);
+	}
+
+	public function test_conjunction_single_count_guarantee() {
+		// When a post matches multiple counted post types and counted statuses,
+		// it must only be counted exactly once (AND conjunct in SQL).
+		update_option('aips_generation_limiter_post_types', array('post', 'page'));
+		update_option('aips_generation_limiter_post_statuses', array('publish', 'draft', 'pending'));
+
+		$this->create_test_post('publish', '', true, 'post');
+		$this->limiter->clear_cache();
+
+		$count = $this->limiter->get_count_for_period('hourly');
+		$this->assertSame(1, $count, 'A single post matching both post_type and post_status must only be counted once.');
+	}
+
+	public function test_two_tier_limit_evaluation() {
+		// Set global hourly limit to 10
+		update_option('aips_generation_limit_hourly', 10);
+		update_option('aips_generation_limiter_post_types', array('post', 'page'));
+
+		// Custom filter: 'page' is limited to 2 posts per hour
+		add_filter(
+			'aips_generation_limits_for_post_type',
+			function ($limits, $post_type) {
+				if ('page' === $post_type) {
+					$limits['hourly'] = 2;
+				}
+				return $limits;
+			},
+			10,
+			2
+		);
+
+		// Create 2 pages
+		$this->create_test_post('publish', '', true, 'page');
+		$this->create_test_post('publish', '', true, 'page');
+		$this->limiter->clear_cache();
+
+		// Check limits for 'page' -> should fail Tier 1 (page limit of 2 reached)
+		$result_page = $this->limiter->check_limits(false, null, 'page');
+		$this->assertWPError($result_page);
+		$this->assertSame('aips_generation_rate_limit_exceeded', $result_page->get_error_code());
+		$this->assertStringContainsString('page', $result_page->get_error_message());
+
+		// Check limits for 'post' -> should pass because post count is 0 and aggregate count is 2 (below global 10)
+		$result_post = $this->limiter->check_limits(false, null, 'post');
+		$this->assertTrue($result_post);
+
+		// Now add 8 more posts to hit the global limit of 10 (2 pages + 8 posts = 10)
+		for ($i = 0; $i < 8; $i++) {
+			$this->create_test_post('publish', '', true, 'post');
+		}
+		$this->limiter->clear_cache();
+
+		// Check limits for 'post' -> should now fail Tier 2 (global aggregate limit of 10 reached)
+		$result_global_fail = $this->limiter->check_limits(false, null, 'post');
+		$this->assertWPError($result_global_fail);
+		$this->assertSame('aips_generation_rate_limit_exceeded', $result_global_fail->get_error_code());
 	}
 
 	public function test_get_usage_structure() {

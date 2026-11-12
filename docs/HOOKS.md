@@ -76,6 +76,7 @@ Fires when a post generation ceiling is breached by the Safety Limiter.
     *   `int $limit`: The configured maximum post limit.
     *   `int $count`: The current count of generated posts in the timeframe.
     *   `AIPS_Generation_Context|null $context`: The generation context being executed.
+    *   `string|null $post_type`: Optional specific post type if breached for that type, or null for aggregate ceiling.
 
 #### `aips_quota_alert`
 Fires when the AI service detects quota/rate-limit/circuit-breaker conditions that should notify administrators.

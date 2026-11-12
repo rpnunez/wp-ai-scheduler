@@ -8,7 +8,9 @@
     - "Bypass Limits for Manual Generation" toggle (default: enabled/checked to allow admin "Generate Now" triggers).
     - "Counted Post Types" multi-checkbox for selectable public post types (Posts, Pages, CPTs) with interactive "Select / Deselect All" toggle.
     - "Counted Post Statuses" multi-checkbox with interactive "Select / Deselect All" toggle.
-    - Hourly (10), Daily (30), Weekly (150), and Monthly (500) limit thresholds (0 = unlimited).
+    - Hourly (50), Daily (200), Weekly (1,000), and Monthly (3,500) generous default safety net thresholds (0 = unlimited).
+    - Two-tier rate limit evaluation enforcing both post-type specific limits (when filtered or configured) and global aggregate ceilings.
+    - Post counting integrity guarantee: `WP_Query` queries post types and post statuses as an SQL `AND` conjunction on single rows, ensuring zero duplicate counting across post types and post statuses.
     - Live usage indicator badge displaying real-time post counts against each ceiling.
   - Integrated `aips_pre_generate_post` filter in `AIPS_Generator` before generation initiates.
   - Dispatches warning log and throttled admin notifications (maximum once per 4 hours and once per user session) when ceilings are hit.

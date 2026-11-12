@@ -245,10 +245,10 @@ class AIPS_Config {
                 'future',
                 'private',
             ),
-            'aips_generation_limit_hourly' => 10,
-            'aips_generation_limit_daily' => 30,
-            'aips_generation_limit_weekly' => 150,
-            'aips_generation_limit_monthly' => 500,
+            'aips_generation_limit_hourly' => 50,
+            'aips_generation_limit_daily' => 200,
+            'aips_generation_limit_weekly' => 1000,
+            'aips_generation_limit_monthly' => 3500,
             // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
             'aips_site_niche' => '',
             'aips_site_target_audience' => '',
@@ -668,10 +668,10 @@ class AIPS_Config {
             'bypass_manual'  => (bool) $this->get_option('aips_generation_limiter_bypass_manual', true),
             'post_types'     => (array) $this->get_option('aips_generation_limiter_post_types', array('post', 'page')),
             'post_statuses'  => (array) $this->get_option('aips_generation_limiter_post_statuses', array('publish', 'draft', 'pending', 'future', 'private')),
-            'hourly_limit'   => (int) $this->get_option('aips_generation_limit_hourly', 10),
-            'daily_limit'    => (int) $this->get_option('aips_generation_limit_daily', 30),
-            'weekly_limit'   => (int) $this->get_option('aips_generation_limit_weekly', 150),
-            'monthly_limit'  => (int) $this->get_option('aips_generation_limit_monthly', 500),
+            'hourly_limit'   => (int) $this->get_option('aips_generation_limit_hourly', 50),
+            'daily_limit'    => (int) $this->get_option('aips_generation_limit_daily', 200),
+            'weekly_limit'   => (int) $this->get_option('aips_generation_limit_weekly', 1000),
+            'monthly_limit'  => (int) $this->get_option('aips_generation_limit_monthly', 3500),
         );
     }
     

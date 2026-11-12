@@ -3565,10 +3565,10 @@ class AIPS_Settings_UI {
 	 */
 	public function generation_limits_grid_field_callback() {
 		$config  = AIPS_Config::get_instance();
-		$hourly  = absint($config->get_option('aips_generation_limit_hourly', 10));
-		$daily   = absint($config->get_option('aips_generation_limit_daily', 30));
-		$weekly  = absint($config->get_option('aips_generation_limit_weekly', 150));
-		$monthly = absint($config->get_option('aips_generation_limit_monthly', 500));
+		$hourly  = absint($config->get_option('aips_generation_limit_hourly', 50));
+		$daily   = absint($config->get_option('aips_generation_limit_daily', 200));
+		$weekly  = absint($config->get_option('aips_generation_limit_weekly', 1000));
+		$monthly = absint($config->get_option('aips_generation_limit_monthly', 3500));
 		?>
 		<div class="aips-rate-limits-grid" style="display: flex; gap: 20px; flex-wrap: wrap;">
 			<div class="aips-rate-limit-field">
