@@ -6,6 +6,7 @@
   - Added new "Post Generation Limits & Ceilings" container card in Settings > Resilience & Limits tab with:
     - "Disable Generation Limiter System" toggle (default: active/unchecked).
     - "Bypass Limits for Manual Generation" toggle (default: enabled/checked to allow admin "Generate Now" triggers).
+    - "Counted Post Types" multi-checkbox for selectable public post types (Posts, Pages, CPTs) with interactive "Select / Deselect All" toggle.
     - "Counted Post Statuses" multi-checkbox with interactive "Select / Deselect All" toggle.
     - Hourly (10), Daily (30), Weekly (150), and Monthly (500) limit thresholds (0 = unlimited).
     - Live usage indicator badge displaying real-time post counts against each ceiling.

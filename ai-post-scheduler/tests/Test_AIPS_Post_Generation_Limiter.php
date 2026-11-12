@@ -31,6 +31,7 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 		// Clean up any test options
 		delete_option('aips_disable_generation_limiter');
 		delete_option('aips_generation_limiter_bypass_manual');
+		delete_option('aips_generation_limiter_post_types');
 		delete_option('aips_generation_limiter_post_statuses');
 		delete_option('aips_generation_limit_hourly');
 		delete_option('aips_generation_limit_daily');
@@ -43,6 +44,7 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 		delete_transient(AIPS_Post_Generation_Limiter::NOTIF_COOLDOWN_TRANSIENT);
 		delete_option('aips_disable_generation_limiter');
 		delete_option('aips_generation_limiter_bypass_manual');
+		delete_option('aips_generation_limiter_post_types');
 		delete_option('aips_generation_limiter_post_statuses');
 		delete_option('aips_generation_limit_hourly');
 		delete_option('aips_generation_limit_daily');
@@ -57,11 +59,13 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 	 * @param string $status    Post status.
 	 * @param string $post_date MySQL date string.
 	 * @param bool   $mark_aips Whether to mark with _aips_generated_post meta.
+	 * @param string $post_type Post type.
 	 * @return int Post ID.
 	 */
-	private function create_test_post(string $status = 'publish', string $post_date = '', bool $mark_aips = true): int {
+	private function create_test_post(string $status = 'publish', string $post_date = '', bool $mark_aips = true, string $post_type = 'post'): int {
 		$post_id = $this->factory->post->create(
 			array(
+				'post_type'   => $post_type,
 				'post_status' => $status,
 				'post_date'   => $post_date ?: current_time('mysql'),
 			)
@@ -83,6 +87,9 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 		$this->assertSame(30, $limits['daily']);
 		$this->assertSame(150, $limits['weekly']);
 		$this->assertSame(500, $limits['monthly']);
+
+		$types = $this->limiter->get_counted_post_types();
+		$this->assertContains('post', $types);
 
 		$statuses = $this->limiter->get_counted_post_statuses();
 		$this->assertContains('publish', $statuses);
@@ -156,6 +163,81 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 
 		$count = $this->limiter->get_count_for_period('hourly');
 		$this->assertSame(2, $count);
+	}
+
+	public function test_post_type_filtering() {
+		// Only count 'post'
+		update_option('aips_generation_limiter_post_types', array('post'));
+
+		$this->create_test_post('publish', '', true, 'post');
+		$this->create_test_post('publish', '', true, 'post');
+		$this->create_test_post('publish', '', true, 'page');
+
+		$this->limiter->clear_cache();
+
+		$count = $this->limiter->get_count_for_period('hourly');
+		$this->assertSame(2, $count);
+
+		// Specific post type count
+		$page_count = $this->limiter->get_count_for_period('hourly', 'page');
+		$this->assertSame(1, $page_count);
+	}
+
+	public function test_uncounted_post_type_bypasses_ceiling() {
+		update_option('aips_generation_limit_hourly', 1);
+		// Only 'post' is counted
+		update_option('aips_generation_limiter_post_types', array('post'));
+
+		// 1 post generated -> ceiling reached for posts
+		$this->create_test_post('publish', '', true, 'post');
+		$this->limiter->clear_cache();
+
+		$post_context = new class {
+			public function get_creation_method() {
+				return 'scheduled';
+			}
+			public function get_post_type() {
+				return 'post';
+			}
+		};
+
+		$page_context = new class {
+			public function get_creation_method() {
+				return 'scheduled';
+			}
+			public function get_post_type() {
+				return 'page';
+			}
+		};
+
+		// Generating a 'post' must be blocked
+		$result_post = $this->limiter->check_limits(false, $post_context);
+		$this->assertWPError($result_post);
+		$this->assertSame('aips_generation_rate_limit_exceeded', $result_post->get_error_code());
+
+		// Generating a 'page' (uncounted) must bypass and succeed
+		$result_page = $this->limiter->check_limits(false, $page_context);
+		$this->assertTrue($result_page);
+	}
+
+	public function test_polymorphic_get_limits_and_filter() {
+		add_filter(
+			'aips_generation_limits_for_post_type',
+			function ($limits, $post_type) {
+				if ('page' === $post_type) {
+					$limits['hourly'] = 2;
+				}
+				return $limits;
+			},
+			10,
+			2
+		);
+
+		$default_limits = $this->limiter->get_limits();
+		$this->assertSame(10, $default_limits['hourly']);
+
+		$page_limits = $this->limiter->get_limits('page');
+		$this->assertSame(2, $page_limits['hourly']);
 	}
 
 	public function test_ceiling_breach_returns_wp_error() {
@@ -255,5 +337,21 @@ class Test_AIPS_Post_Generation_Limiter extends WP_UnitTestCase {
 		// Non-array fallback
 		$non_array = $ui->sanitize_generation_limiter_post_statuses('publish');
 		$this->assertSame(array('publish', 'draft', 'pending', 'future', 'private'), $non_array);
+	}
+
+	public function test_post_types_sanitization() {
+		$ui = new AIPS_Settings_UI();
+
+		// Valid subset
+		$sanitized = $ui->sanitize_generation_limiter_post_types(array('post', 'non_existent_cpt'));
+		$this->assertSame(array('post'), $sanitized);
+
+		// Empty array fallback to all selectable
+		$fallback = $ui->sanitize_generation_limiter_post_types(array());
+		$this->assertContains('post', $fallback);
+
+		// Non-array fallback
+		$non_array = $ui->sanitize_generation_limiter_post_types('post');
+		$this->assertContains('post', $non_array);
 	}
 }

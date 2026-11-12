@@ -122,6 +122,31 @@ class AIPS_Post_Generation_Limiter {
 	}
 
 	/**
+	 * Get the post types counted against the limits.
+	 *
+	 * @return array<string> List of post type slugs.
+	 */
+	public function get_counted_post_types(): array {
+		$selectable = class_exists('AIPS_Utilities') ? array_keys(AIPS_Utilities::get_selectable_post_types()) : array('post', 'page');
+		$default    = !empty($selectable) ? $selectable : array('post', 'page');
+		$post_types = $this->config->get_option('aips_generation_limiter_post_types', $default);
+
+		if (!is_array($post_types) || empty($post_types)) {
+			return $default;
+		}
+
+		$sanitized = array();
+		foreach ($post_types as $pt) {
+			$pt = sanitize_key((string) $pt);
+			if (in_array($pt, $selectable, true)) {
+				$sanitized[] = $pt;
+			}
+		}
+
+		return !empty($sanitized) ? array_values(array_unique($sanitized)) : $default;
+	}
+
+	/**
 	 * Get the post statuses counted against the limits.
 	 *
 	 * @return array<string> List of post status slugs.
@@ -146,17 +171,26 @@ class AIPS_Post_Generation_Limiter {
 	}
 
 	/**
-	 * Retrieve configured generation limits.
+	 * Retrieve configured generation limits, optionally resolving for a specific post type.
 	 *
+	 * @param string|null $post_type Optional post type to resolve specific overrides for.
 	 * @return array<string, int> Associative array of period => limit.
 	 */
-	public function get_limits(): array {
-		return array(
+	public function get_limits(?string $post_type = null): array {
+		$limits = array(
 			'hourly'  => absint($this->config->get_option('aips_generation_limit_hourly', 10)),
 			'daily'   => absint($this->config->get_option('aips_generation_limit_daily', 30)),
 			'weekly'  => absint($this->config->get_option('aips_generation_limit_weekly', 150)),
 			'monthly' => absint($this->config->get_option('aips_generation_limit_monthly', 500)),
 		);
+
+		/**
+		 * Filter generation limits for a specific post type or overall.
+		 *
+		 * @param array<string, int> $limits    Base limits array.
+		 * @param string|null        $post_type Target post type if specified.
+		 */
+		return (array) apply_filters('aips_generation_limits_for_post_type', $limits, $post_type);
 	}
 
 	/**
@@ -181,15 +215,17 @@ class AIPS_Post_Generation_Limiter {
 	}
 
 	/**
-	 * Get the transient key for a given period and post status set.
+	 * Get the transient key for a given period, post types, and post statuses.
 	 *
-	 * @param string        $period   Period key.
-	 * @param array<string> $statuses Post statuses array.
+	 * @param string        $period     Period key.
+	 * @param array<string> $post_types Post types array.
+	 * @param array<string> $statuses   Post statuses array.
 	 * @return string Transient cache key.
 	 */
-	private function get_transient_key(string $period, array $statuses): string {
+	private function get_transient_key(string $period, array $post_types, array $statuses): string {
+		sort($post_types);
 		sort($statuses);
-		return self::TRANSIENT_PREFIX . $period . '_' . md5(implode(',', $statuses));
+		return self::TRANSIENT_PREFIX . $period . '_' . md5(implode(',', $post_types) . '|' . implode(',', $statuses));
 	}
 
 	/**
@@ -198,26 +234,30 @@ class AIPS_Post_Generation_Limiter {
 	 * Uses native WP_Query with date_query and _aips_generated_post meta query,
 	 * backed by in-memory caching and a 60-second WordPress transient.
 	 *
-	 * @param string $period Time period ('hourly', 'daily', 'weekly', 'monthly').
+	 * @param string      $period    Time period ('hourly', 'daily', 'weekly', 'monthly').
+	 * @param string|null $post_type Optional specific post type to count. If null, counts configured post types.
 	 * @return int Total generated posts within the period.
 	 */
-	public function get_count_for_period(string $period): int {
-		if (isset($this->in_memory_counts[$period])) {
-			return $this->in_memory_counts[$period];
+	public function get_count_for_period(string $period, ?string $post_type = null): int {
+		$target_types = $post_type ? array($post_type) : $this->get_counted_post_types();
+		$statuses     = $this->get_counted_post_statuses();
+		$cache_key    = $period . '_' . ($post_type ?: 'all');
+
+		if (isset($this->in_memory_counts[$cache_key])) {
+			return $this->in_memory_counts[$cache_key];
 		}
 
-		$statuses      = $this->get_counted_post_statuses();
-		$transient_key = $this->get_transient_key($period, $statuses);
+		$transient_key = $this->get_transient_key($period, $target_types, $statuses);
 		$cached        = get_transient($transient_key);
 
 		if (false !== $cached && is_numeric($cached)) {
-			$this->in_memory_counts[$period] = (int) $cached;
+			$this->in_memory_counts[$cache_key] = (int) $cached;
 			return (int) $cached;
 		}
 
 		$query = new WP_Query(
 			array(
-				'post_type'              => 'any',
+				'post_type'              => $target_types,
 				'post_status'            => $statuses,
 				'posts_per_page'         => 1,
 				'fields'                 => 'ids',
@@ -242,21 +282,22 @@ class AIPS_Post_Generation_Limiter {
 		$count = (int) $query->found_posts;
 		set_transient($transient_key, $count, 60);
 
-		$this->in_memory_counts[$period] = $count;
+		$this->in_memory_counts[$cache_key] = $count;
 		return $count;
 	}
 
 	/**
 	 * Get current usage stats against all configured limits.
 	 *
+	 * @param string|null $post_type Optional post type to resolve usage for.
 	 * @return array<string, array{limit: int, count: int, reached: bool}> Usage data per period.
 	 */
-	public function get_usage(): array {
-		$limits = $this->get_limits();
+	public function get_usage(?string $post_type = null): array {
+		$limits = $this->get_limits($post_type);
 		$usage  = array();
 
 		foreach ($limits as $period => $limit) {
-			$count           = $this->get_count_for_period($period);
+			$count          = $this->get_count_for_period($period, $post_type);
 			$usage[$period] = array(
 				'limit'   => $limit,
 				'count'   => $count,
@@ -270,11 +311,12 @@ class AIPS_Post_Generation_Limiter {
 	/**
 	 * Check if generation can proceed without exceeding any ceiling.
 	 *
-	 * @param bool  $is_manual Whether this generation was triggered manually by an admin.
-	 * @param mixed $context   Optional generation context.
+	 * @param bool        $is_manual Whether this generation was triggered manually by an admin.
+	 * @param mixed       $context   Optional generation context.
+	 * @param string|null $post_type Optional specific post type being generated.
 	 * @return true|WP_Error True if permitted, WP_Error if ceiling reached.
 	 */
-	public function check_limits(bool $is_manual = false, $context = null) {
+	public function check_limits(bool $is_manual = false, $context = null, ?string $post_type = null) {
 		if (!$this->is_enabled()) {
 			return true;
 		}
@@ -283,7 +325,21 @@ class AIPS_Post_Generation_Limiter {
 			return true;
 		}
 
-		$limits = $this->get_limits();
+		// Resolve target post type from context if not explicitly passed
+		if (null === $post_type) {
+			if (is_object($context) && method_exists($context, 'get_post_type')) {
+				$post_type = $context->get_post_type() ?: 'post';
+			} elseif (is_object($context) && isset($context->post_type)) {
+				$post_type = $context->post_type ?: 'post';
+			}
+		}
+
+		// If a target post type is identified and not in counted post types, exempt it from rate limiting.
+		if ($post_type && !in_array($post_type, $this->get_counted_post_types(), true)) {
+			return true;
+		}
+
+		$limits = $this->get_limits($post_type);
 		$order  = array('hourly', 'daily', 'weekly', 'monthly');
 
 		foreach ($order as $period) {
@@ -314,9 +370,10 @@ class AIPS_Post_Generation_Limiter {
 						$limit
 					),
 					array(
-						'period' => $period,
-						'limit'  => $limit,
-						'count'  => $count,
+						'period'    => $period,
+						'limit'     => $limit,
+						'count'     => $count,
+						'post_type' => $post_type,
 					)
 				);
 			}
@@ -338,16 +395,24 @@ class AIPS_Post_Generation_Limiter {
 		}
 
 		$is_manual = false;
-		if (is_object($context) && method_exists($context, 'get_creation_method')) {
-			$method = $context->get_creation_method();
-			if (class_exists('AIPS_Generation_Trigger')) {
-				$is_manual = (AIPS_Generation_Trigger::classify_creation_method($method) === AIPS_Generation_Trigger::METHOD_MANUAL);
-			} else {
-				$is_manual = ($method === 'manual');
+		$post_type = null;
+		if (is_object($context)) {
+			if (method_exists($context, 'get_creation_method')) {
+				$method = $context->get_creation_method();
+				if (class_exists('AIPS_Generation_Trigger')) {
+					$is_manual = (AIPS_Generation_Trigger::classify_creation_method($method) === AIPS_Generation_Trigger::METHOD_MANUAL);
+				} else {
+					$is_manual = ($method === 'manual');
+				}
+			}
+			if (method_exists($context, 'get_post_type')) {
+				$post_type = $context->get_post_type() ?: 'post';
+			} elseif (isset($context->post_type)) {
+				$post_type = $context->post_type ?: 'post';
 			}
 		}
 
-		$check = $this->check_limits($is_manual, $context);
+		$check = $this->check_limits($is_manual, $context, $post_type);
 		if (is_wp_error($check)) {
 			return $check;
 		}
@@ -451,11 +516,15 @@ class AIPS_Post_Generation_Limiter {
 	 */
 	public function clear_cache(): void {
 		$this->in_memory_counts = array();
+		$post_types             = $this->get_counted_post_types();
 		$statuses               = $this->get_counted_post_statuses();
 		$periods                = array('hourly', 'daily', 'weekly', 'monthly');
 
 		foreach ($periods as $period) {
-			delete_transient($this->get_transient_key($period, $statuses));
+			delete_transient($this->get_transient_key($period, $post_types, $statuses));
+			foreach ($post_types as $pt) {
+				delete_transient($this->get_transient_key($period, array($pt), $statuses));
+			}
 		}
 	}
 }

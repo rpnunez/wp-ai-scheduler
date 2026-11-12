@@ -234,6 +234,10 @@ class AIPS_Config {
             // Post Generation Limiter
             'aips_disable_generation_limiter' => false,
             'aips_generation_limiter_bypass_manual' => true,
+            'aips_generation_limiter_post_types' => array(
+                'post',
+                'page',
+            ),
             'aips_generation_limiter_post_statuses' => array(
                 'publish',
                 'draft',
@@ -662,6 +666,7 @@ class AIPS_Config {
         return array(
             'disabled'       => (bool) $this->get_option('aips_disable_generation_limiter', false),
             'bypass_manual'  => (bool) $this->get_option('aips_generation_limiter_bypass_manual', true),
+            'post_types'     => (array) $this->get_option('aips_generation_limiter_post_types', array('post', 'page')),
             'post_statuses'  => (array) $this->get_option('aips_generation_limiter_post_statuses', array('publish', 'draft', 'pending', 'future', 'private')),
             'hourly_limit'   => (int) $this->get_option('aips_generation_limit_hourly', 10),
             'daily_limit'    => (int) $this->get_option('aips_generation_limit_daily', 30),

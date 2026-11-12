@@ -249,6 +249,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_generation_limiter_bypass_manual'],
 			),
+			'aips_generation_limiter_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_generation_limiter_post_types'),
+				'default'           => $defaults['aips_generation_limiter_post_types'],
+			),
 			'aips_generation_limiter_post_statuses' => array(
 				'sanitize_callback' => array($ui, 'sanitize_generation_limiter_post_statuses'),
 				'default'           => $defaults['aips_generation_limiter_post_statuses'],
@@ -1929,6 +1933,14 @@ class AIPS_Settings {
             'aips_generation_limiter_bypass_manual',
             __('Bypass Limits for Manual Generation', 'ai-post-scheduler'),
             array($this->ui, 'generation_limiter_bypass_manual_field_callback'),
+            'aips-settings',
+            'aips_resilience_generation_limits_section'
+        );
+
+        add_settings_field(
+            'aips_generation_limiter_post_types',
+            __('Counted Post Types', 'ai-post-scheduler'),
+            array($this->ui, 'generation_limiter_post_types_field_callback'),
             'aips-settings',
             'aips_resilience_generation_limits_section'
         );

@@ -3443,6 +3443,63 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render counted post types multi-checkbox field with Select/Deselect All button.
+	 *
+	 * @return void
+	 */
+	public function generation_limiter_post_types_field_callback() {
+		$config      = AIPS_Config::get_instance();
+		$selectable  = class_exists('AIPS_Utilities') ? AIPS_Utilities::get_selectable_post_types() : array(
+			'post' => array('label' => __('Post', 'ai-post-scheduler')),
+			'page' => array('label' => __('Page', 'ai-post-scheduler')),
+		);
+		$all_slugs   = array_keys($selectable);
+		$selected    = $config->get_option('aips_generation_limiter_post_types', $all_slugs);
+		if (!is_array($selected)) {
+			$selected = $all_slugs;
+		}
+		?>
+		<fieldset class="aips-post-type-checkbox-group">
+			<legend class="screen-reader-text"><?php esc_html_e('Counted Post Types', 'ai-post-scheduler'); ?></legend>
+			<div style="margin-bottom: 8px;">
+				<button type="button" class="button button-small" id="aips-toggle-all-gen-post-types">
+					<?php esc_html_e('Select / Deselect All', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+			<?php foreach ($selectable as $pt_slug => $meta) :
+				$label = isset($meta['label']) && !empty($meta['label']) ? $meta['label'] : $pt_slug;
+				?>
+				<label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+					<input type="checkbox" name="aips_generation_limiter_post_types[]" class="aips-gen-pt-checkbox" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $selected, true)); ?>>
+					<?php echo esc_html($label); ?>
+				</label>
+			<?php endforeach; ?>
+			<p class="description">
+				<?php esc_html_e('Select which post types count toward rate ceilings. Unchecked post types will be exempt from generation limits.', 'ai-post-scheduler'); ?>
+			</p>
+		</fieldset>
+		<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			var toggleBtn = document.getElementById('aips-toggle-all-gen-post-types');
+			if (toggleBtn) {
+				toggleBtn.addEventListener('click', function(e) {
+					e.preventDefault();
+					var boxes = document.querySelectorAll('.aips-gen-pt-checkbox');
+					var anyUnchecked = false;
+					boxes.forEach(function(box) {
+						if (!box.checked) { anyUnchecked = true; }
+					});
+					boxes.forEach(function(box) {
+						box.checked = anyUnchecked;
+					});
+				});
+			}
+		});
+		</script>
+		<?php
+	}
+
+	/**
 	 * Render counted post statuses multi-checkbox field with Select/Deselect All button.
 	 *
 	 * @return void
@@ -3589,6 +3646,28 @@ class AIPS_Settings_UI {
 			<?php esc_html_e('Current post generation count against configured ceilings based on WordPress post records.', 'ai-post-scheduler'); ?>
 		</p>
 		<?php
+	}
+
+	/**
+	 * Sanitize counted post types array.
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return array<string> Sanitized post types.
+	 */
+	public function sanitize_generation_limiter_post_types($value) {
+		$selectable = class_exists('AIPS_Utilities') ? array_keys(AIPS_Utilities::get_selectable_post_types()) : array('post', 'page');
+		$default    = !empty($selectable) ? $selectable : array('post', 'page');
+		if (!is_array($value) || empty($value)) {
+			return $default;
+		}
+		$sanitized = array();
+		foreach ($value as $item) {
+			$item = sanitize_key((string) $item);
+			if (in_array($item, $selectable, true)) {
+				$sanitized[] = $item;
+			}
+		}
+		return !empty($sanitized) ? array_values(array_unique($sanitized)) : $default;
 	}
 
 	/**
