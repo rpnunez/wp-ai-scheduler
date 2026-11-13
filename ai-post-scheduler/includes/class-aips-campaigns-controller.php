@@ -551,7 +551,7 @@ class AIPS_Campaigns_Controller {
 		}
 
 		if ($include_missing || isset($_POST['silo_enabled'])) {
-			$data['silo_enabled'] = !empty($_POST['silo_enabled']) ? 1 : 0;
+			$data['silo_enabled'] = (isset($_POST['silo_enabled']) && filter_var(wp_unslash($_POST['silo_enabled']), FILTER_VALIDATE_BOOLEAN)) ? 1 : 0;
 		}
 
 		foreach (array('pillar_post_id', 'pillar_template_id') as $key) {
@@ -805,6 +805,17 @@ class AIPS_Campaigns_Controller {
 			AIPS_Ajax_Response::error(__('No templates are linked to this campaign.', 'ai-post-scheduler'), 'no_templates', 400);
 		}
 
+		$active_templates = array();
+		foreach ($templates as $template) {
+			if (!isset($template->is_active) || (bool) $template->is_active) {
+				$active_templates[] = $template;
+			}
+		}
+
+		if (empty($active_templates)) {
+			AIPS_Ajax_Response::error(__('No active templates are linked to this campaign.', 'ai-post-scheduler'), 'no_active_templates', 400);
+		}
+
 		// Generation runs one LLM call per template; avoid the request dying mid-batch.
 		if (function_exists('set_time_limit')) {
 			@set_time_limit(0);
@@ -814,11 +825,7 @@ class AIPS_Campaigns_Controller {
 		$generated_count = 0;
 		$errors = array();
 
-		foreach ($templates as $template) {
-			if (isset($template->is_active) && !(bool) $template->is_active) {
-				continue;
-			}
-
+		foreach ($active_templates as $template) {
 			$overrides = array();
 			if (!empty($template->campaign_overrides)) {
 				$decoded = json_decode($template->campaign_overrides, true);
@@ -843,7 +850,7 @@ class AIPS_Campaigns_Controller {
 			$base_context = new AIPS_Template_Context($template_entry, null, null, 'manual');
 			$context      = new AIPS_Campaign_Context($base_context, $campaign, $overrides);
 
-			$result = $generator->generate_from_context($context);
+			$result = $generator->generate_post($context);
 			if (is_wp_error($result)) {
 				$errors[] = sprintf('%s: %s', $template->name, $result->get_error_message());
 			} else {

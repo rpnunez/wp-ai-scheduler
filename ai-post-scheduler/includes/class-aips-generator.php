@@ -1108,6 +1108,18 @@ class AIPS_Generator {
     }
 
     /**
+     * Generate a post from a generation context.
+     *
+     * Convenience alias for generate_post($context).
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return int|WP_Error ID of created post or WP_Error on failure.
+     */
+    public function generate_from_context(AIPS_Generation_Context $context) {
+        return $this->generate_post($context);
+    }
+
+    /**
      * Write the "trigger source" and "trigger method" entries to the current
      * history container so the History modal can show what started the run
      * and whether it was manual or automatic.

@@ -445,6 +445,69 @@ class Test_AIPS_Campaigns_Controller extends WP_UnitTestCase {
 		$this->assertSame('campaign_not_runnable', $response['data']['code']);
 	}
 
+	public function test_ajax_run_campaign_all_templates_with_all_inactive_templates_returns_error() {
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_campaign_by_id', 'get_templates_by_campaign'))
+			->getMock();
+		$repository->method('get_campaign_by_id')->willReturn((object) array(
+			'id'          => 14,
+			'is_active'   => 1,
+			'is_archived' => 0,
+		));
+		$repository->method('get_templates_by_campaign')->willReturn(array(
+			(object) array('id' => 101, 'name' => 'Inactive T1', 'is_active' => 0),
+			(object) array('id' => 102, 'name' => 'Inactive T2', 'is_active' => '0'),
+		));
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce('aips_ajax_nonce'),
+			'campaign_id' => 14,
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_run_campaign_all_templates'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('no_active_templates', $response['data']['code']);
+	}
+
+	public function test_ajax_save_campaign_silo_enabled_string_false_deserializes_to_zero() {
+		$repository = $this->getMockBuilder('AIPS_Campaigns_Repository')
+			->disableOriginalConstructor()
+			->onlyMethods(array('update_campaign'))
+			->getMock();
+
+		$captured_data = null;
+		$repository->expects($this->once())
+			->method('update_campaign')
+			->with(
+				$this->equalTo(14),
+				$this->callback(function ($data) use (&$captured_data) {
+					$captured_data = $data;
+					return true;
+				})
+			)
+			->willReturn(true);
+
+		$controller = new AIPS_Campaigns_Controller($repository);
+
+		$_POST = array(
+			'nonce'        => wp_create_nonce('aips_ajax_nonce'),
+			'campaign_id'  => 14,
+			'silo_enabled' => 'false',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_save_campaign_directives'));
+
+		$this->assertTrue($response['success']);
+		$this->assertNotNull($captured_data);
+		$this->assertSame(0, $captured_data['silo_enabled']);
+	}
+
 	private function capture_ajax(callable $callable) {
 		ob_start();
 

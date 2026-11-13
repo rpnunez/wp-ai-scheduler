@@ -503,7 +503,7 @@ class AIPS_Campaigns_Repository {
 			'default_tags'                 => !empty($campaign->default_tags) ? $campaign->default_tags : null,
 			'campaign_mode'                => $campaign->campaign_mode,
 			'silo_enabled'                 => !empty($campaign->silo_enabled) ? 1 : 0,
-			'pillar_post_id'               => !empty($campaign->pillar_post_id) ? (int) $campaign->pillar_post_id : null,
+			'pillar_post_id'               => null,
 			'pillar_template_id'           => !empty($campaign->pillar_template_id) ? (int) $campaign->pillar_template_id : null,
 			'pillar_anchor_keywords'       => isset($campaign->pillar_anchor_keywords) ? $campaign->pillar_anchor_keywords : null,
 			'is_active'                    => 0,
@@ -1346,11 +1346,11 @@ class AIPS_Campaigns_Repository {
 	 * @return void
 	 */
 	private function normalize_campaign_row($row) {
-		$row->generated_posts_count = (int) $row->generated_posts_count;
-		$row->total_history_count = (int) $row->total_history_count;
-		$row->linked_template_count = (int) $row->linked_template_count;
-		$row->linked_schedule_count = (int) $row->linked_schedule_count;
-		$row->active_schedule_count = (int) $row->active_schedule_count;
+		$row->generated_posts_count = isset($row->generated_posts_count) ? (int) $row->generated_posts_count : 0;
+		$row->total_history_count = isset($row->total_history_count) ? (int) $row->total_history_count : 0;
+		$row->linked_template_count = isset($row->linked_template_count) ? (int) $row->linked_template_count : 0;
+		$row->linked_schedule_count = isset($row->linked_schedule_count) ? (int) $row->linked_schedule_count : 0;
+		$row->active_schedule_count = isset($row->active_schedule_count) ? (int) $row->active_schedule_count : 0;
 		$row->primary_template_id = !empty($row->primary_template_id) ? (int) $row->primary_template_id : null;
 		$row->primary_schedule_id = !empty($row->primary_schedule_id) ? (int) $row->primary_schedule_id : null;
 		$row->silo_enabled = !empty($row->silo_enabled) ? 1 : 0;

@@ -404,6 +404,48 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertSame(array(25 => array(10, 12)), $mappings);
 	}
 
+	public function test_duplicate_campaign_resets_pillar_post_id_to_null() {
+		$this->wpdb_stub->results_queue = array(
+			array(
+				(object) array(
+					'id'                           => 10,
+					'name'                         => 'Original Campaign',
+					'content_goal'                 => 'Goal',
+					'prompt_directives'            => 'Directives',
+					'default_article_structure_id' => 1,
+					'default_post_status'          => 'draft',
+					'default_voice_id'             => 2,
+					'default_author_id'            => 3,
+					'default_categories'           => 'tech',
+					'default_tags'                 => 'tag1',
+					'campaign_mode'                => 'template',
+					'silo_enabled'                 => 1,
+					'pillar_post_id'               => 777,
+					'pillar_template_id'           => 20,
+					'pillar_anchor_keywords'       => 'keywords',
+					'is_active'                    => 1,
+					'is_archived'                  => 0,
+					'generated_posts_count'        => 0,
+					'total_history_count'          => 0,
+					'linked_template_count'        => 0,
+					'linked_schedule_count'        => 0,
+					'active_schedule_count'        => 0,
+				),
+			),
+			array(),
+			array(),
+		);
+		$this->wpdb_stub->insert_id = 99;
+
+		$repository = $this->new_repository();
+		$new_id = $repository->duplicate_campaign(10);
+
+		$this->assertSame(99, $new_id);
+		$this->assertNotNull($this->wpdb_stub->last_insert_call);
+		$this->assertNull($this->wpdb_stub->last_insert_call['data']['pillar_post_id']);
+		$this->assertSame(1, $this->wpdb_stub->last_insert_call['data']['silo_enabled']);
+	}
+
 	private function define_test_dependency_classes() {
 		if (!class_exists('AIPS_Scheduler', false)) {
 			eval('class AIPS_Scheduler { public function save_schedule($data) { return 101; } }');
@@ -456,6 +498,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public $results_to_return = array();
 
+	public $results_queue = array();
+
 	public $rows_to_return = array();
 
 	public $var_to_return = null;
@@ -471,6 +515,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	public $get_var_queries = array();
 
 	public $last_update_call = null;
+
+	public $last_insert_call = null;
 
 	public $insert_return_values = array();
 
@@ -506,6 +552,10 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 		$this->last_get_results_query = preg_replace('/\s+/', ' ', trim($query));
 
+		if (!empty($this->results_queue)) {
+			return array_shift($this->results_queue);
+		}
+
 		return $this->results_to_return;
 	}
 
@@ -514,11 +564,23 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 		$this->last_get_results_query = $normalized_query;
 		$this->get_row_queries[] = $normalized_query;
 
+		if (false !== strpos($query, $this->options)) {
+			return null;
+		}
+
 		if (!empty($this->rows_to_return)) {
 			return array_shift($this->rows_to_return);
 		}
 
 		return null;
+	}
+
+	public function get_col($query, $x = 0) {
+		return array();
+	}
+
+	public function replace($table, $data, $format = null) {
+		return 1;
 	}
 
 	public function get_var($query, $x = 0, $y = 0) {
