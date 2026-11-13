@@ -214,7 +214,7 @@ class AIPS_Config {
             'aips_notif_weekly_summary_last_sent' => '',
             'aips_notif_monthly_report_last_sent' => '',
             // Summarized Notification Digest
-            'aips_notif_digest_enabled' => false,
+            'aips_notif_digest_enabled' => true,
             'aips_notif_digest_threshold' => 5,
             'aips_notif_digest_max_delay' => 3600,
             'aips_notif_digest_types' => array(
@@ -471,6 +471,9 @@ class AIPS_Config {
         }
         if (in_array($option_name, self::$persistent_cache_options) && AIPS_Cache_Factory::instance()->is_available()) {
             AIPS_Cache_Factory::instance()->delete($option_name);
+        }
+        if (false === $value && !$this->has_option($option_name)) {
+            return add_option($option_name, 0, '', $autoload);
         }
         return update_option($option_name, $value, $autoload);
     }

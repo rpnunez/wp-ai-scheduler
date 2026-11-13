@@ -1281,6 +1281,25 @@ DevStackTips Content Setup
 							'monthly_digest' => 'email',
 						),
 					),
+					array(
+						'option_name' => 'aips_notif_digest_enabled',
+						'value' => 1,
+					),
+					array(
+						'option_name' => 'aips_notif_digest_threshold',
+						'value' => 5,
+					),
+					array(
+						'option_name' => 'aips_notif_digest_max_delay',
+						'value' => 3600,
+					),
+					array(
+						'option_name' => 'aips_notif_digest_types',
+						'value' => array(
+							'post_generated',
+							'post_ready_for_review',
+						),
+					),
 				),
 			),
 			'research_and_discovery' => array(
