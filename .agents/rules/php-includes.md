@@ -1,3 +1,7 @@
+---
+paths: "ai-post-scheduler/includes/**"
+---
+
 # PHP rules: `ai-post-scheduler/includes/**`
 
 Read `wordpress-core.md` too. Long-form rules live in `docs/DEVELOPMENT_GUIDELINES.md`; subsystem details in `docs/AI_AGENT_REFERENCE.md`.

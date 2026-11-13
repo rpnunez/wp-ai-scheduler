@@ -1,7 +1,7 @@
 ---
 name: pr-xray-coordinator
 description: "Coordinates a deep review of one wp-ai-scheduler PR by resolving intent and commits, inventorying changes, assigning reviewers, and accounting for file and acceptance-criteria coverage."
-tools: [read]
+tools: Read, Grep, Glob
 ---
 
 Read `.agents/agents/pr-xray-coordinator.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.

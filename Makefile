@@ -7,7 +7,7 @@
 	test test-verbose test-coverage test-session test-stop test-ci composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
-	urls sync-wp-core sql-batch sql-batch-unpack check-agents
+	urls sync-wp-core sql-batch sql-batch-unpack sync-agents check-agents
 
 # Git Bash (MSYS) must not rewrite POSIX-looking arguments such as a --filter regex starting with "/"
 test test-verbose test-coverage test-session: export MSYS_NO_PATHCONV := 1
@@ -302,5 +302,8 @@ sync-wp-core: ## Sync /var/www/html from web container into ./.docker/wp-html fo
 	bash ./scripts/sync-wp-core.sh
 	@echo "$(GREEN)Sync complete.$(NC)"
 
-check-agents: ## Verify every agent in .agents/agents/ has wrappers for Claude, Codex and Copilot
-	bash ./scripts/check-agents.sh
+sync-agents: ## Regenerate the Claude, Codex and Copilot wrappers from the canonical files in .agents/
+	bash ./scripts/sync-agents.sh
+
+check-agents: ## Fail if any agent, skill or rule wrapper is missing, stale or hand-written
+	bash ./scripts/sync-agents.sh --check

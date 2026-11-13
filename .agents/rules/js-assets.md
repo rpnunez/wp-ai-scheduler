@@ -1,3 +1,7 @@
+---
+paths: "ai-post-scheduler/assets/js/**"
+---
+
 # JavaScript rules: `ai-post-scheduler/assets/js/**`
 
 Read `wordpress-core.md` too. Rationale and examples: `docs/DEVELOPMENT_GUIDELINES.md`. Skip `assets/js/vendor/` (third-party, do not edit).

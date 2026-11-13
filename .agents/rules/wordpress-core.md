@@ -1,3 +1,7 @@
+---
+paths: "ai-post-scheduler/**"
+---
+
 # WordPress rules (all PHP, JS, templates)
 
 Applies to any change in `ai-post-scheduler/`. Repo-wide context is in `AGENTS.md`; this file only adds WordPress hygiene specific to this plugin.

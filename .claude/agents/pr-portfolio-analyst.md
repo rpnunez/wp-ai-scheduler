@@ -1,7 +1,7 @@
 ---
 name: pr-portfolio-analyst
 description: "Ranks multiple open wp-ai-scheduler pull requests by readiness, overlap, blockers, risk, and recommended merge order. Use for portfolio triage; use pr-xray for deep review of one PR."
-tools: [read]
+tools: Read, Grep, Glob
 ---
 
 Read `.agents/agents/pr-portfolio-analyst.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.

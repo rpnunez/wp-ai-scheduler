@@ -1,7 +1,7 @@
 ---
 name: db-migration-reviewer
 description: "Reviews wp-ai-scheduler schema, migration, repository, query, and persisted-collection changes for install/upgrade safety, data preservation, boundaries, and performance."
-tools: [read]
+tools: Read, Grep, Glob
 ---
 
 Read `.agents/agents/db-migration-reviewer.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.

@@ -1,3 +1,7 @@
+---
+paths: "ai-post-scheduler/templates/**"
+---
+
 # Template rules: `ai-post-scheduler/templates/**`
 
 Read `wordpress-core.md` too. The design system (tokens, shared classes) is `ai-post-scheduler/docs/Design_Guidelines.md`; tokens are in `assets/css/design-tokens.css`.

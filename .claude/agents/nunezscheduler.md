@@ -1,7 +1,7 @@
 ---
 name: nunezscheduler
 description: "A feature-specialist agent dedicated to the optimization and evolution of the wp-ai-scheduler ecosystem."
-tools: [read, write, execute]
+tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
 Read `.agents/agents/nunezscheduler.md` and follow it exactly. Repository-wide rules are in `AGENTS.md`.
