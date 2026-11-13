@@ -287,6 +287,18 @@ class AIPS_Studio_Controller {
 			}
 		}
 
+		// 5. Prompt Profiles (standalone page, surfaced as a Launchpad link card)
+		$profile_repo = AIPS_Prompt_Profiles_Repository::instance();
+		$all_profiles = $profile_repo->get_all(false);
+		$active_profiles = 0;
+		if (is_array($all_profiles)) {
+			foreach ($all_profiles as $pp) {
+				if (!empty($pp->is_active)) {
+					$active_profiles++;
+				}
+			}
+		}
+
 		return array(
 			'templates' => array(
 				'total'  => is_array($all_templates) ? count($all_templates) : 0,
@@ -303,6 +315,10 @@ class AIPS_Studio_Controller {
 			'post-slices' => array(
 				'total'  => is_array($all_slices) ? count($all_slices) : 0,
 				'active' => $active_slices,
+			),
+			'prompt-profiles' => array(
+				'total'  => is_array($all_profiles) ? count($all_profiles) : 0,
+				'active' => $active_profiles,
 			),
 		);
 	}

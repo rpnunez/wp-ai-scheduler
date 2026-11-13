@@ -304,6 +304,10 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.8.0', '<' ) ) {
+			$this->migrate_to_3_8_0();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -2223,6 +2227,57 @@ class AIPS_DB_Migrations {
 
 		if ( $deleted ) {
 			$this->logger->log( sprintf( 'Migration 3.7.22: Deleted %d orphaned aips_history_log rows.', (int) $deleted ), 'info' );
+		}
+	}
+
+	/**
+	 * Seed prompt profiles and backfill an initial version snapshot.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_8_0() {
+		global $wpdb;
+
+		if (class_exists('AIPS_Prompt_Profile_Seeder')) {
+			AIPS_Prompt_Profile_Seeder::seed_defaults();
+		}
+
+		$profiles_table = $wpdb->prefix . 'aips_prompt_profiles';
+		$versions_table = $wpdb->prefix . 'aips_prompt_profile_versions';
+		if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $profiles_table)) !== $profiles_table
+			|| $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $versions_table)) !== $versions_table) {
+			return;
+		}
+
+		$stage_fields = array(
+			'title_prompt', 'title_followup_prompt', 'content_prompt',
+			'excerpt_prompt', 'excerpt_followup_prompt', 'featured_image_prompt',
+			'topic_ideas_prompt', 'metadata_prompt', 'taxonomy_prompt',
+		);
+		$profiles = $wpdb->get_results("SELECT * FROM `{$profiles_table}`"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		foreach ($profiles as $profile) {
+			$exists = $wpdb->get_var($wpdb->prepare(
+				"SELECT id FROM `{$versions_table}` WHERE profile_id = %d LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				(int) $profile->id
+			));
+			if ($exists) {
+				continue;
+			}
+
+			$stages = array();
+			foreach ($stage_fields as $field) {
+				$stages[$field] = isset($profile->$field) ? $profile->$field : null;
+			}
+
+			$wpdb->insert($versions_table, array(
+				'profile_id'     => (int) $profile->id,
+				'version_number' => 1,
+				'stages'         => wp_json_encode($stages),
+				'parameters'     => null,
+				'change_summary' => __('Initial snapshot (backfilled by migration 3.8.0).', 'ai-post-scheduler'),
+				'created_by'     => null,
+				'created_at'     => !empty($profile->created_at) ? (int) $profile->created_at : AIPS_DateTime::now()->timestamp(),
+			));
 		}
 	}
 

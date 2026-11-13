@@ -143,6 +143,7 @@ class AIPS_Templates_Controller {
             'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field(wp_unslash($_POST['title_prompt'])) : '',
             'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['slug_prompt'])) : '',
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
+            'prompt_profile_id' => !empty($_POST['prompt_profile_id']) ? absint($_POST['prompt_profile_id']) : null,
             'post_quantity' => isset($_POST['post_quantity']) ? absint($_POST['post_quantity']) : 1,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
@@ -308,6 +309,7 @@ class AIPS_Templates_Controller {
             'prompt_template' => $template->prompt_template,
             'title_prompt' => $template->title_prompt,
             'voice_id' => $template->voice_id,
+            'prompt_profile_id' => !empty($template->prompt_profile_id) ? absint($template->prompt_profile_id) : null,
             'post_quantity' => $template->post_quantity,
             'image_prompt' => $template->image_prompt,
             'generate_featured_image' => $template->generate_featured_image,
@@ -369,6 +371,7 @@ class AIPS_Templates_Controller {
         // Collect template data from POST
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
+			'prompt_profile_id' => !empty($_POST['prompt_profile_id']) ? absint($_POST['prompt_profile_id']) : null,
             'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : 'Test Template',
             'description' => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
             'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '',
@@ -444,6 +447,7 @@ class AIPS_Templates_Controller {
 
         // Collect template data from POST
         $template_data = (object) array(
+			'prompt_profile_id' => !empty($_POST['prompt_profile_id']) ? absint($_POST['prompt_profile_id']) : null,
             'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '',
             'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field(wp_unslash($_POST['title_prompt'])) : '',
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
@@ -479,7 +483,7 @@ class AIPS_Templates_Controller {
 
         // Build excerpt prompt (requires title and content)
         $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $prompt_builder->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic);
+        $excerpt_prompt = $prompt_builder->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, $template_data);
 
         // Build image prompt if enabled
         $image_prompt_processed = $prompt_builder->get_post_featured_image_builder()->build($template_data, $sample_topic);

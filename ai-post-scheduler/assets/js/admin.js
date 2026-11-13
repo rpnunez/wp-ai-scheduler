@@ -1027,6 +1027,7 @@
                             selectedCategories = [String(t.post_category)];
                         }
                         $('#template_id').val(t.id);
+                        $('#prompt_profile_id').val(t.prompt_profile_id || 0);
                         $('#template_name').val(t.name);
                         $('#template_description').val(t.description || '');
                         $('#prompt_template').val(t.prompt_template);
@@ -1235,6 +1236,7 @@
                     prompt_template: $('#prompt_template').val(),
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
+                    prompt_profile_id: $('#prompt_profile_id').val() || 0,
                     post_quantity: $('#post_quantity').val(),
                     generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                     image_prompt: $('#image_prompt').val(),
@@ -1310,6 +1312,7 @@
                     prompt_template: $('#prompt_template').val() || '',
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
+                    prompt_profile_id: $('#prompt_profile_id').val() || 0,
                     post_quantity: $('#post_quantity').val(),
                     generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                     image_prompt: $('#image_prompt').val(),
@@ -1403,6 +1406,7 @@
                 prompt_template: $('#prompt_template').val(),
                 title_prompt: $('#title_prompt').val(),
                 voice_id: $('#voice_id').val(),
+                    prompt_profile_id: $('#prompt_profile_id').val() || 0,
                 post_quantity: 1, // Force 1 for test
                 generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                 image_prompt: $('#image_prompt').val(),

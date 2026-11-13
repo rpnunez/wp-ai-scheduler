@@ -170,6 +170,7 @@ class AIPS_Template_Repository {
 
         $insert_data = array(
             'name' => sanitize_text_field($data['name']),
+			'prompt_profile_id' => !empty($data['prompt_profile_id']) ? absint($data['prompt_profile_id']) : null,
             'prompt_template' => wp_kses_post($data['prompt_template']),
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
             'slug_prompt' => isset($data['slug_prompt']) ? sanitize_textarea_field($data['slug_prompt']) : '',
@@ -196,7 +197,7 @@ class AIPS_Template_Repository {
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         // Read insert_id before cache invalidation: invalidation can write
@@ -221,6 +222,11 @@ class AIPS_Template_Repository {
         $update_data = array();
         $format = array();
         $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
+
+		if (array_key_exists('prompt_profile_id', $data)) {
+			$update_data['prompt_profile_id'] = $data['prompt_profile_id'] ? absint($data['prompt_profile_id']) : null;
+			$format[] = '%d';
+		}
 
         if (isset($data['name'])) {
             $update_data['name'] = sanitize_text_field($data['name']);

@@ -21,6 +21,14 @@ if (!defined('ABSPATH')) {
  * Builds AI prompts for taxonomy suggestion generation.
  */
 class AIPS_Prompt_Builder_Taxonomy {
+	/**
+	 * Get the core default prompt template for taxonomy classification.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "Select the most relevant category and tags for the article.";
+	}
 
 	/**
 	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.
@@ -28,10 +36,17 @@ class AIPS_Prompt_Builder_Taxonomy {
 	private $base_builder;
 
 	/**
-	 * @param AIPS_Prompt_Builder|null $base_builder Optional; instantiated automatically when null.
+	 * @var AIPS_Prompt_Profile_Resolver
 	 */
-	public function __construct($base_builder = null) {
-		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
+	private $profile_resolver;
+
+	/**
+	 * @param AIPS_Prompt_Builder|null          $base_builder Optional; instantiated automatically when null.
+	 * @param AIPS_Prompt_Profile_Resolver|null $profile_resolver Optional prompt profile resolver.
+	 */
+	public function __construct($base_builder = null, $profile_resolver = null) {
+		$this->base_builder     = $base_builder ?: new AIPS_Prompt_Builder();
+		$this->profile_resolver = $profile_resolver ?: AIPS_Prompt_Profile_Resolver::instance();
 	}
 
 	/**
@@ -40,13 +55,20 @@ class AIPS_Prompt_Builder_Taxonomy {
 	 * @param string $taxonomy_type Either category or post_tag.
 	 * @param array  $post_contents Post title/excerpt summaries.
 	 * @param string $generation_prompt Optional generation prompt.
+	 * @param mixed  $subject Optional subject context.
 	 * @return string
 	 */
-	public function build($taxonomy_type, array $post_contents, $generation_prompt = '') {
+	public function build($taxonomy_type, array $post_contents, $generation_prompt = '', $subject = null) {
 		$taxonomy_type = $taxonomy_type === 'category' ? 'category' : 'post_tag';
 		$type_label    = $taxonomy_type === 'category' ? 'categories' : 'tags';
 
-		$prompt  = "Based on the following posts, generate appropriate {$type_label} for a WordPress site.\n\n";
+		$stage_template = $this->profile_resolver->get_stage_prompt('taxonomy_prompt', $subject);
+		$initial_line = $this->profile_resolver->interpolate($stage_template, array('taxonomy_type' => $type_label));
+		if (empty($initial_line)) {
+			$initial_line = "Based on the following posts, generate appropriate {$type_label} for a WordPress site.";
+		}
+
+		$prompt  = $initial_line . "\n\n";
 		$prompt .= "Posts:\n";
 
 		foreach ($post_contents as $content) {
