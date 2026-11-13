@@ -406,7 +406,8 @@
 						$('#aips_profile_name').val(p.name);
 						$('#aips_profile_slug').val(p.slug);
 						$('#aips_profile_description').val(p.description || '');
-						$('#aips_profile_is_default').val(p.is_default ? '1' : '0');
+						var isDefault = p.is_default === 1 || p.is_default === '1' || p.is_default === true;
+						$('#aips_profile_is_default').val(isDefault ? '1' : '0');
 
 						// Populate all 9 stages
 						self.stages.forEach(function (stg) {
@@ -416,7 +417,6 @@
 						$('#aips-prompt-profile-modal-title').text(aipsPromptProfilesL10n.editProfile + ': ' + p.name);
 
 						var isBuiltin = p.is_builtin === 1 || p.is_builtin === '1' || p.is_builtin === true;
-						var isDefault = p.is_default === 1 || p.is_default === '1' || p.is_default === true;
 						var $badge = $('#aips-modal-profile-badge');
 						if (isBuiltin) {
 							$badge.text(aipsPromptProfilesL10n.builtinBadge).removeClass('aips-badge-neutral aips-badge-success').addClass('aips-badge-info').show();

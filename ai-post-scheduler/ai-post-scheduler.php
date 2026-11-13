@@ -132,6 +132,13 @@ final class AI_Post_Scheduler {
             );
         }
 
+        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_notif_digest_enabled' ) ) {
+            $events['aips_notif_digest_cron'] = array(
+                'schedule' => 'fifteen_minutes',
+                'label'   => __( 'Notification Digest Check', 'ai-post-scheduler' ),
+            );
+        }
+
         return $events;
     }
 
@@ -460,35 +467,6 @@ final class AI_Post_Scheduler {
             return AIPS_Template_Repository::instance();
         });
 
-        // Register AIPS_Prompt_Profiles_Repository
-        $container->singleton(AIPS_Prompt_Profiles_Repository::class, function( $container ) {
-            return AIPS_Prompt_Profiles_Repository::instance();
-        });
-
-        // Register AIPS_Prompt_Profile_Resolver
-        $container->singleton(AIPS_Prompt_Profile_Resolver::class, function( $container ) {
-            return AIPS_Prompt_Profile_Resolver::instance($container->make(AIPS_Prompt_Profiles_Repository::class));
-        });
-
-        // Register AIPS_Prompt_Profile_Versions_Repository
-        $container->singleton(AIPS_Prompt_Profile_Versions_Repository::class, function( $container ) {
-            return AIPS_Prompt_Profile_Versions_Repository::instance();
-        });
-
-        // Register AIPS_Prompt_Profile_Diff_Engine
-        $container->singleton(AIPS_Prompt_Profile_Diff_Engine::class, function( $container ) {
-            return new AIPS_Prompt_Profile_Diff_Engine();
-        });
-
-        // Register AIPS_Prompt_Profile_Version_Service
-        $container->singleton(AIPS_Prompt_Profile_Version_Service::class, function( $container ) {
-            return new AIPS_Prompt_Profile_Version_Service(
-                $container->make(AIPS_Prompt_Profiles_Repository::class),
-                $container->make(AIPS_Prompt_Profile_Versions_Repository::class),
-                $container->make(AIPS_Prompt_Profile_Diff_Engine::class)
-            );
-        });
-
         // Register AIPS_System_Diagnostics_Service
         $container->singleton(AIPS_System_Diagnostics_Service::class, function( $container ) {
             return new AIPS_System_Diagnostics_Service();
@@ -629,6 +607,34 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Post_Insights_Controller::class, function( $container ) {
             return new AIPS_Post_Insights_Controller();
         });
+
+        // Register repositories needed for post lifecycle operations
+        $container->singleton(AIPS_Internal_Links_Repository::class, function( $container ) {
+            return new AIPS_Internal_Links_Repository();
+        });
+
+        $container->singleton(AIPS_Author_Topic_Logs_Repository::class, function( $container ) {
+            return new AIPS_Author_Topic_Logs_Repository();
+        });
+
+        $container->singleton(AIPS_Redirects_Repository::class, function( $container ) {
+            return new AIPS_Redirects_Repository();
+        });
+
+        // Register AIPS_Post_Cleanup_Service
+        $container->singleton(AIPS_Post_Cleanup_Service::class, function( $container ) {
+            return new AIPS_Post_Cleanup_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Internal_Links_Repository::class),
+                $container->make(AIPS_Link_Index_Service::class),
+                $container->make(AIPS_Link_Click_Tracking_Service::class),
+                $container->make(AIPS_History_Repository::class),
+                $container->make(AIPS_Redirects_Service::class),
+                $container->make(AIPS_Author_Topic_Logs_Repository::class),
+                $container->make(AIPS_Logger::class)
+            );
+        });
     }
 
     /**
@@ -706,6 +712,8 @@ final class AI_Post_Scheduler {
     private function boot_common() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
 
+        add_filter('wp_kses_allowed_html', array('AIPS_Post_Images_Service', 'allow_figure_attributes'), 10, 2);
+
         // Register initial container bindings for core singletons.
         $this->register_container_bindings();
 
@@ -774,8 +782,7 @@ final class AI_Post_Scheduler {
         }, 20, 2);
 
         add_action('before_delete_post', function ($post_id) {
-            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
-            AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
+            AIPS_Container::get_instance()->make(AIPS_Post_Cleanup_Service::class)->on_before_delete_post($post_id);
         });
 
         // Silos: keep the link index and the "In this guide" cache in step with
@@ -835,6 +842,12 @@ final class AI_Post_Scheduler {
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
         );
+
+        // Custom cron intervals (fifteen_minutes, every_2_hours, etc.) must be available
+        // in every request context so wp_schedule_event recognizes them.
+        add_filter('cron_schedules', function($schedules) {
+            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
+        });
     }
 
     /**
@@ -862,9 +875,6 @@ final class AI_Post_Scheduler {
         // claim-first lock as the main tick, never the manual-run path.
         add_action(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, function($schedule_id) {
             AIPS_Scheduler::instance()->process_queued_due_schedule((int) $schedule_id);
-        });
-        add_filter('cron_schedules', function($schedules) {
-            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
         });
 
         // Batch-queue single events: each call processes one slice of a large schedule.
@@ -1236,6 +1246,9 @@ final class AI_Post_Scheduler {
 
         // "Internal Links" panel in the Classic and Block editors.
         new AIPS_Internal_Links_Editor_Panel();
+
+        // Native "AI Edit" in the Classic and Block editors.
+        new AIPS_Editor_Assets();
 
         // Keep the duplicate scan cron event in line with its setting.
         (new AIPS_Duplicate_Group_Service())->ensure_schedule();

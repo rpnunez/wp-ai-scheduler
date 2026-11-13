@@ -374,6 +374,7 @@ class AIPS_Prompt_Profiles_Controller {
 			'existing_topics'      => "- 5 WebAssembly Performance Tips\n- Next-Gen CSS Techniques",
 			'feedback_history'     => "Positive: Loved practical coding examples. Negative: Avoid overly abstract introductions.",
 		);
+		$placeholders = array_intersect_key($placeholders, array_flip(AIPS_Prompt_Profile_Resolver::get_placeholders_for_stage($stage)));
 
 		$mandatory = array();
 		if ($stage === 'title_prompt' || $stage === 'excerpt_prompt') {

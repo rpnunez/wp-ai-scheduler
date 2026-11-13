@@ -37,12 +37,14 @@ class AIPS_DB_Manager {
         'aips_cache_events',
         'aips_integration_field_mappings',
         'aips_content_audits',
-        'aips_prompt_profiles',
-        'aips_prompt_profile_versions',
         'aips_link_index',
         'aips_link_clicks',
         'aips_redirects',
         'aips_background_processes',
+        'aips_post_images',
+        'aips_post_images_generated',
+		'aips_prompt_profiles',
+		'aips_prompt_profile_versions',
     );
 
     public function __construct() {
@@ -108,12 +110,14 @@ class AIPS_DB_Manager {
         $table_cache_events         = $tables['aips_cache_events'];
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
         $table_content_audits       = $tables['aips_content_audits'];
-        $table_prompt_profiles      = $tables['aips_prompt_profiles'];
-        $table_prompt_profile_versions = $tables['aips_prompt_profile_versions'];
         $table_link_index           = $tables['aips_link_index'];
         $table_link_clicks          = $tables['aips_link_clicks'];
         $table_redirects            = $tables['aips_redirects'];
         $table_background_processes = $tables['aips_background_processes'];
+        $table_post_images          = $tables['aips_post_images'];
+        $table_post_images_generated = $tables['aips_post_images_generated'];
+		$table_prompt_profiles        = $tables['aips_prompt_profiles'];
+		$table_prompt_profile_versions = $tables['aips_prompt_profile_versions'];
 
         $sql = array();
 
@@ -139,13 +143,10 @@ class AIPS_DB_Manager {
             completed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY uuid (uuid),
-            KEY post_id (post_id),
             KEY post_type (post_type),
-            KEY template_id (template_id),
             KEY campaign_id (campaign_id),
             KEY author_id (author_id),
             KEY topic_id (topic_id),
-            KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
@@ -165,6 +166,7 @@ class AIPS_DB_Manager {
             details longtext,
             PRIMARY KEY  (id),
             KEY history_type_id (history_type_id),
+            KEY history_type_ts (history_type_id, timestamp),
             KEY history_type_timestamp (history_id, history_type_id, timestamp),
             KEY event_status (event_status),
             KEY event_type_timestamp (event_type, timestamp),
@@ -190,13 +192,16 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_templates (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
+			prompt_profile_id bigint(20) DEFAULT NULL,
             description text,
             prompt_template text NOT NULL,
             title_prompt text,
+            slug_prompt text,
             voice_id bigint(20) DEFAULT NULL,
             post_quantity int DEFAULT 1,
             image_prompt text,
             generate_featured_image tinyint(1) DEFAULT 0,
+            generate_slug tinyint(1) DEFAULT 0,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
             featured_image_unsplash_keywords text,
             featured_image_media_ids text,
@@ -208,14 +213,13 @@ class AIPS_DB_Manager {
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
-            prompt_profile_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
-            KEY campaign_id (campaign_id),
-            KEY prompt_profile_id (prompt_profile_id)
+			KEY campaign_id (campaign_id),
+			KEY prompt_profile_id (prompt_profile_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
@@ -318,6 +322,7 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_authors (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
+			prompt_profile_id bigint(20) DEFAULT NULL,
             field_niche varchar(500) NOT NULL,
             description text,
             keywords text,
@@ -338,8 +343,13 @@ class AIPS_DB_Manager {
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
             post_author bigint(20) DEFAULT NULL,
+            image_prompt text,
             generate_featured_image tinyint(1) DEFAULT 0,
+            generate_slug tinyint(1) DEFAULT 0,
+            slug_prompt text,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
+            featured_image_unsplash_keywords text,
+            featured_image_media_ids text,
             voice_tone varchar(500) DEFAULT NULL,
             writing_style varchar(500) DEFAULT NULL,
             target_audience varchar(500) DEFAULT NULL,
@@ -353,7 +363,6 @@ class AIPS_DB_Manager {
             scheduled_post_generation_quantity int DEFAULT 1,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
-            prompt_profile_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
             topic_auto_approval_mode varchar(50) DEFAULT 'inherit',
             topic_auto_approval_min_score int DEFAULT 70,
@@ -364,8 +373,8 @@ class AIPS_DB_Manager {
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
-            KEY article_structure_id (article_structure_id),
-            KEY prompt_profile_id (prompt_profile_id),
+			KEY article_structure_id (article_structure_id),
+			KEY prompt_profile_id (prompt_profile_id),
             KEY is_active (is_active),
           KEY topic_generation_next_run (topic_generation_next_run),
           KEY post_generation_next_run (post_generation_next_run),
@@ -399,11 +408,9 @@ class AIPS_DB_Manager {
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
-            KEY author_id (author_id),
-            KEY status (status),
             KEY claimed_at (claimed_at),
             KEY generated_at (generated_at),
-            KEY author_id_status (author_id, status),
+            KEY author_id_status_score (author_id, status, score),
             KEY status_score_reviewed (status, score, reviewed_at)
         ) $charset_collate;";
 
@@ -861,42 +868,82 @@ class AIPS_DB_Manager {
             KEY created_at_idx (created_at)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_prompt_profiles (
+		$sql[] = "CREATE TABLE $table_prompt_profiles (
+			id bigint(20) NOT NULL AUTO_INCREMENT,
+			name varchar(255) NOT NULL,
+			slug varchar(100) NOT NULL,
+			description text DEFAULT NULL,
+			is_default tinyint(1) NOT NULL DEFAULT 0,
+			title_prompt text DEFAULT NULL,
+			title_followup_prompt text DEFAULT NULL,
+			content_prompt text DEFAULT NULL,
+			excerpt_prompt text DEFAULT NULL,
+			excerpt_followup_prompt text DEFAULT NULL,
+			featured_image_prompt text DEFAULT NULL,
+			topic_ideas_prompt text DEFAULT NULL,
+			metadata_prompt text DEFAULT NULL,
+			taxonomy_prompt text DEFAULT NULL,
+			is_active tinyint(1) NOT NULL DEFAULT 1,
+			created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+			updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+			PRIMARY KEY  (id),
+			UNIQUE KEY slug (slug),
+			KEY is_default (is_default),
+			KEY is_active (is_active)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $table_prompt_profile_versions (
+			id bigint(20) NOT NULL AUTO_INCREMENT,
+			profile_id bigint(20) NOT NULL,
+			version_number int(11) NOT NULL DEFAULT 1,
+			stages longtext DEFAULT NULL,
+			parameters longtext DEFAULT NULL,
+			change_summary text DEFAULT NULL,
+			created_by bigint(20) DEFAULT NULL,
+			created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+			PRIMARY KEY  (id),
+			KEY profile_id (profile_id),
+			UNIQUE KEY profile_id_version_number (profile_id, version_number)
+		) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_images (
             id bigint(20) NOT NULL AUTO_INCREMENT,
-            name varchar(255) NOT NULL,
-            slug varchar(100) NOT NULL,
-            description text DEFAULT NULL,
-            is_default tinyint(1) NOT NULL DEFAULT 0,
-            title_prompt text DEFAULT NULL,
-            title_followup_prompt text DEFAULT NULL,
-            content_prompt text DEFAULT NULL,
-            excerpt_prompt text DEFAULT NULL,
-            excerpt_followup_prompt text DEFAULT NULL,
-            featured_image_prompt text DEFAULT NULL,
-            topic_ideas_prompt text DEFAULT NULL,
-            metadata_prompt text DEFAULT NULL,
-            taxonomy_prompt text DEFAULT NULL,
-            is_active tinyint(1) NOT NULL DEFAULT 1,
+            entity_type varchar(50) NOT NULL,
+            entity_id bigint(20) NOT NULL,
+            image_type varchar(50) NOT NULL DEFAULT 'content',
+            image_order int(11) NOT NULL DEFAULT 0,
+            source varchar(50) NOT NULL DEFAULT 'ai_prompt',
+            image_prompt text,
+            unsplash_keywords text,
+            media_ids text,
+            placement varchar(50) DEFAULT 'auto',
+            caption text,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
-            UNIQUE KEY slug (slug),
-            KEY is_default (is_default),
-            KEY is_active (is_active)
+            KEY entity_lookup (entity_type, entity_id, image_type),
+            KEY entity_order (entity_type, entity_id, image_order)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_prompt_profile_versions (
+        $sql[] = "CREATE TABLE $table_post_images_generated (
             id bigint(20) NOT NULL AUTO_INCREMENT,
-            profile_id bigint(20) NOT NULL,
-            version_number int(11) NOT NULL DEFAULT 1,
-            stages longtext DEFAULT NULL,
-            parameters longtext DEFAULT NULL,
-            change_summary text DEFAULT NULL,
-            created_by bigint(20) DEFAULT NULL,
+            post_id bigint(20) NOT NULL,
+            history_id bigint(20) DEFAULT NULL,
+            config_image_id bigint(20) DEFAULT NULL,
+            image_index int(11) NOT NULL DEFAULT 1,
+            attachment_id bigint(20) NOT NULL DEFAULT 0,
+            image_source varchar(50) NOT NULL DEFAULT 'ai_prompt',
+            image_prompt text,
+            image_url text,
+            placement varchar(50) DEFAULT 'auto',
+            status varchar(32) NOT NULL DEFAULT 'completed',
+            error_message text,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
-            KEY profile_id (profile_id),
-            KEY profile_id_version_number (profile_id, version_number)
+            KEY post_id (post_id),
+            KEY config_image_id (config_image_id),
+            KEY post_status (post_id, status)
         ) $charset_collate;";
 
         return $sql;
@@ -1060,6 +1107,14 @@ class AIPS_DB_Manager {
             ),
             'aips_telemetry' => array(
                 array( 'inserted_at', false ),
+            ),
+            'aips_post_images' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_post_images_generated' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
             ),
         );
     }

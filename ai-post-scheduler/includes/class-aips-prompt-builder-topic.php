@@ -105,9 +105,13 @@ class AIPS_Prompt_Builder_Topic {
 		}
 
 		$stage_template = $this->profile_resolver->get_stage_prompt('topic_ideas_prompt', $author);
+		$existing_topics = array_merge($approved_topics, $rejected_topics);
 		$initial_prompt = $this->profile_resolver->interpolate($stage_template, array(
-			'quantity' => (string) $quantity,
-			'niche'    => (string) $author->field_niche,
+			'quantity'         => (string) $quantity,
+			'niche'            => (string) $author->field_niche,
+			'author_name'      => isset($author->name) ? (string) $author->name : '',
+			'existing_topics'  => implode("\n", array_map(static function($topic) { return '- ' . $topic; }, $existing_topics)),
+			'feedback_history' => (string) $feedback_guidance,
 		));
 
 		$prompt = $initial_prompt . "\n\n";

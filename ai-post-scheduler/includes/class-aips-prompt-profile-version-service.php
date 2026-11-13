@@ -94,8 +94,13 @@ class AIPS_Prompt_Profile_Version_Service {
 			return new WP_Error('invalid_profile_id', __('Invalid profile ID.', 'ai-post-scheduler'));
 		}
 
-		$current = $this->profiles_repo->get_by_id($profile_id);
+		if (!$this->profiles_repo->begin_transaction()) {
+			return new WP_Error('transaction_failed', __('Could not start the prompt profile update transaction.', 'ai-post-scheduler'));
+		}
+
+		$current = $this->profiles_repo->get_by_id_for_update($profile_id);
 		if (!$current) {
+			$this->profiles_repo->rollback_transaction();
 			return new WP_Error('not_found', __('Prompt profile not found.', 'ai-post-scheduler'));
 		}
 
@@ -110,10 +115,22 @@ class AIPS_Prompt_Profile_Version_Service {
 		// edit is about to change.
 		$snapshot_result = $this->versions_repo->create_snapshot($profile_id, $old_stages, array(), $summary, $user_id);
 		if (is_wp_error($snapshot_result)) {
+			$this->profiles_repo->rollback_transaction();
 			return $snapshot_result;
 		}
 
-		return $this->profiles_repo->update($profile_id, $data);
+		$update_result = $this->profiles_repo->update($profile_id, $data);
+		if (is_wp_error($update_result) || !$update_result) {
+			$this->profiles_repo->rollback_transaction();
+			return $update_result;
+		}
+
+		if (!$this->profiles_repo->commit_transaction()) {
+			$this->profiles_repo->rollback_transaction();
+			return new WP_Error('transaction_commit_failed', __('Could not commit the prompt profile update.', 'ai-post-scheduler'));
+		}
+
+		return true;
 	}
 
 	/**

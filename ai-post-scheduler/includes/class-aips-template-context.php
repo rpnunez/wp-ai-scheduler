@@ -103,6 +103,27 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the slug prompt.
+	 *
+	 * @return string Slug prompt from voice or template.
+	 */
+	public function get_slug_prompt() {
+		if ($this->voice && !empty($this->voice->slug_prompt)) {
+			return $this->voice->slug_prompt;
+		}
+		return isset($this->template->slug_prompt) ? $this->template->slug_prompt : '';
+	}
+
+	/**
+	 * Check if slug generation is enabled.
+	 *
+	 * @return bool True if enabled.
+	 */
+	public function should_generate_slug() {
+		return !empty($this->template->generate_slug);
+	}
+
+	/**
 	 * Get the image prompt.
 	 *
 	 * @return string|null Image prompt or null.
@@ -145,6 +166,44 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 */
 	public function get_media_library_ids() {
 		return isset($this->template->featured_image_media_ids) ? $this->template->featured_image_media_ids : '';
+	}
+
+	/**
+	 * @var array|null Cached content images
+	 */
+	private $content_images = null;
+
+	/**
+	 * Check if post content images are configured.
+	 *
+	 * @return bool
+	 */
+	public function has_content_images() {
+		$images = $this->get_content_images();
+		return !empty($images);
+	}
+
+	/**
+	 * Get post content images configurations.
+	 *
+	 * @return array
+	 */
+	public function get_content_images() {
+		if (null !== $this->content_images) {
+			return $this->content_images;
+		}
+
+		$images = array();
+		$template_id = $this->get_id();
+
+		if (!empty($this->template->post_images) && is_array($this->template->post_images)) {
+			$images = $this->template->post_images;
+		} elseif ($template_id > 0) {
+			$images = (new AIPS_Post_Images_Repository())->get_content_images_for_entity('template', $template_id);
+		}
+
+		$this->content_images = AIPS_Post_Images_Service::limited_content_images($images);
+		return $this->content_images;
 	}
 
 	/**
@@ -315,6 +374,8 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 			'name' => $this->get_name(),
 			'content_prompt' => $this->get_content_prompt(),
 			'title_prompt' => $this->get_title_prompt(),
+			'slug_prompt' => $this->get_slug_prompt(),
+			'generate_slug' => $this->should_generate_slug(),
 			'post_status' => $this->get_post_status(),
 			'post_type' => $this->get_post_type(),
 			'post_category' => $this->get_post_category(),

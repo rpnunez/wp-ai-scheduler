@@ -73,4 +73,13 @@ class Test_AIPS_Template_Repository_Post_Type extends WP_UnitTestCase {
 		$this->assertSame('aips_test_cpt', $template->post_type);
 		$this->assertSame('Renamed', $template->name);
 	}
+
+	public function test_update_can_clear_prompt_profile_assignment() {
+		$id = $this->repo->create($this->minimal_template_data(array('prompt_profile_id' => 42)));
+		$this->assertSame(42, (int) $this->repo->get_by_id($id)->prompt_profile_id);
+
+		$this->repo->update($id, array('prompt_profile_id' => null));
+
+		$this->assertNull($this->repo->get_by_id($id)->prompt_profile_id);
+	}
 }

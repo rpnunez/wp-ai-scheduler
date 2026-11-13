@@ -97,8 +97,9 @@ class AIPS_Prompt_Profile_Versions_Repository {
 			return new WP_Error('db_insert_failed', $this->wpdb->last_error ?: __('Failed to create prompt profile version snapshot.', 'ai-post-scheduler'));
 		}
 
+		$insert_id = (int) $this->wpdb->insert_id;
 		$this->invalidate_cache_domain('prompt_profile_version', array('profile_id' => $profile_id), 'version_created');
-		return (int) $this->wpdb->insert_id;
+		return $insert_id;
 	}
 
 	/**

@@ -21,6 +21,39 @@ if (!defined('ABSPATH')) {
 class AIPS_Prompt_Profile_Resolver {
 
 	/**
+	 * Supported placeholders for each prompt-profile stage.
+	 *
+	 * This map is shared by the editor, preview sandbox, and runtime builders so
+	 * the UI never advertises a tag that real generation silently removes.
+	 *
+	 * @return array<string, string[]>
+	 */
+	public static function get_stage_placeholders() {
+		return array(
+			'title_prompt'            => array('topic', 'voice_instructions', 'diversity_blocks', 'article_data'),
+			'title_followup_prompt'   => array('topic', 'voice_instructions', 'diversity_blocks'),
+			'content_prompt'          => array('topic', 'voice_instructions', 'user_instructions', 'sections', 'internal_links', 'diversity_blocks'),
+			'excerpt_prompt'          => array('topic', 'voice_instructions', 'article_data', 'word_count_min', 'word_count_max'),
+			'excerpt_followup_prompt' => array('topic', 'voice_instructions', 'word_count_min', 'word_count_max'),
+			'featured_image_prompt'   => array('topic', 'image_prompt'),
+			'topic_ideas_prompt'      => array('quantity', 'niche', 'author_name', 'existing_topics', 'feedback_history'),
+			'metadata_prompt'         => array('topic'),
+			'taxonomy_prompt'         => array('taxonomy_type'),
+		);
+	}
+
+	/**
+	 * Return the supported placeholders for one stage.
+	 *
+	 * @param string $stage Stage key.
+	 * @return string[]
+	 */
+	public static function get_placeholders_for_stage($stage) {
+		$definitions = self::get_stage_placeholders();
+		return isset($definitions[$stage]) ? $definitions[$stage] : array();
+	}
+
+	/**
 	 * @var self|null Singleton instance.
 	 */
 	private static $instance = null;

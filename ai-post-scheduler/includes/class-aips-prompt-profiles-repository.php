@@ -201,8 +201,42 @@ class AIPS_Prompt_Profiles_Repository {
 			return new WP_Error('db_insert_failed', $this->wpdb->last_error ?: __('Failed to create prompt profile.', 'ai-post-scheduler'));
 		}
 
+		$insert_id = (int) $this->wpdb->insert_id;
 		$this->invalidate_cache_domain('prompt_profile', array(), 'profile_created');
-		return (int) $this->wpdb->insert_id;
+		return $insert_id;
+	}
+
+	/** Start a transaction for an atomic profile mutation. */
+	public function begin_transaction() {
+		return false !== $this->wpdb->query('START TRANSACTION');
+	}
+
+	/** Commit the current profile mutation transaction. */
+	public function commit_transaction() {
+		return false !== $this->wpdb->query('COMMIT');
+	}
+
+	/** Roll back the current profile mutation transaction. */
+	public function rollback_transaction() {
+		return false !== $this->wpdb->query('ROLLBACK');
+	}
+
+	/**
+	 * Read and lock a profile until the current transaction completes.
+	 *
+	 * @param int $id Profile ID.
+	 * @return object|null
+	 */
+	public function get_by_id_for_update($id) {
+		$id = absint($id);
+		if (!$id) {
+			return null;
+		}
+
+		return $this->decorate_profile($this->wpdb->get_row($this->wpdb->prepare(
+			"SELECT * FROM {$this->table_name} WHERE id = %d LIMIT 1 FOR UPDATE",
+			$id
+		)));
 	}
 
 	/**

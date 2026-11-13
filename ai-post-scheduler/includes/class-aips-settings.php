@@ -72,6 +72,12 @@ class AIPS_Settings {
 		add_action('add_option_aips_auto_prune_enabled', $sync_prune_cron);
 		add_action('update_option_aips_telemetry_prune_interval', $sync_prune_cron);
 		add_action('add_option_aips_telemetry_prune_interval', $sync_prune_cron);
+
+		$sync_digest_cron = function() {
+			self::sync_digest_cron_schedule();
+		};
+		add_action('update_option_aips_notif_digest_enabled', $sync_digest_cron);
+		add_action('add_option_aips_notif_digest_enabled', $sync_digest_cron);
 	}
 
 	/**
@@ -93,6 +99,33 @@ class AIPS_Settings {
 				$interval = 'daily';
 			}
 			wp_schedule_event(AIPS_DateTime::now()->timestamp(), $interval, $hook);
+		}
+	}
+
+	/**
+	 * Synchronize the background notification digest cron event with current settings.
+	 *
+	 * When enabled, schedules the 15-minute cron check.
+	 * When disabled, unschedules the cron check and flushes any pending queued notifications.
+	 *
+	 * @return void
+	 */
+	public static function sync_digest_cron_schedule() {
+		$hook      = 'aips_notif_digest_cron';
+		$timestamp = wp_next_scheduled($hook);
+		if ($timestamp) {
+			wp_unschedule_event($timestamp, $hook);
+		}
+
+		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_notif_digest_enabled');
+		if ($enabled) {
+			wp_schedule_event(AIPS_DateTime::now()->timestamp() + 900, 'fifteen_minutes', $hook);
+		} else {
+			// If disabled, flush any remaining queued items so notifications are not stranded.
+			$notifications = AIPS_Notifications::instance();
+			if ($notifications->get_digest_queue_count() > 0) {
+				$notifications->flush_digest_queue();
+			}
 		}
 	}
 
@@ -264,6 +297,23 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_unsplash_access_key'],
 			),
+			'aips_max_post_images_limit' => array(
+				'sanitize_callback' => static function ($val) {
+					return max(0, min(20, absint($val)));
+				},
+				'default'           => $defaults['aips_max_post_images_limit'],
+			),
+			'aips_allowed_image_sources' => array(
+				'sanitize_callback' => static function ($val) {
+					if (!is_array($val)) {
+						return array('ai_prompt');
+					}
+					$allowed_valid = array('ai_prompt', 'unsplash', 'media_library');
+					$filtered = array_values(array_intersect($val, $allowed_valid));
+					return !empty($filtered) ? $filtered : array('ai_prompt');
+				},
+				'default'           => $defaults['aips_allowed_image_sources'],
+			),
 			'aips_gsc_service_account' => array(
 				'sanitize_callback' => array('AIPS_GSC_Client', 'sanitize_credentials'),
 				'default'           => $defaults['aips_gsc_service_account'],
@@ -283,6 +333,22 @@ class AIPS_Settings {
 			'aips_notification_preferences' => array(
 				'sanitize_callback' => array($ui, 'sanitize_notification_preferences'),
 				'default'           => $defaults['aips_notification_preferences'],
+			),
+			'aips_notif_digest_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_notif_digest_enabled'],
+			),
+			'aips_notif_digest_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_digest_threshold'),
+				'default'           => $defaults['aips_notif_digest_threshold'],
+			),
+			'aips_notif_digest_max_delay' => array(
+				'sanitize_callback' => array($ui, 'sanitize_digest_max_delay'),
+				'default'           => $defaults['aips_notif_digest_max_delay'],
+			),
+			'aips_notif_digest_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_digest_types'),
+				'default'           => $defaults['aips_notif_digest_types'],
 			),
 			'aips_topic_similarity_threshold' => array(
 				'sanitize_callback' => array($ui, 'sanitize_similarity_threshold'),
@@ -672,6 +738,14 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_retention_unit'),
 				'default'           => $defaults['aips_history_log_retention_unit'],
 			),
+			'aips_ai_error_log_retention_value' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_ai_error_log_retention_value'],
+			),
+			'aips_ai_error_log_retention_unit' => array(
+				'sanitize_callback' => array($ui, 'sanitize_retention_unit'),
+				'default'           => $defaults['aips_ai_error_log_retention_unit'],
+			),
 			'aips_clean_orphaned_embeddings' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_clean_orphaned_embeddings'],
@@ -788,6 +862,32 @@ class AIPS_Settings {
 			'aips-settings',
 			'aips_general_section'
 		);
+
+        // -----------------------------------------------------------------------
+        // Post Images Generation Section
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_post_images_section',
+            __('Post Content Images Generation', 'ai-post-scheduler'),
+            array($this->ui, 'post_images_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_max_post_images_limit',
+            __('Max Possible Post Images per Post', 'ai-post-scheduler'),
+            array($this->ui, 'max_post_images_limit_field_callback'),
+            'aips-settings',
+            'aips_post_images_section'
+        );
+
+        add_settings_field(
+            'aips_allowed_image_sources',
+            __('Allowed Image Sources', 'ai-post-scheduler'),
+            array($this->ui, 'allowed_image_sources_field_callback'),
+            'aips-settings',
+            'aips_post_images_section'
+        );
 
         // Card 1: Content Generation AI Provider
         // -----------------------------------------------------------------------
@@ -1460,6 +1560,53 @@ class AIPS_Settings {
             'aips-settings'
         );
 
+        add_settings_section(
+            'aips_notifications_summarized_digest_section',
+            __('Summarized Notification Digest', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_notif_digest_enabled',
+            __('Enable Digest', 'ai-post-scheduler'),
+            array($this->ui, 'notif_digest_enabled_field_callback'),
+            'aips-settings',
+            'aips_notifications_summarized_digest_section'
+        );
+
+        add_settings_field(
+            'aips_notif_digest_threshold',
+            __('Batch Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'notif_digest_threshold_field_callback'),
+            'aips-settings',
+            'aips_notifications_summarized_digest_section'
+        );
+
+        add_settings_field(
+            'aips_notif_digest_max_delay',
+            __('Maximum Delay Window', 'ai-post-scheduler'),
+            array($this->ui, 'notif_digest_max_delay_field_callback'),
+            'aips-settings',
+            'aips_notifications_summarized_digest_section'
+        );
+
+        add_settings_field(
+            'aips_notif_digest_types',
+            __('Eligible Notification Types', 'ai-post-scheduler'),
+            array($this->ui, 'notif_digest_types_field_callback'),
+            'aips-settings',
+            'aips_notifications_summarized_digest_section'
+        );
+
+        add_settings_field(
+            'aips_notif_digest_actions',
+            __('Queue Actions', 'ai-post-scheduler'),
+            array($this->ui, 'notif_digest_actions_field_callback'),
+            'aips-settings',
+            'aips_notifications_summarized_digest_section'
+        );
+
         $notification_groups = array(
             'aips_notifications_system_section' => array(
                 'generation_failed',
@@ -1520,7 +1667,7 @@ class AIPS_Settings {
 
         // Register any newly added or remaining types not in explicit groups.
         foreach ($type_registry as $type => $meta) {
-            if (isset($registered_types[$type])) {
+            if (isset($registered_types[$type]) || 'summarized_digest' === $type) {
                 continue;
             }
             $fallback_section = (isset($meta['level']) && 'error' === $meta['level'])
@@ -1893,6 +2040,14 @@ class AIPS_Settings {
             'aips_history_log_retention',
             __('Generation History Log Retention', 'ai-post-scheduler'),
             array($this->ui, 'history_log_retention_field_callback'),
+            'aips-settings',
+            'aips_database_retention_section'
+        );
+
+        add_settings_field(
+            'aips_ai_error_log_retention',
+            __('AI Error Log Retention', 'ai-post-scheduler'),
+            array($this->ui, 'ai_error_log_retention_field_callback'),
             'aips-settings',
             'aips_database_retention_section'
         );

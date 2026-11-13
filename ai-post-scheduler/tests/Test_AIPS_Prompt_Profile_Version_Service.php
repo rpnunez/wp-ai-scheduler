@@ -7,6 +7,28 @@
 
 class Mock_Profiles_Repo_For_Version_Service {
 	public $profiles = array();
+	public $in_transaction = false;
+	public $locked_reads = 0;
+
+	public function begin_transaction() {
+		$this->in_transaction = true;
+		return true;
+	}
+
+	public function commit_transaction() {
+		$this->in_transaction = false;
+		return true;
+	}
+
+	public function rollback_transaction() {
+		$this->in_transaction = false;
+		return true;
+	}
+
+	public function get_by_id_for_update($id) {
+		$this->locked_reads++;
+		return $this->get_by_id($id);
+	}
 
 	public function get_by_id($id) {
 		$id = (int) $id;
@@ -128,6 +150,8 @@ class Test_AIPS_Prompt_Profile_Version_Service extends WP_UnitTestCase {
 		), 9);
 
 		$this->assertTrue($result);
+		$this->assertSame(1, $this->profiles_repo->locked_reads);
+		$this->assertFalse($this->profiles_repo->in_transaction);
 
 		// Live profile reflects the new values.
 		$this->assertSame('New title prompt.', $this->profiles_repo->profiles[1]->title_prompt);

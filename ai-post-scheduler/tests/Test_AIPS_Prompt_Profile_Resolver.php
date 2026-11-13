@@ -146,4 +146,15 @@ class Test_AIPS_Prompt_Profile_Resolver extends WP_UnitTestCase {
 		// Assert instructions was NOT appended twice
 		$this->assertEquals(1, substr_count($interpolated, 'Write clearly'));
 	}
+
+	public function test_stage_placeholder_definitions_only_advertise_runtime_supported_content_tags() {
+		$content_tags = AIPS_Prompt_Profile_Resolver::get_placeholders_for_stage('content_prompt');
+
+		$this->assertContains('sections', $content_tags);
+		$this->assertContains('internal_links', $content_tags);
+		$this->assertContains('user_instructions', $content_tags);
+		$this->assertNotContains('word_count_min', $content_tags);
+		$this->assertNotContains('reference_source', $content_tags);
+		$this->assertSame(array(), AIPS_Prompt_Profile_Resolver::get_placeholders_for_stage('unknown_stage'));
+	}
 }

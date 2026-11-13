@@ -21,7 +21,7 @@ class AIPS_System_Status_Diagnostics_Service {
 	 *
 	 * @param AIPS_System_Diagnostic_Provider_Interface[]|null $providers Optional provider list for testing or custom setups.
 	 */
-	public function __construct( array $providers = null ) {
+	public function __construct( ?array $providers = null ) {
 		if ( $providers !== null ) {
 			$this->providers = $providers;
 		} else {

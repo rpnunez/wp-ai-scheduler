@@ -134,4 +134,42 @@ interface AIPS_History_Repository_Interface {
 	 * @return bool
 	 */
 	public function post_has_history_and_completed($post_id);
+
+	/**
+	 * Retrieve AI error records and associated history metadata.
+	 *
+	 * per_page is capped at 100 unless for_export is true, which raises the cap
+	 * to 2,000. Category filters use the AI error classifier.
+	 *
+	 * @param array $args Filter and pagination arguments.
+	 * @return array{items:array,total:int,total_pages:int,page:int,per_page:int}
+	 */
+	public function get_ai_errors($args = array());
+
+	/**
+	 * Retrieve aggregate statistics and category breakdown for AI errors.
+	 *
+	 * @param array $args Filter arguments (date_from, date_to, error_scope, search).
+	 * @return array
+	 */
+	public function get_ai_error_summary_stats($args = array());
+
+	/**
+	 * Retrieve a single AI error record with full details by history log ID.
+	 *
+	 * @param int $log_id History log row ID.
+	 * @return array|null
+	 */
+	public function get_ai_error_by_id($log_id);
+
+	/**
+	 * Delete history records and associated logs for a given post ID.
+	 *
+	 * Child logs are removed first. A failed child delete leaves the parent
+	 * containers in place.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return int|false Number of history container records deleted, or false on failure.
+	 */
+	public function delete_by_post_id($post_id);
 }

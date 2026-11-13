@@ -54,6 +54,20 @@ interface AIPS_Generation_Context {
 	public function get_title_prompt();
 
 	/**
+	 * Get the slug prompt for AI slug generation.
+	 *
+	 * @return string|null Slug generation prompt or null if not applicable.
+	 */
+	public function get_slug_prompt();
+
+	/**
+	 * Check if slug generation is enabled.
+	 *
+	 * @return bool True if post slug should be generated.
+	 */
+	public function should_generate_slug();
+
+	/**
 	 * Get the image prompt for featured image generation.
 	 *
 	 * @return string|null Image prompt or null if not applicable.
@@ -87,6 +101,20 @@ interface AIPS_Generation_Context {
 	 * @return string Comma-separated media IDs.
 	 */
 	public function get_media_library_ids();
+
+	/**
+	 * Check if post content images are configured for this generation.
+	 *
+	 * @return bool True if there is at least one content image configured.
+	 */
+	public function has_content_images();
+
+	/**
+	 * Get configured post content images.
+	 *
+	 * @return array Array of image configuration objects/arrays.
+	 */
+	public function get_content_images();
 
 	/**
 	 * Get the post status for the generated post.

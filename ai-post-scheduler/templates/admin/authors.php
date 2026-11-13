@@ -414,6 +414,61 @@ $site_ctx = AIPS_Site_Context::get();
                 </p>
             </div>
 
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="author_generate_slug" name="generate_slug" value="1">
+                    <?php esc_html_e('Generate Post Slug?', 'ai-post-scheduler'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, an SEO-friendly URL slug will be generated for posts written by this author.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group" id="author-slug-prompt-group" style="display: none;">
+                <label for="author_slug_prompt"><?php esc_html_e('Slug Prompt', 'ai-post-scheduler'); ?></label>
+                <textarea id="author_slug_prompt" name="slug_prompt" rows="3" placeholder="<?php esc_attr_e('Leave empty for standard SEO-optimized slug', 'ai-post-scheduler'); ?>"></textarea>
+                <p class="description"><?php esc_html_e('Optional custom instructions for post slug generation.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <!-- Images Configuration Section (Featured Image & Post Content Images) -->
+            <div class="aips-form-section" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--aips-gray-200);">
+                <h4><?php esc_html_e('Featured Image Options', 'ai-post-scheduler'); ?></h4>
+                <div class="form-group">
+                    <label class="aips-checkbox-label">
+                        <input type="checkbox" id="author_generate_featured_image" name="generate_featured_image" value="1">
+                        <?php esc_html_e('Generate Featured Image?', 'ai-post-scheduler'); ?>
+                    </label>
+                    <p class="description"><?php esc_html_e('If checked, a featured image will be attached to posts generated for this author.', 'ai-post-scheduler'); ?></p>
+                </div>
+
+                <div class="aips-featured-image-settings aips-author-featured-image-settings" style="display: none;">
+                    <?php
+                    $image_field_name_prefix = 'featured_image';
+                    $image_field_id_prefix   = 'author_featured_image';
+                    $image_values            = array();
+                    $is_post_image           = false;
+                    include AIPS_PLUGIN_DIR . 'templates/admin/partials/image-settings-field.php';
+                    ?>
+                </div>
+
+                <div class="aips-post-images-section-container">
+                    <div class="aips-post-images-header-row">
+                        <div>
+                            <h4 style="margin: 0;"><?php esc_html_e('Post Content Images', 'ai-post-scheduler'); ?></h4>
+                            <p class="description"><?php esc_html_e('Configure images to be generated and distributed throughout your post content for this author.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-btn-sm aips-add-post-image-btn" id="aips-author-add-post-image-btn" data-container="#aips-author-post-images-list" data-prefix="author_post_images" data-max-limit="<?php echo esc_attr(AIPS_Config::get_instance()->get_max_post_images_limit()); ?>">
+                            <span class="dashicons dashicons-plus-alt2" style="vertical-align: text-top;"></span>
+                            <?php esc_html_e('Add Post Image', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                    <div class="aips-post-images-list" id="aips-author-post-images-list" data-context="author">
+                        <div class="aips-post-images-empty-state">
+                            <span class="dashicons dashicons-format-image" style="font-size: 32px; width: 32px; height: 32px; color: var(--aips-gray-400); margin-bottom: 8px;"></span>
+                            <p><?php esc_html_e('No post content images configured. Click "Add Post Image" to generate images within article sections.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="aips-modal-footer">
                 <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                 <button type="submit" class="aips-btn aips-btn-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
@@ -729,4 +784,5 @@ $site_ctx = AIPS_Site_Context::get();
 <span class="aips-suggestion-meta-row"><strong>{{label}}:</strong> {{value}}</span>
 </script>
 
+	<?php include AIPS_PLUGIN_DIR . 'templates/admin/partials/post-image-card-template.php'; ?>
 	<?php include AIPS_PLUGIN_DIR . 'templates/partials/ai-assistance.php'; ?>

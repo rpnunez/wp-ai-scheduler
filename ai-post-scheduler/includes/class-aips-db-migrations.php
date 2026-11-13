@@ -256,7 +256,7 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.18', '<' ) ) {
 			$this->migrate_to_3_7_18();
 		}
-    
+
 		if ( version_compare( $from_version, '3.7.19', '<' ) && ! $this->migrate_to_3_7_19() ) {
 			// install_tables() has already stamped the schema version. Restore the
 			// previous gate so a failed structural ALTER is retried next request.
@@ -265,12 +265,46 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
-		// migrate_to_3_8_0() is a data-backfill migration that requires the
-		// wp_aips_prompt_profile_versions table introduced in this release to
-		// already exist (created above by install_tables()). It must therefore
-		// run after install_tables() rather than before it.
+		if ( version_compare( $from_version, '3.7.20', '<' ) && ! $this->migrate_to_3_7_20() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'AI errors index migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
+		// migrate_to_3_7_22() consolidates redundant indexes, strips cached
+		// embeddings, clears the embeddings cache group, and deletes orphaned
+		// history_log rows. It stays below the slug migration and the post-image
+		// migration. It reads the schema install_tables() has just normalised,
+		// so it runs after the Layer-1 apply. A false return leaves the version
+		// unstamped so the next request retries.
+		if ( version_compare( $from_version, '3.7.22', '<' ) && ! $this->migrate_to_3_7_22() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Index consolidation migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
+		// migrate_to_3_7_23() adds generate_slug and slug_prompt to templates and
+		// authors. It is gated above 3.7.22 so a site already stamped with main's
+		// index-consolidation release still receives the slug columns. The ALTERs
+		// are idempotent when dbDelta has already added the columns.
+		if ( version_compare( $from_version, '3.7.23', '<' ) && ! $this->migrate_to_3_7_23() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Slug settings migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
+		// migrate_to_3_7_24() adds the author featured-image columns and confirms
+		// the post-image tables. It is gated above 3.7.23 so a site already
+		// stamped 3.7.22 (main) or 3.7.23 (slug) still receives this schema. A
+		// gate below 3.7.21 would never run on those sites. The ALTERs are
+		// idempotent when dbDelta has already applied the schema.
+		if ( version_compare( $from_version, '3.7.24', '<' ) && ! $this->migrate_to_3_7_24() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Post images migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		if ( version_compare( $from_version, '3.8.0', '<' ) ) {
-			$this->migrate_to_3_7_0();
 			$this->migrate_to_3_8_0();
 		}
 
@@ -1335,6 +1369,69 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
+	 * Adds slug-generation settings as part of the 3.7.23 schema upgrade.
+	 *
+	 * Adds generate_slug and slug_prompt to aips_templates and aips_authors.
+	 * Numbered after 3.7.22 because 3.7.20 is the history_type_ts index migration.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_23() {
+		global $wpdb;
+
+		$table_templates = $wpdb->prefix . 'aips_templates';
+		$table_authors   = $wpdb->prefix . 'aips_authors';
+
+		// 1. Templates table: generate_slug and slug_prompt
+		$templates_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_templates ) );
+		if ( $templates_table_exists !== $table_templates ) {
+			return false;
+		}
+
+		$has_gen_slug = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'generate_slug'
+			) );
+		if ( ! $has_gen_slug && false === $wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
+
+		$has_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'slug_prompt'
+			) );
+		if ( ! $has_slug_prompt && false === $wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER title_prompt" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
+
+		// 2. Authors table: generate_slug and slug_prompt
+		$authors_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_authors ) );
+		if ( $authors_table_exists !== $table_authors ) {
+			return false;
+		}
+
+		$has_author_gen_slug = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'generate_slug'
+			) );
+		if ( ! $has_author_gen_slug && false === $wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
+
+		$has_author_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'slug_prompt'
+			) );
+		if ( ! $has_author_slug_prompt && false === $wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER generate_slug" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			return false;
+		}
+
+		$this->logger->log( 'Migration 3.7.23: Added generate_slug and slug_prompt to templates and authors.', 'info' );
+
+		return true;
+	}
+
+	/**
 	 * Migration for version 3.7.8.
 	 *
 	 * Drops the `history_id` and `history_id_type` indexes on aips_history_log.
@@ -1800,111 +1897,389 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
-	 * Migration for version 3.7.0.
+	 * Migration to 3.7.20:
+	 * Adds composite index `history_type_ts` (history_type_id, timestamp) to `aips_history_log`.
 	 *
-	 * Seeds default Prompt Profile archetypes if the table is empty and
-	 * ensures relational columns are initialized.
+	 * @return bool
+	 */
+	private function migrate_to_3_7_20() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return true;
+		}
+
+		$has_index = $wpdb->get_row(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'history_type_ts'"
+		);
+		if ( ! $has_index ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_type_ts (history_type_id, timestamp)" );
+		}
+
+		return true;
+	}
+
+
+	/**
+	 * Migration for version 3.7.24.
+	 *
+	 * Adds the author featured-image columns (image_prompt,
+	 * featured_image_unsplash_keywords, featured_image_media_ids) and confirms
+	 * the post-image tables created by install_tables(). Numbered after 3.7.23
+	 * because that gate belongs to slug settings. Idempotent: each column and
+	 * table is checked with SHOW COLUMNS / SHOW TABLES before any ALTER.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_24() {
+		global $wpdb;
+
+		$authors_table = $wpdb->prefix . 'aips_authors';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $authors_table ) ) !== $authors_table ) {
+			return false;
+		}
+
+		$author_columns = array(
+			'image_prompt'                     => 'text DEFAULT NULL',
+			'featured_image_unsplash_keywords' => 'text DEFAULT NULL',
+			'featured_image_media_ids'         => 'text DEFAULT NULL',
+		);
+		foreach ( $author_columns as $column => $definition ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN `{$column}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+				return false;
+			}
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return false;
+			}
+		}
+
+		$required_tables = array(
+			$wpdb->prefix . 'aips_post_images',
+			$wpdb->prefix . 'aips_post_images_generated',
+		);
+		foreach ( $required_tables as $table ) {
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) !== $table ) {
+				return false;
+			}
+		}
+
+		$post_images = $wpdb->prefix . 'aips_post_images';
+		$generated   = $wpdb->prefix . 'aips_post_images_generated';
+		$required_columns = array(
+			$post_images => array( 'entity_type', 'entity_id', 'image_order', 'source', 'placement' ),
+			$generated   => array( 'post_id', 'history_id', 'config_image_id', 'image_index', 'attachment_id', 'status' ),
+		);
+		foreach ( $required_columns as $table => $columns ) {
+			foreach ( $columns as $column ) {
+				if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					return false;
+				}
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.24: Added author featured-image columns and confirmed post-image tables.', 'info' );
+
+		return true;
+	}
+
+	/**
+	 * Migration for version 3.7.22.
+	 *
+	 * Index consolidation that already shipped on main. Author featured-image
+	 * columns and the post-image tables are 3.7.24, above the 3.7.23 slug
+	 * migration, so a site stamped 3.7.22 or 3.7.23 still receives them. A
+	 * site already stamped 3.7.21 still runs this gate.
+	 *
+	 * Three storage/efficiency fixes surfaced by a production DB audit:
+	 *   1. Consolidates redundant single-column indexes that are left-prefixes of
+	 *      existing composites on aips_history and aips_author_topics, and adds
+	 *      author_id_status_score so the per-author topic claim no longer
+	 *      filesorts on score.
+	 *   2. Strips the cached candidate embedding vector out of every
+	 *      aips_author_topics.metadata payload — a ~50 KB-per-row float array that
+	 *      the duplicate/auto-approval pipeline no longer persists (the vector is
+	 *      transient and also lives canonically in aips_embeddings).
+	 *   3. Deletes aips_history_log rows whose parent aips_history row is gone.
+	 *   4. Clears the aips_embeddings cache group out of aips_cache (~42 MB of
+	 *      decoded float arrays that duplicate the compact binary vectors in
+	 *      aips_embeddings; the plugin no longer persists them).
+	 *
+	 * Every step is guarded (covering-index presence / SHOW INDEX / SHOW TABLES)
+	 * so it is a safe, idempotent no-op once applied and on fresh installs.
+	 *
+	 * The latin1 -> utf8mb4 table conversion the audit also surfaced is handled
+	 * separately: this site sets DB_CHARSET=latin1, so the latin1 AIPS columns
+	 * hold raw UTF-8 bytes and a plain CONVERT TO would double-encode them. That
+	 * conversion needs byte-level verification and a DB_CHARSET change, so it is
+	 * deliberately out of scope here.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_22() {
+		$this->consolidate_history_indexes();
+		$this->consolidate_author_topic_indexes();
+		$this->strip_author_topic_metadata_embeddings();
+		$this->cleanup_orphaned_history_log();
+		$this->cleanup_embeddings_cache();
+
+		return true;
+	}
+
+	/**
+	 * Drop the decoded-embedding rows from the aips_cache 'aips_embeddings' group.
+	 *
+	 * These cached ~30 KB float arrays duplicate the compact float32 blobs in
+	 * aips_embeddings (~5x larger) and are no longer written by the repository.
+	 * Deleting them reclaims the space immediately; anything still needed is
+	 * regenerated in-memory on demand. Guarded and safe to re-run.
 	 *
 	 * @return void
 	 */
-	private function migrate_to_3_7_0() {
-		if ( class_exists( 'AIPS_Prompt_Profile_Seeder' ) ) {
-			$seeded = AIPS_Prompt_Profile_Seeder::seed_defaults();
-			if ( $seeded > 0 ) {
-				$this->logger->log( "Migration 3.7.0: Seeded {$seeded} default Prompt Profiles.", 'info' );
-			}
+	private function cleanup_embeddings_cache() {
+		global $wpdb;
+		$cache = $wpdb->prefix . 'aips_cache';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $cache ) ) !== $cache ) {
+			return;
+		}
+
+		$deleted = $wpdb->query( $wpdb->prepare(
+			"DELETE FROM `{$cache}` WHERE cache_group = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'aips_embeddings'
+		) );
+
+		if ( $deleted ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Cleared %d decoded-embedding rows from the aips_cache embeddings group.', (int) $deleted ), 'info' );
 		}
 	}
 
 	/**
-	 * Migration for version 3.8.0.
+	 * Drop the redundant single-/multi-column indexes on aips_history that are
+	 * left-prefixes of an existing composite.
 	 *
-	 * Seeds an initial version_number = 1 snapshot into
-	 * wp_aips_prompt_profile_versions for every existing row in
-	 * aips_prompt_profiles, so that pre-existing profiles have a version
-	 * history baseline once Prompt Profile Version History ships.
+	 * @return void
+	 */
+	private function consolidate_history_indexes() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		// Redundant index => the composite that makes it a left-prefix. Each is
+		// dropped only when its covering composite is present.
+		$redundant = array(
+			'status'      => 'status_created',
+			'template_id' => 'template_created',
+			'post_id'     => 'post_status',
+		);
+
+		foreach ( $redundant as $index_name => $covering_index ) {
+			$this->drop_redundant_index( $table, $index_name, $covering_index );
+		}
+	}
+
+	/**
+	 * Add the (author_id, status, score) covering index on aips_author_topics and
+	 * drop the now-redundant author_id / author_id_status / status indexes.
 	 *
-	 * Guarded with a SHOW TABLES check (defensive — the table should already
-	 * exist since this runs after install_tables()) and is idempotent: a
-	 * profile that already has at least one version row is skipped, so
-	 * re-running this migration never duplicates snapshots.
+	 * The covering index lets the per-author topic claim filter and sort from one
+	 * index instead of filesorting on score. install_tables() also adds it from
+	 * the schema, but it is added here so the drops never depend on dbDelta.
+	 *
+	 * @return void
+	 */
+	private function consolidate_author_topic_indexes() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		$has_new = $wpdb->get_row(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'author_id_status_score'" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		);
+		if ( ! $has_new ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY author_id_status_score (author_id, status, score)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		}
+
+		$this->drop_redundant_index( $table, 'author_id', 'author_id_status_score' );
+		$this->drop_redundant_index( $table, 'author_id_status', 'author_id_status_score' );
+		$this->drop_redundant_index( $table, 'status', 'status_score_reviewed' );
+	}
+
+	/**
+	 * Drop an index, but only once the covering index that replaces it exists.
+	 *
+	 * @param string $table          Full table name.
+	 * @param string $index_name     Index to drop.
+	 * @param string $covering_index Index that must be present first.
+	 * @return void
+	 */
+	private function drop_redundant_index( $table, $index_name, $covering_index ) {
+		global $wpdb;
+
+		$covering = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$covering_index
+		) );
+		if ( ! $covering ) {
+			return;
+		}
+
+		$exists = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$index_name
+		) );
+		if ( $exists ) {
+			$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `{$index_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		}
+	}
+
+	/**
+	 * Remove the cached `embedding` vector from existing aips_author_topics
+	 * metadata payloads.
+	 *
+	 * The duplicate/auto-approval pipeline used to persist the full candidate
+	 * embedding (a ~1,536-float array, ~50 KB of JSON) in each topic's metadata.
+	 * It is transient — only reused within the generating request — and the
+	 * canonical vector lives in aips_embeddings, so it is stripped here to reclaim
+	 * the space. Only the `embedding` key is removed; every other metadata field
+	 * (scores, duplicate flags, approval notes) is preserved. Processed in indexed
+	 * id batches and safe to re-run (rows without the key are skipped).
+	 *
+	 * @return void
+	 */
+	private function strip_author_topic_metadata_embeddings() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return;
+		}
+
+		$batch_size = 200;
+		$last_id    = 0;
+		$updated    = 0;
+
+		do {
+			$rows = $wpdb->get_results( $wpdb->prepare(
+				"SELECT id, metadata FROM `{$table}`
+				WHERE id > %d AND metadata LIKE %s
+				ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$last_id,
+				'%"embedding"%',
+				$batch_size
+			) );
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row->id;
+
+				$meta = json_decode( (string) $row->metadata, true );
+				if ( ! is_array( $meta ) || ! array_key_exists( 'embedding', $meta ) ) {
+					continue;
+				}
+
+				unset( $meta['embedding'] );
+
+				$wpdb->update(
+					$table,
+					array( 'metadata' => wp_json_encode( $meta ) ),
+					array( 'id' => (int) $row->id ),
+					array( '%s' ),
+					array( '%d' )
+				);
+				++$updated;
+			}
+		} while ( ! empty( $rows ) );
+
+		if ( $updated ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Stripped cached embeddings from %d aips_author_topics metadata rows.', $updated ), 'info' );
+		}
+	}
+
+	/**
+	 * Delete aips_history_log rows whose parent aips_history row no longer exists.
+	 *
+	 * @return void
+	 */
+	private function cleanup_orphaned_history_log() {
+		global $wpdb;
+		$log  = $wpdb->prefix . 'aips_history_log';
+		$hist = $wpdb->prefix . 'aips_history';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $log ) ) !== $log ) {
+			return;
+		}
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $hist ) ) !== $hist ) {
+			return;
+		}
+
+		$deleted = $wpdb->query(
+			"DELETE l FROM `{$log}` l
+			LEFT JOIN `{$hist}` h ON h.id = l.history_id
+			WHERE h.id IS NULL" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		);
+
+		if ( $deleted ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Deleted %d orphaned aips_history_log rows.', (int) $deleted ), 'info' );
+		}
+	}
+
+	/**
+	 * Seed prompt profiles and backfill an initial version snapshot.
 	 *
 	 * @return void
 	 */
 	private function migrate_to_3_8_0() {
 		global $wpdb;
 
-		$versions_table = $wpdb->prefix . 'aips_prompt_profile_versions';
+		if (class_exists('AIPS_Prompt_Profile_Seeder')) {
+			AIPS_Prompt_Profile_Seeder::seed_defaults();
+		}
+
 		$profiles_table = $wpdb->prefix . 'aips_prompt_profiles';
-
-		$versions_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $versions_table ) );
-		$profiles_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $profiles_table ) );
-
-		if ( $versions_table_exists !== $versions_table || $profiles_table_exists !== $profiles_table ) {
+		$versions_table = $wpdb->prefix . 'aips_prompt_profile_versions';
+		if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $profiles_table)) !== $profiles_table
+			|| $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $versions_table)) !== $versions_table) {
 			return;
 		}
 
 		$stage_fields = array(
-			'title_prompt',
-			'title_followup_prompt',
-			'content_prompt',
-			'excerpt_prompt',
-			'excerpt_followup_prompt',
-			'featured_image_prompt',
-			'topic_ideas_prompt',
-			'metadata_prompt',
-			'taxonomy_prompt',
+			'title_prompt', 'title_followup_prompt', 'content_prompt',
+			'excerpt_prompt', 'excerpt_followup_prompt', 'featured_image_prompt',
+			'topic_ideas_prompt', 'metadata_prompt', 'taxonomy_prompt',
 		);
-
-		$profiles = $wpdb->get_results( "SELECT * FROM `{$profiles_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
-		if ( empty( $profiles ) ) {
-			return;
-		}
-
-		$seeded_count = 0;
-
-		foreach ( $profiles as $profile ) {
-			$profile_id = (int) $profile->id;
-
-			// Idempotency guard: skip profiles that already have a version row.
-			$existing_count = (int) $wpdb->get_var( $wpdb->prepare(
-				"SELECT COUNT(*) FROM `{$versions_table}` WHERE profile_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$profile_id
-			) );
-
-			if ( $existing_count > 0 ) {
+		$profiles = $wpdb->get_results("SELECT * FROM `{$profiles_table}`"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		foreach ($profiles as $profile) {
+			$exists = $wpdb->get_var($wpdb->prepare(
+				"SELECT id FROM `{$versions_table}` WHERE profile_id = %d LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				(int) $profile->id
+			));
+			if ($exists) {
 				continue;
 			}
 
 			$stages = array();
-			foreach ( $stage_fields as $field ) {
-				$stages[ $field ] = isset( $profile->$field ) ? $profile->$field : null;
+			foreach ($stage_fields as $field) {
+				$stages[$field] = isset($profile->$field) ? $profile->$field : null;
 			}
 
-			$created_at = isset( $profile->created_at ) && $profile->created_at ? (int) $profile->created_at : AIPS_DateTime::now()->timestamp();
-
-			$inserted = $wpdb->insert(
-				$versions_table,
-				array(
-					'profile_id'      => $profile_id,
-					'version_number'  => 1,
-					'stages'          => wp_json_encode( $stages ),
-					'parameters'      => null,
-					'change_summary'  => __( 'Initial snapshot (backfilled by migration 3.8.0).', 'ai-post-scheduler' ),
-					'created_by'      => null,
-					'created_at'      => $created_at,
-				)
-			);
-
-			if ( $inserted ) {
-				$seeded_count++;
-			}
-		}
-
-		if ( $seeded_count > 0 ) {
-			$this->logger->log( "Migration 3.8.0: Backfilled {$seeded_count} initial Prompt Profile version snapshot(s).", 'info' );
+			$wpdb->insert($versions_table, array(
+				'profile_id'     => (int) $profile->id,
+				'version_number' => 1,
+				'stages'         => wp_json_encode($stages),
+				'parameters'     => null,
+				'change_summary' => __('Initial snapshot (backfilled by migration 3.8.0).', 'ai-post-scheduler'),
+				'created_by'     => null,
+				'created_at'     => !empty($profile->created_at) ? (int) $profile->created_at : AIPS_DateTime::now()->timestamp(),
+			));
 		}
 	}
+
 }
 
