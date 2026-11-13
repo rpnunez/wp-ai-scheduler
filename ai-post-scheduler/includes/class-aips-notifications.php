@@ -839,6 +839,48 @@ class AIPS_Notifications {
 	 */
 	public function enqueue_digest_notification($type, array $payload = array()) {
 		$queue = $this->get_digest_queue();
+
+		$post_id = (isset($payload['meta']) && is_array($payload['meta']) && !empty($payload['meta']['post_id']))
+			? absint($payload['meta']['post_id'])
+			: 0;
+
+		if ($post_id > 0) {
+			foreach ($queue as $idx => $queued_item) {
+				$queued_post_id = (isset($queued_item['meta']) && is_array($queued_item['meta']) && !empty($queued_item['meta']['post_id']))
+					? absint($queued_item['meta']['post_id'])
+					: 0;
+
+				if ($queued_post_id === $post_id) {
+					// Identical notification type already queued for this post.
+					if (isset($queued_item['type']) && $queued_item['type'] === $type) {
+						return false;
+					}
+
+					// Upgrade generic post_generated to post_ready_for_review for drafts awaiting review.
+					if ('post_generated' === $queued_item['type'] && 'post_ready_for_review' === $type) {
+						$queue[$idx] = array(
+							'type'        => $type,
+							'title'       => isset($payload['title']) ? $payload['title'] : '',
+							'message'     => isset($payload['message']) ? $payload['message'] : '',
+							'url'         => isset($payload['url']) ? $payload['url'] : '',
+							'level'       => isset($payload['level']) ? $payload['level'] : 'info',
+							'meta'        => isset($payload['meta']) && is_array($payload['meta']) ? $payload['meta'] : array(),
+							'vars'        => isset($payload['vars']) && is_array($payload['vars']) ? $payload['vars'] : array(),
+							'to_email'    => isset($payload['to_email']) ? $payload['to_email'] : '',
+							'enqueued_at' => isset($queued_item['enqueued_at']) ? $queued_item['enqueued_at'] : AIPS_DateTime::now()->timestamp(),
+						);
+						update_option('aips_notif_digest_queue', $queue, false);
+						return true;
+					}
+
+					// If already queued as post_ready_for_review, do not duplicate with generic post_generated.
+					if ('post_ready_for_review' === $queued_item['type'] && 'post_generated' === $type) {
+						return false;
+					}
+				}
+			}
+		}
+
 		$queue[] = array(
 			'type'        => $type,
 			'title'       => isset($payload['title']) ? $payload['title'] : '',

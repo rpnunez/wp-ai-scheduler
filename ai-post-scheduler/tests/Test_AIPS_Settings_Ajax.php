@@ -273,6 +273,33 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		$this->assertArrayHasKey('aips_notification_preferences_template_generated', $wp_settings_fields['aips-settings']['aips_notifications_automation_section']);
 		$this->assertArrayHasKey('aips_notification_preferences_daily_digest', $wp_settings_fields['aips-settings']['aips_notifications_digests_section']);
 	}
+
+	public function test_ajax_save_settings_persists_notif_digest_types() {
+		$settings = new AIPS_Settings();
+		$settings->register_settings();
+
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_notif_digest_enabled'   => '1',
+			'aips_notif_digest_threshold' => '10',
+			'aips_notif_digest_types'     => array('post_generated', 'template_generated', 'invalid_type'),
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame(1, (int) get_option('aips_notif_digest_enabled'));
+		$this->assertSame(10, (int) get_option('aips_notif_digest_threshold'));
+
+		$stored_types = get_option('aips_notif_digest_types');
+		$this->assertIsArray($stored_types);
+		$this->assertContains('post_generated', $stored_types);
+		$this->assertContains('template_generated', $stored_types);
+		$this->assertNotContains('invalid_type', $stored_types);
+	}
 }
 
 class Test_AIPS_Settings_Ajax_Fake_AI_Service implements AIPS_AI_Service_Interface {
