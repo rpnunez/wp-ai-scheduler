@@ -1108,6 +1108,18 @@ class AIPS_Generator {
     }
 
     /**
+     * Generate a post from a generation context.
+     *
+     * Convenience alias for generate_post($context).
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return int|WP_Error ID of created post or WP_Error on failure.
+     */
+    public function generate_from_context(AIPS_Generation_Context $context) {
+        return $this->generate_post($context);
+    }
+
+    /**
      * Write the "trigger source" and "trigger method" entries to the current
      * history container so the History modal can show what started the run
      * and whether it was manual or automatic.
@@ -1127,6 +1139,39 @@ class AIPS_Generator {
             $this->current_history,
             $trigger['source'],
             $method !== '' ? $method : AIPS_Generation_Trigger::METHOD_MANUAL
+        );
+    }
+
+    /**
+     * Designate this post as the campaign pillar when its template is the
+     * pillar template and no pillar has been stored yet.
+     *
+     * The context snapshot can be stale: two generations may both observe an
+     * empty pillar. The repository writes pillar_post_id only while it is
+     * still unset, so the first committed claim wins.
+     *
+     * @param AIPS_Campaign_Context $context Campaign generation context.
+     * @param int                   $post_id Created post ID.
+     * @return void
+     */
+    private function maybe_claim_campaign_pillar(AIPS_Campaign_Context $context, $post_id) {
+        if (!$context->is_silo_enabled() || $context->get_pillar_post_id()) {
+            return;
+        }
+
+        $pillar_template_id = (int) $context->get_pillar_template_id();
+        $template_id = (int) $context->get_id();
+        if ($pillar_template_id <= 0 || $pillar_template_id !== $template_id) {
+            return;
+        }
+
+        if (!class_exists('AIPS_Campaigns_Repository')) {
+            return;
+        }
+
+        AIPS_Campaigns_Repository::instance()->claim_pillar_post_if_unset(
+            (int) $context->get_campaign_id(),
+            (int) $post_id
         );
     }
 
@@ -1156,19 +1201,25 @@ class AIPS_Generator {
         // Extract source information from context
         $history_metadata = array();
 
-        if ($context instanceof AIPS_Template_Context) {
-            $history_metadata['template_id'] = $context->get_id();
-            $template = $context->get_template();
-            if ($template && !empty($template->campaign_id)) {
-                $history_metadata['campaign_id'] = absint($template->campaign_id);
-            }
-        } elseif ($context instanceof AIPS_Topic_Context) {
+        $effective_context = $context;
+        if ($context instanceof AIPS_Campaign_Context && method_exists($context, 'get_inner_context')) {
+            $effective_context = $context->get_inner_context();
+        }
+
+        if ($effective_context instanceof AIPS_Template_Context) {
+            $history_metadata['template_id'] = $effective_context->get_id();
+        } elseif ($effective_context instanceof AIPS_Topic_Context) {
             // For topic context, store author_id and topic_id
-            $history_metadata['topic_id'] = $context->get_id();
-            $author = $context->get_author();
+            $history_metadata['topic_id'] = $effective_context->get_id();
+            $author = $effective_context->get_author();
             if ($author && isset($author->id)) {
                 $history_metadata['author_id'] = $author->id;
             }
+        }
+
+        // Campaign attribution comes from the campaign context decorator.
+        if ($context instanceof AIPS_Campaign_Context && $context->get_campaign_id()) {
+            $history_metadata['campaign_id'] = $context->get_campaign_id();
         }
 
         // Get creation_method from context, default to 'manual' if not specified
@@ -1361,8 +1412,20 @@ class AIPS_Generator {
             $this->current_history->complete_success($completion_data);
         }
 
-        if ($context instanceof AIPS_Template_Context) {
-            $template = $context->get_template();
+        if ($context instanceof AIPS_Campaign_Context && $context->get_campaign_id()) {
+            $campaign_id = $context->get_campaign_id();
+            update_post_meta($post_id, '_aips_campaign_id', $campaign_id);
+            if (class_exists('AIPS_Campaigns_Repository')) {
+                $campaigns_repo = AIPS_Campaigns_Repository::instance();
+                if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
+                    $campaigns_repo->flush_campaign_cache($campaign_id);
+                }
+                if (!$generation_incomplete && 'publish' === get_post_status($post_id)) {
+                    $this->maybe_claim_campaign_pillar($context, $post_id);
+                }
+            }
+        } elseif ($effective_context instanceof AIPS_Template_Context) {
+            $template = $effective_context->get_template();
             if ($template && !empty($template->campaign_id) && class_exists('AIPS_Campaigns_Repository')) {
                 $campaigns_repo = AIPS_Campaigns_Repository::instance();
                 if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
@@ -1434,8 +1497,8 @@ class AIPS_Generator {
 
         // Trigger hook for other systems to respond to the new post
         // For backward compatibility, extract template if it's a template context
-        if ($context instanceof AIPS_Template_Context) {
-            $template_obj = $context->get_template();
+        if ($effective_context instanceof AIPS_Template_Context) {
+            $template_obj = $effective_context->get_template();
             do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id(), $context);
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
@@ -1531,13 +1594,18 @@ class AIPS_Generator {
         $resource_label = __('Manual generation', 'ai-post-scheduler');
         $dedupe_parts = array('generation_failed', $context->get_type(), $context->get_id(), $error->get_error_code());
 
-        if ($context instanceof AIPS_Template_Context) {
-            $template = $context->get_template();
+        $effective_context = $context;
+        if ($context instanceof AIPS_Campaign_Context && method_exists($context, 'get_inner_context')) {
+            $effective_context = $context->get_inner_context();
+        }
+
+        if ($effective_context instanceof AIPS_Template_Context) {
+            $template = $effective_context->get_template();
             if ($template && !empty($template->name)) {
                 $resource_label = sprintf(__('template "%s"', 'ai-post-scheduler'), $template->name);
             }
-        } elseif ($context instanceof AIPS_Topic_Context && !empty($context->get_topic())) {
-            $resource_label = sprintf(__('author topic "%s"', 'ai-post-scheduler'), $context->get_topic());
+        } elseif ($effective_context instanceof AIPS_Topic_Context && !empty($effective_context->get_topic())) {
+            $resource_label = sprintf(__('author topic "%s"', 'ai-post-scheduler'), $effective_context->get_topic());
         }
 
         do_action('aips_generation_failed', array(

@@ -407,28 +407,52 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return void
      */
     public function repair_missing_campaign_ids($campaign_id = 0) {
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $campaign_templates_table = $this->wpdb->prefix . 'aips_campaign_templates';
         $campaign_id = absint($campaign_id);
 
+        // 1. Repair from post meta if available (_aips_campaign_id)
         if ($campaign_id > 0) {
             $this->wpdb->query($this->wpdb->prepare(
                 "UPDATE {$this->table_name} h
-                INNER JOIN {$templates_table} t ON h.template_id = t.id
-                SET h.campaign_id = t.campaign_id
+                INNER JOIN {$this->wpdb->postmeta} pm ON h.post_id = pm.post_id AND pm.meta_key = '_aips_campaign_id'
+                SET h.campaign_id = CAST(pm.meta_value AS UNSIGNED)
                 WHERE h.campaign_id IS NULL
-                AND t.campaign_id = %d",
+                AND pm.meta_value = %d",
                 $campaign_id
             ));
-            return;
+        } else {
+            $this->wpdb->query(
+                "UPDATE {$this->table_name} h
+                INNER JOIN {$this->wpdb->postmeta} pm ON h.post_id = pm.post_id AND pm.meta_key = '_aips_campaign_id'
+                SET h.campaign_id = CAST(pm.meta_value AS UNSIGNED)
+                WHERE h.campaign_id IS NULL
+                AND pm.meta_value > 0"
+            );
         }
 
-        $this->wpdb->query(
-            "UPDATE {$this->table_name} h
-            INNER JOIN {$templates_table} t ON h.template_id = t.id
-            SET h.campaign_id = t.campaign_id
-            WHERE h.campaign_id IS NULL
-            AND t.campaign_id IS NOT NULL"
-        );
+        // 2. Repair from campaign_templates pivot table (for templates belonging to exactly one campaign)
+        if ($campaign_id > 0) {
+            $this->wpdb->query($this->wpdb->prepare(
+                "UPDATE {$this->table_name} h
+                INNER JOIN {$campaign_templates_table} ct ON h.template_id = ct.template_id
+                SET h.campaign_id = ct.campaign_id
+                WHERE h.campaign_id IS NULL
+                AND ct.campaign_id = %d",
+                $campaign_id
+            ));
+        } else {
+            $this->wpdb->query(
+                "UPDATE {$this->table_name} h
+                INNER JOIN (
+                    SELECT template_id, MAX(campaign_id) AS single_campaign_id
+                    FROM {$campaign_templates_table}
+                    GROUP BY template_id
+                    HAVING COUNT(DISTINCT campaign_id) = 1
+                ) single_ct ON h.template_id = single_ct.template_id
+                SET h.campaign_id = single_ct.single_campaign_id
+                WHERE h.campaign_id IS NULL"
+            );
+        }
     }
 
     public function get_daily_success_failure_trend($days = 14) {
@@ -1588,14 +1612,20 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         );
     }
 
-    public function get_stats() {
+    public function get_stats($filters = array()) {
+        $campaign_id   = !empty($filters['campaign_id']) ? absint($filters['campaign_id']) : 0;
+        $cache_context = $campaign_id > 0 ? array('campaign_id' => $campaign_id) : array();
+
         $stats = $this->cache_read(
             'history.get_stats',
-            array(),
-            function() {
+            $cache_context,
+            function() use ($campaign_id) {
                 // Generation runs only: event containers, indexing and other background
                 // jobs would otherwise inflate the totals and the success rate.
                 $run_condition = self::generation_run_condition();
+                if ($campaign_id > 0) {
+                    $run_condition .= $this->wpdb->prepare(' AND campaign_id = %d', $campaign_id);
+                }
                 $results = $this->wpdb->get_row(
                     "SELECT
                         COUNT(*) as total,
@@ -1609,13 +1639,17 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
                 // Background jobs (indexing, bulk slices, source fetches...) are not generation
                 // runs, so they are reported next to the run figures instead of inside them.
+                $job_condition = self::background_job_condition();
+                if ($campaign_id > 0) {
+                    $job_condition .= $this->wpdb->prepare(' AND campaign_id = %d', $campaign_id);
+                }
                 $job_results = $this->wpdb->get_row(
                     "SELECT
                         COUNT(*) as total,
                         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
                         SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
                      FROM {$this->table_name}
-                     WHERE " . self::background_job_condition()
+                     WHERE {$job_condition}"
                 );
 
                 $stats = array(

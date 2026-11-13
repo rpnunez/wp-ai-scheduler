@@ -245,7 +245,43 @@ class AIPS_Schedule_Processor {
             return;
         }
 
-        $actual_template_model = $this->template_repository->get_by_id($schedule->template_id);
+        $target_template_id    = (int) $schedule->template_id;
+        $actual_template_model = null;
+
+        // Resolve campaign template if schedule uses campaign_rotate or campaign_all
+        if (isset($schedule->rotation_pattern) && !empty($schedule->campaign_id) && class_exists('AIPS_Campaigns_Repository')) {
+            $campaign_repo      = AIPS_Campaigns_Repository::instance();
+            $campaign_templates = $campaign_repo->get_templates_by_campaign((int) $schedule->campaign_id);
+            $active_templates   = array();
+            if (!empty($campaign_templates)) {
+                foreach ($campaign_templates as $tmpl) {
+                    if (!isset($tmpl->is_active) || (bool) $tmpl->is_active) {
+                        $active_templates[] = $tmpl;
+                    }
+                }
+            }
+
+            if (!empty($active_templates)) {
+                if ($schedule->rotation_pattern === 'campaign_rotate') {
+                    $cursor           = isset($current_run_state['campaign_template_cursor']) ? (int) $current_run_state['campaign_template_cursor'] : 0;
+                    $selected_tmpl    = $active_templates[$cursor % count($active_templates)];
+                    $target_template_id    = (int) $selected_tmpl->id;
+                    $actual_template_model = $selected_tmpl;
+                } elseif ($schedule->rotation_pattern === 'campaign_all') {
+                    $completed        = isset($current_run_state['completed']) ? (int) $current_run_state['completed'] : 0;
+                    $tmpl_count       = count($active_templates);
+                    $per_tmpl_qty     = max(1, (int) floor($total_quantity / $tmpl_count));
+                    $slice_tmpl_index = (int) floor($completed / $per_tmpl_qty) % $tmpl_count;
+                    $selected_tmpl    = $active_templates[$slice_tmpl_index];
+                    $target_template_id    = (int) $selected_tmpl->id;
+                    $actual_template_model = $selected_tmpl;
+                }
+            }
+        }
+
+        if (!$actual_template_model) {
+            $actual_template_model = $this->template_repository->get_by_id($target_template_id);
+        }
 
         if (!$actual_template_model) {
             $this->logger->log('Batch slice: template not found for schedule ' . $schedule_id . ' — skipping.', 'error');
@@ -261,7 +297,7 @@ class AIPS_Schedule_Processor {
 
         // Build the typed generator-facing template entry for this batch slice.
         $template = AIPS_Template_Entry::from_template_and_overrides(
-            (int) $schedule->template_id,
+            $target_template_id,
             $actual_template_model,
             $total_quantity,
             $article_structure_id
@@ -270,6 +306,7 @@ class AIPS_Schedule_Processor {
         $topic   = isset($schedule->topic) && $schedule->topic !== '' ? (string) $schedule->topic : null;
         $context = new AIPS_Template_Context($template, null, $topic, 'scheduled');
         $context->set_trigger_context($this->build_schedule_trigger_context($schedule_obj));
+        $context = $this->resolve_campaign_context($context, $schedule, $actual_template_model);
 
         // Load (or create) the schedule's persistent lifecycle history container.
         $history = $this->result_handler->get_or_create_schedule_history($schedule_id);
@@ -314,14 +351,18 @@ class AIPS_Schedule_Processor {
             return;
         }
 
-        $this->repository->update_run_state($schedule_id, array(
+        $batch_processing_state = array(
             'status'         => 'batch_processing',
             'total'          => $total_quantity,
             'completed'      => max(0, $start_index),
             'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
             'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
             'timestamp'      => AIPS_DateTime::now()->toIso8601(),
-        ));
+        );
+        if (isset($current_run_state['campaign_template_cursor'])) {
+            $batch_processing_state['campaign_template_cursor'] = (int) $current_run_state['campaign_template_cursor'];
+        }
+        $this->repository->update_run_state($schedule_id, $batch_processing_state);
 
         $successful_post_ids = array();
         $errors              = array();
@@ -373,7 +414,7 @@ class AIPS_Schedule_Processor {
 
         // Update run_state to reflect this slice's outcome.
         if (!empty($errors)) {
-            $this->repository->update_run_state($schedule_id, array(
+            $slice_error_state = array(
                 'status'        => $total_completed > 0 ? 'partial' : 'failed',
                 'error_code'    => $errors[0]->get_error_code(),
                 'error_message' => $errors[0]->get_error_message(),
@@ -382,7 +423,11 @@ class AIPS_Schedule_Processor {
                 'dispatched_at' => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : 0,
                 'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
                 'timestamp'     => AIPS_DateTime::now()->toIso8601(),
-            ));
+            );
+            if (isset($current_run_state['campaign_template_cursor'])) {
+                $slice_error_state['campaign_template_cursor'] = (int) $current_run_state['campaign_template_cursor'];
+            }
+            $this->repository->update_run_state($schedule_id, $slice_error_state);
             $this->logger->log(
                 sprintf(
                     'Batch slice marked schedule %d as %s after error at slice start=%d. completed=%d/%d, error=%s',
@@ -412,14 +457,20 @@ class AIPS_Schedule_Processor {
             }
 
             $this->repository->clear_batch_progress($schedule_id);
-            $this->repository->update_run_state($schedule_id, array(
+            $slice_success_state = array(
                 'status'         => 'success',
                 'completed'      => $total_completed,
                 'total'          => $total_quantity,
                 'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : 0,
                 'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
                 'timestamp'      => AIPS_DateTime::now()->toIso8601(),
-            ));
+            );
+            if (isset($latest_run_state['campaign_template_cursor'])) {
+                $slice_success_state['campaign_template_cursor'] = (int) $latest_run_state['campaign_template_cursor'];
+            } elseif (isset($current_run_state['campaign_template_cursor'])) {
+                $slice_success_state['campaign_template_cursor'] = (int) $current_run_state['campaign_template_cursor'];
+            }
+            $this->repository->update_run_state($schedule_id, $slice_success_state);
 
             // Clean up one-time schedules now that all posts have been generated.
             if (isset($schedule->frequency) && $schedule->frequency === 'once') {
@@ -950,14 +1001,61 @@ class AIPS_Schedule_Processor {
             }
         }
 
+        // ── Resolve campaign modes (campaign_rotate / campaign_all) ───────────
+        $is_campaign_rotate = isset($schedule->rotation_pattern) && $schedule->rotation_pattern === 'campaign_rotate' && !empty($schedule->campaign_id) && class_exists('AIPS_Campaigns_Repository');
+        $is_campaign_all    = isset($schedule->rotation_pattern) && $schedule->rotation_pattern === 'campaign_all' && !empty($schedule->campaign_id) && class_exists('AIPS_Campaigns_Repository');
+
+        $active_campaign_templates = array();
+        if (($is_campaign_rotate || $is_campaign_all) && !empty($schedule->campaign_id)) {
+            $campaign_templates = AIPS_Campaigns_Repository::instance()->get_templates_by_campaign((int) $schedule->campaign_id);
+            if (!empty($campaign_templates)) {
+                foreach ($campaign_templates as $camp_tmpl) {
+                    if (!isset($camp_tmpl->is_active) || (bool) $camp_tmpl->is_active) {
+                        $active_campaign_templates[] = $camp_tmpl;
+                    }
+                }
+            }
+        }
+
+        $decoded_run_state = $this->get_decoded_run_state($schedule);
+
+        if ($is_campaign_rotate) {
+            if (!empty($active_campaign_templates)) {
+                $cursor            = isset($decoded_run_state['campaign_template_cursor']) ? (int) $decoded_run_state['campaign_template_cursor'] : 0;
+                $selected_index    = $cursor % count($active_campaign_templates);
+                $selected_template = $active_campaign_templates[$selected_index];
+                $next_cursor       = ($selected_index + 1) % count($active_campaign_templates);
+
+                $decoded_run_state['campaign_template_cursor'] = $next_cursor;
+                $this->repository->update_run_state($schedule->schedule_id, $decoded_run_state);
+
+                $schedule->template_id = (int) $selected_template->id;
+
+                $camp_overrides = array();
+                if (!empty($selected_template->campaign_overrides)) {
+                    $decoded        = json_decode((string) $selected_template->campaign_overrides, true);
+                    $camp_overrides = is_array($decoded) ? $decoded : array();
+                }
+                if (!empty($camp_overrides['article_structure_id'])) {
+                    $article_structure_id = absint($camp_overrides['article_structure_id']);
+                }
+            } else {
+                $this->logger->log(sprintf('Schedule %d is set to campaign_rotate but campaign %d has no active linked templates.', $schedule->schedule_id, $schedule->campaign_id), 'warning');
+            }
+        }
+
         // ── Large-batch queue dispatch ──────────────────────────────────────────
         // When the requested quantity meets the large-batch threshold, dispatch
         // the work as a set of time-spread single cron events rather than
         // generating all posts synchronously here.  This applies to both
         // automated (cron) and manual runs.
-        $batch_service = $this->get_batch_queue_service();
-        if ($batch_service->needs_batch_queue($post_quantity)) {
-            return $this->dispatch_large_batch($schedule, $batch_service, $post_quantity, $is_manual, $history);
+        $batch_service        = $this->get_batch_queue_service();
+        $total_batch_quantity = ($is_campaign_all && !empty($active_campaign_templates))
+            ? ($post_quantity * count($active_campaign_templates))
+            : $post_quantity;
+
+        if ($batch_service->needs_batch_queue($total_batch_quantity)) {
+            return $this->dispatch_large_batch($schedule, $batch_service, $total_batch_quantity, $is_manual, $history);
         }
         // ── End large-batch check ─────────────────────────────────────────────
 
@@ -975,14 +1073,72 @@ class AIPS_Schedule_Processor {
         // Create context with creation_method
         $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
         $context->set_trigger_context($this->build_schedule_trigger_context($schedule));
+        $context = $this->resolve_campaign_context($context, $schedule, $schedule);
 
-        // ── Resumable batch progress ────────────────────────────────────────
-        // Determine where to start the loop.  When a previous automated run
-        // was interrupted mid-batch, batch_progress holds the last completed
-        // state.  We resume from last_index+1 so we never re-generate posts
-        // that already exist, and we count previously completed posts toward
-        // the total so the batch finishes at the right size.
-        list($overall_result, $batch_finished) = $this->execute_batch_progress($schedule, $context, $post_quantity, $is_manual);
+        // ── Check if schedule is set to run all campaign templates ──────────
+        if ($is_campaign_all) {
+            if (empty($active_campaign_templates)) {
+                $this->logger->log(sprintf('Schedule %d is set to campaign_all but campaign %d has no active linked templates.', $schedule->schedule_id, $schedule->campaign_id), 'warning');
+                return new WP_Error('no_campaign_templates', __('No active templates linked to campaign.', 'ai-post-scheduler'));
+            }
+
+            $generated_ids   = array();
+            $campaign_errors = array();
+            foreach ($active_campaign_templates as $camp_tmpl) {
+                $camp_overrides = array();
+                if (!empty($camp_tmpl->campaign_overrides)) {
+                    $decoded        = json_decode((string) $camp_tmpl->campaign_overrides, true);
+                    $camp_overrides = is_array($decoded) ? $decoded : array();
+                }
+                $camp_structure_id = !empty($camp_overrides['article_structure_id'])
+                    ? absint($camp_overrides['article_structure_id'])
+                    : (!empty($schedule->article_structure_id) ? absint($schedule->article_structure_id) : null);
+
+                $tmpl_entry = AIPS_Template_Entry::from_template_and_overrides(
+                    (int) $camp_tmpl->id,
+                    $camp_tmpl,
+                    $post_quantity,
+                    $camp_structure_id
+                );
+                $sub_context = new AIPS_Template_Context($tmpl_entry, null, $topic, $creation_method);
+                $sub_context->set_trigger_context($this->build_schedule_trigger_context($schedule));
+                $sub_context = $this->resolve_campaign_context($sub_context, $schedule, $camp_tmpl);
+
+                // Run each template with an isolated batch progress scope
+                $sub_schedule                 = clone $schedule;
+                $sub_schedule->batch_progress = null;
+                list($sub_result, $sub_finished) = $this->execute_batch_progress($sub_schedule, $sub_context, $post_quantity, $is_manual);
+
+                if (is_wp_error($sub_result) || !$sub_finished) {
+                    $sub_error         = is_wp_error($sub_result) ? $sub_result->get_error_message() : __('Batch did not finish.', 'ai-post-scheduler');
+                    $campaign_errors[] = sprintf('%s: %s', $camp_tmpl->name, $sub_error);
+                }
+                if (!is_wp_error($sub_result)) {
+                    if (is_array($sub_result)) {
+                        $generated_ids = array_merge($generated_ids, $sub_result);
+                    } elseif (is_numeric($sub_result)) {
+                        $generated_ids[] = (int) $sub_result;
+                    }
+                }
+            }
+
+            // Clear parent batch progress once after all templates complete
+            $this->repository->clear_batch_progress($schedule->schedule_id);
+
+            if (!empty($campaign_errors)) {
+                $overall_result = new WP_Error(
+                    empty($generated_ids) ? 'no_posts_generated' : 'campaign_partial_failure',
+                    implode('; ', $campaign_errors),
+                    array('post_ids' => $generated_ids)
+                );
+            } else {
+                $overall_result = !empty($generated_ids) ? $generated_ids : new WP_Error('no_posts_generated', __('No posts generated for campaign templates.', 'ai-post-scheduler'));
+            }
+            $batch_finished = true;
+        } else {
+            // ── Resumable batch progress ────────────────────────────────────────
+            list($overall_result, $batch_finished) = $this->execute_batch_progress($schedule, $context, $post_quantity, $is_manual);
+        }
 
         // An automated batch that yielded before a script timeout is neither a
         // success nor a failure: its cursor is saved in batch_progress and it
@@ -1184,8 +1340,9 @@ class AIPS_Schedule_Processor {
             return;
         }
 
-        $now            = AIPS_DateTime::now()->timestamp();
-        $correlation_id = (string) AIPS_Correlation_ID::get();
+        $now               = AIPS_DateTime::now()->timestamp();
+        $correlation_id    = (string) AIPS_Correlation_ID::get();
+        $decoded_run_state = $this->get_decoded_run_state($schedule);
 
         $dispatch_summary = $batch_service->dispatch(
             (int) $schedule->schedule_id,
@@ -1195,7 +1352,7 @@ class AIPS_Schedule_Processor {
         );
 
         if (is_wp_error($dispatch_summary)) {
-            $this->repository->update_run_state($schedule->schedule_id, array(
+            $batch_failed_state = array(
                 'status'         => 'failed',
                 'error_code'     => $dispatch_summary->get_error_code(),
                 'error_message'  => $dispatch_summary->get_error_message(),
@@ -1203,7 +1360,11 @@ class AIPS_Schedule_Processor {
                 'total'          => $post_quantity,
                 'correlation_id' => $correlation_id,
                 'timestamp'      => AIPS_DateTime::now()->toIso8601(),
-            ));
+            );
+            if (isset($decoded_run_state['campaign_template_cursor'])) {
+                $batch_failed_state['campaign_template_cursor'] = (int) $decoded_run_state['campaign_template_cursor'];
+            }
+            $this->repository->update_run_state($schedule->schedule_id, $batch_failed_state);
 
             $this->logger->log(
                 'Batch queue dispatch failed for schedule ' . $schedule->schedule_id . ': ' . $dispatch_summary->get_error_message(),
@@ -1239,7 +1400,7 @@ class AIPS_Schedule_Processor {
         // Persist batch-queued state so the re-dispatch guard above fires
         // if the cron fires again (or the user clicks "Run now" again)
         // while the batched events are still in flight.
-        $this->repository->update_run_state($schedule->schedule_id, array(
+        $batch_queued_state = array(
             'status'            => 'batch_queued',
             'total'             => $post_quantity,
             'completed'         => 0,
@@ -1248,7 +1409,11 @@ class AIPS_Schedule_Processor {
             'dispatched_at'     => $now,
             'correlation_id'    => $correlation_id,
             'timestamp'         => AIPS_DateTime::now()->toIso8601(),
-        ));
+        );
+        if (isset($decoded_run_state['campaign_template_cursor'])) {
+            $batch_queued_state['campaign_template_cursor'] = (int) $decoded_run_state['campaign_template_cursor'];
+        }
+        $this->repository->update_run_state($schedule->schedule_id, $batch_queued_state);
 
         $this->logger->log(
             sprintf(
@@ -1413,14 +1578,18 @@ class AIPS_Schedule_Processor {
                 // circuit-breaker logic can inspect what happened.
                 if (!$is_manual) {
                     $completed_so_far = $prior_completed + count($successful_post_ids);
-                    $this->repository->update_run_state($schedule->schedule_id, array(
+                    $immediate_error_state = array(
                         'status'        => $completed_so_far > 0 ? 'partial' : 'failed',
                         'error_code'    => $result->get_error_code(),
                         'error_message' => $result->get_error_message(),
                         'completed'     => $completed_so_far,
                         'total'         => $post_quantity,
                         'timestamp'     => AIPS_DateTime::now()->toIso8601(),
-                    ));
+                    );
+                    if (isset($decoded_run_state['campaign_template_cursor'])) {
+                        $immediate_error_state['campaign_template_cursor'] = (int) $decoded_run_state['campaign_template_cursor'];
+                    }
+                    $this->repository->update_run_state($schedule->schedule_id, $immediate_error_state);
                 }
                 // Stop the batch so batch_progress is preserved for resumption.
                 break;
@@ -1454,12 +1623,16 @@ class AIPS_Schedule_Processor {
                 // All posts generated — clear batch progress and persist a
                 // success run_state to indicate a clean completion.
                 $this->repository->clear_batch_progress($schedule->schedule_id);
-                $this->repository->update_run_state($schedule->schedule_id, array(
+                $immediate_success_state = array(
                     'status'    => 'success',
                     'completed' => $total_completed,
                     'total'     => $post_quantity,
                     'timestamp' => AIPS_DateTime::now()->toIso8601(),
-                ));
+                );
+                if (isset($decoded_run_state['campaign_template_cursor'])) {
+                    $immediate_success_state['campaign_template_cursor'] = (int) $decoded_run_state['campaign_template_cursor'];
+                }
+                $this->repository->update_run_state($schedule->schedule_id, $immediate_success_state);
             }
             // A timeout yield's run_state is written by defer_yielded_batch().
         }
@@ -1524,5 +1697,39 @@ class AIPS_Schedule_Processor {
         }
 
         return array($overall_result, $batch_finished);
+    }
+
+    /**
+     * Resolve and apply campaign context to a generation context if applicable.
+     *
+     * @param AIPS_Generation_Context $context Inner generation context.
+     * @param object                  $schedule Schedule object.
+     * @param object|null             $template_model Template object.
+     * @return AIPS_Generation_Context
+     */
+    private function resolve_campaign_context($context, $schedule, $template_model = null) {
+        $campaign_id = !empty($schedule->campaign_id) ? absint($schedule->campaign_id) : 0;
+        if (!$campaign_id || !class_exists('AIPS_Campaigns_Repository') || !class_exists('AIPS_Campaign_Context')) {
+            return $context;
+        }
+
+        $campaign = AIPS_Campaigns_Repository::instance()->get_campaign_by_id($campaign_id);
+        if (!$campaign) {
+            return $context;
+        }
+
+        $overrides = array();
+        if (is_object($template_model)) {
+            if (isset($template_model->campaign_overrides)) {
+                $decoded = json_decode((string) $template_model->campaign_overrides, true);
+                $overrides = is_array($decoded) ? $decoded : array();
+            } else {
+                // Plain template/schedule rows do not carry the link-table overrides.
+                $template_id = !empty($template_model->template_id) ? (int) $template_model->template_id : (!empty($template_model->id) ? (int) $template_model->id : 0);
+                $overrides = AIPS_Campaigns_Repository::instance()->get_template_overrides($campaign_id, $template_id);
+            }
+        }
+
+        return new AIPS_Campaign_Context($context, $campaign, $overrides);
     }
 }

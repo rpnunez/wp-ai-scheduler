@@ -268,4 +268,101 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Voice slug prompt', $context->get_slug_prompt());
 		$this->assertEquals(456, $context->get_voice_id());
 	}
+
+	/**
+	 * Test that Campaign Context resolves attributes with correct precedence:
+	 * Per-template override > Campaign default > Inner context.
+	 *
+	 * @return void
+	 */
+	public function test_campaign_context_structure_precedence() {
+		$template = (object) array(
+			'id'                   => 123,
+			'name'                 => 'Test Template',
+			'prompt_template'      => 'Prompt',
+			'article_structure_id' => 99,
+		);
+		$base_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$campaign = (object) array(
+			'id'                           => 10,
+			'name'                         => 'Q4 Campaign',
+			'content_goal'                 => 'Promote new products',
+			'prompt_directives'            => 'Maintain professional tone',
+			'default_article_structure_id' => 88,
+		);
+
+		// 1. Without overrides: Campaign default (88) overrides inner context (99)
+		$context_without_override = new AIPS_Campaign_Context($base_context, $campaign, array());
+		$this->assertSame(88, $context_without_override->get_article_structure_id());
+		$this->assertSame('Promote new products', $context_without_override->get_campaign_goal());
+		$this->assertSame('Maintain professional tone', $context_without_override->get_campaign_directives());
+
+		// 2. With override: Per-template override (77) overrides Campaign default (88)
+		$context_with_override = new AIPS_Campaign_Context($base_context, $campaign, array('article_structure_id' => 77));
+		$this->assertSame(77, $context_with_override->get_article_structure_id());
+
+		// 3. When Campaign has no default, fall back to inner context (99)
+		$campaign_no_default = (object) array(
+			'id'                           => 10,
+			'name'                         => 'Q4 Campaign',
+			'content_goal'                 => '',
+			'prompt_directives'            => '',
+			'default_article_structure_id' => null,
+		);
+		$context_fallback = new AIPS_Campaign_Context($base_context, $campaign_no_default, array());
+		$this->assertSame(99, $context_fallback->get_article_structure_id());
+	}
+
+	/**
+	 * Test that Campaign Context forwards slug and image methods to inner context.
+	 */
+	public function test_campaign_context_implements_all_generation_interface_methods() {
+		$template = (object) array(
+			'id'              => 123,
+			'name'            => 'Test Template',
+			'prompt_template' => 'Prompt',
+		);
+		$base_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$campaign = (object) array(
+			'id'   => 10,
+			'name' => 'Q4 Campaign',
+		);
+
+		$context = new AIPS_Campaign_Context($base_context, $campaign, array());
+
+		$this->assertInstanceOf(AIPS_Generation_Context::class, $context);
+		$this->assertIsBool($context->has_content_images());
+		$this->assertIsArray($context->get_content_images());
+		$this->assertIsBool($context->should_generate_slug());
+		$this->assertIsString($context->get_slug_prompt());
+		$this->assertSame($base_context, $context->get_inner_context());
+	}
+
+	/**
+	 * Test author precedence with zero and non-zero overrides.
+	 */
+	public function test_campaign_context_author_precedence() {
+		$template = (object) array(
+			'id'          => 123,
+			'name'        => 'Test Template',
+			'post_author' => 1,
+		);
+		$base_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$campaign = (object) array(
+			'id'                => 10,
+			'name'              => 'Q4 Campaign',
+			'default_author_id' => 5,
+		);
+
+		// With campaign default, author should be 5
+		$context = new AIPS_Campaign_Context($base_context, $campaign, array());
+		$this->assertSame(5, $context->get_post_author());
+
+		// With override author = 9, author should be 9
+		$context_override = new AIPS_Campaign_Context($base_context, $campaign, array('post_author' => 9));
+		$this->assertSame(9, $context_override->get_post_author());
+	}
 }

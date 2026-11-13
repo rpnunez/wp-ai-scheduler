@@ -70,7 +70,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
-	public function test_get_campaigns_applies_archived_and_id_filters_and_uses_total_history_for_delete_guard() {
+	public function test_get_campaigns_applies_archived_and_id_filters_and_uses_generated_posts_for_delete_guard() {
 		$this->wpdb_stub->results_to_return = array(
 			(object) array(
 				'id' => 42,
@@ -87,7 +87,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 
 		$this->assertCount(1, $campaigns);
 		$this->assertSame(2, $campaigns[0]->total_history_count);
-		$this->assertFalse($campaigns[0]->can_delete);
+		$this->assertTrue($campaigns[0]->can_delete);
 		$this->assertStringContainsString('WHERE c.is_archived = 1 AND c.id = 42', $this->wpdb_stub->last_get_results_query);
 	}
 
@@ -111,15 +111,15 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertStringNotContainsString('ORDER BY c.is_archived ASC, c.created_at DESC', $this->wpdb_stub->last_get_results_query);
 	}
 
-	public function test_can_delete_campaign_checks_all_history_entries() {
+	public function test_can_delete_campaign_checks_only_generated_posts() {
 		$this->wpdb_stub->var_to_return = '3';
 
 		$repository = $this->new_repository();
 
 		$this->assertFalse($repository->can_delete_campaign(55));
 		$this->assertStringContainsString('WHERE campaign_id = 55', $this->wpdb_stub->last_get_var_query);
-		$this->assertStringNotContainsString("status = 'completed'", $this->wpdb_stub->last_get_var_query);
-		$this->assertStringNotContainsString('post_id IS NOT NULL', $this->wpdb_stub->last_get_var_query);
+		$this->assertStringContainsString("status IN ('completed', 'partial')", $this->wpdb_stub->last_get_var_query);
+		$this->assertStringContainsString('post_id IS NOT NULL', $this->wpdb_stub->last_get_var_query);
 	}
 
 	public function test_create_campaign_bundle_returns_wp_error_when_campaign_insert_fails() {
@@ -175,6 +175,47 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertNull($this->wpdb_stub->last_update_call);
 	}
 
+	public function test_create_campaign_persists_silo_fields() {
+		$repository = $this->new_repository();
+		$this->wpdb_stub->insert_id = 99;
+
+		$id = $repository->create_campaign(array(
+			'name'                   => 'Silo Campaign',
+			'content_goal'           => 'Rank for Solar',
+			'silo_enabled'           => 1,
+			'pillar_post_id'         => 301,
+			'pillar_template_id'     => 15,
+			'pillar_anchor_keywords' => 'best solar, residential solar',
+		));
+
+		$this->assertSame(99, $id);
+		$this->assertNotNull($this->wpdb_stub->last_insert_call);
+		$data = $this->wpdb_stub->last_insert_call['data'];
+		$this->assertSame(1, $data['silo_enabled']);
+		$this->assertSame(301, $data['pillar_post_id']);
+		$this->assertSame(15, $data['pillar_template_id']);
+		$this->assertSame('best solar, residential solar', $data['pillar_anchor_keywords']);
+	}
+
+	public function test_update_campaign_persists_silo_fields() {
+		$repository = $this->new_repository();
+
+		$result = $repository->update_campaign(42, array(
+			'silo_enabled'           => 1,
+			'pillar_post_id'         => 505,
+			'pillar_template_id'     => 22,
+			'pillar_anchor_keywords' => 'keyword one, keyword two',
+		));
+
+		$this->assertTrue($result);
+		$this->assertNotNull($this->wpdb_stub->last_update_call);
+		$data = $this->wpdb_stub->last_update_call['data'];
+		$this->assertSame(1, $data['silo_enabled']);
+		$this->assertSame(505, $data['pillar_post_id']);
+		$this->assertSame(22, $data['pillar_template_id']);
+		$this->assertSame('keyword one, keyword two', $data['pillar_anchor_keywords']);
+	}
+
 	public function test_get_campaign_health_returns_expected_metrics_and_query_shapes() {
 		$this->wpdb_stub->rows_to_return = array(
 			(object) array(
@@ -200,7 +241,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertStringContainsString('FROM wp_aips_history h LEFT JOIN wp_posts p ON h.post_id = p.ID', $this->wpdb_stub->get_row_queries[0]);
 		$this->assertStringContainsString('FROM wp_aips_schedule', $this->wpdb_stub->get_row_queries[1]);
 		$this->assertStringContainsString("TRIM(COALESCE(prompt_template, '')) = ''", $this->wpdb_stub->get_var_queries[0]);
-		$this->assertStringContainsString('ORDER BY created_at DESC, id DESC LIMIT 1', $this->wpdb_stub->get_var_queries[1]);
+		$this->assertStringContainsString('ORDER BY id DESC LIMIT 1', $this->wpdb_stub->get_var_queries[1]);
 	}
 
 	public function test_get_recent_activity_uses_expected_union_order_and_limit() {
@@ -276,6 +317,135 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_link_template_inserts_or_updates_pivot_record() {
+		$repository = $this->new_repository();
+		$result = $repository->link_template(10, 25, array('post_status' => 'draft'));
+		$this->assertTrue($result);
+		$this->assertNotEmpty($this->wpdb_stub->queries);
+		$this->assertStringContainsString('aips_campaign_templates', end($this->wpdb_stub->queries));
+	}
+
+	public function test_unlink_template_deletes_pivot_record() {
+		$repository = $this->new_repository();
+		$result = $repository->unlink_template(10, 25);
+		$this->assertTrue($result);
+	}
+
+	public function test_update_template_overrides_updates_record() {
+		$repository = $this->new_repository();
+		$result = $repository->update_template_overrides(10, 25, array('voice_id' => 3));
+		$this->assertTrue($result);
+		$this->assertNotNull($this->wpdb_stub->last_update_call);
+		$this->assertSame('wp_aips_campaign_templates', $this->wpdb_stub->last_update_call['table']);
+	}
+
+	public function test_get_templates_by_campaign_queries_pivot_table() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('id' => 25, 'name' => 'Tech Article', 'overrides' => null),
+		);
+		$repository = $this->new_repository();
+		$templates = $repository->get_templates_by_campaign(10);
+		$this->assertCount(1, $templates);
+		$this->assertSame('Tech Article', $templates[0]->name);
+		$this->assertStringContainsString('aips_campaign_templates', $this->wpdb_stub->last_get_results_query);
+	}
+
+	public function test_claim_pillar_post_if_unset_updates_only_while_pillar_is_empty() {
+		$repository = $this->new_repository();
+
+		$this->assertFalse($repository->claim_pillar_post_if_unset(0, 900));
+		$this->assertFalse($repository->claim_pillar_post_if_unset(42, 0));
+		$this->assertSame(array(), $this->wpdb_stub->queries);
+
+		$this->assertTrue($repository->claim_pillar_post_if_unset(42, 900));
+		$claim_sql = '';
+		foreach ($this->wpdb_stub->queries as $query) {
+			if (false !== strpos($query, 'SET pillar_post_id = 900')) {
+				$claim_sql = $query;
+			}
+		}
+		$this->assertNotSame('', $claim_sql);
+		$this->assertStringContainsString('UPDATE wp_aips_campaigns', $claim_sql);
+		$this->assertStringContainsString('WHERE id = 42 AND (pillar_post_id IS NULL OR pillar_post_id = 0)', $claim_sql);
+		$this->assertNull($this->wpdb_stub->last_update_call);
+
+		$this->wpdb_stub->query_return_value = 0;
+		$this->assertFalse($repository->claim_pillar_post_if_unset(42, 901));
+	}
+
+	public function test_get_campaign_ids_by_template_returns_array_of_ids() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('campaign_id' => '10'),
+			(object) array('campaign_id' => '12'),
+		);
+		$repository = $this->new_repository();
+		$campaign_ids = $repository->get_campaign_ids_by_template(25);
+		$this->assertSame(array(10, 12), $campaign_ids);
+	}
+
+	public function test_get_template_counts_by_campaign_ids_returns_map_of_counts() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('campaign_id' => '10', 'count' => '3'),
+			(object) array('campaign_id' => '12', 'count' => '1'),
+		);
+		$repository = $this->new_repository();
+		$counts = $repository->get_template_counts_by_campaign_ids(array(10, 12));
+		$this->assertSame(array(10 => 3, 12 => 1), $counts);
+		$this->assertStringContainsString('IN (10,12)', $this->wpdb_stub->last_get_results_query);
+	}
+
+	public function test_get_template_campaign_mappings_returns_grouped_array() {
+		$this->wpdb_stub->results_to_return = array(
+			(object) array('campaign_id' => '10', 'template_id' => '25'),
+			(object) array('campaign_id' => '12', 'template_id' => '25'),
+		);
+		$repository = $this->new_repository();
+		$mappings = $repository->get_template_campaign_mappings();
+		$this->assertSame(array(25 => array(10, 12)), $mappings);
+	}
+
+	public function test_duplicate_campaign_resets_pillar_post_id_to_null() {
+		$this->wpdb_stub->results_queue = array(
+			array(
+				(object) array(
+					'id'                           => 10,
+					'name'                         => 'Original Campaign',
+					'content_goal'                 => 'Goal',
+					'prompt_directives'            => 'Directives',
+					'default_article_structure_id' => 1,
+					'default_post_status'          => 'draft',
+					'default_voice_id'             => 2,
+					'default_author_id'            => 3,
+					'default_categories'           => 'tech',
+					'default_tags'                 => 'tag1',
+					'campaign_mode'                => 'template',
+					'silo_enabled'                 => 1,
+					'pillar_post_id'               => 777,
+					'pillar_template_id'           => 20,
+					'pillar_anchor_keywords'       => 'keywords',
+					'is_active'                    => 1,
+					'is_archived'                  => 0,
+					'generated_posts_count'        => 0,
+					'total_history_count'          => 0,
+					'linked_template_count'        => 0,
+					'linked_schedule_count'        => 0,
+					'active_schedule_count'        => 0,
+				),
+			),
+			array(),
+			array(),
+		);
+		$this->wpdb_stub->insert_id = 99;
+
+		$repository = $this->new_repository();
+		$new_id = $repository->duplicate_campaign(10);
+
+		$this->assertSame(99, $new_id);
+		$this->assertNotNull($this->wpdb_stub->last_insert_call);
+		$this->assertNull($this->wpdb_stub->last_insert_call['data']['pillar_post_id']);
+		$this->assertSame(1, $this->wpdb_stub->last_insert_call['data']['silo_enabled']);
+	}
+
 	private function define_test_dependency_classes() {
 		if (!class_exists('AIPS_Scheduler', false)) {
 			eval('class AIPS_Scheduler { public function save_schedule($data) { return 101; } }');
@@ -328,6 +498,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public $results_to_return = array();
 
+	public $results_queue = array();
+
 	public $rows_to_return = array();
 
 	public $var_to_return = null;
@@ -344,6 +516,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public $last_update_call = null;
 
+	public $last_insert_call = null;
+
 	public $insert_return_values = array();
 
 	public $queries = array();
@@ -351,6 +525,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	public $insert_id = 321;
 
 	public $delete_return_value = 1;
+
+	public $query_return_value = true;
 
 	public $last_error = '';
 
@@ -376,6 +552,10 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 		$this->last_get_results_query = preg_replace('/\s+/', ' ', trim($query));
 
+		if (!empty($this->results_queue)) {
+			return array_shift($this->results_queue);
+		}
+
 		return $this->results_to_return;
 	}
 
@@ -384,11 +564,23 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 		$this->last_get_results_query = $normalized_query;
 		$this->get_row_queries[] = $normalized_query;
 
+		if (false !== strpos($query, $this->options)) {
+			return null;
+		}
+
 		if (!empty($this->rows_to_return)) {
 			return array_shift($this->rows_to_return);
 		}
 
 		return null;
+	}
+
+	public function get_col($query, $x = 0) {
+		return array();
+	}
+
+	public function replace($table, $data, $format = null) {
+		return 1;
 	}
 
 	public function get_var($query, $x = 0, $y = 0) {
@@ -405,7 +597,7 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public function query($query) {
 		$this->queries[] = preg_replace('/\s+/', ' ', trim($query));
-		return true;
+		return $this->query_return_value;
 	}
 
 	public function suppress_errors($suppress = true) {
@@ -417,6 +609,11 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	}
 
 	public function insert($table, $data, $format = null) {
+		$this->last_insert_call = array(
+			'table' => $table,
+			'data' => $data,
+			'format' => $format,
+		);
 		if (!empty($this->insert_return_values)) {
 			return array_shift($this->insert_return_values);
 		}
