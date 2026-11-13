@@ -1,0 +1,268 @@
+/**
+ * AI Post Scheduler - Frontend Article Components Styling
+ * Clean, lightweight, theme-adaptive styles for generated pattern components.
+ */
+
+/* ==========================================================================
+   1. FAQ Accordions (<details> / <summary>)
+   ========================================================================== */
+.aips-faq-item {
+	margin: 1.25rem 0;
+	padding: 1rem 1.25rem;
+	background: rgba(0, 0, 0, 0.02);
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	border-radius: 8px;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.aips-faq-item[open] {
+	background: rgba(0, 0, 0, 0.035);
+	border-color: rgba(0, 0, 0, 0.15);
+}
+
+.aips-faq-item summary {
+	font-weight: 600;
+	cursor: pointer;
+	list-style: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	user-select: none;
+}
+
+.aips-faq-item summary::-webkit-details-marker {
+	display: none;
+}
+
+.aips-faq-item summary::after {
+	content: "▾";
+	font-size: 1.1em;
+	transition: transform 0.2s ease;
+	margin-left: 0.5rem;
+}
+
+.aips-faq-item[open] summary::after {
+	transform: rotate(-180deg);
+}
+
+.aips-faq-item p,
+.aips-faq-item .aips-faq-answer {
+	margin: 0.75rem 0 0 0;
+	line-height: 1.6;
+}
+
+/* ==========================================================================
+   2. Pros & Cons Matrix
+   ========================================================================== */
+.aips-pros-cons-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1.5rem;
+	margin: 2rem 0;
+}
+
+@media (max-width: 640px) {
+	.aips-pros-cons-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.aips-pros-column,
+.aips-cons-column {
+	padding: 1.5rem;
+	border-radius: 8px;
+	border: 1px solid transparent;
+}
+
+.aips-pros-column {
+	background: #f0fdf4;
+	border-color: #bbf7d0;
+	color: #166534;
+}
+
+.aips-cons-column {
+	background: #fef2f2;
+	border-color: #fecaca;
+	color: #991b1b;
+}
+
+.aips-column-title {
+	margin-top: 0;
+	margin-bottom: 1rem;
+	font-size: 1.15rem;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.aips-pros-title {
+	color: #15803d;
+}
+
+.aips-cons-title {
+	color: #b91c1c;
+}
+
+.aips-pros-list,
+.aips-cons-list {
+	margin: 0;
+	padding-left: 1.25rem;
+	line-height: 1.6;
+}
+
+.aips-pros-list li {
+	list-style-type: "✓  ";
+	margin-bottom: 0.5rem;
+}
+
+.aips-cons-list li {
+	list-style-type: "✕  ";
+	margin-bottom: 0.5rem;
+}
+
+/* ==========================================================================
+   3. Scorecard & Rating Box
+   ========================================================================== */
+.aips-rating-box {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	padding: 1.75rem;
+	margin: 2rem 0;
+	background: #f8fafc;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.aips-rating-badge {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.25rem;
+	background: #0f172a;
+	color: #f8fafc;
+	padding: 0.5rem 1rem;
+	border-radius: 8px;
+	width: fit-content;
+}
+
+.aips-rating-num {
+	font-size: 1.75rem;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.aips-rating-scale {
+	font-size: 1rem;
+	opacity: 0.8;
+}
+
+.aips-rating-verdict {
+	font-size: 1.1rem;
+	line-height: 1.5;
+	color: #1e293b;
+}
+
+.aips-rating-body p {
+	margin: 0;
+	color: #475569;
+	line-height: 1.6;
+}
+
+/* ==========================================================================
+   4. Step-by-Step Instructions List
+   ========================================================================== */
+.aips-step-list-block {
+	margin: 2rem 0;
+}
+
+.aips-step-list {
+	list-style: none;
+	counter-reset: aips-step-counter;
+	padding: 0;
+	margin: 0;
+}
+
+.aips-step-item {
+	position: relative;
+	counter-increment: aips-step-counter;
+	padding-left: 3.5rem;
+	margin-bottom: 1.75rem;
+}
+
+.aips-step-item::before {
+	content: counter(aips-step-counter);
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 2.25rem;
+	height: 2.25rem;
+	background: #2563eb;
+	color: #ffffff;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	font-size: 1rem;
+}
+
+.aips-step-title {
+	margin: 0 0 0.5rem 0;
+	font-size: 1.15rem;
+	line-height: 1.4;
+}
+
+.aips-step-content p {
+	margin: 0;
+	line-height: 1.6;
+}
+
+/* ==========================================================================
+   5. Comparison Table
+   ========================================================================== */
+.aips-comparison-table table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 1.5rem 0;
+	text-align: left;
+}
+
+.aips-comparison-table th,
+.aips-comparison-table td {
+	padding: 0.75rem 1rem;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.aips-comparison-table thead th {
+	background: rgba(0, 0, 0, 0.04);
+	font-weight: 600;
+}
+
+/* ==========================================================================
+   6. Callout Banners
+   ========================================================================== */
+.aips-callout {
+	padding: 1.25rem 1.5rem;
+	margin: 1.5rem 0;
+	border-left: 4px solid #3b82f6;
+	background: #eff6ff;
+	border-radius: 0 8px 8px 0;
+	line-height: 1.6;
+}
+
+.aips-callout-warning {
+	border-left-color: #f59e0b;
+	background: #fffbeb;
+	color: #92400e;
+}
+
+.aips-callout-info {
+	border-left-color: #06b6d4;
+	background: #ecfeff;
+	color: #155e75;
+}
+
+.aips-callout p {
+	margin: 0;
+}

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.24
+ * Version: 3.7.25
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.24');
+    define('AIPS_VERSION', '3.7.25');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -842,6 +842,14 @@ final class AI_Post_Scheduler {
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
         );
+
+        // Article Structure components: shortcodes and frontend assets & schema
+        if (class_exists('AIPS_Structure_Shortcodes')) {
+            AIPS_Structure_Shortcodes::register();
+        }
+        if (class_exists('AIPS_Frontend_Assets')) {
+            AIPS_Frontend_Assets::init();
+        }
 
         // Custom cron intervals (fifteen_minutes, every_2_hours, etc.) must be available
         // in every request context so wp_schedule_event recognizes them.

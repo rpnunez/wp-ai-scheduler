@@ -103,6 +103,59 @@
 			});
 			$(document).on('click', '#aips-fetch-meow-envs-btn', AIPS.onFetchMeowEnvironments);
 			$(document).on('click', '#aips-copy-shortcode-btn', AIPS.onCopyShortcode);
+			$(document).on('click', '#aips-restore-defaults-btn', function(e) {
+				e.preventDefault();
+				var $btn = $(this);
+				var l10n = (typeof aipsSettingsL10n !== 'undefined') ? aipsSettingsL10n : {};
+				var confirmMessage = l10n.confirmRestoreDefaults || 'Are you sure you want to restore default article structures and components? Missing defaults will be re-created.';
+				var confirmHeading = l10n.confirmRestoreDefaultsTitle || 'Restore Defaults';
+
+				var runRestore = function() {
+					var $spinner = $('#aips-restore-defaults-spinner');
+					var $result = $('#aips-restore-defaults-result');
+
+					$btn.prop('disabled', true);
+					$spinner.addClass('is-active').show();
+					$result.text('').removeClass('aips-text-success aips-text-danger');
+
+					var ajaxUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.ajaxUrl) ? aipsAjax.ajaxUrl : ajaxurl;
+					var nonce = (typeof aipsAjax !== 'undefined' && aipsAjax.nonce) ? aipsAjax.nonce : '';
+
+					$.ajax({
+						url: ajaxUrl,
+						type: 'POST',
+						dataType: 'json',
+						data: {
+							action: 'aips_restore_default_structures',
+							nonce: nonce
+						},
+						success: function(resp) {
+							$spinner.removeClass('is-active').hide();
+							$btn.prop('disabled', false);
+							if (resp && resp.success) {
+								$result.removeClass('aips-text-danger').addClass('aips-text-success').text(resp.data && resp.data.message ? resp.data.message : 'Defaults restored successfully!');
+							} else {
+								var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Failed to restore defaults.';
+								$result.removeClass('aips-text-success').addClass('aips-text-danger').text(msg);
+							}
+						},
+						error: function(xhr, status, error) {
+							$spinner.removeClass('is-active').hide();
+							$btn.prop('disabled', false);
+							$result.removeClass('aips-text-success').addClass('aips-text-danger').text('An error occurred: ' + error);
+						}
+					});
+				};
+
+				if (AIPS.Utilities && typeof AIPS.Utilities.confirm === 'function') {
+					AIPS.Utilities.confirm(confirmMessage, confirmHeading, [
+						{ label: l10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+						{ label: l10n.restore || 'Restore Defaults', className: 'aips-btn aips-btn-primary', action: runRestore }
+					]);
+				} else {
+					runRestore();
+				}
+			});
 			$(document).on('change', '#aips-meow-envs-select', function() {
 				var selected = $(this).find(':selected');
 				if (!selected.val()) {

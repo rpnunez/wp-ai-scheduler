@@ -32,6 +32,7 @@ class AIPS_Post_Manager {
 	public const META_GENERATION_TIME                        = '_aips_generation_time';
 	public const META_TOKENS_USED                            = '_aips_tokens_used';
 	public const META_AI_EDIT_OVERRIDES                     = '_aips_ai_edit_overrides';
+	public const META_SCHEMA_JSON_LD                         = '_aips_json_ld_schema';
 	public const CANONICAL_PLUGIN_POST_META_KEYS            = array(
 		self::META_GENERATED_POST,
 		self::META_GENERATION_COMPONENT_STATUSES,
@@ -46,6 +47,7 @@ class AIPS_Post_Manager {
 		self::META_GENERATION_TIME,
 		self::META_TOKENS_USED,
 		self::META_AI_EDIT_OVERRIDES,
+		self::META_SCHEMA_JSON_LD,
 	);
 
     /**
@@ -114,6 +116,52 @@ class AIPS_Post_Manager {
         // Normalise post_category to an array of int IDs regardless of source format.
         $post_category = $this->normalise_post_categories( $raw_category );
 
+        // Process component delimiters and extract SEO JSON-LD schema
+        $schema_json_ld = null;
+
+        if (!empty($content)) {
+            $editor_mode = 'auto';
+            $enable_schema = true;
+
+            if ($context instanceof AIPS_Generation_Context && method_exists($context, 'get_article_structure_id')) {
+                $struct_id = $context->get_article_structure_id();
+
+                if ($struct_id) {
+                    $structure = AIPS_Article_Structure_Repository::instance()->get_by_id($struct_id);
+
+                    if ($structure) {
+                        if (!empty($structure->editor_mode)) {
+                            $editor_mode = $structure->editor_mode;
+                        }
+
+                        // Respect the structure's schema toggle: a structure saved
+                        // with enable_schema = 0 must not emit JSON-LD even when
+                        // delimiter components are present in the content.
+                        if (isset($structure->enable_schema)) {
+                            $enable_schema = (bool) $structure->enable_schema;
+                        }
+                    }
+                }
+            }
+
+            $parser = new AIPS_Structure_Delimiter_Parser();
+            $parse_res = $parser->parse($content, $editor_mode);
+            $content = $parse_res['content'];
+
+            if ($enable_schema && !empty($parse_res['extracted_data'])) {
+                $schema_builder = new AIPS_Structure_Schema_Builder();
+
+                $schema_json_ld = $schema_builder->build_schema(
+                    $parse_res['extracted_data'],
+                    array(
+                        'title'       => $title,
+                        'description' => $excerpt,
+                        'topic'       => isset($data['focus_keyword']) ? $data['focus_keyword'] : $title,
+                    )
+                );
+            }
+        }
+
         $post_data = array(
             'post_title' => $title,
             'post_content' => $content,
@@ -144,6 +192,10 @@ class AIPS_Post_Manager {
         }
 
         update_post_meta($post_id, self::META_GENERATED_POST, '1');
+
+        if (!empty($schema_json_ld)) {
+            update_post_meta($post_id, self::META_SCHEMA_JSON_LD, $schema_json_ld);
+        }
 
         if (isset($data['generation_incomplete']) || isset($data['component_statuses'])) {
             $this->update_generation_status_meta(

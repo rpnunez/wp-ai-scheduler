@@ -220,6 +220,26 @@ class AIPS_Repository_Cache_Dependencies {
 				}
 				return $tags;
 
+			case 'structure_section':
+				// Matches the plural tags the relational-sections read is cached
+				// under (structure_sections, structure_sections:{structure_id}).
+				// The singular default-case tag would never bust that read.
+				$tags = array( 'structure_sections' );
+				if (isset( $context['structure_id'] ) && is_numeric( $context['structure_id'] )) {
+					$tags[] = 'structure_sections:' . (int) $context['structure_id'];
+				}
+				return $tags;
+
+			case 'component':
+				// Components are joined into the structure-sections read, so a
+				// component change must also bust structure_sections. 'components'
+				// matches every component read tag (by id and by key).
+				$tags = array( 'components', 'structure_sections' );
+				if (isset( $context['component_id'] ) && is_numeric( $context['component_id'] )) {
+					$tags[] = 'component:' . (int) $context['component_id'];
+				}
+				return $tags;
+
 			case 'prompt_section':
 				$tags = array( 'prompt_sections' );
 				if (isset( $context['section_id'] ) && is_numeric( $context['section_id'] )) {

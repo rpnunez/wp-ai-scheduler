@@ -465,6 +465,23 @@ if (!defined('ABSPATH')) {
                                 <p class="description"><?php esc_html_e('Optional. A voice provides pre-configured title and content instructions.', 'ai-post-scheduler'); ?></p>
                             </div>
                         </div>
+
+                        <div class="aips-form-row">
+                            <label for="template_article_structure_id"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></label>
+                            <div class="aips-structure-selector">
+                                <select id="template_article_structure_id" name="article_structure_id" class="regular-text">
+                                    <option value="0"><?php esc_html_e('Use Default / Inherit', 'ai-post-scheduler'); ?></option>
+                                    <?php
+                                    $struct_repo = new AIPS_Article_Structure_Repository();
+                                    $active_structures = $struct_repo->get_all(true);
+                                    foreach ($active_structures as $st) :
+                                    ?>
+                                        <option value="<?php echo esc_attr($st->id); ?>"><?php echo esc_html($st->name); ?><?php echo !empty($st->archetype) && $st->archetype !== 'custom' ? ' (' . esc_html(ucwords(str_replace('_', ' ', $st->archetype))) . ')' : ''; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="description"><?php esc_html_e('Optional. Choose an article structure or pattern archetype (How-To, Review, FAQ, etc.) for posts created from this template.', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
                         
                         <div class="aips-form-row">
                             <label for="post_quantity"><?php esc_html_e('Number of Posts to Generate', 'ai-post-scheduler'); ?></label>

@@ -538,6 +538,17 @@
             $(document).on('click', '.aips-save-structure', this.saveStructure);
             $(document).on('click', '.aips-edit-structure', this.editStructure);
             $(document).on('click', '.aips-delete-structure', this.deleteStructure);
+            $(document).on('click', '.aips-clone-structure', this.cloneStructure);
+            $(document).on('click', '.aips-test-structure-btn', this.openTestStructureModal);
+            $(document).on('click', '#aips-run-structure-test-btn', this.runStructureTest);
+            $(document).on('click', '#aips-test-tabs-nav .aips-tab-link', this.switchTestTab);
+
+            // Builder Card & Drawer events
+            $(document).on('click', '.aips-add-builder-section-btn', this.addBuilderComponentCard);
+            $(document).on('click', '.aips-card-remove-btn', this.removeBuilderCard);
+            $(document).on('click', '.aips-card-configure-btn', this.openSectionDrawer);
+            $(document).on('click', '.aips-drawer-close', this.closeSectionDrawer);
+            $(document).on('click', '.aips-drawer-apply-btn', this.applySectionDrawer);
 
             // Structure Search
             $(document).on('keyup search', '#aips-structure-search', this.filterStructures);
@@ -1031,6 +1042,7 @@
                         $('#template_description').val(t.description || '');
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
+                        $('#template_article_structure_id').val(t.article_structure_id || 0);
                         $('#post_quantity').val(t.post_quantity || 1);
                         $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
                         $('#image_prompt').val(t.image_prompt || '');
@@ -1235,6 +1247,7 @@
                     prompt_template: $('#prompt_template').val(),
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
+                    article_structure_id: $('#template_article_structure_id').val() || 0,
                     post_quantity: $('#post_quantity').val(),
                     generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                     image_prompt: $('#image_prompt').val(),
@@ -1310,6 +1323,7 @@
                     prompt_template: $('#prompt_template').val() || '',
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
+                    article_structure_id: $('#template_article_structure_id').val() || 0,
                     post_quantity: $('#post_quantity').val(),
                     generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                     image_prompt: $('#image_prompt').val(),
@@ -4331,21 +4345,59 @@
             AIPS.bindStructureEvents();
             $('#aips-structure-form')[0].reset();
             $('#structure_id').val('');
-            $('#aips-structure-modal').find('.aips-modal-title').text('Add New Article Structure');
+            $('#structure_name').val('');
+            $('#structure_description').val('');
+            $('#structure_archetype').val('how_to');
+            $('#structure_editor_mode').val('auto');
+            $('#structure_enable_schema').prop('checked', true);
+            $('#structure_is_active').prop('checked', true);
+            $('#prompt_template').val('');
+
+            $('#aips-builder-cards-list').empty();
+            // Default starter cards for How-To Guide
+            AIPS.renderBuilderCard({ heading_text: 'Introduction', heading_level: 'h2', target_word_count: 200, custom_prompt: 'Introduce the problem and summarize what reader will achieve.' });
+            AIPS.renderBuilderCard({ heading_text: 'Step-by-Step Instructions', heading_level: 'h2', target_word_count: 500, custom_prompt: 'Use [STEP_LIST]...[/STEP_LIST] to define sequential steps.' });
+            AIPS.renderBuilderCard({ heading_text: 'Frequently Asked Questions', heading_level: 'h2', target_word_count: 300, custom_prompt: 'Provide 3-5 concise FAQ items formatted with [FAQ] tags.' });
+            AIPS.renderBuilderCard({ heading_text: 'Conclusion & Summary', heading_level: 'h2', target_word_count: 150, custom_prompt: 'Summarize key points and offer final tips.' });
+
+            AIPS.serializeBuilderCards();
+            AIPS.initBuilderSortable();
+            AIPS.closeSectionDrawer();
+
+            $('#aips-structure-modal').find('.aips-modal-title').text('Configure Article Structure');
             $('#aips-structure-modal').show();
         },
 
         /**
-         * Save the article structure form via AJAX.
+         * Refresh the structures list in place instead of reloading the page.
          *
-         * Sends the `aips_save_structure` AJAX action with all structure form
-         * fields. On success, renders the updated row using `AIPS.Templates` and
-         * replaces or inserts it in the structures table without a page reload.
+         * Re-fetches the current admin page and swaps in the freshly rendered
+         * `.aips-structures-list` tbody and footer count, preserving every
+         * server-rendered row action (Edit, Test, Clone, Schedule, Delete) and
+         * the schedule URLs without duplicating that markup in JS.
          *
-         * Bound to the `click` event on `.aips-save-structure`.
+         * @param {Function} [callback] Invoked after the list is replaced.
          */
+        reloadStructuresList: function(callback) {
+            $.get(window.location.href, function(html) {
+                var $parsed = $($.parseHTML(html));
+                var $newBody = $parsed.find('.aips-structures-list tbody');
+                if ($newBody.length) {
+                    $('.aips-structures-list tbody').replaceWith($newBody);
+                }
+                var $newFooter = $parsed.find('.aips-table-footer-count');
+                if ($newFooter.length && $('.aips-table-footer-count').length) {
+                    $('.aips-table-footer-count').replaceWith($newFooter);
+                }
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            });
+        },
+
         saveStructure: function() {
             var $btn = $(this);
+            AIPS.serializeBuilderCards();
 
             var data = {
                 action: 'aips_save_structure',
@@ -4353,8 +4405,12 @@
                 structure_id: $('#structure_id').val(),
                 name: $('#structure_name').val(),
                 description: $('#structure_description').val(),
+                archetype: $('#structure_archetype').val() || 'custom',
+                editor_mode: $('#structure_editor_mode').val() || 'auto',
+                enable_schema: $('#structure_enable_schema').is(':checked') ? 1 : 0,
                 prompt_template: $('#prompt_template').val(),
                 sections: $('#structure_sections').val() || [],
+                relational_sections: $('#structure_relational_sections_json').val() || '[]',
                 is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
             };
 
@@ -4362,33 +4418,7 @@
                 if (response.success) {
                     AIPS.Utilities.showToast(response.data.message || 'Structure saved successfully', 'success');
                     $('#aips-structure-modal').hide();
-
-                    var structure = response.data.structure;
-                    if (structure) {
-                        var T = AIPS.Templates;
-                        var activeBadge = structure.is_active == 1
-                            ? '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> ' + T.escape(aipsAdminL10n.activeLabel) + '</span>'
-                            : '<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> ' + T.escape(aipsAdminL10n.inactiveLabel) + '</span>';
-                        var scheduleUrl = (aipsAjax.schedulePageUrl || '') + '&schedule_structure=' + T.escape(String(structure.id));
-
-                        var rowHtml = T.renderRaw('aips-tmpl-structure-row', {
-                            id: T.escape(String(structure.id)),
-                            name: T.escape(structure.name || ''),
-                            description: T.escape(structure.description || ''),
-                            activeBadge: activeBadge,
-                            scheduleUrl: scheduleUrl,
-                        });
-
-                        var $existingRow = $('tr[data-structure-id="' + parseInt(structure.id, 10) + '"]');
-                        if ($existingRow.length) {
-                            $existingRow.replaceWith(rowHtml);
-                        } else {
-                            var $tbody = $('.aips-structures-list tbody');
-                            if ($tbody.length) {
-                                $tbody.append(rowHtml);
-                            }
-                        }
-                    }
+                    AIPS.reloadStructuresList();
                 } else {
                     AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.saveStructureFailed, 'error');
                 }
@@ -4402,18 +4432,9 @@
             });
         },
 
-        /**
-         * Fetch an article structure's data via AJAX and open the modal in
-         * "Edit" mode.
-         *
-         * Reads the structure ID from the clicked element's `data-id` attribute.
-         * Parses the `structure_data` JSON field to populate the prompt template
-         * and sections fields.
-         *
-         * Bound to the `click` event on `.aips-edit-structure`.
-         */
         editStructure: function() {
             var id = $(this).data('id');
+            AIPS.bindStructureEvents();
             $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
                 if (response.success) {
                     var s = response.data.structure;
@@ -4431,10 +4452,35 @@
                     $('#structure_id').val(s.id);
                     $('#structure_name').val(s.name);
                     $('#structure_description').val(s.description);
-                    $('#prompt_template').val(structureData.prompt_template || '');
-                    var sections = structureData.sections || [];
-                    $('#structure_sections').val(sections);
+                    $('#structure_archetype').val(s.archetype || 'custom');
+                    $('#structure_editor_mode').val(s.editor_mode || 'auto');
+                    $('#structure_enable_schema').prop('checked', s.enable_schema !== undefined ? (s.enable_schema == 1) : true);
+                    $('#prompt_template').val(structureData.prompt_template || s.prompt_template || '');
                     $('#structure_is_active').prop('checked', s.is_active == 1);
+
+                    $('#aips-builder-cards-list').empty();
+                    if (s.relational_sections && s.relational_sections.length) {
+                        for (var i = 0; i < s.relational_sections.length; i++) {
+                            AIPS.renderBuilderCard(s.relational_sections[i]);
+                        }
+                    } else {
+                        var legacySections = structureData.sections || s.sections || [];
+                        if (legacySections.length) {
+                            for (var j = 0; j < legacySections.length; j++) {
+                                AIPS.renderBuilderCard({
+                                    heading_text: legacySections[j],
+                                    heading_level: 'h2',
+                                    target_word_count: 250,
+                                    custom_prompt: ''
+                                });
+                            }
+                        }
+                    }
+
+                    AIPS.serializeBuilderCards();
+                    AIPS.initBuilderSortable();
+                    AIPS.closeSectionDrawer();
+
                     $('#aips-structure-modal').find('.aips-modal-title').text('Edit Article Structure');
                     $('#aips-structure-modal').show();
                 } else {
@@ -4443,6 +4489,241 @@
             }).fail(function(){
                 AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
             });
+        },
+
+        cloneStructure: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            var id = $(this).data('id');
+            var confirmMsg = (typeof aipsStructuresL10n !== 'undefined' && aipsStructuresL10n.cloneStructureConfirm)
+                ? aipsStructuresL10n.cloneStructureConfirm
+                : 'Are you sure you want to duplicate this article structure?';
+
+            AIPS.Utilities.confirm(confirmMsg, 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: 'Yes, duplicate', className: 'aips-btn aips-btn-primary', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_clone_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                        if (response.success) {
+                            AIPS.Utilities.showToast(response.data.message || 'Structure cloned successfully', 'success');
+                            AIPS.reloadStructuresList();
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message || (aipsStructuresL10n.cloneStructureFailed || 'Clone failed'), 'error');
+                        }
+                    }).fail(function(){
+                        AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
+                    });
+                }}
+            ]);
+        },
+
+        openTestStructureModal: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            var id = $(this).data('id');
+            var name = $(this).data('name') || '';
+
+            $('#aips-test-target-structure-id').val(id);
+            $('#aips-test-structure-title').text(name);
+
+            // Clear output fields
+            $('#aips-test-prompt-output').text('Loading assembled prompt...');
+            $('#aips-test-raw-output').text('Loading raw AI output...');
+            $('#aips-test-visual-output').html('<em>Loading visual preview...</em>');
+            $('#aips-test-schema-output').text('Loading JSON-LD schema...');
+
+            // Reset active tab to first tab
+            $('#aips-test-tabs-nav .aips-tab-link').removeClass('active');
+            $('#aips-test-tabs-nav .aips-tab-link[data-tab="aips-test-tab-prompt"]').addClass('active');
+            $('.aips-test-tab-panels .aips-tab-content').hide();
+            $('#aips-test-tab-prompt').show();
+
+            $('#aips-structure-test-modal').show();
+
+            // Run test immediately
+            AIPS.runStructureTest();
+        },
+
+        runStructureTest: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            var structureId = $('#aips-test-target-structure-id').val();
+            var sampleTopic = $('#aips-test-sample-topic').val() || 'How to Build an Efficient Home Office Workflow';
+            var $btn = $('#aips-run-structure-test-btn');
+
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> Testing...');
+
+            $.post(aipsAjax.ajaxUrl, {
+                action: 'aips_test_structure',
+                nonce: aipsAjax.nonce,
+                structure_id: structureId,
+                sample_topic: sampleTopic
+            }, function(response) {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-update"></span> Run Live Test');
+                if (response.success && response.data) {
+                    $('#aips-test-prompt-output').text(response.data.prompt || '');
+                    $('#aips-test-raw-output').text(response.data.raw_ai_output || '');
+                    $('#aips-test-visual-output').html(response.data.visual_preview || '');
+                    $('#aips-test-schema-output').text(JSON.stringify(response.data.schema_json_ld || {}, null, 2));
+                } else {
+                    var errorMsg = (response.data && response.data.message) ? response.data.message : (aipsStructuresL10n.testStructureFailed || 'Test failed');
+                    AIPS.Utilities.showToast(errorMsg, 'error');
+                }
+            }).fail(function() {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-update"></span> Run Live Test');
+                AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
+            });
+        },
+
+        switchTestTab: function(e) {
+            e.preventDefault();
+            var targetTab = $(this).data('tab');
+            $('#aips-test-tabs-nav .aips-tab-link').removeClass('active');
+            $(this).addClass('active');
+            $('.aips-test-tab-panels .aips-tab-content').hide();
+            $('#' + targetTab).show();
+        },
+
+        // Builder Card & Drawer Helpers
+        initBuilderSortable: function() {
+            if ($.fn.sortable) {
+                $('#aips-builder-cards-list').sortable({
+                    handle: '.aips-card-drag-handle',
+                    items: '.aips-builder-card',
+                    axis: 'y',
+                    update: function() {
+                        AIPS.serializeBuilderCards();
+                    }
+                });
+            }
+        },
+
+        renderBuilderCard: function(section) {
+            var headingText = section.heading_text || 'Section Heading';
+            var headingLevel = section.heading_level || 'h2';
+            var wordCount = parseInt(section.target_word_count, 10) || 0;
+            var prompt = section.custom_prompt || '';
+            var promptSnippet = prompt.length > 80 ? prompt.substring(0, 80) + '…' : prompt;
+
+            // Build card markup through the shared template (auto-escaped) rather
+            // than hand-concatenated HTML, per the CLAUDE.md HTML-generation rule.
+            var cardHtml = AIPS.Templates.render('aips-tmpl-builder-card', {
+                headingTag: headingLevel.toUpperCase(),
+                headingText: headingText,
+                wordCountLabel: wordCount > 0 ? (wordCount + ' words') : 'Flexible',
+                promptSnippet: promptSnippet || 'No custom prompt instructions.'
+            });
+
+            var $card = $(cardHtml);
+            $card.data('section-data', {
+                id: section.id || 0,
+                component_id: section.component_id || null,
+                section_key: section.section_key || ('section_' + Date.now()),
+                heading_text: headingText,
+                heading_level: headingLevel,
+                target_word_count: wordCount,
+                is_required: section.is_required !== undefined ? section.is_required : 1,
+                custom_prompt: prompt,
+                component_config: section.component_config || '{}'
+            });
+
+            $('#aips-builder-cards-list').append($card);
+            return $card;
+        },
+
+        addBuilderComponentCard: function(e) {
+            e.preventDefault();
+
+            // Add a new default section card, then open its drawer so the user can
+            // set the section key, pick a pattern component, and adjust the heading.
+            var $card = AIPS.renderBuilderCard({
+                heading_text: 'New Section',
+                heading_level: 'h2',
+                target_word_count: 250,
+                custom_prompt: ''
+            });
+
+            AIPS.serializeBuilderCards();
+
+            // Open the configuration drawer on the just-added card.
+            $card.find('.aips-card-configure-btn').trigger('click');
+        },
+
+        removeBuilderCard: function(e) {
+            e.preventDefault();
+            $(this).closest('.aips-builder-card').remove();
+            AIPS.serializeBuilderCards();
+        },
+
+        openSectionDrawer: function(e) {
+            e.preventDefault();
+            var $card = $(this).closest('.aips-builder-card');
+            var index = $card.index();
+            var data = $card.data('section-data') || {};
+
+            $('#drawer_section_index').val(index);
+            $('#drawer_section_key').val(data.section_key || '');
+            $('#drawer_heading_text').val(data.heading_text || '');
+            $('#drawer_heading_level').val(data.heading_level || 'h2');
+            $('#drawer_component_id').val(data.component_id || '');
+            $('#drawer_target_word_count').val(data.target_word_count || '');
+            $('#drawer_custom_prompt').val(data.custom_prompt || '');
+
+            $('#aips-section-drawer').show();
+        },
+
+        closeSectionDrawer: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            $('#aips-section-drawer').hide();
+        },
+
+        applySectionDrawer: function(e) {
+            e.preventDefault();
+            var index = parseInt($('#drawer_section_index').val(), 10);
+            var $card = $('#aips-builder-cards-list .aips-builder-card').eq(index);
+            if (!$card.length) {
+                AIPS.closeSectionDrawer();
+                return;
+            }
+
+            var data = $card.data('section-data') || {};
+            var sectionKey = $('#drawer_section_key').val();
+            if (sectionKey) {
+                data.section_key = sectionKey;
+            }
+            var componentId = $('#drawer_component_id').val();
+            data.component_id = componentId ? parseInt(componentId, 10) : null;
+            data.heading_text = $('#drawer_heading_text').val() || 'Section Heading';
+            data.heading_level = $('#drawer_heading_level').val() || 'h2';
+            data.target_word_count = parseInt($('#drawer_target_word_count').val(), 10) || 0;
+            data.custom_prompt = $('#drawer_custom_prompt').val() || '';
+
+            $card.data('section-data', data);
+
+            // Update UI elements in card
+            $card.find('.aips-card-heading-tag').text(data.heading_level.toUpperCase());
+            $card.find('.aips-card-heading-text').text(data.heading_text);
+            $card.find('.aips-card-word-count-badge').text(data.target_word_count > 0 ? (data.target_word_count + ' words') : 'Flexible');
+            var promptSnippet = data.custom_prompt.length > 80 ? data.custom_prompt.substring(0, 80) + '…' : data.custom_prompt;
+            $card.find('.aips-card-prompt-preview').text(promptSnippet || 'No custom prompt instructions.');
+
+            AIPS.serializeBuilderCards();
+            AIPS.closeSectionDrawer();
+        },
+
+        serializeBuilderCards: function() {
+            var items = [];
+            $('#aips-builder-cards-list .aips-builder-card').each(function(idx) {
+                var d = $(this).data('section-data') || {};
+                d.sort_order = idx;
+                items.push(d);
+            });
+
+            $('#structure_relational_sections_json').val(JSON.stringify(items));
         },
 
         /**

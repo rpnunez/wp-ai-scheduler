@@ -153,13 +153,16 @@ class AIPS_Article_Structure_Repository {
 		$insert_data = array(
 			'name' => sanitize_text_field($data['name']),
 			'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
+			'archetype' => isset($data['archetype']) ? sanitize_key($data['archetype']) : 'custom',
+			'editor_mode' => isset($data['editor_mode']) && in_array($data['editor_mode'], array('gutenberg', 'shortcode', 'auto'), true) ? $data['editor_mode'] : 'auto',
+			'enable_schema' => !isset($data['enable_schema']) || !empty($data['enable_schema']) ? 1 : 0,
 			'structure_data' => $data['structure_data'],
 			'is_active' => !empty($data['is_active']) ? 1 : 0,
 			'created_at' => $now,
 			'updated_at' => $now,
 		);
 
-		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
+		$format = array('%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 		// Read insert_id before cache invalidation: invalidation can write
@@ -192,6 +195,21 @@ class AIPS_Article_Structure_Repository {
 		if (isset($data['description'])) {
 			$update_data['description'] = sanitize_textarea_field($data['description']);
 			$format[] = '%s';
+		}
+
+		if (isset($data['archetype'])) {
+			$update_data['archetype'] = sanitize_key($data['archetype']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['editor_mode'])) {
+			$update_data['editor_mode'] = in_array($data['editor_mode'], array('gutenberg', 'shortcode', 'auto'), true) ? $data['editor_mode'] : 'auto';
+			$format[] = '%s';
+		}
+
+		if (isset($data['enable_schema'])) {
+			$update_data['enable_schema'] = !empty($data['enable_schema']) ? 1 : 0;
+			$format[] = '%d';
 		}
 
 		if (isset($data['structure_data'])) {
@@ -233,11 +251,68 @@ class AIPS_Article_Structure_Repository {
 	 * @return bool True on success, false on failure.
 	 */
 	public function delete($id) {
+		$id = absint($id);
 		$result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
 		if ( $result ) {
-			$this->invalidate_cache_domain( 'article_structure', array( 'structure_id' => absint( $id ) ), 'article_structure_deleted' );
+			if (class_exists('AIPS_Structure_Section_Rel_Repository')) {
+				AIPS_Structure_Section_Rel_Repository::instance()->delete_by_structure_id($id);
+			}
+			$this->invalidate_cache_domain( 'article_structure', array( 'structure_id' => $id ), 'article_structure_deleted' );
 		}
 		return $result;
+	}
+
+	/**
+	 * Clone an existing structure and all its child relational sections.
+	 *
+	 * @param int    $id       Source structure ID.
+	 * @param string $new_name Optional new name.
+	 * @return int|false Cloned structure ID or false.
+	 */
+	public function clone($id, $new_name = '') {
+		$structure = $this->get_by_id($id);
+		if (!$structure) {
+			return false;
+		}
+
+		if (empty($new_name)) {
+			/* translators: %s: original structure name */
+			$new_name = sprintf(__('Copy of %s', 'ai-post-scheduler'), $structure->name);
+		}
+
+		$data = array(
+			'name'           => $new_name,
+			'description'    => isset($structure->description) ? $structure->description : '',
+			'archetype'      => isset($structure->archetype) ? $structure->archetype : 'custom',
+			'editor_mode'    => isset($structure->editor_mode) ? $structure->editor_mode : 'auto',
+			'enable_schema'  => isset($structure->enable_schema) ? (int) $structure->enable_schema : 1,
+			'structure_data' => $structure->structure_data,
+			'is_active'      => 1,
+		);
+
+		$new_id = $this->create($data);
+		if (!$new_id) {
+			return false;
+		}
+
+		if (class_exists('AIPS_Structure_Section_Rel_Repository')) {
+			AIPS_Structure_Section_Rel_Repository::instance()->clone_structure_sections($id, $new_id);
+		}
+
+		return $new_id;
+	}
+
+	/**
+	 * Get ordered sections for a structure from the relational repository.
+	 *
+	 * @param int $structure_id Structure ID.
+	 * @return array Array of section objects.
+	 */
+	public function get_sections($structure_id) {
+		if (class_exists('AIPS_Structure_Section_Rel_Repository')) {
+			return AIPS_Structure_Section_Rel_Repository::instance()->get_by_structure_id($structure_id);
+		}
+		return array();
 	}
 
 	/**
