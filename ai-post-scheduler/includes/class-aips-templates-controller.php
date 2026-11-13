@@ -6,9 +6,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Templates_Controller {
 
     private $templates;
+	private $voices_repository;
 
-    public function __construct($templates = null) {
+	public function __construct($templates = null, $voices_repository = null) {
         $this->templates = $templates ?: new AIPS_Templates();
+		$this->voices_repository = $voices_repository ?: new AIPS_Voices_Repository();
 
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
@@ -273,6 +275,13 @@ class AIPS_Templates_Controller {
         $template = $this->templates->get($id);
 
         if ($template) {
+			$template->voice_name = '';
+			if (!empty($template->voice_id)) {
+				$voice = $this->voices_repository->get_by_id((int) $template->voice_id);
+				if ($voice) {
+					$template->voice_name = (string) $voice->name;
+				}
+			}
             $post_images_repo = new AIPS_Post_Images_Repository();
             $template->post_images = $post_images_repo->get_content_images_for_entity('template', $id);
             AIPS_Ajax_Response::success(array('template' => $template));

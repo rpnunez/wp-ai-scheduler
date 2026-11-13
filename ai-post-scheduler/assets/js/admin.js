@@ -988,9 +988,10 @@
          * `searchVoices()` finds it in the list, so saving an edited template
          * never clears its voice.
          *
-         * @param {number|string|null} voiceId Voice ID, or 0/empty for no voice.
+		 * @param {number|string|null} voiceId Voice ID, or 0/empty for no voice.
+		 * @param {string} voiceName Voice label returned with the template.
          */
-        setTemplateVoice: function(voiceId) {
+		setTemplateVoice: function(voiceId, voiceName) {
             var $select = $('#voice_id');
             var value = voiceId ? String(voiceId) : '0';
 
@@ -1004,7 +1005,10 @@
                 return;
             }
 
-            $select.data('aipsSelectedVoice', value);
+			$select
+				.append($('<option>').val(value).text(voiceName || value))
+				.val(value)
+				.data('aipsSelectedVoice', value);
         },
 
         /**
@@ -1060,7 +1064,7 @@
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
                         $('#post_quantity').val(t.post_quantity || 1);
-                        AIPS.setTemplateVoice(t.voice_id);
+						AIPS.setTemplateVoice(t.voice_id, t.voice_name);
                         $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
                         $('#image_prompt').val(t.image_prompt || '');
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');

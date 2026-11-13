@@ -316,14 +316,22 @@ class AIPS_Author_Topics_Repository {
 	 * Uncached on purpose: the caller changes these rows straight away.
 	 *
 	 * @param int $author_id Author ID.
-	 * @param int $limit     Maximum rows to return.
+	 * @param int $limit Maximum rows to return.
 	 * @return array Array of topic objects (oldest first).
 	 */
 	public function get_pending_for_approval_recheck($author_id, $limit) {
 		return (array) $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT id, author_id, topic_title, topic_prompt, status, score, metadata
 			 FROM {$this->table_name}
-			 WHERE author_id = %d AND status = 'pending'
+			 WHERE author_id = %d
+			   AND status = 'pending'
+			   AND (
+				metadata IS NULL
+				OR metadata = ''
+				OR JSON_VALID(metadata) = 0
+				OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(CASE WHEN JSON_VALID(metadata) THEN metadata ELSE '{}' END, '$.auto_approval_rule')), '')) IN ('', 'null', 'false', '0')
+				OR JSON_UNQUOTE(JSON_EXTRACT(CASE WHEN JSON_VALID(metadata) THEN metadata ELSE '{}' END, '$.auto_approval_reason')) = 'relevance_unavailable'
+			   )
 			 ORDER BY id ASC
 			 LIMIT %d",
 			absint($author_id),

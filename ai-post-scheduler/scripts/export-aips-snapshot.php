@@ -29,7 +29,7 @@ if (!defined('ABSPATH')) {
 	die('Direct access not permitted.');
 }
 
-if (!defined('WP_CLI') || !WP_CLI) {
+if ((!defined('AIPS_SNAPSHOT_EXPORT_NO_RUN') || !AIPS_SNAPSHOT_EXPORT_NO_RUN) && (!defined('WP_CLI') || !WP_CLI)) {
 	die('This script must be run with WP-CLI: wp eval-file <path>' . PHP_EOL);
 }
 
@@ -513,6 +513,8 @@ class AIPS_Snapshot_Exporter {
 			}
 
 			if (is_string($value) && $value !== '') {
+				$value = $this->redact_url_credentials($value);
+				$row[$column] = $value;
 				$decoded = $this->decode_structured($value);
 				if ($decoded !== null) {
 					$row[$column] = $this->redact_value($decoded);
@@ -521,6 +523,41 @@ class AIPS_Snapshot_Exporter {
 		}
 
 		return $row;
+	}
+
+	/**
+	 * Remove URL userinfo and redact credential-looking query parameters.
+	 *
+	 * @param string $value Potential URL.
+	 * @return string
+	 */
+	private function redact_url_credentials($value) {
+		if (!preg_match('#^https?://#i', $value)) {
+			return $value;
+		}
+
+		$redacted = preg_replace_callback(
+			'#^(https?://)(?:[^/@]+@)#i',
+			function ($matches) {
+				$this->redaction_count++;
+				return $matches[1];
+			},
+			$value
+		);
+
+		return preg_replace_callback(
+			'/([?&])([^=&]+)=([^&#]*)/',
+			function ($matches) {
+				$key = rawurldecode($matches[2]);
+				if (!preg_match(self::SECRET_PATTERN, $key)) {
+					return $matches[0];
+				}
+
+				$this->redaction_count++;
+				return $matches[1] . $matches[2] . '=' . rawurlencode(self::REDACTED);
+			},
+			$redacted
+		);
 	}
 
 	/**
@@ -671,5 +708,7 @@ function aips_snapshot_output_dir($args) {
 	return sys_get_temp_dir();
 }
 
-$aips_snapshot_args = isset($args) && is_array($args) ? $args : array();
-(new AIPS_Snapshot_Exporter(aips_snapshot_output_dir($aips_snapshot_args)))->run();
+if (!defined('AIPS_SNAPSHOT_EXPORT_NO_RUN') || !AIPS_SNAPSHOT_EXPORT_NO_RUN) {
+	$aips_snapshot_args = isset($args) && is_array($args) ? $args : array();
+	(new AIPS_Snapshot_Exporter(aips_snapshot_output_dir($aips_snapshot_args)))->run();
+}

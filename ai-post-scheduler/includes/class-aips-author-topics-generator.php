@@ -373,19 +373,14 @@ class AIPS_Author_Topics_Generator {
 			return $counts;
 		}
 
-		// Scan a wider window so topics already judged by a rule don't hide eligible ones.
-		$rows = $this->topics_repository->get_pending_for_approval_recheck((int) $author->id, min(500, $limit * 5));
-
 		$candidates        = array();
 		$original_metadata = array();
+		$rows              = $this->topics_repository->get_pending_for_approval_recheck((int) $author->id, $limit);
+
 		foreach ($rows as $row) {
 			if (self::is_approval_recheck_candidate($row->metadata)) {
 				$candidates[] = (array) $row;
 				$original_metadata[(int) $row->id] = (string) $row->metadata;
-			}
-
-			if (count($candidates) >= $limit) {
-				break;
 			}
 		}
 

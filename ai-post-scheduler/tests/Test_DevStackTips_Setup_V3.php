@@ -268,4 +268,24 @@ class Test_DevStackTips_Setup_V3 extends WP_UnitTestCase {
 		$this->assertMatchesRegularExpression('/Refusing to write backups inside the WordPress directory|Backup directory is not writable/', $output);
 		$this->assertSame($templates_before, count((new AIPS_Template_Repository())->get_all()));
 	}
+
+	public function test_apply_stops_when_incremental_backup_write_fails() {
+		$templates_before = count((new AIPS_Template_Repository())->get_all());
+		$setup = new class(array('apply', 'backup-dir=' . $this->backup_dir)) extends AIPS_DevStackTips_Setup {
+			private $writes = 0;
+
+			protected function write_backup() {
+				$this->writes++;
+				return $this->writes < 2 ? parent::write_backup() : false;
+			}
+		};
+
+		ob_start();
+		$ok = $setup->run();
+		$output = (string) ob_get_clean();
+
+		$this->assertFalse($ok, $output);
+		$this->assertStringContainsString('Could not persist rollback backup', $output);
+		$this->assertSame($templates_before, count((new AIPS_Template_Repository())->get_all()));
+	}
 }

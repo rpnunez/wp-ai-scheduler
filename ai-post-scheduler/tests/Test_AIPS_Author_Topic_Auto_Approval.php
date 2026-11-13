@@ -384,6 +384,54 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Older topics already judged by an auto rule must not permanently hide an
+	 * eligible topic outside the first recheck page.
+	 */
+	public function test_recheck_pending_auto_approval_pages_past_judged_topics() {
+		$author_id = 987004;
+		$author    = (object) array(
+			'id'                            => $author_id,
+			'name'                          => 'Paged Recheck Author',
+			'topic_auto_approval_mode'      => 'score',
+			'topic_auto_approval_min_score' => 85,
+			'topic_auto_approval_fallback'  => 'pending',
+		);
+
+		for ( $index = 0; $index < 101; $index++ ) {
+			$this->insert_topic(
+				$author_id,
+				'Already judged ' . $index,
+				70,
+				array( 'auto_approval_rule' => 'score', 'auto_approval_reason' => 'below_min_score' )
+			);
+		}
+
+		$eligible = $this->insert_topic( $author_id, 'Eligible after first page', 95 );
+		$counts   = $this->generator->recheck_pending_auto_approval( $author, 20 );
+
+		$this->assertSame( 1, $counts['checked'] );
+		$this->assertSame( 1, $counts['approved'] );
+		$this->assertSame( 'approved', ( new AIPS_Author_Topics_Repository() )->get_by_id( $eligible )->status );
+	}
+
+	public function test_recheck_pending_auto_approval_includes_explicitly_empty_rule() {
+		$author_id = 987005;
+		$author    = (object) array(
+			'id'                            => $author_id,
+			'name'                          => 'Empty Rule Author',
+			'topic_auto_approval_mode'      => 'score',
+			'topic_auto_approval_min_score' => 85,
+			'topic_auto_approval_fallback'  => 'pending',
+		);
+
+		$eligible = $this->insert_topic( $author_id, 'Explicit empty rule', 95, array( 'auto_approval_rule' => '' ) );
+		$counts   = $this->generator->recheck_pending_auto_approval( $author, 20 );
+
+		$this->assertSame( 1, $counts['checked'] );
+		$this->assertSame( 'approved', ( new AIPS_Author_Topics_Repository() )->get_by_id( $eligible )->status );
+	}
+
+	/**
 	 * Automated updates never overwrite a topic that is no longer pending.
 	 */
 	public function test_update_if_pending_skips_reviewed_topics() {

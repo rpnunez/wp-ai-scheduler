@@ -234,28 +234,33 @@ class AIPS_DevStackTips_Setup {
 			return false;
 		}
 
-		$this->load_live_ids();
+		try {
+			$this->load_live_ids();
 
-		$this->seed_categories();
-		$this->seed_voices();
-		$this->seed_structures();
-		$this->seed_post_slices();
-		$this->seed_source_groups_and_sources();
-		$this->seed_campaigns();
-		$this->seed_authors();
-		$this->seed_templates();
-		$this->seed_schedules();
-		$this->seed_settings_if_missing();
+			$this->seed_categories();
+			$this->seed_voices();
+			$this->seed_structures();
+			$this->seed_post_slices();
+			$this->seed_source_groups_and_sources();
+			$this->seed_campaigns();
+			$this->seed_authors();
+			$this->seed_templates();
+			$this->seed_schedules();
+			$this->seed_settings_if_missing();
 
-		$this->apply_template_fields();
-		$this->apply_schedule_fields();
-		$this->apply_author_fields();
-		$this->apply_post_images();
-		$this->apply_v3_settings();
-		$this->recheck_pending_topics();
+			$this->apply_template_fields();
+			$this->apply_schedule_fields();
+			$this->apply_author_fields();
+			$this->apply_post_images();
+			$this->apply_v3_settings();
+			$this->recheck_pending_topics();
 
-		if ($this->is_apply()) {
-			$this->write_backup();
+			if ($this->is_apply()) {
+				$this->require_backup_write();
+			}
+		} catch (RuntimeException $exception) {
+			$this->error($exception->getMessage());
+			return false;
 		}
 
 		$this->print_summary();
@@ -437,7 +442,7 @@ class AIPS_DevStackTips_Setup {
 	 *
 	 * @return bool
 	 */
-	private function write_backup() {
+	protected function write_backup() {
 		if ('' === $this->backup_file) {
 			return false;
 		}
@@ -445,6 +450,18 @@ class AIPS_DevStackTips_Setup {
 		$json = wp_json_encode($this->backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 		return false !== $json && false !== file_put_contents($this->backup_file, $json . "\n");
+	}
+
+	/**
+	 * Persist the current rollback data or abort before another mutation.
+	 *
+	 * @return void
+	 * @throws RuntimeException When the backup cannot be persisted.
+	 */
+	private function require_backup_write() {
+		if (!$this->write_backup()) {
+			throw new RuntimeException(__('Could not persist rollback backup. No further changes were applied.', 'ai-post-scheduler'));
+		}
 	}
 
 	/**
@@ -496,7 +513,12 @@ class AIPS_DevStackTips_Setup {
 
 		if ($this->is_apply()) {
 			$this->backup['created'][] = array('entity' => $entity, 'id' => (int) $id, 'name' => $name);
-			$this->write_backup();
+			if (!$this->write_backup()) {
+				array_pop($this->backup['created']);
+				array_pop($this->creations);
+				$this->delete_created($entity, (int) $id, $name);
+				throw new RuntimeException(__('Could not persist rollback backup. The newly created object was removed and no further changes were applied.', 'ai-post-scheduler'));
+			}
 		}
 	}
 
@@ -1172,7 +1194,7 @@ class AIPS_DevStackTips_Setup {
 			$this->backup_field($entity, $id, $field, $values['old']);
 			$update[$field] = $values['new'];
 		}
-		$this->write_backup();
+		$this->require_backup_write();
 
 		if (false === $this->repository_update($entity, $id, $update)) {
 			$this->error("Failed to update {$entity} {$label}");
@@ -1455,7 +1477,7 @@ class AIPS_DevStackTips_Setup {
 					},
 					$live_rows
 				);
-				$this->write_backup();
+				$this->require_backup_write();
 			}
 
 			$kept = (array) $repo->sync_for_entity('template', $id, $desired, 'content');
@@ -1502,7 +1524,7 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		$this->backup_option($name);
-		$this->write_backup();
+		$this->require_backup_write();
 		update_option($name, $value);
 	}
 
@@ -1907,10 +1929,10 @@ class AIPS_DevStackTips_Setup {
 
 	/**
 	 * Distributes target post counts across campaigns or authors based on defined shares.
-	 * 
+	 *
 	 * @param array $weights Associative array of keys (campaign or author names) and their corresponding share weights.
 	 * @param int $target_total The total number of posts to distribute across the keys.
-	 * 
+	 *
 	 * @return array Associative array of keys and the calculated number of posts to assign to each key based on their share weights.
 	 */
 	private function distribute_target_counts($weights, $target_total) {
