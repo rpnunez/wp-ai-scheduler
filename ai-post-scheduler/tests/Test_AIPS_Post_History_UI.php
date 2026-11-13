@@ -128,6 +128,47 @@ class Test_AIPS_Post_History_UI extends WP_UnitTestCase {
 		$this->assertContains($post_id1, $queue);
 		$this->assertContains($post_id2, $queue);
 	}
+
+	public function test_handle_table_query_filters_removes_posts_clauses_filter_after_target_query() {
+		global $pagenow;
+		$prev_pagenow = $pagenow;
+		$pagenow      = 'edit.php';
+
+		set_current_screen('edit-post');
+
+		$main_query = new WP_Query();
+		$main_query->set('orderby', 'aips_similarity');
+		$main_query->set('order', 'DESC');
+		$GLOBALS['wp_the_query'] = $main_query;
+
+		$other_query = new WP_Query();
+
+		$ui = new AIPS_Post_History_UI();
+		$ui->handle_table_query_filters($main_query);
+
+		$base_clauses = array(
+			'join'    => '',
+			'orderby' => 'wp_posts.post_date DESC',
+		);
+
+		// Different query instance should NOT get mutated or consume the filter.
+		$untouched = apply_filters('posts_clauses', $base_clauses, $other_query);
+		$this->assertSame('', $untouched['join']);
+		$this->assertSame('wp_posts.post_date DESC', $untouched['orderby']);
+
+		// Target main query applies the similarity join/orderby AND removes the filter.
+		$sorted = apply_filters('posts_clauses', $base_clauses, $main_query);
+		$this->assertStringContainsString('aips_relationships', $sorted['join']);
+		$this->assertStringContainsString('aips_sim.max_sim', $sorted['orderby']);
+
+		// Subsequent queries must NOT inherit the leaked join/orderby.
+		$subsequent = apply_filters('posts_clauses', $base_clauses, $other_query);
+		$this->assertSame('', $subsequent['join']);
+		$this->assertSame('wp_posts.post_date DESC', $subsequent['orderby']);
+
+		$pagenow = $prev_pagenow;
+		unset($GLOBALS['wp_the_query']);
+	}
 }
 
 if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {

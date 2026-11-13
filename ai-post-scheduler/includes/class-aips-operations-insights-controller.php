@@ -17,7 +17,9 @@ class AIPS_Operations_Insights_Controller {
 		$container = AIPS_Container::get_instance();
 		$this->history_repository = $container->make(AIPS_History_Repository::class);
 
-		add_action('admin_post_aips_operations_insights_export', array($this, 'handle_export'));
+		if (!function_exists('doing_action') || !doing_action('admin_post_aips_operations_insights_export')) {
+			add_action('admin_post_aips_operations_insights_export', array($this, 'handle_export'));
+		}
 	}
 
 	public function render_page() {

@@ -648,4 +648,50 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'VOICE_INSTRUCTION_UNIQUE_TOKEN_12345', $context_str );
 		$this->assertStringContainsString( 'CRITICAL INSTRUCTIONS:', $context_str );
 	}
+
+	/**
+	 * Constructing a second AIPS_Prompt_Builder must rebind aips_content_prompt
+	 * to the latest instance rather than keeping the first instance bound.
+	 */
+	public function test_second_prompt_builder_rebinds_sources_filter_without_stacking() {
+		$first_repo = $this->createMock( 'AIPS_Sources_Repository' );
+		$first_repo->expects( $this->never() )->method( 'get_by_group_term_ids' );
+
+		$second_repo = $this->createMock( 'AIPS_Sources_Repository' );
+		$second_repo->expects( $this->once() )
+			->method( 'get_by_group_term_ids' )
+			->with( array( 77 ), true )
+			->willReturn(
+				array(
+					(object) array(
+						'id'             => 1,
+						'url'            => 'https://example.org/second-instance-source',
+						'label'          => 'Second Instance Source',
+						'extracted_text' => '',
+					),
+				)
+			);
+
+		$first_builder  = new AIPS_Prompt_Builder( null, null, $first_repo );
+		$second_builder = new AIPS_Prompt_Builder( null, null, $second_repo );
+
+		$this->assertFalse(
+			has_filter( 'aips_content_prompt', array( $first_builder, 'inject_sources_into_content_prompt' ) ),
+			'Prior instance callback should be removed when a newer AIPS_Prompt_Builder is constructed'
+		);
+		$this->assertNotFalse(
+			has_filter( 'aips_content_prompt', array( $second_builder, 'inject_sources_into_content_prompt' ) ),
+			'Latest instance callback must be attached to aips_content_prompt'
+		);
+
+		$template = (object) array(
+			'prompt_template'      => 'Write about {{topic}}',
+			'article_structure_id' => null,
+			'include_sources'      => 1,
+			'source_group_ids'     => wp_json_encode( array( 77 ) ),
+		);
+
+		$prompt = $second_builder->build_content_prompt( $template, 'Hooks Audit', null );
+		$this->assertStringContainsString( 'https://example.org/second-instance-source', $prompt );
+	}
 }

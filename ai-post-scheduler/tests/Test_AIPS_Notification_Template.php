@@ -725,6 +725,42 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		// Clean up: reset flag for other tests.
 		$prop->setValue(null, false);
 	}
+
+	public function test_register_lazy_hooks_and_reinstantiation_replace_previous_callbacks() {
+		$notif_prop = (new ReflectionClass(AIPS_Notifications::class))->getProperty('instance');
+		$notif_prop->setAccessible(true);
+		$notif_prop->setValue(null, null);
+
+		AIPS_Notifications_Event_Handler::register_lazy_hooks();
+		$this->assertNull($notif_prop->getValue(null), 'Lazy registration must not eagerly instantiate AIPS_Notifications');
+		$this->assertNotFalse(has_action('aips_generation_failed'));
+
+		$first_repo  = new AIPS_Test_Notifications_Repository();
+		$second_repo = new AIPS_Test_Notifications_Repository();
+
+		$first_notifs  = new AIPS_Notifications($first_repo, null, $this->history_service);
+		$second_notifs = new AIPS_Notifications($second_repo, null, $this->history_service);
+
+		$this->assertFalse(
+			has_action('aips_generation_failed', array($first_notifs->get_event_handler(), 'handle_generation_failed_notification')),
+			'Re-instantiating AIPS_Notifications must unbind the previous event handler instance'
+		);
+		$this->assertNotFalse(
+			has_action('aips_generation_failed', array($second_notifs->get_event_handler(), 'handle_generation_failed_notification')),
+			'Latest event handler instance must be bound to notification hooks'
+		);
+
+		update_option('aips_notification_preferences', array('system_error' => 'db'));
+		do_action('aips_system_error', array(
+			'title'         => 'Hook Rebind Test',
+			'error_message' => 'Test error',
+			'dedupe_key'    => 'rebind_test_unique_key',
+			'dedupe_window' => 0,
+		));
+
+		$this->assertSame(0, $first_repo->count_unread(), 'Unbound first instance must not receive dispatched system error notification');
+		$this->assertSame(1, $second_repo->count_unread(), 'Latest instance must receive dispatched system error notification exactly once');
+	}
 }
 
 class AIPS_Test_Notifications_Repository extends AIPS_Notifications_Repository {

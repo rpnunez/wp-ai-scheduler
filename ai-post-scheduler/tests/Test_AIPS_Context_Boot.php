@@ -511,4 +511,146 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 			'AIPS_Embeddings_Cron::$instance must be null after admin boot'
 		);
 	}
+
+	/**
+	 * Invoke a private boot method on AI_Post_Scheduler via Reflection for full-WP tests.
+	 *
+	 * @param string $method_name Private method name (e.g. 'boot_common', 'boot_cron').
+	 * @return void
+	 */
+	private function invoke_boot_method( $method_name ) {
+		$plugin = AI_Post_Scheduler::get_instance();
+		$rm     = new ReflectionMethod( 'AI_Post_Scheduler', $method_name );
+		$rm->setAccessible( true );
+		$rm->invoke( $plugin );
+	}
+
+	/**
+	 * Cross-context lazy listeners (notifications, reconciler, affiliate linking,
+	 * REST click tracking) must be registered by boot_common() across contexts
+	 * without eagerly instantiating AIPS_Notifications or AIPS_Partial_Generation_State_Reconciler.
+	 */
+	public function test_common_boot_registers_lazy_cross_context_hooks_without_eager_instantiation() {
+		$this->reset_singleton_instance( 'AIPS_Notifications' );
+		$this->reset_singleton_instance( 'AIPS_Partial_Generation_State_Reconciler' );
+		AIPS_Notifications_Event_Handler::clear_registered_hooks();
+		AIPS_Partial_Generation_State_Reconciler::clear_registered_hooks();
+
+		if ( isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$GLOBALS['aips_test_doing_ajax'] = true;
+			AI_Post_Scheduler::get_instance()->init();
+		} else {
+			$this->invoke_boot_method( 'boot_common' );
+		}
+
+		$this->assertGreaterThan( 0, $this->count_action_callbacks( 'aips_generation_failed' ) );
+		$this->assertGreaterThan( 0, $this->count_action_callbacks( 'aips_post_components_updated' ) );
+		$this->assertGreaterThan( 0, $this->count_action_callbacks( 'aips_post_generated' ) );
+		$this->assertGreaterThan( 0, $this->count_action_callbacks( 'rest_api_init' ) );
+
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Notifications' ),
+			'AIPS_Notifications::$instance must stay null until an event actually fires'
+		);
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Partial_Generation_State_Reconciler' ),
+			'AIPS_Partial_Generation_State_Reconciler::$instance must stay null until a post hook fires'
+		);
+	}
+
+	/**
+	 * In a cron context, aips_scheduled_research is registered lazily without
+	 * instantiating AIPS_Research_Controller::$instance.
+	 */
+	public function test_cron_boot_registers_scheduled_research_lazily() {
+		$this->reset_singleton_instance( 'AIPS_Research_Controller' );
+
+		if ( isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$GLOBALS['aips_test_doing_cron'] = true;
+			AI_Post_Scheduler::get_instance()->init();
+		} else {
+			$this->invoke_boot_method( 'boot_cron' );
+		}
+
+		$this->assertGreaterThan(
+			0,
+			$this->count_action_callbacks( 'aips_scheduled_research' ),
+			'boot_cron() must register the aips_scheduled_research hook'
+		);
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Research_Controller' ),
+			'AIPS_Research_Controller::$instance must stay null until aips_scheduled_research fires'
+		);
+	}
+
+	/**
+	 * In an admin context, admin_post_aips_operations_insights_export must be registered.
+	 */
+	public function test_admin_boot_registers_operations_insights_export_hook() {
+		if ( isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$GLOBALS['aips_test_is_admin'] = true;
+			AI_Post_Scheduler::get_instance()->init();
+		} else {
+			$this->invoke_boot_method( 'boot_admin' );
+		}
+
+		$this->assertGreaterThan(
+			0,
+			$this->count_action_callbacks( 'admin_post_aips_operations_insights_export' ),
+			'boot_admin() must register admin_post_aips_operations_insights_export lazily'
+		);
+	}
+
+	/**
+	 * Unregistered aips_-prefixed AJAX actions must be ignored cleanly rather than
+	 * falling back to register_lazy_ajax_hooks().
+	 */
+	public function test_ajax_boot_ignores_unregistered_aips_prefixed_action() {
+		$has_prev = array_key_exists( 'action', $_REQUEST );
+		$prev     = $has_prev ? $_REQUEST['action'] : null;
+
+		$count_before = $this->count_action_callbacks( 'wp_ajax_aips_save_template' );
+
+		try {
+			$_REQUEST['action'] = 'aips_nonexistent_unknown_action';
+			$this->invoke_boot_method( 'boot_ajax' );
+
+			$this->assertSame(
+				$count_before,
+				$this->count_action_callbacks( 'wp_ajax_aips_save_template' ),
+				'boot_ajax() must not fall back to register_lazy_ajax_hooks() for unknown aips_ actions'
+			);
+		} finally {
+			if ( $has_prev ) {
+				$_REQUEST['action'] = $prev;
+			} else {
+				unset( $_REQUEST['action'] );
+			}
+		}
+	}
+
+	/**
+	 * When AIPS_Related_Posts_Frontend is constructed after WordPress init has already
+	 * fired, it must register aips/related-posts immediately and tolerate repeated construction.
+	 */
+	public function test_related_posts_frontend_registers_block_when_constructed_after_init() {
+		if ( ! function_exists( 'did_action' ) || ! did_action( 'init' ) || ! class_exists( 'WP_Block_Type_Registry' ) ) {
+			$this->markTestSkipped( 'Full WordPress environment after init required.' );
+		}
+
+		$registry = WP_Block_Type_Registry::get_instance();
+		if ( $registry->is_registered( 'aips/related-posts' ) && function_exists( 'unregister_block_type' ) ) {
+			unregister_block_type( 'aips/related-posts' );
+		}
+
+		new AIPS_Related_Posts_Frontend();
+		$this->assertTrue(
+			$registry->is_registered( 'aips/related-posts' ),
+			'AIPS_Related_Posts_Frontend must register aips/related-posts immediately when constructed after init'
+		);
+
+		// A second instantiation must return cleanly without duplicate registration warnings.
+		new AIPS_Related_Posts_Frontend();
+		$this->assertTrue( $registry->is_registered( 'aips/related-posts' ) );
+	}
 }

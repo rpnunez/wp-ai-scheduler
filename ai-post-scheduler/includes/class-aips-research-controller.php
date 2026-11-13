@@ -96,9 +96,6 @@ class AIPS_Research_Controller {
         add_action('wp_ajax_aips_perform_gap_analysis', array($this, 'ajax_perform_gap_analysis'));
         add_action('wp_ajax_aips_generate_topics_from_gap', array($this, 'ajax_generate_topics_from_gap'));
         add_action('wp_ajax_aips_research_from_sources', array($this, 'ajax_research_from_sources'));
-
-        // Scheduled research cron
-        add_action('aips_scheduled_research', array($this, 'run_scheduled_research'));
     }
     
     /**

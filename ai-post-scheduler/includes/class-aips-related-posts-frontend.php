@@ -46,7 +46,12 @@ class AIPS_Related_Posts_Frontend {
 		add_filter('the_content', array($this, 'filter_content'));
 		add_shortcode('aips_related_posts', array($this, 'render_shortcode'));
 		add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
-		add_action('init', array($this, 'register_block'));
+
+		if (function_exists('did_action') && did_action('init')) {
+			$this->register_block();
+		} else {
+			add_action('init', array($this, 'register_block'));
+		}
 	}
 
 	/**
@@ -150,6 +155,10 @@ class AIPS_Related_Posts_Frontend {
 	 */
 	public function register_block() {
 		if (!function_exists('register_block_type')) {
+			return;
+		}
+
+		if (class_exists('WP_Block_Type_Registry') && WP_Block_Type_Registry::get_instance()->is_registered('aips/related-posts')) {
 			return;
 		}
 
