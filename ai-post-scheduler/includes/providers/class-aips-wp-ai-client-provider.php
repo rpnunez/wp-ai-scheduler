@@ -484,7 +484,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 	 * @return mixed
 	 */
 	private function get_connector_transient(string $key) {
-		if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Network_Config') && AIPS_Network_Config::is_site_using_network_credentials()) {
+		if (function_exists('is_multisite') && is_multisite() && AIPS_Network_Config::is_site_using_network_credentials()) {
 			return get_site_transient($key);
 		}
 		return get_transient($key);
@@ -499,7 +499,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 	 * @return bool
 	 */
 	private function set_connector_transient(string $key, $value, int $expiration = 0): bool {
-		if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Network_Config') && AIPS_Network_Config::is_site_using_network_credentials()) {
+		if (function_exists('is_multisite') && is_multisite() && AIPS_Network_Config::is_site_using_network_credentials()) {
 			return set_site_transient($key, $value, $expiration);
 		}
 		return set_transient($key, $value, $expiration);

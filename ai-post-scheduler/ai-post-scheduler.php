@@ -215,7 +215,7 @@ final class AI_Post_Scheduler {
     private function init_hooks() {
         add_action('plugins_loaded', array($this, 'check_upgrades'));
         add_action('init', array($this, 'init'));
-        if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite')) {
+        if (function_exists('is_multisite') && is_multisite()) {
             AIPS_Multisite::init();
         }
     }
@@ -227,7 +227,7 @@ final class AI_Post_Scheduler {
      * @return void
      */
     public function activate($network_wide = false) {
-        if ($network_wide && function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite_Lifecycle')) {
+        if ($network_wide && function_exists('is_multisite') && is_multisite()) {
             AIPS_Multisite_Lifecycle::activate(true);
             return;
         }
@@ -292,7 +292,7 @@ final class AI_Post_Scheduler {
         }
         
         $crons = self::get_cron_events();
-        $cron_jitter = (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite'))
+        $cron_jitter = (function_exists('is_multisite') && is_multisite())
             ? AIPS_Multisite::get_cron_jitter()
             : 0;
 
@@ -351,7 +351,7 @@ final class AI_Post_Scheduler {
      * @return void
      */
     public function deactivate($network_wide = false) {
-        if ($network_wide && function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite_Lifecycle')) {
+        if ($network_wide && function_exists('is_multisite') && is_multisite()) {
             AIPS_Multisite_Lifecycle::deactivate(true);
             return;
         }
@@ -911,7 +911,7 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_cron() {
-        if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite') && !AIPS_Multisite::is_current_site_eligible_for_cron()) {
+        if (function_exists('is_multisite') && is_multisite() && !AIPS_Multisite::is_current_site_eligible_for_cron()) {
             return;
         }
 

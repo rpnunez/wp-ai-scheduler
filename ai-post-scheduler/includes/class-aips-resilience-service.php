@@ -294,11 +294,9 @@ class AIPS_Resilience_Service {
      */
     public function execute_safely($function, $type, $prompt, $options) {
         // Multisite site quota and network kill-switch check
-        if (class_exists('AIPS_Site_Quota_Service')) {
-            $quota_check = AIPS_Site_Quota_Service::check_quota();
-            if (is_wp_error($quota_check)) {
-                return $quota_check;
-            }
+        $quota_check = AIPS_Site_Quota_Service::check_quota();
+        if (is_wp_error($quota_check)) {
+            return $quota_check;
         }
 
         // Check circuit breaker
@@ -329,9 +327,7 @@ class AIPS_Resilience_Service {
             }
         } else {
             $this->record_success();
-            if (class_exists('AIPS_Site_Quota_Service')) {
-                AIPS_Site_Quota_Service::record_call();
-            }
+            AIPS_Site_Quota_Service::record_call();
         }
 
         return $result;
@@ -846,7 +842,7 @@ class AIPS_Resilience_Service {
      * @return mixed
      */
     private function get_resilience_transient(string $key) {
-        if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Network_Config') && AIPS_Network_Config::is_site_using_network_credentials()) {
+        if (function_exists('is_multisite') && is_multisite() && AIPS_Network_Config::is_site_using_network_credentials()) {
             return get_site_transient($key);
         }
         return get_transient($key);
@@ -862,7 +858,7 @@ class AIPS_Resilience_Service {
      * @return bool
      */
     private function set_resilience_transient(string $key, $value, int $expiration = 0) {
-        if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Network_Config') && AIPS_Network_Config::is_site_using_network_credentials()) {
+        if (function_exists('is_multisite') && is_multisite() && AIPS_Network_Config::is_site_using_network_credentials()) {
             return set_site_transient($key, $value, $expiration);
         }
         return set_transient($key, $value, $expiration);
@@ -875,7 +871,7 @@ class AIPS_Resilience_Service {
      * @return bool
      */
     private function delete_resilience_transient(string $key) {
-        if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Network_Config') && AIPS_Network_Config::is_site_using_network_credentials()) {
+        if (function_exists('is_multisite') && is_multisite() && AIPS_Network_Config::is_site_using_network_credentials()) {
             return delete_site_transient($key);
         }
         return delete_transient($key);

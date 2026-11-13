@@ -65,24 +65,16 @@ class AIPS_Multisite {
 		}
 
 		// 1. Flush per-request option cache and registered defaults
-		if (class_exists('AIPS_Config', false)) {
-			AIPS_Config::get_instance()->flush_option_cache();
-		}
+		AIPS_Config::get_instance()->flush_option_cache();
 
 		// 2. Reset in-memory Cache Factory singleton & named instances
-		if (class_exists('AIPS_Cache_Factory', false)) {
-			AIPS_Cache_Factory::reset();
-		}
+		AIPS_Cache_Factory::reset();
 
 		// 3. Rebind logger directory & secret to the new site's upload path
-		if (class_exists('AIPS_Logger', false)) {
-			AIPS_Logger::instance()->rebind();
-		}
+		AIPS_Logger::instance()->rebind();
 
 		// 4. Notify container to clear blog-scoped singletons
-		if (class_exists('AIPS_Container', false)) {
-			AIPS_Container::get_instance()->reset_blog_singletons();
-		}
+		AIPS_Container::get_instance()->reset_blog_singletons();
 
 		/**
 		 * Action fired after AIPS has re-synchronized its runtime for a switched blog.

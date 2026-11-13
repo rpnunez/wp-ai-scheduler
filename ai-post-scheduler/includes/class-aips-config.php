@@ -531,7 +531,7 @@ class AIPS_Config {
      * @return mixed|null
      */
     private function resolve_multisite_network_value(string $option_name) {
-        if (!function_exists('is_multisite') || !is_multisite() || !class_exists('AIPS_Network_Config')) {
+        if (!function_exists('is_multisite') || !is_multisite()) {
             return null;
         }
 
@@ -578,7 +578,7 @@ class AIPS_Config {
      * @return mixed|null
      */
     private function resolve_multisite_network_fallback(string $option_name) {
-        if (!function_exists('is_multisite') || !is_multisite() || !class_exists('AIPS_Network_Config')) {
+        if (!function_exists('is_multisite') || !is_multisite()) {
             return null;
         }
 
