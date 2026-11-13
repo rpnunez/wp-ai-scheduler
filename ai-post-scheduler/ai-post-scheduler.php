@@ -86,60 +86,12 @@ final class AI_Post_Scheduler {
      * @return array<string,array<string,string>>
      */
     public static function get_cron_events() {
-        $events = array(
-            'aips_generate_scheduled_posts' => array(
-                'schedule' => 'hourly',
-                'label'   => __( 'Post Generation', 'ai-post-scheduler' ),
-            ),
-            'aips_generate_author_topics' => array(
-                'schedule' => 'hourly',
-                'label'   => __( 'Author Topic Generation', 'ai-post-scheduler' ),
-            ),
-            'aips_generate_author_posts' => array(
-                'schedule' => 'hourly',
-                'label'   => __( 'Author Post Generation', 'ai-post-scheduler' ),
-            ),
-            'aips_scheduled_research' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Automated Research', 'ai-post-scheduler' ),
-            ),
-            'aips_notification_rollups' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Notification Rollups', 'ai-post-scheduler' ),
-            ),
-            'aips_cleanup_export_files' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Export Cleanup', 'ai-post-scheduler' ),
-            ),
-            'aips_cleanup_bulk_batch_jobs' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
-            ),
-            'aips_cache_monitor_maintenance' => array(
-                'schedule' => 'daily',
-                'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
-            ),
-        );
-
-        // Only include the prune cleanup cron while the feature is actually
-        // enabled, so every consumer of get_cron_events() (activation,
-        // reschedule_missed_cron, diagnostics) naturally skips scheduling a
-        // cron that would otherwise just no-op every time it fires.
-        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_auto_prune_enabled' ) ) {
-            $events['aips_database_prune_cleanup'] = array(
-                'schedule' => sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_telemetry_prune_interval', 'daily' ) ),
-                'label'   => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
-            );
-        }
-
-        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_notif_digest_enabled' ) ) {
-            $events['aips_notif_digest_cron'] = array(
-                'schedule' => 'fifteen_minutes',
-                'label'   => __( 'Notification Digest Check', 'ai-post-scheduler' ),
-            );
-        }
-
-        return $events;
+        // Backward-compatible shim: the canonical definitions now live in
+        // AIPS_Cron_Registry (issue #2369). The registry's "active recurring"
+        // view already applies the prune/digest feature flags, so consumers of
+        // get_cron_events() (diagnostics, DB manager, the flush-cron AJAX
+        // handler) keep seeing exactly the hooks they did before.
+        return AIPS_Cron_Registry::instance()->get_active_recurring_events();
     }
 
     /**
@@ -272,31 +224,16 @@ final class AI_Post_Scheduler {
             }
         }
         
-        $crons = self::get_cron_events();
+        // Reconcile every manager-owned recurring cron against the declarative
+        // registry (issue #2369). The container is not yet bound this early in
+        // the activation request, so construct the manager directly.
+        $logger->log('Reconciling recurring cron schedules via AIPS_Cron_Manager.');
+        ( new AIPS_Cron_Manager() )->sync_recurring_schedules();
 
-        foreach ($crons as $hook => $cron_config) {
-            $schedule = $cron_config['schedule'];
-            $logger->log("Checking cron: $hook");
-
-            if (!wp_next_scheduled($hook)) {
-                $logger->log("Cron '$hook' not scheduled. Scheduling now with schedule: '$schedule'.");
-
-                wp_schedule_event(time(), $schedule, $hook);
-                
-                $next_run = wp_next_scheduled($hook);
-
-                if ($next_run) {
-                    $logger->log("Successfully scheduled '$hook'. Next run: " . date('Y-m-d H:i:s', $next_run));
-                } else {
-                    $logger->log("Failed to schedule '$hook'. wp_next_scheduled returned false.", 'error');
-                }
-            } else {
-                $logger->log("Cron '$hook' is already scheduled.");
-            }
-        }
-        
+        // Leaf-scheduled recurring jobs still own their scheduling logic.
         AIPS_Sources_Cron::instance()->schedule();
         AIPS_Sources_Maintenance::instance();
+        ( new AIPS_Duplicate_Group_Service() )->ensure_schedule();
         flush_rewrite_rules();
 
         $logger->log('Plugin activation finished.');
@@ -333,15 +270,12 @@ final class AI_Post_Scheduler {
      * @return void
      */
     public function deactivate() {
-        foreach (array_keys(self::get_cron_events()) as $hook) {
-            wp_clear_scheduled_hook($hook);
-        }
-        foreach (array('aips_fetch_sources', 'aips_fetch_sources_continue', 'aips_sources_archive_maintenance', 'aips_sources_archive_maintenance_continue') as $hook) {
-            wp_clear_scheduled_hook($hook);
-        }
-        // Single events carry per-schedule args, which wp_clear_scheduled_hook()
-        // only matches exactly; wp_unschedule_hook() removes every instance.
-        wp_unschedule_hook(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK);
+        // Strip every plugin cron hook — recurring, optional leaf-scheduled,
+        // parameterised single/tick (regardless of args), and legacy — via the
+        // registry-backed manager so no orphaned events survive deactivation
+        // (issue #2369). The container is not bound this early in the request,
+        // so construct the manager directly.
+        ( new AIPS_Cron_Manager() )->unschedule_all_plugin_crons();
         flush_rewrite_rules();
     }
 
@@ -439,6 +373,15 @@ final class AI_Post_Scheduler {
 
         $container->singleton(AIPS_AI_Service_Interface::class, function( $container ) {
             return $container->make(AIPS_AI_Service::class);
+        });
+
+        // Cron core layer: declarative registry + WP-Cron manager (issue #2369).
+        $container->singleton(AIPS_Cron_Registry::class, function( $container ) {
+            return AIPS_Cron_Registry::instance();
+        });
+
+        $container->singleton(AIPS_Cron_Manager::class, function( $container ) {
+            return new AIPS_Cron_Manager( $container->make(AIPS_Cron_Registry::class) );
         });
 
         $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
@@ -815,18 +758,32 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_run_undone($run);
         });
 
-        // Process pending background indexing queue (single event / cron worker)
-        add_action('aips_process_pending_indexer_queue', function () {
-            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
-        });
+        // Cron hooks that must be dispatchable in every request context (so a
+        // WP-CLI or "run now" invocation is handled, not consumed with no
+        // callback): the pending-indexer-queue worker and the background-process
+        // tick. Dispatch closures are defined centrally in AIPS_Cron_Registry
+        // and registered lazily via the manager (issue #2369).
+        AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class)->register_dispatch_handlers('common');
 
-        // Background processes: one slice per tick (pause/resume/stop and quota
-        // waits are handled by AIPS_Managed_Background_Process). Registered in every
-        // context, not only wp-cron, so an event fired by WP-CLI or a "run now" tool
-        // is handled rather than consumed with no callback.
-        add_action(AIPS_Managed_Background_Process::TICK_HOOK, function ($process_key) {
-            AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->tick((string) $process_key);
-        }, 10, 1);
+        // Event-driven schedule reconciliation for the two leaf-scheduled
+        // recurring jobs (issue #2369). These fire only when the relevant
+        // option actually changes, so the heavy services are constructed on a
+        // real transition rather than on every request. boot_admin() keeps a
+        // lightweight drift-safety reconcile as a backstop.
+        $reconcile_duplicate_scan = function () {
+            (new AIPS_Duplicate_Group_Service())->ensure_schedule();
+        };
+        add_action('update_option_aips_duplicate_scan_schedule', $reconcile_duplicate_scan);
+        add_action('add_option_aips_duplicate_scan_schedule', $reconcile_duplicate_scan);
+
+        $reconcile_gsc_sync = function () {
+            AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();
+        };
+        foreach (array(AIPS_GSC_Client::CREDENTIALS_OPTION, AIPS_GSC_Client::PROPERTY_OPTION) as $gsc_option) {
+            add_action('update_option_' . $gsc_option, $reconcile_gsc_sync);
+            add_action('add_option_' . $gsc_option, $reconcile_gsc_sync);
+            add_action('delete_option_' . $gsc_option, $reconcile_gsc_sync);
+        }
 
         // Background processes: answer Heartbeat polls from the admin bar and
         // admin pages. Heartbeat requests are AJAX, so this must live here
@@ -866,130 +823,16 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_cron() {
-        // Lazy-resolve the main template scheduler only when its hook fires.
-        add_action('aips_generate_scheduled_posts', function() {
-            AIPS_Scheduler::instance()->process();
-        });
-        // Single due-schedule events: staggered due schedules and yielded
-        // batches resuming after their cooldown. Runs through the same
-        // claim-first lock as the main tick, never the manual-run path.
-        add_action(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, function($schedule_id) {
-            AIPS_Scheduler::instance()->process_queued_due_schedule((int) $schedule_id);
-        });
-
-        // Batch-queue single events: each call processes one slice of a large schedule.
-        // Args: schedule_id, start_index, batch_size, total_quantity, correlation_id.
-        add_action('aips_process_schedule_batch', function(
-            $schedule_id,
-            $start_index,
-            $batch_size,
-            $total_quantity,
-            $correlation_id = ''
-        ) {
-            AIPS_Scheduler::instance()->process_batch(
-                (int) $schedule_id,
-                (int) $start_index,
-                (int) $batch_size,
-                (int) $total_quantity,
-                (string) $correlation_id
-            );
-        }, 10, 5);
-
-        // Resume large batches that the "Prevent AI Generation" setting stopped
-        // part-way through. Queued once when that setting is switched back off.
-        add_action('aips_resume_terminated_batches', function() {
-            AIPS_Scheduler::instance()->resume_terminated_batches();
-        });
-
-        // Lazy-resolve the author-topics scheduler only when its hook fires.
-        add_action('aips_generate_author_topics', function() {
-            AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
-        });
-
-        // Per-author topic-generation slice: process one author's topics in a dedicated cron event.
-        // Args: author_id, correlation_id.
-        add_action('aips_process_author_topics_slice', function( $author_id, $correlation_id = '' ) {
-            AIPS_Author_Topics_Scheduler::instance()->process_author_slice(
-                (int) $author_id,
-                (string) $correlation_id
-            );
-        }, 10, 2);
-
-        // Retry failed topic-generation slices: re-dispatch authors that failed to schedule.
-        // Args: author_ids_json, correlation_id.
-        add_action('aips_retry_failed_author_slices_topics', function( $author_ids_json, $correlation_id = '' ) {
-            AIPS_Author_Topics_Scheduler::instance()->retry_failed_topic_slices(
-                (string) $author_ids_json,
-                (string) $correlation_id
-            );
-        }, 10, 2);
-
-        // Lazy-resolve the author-post generator only when its hook fires.
-        add_action('aips_generate_author_posts', function() {
-            AIPS_Author_Post_Generator::instance()->process();
-        });
-
-        // Per-author post-generation slice: process one author's post in a dedicated cron event.
-        // Args: author_id, correlation_id.
-        add_action('aips_process_author_post_slice', function( $author_id, $correlation_id = '' ) {
-            AIPS_Author_Post_Generator::instance()->process_author_slice(
-                (int) $author_id,
-                (string) $correlation_id
-            );
-        }, 10, 2);
-
-        // Retry failed post-generation slices: re-dispatch authors that failed to schedule.
-        // Args: author_ids_json, correlation_id.
-        add_action('aips_retry_failed_author_slices_posts', function( $author_ids_json, $correlation_id = '' ) {
-            AIPS_Author_Post_Generator::instance()->retry_failed_post_slices(
-                (string) $author_ids_json,
-                (string) $correlation_id
-            );
-        }, 10, 2);
-
-        // Link index scans: each tick indexes one batch and schedules the next,
-        // so scans can be paused, resumed and cancelled between batches.
-        // Generation-time linking pass for a newly published AIPS post.
-        add_action(AIPS_Publish_Linking_Service::CRON_HOOK, function ($post_id) {
-            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->process($post_id);
-        });
-
-        // Scheduled duplicate scan (Settings > Engine > Scheduled Duplicate Scan).
-        add_action(AIPS_Duplicate_Group_Service::CRON_HOOK, function () {
-            (new AIPS_Duplicate_Group_Service())->run_scheduled_scan();
-        });
-
-        // Daily Search Console target keyword sync.
-        add_action(AIPS_GSC_Keywords_Service::CRON_HOOK, function () {
-            AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->sync();
-        });
-
-        add_action(AIPS_Link_Index_Service::SCAN_TICK_HOOK, function( $job_id ) {
-            AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_scan_tick( $job_id );
-        });
-
-        // Bulk auto-link runs: same tick pattern, one batch of target posts per event.
-        add_action(AIPS_Autolink_Run_Service::TICK_HOOK, function( $job_id ) {
-            AIPS_Container::get_instance()->make( AIPS_Autolink_Run_Service::class )->process_tick( $job_id );
-        });
-
-        // Async bulk-batch processing: each single event processes one slice of a stored job.
-        // Args: job_id, start_index, batch_size, total_quantity, correlation_id.
-        add_action('aips_process_bulk_batch', function(
-            $job_id,
-            $start_index,
-            $batch_size,
-            $total_quantity,
-            $correlation_id = ''
-        ) {
-            AIPS_Bulk_Batch_Processor::instance()->process(
-                (string) $job_id,
-                (int)    $start_index,
-                (int)    $batch_size,
-                (int)    $total_quantity,
-                (string) $correlation_id
-            );
-        }, 10, 5);
+        // Lazy cron-hook dispatch: the registry maps each plugin cron hook to a
+        // closure that resolves only the service handling the currently firing
+        // hook, so a cron request for one hook never instantiates the whole
+        // scheduler object graph (issue #2369). This covers the main scheduler,
+        // due-schedule/batch-queue single events, author topic/post slices and
+        // retries, publish-linking, duplicate scan, Search Console sync, link
+        // index / auto-link ticks, bulk-batch slices, the daily cleanup /
+        // maintenance / prune jobs, author embeddings, the internal-links index
+        // batch, and export-file cleanup.
+        AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class)->register_dispatch_handlers('cron');
 
         // Register bulk-batch strategies for each supported job type.
         // Strategies are registered directly (not via add_action) so they are
@@ -1116,63 +959,15 @@ final class AI_Post_Scheduler {
             }
         );
 
-        // Daily cleanup of completed/failed bulk-batch job rows.
-        add_action('aips_cleanup_bulk_batch_jobs', function() {
-            $store   = new AIPS_Bulk_Batch_Job_Store();
-            $deleted = $store->cleanup_old_jobs();
-            $deleted += (new AIPS_Background_Process_Repository())->cleanup_old();
-            if ( $deleted > 0 ) {
-                ( new AIPS_Logger() )->log(
-                    sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),
-                    'info'
-                );
-            }
-        });
-
-        // Daily Cache Monitor maintenance (prune expired/orphan index rows + prune old events).
-        add_action('aips_cache_monitor_maintenance', function() {
-            $repository  = new AIPS_Cache_Monitor_Repository();
-            $cache_index = new AIPS_Cache_Index();
-            $service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
-            $result      = $service->run_maintenance();
-            ( new AIPS_Logger() )->log(
-                sprintf( 'Cache Monitor maintenance complete: %s', wp_json_encode( $result ) ),
-                'info'
-            );
-        });
-
-        // Database retention & prune maintenance.
-        add_action('aips_database_prune_cleanup', function() {
-            $service = AIPS_Container::get_instance()->make(AIPS_DB_Prune_Service::class);
-            $result  = $service->run_automated_prune();
-            ( new AIPS_Logger() )->log(
-                sprintf( 'Database prune cleanup complete: %s', wp_json_encode( $result ) ),
-                'info'
-            );
-        });
-
-        // Lazy-resolve the embeddings worker only when its hook fires.
-        add_action('aips_process_author_embeddings', function($args) {
-            AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
-        }, 10, 1);
-
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();
 
-        // Notification event handler receives generation-failure/quota alerts from cron.
+        // Notification event handler receives generation-failure/quota alerts
+        // from cron and registers the aips_notification_rollups dispatch.
         new AIPS_Notifications();
 
         // Reconciler's save_post hook fires when cron creates or updates posts.
         new AIPS_Partial_Generation_State_Reconciler();
-
-        // Internal Links indexing cron — construct the controller lazily only
-        // when the cron hook fires to avoid eager instantiation on every cron boot.
-        add_action('aips_index_posts_batch', function($args) {
-            (new AIPS_Internal_Links_Controller())->process_indexing_batch_cron($args);
-        }, 10, 1);
-
-        // Export-file cleanup cron handler.
-        add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
 
         // Post-save affiliate link injection — fires after every generated post.
         add_action('aips_post_generated', function($post_id) {
@@ -1250,11 +1045,14 @@ final class AI_Post_Scheduler {
         // Native "AI Edit" in the Classic and Block editors.
         new AIPS_Editor_Assets();
 
-        // Keep the duplicate scan cron event in line with its setting.
-        (new AIPS_Duplicate_Group_Service())->ensure_schedule();
-
-        // Keep the daily Search Console sync scheduled while it is connected.
-        AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();
+        // Lightweight drift-safety reconcile for recurring + leaf-scheduled
+        // crons. Replaces the unconditional ensure_schedule() object
+        // construction that previously ran on every admin request: the heavy
+        // duplicate-scan / Search Console services are only instantiated when
+        // there is actually something to reconcile (issue #2369). Routine
+        // enable/disable/connect transitions are handled by the event-driven
+        // reconcile hooks registered in boot_common().
+        AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class)->reconcile_admin_schedules();
 
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing
