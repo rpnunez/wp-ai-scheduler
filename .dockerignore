@@ -52,9 +52,10 @@ node_modules/
 # Database data
 data/
 
-# CI/CD and agent files
+# CI/CD files
 .github/
-.agents/
+.jules/
+qodana.yaml
 
 # Docker volumes
 db_data_v2/
@@ -62,6 +63,7 @@ wordpress_data_v2/
 
 # Scripts (not needed in image)
 scripts/
+collect_changelogs.py
 
 # Development start scripts (not needed in image)
 start-dev.sh
@@ -69,9 +71,8 @@ start-dev.bat
 start-dev.ps1
 
 # Note: The following files are required and NOT ignored:
-# - docker/healthcheck.sh
-# - docker/docker-entrypoint.sh
-# - docker/dev-php.ini
+# - healthcheck.sh
+# - docker-entrypoint.sh
 # - docker-compose.yml
 # - Dockerfile
 # - ai-post-scheduler/
