@@ -29,6 +29,8 @@ Every reviewer returns the envelope in `.claude/references/pr-xray-finding-contr
 
 Select checks proportional to the changed code and follow `TESTING.md` exactly. Record commands, results, environment ownership, and unavailable checks. Never imply that an unexecuted test passed.
 
+For a material change to synchronous bulk generation, consider `.claude/workflows/performance-ai-cost-check.md`. Attach comparable measurements and their limitations as verification evidence.
+
 ## Phase 4 — Adjudication
 
 Give the coordinator output, reviewer envelopes, and verification results to `.claude/agents/pr-xray-adjudicator.md`.
