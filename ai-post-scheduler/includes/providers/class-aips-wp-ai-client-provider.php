@@ -364,7 +364,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 	 * @return array
 	 */
 	public function get_connector_health(string $connector_id): array {
-		$health = get_transient($this->get_connector_health_key($connector_id));
+		$health = $this->get_connector_transient($this->get_connector_health_key($connector_id));
 
 		return is_array($health) ? $health : array();
 	}
@@ -429,7 +429,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 	 * @return void
 	 */
 	private function record_connector_success(string $connector_id): void {
-		set_transient(
+		$this->set_connector_transient(
 			$this->get_connector_health_key($connector_id),
 			array(
 				'state'        => 'healthy',
@@ -454,7 +454,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 			? self::CONNECTOR_CONFIGURATION_COOLDOWN_SECONDS
 			: self::CONNECTOR_COOLDOWN_SECONDS;
 
-		set_transient(
+		$this->set_connector_transient(
 			$this->get_connector_health_key($connector_id),
 			array(
 				'state'          => 'cooling_down',
@@ -475,6 +475,34 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 	 */
 	private function get_connector_health_key(string $connector_id): string {
 		return 'aips_wp_ai_health_' . md5($connector_id);
+	}
+
+	/**
+	 * Get transient value with multisite network awareness.
+	 *
+	 * @param string $key
+	 * @return mixed
+	 */
+	private function get_connector_transient(string $key) {
+		if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Network_Config') && AIPS_Network_Config::is_site_using_network_credentials()) {
+			return get_site_transient($key);
+		}
+		return get_transient($key);
+	}
+
+	/**
+	 * Set transient value with multisite network awareness.
+	 *
+	 * @param string $key
+	 * @param mixed  $value
+	 * @param int    $expiration
+	 * @return bool
+	 */
+	private function set_connector_transient(string $key, $value, int $expiration = 0): bool {
+		if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Network_Config') && AIPS_Network_Config::is_site_using_network_credentials()) {
+			return set_site_transient($key, $value, $expiration);
+		}
+		return set_transient($key, $value, $expiration);
 	}
 
     /**

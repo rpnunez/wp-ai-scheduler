@@ -292,6 +292,7 @@ class AIPS_Cache_Array_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorab
 	 * @return string Composite storage key.
 	 */
 	private function make_key( $key, $group ) {
-		return $group . ':' . $key;
+		$blog_prefix = ( function_exists( 'is_multisite' ) && is_multisite() ) ? (string) get_current_blog_id() . ':' : '';
+		return $blog_prefix . $group . ':' . $key;
 	}
 }

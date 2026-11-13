@@ -388,6 +388,12 @@ class AIPS_Config {
      * @return mixed Option value or default.
      */
     public function get_option($option_name, $default = null) {
+        // Multisite network policy overrides (e.g. network kill-switch or locked AI settings)
+        $network_forced = $this->resolve_multisite_network_value($option_name);
+        if ($network_forced !== null) {
+            return $network_forced;
+        }
+
         // For critical options, try persistent cache first to avoid DB query
         if ($default === null && in_array($option_name, self::$persistent_cache_options)) {
             if (AIPS_Cache_Factory::instance()->is_available()) {
@@ -428,8 +434,9 @@ class AIPS_Config {
 
         if ($value === $not_set) {
             // Option is not stored in the database.
-            $defaults     = $this->get_default_options();
-            $auth_default = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+            $network_fallback = $this->resolve_multisite_network_fallback($option_name);
+            $defaults         = $this->get_default_options();
+            $auth_default     = ($network_fallback !== null) ? $network_fallback : (isset($defaults[$option_name]) ? $defaults[$option_name] : null);
 
             if ($default === null || $default === $auth_default) {
                 $value = $auth_default;
@@ -444,6 +451,14 @@ class AIPS_Config {
                 $value = $default;
             }
         } else {
+            // If stored value is empty for AI provider/model, fall back to network default
+            if ($value === '' && in_array($option_name, array('aips_ai_provider', 'aips_ai_model'), true)) {
+                $network_fallback = $this->resolve_multisite_network_fallback($option_name);
+                if ($network_fallback !== null && $network_fallback !== '') {
+                    $value = $network_fallback;
+                }
+            }
+
             // Option exists in the database — always cache the live value;
             // use the null sentinel when the DB value is null.
             if ($this->cache !== null) {
@@ -506,6 +521,86 @@ class AIPS_Config {
         if ($this->cache !== null) {
             $this->cache->flush();
         }
+        $this->default_resolved = array();
+    }
+
+    /**
+     * Resolve multisite network override value when enforced by Super Admin policy.
+     *
+     * @param string $option_name
+     * @return mixed|null
+     */
+    private function resolve_multisite_network_value(string $option_name) {
+        if (!function_exists('is_multisite') || !is_multisite() || !class_exists('AIPS_Network_Config')) {
+            return null;
+        }
+
+        // Kill-switch: if network prevent is enabled, always force true
+        if ($option_name === 'aips_prevent_scheduled_ai_generation') {
+            if (AIPS_Network_Config::is_network_ai_generation_prevented()) {
+                return true;
+            }
+            return null;
+        }
+
+        $governed_map = array(
+            'aips_ai_provider'              => 'ai_provider',
+            'aips_ai_model'                 => 'ai_model',
+            'aips_ai_env_id'                => 'ai_env_id',
+            'aips_wp_ai_connector_mode'     => 'wp_ai_connector_mode',
+            'aips_wp_ai_connector_ids'      => 'wp_ai_connector_ids',
+            'aips_wp_ai_connector_failover' => 'wp_ai_connector_failover',
+            'aips_temperature'              => 'temperature',
+            'aips_max_tokens_limit'         => 'max_tokens_limit',
+        );
+
+        if (!isset($governed_map[$option_name])) {
+            return null;
+        }
+
+        $network_key = $governed_map[$option_name];
+        $net_val     = AIPS_Network_Config::get_option($network_key);
+
+        // If sub-site overrides are locked, force the network value (if configured)
+        if (!AIPS_Network_Config::is_site_ai_override_allowed()) {
+            if ($net_val !== null && $net_val !== '') {
+                return $net_val;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve multisite network fallback value when site has no stored setting.
+     *
+     * @param string $option_name
+     * @return mixed|null
+     */
+    private function resolve_multisite_network_fallback(string $option_name) {
+        if (!function_exists('is_multisite') || !is_multisite() || !class_exists('AIPS_Network_Config')) {
+            return null;
+        }
+
+        $governed_map = array(
+            'aips_ai_provider'              => 'ai_provider',
+            'aips_ai_model'                 => 'ai_model',
+            'aips_ai_env_id'                => 'ai_env_id',
+            'aips_wp_ai_connector_mode'     => 'wp_ai_connector_mode',
+            'aips_wp_ai_connector_ids'      => 'wp_ai_connector_ids',
+            'aips_wp_ai_connector_failover' => 'wp_ai_connector_failover',
+            'aips_temperature'              => 'temperature',
+            'aips_max_tokens_limit'         => 'max_tokens_limit',
+        );
+
+        if (isset($governed_map[$option_name])) {
+            $net_val = AIPS_Network_Config::get_option($governed_map[$option_name]);
+            if ($net_val !== null && $net_val !== '') {
+                return $net_val;
+            }
+        }
+
+        return null;
     }
 
     /**

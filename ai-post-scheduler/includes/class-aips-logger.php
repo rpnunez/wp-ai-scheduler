@@ -39,6 +39,21 @@ class AIPS_Logger implements AIPS_Logger_Interface {
     }
 
     /**
+     * Rebind logger file path and configuration for the active blog context.
+     *
+     * @return void
+     */
+    public function rebind() {
+        $upload_dir = wp_upload_dir();
+        $log_dir = $upload_dir['basedir'] . '/aips-logs';
+        $secret = $this->get_log_secret();
+
+        $this->log_file = $log_dir . '/aips-' . AIPS_DateTime::now()->toDisplay('Y-m-d') . '-' . $secret . '.log';
+        $this->enabled = (bool) AIPS_Config::get_instance()->get_option('aips_enable_logging');
+        $this->dir_checked = false;
+    }
+
+    /**
      * Get or generate a persistent secret token for log files.
      * This ensures log filenames are not guessable.
      */

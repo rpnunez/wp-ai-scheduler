@@ -215,17 +215,33 @@ final class AI_Post_Scheduler {
     private function init_hooks() {
         add_action('plugins_loaded', array($this, 'check_upgrades'));
         add_action('init', array($this, 'init'));
+        if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite')) {
+            AIPS_Multisite::init();
+        }
     }
 
     /**
-     * Handle plugin activation tasks.
+     * Handle plugin activation tasks (single-site or network-wide).
      *
-     * Seeds default options, runs upgrades/table checks, schedules cron events,
-     * and applies onboarding redirect logic for first-time installs.
-     *
+     * @param bool $network_wide
      * @return void
      */
-    public function activate() {
+    public function activate($network_wide = false) {
+        if ($network_wide && function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite_Lifecycle')) {
+            AIPS_Multisite_Lifecycle::activate(true);
+            return;
+        }
+
+        $this->activate_single_site(true);
+    }
+
+    /**
+     * Handle activation tasks for a single site.
+     *
+     * @param bool $is_interactive Whether the activation is interactive (e.g. should trigger wizard redirect).
+     * @return void
+     */
+    public function activate_single_site($is_interactive = true) {
         // Ensure logger is available
         if (!class_exists('AIPS_Logger')) {
             require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
@@ -247,9 +263,12 @@ final class AI_Post_Scheduler {
             if (!$wizard_completed) {
                 update_option('aips_onboarding_completed', 1, false);
             }
-        } else {
-            // Fresh install: redirect admins to the onboarding wizard once.
+        } elseif ($is_interactive) {
+            // Fresh install in interactive mode: redirect admins to the onboarding wizard once.
             set_transient('aips_onboarding_redirect', 1, MINUTE_IN_SECONDS * 10);
+        } else {
+            // Non-interactive (e.g. bulk network activation): mark wizard completed so sub-site admins are not disrupted.
+            update_option('aips_onboarding_completed', 1, false);
         }
         $this->check_upgrades();
 
@@ -273,6 +292,9 @@ final class AI_Post_Scheduler {
         }
         
         $crons = self::get_cron_events();
+        $cron_jitter = (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite'))
+            ? AIPS_Multisite::get_cron_jitter()
+            : 0;
 
         foreach ($crons as $hook => $cron_config) {
             $schedule = $cron_config['schedule'];
@@ -281,7 +303,7 @@ final class AI_Post_Scheduler {
             if (!wp_next_scheduled($hook)) {
                 $logger->log("Cron '$hook' not scheduled. Scheduling now with schedule: '$schedule'.");
 
-                wp_schedule_event(time(), $schedule, $hook);
+                wp_schedule_event(time() + $cron_jitter, $schedule, $hook);
                 
                 $next_run = wp_next_scheduled($hook);
 
@@ -311,28 +333,38 @@ final class AI_Post_Scheduler {
      * migrations AND install_tables() (dbDelta) when an upgrade is detected,
      * ensuring the schema is fully applied regardless of the call path.
      *
-     * Call-order guarantee inside AIPS_DB_Migrations::run_upgrade() (must not change):
-     *   1. Versioned migrations run first — column renames/type changes/index ops
-     *      that dbDelta cannot perform. Schema must be consistent before dbDelta.
-     *   2. AIPS_DB_Manager::install_tables() (dbDelta) runs second — adds any new
-     *      tables/columns introduced in the current plugin version.
-     *
-     * Note: activate() also calls install_tables() directly afterward for the
-     * fresh-install / re-activation edge case. The double invocation is harmless
-     * because dbDelta is fully idempotent.
-     *
      * @return void
      */
     public function check_upgrades() {
+        // In multisite, if a network-activated sub-site boots with no DB version, lazy-provision it.
+        if (function_exists('is_multisite') && is_multisite() && !AIPS_Config::get_instance()->has_option('aips_db_version')) {
+            $this->activate_single_site(false);
+            return;
+        }
         AIPS_DB_Migrations::check_and_run();
     }
 
     /**
-     * Handle plugin deactivation cleanup.
+     * Handle plugin deactivation cleanup (single-site or network-wide).
+     *
+     * @param bool $network_wide
+     * @return void
+     */
+    public function deactivate($network_wide = false) {
+        if ($network_wide && function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite_Lifecycle')) {
+            AIPS_Multisite_Lifecycle::deactivate(true);
+            return;
+        }
+
+        $this->deactivate_single_site();
+    }
+
+    /**
+     * Handle single site deactivation cleanup.
      *
      * @return void
      */
-    public function deactivate() {
+    public function deactivate_single_site() {
         foreach (array_keys(self::get_cron_events()) as $hook) {
             wp_clear_scheduled_hook($hook);
         }
@@ -363,6 +395,19 @@ final class AI_Post_Scheduler {
 
         // Keep DB version initialization during activation.
         $defaults['aips_db_version'] = AIPS_VERSION;
+
+        // On multisite, ensure default author is an administrator of this sub-site
+        if (function_exists('is_multisite') && is_multisite() && function_exists('get_users')) {
+            $admin_users = get_users(array(
+                'blog_id' => get_current_blog_id(),
+                'role'    => 'administrator',
+                'number'  => 1,
+                'fields'  => 'ID',
+            ));
+            if (!empty($admin_users[0])) {
+                $defaults['aips_default_post_author'] = (int) $admin_users[0];
+            }
+        }
         
         foreach ($defaults as $key => $value) {
             if (!AIPS_Config::get_instance()->has_option($key)) {
@@ -866,6 +911,10 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_cron() {
+        if (function_exists('is_multisite') && is_multisite() && class_exists('AIPS_Multisite') && !AIPS_Multisite::is_current_site_eligible_for_cron()) {
+            return;
+        }
+
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();
@@ -1380,10 +1429,11 @@ add_filter('qm/component_context/plugin', function( $context, $file ) {
 /**
  * Activation hook callback.
  *
+ * @param bool $network_wide Whether the plugin is being activated network-wide.
  * @return void
  */
-function aips_activate_callback() {
-    AI_Post_Scheduler::get_instance()->activate();
+function aips_activate_callback($network_wide = false) {
+    AI_Post_Scheduler::get_instance()->activate((bool) $network_wide);
 }
 
 register_activation_hook(__FILE__, 'aips_activate_callback');
@@ -1391,10 +1441,11 @@ register_activation_hook(__FILE__, 'aips_activate_callback');
 /**
  * Deactivation hook callback.
  *
+ * @param bool $network_wide Whether the plugin is being deactivated network-wide.
  * @return void
  */
-function aips_deactivate_callback() {
-    AI_Post_Scheduler::get_instance()->deactivate();
+function aips_deactivate_callback($network_wide = false) {
+    AI_Post_Scheduler::get_instance()->deactivate((bool) $network_wide);
 }
 
 register_deactivation_hook(__FILE__, 'aips_deactivate_callback');

@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Added
+- **WordPress Multisite Compatibility (#2363):**
+  - Added full WordPress Multisite support with isolated per-site execution across all 37 custom `{prefix}aips_*` database tables and automatic table dropping via `wpmu_drop_tables`.
+  - Added Network Admin UI with Network Settings (`aips-network-settings`) and Network Sites overview (`aips-network-sites`).
+  - Implemented Network AI Governance: emergency network kill-switch, sub-site credential sharing with fallback to main-site keys/connectors, and policy locks restricting destructive database wipe/repair operations to Super Administrators.
+  - Implemented per-site daily and monthly AI generation quotas (`AIPS_Site_Quota_Service`) with configurable network defaults and per-site overrides.
+  - Added blog-switch context reset (`AIPS_Multisite::on_switch_blog`) ensuring cache isolation, singleton re-instantiation, and logger upload path re-binding.
+  - Added inactive-site WP-Cron guards preventing executions on archived, spam, or deleted blogs, plus deterministic cron jitter (`(blog_id * 37) % 1800`) preventing activation thundering herds.
+  - Enhanced `AIPS_Link_Url_Resolver` and `AIPS_Redirects_Service` with subdirectory multisite boundary awareness.
+
 ### Changed
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
 
