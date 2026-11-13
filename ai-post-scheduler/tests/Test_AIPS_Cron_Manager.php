@@ -63,6 +63,17 @@ class Test_AIPS_Cron_Manager extends WP_UnitTestCase {
 		$this->assertSame( 1, $this->count_instances( 'aips_generate_scheduled_posts' ) );
 	}
 
+	public function test_schedule_recurring_reschedules_on_recurrence_mismatch() {
+		$this->assertTrue( $this->manager->schedule_recurring( 'aips_cache_monitor_maintenance', 'daily' ) );
+		$this->assertSame( 'daily', wp_get_scheduled_event( 'aips_cache_monitor_maintenance' )->schedule );
+
+		// Requesting a different recurrence must clear the stale one and reschedule,
+		// not silently keep 'daily'.
+		$this->assertTrue( $this->manager->schedule_recurring( 'aips_cache_monitor_maintenance', 'weekly' ) );
+		$this->assertSame( 'weekly', wp_get_scheduled_event( 'aips_cache_monitor_maintenance' )->schedule );
+		$this->assertSame( 1, $this->count_instances( 'aips_cache_monitor_maintenance' ) );
+	}
+
 	public function test_schedule_single_dedupe_true_skips_existing() {
 		$ts = time() + 500;
 		$this->assertTrue( $this->manager->schedule_single( 'aips_resume_terminated_batches', $ts ) );

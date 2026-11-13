@@ -66,8 +66,18 @@ class AIPS_Cron_Manager {
 	 * @return bool True when an event is (or already was) scheduled; false on failure.
 	 */
 	public function schedule_recurring( $hook, $recurrence, $timestamp = null, array $args = array() ) {
-		if ( $this->next_scheduled( $hook, $args ) !== false ) {
+		$existing = wp_get_scheduled_event( $hook, $args );
+
+		if ( $existing && isset( $existing->schedule ) && $existing->schedule === $recurrence ) {
+			// Already scheduled with the requested recurrence — nothing to do.
 			return true;
+		}
+
+		if ( $existing ) {
+			// A different recurrence (or a lingering single event) is scheduled
+			// for this hook+args: clear it first so the requested recurrence
+			// actually takes effect instead of being silently ignored.
+			$this->clear_hook( $hook, $args );
 		}
 
 		$timestamp = ( null === $timestamp ) ? time() : (int) $timestamp;
@@ -202,18 +212,22 @@ class AIPS_Cron_Manager {
 	 * Lightweight drift-safety reconciliation for admin page loads.
 	 *
 	 * Replaces the unconditional `ensure_schedule()` object construction that
-	 * `boot_admin()` previously ran on every request. Manager-owned recurring
-	 * events reconcile cheaply via the registry; the two leaf-scheduled services
-	 * (duplicate scan, Search Console sync) are only instantiated when there is
-	 * actually something to reconcile — a wanted schedule, saved credentials, or
-	 * a stale event already in the cron table. Ongoing enable/disable/connect
-	 * transitions are handled by the event-driven reconcile hooks.
+	 * `boot_admin()` previously ran on every request. Only the two leaf-scheduled
+	 * services (duplicate scan, Search Console sync) are reconciled here, and only
+	 * when there is actually something to reconcile — a wanted schedule, saved
+	 * credentials, or a stale event already in the cron table.
+	 *
+	 * Manager-owned recurring events are intentionally NOT force-rescheduled on
+	 * every admin load: that happens at activation (sync_recurring_schedules()),
+	 * on option changes (Settings reconcile hooks), and via the Diagnostics
+	 * "reschedule missed cron" repair. This keeps a deliberately-unscheduled
+	 * recurring event from being silently re-created on the next page view.
+	 * Ongoing enable/disable/connect transitions are handled by event-driven
+	 * reconcile hooks.
 	 *
 	 * @return void
 	 */
 	public function reconcile_admin_schedules() {
-		$this->sync_recurring_schedules();
-
 		$config = AIPS_Config::get_instance();
 
 		// Duplicate scan: reconcile when a schedule is wanted, or a stale event lingers.

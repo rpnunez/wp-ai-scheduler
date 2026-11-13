@@ -230,10 +230,13 @@ final class AI_Post_Scheduler {
         $logger->log('Reconciling recurring cron schedules via AIPS_Cron_Manager.');
         ( new AIPS_Cron_Manager() )->sync_recurring_schedules();
 
-        // Leaf-scheduled recurring jobs still own their scheduling logic.
+        // Leaf-scheduled recurring jobs still own their scheduling logic. The
+        // duplicate-scan and GSC-sync schedules are reconciled on the first admin
+        // load (AIPS_Cron_Manager::reconcile_admin_schedules) and on their option
+        // changes, matching historic behaviour, so they are not force-scheduled
+        // here (and GSC cannot be built this early, before the container binds).
         AIPS_Sources_Cron::instance()->schedule();
         AIPS_Sources_Maintenance::instance();
-        ( new AIPS_Duplicate_Group_Service() )->ensure_schedule();
         flush_rewrite_rules();
 
         $logger->log('Plugin activation finished.');
@@ -775,6 +778,7 @@ final class AI_Post_Scheduler {
         };
         add_action('update_option_aips_duplicate_scan_schedule', $reconcile_duplicate_scan);
         add_action('add_option_aips_duplicate_scan_schedule', $reconcile_duplicate_scan);
+        add_action('delete_option_aips_duplicate_scan_schedule', $reconcile_duplicate_scan);
 
         $reconcile_gsc_sync = function () {
             AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();
