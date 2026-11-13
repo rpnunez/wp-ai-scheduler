@@ -8,7 +8,7 @@ Inventory generation contexts/factories, prompt builders, initial and regenerati
 
 ## Phase 2 — Parallel path review
 
-Use `.claude/agents/generation-pipeline-reviewer.md` to trace each entry point end to end. Compare context fields, prompt semantics, provider options, output/status effects, recovery, and tests across paths.
+Use `.agents/agents/generation-pipeline-reviewer.md` to trace each entry point end to end. Compare context fields, prompt semantics, provider options, output/status effects, recovery, and tests across paths.
 
 Every reviewer returns the shared PR Xray finding envelope.
 
@@ -16,7 +16,7 @@ Every reviewer returns the shared PR Xray finding envelope.
 
 - Identify inconsistent context or prompt behavior across initial, regeneration, scheduled, and bulk generation.
 - Check observability and correlation across asynchronous boundaries.
-- Route scheduling/locking concerns to `.claude/agents/background-job-reviewer.md` rather than duplicating them.
+- Route scheduling/locking concerns to `.agents/agents/background-job-reviewer.md` rather than duplicating them.
 - Record uncovered paths and verification limits.
 
 ## Phase 4 — Report
@@ -26,6 +26,6 @@ Use the shared severity/confidence model. Produce a pipeline map, cross-entry-po
 ## References
 
 - `AGENTS.md`
-- `.claude/agents/generation-pipeline-reviewer.md`
-- `.claude/agents/background-job-reviewer.md`
-- `.claude/references/pr-xray-finding-contract.md`
+- `.agents/agents/generation-pipeline-reviewer.md`
+- `.agents/agents/background-job-reviewer.md`
+- `.agents/references/pr-xray-finding-contract.md`

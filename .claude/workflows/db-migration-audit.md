@@ -11,7 +11,7 @@ Audit plugin-wide schema, migrations, repositories, queries, and persisted colle
 
 ## Phase 2 — Parallel review
 
-Use `.claude/agents/db-migration-reviewer.md` to review schema, upgrade, and persistence/query concerns as separate categories. Include preparation, prefixes, index fit, data preservation, atomic synchronization, clone completeness, N+1 risk, and tests.
+Use `.agents/agents/db-migration-reviewer.md` to review schema, upgrade, and persistence/query concerns as separate categories. Include preparation, prefixes, index fit, data preservation, atomic synchronization, clone completeness, N+1 risk, and tests.
 
 Every reviewer returns the shared PR Xray finding envelope.
 
@@ -30,5 +30,5 @@ Use the shared severity/confidence model. Produce table and repository inventori
 
 - `AGENTS.md`
 - `docs/MIGRATIONS.md`
-- `.claude/agents/db-migration-reviewer.md`
-- `.claude/references/pr-xray-finding-contract.md`
+- `.agents/agents/db-migration-reviewer.md`
+- `.agents/references/pr-xray-finding-contract.md`

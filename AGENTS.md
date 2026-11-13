@@ -13,8 +13,24 @@
 - Admin templates: `ai-post-scheduler/templates/admin/`.
 - Admin assets: `ai-post-scheduler/assets/`.
 - Tests: `ai-post-scheduler/tests/`.
-- Changelog: `ai-post-scheduler/CHANGELOG.md`.
+- Changelog: `CHANGELOG.md` (repo root).
 - Deeper docs: [README.md](README.md), [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md), [docs/AI_AGENT_REFERENCE.md](docs/AI_AGENT_REFERENCE.md), [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md), [docs/HOOKS.md](docs/HOOKS.md), [docs/MIGRATIONS.md](docs/MIGRATIONS.md), [docs/SETUP.md](docs/SETUP.md).
+
+## Rules by file type (read on demand)
+Open the matching file before editing. Always read `wordpress-core.md` plus the one for the files you touch. Claude Code and Copilot are pointed at these automatically for matching paths (generated stubs); other tools must open them.
+
+| Editing | Read |
+|---|---|
+| Any plugin code | [.agents/rules/wordpress-core.md](.agents/rules/wordpress-core.md) |
+| `ai-post-scheduler/includes/**` | [.agents/rules/php-includes.md](.agents/rules/php-includes.md) |
+| `ai-post-scheduler/assets/js/**` | [.agents/rules/js-assets.md](.agents/rules/js-assets.md) |
+| `ai-post-scheduler/templates/**` | [.agents/rules/templates-admin.md](.agents/rules/templates-admin.md) |
+
+## Agents, skills and shared contracts
+- Agents: one file each in `.agents/agents/<name>.md` (frontmatter `name`, `description`, `access: read-only|read-write`). List that folder for the roster; each tool also surfaces the descriptions from its own wrappers.
+- Skills (task playbooks): `.agents/skills/<name>/SKILL.md`. Use the one matching your task.
+- Contracts and templates shared by several agents or skills: `.agents/references/`, `.agents/templates/`.
+- `.claude/{agents,skills,rules}`, `.codex/agents`, `.github/agents` and `.github/instructions` hold generated wrappers only. Never edit or add files there: change the canonical file under `.agents/`, then run `make sync-agents`. `make check-agents` fails on a missing, stale or hand-written wrapper.
 
 ## Coding conventions
 - Use `AIPS_`-prefixed, underscore-separated PHP class names.
@@ -53,11 +69,11 @@
 - **The one way to run tests** is defined in `TESTING.md` ("Agent test protocol"); follow it exactly: `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` (all files in ONE invocation; it stops the containers it started when done). Do not call `scripts/run-docker-test.sh` or `bash.exe -lc` directly, do not loop/chain runs with `&&`/`;`, do not pipe output through `grep`/`head`/`tail`, and do not run `./start-dev.sh` just to test (first-time provisioning only; `AIPS_SKIP_API_KEY_CHECK=1` if no key). Install dev dependencies once with `make composer-install`. Coverage: `make test-coverage` (HTML in `ai-post-scheduler/coverage/`; let it finish). `--fresh` resets the `wp_tests` database.
 - **Clean up after yourself.** If you started the Docker stack, stop it when finished (`make test-session` does this; otherwise `make stop`). If it was already running, leave it. Never use `make down`, `down -v`, `make clean`/`prune` to clean up. Delete scratch/coverage files you created, and state in your final response what you started and stopped.
 - `make test` runs PHPUnit inside the `web` container against a separate `wp_tests` database; it needs no host PHP. Host-side `composer test` / `make test-ci` are for CI parity only; set `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable there.
-- Need data from a database (dev or production) to diagnose a bug? Do not hand-roll `docker exec` SQL or ask the user to paste queries into phpMyAdmin: write the queries to `.artifacts/sql-queries/*.sql` and follow `.claude/skills/sql-batch/SKILL.md` (`make sql-batch QUERIES=...`; read-only, secrets redacted, results in `.artifacts/sql-results/`).
+- Need data from a database (dev or production) to diagnose a bug? Do not hand-roll `docker exec` SQL or ask the user to paste queries into phpMyAdmin: write the queries to `.artifacts/sql-queries/*.sql` and follow `.agents/skills/sql-batch/SKILL.md` (`make sql-batch QUERIES=...`; read-only, secrets redacted, results in `.artifacts/sql-results/`).
 - Each `./start-dev.sh` run logs to `.artifacts/start-dev-*.log` (gitignored); check the newest one when the environment misbehaves. Never print or commit API keys from `.env`.
 
 ## Documentation ownership
-- Keep this file concise (about 40–60 lines) and high-level.
+- Keep this file concise (under about 100 lines) and high-level.
 - Put long subsystem inventories, cron hook lists, table catalogs, and workflow details in `docs/AI_AGENT_REFERENCE.md` or `docs/DEVELOPMENT_GUIDELINES.md`.
 
 ## End-to-end feature delivery

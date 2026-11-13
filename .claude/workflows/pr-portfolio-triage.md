@@ -11,7 +11,7 @@ Rank and route multiple open pull requests. This workflow prioritizes work; it d
 
 ## Phase 2 — Compare work
 
-Use `.claude/agents/pr-portfolio-analyst.md` to identify duplicates, partial overlaps, dependencies, and superseded work by intent, acceptance criteria, and changed areas.
+Use `.agents/agents/pr-portfolio-analyst.md` to identify duplicates, partial overlaps, dependencies, and superseded work by intent, acceptance criteria, and changed areas.
 
 ## Phase 3 — Rank and route
 
@@ -21,7 +21,7 @@ Rank by value, readiness, review effort, risk, blocker cost, and dependency orde
 - blocked or stale work
 - missing labels or reviews
 - recommended review and merge order
-- individual PRs requiring `.claude/skills/pr-xray/SKILL.md`
+- individual PRs requiring `.agents/skills/pr-xray/SKILL.md`
 
 ## Phase 4 — Report
 

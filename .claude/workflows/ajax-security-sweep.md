@@ -10,9 +10,9 @@ Audit every registered AJAX action and controller across the plugin. This is a c
 
 ## Phase 2 — Parallel action-path review
 
-Assign each action path to `.claude/agents/ajax-controller-reviewer.md`. Review registry routing, nonce/capability behavior, typed input parsing, response compatibility, boundaries, failure disclosure, and tests.
+Assign each action path to `.agents/agents/ajax-controller-reviewer.md`. Review registry routing, nonce/capability behavior, typed input parsing, response compatibility, boundaries, failure disclosure, and tests.
 
-Every reviewer returns `.claude/references/pr-xray-finding-contract.md`; do not use an alternate pass/fail schema.
+Every reviewer returns `.agents/references/pr-xray-finding-contract.md`; do not use an alternate pass/fail schema.
 
 ## Phase 3 — Cross-check
 
@@ -28,6 +28,6 @@ Use the shared severity/confidence model. Produce an action-by-requirement summa
 ## References
 
 - `AGENTS.md`
-- `.claude/agents/ajax-controller-reviewer.md`
-- `.claude/references/pr-xray-finding-contract.md`
-- `.claude/references/pr-xray-severity-model.md`
+- `.agents/agents/ajax-controller-reviewer.md`
+- `.agents/references/pr-xray-finding-contract.md`
+- `.agents/references/pr-xray-severity-model.md`

@@ -1,0 +1,2 @@
+name: "NunezScheduler Agent"
+tools: [vscode, execute, read, agent, edit, search, web, vscode.mermaid-chat-features/renderMermaidDiagram, todo]
