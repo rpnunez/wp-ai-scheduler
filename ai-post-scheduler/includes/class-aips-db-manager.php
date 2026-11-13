@@ -1278,6 +1278,7 @@ class AIPS_DB_Manager {
         }
 
         $cron_events    = AI_Post_Scheduler::get_cron_events();
+        $cron_manager   = AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class);
         $unscheduled    = array();
         $rescheduled    = array();
         $failed         = array();
@@ -1287,13 +1288,12 @@ class AIPS_DB_Manager {
             $label    = isset($config['label']) ? $config['label'] : $hook;
 
             // Remove all existing instances of this hook from the cron table.
-            wp_unschedule_hook($hook);
+            $cron_manager->unschedule_all_for_hook($hook);
             $unscheduled[] = $label;
 
             // Re-register exactly once. Use a 60-second offset to avoid an
             // immediate burst of AI calls right after flushing.
-            $scheduled = wp_schedule_event(time() + 60, $schedule, $hook);
-            if ($scheduled !== false) {
+            if ($cron_manager->schedule_recurring($hook, $schedule, time() + 60)) {
                 $rescheduled[] = $label;
             } else {
                 $failed[] = $label;

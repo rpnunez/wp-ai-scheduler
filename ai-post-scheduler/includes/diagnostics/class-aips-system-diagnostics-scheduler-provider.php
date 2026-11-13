@@ -139,10 +139,9 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 		// --- On-demand (single-shot) cron checks ---
 		// These events are only scheduled while work is actively in progress;
 		// 0 instances is normal (idle), not an error.
-		$on_demand_hooks = array(
-			'aips_index_posts_batch'        => __( 'Internal Links Indexing', 'ai-post-scheduler' ),
-			'aips_process_author_embeddings' => __( 'Author Embeddings', 'ai-post-scheduler' ),
-		);
+		// Sourced from the central AIPS_Cron_Registry so every parameterised
+		// single/tick hook is covered rather than a hardcoded subset (issue #2369).
+		$on_demand_hooks = AIPS_Cron_Registry::instance()->get_single_event_hooks();
 
 		foreach ( $on_demand_hooks as $hook => $label ) {
 			$actual     = $this->count_cron_hook_instances( $hook );

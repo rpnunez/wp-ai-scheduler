@@ -86,11 +86,11 @@ class AIPS_Settings {
 	 * @return void
 	 */
 	public static function sync_prune_cron_schedule() {
-		$hook      = 'aips_database_prune_cleanup';
-		$timestamp = wp_next_scheduled($hook);
-		if ($timestamp) {
-			wp_unschedule_event($timestamp, $hook);
-		}
+		$hook    = 'aips_database_prune_cleanup';
+		$manager = AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class);
+
+		// Clear every existing occurrence, then (re)schedule from current settings.
+		$manager->clear_hook($hook);
 
 		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_auto_prune_enabled');
 		if ($enabled) {
@@ -98,7 +98,7 @@ class AIPS_Settings {
 			if (!in_array($interval, array('daily', 'twicedaily', 'weekly'), true)) {
 				$interval = 'daily';
 			}
-			wp_schedule_event(AIPS_DateTime::now()->timestamp(), $interval, $hook);
+			$manager->schedule_recurring($hook, $interval, AIPS_DateTime::now()->timestamp());
 		}
 	}
 
@@ -111,15 +111,14 @@ class AIPS_Settings {
 	 * @return void
 	 */
 	public static function sync_digest_cron_schedule() {
-		$hook      = 'aips_notif_digest_cron';
-		$timestamp = wp_next_scheduled($hook);
-		if ($timestamp) {
-			wp_unschedule_event($timestamp, $hook);
-		}
+		$hook    = 'aips_notif_digest_cron';
+		$manager = AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class);
+
+		$manager->clear_hook($hook);
 
 		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_notif_digest_enabled');
 		if ($enabled) {
-			wp_schedule_event(AIPS_DateTime::now()->timestamp() + 900, 'fifteen_minutes', $hook);
+			$manager->schedule_recurring($hook, 'fifteen_minutes', AIPS_DateTime::now()->timestamp() + 900);
 		} else {
 			// If disabled, flush any remaining queued items so notifications are not stranded.
 			$notifications = AIPS_Notifications::instance();
@@ -143,11 +142,12 @@ class AIPS_Settings {
 			return;
 		}
 
-		if (wp_next_scheduled('aips_resume_terminated_batches')) {
+		$manager = AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class);
+		if ($manager->next_scheduled('aips_resume_terminated_batches') !== false) {
 			return;
 		}
 
-		wp_schedule_single_event(AIPS_DateTime::now()->timestamp() + 60, 'aips_resume_terminated_batches');
+		$manager->schedule_single('aips_resume_terminated_batches', AIPS_DateTime::now()->timestamp() + 60);
 	}
 
 	/**
