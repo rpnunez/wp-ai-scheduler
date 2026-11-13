@@ -956,6 +956,7 @@
             AIPS.bindTemplateEvents();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
+            AIPS.setTemplateVoice(0);
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
@@ -977,6 +978,37 @@
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1, $('#aips-template-modal'));
             $('#aips-template-modal').show();
+        },
+
+        /**
+         * Select a voice in the template wizard's `#voice_id` dropdown.
+         *
+         * The voice list is filled over AJAX, so it may arrive after the
+         * template data. The wanted voice is kept on the select until
+         * `searchVoices()` finds it in the list, so saving an edited template
+         * never clears its voice.
+         *
+		 * @param {number|string|null} voiceId Voice ID, or 0/empty for no voice.
+		 * @param {string} voiceName Voice label returned with the template.
+         */
+		setTemplateVoice: function(voiceId, voiceName) {
+            var $select = $('#voice_id');
+            var value = voiceId ? String(voiceId) : '0';
+
+            if (value === '0') {
+                $select.removeData('aipsSelectedVoice').val('0');
+                return;
+            }
+
+            if ($select.find('option[value="' + value + '"]').length) {
+                $select.removeData('aipsSelectedVoice').val(value);
+                return;
+            }
+
+			$select
+				.append($('<option>').val(value).text(voiceName || value))
+				.val(value)
+				.data('aipsSelectedVoice', value);
         },
 
         /**
@@ -1032,6 +1064,7 @@
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
                         $('#post_quantity').val(t.post_quantity || 1);
+						AIPS.setTemplateVoice(t.voice_id, t.voice_name);
                         $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
                         $('#image_prompt').val(t.image_prompt || '');
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
@@ -1620,12 +1653,35 @@
                 success: function(response) {
                     if (response.success) {
                         var $select = $('#voice_id');
-                        var currentVal = $select.val();
-                        $select.html('<option value="0">' + aipsAdminL10n.noVoiceDefault + '</option>');
+                        // A template opened for editing records its voice here, so the
+                        // selection survives even when this list loads after the form.
+                        var pendingVal = $select.data('aipsSelectedVoice');
+                        var currentVal = (pendingVal !== undefined && pendingVal !== null) ? String(pendingVal) : $select.val();
+                        var $current = $select.find('option[value="' + currentVal + '"]');
+                        var currentText = $current.length ? $current.text() : '';
+                        var found = false;
+
+                        $select.empty().append($('<option>').val('0').text(aipsAdminL10n.noVoiceDefault));
                         $.each(response.data.voices, function(i, voice) {
-                            $select.append('<option value="' + voice.id + '">' + voice.name + '</option>');
+                            if (String(voice.id) === String(currentVal)) {
+                                found = true;
+                            }
+                            $select.append($('<option>').val(voice.id).text(voice.name));
                         });
-                        $select.val(currentVal);
+
+                        // Keep the selected voice even when a search filters it out,
+                        // otherwise saving the form would silently clear it.
+                        if (!found && currentVal && currentVal !== '0' && currentText) {
+                            $select.append($('<option>').val(currentVal).text(currentText));
+                            found = true;
+                        }
+
+                        if (found) {
+                            $select.val(currentVal);
+                            $select.removeData('aipsSelectedVoice');
+                        } else {
+                            $select.val('0');
+                        }
                     }
                 }
             });

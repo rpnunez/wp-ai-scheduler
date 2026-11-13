@@ -738,7 +738,11 @@ class AIPS_Similarity_Evaluator {
 			$meta['auto_approval_reason'] = $reason;
 			$meta['auto_approval_note']   = $note;
 		} else {
-			$should_reject = ($fallback === 'rejected') || ($fallback === 'smart_split' && $is_dup_rejection);
+			// An embeddings outage is not a verdict on the topic: when relevance could
+			// not be measured the topic stays pending (and is re-checked later), even
+			// when the fallback would otherwise reject it.
+			$should_reject = ('relevance_unavailable' !== $reason)
+				&& (($fallback === 'rejected') || ($fallback === 'smart_split' && $is_dup_rejection));
 			$decision      = $should_reject ? 'rejected' : 'pending';
 
 			$meta['auto_approved']        = false;
