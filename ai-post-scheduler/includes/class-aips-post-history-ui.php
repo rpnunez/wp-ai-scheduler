@@ -468,7 +468,12 @@ class AIPS_Post_History_UI {
 		// Sorting
 		if ($query->get('orderby') === 'aips_similarity') {
 			$order = strtoupper($query->get('order')) === 'ASC' ? 'ASC' : 'DESC';
-			add_filter('posts_clauses', function ($clauses) use ($order, $wpdb) {
+			$clauses_filter = null;
+			$clauses_filter = function ($clauses, $wp_query = null) use ($order, $wpdb, $query, &$clauses_filter) {
+				if ($wp_query !== null && $wp_query !== $query) {
+					return $clauses;
+				}
+				remove_filter('posts_clauses', $clauses_filter, 10);
 				$rel_table = $wpdb->prefix . 'aips_relationships';
 				$clauses['join'] .= " LEFT JOIN (
 					SELECT source_id AS rel_post_id, MAX(similarity) AS max_sim 
@@ -478,7 +483,8 @@ class AIPS_Post_History_UI {
 				) AS aips_sim ON aips_sim.rel_post_id = {$wpdb->posts}.ID";
 				$clauses['orderby'] = "COALESCE(aips_sim.max_sim, 0) {$order}, {$wpdb->posts}.post_date DESC";
 				return $clauses;
-			});
+			};
+			add_filter('posts_clauses', $clauses_filter, 10, 2);
 		}
 	}
 

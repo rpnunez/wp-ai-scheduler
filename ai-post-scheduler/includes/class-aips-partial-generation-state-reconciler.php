@@ -23,15 +23,118 @@ class AIPS_Partial_Generation_State_Reconciler {
 	private $post_manager;
 
 	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Callbacks currently attached by __construct() or register_lazy_hooks(),
+	 * tracked so subsequent registrations replace rather than stack duplicates.
+	 *
+	 * @var array<int, array<string, mixed>>
+	 */
+	private static $registered_callbacks = array();
+
+	/**
+	 * Return the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if (null === self::$instance) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
+	/**
+	 * Hook specifications for the reconciler.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function get_hook_specs(): array {
+		return array(
+			array(
+				'hook'          => 'save_post',
+				'method'        => 'on_save_post',
+				'priority'      => 20,
+				'accepted_args' => 3,
+			),
+			array(
+				'hook'          => 'wp_after_insert_post',
+				'method'        => 'on_after_insert_post',
+				'priority'      => 20,
+				'accepted_args' => 4,
+			),
+			array(
+				'hook'          => 'aips_post_components_updated',
+				'method'        => 'on_post_components_updated',
+				'priority'      => 10,
+				'accepted_args' => 3,
+			),
+			array(
+				'hook'          => 'aips_partial_generation_state_reconciled',
+				'method'        => 'sync_history_status',
+				'priority'      => 10,
+				'accepted_args' => 2,
+			),
+		);
+	}
+
+	/**
+	 * Remove any previously registered reconciler hook callbacks.
+	 *
+	 * @return void
+	 */
+	public static function clear_registered_hooks(): void {
+		foreach (self::$registered_callbacks as $item) {
+			remove_action($item['hook'], $item['callback'], $item['priority']);
+		}
+		self::$registered_callbacks = array();
+	}
+
+	/**
+	 * Register lightweight lazy closures for reconciler hooks across all contexts.
+	 *
+	 * @return void
+	 */
+	public static function register_lazy_hooks(): void {
+		self::clear_registered_hooks();
+		self::$instance = null;
+
+		foreach (self::get_hook_specs() as $spec) {
+			$method   = $spec['method'];
+			$callback = function (...$args) use ($method) {
+				return self::instance()->$method(...$args);
+			};
+			add_action($spec['hook'], $callback, $spec['priority'], $spec['accepted_args']);
+			self::$registered_callbacks[] = array(
+				'hook'     => $spec['hook'],
+				'callback' => $callback,
+				'priority' => $spec['priority'],
+			);
+		}
+	}
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
 		$this->post_manager = new AIPS_Post_Manager();
+		self::$instance     = $this;
 
-		add_action('save_post', array($this, 'on_save_post'), 20, 3);
-		add_action('wp_after_insert_post', array($this, 'on_after_insert_post'), 20, 4);
-		add_action('aips_post_components_updated', array($this, 'on_post_components_updated'), 10, 3);
-		add_action('aips_partial_generation_state_reconciled', array($this, 'sync_history_status'), 10, 2);
+		self::clear_registered_hooks();
+		foreach (self::get_hook_specs() as $spec) {
+			$callback = array($this, $spec['method']);
+			add_action($spec['hook'], $callback, $spec['priority'], $spec['accepted_args']);
+			self::$registered_callbacks[] = array(
+				'hook'     => $spec['hook'],
+				'callback' => $callback,
+				'priority' => $spec['priority'],
+			);
+		}
+
+
 	}
 
 	/**

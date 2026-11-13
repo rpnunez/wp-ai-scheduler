@@ -846,7 +846,24 @@ final class AI_Post_Scheduler {
         // Custom cron intervals (fifteen_minutes, every_2_hours, etc.) must be available
         // in every request context so wp_schedule_event recognizes them.
         add_filter('cron_schedules', function($schedules) {
-            return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
+            return (new AIPS_Interval_Calculator())->merge_with_wp_schedules($schedules);
+        });
+
+        // Cross-context notification event listeners (lazy-resolved only when events fire).
+        AIPS_Notifications_Event_Handler::register_lazy_hooks();
+
+        // Cross-context partial generation reconciler (save_post, wp_after_insert_post,
+        // aips_post_components_updated across cron, AJAX, admin, and REST/Gutenberg saves).
+        AIPS_Partial_Generation_State_Reconciler::register_lazy_hooks();
+
+        // Post-save affiliate link injection — fires after every generated post in cron or AJAX.
+        add_action('aips_post_generated', function($post_id) {
+            (new AIPS_Affiliate_Links_Service())->inject_for_post(absint($post_id));
+        }, 10, 1);
+
+        // REST endpoint for internal link click tracking (available across all contexts).
+        add_action('rest_api_init', function () {
+            AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->register_routes();
         });
     }
 
@@ -1156,14 +1173,10 @@ final class AI_Post_Scheduler {
             AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
         }, 10, 1);
 
-        // Research controller registers the aips_scheduled_research cron hook.
-        new AIPS_Research_Controller();
-
-        // Notification event handler receives generation-failure/quota alerts from cron.
-        new AIPS_Notifications();
-
-        // Reconciler's save_post hook fires when cron creates or updates posts.
-        new AIPS_Partial_Generation_State_Reconciler();
+        // Lazy-resolve the research controller only when scheduled research fires.
+        add_action('aips_scheduled_research', function() {
+            AIPS_Research_Controller::instance()->run_scheduled_research();
+        });
 
         // Internal Links indexing cron — construct the controller lazily only
         // when the cron hook fires to avoid eager instantiation on every cron boot.
@@ -1173,11 +1186,6 @@ final class AI_Post_Scheduler {
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
-
-        // Post-save affiliate link injection — fires after every generated post.
-        add_action('aips_post_generated', function($post_id) {
-            (new AIPS_Affiliate_Links_Service())->inject_for_post(absint($post_id));
-        }, 10, 1);
     }
 
     /**
@@ -1186,13 +1194,11 @@ final class AI_Post_Scheduler {
      * Resolves and instantiates only the single controller class mapped to the
      * current AJAX action in the registry.
      *
-     * For plugin-owned actions (those starting with "aips_") that are not yet
-     * registered in the registry, a lazy-resolving fallback is used so that
-     * newly added controllers are still dispatched correctly.
+     * When no action is present at init time (for example in test harnesses),
+     * registers thin lazy-resolving hooks for registered plugin actions.
      *
-     * Non-plugin actions (from other plugins or WordPress core) are ignored
-     * entirely — registering 100+ wp_ajax_* hooks for an action this plugin does
-     * not own would be a performance regression rather than an improvement.
+     * Non-plugin actions (from other plugins or WordPress core) and unknown
+     * actions not in AIPS_Ajax_Registry are ignored cleanly.
      *
      * @return void
      */
@@ -1207,10 +1213,9 @@ final class AI_Post_Scheduler {
             return;
         }
 
-        // Only fall back to lazy-hook registration for plugin-owned actions that
-        // are not yet in the registry (e.g. a newly added controller). Actions
-        // from other plugins or WordPress core are ignored.
-        if (strncmp($action, 'aips_', 5) === 0) {
+        // Fall back to lazy registration only when no action was supplied at init
+        // time (e.g. test harnesses that dispatch multiple actions sequentially).
+        if ($action === '') {
             $this->register_lazy_ajax_hooks();
         }
     }
@@ -1219,10 +1224,10 @@ final class AI_Post_Scheduler {
      * Boot subsystems required for admin (non-AJAX) page views.
      *
      * Registers the admin menu, enqueues assets, initializes settings and
-     * onboarding, adds the admin toolbar node, and binds the notification event
-     * handler and partial-generation reconciler. All page-specific AJAX
-     * controllers are intentionally omitted here; they are resolved on demand
-     * via boot_ajax() when an AJAX request arrives.
+     * onboarding, adds the admin toolbar node, and registers lazy handlers for
+     * admin-post exports. All page-specific AJAX controllers are intentionally
+     * omitted here; they are resolved on demand via boot_ajax() or when their
+     * admin tab/metabox renders.
      *
      * @return void
      */
@@ -1235,12 +1240,6 @@ final class AI_Post_Scheduler {
         // Toolbar node is visible on WP admin pages as well as the frontend.
         new AIPS_Admin_Bar();
 
-        // Notification event handler listens for plugin-level events on admin pages.
-        new AIPS_Notifications();
-
-        // Reconciler's save_post hook fires on post-save actions initiated from admin.
-        new AIPS_Partial_Generation_State_Reconciler();
-
         // Native WordPress post list/editor History links for plugin containers.
         new AIPS_Post_History_UI();
 
@@ -1250,17 +1249,16 @@ final class AI_Post_Scheduler {
         // Native "AI Edit" in the Classic and Block editors.
         new AIPS_Editor_Assets();
 
+        // Lazy handler for Operations Insights CSV/JSON export form (admin-post.php).
+        add_action('admin_post_aips_operations_insights_export', function () {
+            (new AIPS_Operations_Insights_Controller())->handle_export();
+        });
+
         // Keep the duplicate scan cron event in line with its setting.
         (new AIPS_Duplicate_Group_Service())->ensure_schedule();
 
         // Keep the daily Search Console sync scheduled while it is connected.
         AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();
-
-        // Internal Links controller must be available globally so the admin-menu
-        // render callback can call $controller->render_page() without reconstructing
-        // the object (which would double-register all AJAX hooks).
-        global $aips_internal_links_controller;
-        $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
 
         // Ensure Seeder admin hooks are registered when developer mode is enabled
         // so the Seeder JS will be enqueued on the Dev Tools diagnostics tab.
@@ -1269,9 +1267,6 @@ final class AI_Post_Scheduler {
             // hook is available on Diagnostics/Dev Tools pages.
             new AIPS_Seeder_Admin();
         }
-
-        // Post Insights controller for editor metabox and post list column.
-        new AIPS_Post_Insights_Controller();
     }
 
     /**

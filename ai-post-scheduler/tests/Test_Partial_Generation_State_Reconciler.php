@@ -361,4 +361,29 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		$this->assertIsArray($statuses);
 		$this->assertTrue($statuses['featured_image']);
 	}
+
+	/**
+	 * register_lazy_hooks() must attach the reconciler hooks without instantiating
+	 * AIPS_Partial_Generation_State_Reconciler until an action fires, and never
+	 * stack duplicate callbacks across repeated calls.
+	 */
+	public function test_register_lazy_hooks_defers_instantiation_and_avoids_duplicates() {
+		AIPS_Partial_Generation_State_Reconciler::register_lazy_hooks();
+
+		$prop = (new ReflectionClass(AIPS_Partial_Generation_State_Reconciler::class))->getProperty('instance');
+		$prop->setAccessible(true);
+		$this->assertNull($prop->getValue(null), 'Singleton instance must remain null right after register_lazy_hooks().');
+
+		$this->assertNotFalse(has_action('aips_post_components_updated'));
+		$this->assertNotFalse(has_action('save_post'));
+		$this->assertNotFalse(has_action('wp_after_insert_post'));
+
+		// Firing with a zero post_id exercises the lazy closure without DB writes.
+		do_action('aips_post_components_updated', 0, array(), array());
+		$this->assertInstanceOf(
+			AIPS_Partial_Generation_State_Reconciler::class,
+			$prop->getValue(null),
+			'Firing aips_post_components_updated must lazily instantiate the reconciler.'
+		);
+	}
 }

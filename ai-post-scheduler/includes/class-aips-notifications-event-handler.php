@@ -28,12 +28,27 @@ class AIPS_Notifications_Event_Handler {
 	private $repository;
 
 	/**
-	 * Tracks whether the WordPress action hooks have been registered by any
-	 * instance so that multiple instantiations do not register duplicate handlers.
+	 * Tracks whether the WordPress action hooks have been registered.
 	 *
 	 * @var bool
 	 */
 	private static $hooks_registered = false;
+
+	/**
+	 * Most recently instantiated handler, used by lazy hook closures when a
+	 * concrete instance has already been constructed in this request.
+	 *
+	 * @var self|null
+	 */
+	private static $active_instance = null;
+
+	/**
+	 * Callbacks currently attached by register_hooks() or register_lazy_hooks(),
+	 * tracked so subsequent registrations replace rather than stack duplicates.
+	 *
+	 * @var array<int, array<string, mixed>>
+	 */
+	private static $registered_callbacks = array();
 
 	/**
 	 * Constructor.
@@ -45,6 +60,7 @@ class AIPS_Notifications_Event_Handler {
 		$container = AIPS_Container::get_instance();
 		$this->notifications = $notifications;
 		$this->repository = $repository ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : AIPS_Notifications_Repository::instance());
+		self::$active_instance = $this;
 		$this->register_hooks();
 	}
 
@@ -187,18 +203,74 @@ class AIPS_Notifications_Event_Handler {
 	}
 
 	/**
+	 * Remove any previously registered notification hook callbacks so new
+	 * bindings (lazy or direct) replace rather than stack duplicates.
+	 *
+	 * @return void
+	 */
+	public static function clear_registered_hooks() {
+		foreach (self::$registered_callbacks as $item) {
+			remove_action($item['hook'], $item['callback'], $item['priority']);
+		}
+		self::$registered_callbacks = array();
+		self::$hooks_registered     = false;
+	}
+
+	/**
+	 * Register lightweight lazy closures for all declared notification bindings.
+	 *
+	 * Called from AI_Post_Scheduler::boot_common() so notification listeners are
+	 * active across cron, AJAX, admin, REST, and CLI contexts without eagerly
+	 * constructing AIPS_Notifications on requests that never emit events.
+	 *
+	 * @return void
+	 */
+	public static function register_lazy_hooks() {
+		self::clear_registered_hooks();
+		self::$active_instance  = null;
+		self::$hooks_registered = true;
+
+		foreach (self::get_hook_bindings() as $binding) {
+			if (empty($binding['hook']) || empty($binding['method'])) {
+				continue;
+			}
+
+			if (!method_exists(self::class, $binding['method'])) {
+				continue;
+			}
+
+			$hook          = $binding['hook'];
+			$method        = $binding['method'];
+			$priority      = isset($binding['priority'])      ? (int) $binding['priority']      : 10;
+			$accepted_args = isset($binding['accepted_args']) ? (int) $binding['accepted_args'] : 1;
+
+			$callback = function (...$args) use ($method) {
+				$handler = self::$active_instance ?: AIPS_Notifications::instance()->get_event_handler();
+				if (method_exists($handler, $method)) {
+					return $handler->$method(...$args);
+				}
+			};
+
+			add_action($hook, $callback, $priority, $accepted_args);
+			self::$registered_callbacks[] = array(
+				'hook'     => $hook,
+				'callback' => $callback,
+				'priority' => $priority,
+			);
+		}
+	}
+
+	/**
 	 * Register WordPress action hooks for all declared notification bindings.
 	 *
-	 * Uses a static flag so that multiple instantiations (e.g. one in the main
-	 * plugin bootstrap and another inside a scheduler) do not register duplicate
-	 * hook callbacks.
+	 * Replaces any previously bound callbacks (lazy or from an earlier instance)
+	 * so that re-instantiating with custom dependencies never leaves stale
+	 * instances attached or stacks duplicate handlers.
 	 *
 	 * @return void
 	 */
 	private function register_hooks() {
-		if (self::$hooks_registered) {
-			return;
-		}
+		self::clear_registered_hooks();
 		self::$hooks_registered = true;
 
 		foreach (self::get_hook_bindings() as $binding) {
@@ -224,8 +296,14 @@ class AIPS_Notifications_Event_Handler {
 
 			$priority      = isset($binding['priority'])      ? (int) $binding['priority']      : 10;
 			$accepted_args = isset($binding['accepted_args']) ? (int) $binding['accepted_args'] : 1;
+			$callback      = array($this, $binding['method']);
 
-			add_action($binding['hook'], array($this, $binding['method']), $priority, $accepted_args);
+			add_action($binding['hook'], $callback, $priority, $accepted_args);
+			self::$registered_callbacks[] = array(
+				'hook'     => $binding['hook'],
+				'callback' => $callback,
+				'priority' => $priority,
+			);
 		}
 	}
 

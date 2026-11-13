@@ -245,4 +245,17 @@ class Test_AIPS_Scheduler_Hook_Registration extends WP_UnitTestCase {
 			'aips_generate_author_posts must have exactly one callback regardless of how many AIPS_Author_Post_Generator instances are created'
 		);
 	}
+
+	/**
+	 * AIPS_Research_Controller constructor must not register aips_scheduled_research.
+	 */
+	public function test_research_controller_constructor_does_not_register_cron_action() {
+		$count_before = $this->count_action_callbacks( 'aips_scheduled_research' );
+		new AIPS_Research_Controller();
+		$this->assertSame(
+			$count_before,
+			$this->count_action_callbacks( 'aips_scheduled_research' ),
+			'AIPS_Research_Controller constructor must not register aips_scheduled_research'
+		);
+	}
 }

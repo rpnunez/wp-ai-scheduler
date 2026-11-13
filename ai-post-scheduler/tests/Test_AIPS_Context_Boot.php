@@ -511,4 +511,83 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 			'AIPS_Embeddings_Cron::$instance must be null after admin boot'
 		);
 	}
+
+	/**
+	 * Cross-context lazy listeners (notifications, reconciler, affiliate linking,
+	 * REST click tracking) must be registered by boot_common() across contexts
+	 * without eagerly instantiating AIPS_Notifications or AIPS_Partial_Generation_State_Reconciler.
+	 */
+	public function test_common_boot_registers_lazy_cross_context_hooks_without_eager_instantiation() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$this->reset_singleton_instance( 'AIPS_Notifications' );
+		$this->reset_singleton_instance( 'AIPS_Partial_Generation_State_Reconciler' );
+
+		$GLOBALS['aips_test_doing_ajax'] = true;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertGreaterThan( 0, $this->count_action_callbacks( 'aips_generation_failed' ) );
+		$this->assertGreaterThan( 0, $this->count_action_callbacks( 'aips_post_components_updated' ) );
+		$this->assertGreaterThan( 0, $this->count_action_callbacks( 'aips_post_generated' ) );
+		$this->assertGreaterThan( 0, $this->count_action_callbacks( 'rest_api_init' ) );
+
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Notifications' ),
+			'AIPS_Notifications::$instance must stay null until an event actually fires'
+		);
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Partial_Generation_State_Reconciler' ),
+			'AIPS_Partial_Generation_State_Reconciler::$instance must stay null until a post hook fires'
+		);
+	}
+
+	/**
+	 * In a cron context, aips_scheduled_research is registered lazily without
+	 * instantiating AIPS_Research_Controller::$instance.
+	 */
+	public function test_cron_boot_registers_scheduled_research_lazily() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$this->reset_singleton_instance( 'AIPS_Research_Controller' );
+		$GLOBALS['aips_test_doing_cron'] = true;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertGreaterThan(
+			0,
+			$this->count_action_callbacks( 'aips_scheduled_research' ),
+			'boot_cron() must register the aips_scheduled_research hook'
+		);
+		$this->assertNull(
+			$this->get_singleton_instance( 'AIPS_Research_Controller' ),
+			'AIPS_Research_Controller::$instance must stay null until aips_scheduled_research fires'
+		);
+	}
+
+	/**
+	 * In an admin context, admin_post_aips_operations_insights_export must be registered.
+	 */
+	public function test_admin_boot_registers_operations_insights_export_hook() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$GLOBALS['aips_test_is_admin'] = true;
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertGreaterThan(
+			0,
+			$this->count_action_callbacks( 'admin_post_aips_operations_insights_export' ),
+			'boot_admin() must register admin_post_aips_operations_insights_export lazily'
+		);
+	}
 }

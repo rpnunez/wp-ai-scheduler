@@ -42,8 +42,9 @@ Fires after a post has been successfully generated and saved.
 
 *   **Arguments:**
     *   `int $post_id`: The ID of the newly created WordPress post.
-    *   `object $template`: The template object used for generation.
+    *   `object|AIPS_Generation_Context $template_or_context`: The template object (for template-based generation) or the `AIPS_Generation_Context` instance.
     *   `int $history_id`: The ID of the history record associated with this generation.
+    *   `AIPS_Generation_Context|null $context`: The generation context used for the request.
 
 #### `aips_post_generation_incomplete`
 Fires after a post has been created but one or more requested components failed to generate.
@@ -142,6 +143,27 @@ Fires when a plugin-level operational error occurs during activation, upgrade, o
 *   **Arguments:**
     *   `array $payload`: Associative payload containing keys such as `title`, `error_code`, `error_message`, `schedule_id`, `template_id`, `url`, `dedupe_key`, and `dedupe_window`.
 
+#### `aips_circuit_breaker_opened`
+Fires once when the AI service circuit breaker transitions into an open state.
+
+*   **Arguments:**
+    *   `array $payload`: Associative payload containing `failures`, `threshold`, `error_code`, `reason_code`, `dedupe_key`, and `dedupe_window`.
+
+#### `aips_rate_limit_reached`
+Fires when the AI service request rate limiter rejects a call due to exceeding the configured window limit.
+
+*   **Arguments:**
+    *   `array $payload`: Associative payload containing `current_requests`, `max_requests`, `period_seconds`, `dedupe_key`, and `dedupe_window`.
+
+#### `aips_cache_invalidated`
+Fires after `AIPS_Cache_Invalidation_Bus::invalidate()` flushes caches for a subsystem operation.
+
+*   **Arguments:**
+    *   `string $subsystem`: The cache subsystem key.
+    *   `string $operation`: The operation triggering invalidation.
+    *   `array $context`: Optional contextual metadata.
+    *   `array $targets`: List of cache store names flushed.
+
 ### Planner
 
 #### `aips_planner_topics_generated`
@@ -231,8 +253,9 @@ Filters the final content prompt before it is sent to the AI service.
 
 *   **Arguments:**
     *   `string $content_prompt`: The constructed prompt string.
-    *   `object $template`: The template object.
-    *   `string $topic`: The topic being processed.
+    *   `object|AIPS_Generation_Context $template_or_context`: The generation context or legacy template object.
+    *   `string|null $topic`: The topic being processed (may be `null`).
+    *   `AIPS_Prompt_Builder_Post_Content $content_builder`: The post content prompt builder instance.
 
 ---
 

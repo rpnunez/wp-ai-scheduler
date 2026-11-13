@@ -96,11 +96,12 @@ class AIPS_Prompt_Builder {
         $this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
 		$this->diversity_injector = new AIPS_Prompt_Builder_Diversity_Injector();
 
-        // Register the content prompt sources filter once.
-        if (null === self::$sources_filter_callback || false === has_filter('aips_content_prompt', self::$sources_filter_callback)) {
-            self::$sources_filter_callback = array($this, 'inject_sources_into_content_prompt');
-            add_filter('aips_content_prompt', self::$sources_filter_callback, 10, 4);
+        // Rebind the content prompt sources filter so the latest builder instance handles it.
+        if (null !== self::$sources_filter_callback) {
+            remove_filter('aips_content_prompt', self::$sources_filter_callback, 10);
         }
+        self::$sources_filter_callback = array($this, 'inject_sources_into_content_prompt');
+        add_filter('aips_content_prompt', self::$sources_filter_callback, 10, 4);
 	}
 
     /**

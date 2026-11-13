@@ -111,8 +111,6 @@ class AIPS_Link_Click_Tracking_Service {
 	 * @return void
 	 */
 	public function register_frontend(): void {
-		add_action('rest_api_init', array($this, 'register_routes'));
-
 		if (!$this->is_enabled()) {
 			return;
 		}
