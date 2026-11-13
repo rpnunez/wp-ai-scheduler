@@ -121,12 +121,13 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			'retry_failed_slices',
 			'reset_resilience',
 			'rebuild_caches',
+			'clear_embeddings_cache',
 		);
 
 		$this->assertSame($expected_order, wp_list_pluck($result['steps'], 'step'));
-		$this->assertSame(11, $result['succeeded']);
+		$this->assertSame(12, $result['succeeded']);
 		$this->assertSame(0, $result['failed']);
-		$this->assertStringContainsString('11 of 11', $result['message']);
+		$this->assertStringContainsString('12 of 12', $result['message']);
 
 		foreach ($result['steps'] as $step) {
 			$this->assertTrue($step['success'], $step['step']);
@@ -173,8 +174,8 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 
 		$result = $service->refresh_system();
 
-		$this->assertCount(11, $result['steps']);
-		$this->assertSame(10, $result['succeeded']);
+		$this->assertCount(12, $result['steps']);
+		$this->assertSame(11, $result['succeeded']);
 		$this->assertSame(1, $result['failed']);
 
 		$first_step = $result['steps'][0];
