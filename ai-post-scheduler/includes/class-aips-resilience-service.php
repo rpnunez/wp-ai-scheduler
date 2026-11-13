@@ -293,6 +293,12 @@ class AIPS_Resilience_Service {
      * @return mixed Function result or WP_Error.
      */
     public function execute_safely($function, $type, $prompt, $options) {
+        // Multisite site quota and network kill-switch check
+        $quota_check = AIPS_Site_Quota_Service::check_quota();
+        if (is_wp_error($quota_check)) {
+            return $quota_check;
+        }
+
         // Check circuit breaker
         if (!$this->check_circuit_breaker()) {
             return new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
@@ -321,6 +327,7 @@ class AIPS_Resilience_Service {
             }
         } else {
             $this->record_success();
+            AIPS_Site_Quota_Service::record_call();
         }
 
         return $result;
@@ -397,7 +404,7 @@ class AIPS_Resilience_Service {
      * Load circuit breaker state from transient.
      */
     private function load_circuit_breaker_state() {
-        $state = get_transient('aips_circuit_breaker_state');
+        $state = $this->get_resilience_transient('aips_circuit_breaker_state');
         if ($state !== false) {
             $this->circuit_breaker_state = $state;
         }
@@ -407,7 +414,7 @@ class AIPS_Resilience_Service {
      * Save circuit breaker state to transient.
      */
     private function save_circuit_breaker_state() {
-        set_transient('aips_circuit_breaker_state', $this->circuit_breaker_state, HOUR_IN_SECONDS);
+        $this->set_resilience_transient('aips_circuit_breaker_state', $this->circuit_breaker_state, HOUR_IN_SECONDS);
     }
 
     /**
@@ -644,7 +651,7 @@ class AIPS_Resilience_Service {
         // Load rate limiter state from transient. Anything other than an array
         // (missing, or corrupted by an external writer) is treated as empty —
         // array_filter() would otherwise raise a TypeError on PHP 8.
-        $requests = get_transient('aips_rate_limiter_requests');
+        $requests = $this->get_resilience_transient('aips_rate_limiter_requests');
         if (!is_array($requests)) {
             $requests = array();
         }
@@ -675,7 +682,7 @@ class AIPS_Resilience_Service {
 
         // Add current request
         $requests[] = $current_time;
-        set_transient('aips_rate_limiter_requests', $requests, $period);
+        $this->set_resilience_transient('aips_rate_limiter_requests', $requests, $period);
 
         return true;
     }
@@ -687,7 +694,7 @@ class AIPS_Resilience_Service {
      */
     public function get_rate_limiter_status() {
         $rl_config = $this->config->get_rate_limit_config();
-        $requests = get_transient('aips_rate_limiter_requests');
+        $requests = $this->get_resilience_transient('aips_rate_limiter_requests');
 
         if (!is_array($requests)) {
             $requests = array();
@@ -716,7 +723,7 @@ class AIPS_Resilience_Service {
      * @return bool True on success.
      */
     public function reset_rate_limiter() {
-        delete_transient('aips_rate_limiter_requests');
+        $this->delete_resilience_transient('aips_rate_limiter_requests');
         $this->logger->log('Rate limiter manually reset', 'info');
         return true;
     }
@@ -801,7 +808,7 @@ class AIPS_Resilience_Service {
         $period = (int) $rl_config['period'];
         $max_requests = (int) $rl_config['requests'];
 
-        $requests = get_transient('aips_rate_limiter_requests');
+        $requests = $this->get_resilience_transient('aips_rate_limiter_requests');
         if (!is_array($requests) || empty($requests) || $max_requests < 1) {
             return 0;
         }
@@ -825,5 +832,48 @@ class AIPS_Resilience_Service {
         $slot_frees_at = $requests[count($requests) - $max_requests] + $period;
 
         return max(0, $slot_frees_at - $current_time);
+    }
+
+    /**
+     * Get a transient value with multisite awareness.
+     * Uses site transient when site relies on shared network AI credentials.
+     *
+     * @param string $key
+     * @return mixed
+     */
+    private function get_resilience_transient(string $key) {
+        if (function_exists('is_multisite') && is_multisite() && AIPS_Network_Config::is_site_using_network_credentials()) {
+            return get_site_transient($key);
+        }
+        return get_transient($key);
+    }
+
+    /**
+     * Set a transient value with multisite awareness.
+     * Uses site transient when site relies on shared network AI credentials.
+     *
+     * @param string $key
+     * @param mixed  $value
+     * @param int    $expiration
+     * @return bool
+     */
+    private function set_resilience_transient(string $key, $value, int $expiration = 0) {
+        if (function_exists('is_multisite') && is_multisite() && AIPS_Network_Config::is_site_using_network_credentials()) {
+            return set_site_transient($key, $value, $expiration);
+        }
+        return set_transient($key, $value, $expiration);
+    }
+
+    /**
+     * Delete a transient value with multisite awareness.
+     *
+     * @param string $key
+     * @return bool
+     */
+    private function delete_resilience_transient(string $key) {
+        if (function_exists('is_multisite') && is_multisite() && AIPS_Network_Config::is_site_using_network_credentials()) {
+            return delete_site_transient($key);
+        }
+        return delete_transient($key);
     }
 }

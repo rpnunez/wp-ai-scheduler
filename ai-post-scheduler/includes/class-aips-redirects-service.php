@@ -483,6 +483,20 @@ class AIPS_Redirects_Service {
 			return new WP_Error('aips_redirect_source_reserved', __('The home page and WordPress system URLs cannot be redirected.', 'ai-post-scheduler'));
 		}
 
+		if (function_exists('is_multisite') && is_multisite() && function_exists('is_subdomain_install') && !is_subdomain_install()) {
+			$current_site = get_site();
+			if ($current_site && $current_site->path === '/') {
+				$sites = get_sites(array('fields' => 'path', 'number' => 100));
+				if (is_array($sites)) {
+					foreach ($sites as $sub_path) {
+						if ($sub_path !== '/' && str_starts_with($source, $sub_path)) {
+							return new WP_Error('aips_redirect_source_sibling', __('The old URL path belongs to a sibling sub-site in this network.', 'ai-post-scheduler'));
+						}
+					}
+				}
+			}
+		}
+
 		return substr($source, 0, 500);
 	}
 

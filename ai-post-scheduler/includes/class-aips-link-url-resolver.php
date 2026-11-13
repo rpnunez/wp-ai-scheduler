@@ -144,7 +144,67 @@ class AIPS_Link_Url_Resolver {
 			return false;
 		}
 
-		return in_array($this->canonical_host($host), $this->get_site_hosts(), true);
+		if (!in_array($this->canonical_host($host), $this->get_site_hosts(), true)) {
+			return false;
+		}
+
+		// On subdirectory multisite installs, verify path boundary
+		if (function_exists('is_multisite') && is_multisite() && function_exists('is_subdomain_install') && !is_subdomain_install()) {
+			return $this->is_internal_subdirectory($url);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check path boundary on subdirectory multisite installs.
+	 *
+	 * On a sub-site (e.g. /site2/), URLs must begin with /site2/ to be internal.
+	 * On the main site (/), URLs matching any sibling sub-site path are external.
+	 *
+	 * @param string $url
+	 * @return bool
+	 */
+	private function is_internal_subdirectory(string $url): bool {
+		$url_path = (string) wp_parse_url($url, PHP_URL_PATH);
+		if ($url_path === '') {
+			$url_path = '/';
+		}
+
+		$current_site = get_site();
+		$site_path = $current_site ? $current_site->path : '/';
+
+		// If we are on a sub-site (site_path is not '/'), url_path must start with site_path
+		if ($site_path !== '/') {
+			return str_starts_with($url_path, $site_path);
+		}
+
+		// If we are on the main site (site_path is '/'), check if url_path matches any sub-site path
+		$sibling_paths = $this->get_multisite_sub_paths();
+		foreach ($sibling_paths as $sub_path) {
+			if ($sub_path !== '/' && str_starts_with($url_path, $sub_path)) {
+				return false; // Belongs to a sibling sub-site, so external to main site
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Get list of known sub-site paths for subdirectory multisite.
+	 *
+	 * @return string[]
+	 */
+	private function get_multisite_sub_paths(): array {
+		static $paths = null;
+		if ($paths === null) {
+			$paths = array();
+			$sites = get_sites(array('fields' => 'path', 'number' => 100));
+			if (is_array($sites)) {
+				$paths = $sites;
+			}
+		}
+		return $paths;
 	}
 
 	/**

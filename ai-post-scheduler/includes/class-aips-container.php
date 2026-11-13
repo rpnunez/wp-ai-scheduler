@@ -242,6 +242,19 @@ class AIPS_Container {
 	}
 
 	/**
+	 * Reset resolved singletons across blog switches.
+	 *
+	 * Preserves container factory bindings while clearing resolved instance references,
+	 * ensuring repositories rebind cleanly to the active blog's table prefix.
+	 *
+	 * @return void
+	 */
+	public function reset_blog_singletons() {
+		$this->singletons = array();
+		$this->resolving = array();
+	}
+
+	/**
 	 * Get the count of registered bindings.
 	 *
 	 * @return array<string, int> Array with 'transient', 'singleton', and 'total' counts.
