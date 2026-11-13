@@ -133,8 +133,6 @@ class AIPS_Partial_Generation_State_Reconciler {
 				'priority' => $spec['priority'],
 			);
 		}
-
-
 	}
 
 	/**

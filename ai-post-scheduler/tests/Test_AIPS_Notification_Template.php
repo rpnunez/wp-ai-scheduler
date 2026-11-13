@@ -749,6 +749,17 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			has_action('aips_generation_failed', array($second_notifs->get_event_handler(), 'handle_generation_failed_notification')),
 			'Latest event handler instance must be bound to notification hooks'
 		);
+
+		update_option('aips_notification_preferences', array('system_error' => 'db'));
+		do_action('aips_system_error', array(
+			'title'         => 'Hook Rebind Test',
+			'error_message' => 'Test error',
+			'dedupe_key'    => 'rebind_test_unique_key',
+			'dedupe_window' => 0,
+		));
+
+		$this->assertSame(0, $first_repo->count_unread(), 'Unbound first instance must not receive dispatched system error notification');
+		$this->assertSame(1, $second_repo->count_unread(), 'Latest instance must receive dispatched system error notification exactly once');
 	}
 }
 

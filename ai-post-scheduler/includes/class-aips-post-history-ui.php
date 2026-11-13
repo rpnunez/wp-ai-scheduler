@@ -795,7 +795,10 @@ class AIPS_Post_History_UI {
 	 * @return array
 	 */
 	public function compile_single_post_insights(int $post_id): array {
-		$controller = new AIPS_Post_Insights_Controller();
+		$container  = AIPS_Container::get_instance();
+		$controller = $container->has(AIPS_Post_Insights_Controller::class)
+			? $container->make(AIPS_Post_Insights_Controller::class)
+			: new AIPS_Post_Insights_Controller();
 		return $controller->compile_post_insights($post_id);
 	}
 
