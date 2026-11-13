@@ -987,6 +987,42 @@ class AIPS_Author_Topics_Controller {
 	}
 
 	/**
+	 * Schedule a background embeddings processing job.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Batch size for processing.
+	 * @param int $last_processed_id Last processed topic ID.
+	 * @return void
+	 */
+	private function schedule_embeddings_job($author_id, $batch_size, $last_processed_id) {
+		$args = array(
+			'author_id'         => $author_id,
+			'batch_size'        => $batch_size,
+			'last_processed_id' => $last_processed_id,
+		);
+
+		// Schedule to run in a few seconds
+		$timestamp = time() + 5;
+
+		// Route through the centralized job scheduler; transport selection
+		// (Action Scheduler when available, otherwise WP-Cron) is handled by
+		// infrastructure wiring, not this controller. The callback receives a
+		// single associative $args array under both transports.
+		$this->job_scheduler->schedule_simple(
+			'aips_process_author_embeddings',
+			$timestamp,
+			array($args),
+			array(
+				'job_type'      => 'author_embeddings',
+				'group'         => AIPS_Job_Groups::EMBEDDINGS,
+				'retry_options' => array(
+					'max_attempts' => 3,
+				),
+			)
+		);
+	}
+
+	/**
 	 * AJAX handler for getting all approved topics for the generation queue.
 	 */
 	public function ajax_get_generation_queue() {

@@ -112,6 +112,13 @@ class AIPS_Schedule_Controller {
             }
         }
 
+        // When Action Scheduler is the active transport, these single-shot jobs
+        // live in the Action Scheduler store rather than the WP-Cron array above,
+        // so _get_cron_array() cannot see them. Fold pending Action Scheduler
+        // actions for the same hooks into the depth/timeline so the strip is not
+        // blind to queued work whenever Action Scheduler is installed.
+        $this->augment_queue_with_action_scheduler($queue_hooks, $next_24h, $queue_depth, $queue_timeline);
+
         // Build schedule timeline from the same unified source the table uses,
         // so the strip matches "Next Run" values shown to operators.
         $unified_service = new AIPS_Unified_Schedule_Service();
@@ -204,6 +211,75 @@ class AIPS_Schedule_Controller {
 
         $cache->set($cache_key, $payload, 60);
         AIPS_Ajax_Response::success($payload);
+    }
+
+    /**
+     * Fold pending Action Scheduler actions into the queue depth/timeline view.
+     *
+     * Background jobs scheduled through AIPS_Job_Scheduler run on the resolved
+     * transport, which is Action Scheduler when it is installed. Those actions
+     * are stored in the Action Scheduler tables and are invisible to
+     * _get_cron_array(), so this mirrors them into the same monitoring shape.
+     *
+     * Best-effort and read-only: capped per hook, defensively guarded against
+     * Action Scheduler API/shape differences, and a no-op when Action Scheduler
+     * is not present (the WP-Cron array already covers that case).
+     *
+     * @param string[] $hooks          Queue hook names to inspect.
+     * @param int      $before_ts      Only include actions scheduled at/before this Unix time.
+     * @param array    $queue_depth    Depth map (hook => count), passed by reference.
+     * @param array    $queue_timeline Timeline entries, passed by reference.
+     * @return void
+     */
+    private function augment_queue_with_action_scheduler(array $hooks, $before_ts, array &$queue_depth, array &$queue_timeline) {
+        if (!function_exists('as_get_scheduled_actions')) {
+            return;
+        }
+
+        foreach ($hooks as $hook) {
+            $actions = as_get_scheduled_actions(array(
+                'hook'     => $hook,
+                'status'   => 'pending',
+                'per_page' => 100,
+                'orderby'  => 'date',
+                'order'    => 'ASC',
+            ), 'OBJECT');
+
+            if (!is_array($actions)) {
+                continue;
+            }
+
+            foreach ($actions as $action) {
+                if (!is_object($action) || !method_exists($action, 'get_schedule')) {
+                    continue;
+                }
+
+                $schedule = $action->get_schedule();
+                if (!is_object($schedule) || !method_exists($schedule, 'get_date')) {
+                    continue;
+                }
+
+                $date = $schedule->get_date();
+                if (!($date instanceof DateTime)) {
+                    continue;
+                }
+
+                $ts = $date->getTimestamp();
+                if ($ts > (int) $before_ts) {
+                    continue;
+                }
+
+                if (!isset($queue_depth[$hook])) {
+                    $queue_depth[$hook] = 0;
+                }
+                $queue_depth[$hook]++;
+                $queue_timeline[] = array(
+                    'hook'      => $hook,
+                    'timestamp' => $ts,
+                    'count'     => 1,
+                );
+            }
+        }
     }
 
     /**

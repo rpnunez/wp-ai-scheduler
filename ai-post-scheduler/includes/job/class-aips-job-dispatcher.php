@@ -36,16 +36,26 @@ class AIPS_Job_Dispatcher {
 	private $history_service;
 
 	/**
+	 * @var AIPS_Job_Transport_Interface Resolved scheduling transport.
+	 */
+	private $transport;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Resilience_Service|null        $resilience_service Optional resilience service.
 	 * @param AIPS_Logger|null                    $logger             Optional logger.
 	 * @param AIPS_History_Service_Interface|null $history_service    Optional history service.
+	 * @param AIPS_Job_Transport_Interface|null   $transport          Optional scheduling transport.
+	 *                                                                Defaults to the resolved transport
+	 *                                                                (Action Scheduler when available,
+	 *                                                                otherwise WP-Cron).
 	 */
 	public function __construct(
 		?AIPS_Resilience_Service $resilience_service = null,
 		?AIPS_Logger $logger = null,
-		?AIPS_History_Service_Interface $history_service = null
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Job_Transport_Interface $transport = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -56,6 +66,35 @@ class AIPS_Job_Dispatcher {
 		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
 			? $container->make(AIPS_History_Service_Interface::class)
 			: new AIPS_History_Service());
+		$this->transport = $transport ?: $this->resolve_transport($container);
+	}
+
+	/**
+	 * Resolve the scheduling transport via the container, falling back to a
+	 * fresh resolver when no binding is registered.
+	 *
+	 * @param AIPS_Container $container Container instance.
+	 * @return AIPS_Job_Transport_Interface
+	 */
+	private function resolve_transport(AIPS_Container $container): AIPS_Job_Transport_Interface {
+		if ($container->has(AIPS_Job_Transport_Interface::class)) {
+			return $container->make(AIPS_Job_Transport_Interface::class);
+		}
+
+		$resolver = $container->has(AIPS_Job_Transport_Resolver::class)
+			? $container->make(AIPS_Job_Transport_Resolver::class)
+			: new AIPS_Job_Transport_Resolver();
+
+		return $resolver->resolve();
+	}
+
+	/**
+	 * Get the active scheduling transport.
+	 *
+	 * @return AIPS_Job_Transport_Interface
+	 */
+	public function get_transport(): AIPS_Job_Transport_Interface {
+		return $this->transport;
 	}
 
 	/**
@@ -112,24 +151,22 @@ class AIPS_Job_Dispatcher {
 		$attempt_num = 0;
 		$last_error = null;
 
+		$transport_name = $this->transport->get_name();
+
 		$success = $this->resilience_service->retry_with_backoff(
-			function() use ($job, &$attempt_num, &$last_error) {
+			function() use ($job, $transport_name, &$attempt_num, &$last_error) {
 				$attempt_num++;
 
-				$result = wp_schedule_single_event(
-					$job->get_fire_at(),
-					$job->get_hook(),
-					$job->get_args(),
-					true
-				);
+				$result = $this->transport->schedule($job);
 
 				if ($result === true) {
 					if ($attempt_num > 1) {
 						$this->logger->log(
 							sprintf(
-								'Job scheduled on attempt %d: hook=%s',
+								'Job scheduled on attempt %d: hook=%s, transport=%s',
 								$attempt_num,
-								$job->get_hook()
+								$job->get_hook(),
+								$transport_name
 							),
 							'info',
 							$job->get_metadata()
@@ -146,15 +183,19 @@ class AIPS_Job_Dispatcher {
 						$result->get_error_message()
 					);
 				} else {
-					$error_msg = 'Unknown error (wp_schedule_single_event returned false)';
+					$error_msg = sprintf(
+						'Unknown error (%s transport returned non-true)',
+						$transport_name
+					);
 				}
 				$last_error = $error_msg;
 
 				$this->logger->log(
 					sprintf(
-						'Attempt %d: Failed to schedule job: hook=%s, error=%s',
+						'Attempt %d: Failed to schedule job: hook=%s, transport=%s, error=%s',
 						$attempt_num,
 						$job->get_hook(),
+						$transport_name,
 						$error_msg
 					),
 					'warning',
@@ -224,7 +265,7 @@ class AIPS_Job_Dispatcher {
 	 * @return int|false Existing timestamp when found, false otherwise.
 	 */
 	private function get_scheduled_timestamp(AIPS_Job_Definition $job): int|false {
-		return wp_next_scheduled($job->get_hook(), $job->get_args());
+		return $this->transport->next_scheduled($job);
 	}
 
 	/**
@@ -272,6 +313,7 @@ class AIPS_Job_Dispatcher {
 					'error'         => $last_error,
 					'max_attempts'  => $max_attempts,
 					'correlation_id' => $job->get_correlation_id(),
+					'transport'     => $this->transport->get_name(),
 				)
 			);
 

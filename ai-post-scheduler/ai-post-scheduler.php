@@ -477,6 +477,17 @@ final class AI_Post_Scheduler {
             return new AIPS_System_Status_Diagnostics_Service();
         });
 
+        // Register the background-job transport resolver and the resolved
+        // transport. Transport selection (Action Scheduler vs WP-Cron) is a
+        // single infrastructure concern, wired here rather than in features.
+        $container->singleton(AIPS_Job_Transport_Resolver::class, function( $container ) {
+            return new AIPS_Job_Transport_Resolver();
+        });
+
+        $container->singleton(AIPS_Job_Transport_Interface::class, function( $container ) {
+            return $container->make(AIPS_Job_Transport_Resolver::class)->resolve();
+        });
+
         // Register AIPS_Embeddings_Repository
         $container->singleton(AIPS_Embeddings_Repository::class, function( $container ) {
             return new AIPS_Embeddings_Repository();
@@ -699,6 +710,21 @@ final class AI_Post_Scheduler {
         } else {
             $this->boot_frontend();
         }
+
+        // Action Scheduler runs its queue outside the WP-Cron context — through
+        // an async admin-ajax loopback, an admin page load, or WP-CLI — so a
+        // queued job can reach its runner in a request that did not call
+        // boot_cron(). When that transport is active, register the job handlers
+        // here too so the callbacks exist wherever the job actually executes.
+        // The function_exists() guard keeps installs without Action Scheduler on
+        // the unchanged, cron-only path; resolving the transport honours the
+        // aips_prefer_action_scheduler filter.
+        if (!wp_doing_cron() && function_exists('as_schedule_single_action')) {
+            $transport = AIPS_Container::get_instance()->make(AIPS_Job_Transport_Interface::class);
+            if ($transport instanceof AIPS_Action_Scheduler_Transport) {
+                $this->register_job_handlers();
+            }
+        }
     }
 
     /**
@@ -853,19 +879,38 @@ final class AI_Post_Scheduler {
     /**
      * Boot subsystems required only during WP-Cron execution.
      *
-     * Registers cron hook callbacks as closures that resolve the singleton
-     * instance at runtime (when WordPress fires the event). This means that
-     * a cron request dispatched for, say, aips_generate_author_topics will only
-     * ever instantiate AIPS_Author_Topics_Scheduler — the other scheduler
-     * objects are never constructed unless their own hooks fire in the same run.
-     *
-     * Also boots the notification event handler (for generation-failure and quota
-     * alerts fired from cron) and the partial-generation reconciler
-     * (save_post fires when cron creates posts).
+     * Registers the background-job callbacks via register_job_handlers(). These
+     * are the hook handlers the job runner invokes; they are registered as
+     * closures that resolve the singleton instance at runtime (when WordPress
+     * fires the event), so a cron request dispatched for, say,
+     * aips_generate_author_topics will only ever instantiate
+     * AIPS_Author_Topics_Scheduler — the other scheduler objects are never
+     * constructed unless their own hooks fire in the same run.
      *
      * @return void
      */
     private function boot_cron() {
+        $this->register_job_handlers();
+    }
+
+    /**
+     * Register every background-job hook callback and bulk-batch strategy.
+     *
+     * These handlers must be bound whenever the job runner executes a queued
+     * job, which is not always a WP-Cron request: when Action Scheduler is the
+     * active transport it runs the queue through an async admin-ajax loopback,
+     * an admin page load, or WP-CLI, where wp_doing_cron() is false. init()
+     * therefore calls this from boot_cron() (WP-Cron path) and, independently,
+     * in non-cron requests when the resolved transport is Action Scheduler, so
+     * queued jobs never reach a runner without their callback.
+     *
+     * Also boots the notification event handler (for generation-failure and
+     * quota alerts) and the partial-generation reconciler (save_post fires when
+     * a job creates posts).
+     *
+     * @return void
+     */
+    private function register_job_handlers() {
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();
@@ -993,7 +1038,7 @@ final class AI_Post_Scheduler {
 
         // Register bulk-batch strategies for each supported job type.
         // Strategies are registered directly (not via add_action) so they are
-        // available immediately when boot_cron() runs — before any later cron
+        // available immediately when register_job_handlers() runs — before any later cron
         // hook could fire in the same request.  Closures are safe here because
         // they are never serialised; only the job_type string goes to the DB.
         //
