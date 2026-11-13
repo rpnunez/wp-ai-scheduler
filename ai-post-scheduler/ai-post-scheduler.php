@@ -581,6 +581,15 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Logger::class)
             );
         });
+
+        // Register AIPS_Post_Generation_Limiter
+        $container->singleton(AIPS_Post_Generation_Limiter::class, function( $container ) {
+            return new AIPS_Post_Generation_Limiter(
+                $container->make(AIPS_Config::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_Notifications_Repository_Interface::class)
+            );
+        });
     }
 
     /**
@@ -734,6 +743,9 @@ final class AI_Post_Scheduler {
         // Silos: keep the link index and the "In this guide" cache in step with
         // pillar, cluster and settings changes (see AIPS_Silo_Service).
         AIPS_Container::get_instance()->make(AIPS_Silo_Service::class)->register_common_hooks();
+
+        // Safety limiter: enforce ceilings on post generation and clean transient count caches.
+        AIPS_Container::get_instance()->make(AIPS_Post_Generation_Limiter::class)->init();
 
         // Generation-time linking: when an AIPS post goes live, link older
         // related posts to it in the background (see AIPS_Publish_Linking_Service).

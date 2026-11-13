@@ -241,6 +241,38 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_circuit_breaker_timeout'],
 			),
+			'aips_disable_generation_limiter' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_disable_generation_limiter'],
+			),
+			'aips_generation_limiter_bypass_manual' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_generation_limiter_bypass_manual'],
+			),
+			'aips_generation_limiter_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_generation_limiter_post_types'),
+				'default'           => $defaults['aips_generation_limiter_post_types'],
+			),
+			'aips_generation_limiter_post_statuses' => array(
+				'sanitize_callback' => array($ui, 'sanitize_generation_limiter_post_statuses'),
+				'default'           => $defaults['aips_generation_limiter_post_statuses'],
+			),
+			'aips_generation_limit_hourly' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_generation_limit_hourly'],
+			),
+			'aips_generation_limit_daily' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_generation_limit_daily'],
+			),
+			'aips_generation_limit_weekly' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_generation_limit_weekly'],
+			),
+			'aips_generation_limit_monthly' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_generation_limit_monthly'],
+			),
 			'aips_ai_provider' => array(
 				'sanitize_callback' => array($ui, 'sanitize_ai_provider'),
 				'default'           => $defaults['aips_ai_provider'],
@@ -1880,6 +1912,61 @@ class AIPS_Settings {
             array($this->ui, 'circuit_breaker_timeout_field_callback'),
             'aips-settings',
             'aips_resilience_circuit_breaker_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_generation_limits_section',
+            __('Post Generation Limits & Ceilings', 'ai-post-scheduler'),
+            '__return_empty_string',
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_disable_generation_limiter',
+            __('Disable Generation Limiter System', 'ai-post-scheduler'),
+            array($this->ui, 'disable_generation_limiter_field_callback'),
+            'aips-settings',
+            'aips_resilience_generation_limits_section'
+        );
+
+        add_settings_field(
+            'aips_generation_limiter_bypass_manual',
+            __('Bypass Limits for Manual Generation', 'ai-post-scheduler'),
+            array($this->ui, 'generation_limiter_bypass_manual_field_callback'),
+            'aips-settings',
+            'aips_resilience_generation_limits_section'
+        );
+
+        add_settings_field(
+            'aips_generation_limiter_post_types',
+            __('Counted Post Types', 'ai-post-scheduler'),
+            array($this->ui, 'generation_limiter_post_types_field_callback'),
+            'aips-settings',
+            'aips_resilience_generation_limits_section'
+        );
+
+        add_settings_field(
+            'aips_generation_limiter_post_statuses',
+            __('Counted Post Statuses', 'ai-post-scheduler'),
+            array($this->ui, 'generation_limiter_post_statuses_field_callback'),
+            'aips-settings',
+            'aips_resilience_generation_limits_section'
+        );
+
+        add_settings_field(
+            'aips_generation_limits_grid',
+            __('Generation Rate Limits', 'ai-post-scheduler'),
+            array($this->ui, 'generation_limits_grid_field_callback'),
+            'aips-settings',
+            'aips_resilience_generation_limits_section'
+        );
+
+        add_settings_field(
+            'aips_generation_limits_usage',
+            __('Current Usage Status', 'ai-post-scheduler'),
+            array($this->ui, 'generation_limits_usage_field_callback'),
+            'aips-settings',
+            'aips_resilience_generation_limits_section'
         );
 
         // -----------------------------------------------------------------------

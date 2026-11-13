@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### Added
+- **Post Generation Limiter & Safety Ceilings:**
+  - Added internal control ceiling system in `AIPS_Post_Generation_Limiter` to protect sites against runaway post generation loops.
+  - Added new "Post Generation Limits & Ceilings" container card in Settings > Resilience & Limits tab with:
+    - "Disable Generation Limiter System" toggle (default: active/unchecked).
+    - "Bypass Limits for Manual Generation" toggle (default: enabled/checked to allow admin "Generate Now" triggers).
+    - "Counted Post Types" multi-checkbox for selectable public post types (Posts, Pages, CPTs) with interactive "Select / Deselect All" toggle.
+    - "Counted Post Statuses" multi-checkbox with interactive "Select / Deselect All" toggle.
+    - Hourly (50), Daily (200), Weekly (1,000), and Monthly (3,500) generous default safety net thresholds (0 = unlimited).
+    - Two-tier rate limit evaluation enforcing both post-type specific limits (when filtered or configured) and global aggregate ceilings.
+    - Post counting integrity guarantee: `WP_Query` queries post types and post statuses as an SQL `AND` conjunction on single rows, ensuring zero duplicate counting across post types and post statuses.
+    - Live usage indicator badge displaying real-time post counts against each ceiling.
+  - Integrated `aips_pre_generate_post` filter in `AIPS_Generator` before generation initiates.
+  - Dispatches warning log and throttled admin notifications (maximum once per 4 hours and once per user session) when ceilings are hit.
+  - Automated transient count cache invalidation on post generation hook `aips_post_generated`.
+
 ### Changed
 - **WP-Cron Core Layer (`AIPS_Cron_Registry` / `AIPS_Cron_Manager`):** Introduced a declarative registry and a single, testable WP-Cron wrapper as the one layer between the plugin and WordPress cron (issue #2369). The plugin lifecycle (`activate()`, `deactivate()`, `boot_cron()`, `boot_admin()`), `AIPS_Settings`, `AIPS_System_Diagnostics_Service`, the Diagnostics scheduler provider, and `AIPS_DB_Manager` now schedule, reconcile and clear cron hooks through this layer instead of ad-hoc `wp_schedule_*` calls. Deactivation now unschedules **every** recurring, optional, parameterised single-event, and legacy plugin hook (via `wp_unschedule_hook`), eliminating orphaned events. `boot_cron()` registers lazy dispatch closures from the registry, and the per-request `ensure_schedule()` object construction in `boot_admin()` is replaced by a lightweight drift-safety reconcile plus event-driven reconciliation. `AI_Post_Scheduler::get_cron_events()` is retained as a backward-compatible shim over the registry. (Leaf services still self-schedule in this phase; migrating their internal call sites is tracked as a follow-up.)
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.

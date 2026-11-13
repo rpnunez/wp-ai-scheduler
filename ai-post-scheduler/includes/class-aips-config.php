@@ -231,6 +231,24 @@ class AIPS_Config {
             'aips_enable_circuit_breaker' => false,
             'aips_circuit_breaker_threshold' => 5,
             'aips_circuit_breaker_timeout' => 300,
+            // Post Generation Limiter
+            'aips_disable_generation_limiter' => false,
+            'aips_generation_limiter_bypass_manual' => true,
+            'aips_generation_limiter_post_types' => array(
+                'post',
+                'page',
+            ),
+            'aips_generation_limiter_post_statuses' => array(
+                'publish',
+                'draft',
+                'pending',
+                'future',
+                'private',
+            ),
+            'aips_generation_limit_hourly' => 50,
+            'aips_generation_limit_daily' => 200,
+            'aips_generation_limit_weekly' => 1000,
+            'aips_generation_limit_monthly' => 3500,
             // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
             'aips_site_niche' => '',
             'aips_site_target_audience' => '',
@@ -636,6 +654,24 @@ class AIPS_Config {
             'enabled' => (bool) $this->get_option('aips_enable_rate_limiting'),
             'requests' => (int) $this->get_option('aips_rate_limit_requests'),
             'period' => (int) $this->get_option('aips_rate_limit_period'),
+        );
+    }
+
+    /**
+     * Get post generation limiter configuration.
+     *
+     * @return array Post generation limiter configuration.
+     */
+    public function get_post_generation_limiter_config() {
+        return array(
+            'disabled'       => (bool) $this->get_option('aips_disable_generation_limiter', false),
+            'bypass_manual'  => (bool) $this->get_option('aips_generation_limiter_bypass_manual', true),
+            'post_types'     => (array) $this->get_option('aips_generation_limiter_post_types', array('post', 'page')),
+            'post_statuses'  => (array) $this->get_option('aips_generation_limiter_post_statuses', array('publish', 'draft', 'pending', 'future', 'private')),
+            'hourly_limit'   => (int) $this->get_option('aips_generation_limit_hourly', 50),
+            'daily_limit'    => (int) $this->get_option('aips_generation_limit_daily', 200),
+            'weekly_limit'   => (int) $this->get_option('aips_generation_limit_weekly', 1000),
+            'monthly_limit'  => (int) $this->get_option('aips_generation_limit_monthly', 3500),
         );
     }
     
