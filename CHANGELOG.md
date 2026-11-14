@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Added
+- **Scheduling Backend Adapter (`AIPS_Cron_Backend_*`) — Slice 1:** Introduced `AIPS_Cron_Backend_Interface`, `AIPS_Cron_Backend_WP_Cron` (delegating to `AIPS_Cron_Manager`), `AIPS_Cron_Backend_ActionScheduler` (ActionScheduler adapter with argument normalization), and `AIPS_Cron_Backend_Resolver` (issue #2375). ActionScheduler groups are declared centrally in `AIPS_Cron_Registry`. Bound `AIPS_Cron_Backend_Interface::class` in `AIPS_Container`.
+
 ### Changed
 - **WP-Cron Core Layer (`AIPS_Cron_Registry` / `AIPS_Cron_Manager`):** Introduced a declarative registry and a single, testable WP-Cron wrapper as the one layer between the plugin and WordPress cron (issue #2369). The plugin lifecycle (`activate()`, `deactivate()`, `boot_cron()`, `boot_admin()`), `AIPS_Settings`, `AIPS_System_Diagnostics_Service`, the Diagnostics scheduler provider, and `AIPS_DB_Manager` now schedule, reconcile and clear cron hooks through this layer instead of ad-hoc `wp_schedule_*` calls. Deactivation now unschedules **every** recurring, optional, parameterised single-event, and legacy plugin hook (via `wp_unschedule_hook`), eliminating orphaned events. `boot_cron()` registers lazy dispatch closures from the registry, and the per-request `ensure_schedule()` object construction in `boot_admin()` is replaced by a lightweight drift-safety reconcile plus event-driven reconciliation. `AI_Post_Scheduler::get_cron_events()` is retained as a backward-compatible shim over the registry. (Leaf services still self-schedule in this phase; migrating their internal call sites is tracked as a follow-up.)
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.

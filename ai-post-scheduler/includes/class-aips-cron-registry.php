@@ -58,6 +58,31 @@ class AIPS_Cron_Registry {
 	}
 
 	// -------------------------------------------------------------------------
+	// ActionScheduler groups
+	// -------------------------------------------------------------------------
+
+	const GROUP_INDEXER        = 'aips-indexer';
+	const GROUP_INTERNAL_LINKS = 'aips-internal-links';
+	const GROUP_EMBEDDINGS     = 'aips-embeddings';
+	const GROUP_DEFAULT        = 'aips-default';
+
+	/**
+	 * Every ActionScheduler group registered by the plugin.
+	 *
+	 * Used by deactivation cleanup to clear orphaned actions across all plugin groups.
+	 *
+	 * @return string[]
+	 */
+	public function get_action_scheduler_groups() {
+		return array(
+			self::GROUP_INDEXER,
+			self::GROUP_INTERNAL_LINKS,
+			self::GROUP_EMBEDDINGS,
+			self::GROUP_DEFAULT,
+		);
+	}
+
+	// -------------------------------------------------------------------------
 	// Recurring events (manager-owned)
 	// -------------------------------------------------------------------------
 

@@ -378,13 +378,18 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_AI_Service::class);
         });
 
-        // Cron core layer: declarative registry + WP-Cron manager (issue #2369).
+        // Cron core layer: declarative registry + WP-Cron manager (issue #2369)
+        // and scheduling backend adapter (issue #2375).
         $container->singleton(AIPS_Cron_Registry::class, function( $container ) {
             return AIPS_Cron_Registry::instance();
         });
 
         $container->singleton(AIPS_Cron_Manager::class, function( $container ) {
             return new AIPS_Cron_Manager( $container->make(AIPS_Cron_Registry::class) );
+        });
+
+        $container->singleton(AIPS_Cron_Backend_Interface::class, function( $container ) {
+            return AIPS_Cron_Backend_Resolver::resolve( $container->make(AIPS_Cron_Manager::class) );
         });
 
         $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
