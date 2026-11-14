@@ -406,7 +406,8 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Job_Registry::class),
                 $container->make(AIPS_Job_Repository::class),
                 $container->make(AIPS_Cron_Manager::class),
-                $container->make(AIPS_Logger_Interface::class)
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_Cron_Backend_Interface::class)
             );
         });
 

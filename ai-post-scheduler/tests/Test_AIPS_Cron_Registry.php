@@ -114,6 +114,7 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 			AIPS_Autolink_Run_Service::TICK_HOOK,
 			AIPS_Managed_Background_Process::TICK_HOOK,
 			AIPS_Bulk_Batch_Processor::HOOK,
+			AIPS_Job_Registry::DEFAULT_TICK_HOOK,
 			'aips_index_posts_batch',
 			'aips_process_pending_indexer_queue',
 		) as $expected ) {
@@ -172,6 +173,7 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 
 		$this->assertArrayHasKey( 'aips_process_pending_indexer_queue', $handlers );
 		$this->assertArrayHasKey( AIPS_Managed_Background_Process::TICK_HOOK, $handlers );
+		$this->assertArrayHasKey( AIPS_Job_Registry::DEFAULT_TICK_HOOK, $handlers );
 	}
 
 	public function test_cron_and_common_dispatch_handlers_do_not_overlap() {
