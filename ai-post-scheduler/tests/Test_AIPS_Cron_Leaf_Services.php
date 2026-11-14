@@ -36,6 +36,22 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// Constructor & Container Resolution Tests
+	// -------------------------------------------------------------------------
+
+	public function test_services_resolve_cron_manager_from_container_or_fallback() {
+		// Verify default constructor instantiation without explicit cron_manager argument
+		$dup_service = new AIPS_Duplicate_Group_Service();
+		$this->assertInstanceOf( AIPS_Duplicate_Group_Service::class, $dup_service );
+
+		$gsc_service = new AIPS_GSC_Keywords_Service();
+		$this->assertInstanceOf( AIPS_GSC_Keywords_Service::class, $gsc_service );
+
+		$pub_service = new AIPS_Publish_Linking_Service();
+		$this->assertInstanceOf( AIPS_Publish_Linking_Service::class, $pub_service );
+	}
+
+	// -------------------------------------------------------------------------
 	// Duplicate Group Service Tests
 	// -------------------------------------------------------------------------
 
