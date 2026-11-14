@@ -31,6 +31,7 @@ Use this skill when changing WordPress admin pages, menus, templates, and admin 
      - `.aips-tabs-scrollable` on a tab/pill nav — scrolls horizontally below 600px instead of wrapping.
    - Breakpoints are documented as `--aips-bp-tablet` (782px) and `--aips-bp-mobile` (600px) in `design-tokens.css`; copy those literal px values into new `@media` queries (custom properties don't work inside `@media` feature queries).
    - Never lay out a component with inline `style="display:grid;..."` etc. in a template — it silences any later `@media` override. Put layout in a class in `admin.css` (or the component's own CSS file) instead.
+   - Before touching a table, filter bar, modal, or pagination, check `docs/responsive-design-system-migration.md` — it tracks which shared system each page is on, which pages use `AIPS_List_Table` (don't apply `.aips-table-responsive` there — core WP_List_Table already handles their mobile stacking), and the migration checklist per system.
 7. **Validation**
    - Exercise affected admin pages.
    - Run relevant PHPUnit tests for touched controllers/services.

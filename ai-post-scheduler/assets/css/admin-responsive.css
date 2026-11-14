@@ -116,3 +116,44 @@
         flex: 0 0 auto;
     }
 }
+
+/* ==========================================================================
+   Filter bar: stack selects/inputs to full width below 782px.
+   Applies to any .aips-filter-bar using the shared .aips-history-filter-*
+   inner markup (History, Sources, Source Data already share this markup
+   verbatim, so this reaches all three with no template change). Fixes a
+   prior rule that targeted classes which never existed in the markup
+   (.aips-history-filter-row-selects / -row-inputs).
+   ========================================================================== */
+@media (max-width: 782px) {
+    .aips-filter-bar .aips-history-filter-selects .aips-form-select,
+    .aips-filter-bar .aips-history-filter-search .aips-form-input {
+        flex: 1 1 100% !important;
+        max-width: none !important;
+    }
+
+    .aips-filter-bar .aips-history-filter-row-dates .aips-history-filter-apply {
+        margin-left: 0;
+    }
+}
+
+/* ==========================================================================
+   Touch targets: bump small interactive controls to the existing 44px
+   "lg" control-height token below 600px (WCAG 2.1 target-size guidance).
+   Desktop sizing is untouched.
+   ========================================================================== */
+@media (max-width: 600px) {
+    .aips-btn-sm,
+    .aips-row-action-overflow-toggle,
+    .aips-history-page-nav.button {
+        min-height: var(--aips-control-h-lg, 44px);
+        min-width: var(--aips-control-h-lg, 44px);
+    }
+
+    /* Pad the hit area around small checkboxes instead of resizing the
+       control itself (resizing a checkbox looks broken against its label). */
+    .check-column input[type="checkbox"] {
+        padding: 12px;
+        margin: -12px;
+    }
+}
