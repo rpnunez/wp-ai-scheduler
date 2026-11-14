@@ -13,6 +13,8 @@
 		currentAuthorId: null,
 		currentTopicPostsTopicId: null,
 		hasImportedSuggestedAuthor: false,
+		authorWizardStep: 1,
+		authorWizardOpener: null,
 
 		/**
 		 * Initialise the Authors module by binding all event listeners.
@@ -47,6 +49,18 @@
 
 			// Submit Author Form
 			$('#aips-author-form').on('submit', this.saveAuthor.bind(this));
+			$('#aips-author-form').on('click', '.aips-author-next', () => {
+				if (this.validateAuthorSteps(this.authorWizardStep, this.authorWizardStep)) {
+					this.goToAuthorStep(this.authorWizardStep + 1);
+				}
+			});
+			$('#aips-author-form').on('click', '.aips-author-back', () => this.goToAuthorStep(this.authorWizardStep - 1));
+			$('#aips-author-form').on('click', '.aips-author-step-link, .aips-author-review-edit', (e) => {
+				const step = Number($(e.currentTarget).data('step'));
+				if ($('#author_id').val() || step <= this.authorWizardStep || this.validateAuthorSteps(1, step - 1)) {
+					this.goToAuthorStep(step);
+				}
+			});
 
 			// Toggle Featured Image options
 			$(document).on('change', '#author_generate_featured_image', this.toggleAuthorFeaturedImage.bind(this));
@@ -101,6 +115,9 @@
 			$(document).on('click', '#aips-suggest-authors-btn', this.openSuggestModal.bind(this));
 			$(document).on('submit', '#aips-suggest-authors-form', this.suggestAuthors.bind(this));
 			$(document).on('click', '.aips-import-suggested-author', this.importSuggestedAuthor.bind(this));
+
+			$(document).on('keydown.aips-author-wizard-escape', this.onAuthorWizardEscape.bind(this));
+			$(document).on('click', '#aips-author-modal', this.onAuthorWizardBackdropClick.bind(this));
 		},
 
 		/**
@@ -242,6 +259,8 @@
 		 */
 		openAddModal: function (e) {
 			e.preventDefault();
+			this.authorWizardOpener = e.currentTarget;
+			this.bindAuthorWizardFocusTrap();
 			$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
@@ -284,6 +303,7 @@
 			$('#aips-author-post-images-list .aips-post-images-empty-state').show();
 
 			$('#aips-author-modal').fadeIn();
+			this.goToAuthorStep(1);
 		},
 
 		/**
@@ -349,6 +369,8 @@
 		 */
 		editAuthor: function (e) {
 			e.preventDefault();
+			this.authorWizardOpener = e.currentTarget;
+			this.bindAuthorWizardFocusTrap();
 			const authorId = $(e.currentTarget).data('id') || $(e.currentTarget).data('author-id') || $(e.currentTarget).closest('[data-author-id]').data('author-id');
 			this.currentAuthorId = authorId;
 
@@ -460,22 +482,128 @@
 						} else {
 							$('#aips-author-post-images-list .aips-post-images-empty-state').show();
 						}
+
+						this.goToAuthorStep(1);
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 
 						$('#aips-author-modal').fadeOut();
+						this.restoreAuthorWizardFocus();
 					}
 				},
 				error: () => {
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorLoading, 'error');
 
 					$('#aips-author-modal').fadeOut();
+					this.restoreAuthorWizardFocus();
 				}
 			});
 		},
 
+		/** Show one Author panel without changing the form's enabled fields or values. */
+		goToAuthorStep: function (step) {
+			const $form = $('#aips-author-form');
+			step = Math.max(1, Math.min(5, step));
+			this.authorWizardStep = step;
+			$form.find('.aips-author-step').hide().attr('aria-hidden', 'true');
+			const $panel = $form.find('.aips-author-step[data-step="' + step + '"]');
+			$panel.show().attr('aria-hidden', 'false');
+			$form.find('.aips-author-step-link').each(function () {
+				const active = Number($(this).data('step')) === step;
+				$(this).toggleClass('active', active);
+				if (active) { $(this).attr('aria-current', 'step'); } else { $(this).removeAttr('aria-current'); }
+			});
+			const editing = Boolean($('#author_id').val());
+			$form.find('.aips-author-back').toggle(step > 1);
+			const $next = $form.find('.aips-author-next');
+			$next.toggle(step < 5).toggleClass('aips-btn-primary', !editing).toggleClass('aips-btn-secondary', editing);
+			const $save = $form.find('.aips-author-save');
+			$save.toggle(editing || step === 5);
+			if (!$form.data('aips-submitting')) {
+				$save.text(editing ? aipsAuthorsL10n.saveChanges : aipsAuthorsL10n.saveAuthor);
+			}
+			if (step === 5) { this.updateAuthorReview(); }
+			$panel.find('h3').first().trigger('focus');
+			if (window.wp && wp.a11y && typeof wp.a11y.speak === 'function') {
+				wp.a11y.speak($panel.find('h3').first().text());
+			}
+			$('#aips-author-modal .aips-modal-body').scrollTop(0);
+		},
+
+		/** Validate enabled controls even when their wizard panel is hidden. */
+		validateAuthorSteps: function (first, last) {
+			const $form = $('#aips-author-form');
+			$('#author_include_sources')[0].setCustomValidity(
+				$('#author_include_sources').prop('checked') && !$('.aips-author-source-group-cb:checked').length
+					? aipsAuthorsL10n.sourceGroupsRequired : ''
+			);
+			for (let step = first; step <= Math.min(last, 4); step++) {
+				const controls = $form.find('.aips-author-step[data-step="' + step + '"] :input:enabled').get();
+				for (const control of controls) {
+					if (control.required && control.type === 'text') {
+						control.setCustomValidity(control.value.trim() ? '' : aipsAuthorsL10n.requiredField);
+					}
+					if (!control.checkValidity()) {
+						this.goToAuthorStep(step);
+						control.focus();
+						control.reportValidity();
+						return false;
+					}
+				}
+			}
+			return true;
+		},
+
+		/** True when a control belongs in Review: enabled, not a hidden input, and not inside a hidden group. */
+		isAuthorReviewFieldVisible: function (control, $panel) {
+			const $field = $(control);
+			if (control.type === 'hidden' || $field.hasClass('aips-post-image-id-input') || $field.hasClass('aips-post-image-order-input') || $field.hasClass('aips-media-ids-input')) {
+				return false;
+			}
+			if ($field.hasClass('aips-author-source-group-cb') && !$('#author_include_sources').prop('checked')) {
+				return false;
+			}
+			return $field.parentsUntil($panel).filter(function () {
+				return $(this).css('display') === 'none';
+			}).length === 0;
+		},
+
+		/** Label text for a Review row: for= id, wrapping label, or the nearest row label. */
+		getAuthorReviewFieldLabel: function ($field, $panel) {
+			const fieldId = $field.attr('id');
+			let $label = fieldId ? $panel.find('label[for="' + fieldId + '"]') : $();
+			if (!$label.length) { $label = $field.closest('label'); }
+			if (!$label.length) { $label = $field.closest('.form-group, .aips-form-row, .aips-post-image-card-body').find('label').first(); }
+			return $label.text().replace(/\s*\*\s*$/, '').trim();
+		},
+
+		/** Build a text-only summary from the live controls, including conditional settings. */
+		updateAuthorReview: function () {
+			const $review = $('#aips-author-review').empty();
+			const self = this;
+			$('#aips-author-form .aips-author-step').not('[data-step="5"]').each(function () {
+				const $panel = $(this);
+				const $section = $('<section>').addClass('aips-author-review-section');
+				$('<button>', { type: 'button' }).addClass('aips-btn aips-btn-secondary aips-author-review-edit')
+					.attr('data-step', $panel.data('step')).text($panel.find('h3').first().text()).appendTo($section);
+				const $list = $('<dl>').appendTo($section);
+				$panel.find('input, select, textarea').filter(':enabled').each(function () {
+					const $field = $(this);
+					if (!self.isAuthorReviewFieldVisible(this, $panel)) { return; }
+					let value = $field.is('select') ? $field.find('option:selected').text().trim() : $field.val();
+					if (this.type === 'checkbox') { value = this.checked ? aipsAuthorsL10n.enabled : aipsAuthorsL10n.disabled; }
+					$('<dt>').text(self.getAuthorReviewFieldLabel($field, $panel)).appendTo($list);
+					$('<dd>').text(value || aipsAuthorsL10n.notSpecified).appendTo($list);
+				});
+				if ($panel.data('step') === 3 && $('#topic_auto_approval_mode').val() === 'inherit') {
+					$('<p>').text($('#aips-auto-approval-effective-policy').text().trim()).appendTo($section);
+				}
+				$section.appendTo($review);
+			});
+		},
+
 		/**
-		 * Serialize and save the author form via the `aips_save_author` AJAX action.
+		 * Validate all panels and save via the existing `aips_save_author` action.
 		 *
 		 * Disables the submit button while the request is in flight.
 		 * Shows a success toast and reloads the page after 1 second on success,
@@ -485,8 +613,19 @@
 		 */
 		saveAuthor: function (e) {
 			e.preventDefault();
-
+			// This handler owns locking; cancelled validation must not reach the
+			// delegated async-form lock, which has no request to unlock in that case.
+			e.stopPropagation();
 			const $form = $('#aips-author-form');
+			if ($form.data('aips-submitting')) { return; }
+			if (!$('#author_id').val() && this.authorWizardStep !== 5) {
+				if (this.validateAuthorSteps(this.authorWizardStep, this.authorWizardStep)) {
+					this.goToAuthorStep(this.authorWizardStep + 1);
+				}
+				return;
+			}
+			if (!this.validateAuthorSteps(1, 4)) { return; }
+
 			const $submitBtn = $form.find('[type="submit"]');
 			const formData = $form.serialize();
 
@@ -2504,6 +2643,55 @@
 			});
 		},
 
+		/** Keep Tab inside the Author modal while it is open. */
+		bindAuthorWizardFocusTrap: function () {
+			$(document).off('keydown.aips-author-wizard').on('keydown.aips-author-wizard', function (e) {
+				if (e.key !== 'Tab') { return; }
+				const $modal = $('#aips-author-modal');
+				if (!$modal.is(':visible')) { return; }
+				const $focusable = $modal.find('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])').filter(':visible');
+				if (!$focusable.length) { return; }
+				const first = $focusable.get(0);
+				const last = $focusable.get($focusable.length - 1);
+				if (e.shiftKey && document.activeElement === first) {
+					e.preventDefault();
+					last.focus();
+				} else if (!e.shiftKey && document.activeElement === last) {
+					e.preventDefault();
+					first.focus();
+				}
+			});
+		},
+
+		restoreAuthorWizardFocus: function () {
+			const opener = this.authorWizardOpener;
+			this.authorWizardOpener = null;
+			$(document).off('keydown.aips-author-wizard');
+			if (opener && document.contains(opener) && typeof opener.focus === 'function') {
+				opener.focus();
+			}
+		},
+
+		onAuthorWizardEscape: function (e) {
+			if (e.key !== 'Escape' || !$('#aips-author-modal').is(':visible')) { return; }
+			const self = this;
+			setTimeout(function () {
+				if (!$('#aips-author-modal').is(':visible')) {
+					self.restoreAuthorWizardFocus();
+				}
+			}, 0);
+		},
+
+		onAuthorWizardBackdropClick: function (e) {
+			if (e.target.id !== 'aips-author-modal') { return; }
+			const self = this;
+			setTimeout(function () {
+				if (!$('#aips-author-modal').is(':visible')) {
+					self.restoreAuthorWizardFocus();
+				}
+			}, 0);
+		},
+
 		/**
 		 * Fade out all open `.aips-modal` elements.
 		 *
@@ -2512,9 +2700,13 @@
 		closeModals: function (e) {
 			e.preventDefault();
 			const shouldReloadAfterClose = $('#aips-suggest-authors-modal').is(':visible') && this.hasImportedSuggestedAuthor;
+			const restoreAuthorFocus = $('#aips-author-modal').is(':visible');
 			const $visibleModals = $('.aips-modal:visible');
 
 			$visibleModals.fadeOut();
+			if (restoreAuthorFocus) {
+				this.restoreAuthorWizardFocus();
+			}
 
 			if (shouldReloadAfterClose) {
 				$visibleModals.promise().done(function () {

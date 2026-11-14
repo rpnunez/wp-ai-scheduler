@@ -21,6 +21,7 @@
   - Reduced default article digest size in `AIPS_Prompt_Builder_Post_Title::build_base_prompt()` from 12,000 characters (`DEFAULT_MAX_CHARS`) to 3,000 characters, saving ~1,500–2,500 input tokens per post on stateless title generation requests without compromising headline relevance.
 
 ### Added
+- **Author Wizard:** Group author setup into Identity, Writing & Audience, Topics & Sources, Scheduling, and Review. Explain settings, review values before creating an author, and jump directly between sections or save from any section while editing. Validation opens the section that needs attention without discarding other settings.
 - **AI Edit Prompt Steering, Cascading Alignment & Creativity Controls:**
   - Added Split Button & Quick Steering Popover (`[Re-generate ▾]`) allowing 1-click regeneration or dropdown directive selection with quick preset chips (`Make Punchier`, `SEO Focused`, `Conversational`, `Technical & Precise`, `Concise Summary`) and custom instruction inputs across Classic Editor and Gutenberg.
   - Added Pre-Accept Checkbox ("Sync Downstream") in the Side-by-Side Diff Comparison footer: accepting a new Title or Content can automatically trigger cascading downstream regeneration of related components (e.g. Title -> Excerpt, Content -> Excerpt & Featured Image) with updated upstream context.
