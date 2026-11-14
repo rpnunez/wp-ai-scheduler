@@ -120,9 +120,10 @@ class AIPS_Job_Manager {
 			throw new InvalidArgumentException( sprintf( 'Unknown job type: %s', $job_type ) );
 		}
 
-		$job_id     = wp_generate_uuid4();
-		$group_name = isset( $options['group'] ) ? (string) $options['group'] : $type_spec->get_group();
-		$total      = isset( $options['total'] ) ? max( 0, (int) $options['total'] ) : ( isset( $payload['items'] ) && is_array( $payload['items'] ) ? count( $payload['items'] ) : 0 );
+		$job_id      = wp_generate_uuid4();
+		$group_name  = isset( $options['group'] ) ? (string) $options['group'] : $type_spec->get_group();
+		$total       = isset( $options['total'] ) ? max( 0, (int) $options['total'] ) : ( isset( $payload['items'] ) && is_array( $payload['items'] ) ? count( $payload['items'] ) : 0 );
+		$max_retries = isset( $options['max_retries'] ) ? max( 0, (int) $options['max_retries'] ) : $type_spec->get_max_retries();
 
 		$this->repository->insert(
 			array(
@@ -132,6 +133,7 @@ class AIPS_Job_Manager {
 				'status'      => AIPS_Job_Record::STATUS_PENDING,
 				'total'       => $total,
 				'payload'     => $payload,
+				'max_retries' => $max_retries,
 				'next_run_at' => AIPS_DateTime::now()->timestamp(),
 			)
 		);

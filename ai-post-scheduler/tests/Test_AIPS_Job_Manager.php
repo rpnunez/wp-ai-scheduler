@@ -270,4 +270,31 @@ class Test_AIPS_Job_Manager extends WP_UnitTestCase {
 		$this->assertTrue( $record->is_completed() );
 		$this->assertSame( array( 'synced' => true ), $record->get_result() );
 	}
+
+	public function test_job_context_yield_and_budgeting() {
+		$record  = new AIPS_Job_Record( array( 'job_id' => 'test-id', 'job_type' => 'test-type' ) );
+		$context = new AIPS_Job_Context( $record, null, 1 ); // 1 second budget
+
+		// With reserve_seconds = 2, elapsed(0) + 2 >= 1 => should yield immediately
+		$this->assertTrue( $context->should_yield( 2 ) );
+
+		$large_budget_context = new AIPS_Job_Context( $record, null, 300 );
+		$this->assertFalse( $large_budget_context->should_yield( 1 ) );
+	}
+
+	public function test_cleanup_finished_jobs_delegates_to_repository() {
+		$old_job = wp_generate_uuid4();
+		$this->repository->insert(
+			array(
+				'job_id'     => $old_job,
+				'job_type'   => 'test_slice',
+				'status'     => AIPS_Job_Record::STATUS_COMPLETED,
+				'updated_at' => time() - 1000,
+			)
+		);
+
+		$cleaned = $this->manager->cleanup_finished_jobs( 500 );
+		$this->assertSame( 1, $cleaned );
+		$this->assertNull( $this->manager->get_job( $old_job ) );
+	}
 }

@@ -64,6 +64,8 @@ class AIPS_Cron_Registry {
 	const GROUP_INDEXER        = 'aips-indexer';
 	const GROUP_INTERNAL_LINKS = 'aips-internal-links';
 	const GROUP_EMBEDDINGS     = 'aips-embeddings';
+	const GROUP_AUTHOR_TOPICS  = 'aips-author-topics';
+	const GROUP_BULK_BATCH     = 'aips-bulk-batch';
 	const GROUP_DEFAULT        = 'aips-default';
 
 	/**
@@ -78,6 +80,8 @@ class AIPS_Cron_Registry {
 			self::GROUP_INDEXER,
 			self::GROUP_INTERNAL_LINKS,
 			self::GROUP_EMBEDDINGS,
+			self::GROUP_AUTHOR_TOPICS,
+			self::GROUP_BULK_BATCH,
 			self::GROUP_DEFAULT,
 		);
 	}
