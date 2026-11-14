@@ -142,13 +142,19 @@ class AIPS_Cron_Manager {
 
 	/**
 	 * Remove every occurrence of a hook regardless of the arguments it was
-	 * scheduled with (wraps {@see wp_unschedule_hook()}).
+	 * scheduled with (wraps {@see wp_unschedule_hook()} and ActionScheduler).
 	 *
 	 * @param string $hook Cron hook name.
 	 * @return int|false Number cleared, or false on failure.
 	 */
 	public function unschedule_all_for_hook( $hook ) {
-		return wp_unschedule_hook( $hook );
+		$result = wp_unschedule_hook( $hook );
+
+		if ( function_exists( 'as_unschedule_all_actions' ) ) {
+			as_unschedule_all_actions( $hook );
+		}
+
+		return $result;
 	}
 
 	// -------------------------------------------------------------------------
@@ -200,11 +206,21 @@ class AIPS_Cron_Manager {
 	 * single/tick (with any arguments), and legacy — leaving zero orphaned
 	 * events behind. Called from {@see AI_Post_Scheduler::deactivate()}.
 	 *
+	 * Clears both WP-Cron events and ActionScheduler actions across all registered
+	 * plugin hooks and groups (issue #2375).
+	 *
 	 * @return void
 	 */
 	public function unschedule_all_plugin_crons() {
 		foreach ( $this->registry->get_all_hooks() as $hook ) {
 			$this->unschedule_all_for_hook( $hook );
+		}
+
+		// Clear all registered ActionScheduler groups to ensure zero orphaned actions
+		if ( function_exists( 'as_unschedule_all_actions' ) ) {
+			foreach ( $this->registry->get_action_scheduler_groups() as $group ) {
+				as_unschedule_all_actions( '', null, $group );
+			}
 		}
 	}
 

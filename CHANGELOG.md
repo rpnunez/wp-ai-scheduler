@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Added
+- **Scheduling Backend Deactivation Cleanup & Diagnostics — Slice 3:** Updated `AIPS_Cron_Manager::unschedule_all_plugin_crons()` and `unschedule_all_for_hook()` to clear ActionScheduler actions across all registered hooks and groups on plugin deactivation, guaranteeing zero orphaned actions across both backends (AS-A5). Enhanced `AIPS_System_Diagnostics_Scheduler_Provider` to surface scheduled actions across WP-Cron and ActionScheduler and display the active scheduling backend adapter in system health (AS-A7, issue #2375).
 - **Scheduling Backend Call Sites & AS-A4 Fix — Slice 2:** Migrated `AIPS_Content_Indexer_Service`, `AIPS_Internal_Links_Controller`, and `AIPS_Embeddings_Cron` from opportunistic `function_exists('as_*')` checks and raw `wp_schedule_*` calls to `AIPS_Cron_Backend_Interface` and registry group constants (issue #2375). Fixed AS-A4 argument spreading defect in `AIPS_Embeddings_Cron` so that author embedding batches receive their payload array intact across both backends.
 - **Scheduling Backend Adapter (`AIPS_Cron_Backend_*`) — Slice 1:** Introduced `AIPS_Cron_Backend_Interface`, `AIPS_Cron_Backend_WP_Cron` (delegating to `AIPS_Cron_Manager`), `AIPS_Cron_Backend_ActionScheduler` (ActionScheduler adapter with argument normalization), and `AIPS_Cron_Backend_Resolver` (issue #2375). ActionScheduler groups are declared centrally in `AIPS_Cron_Registry`. Bound `AIPS_Cron_Backend_Interface::class` in `AIPS_Container`.
 
