@@ -70,18 +70,27 @@ class AIPS_Duplicate_Group_Service {
 	private $config;
 
 	/**
+	 * @var AIPS_Cron_Manager
+	 */
+	private $cron_manager;
+
+	/**
 	 * @param AIPS_Relationships_Repository|null $relationships Similarity pair storage.
 	 * @param AIPS_Link_Index_Repository|null    $link_index    Link index (inbound link counts).
 	 * @param AIPS_Config|null                   $config        Config.
+	 * @param AIPS_Cron_Manager|null             $cron_manager  Cron manager.
 	 */
 	public function __construct(
 		?AIPS_Relationships_Repository $relationships = null,
 		?AIPS_Link_Index_Repository $link_index = null,
-		?AIPS_Config $config = null
+		?AIPS_Config $config = null,
+		?AIPS_Cron_Manager $cron_manager = null
 	) {
+		$container           = AIPS_Container::get_instance();
 		$this->relationships = $relationships ?: new AIPS_Relationships_Repository();
 		$this->link_index    = $link_index ?: new AIPS_Link_Index_Repository();
 		$this->config        = $config ?: AIPS_Config::get_instance();
+		$this->cron_manager  = $cron_manager ?: ( $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager() );
 	}
 
 	/**
@@ -507,18 +516,15 @@ class AIPS_Duplicate_Group_Service {
 	 * @return void
 	 */
 	public function ensure_schedule(): void {
-		$wanted  = (string) $this->config->get_option('aips_duplicate_scan_schedule', 'off');
-		$wanted  = in_array($wanted, array('daily', 'weekly'), true) ? $wanted : '';
-		$current = wp_get_scheduled_event(self::CRON_HOOK);
+		$wanted = (string) $this->config->get_option('aips_duplicate_scan_schedule', 'off');
+		$wanted = in_array($wanted, array('daily', 'weekly'), true) ? $wanted : '';
 
-		if ($current && $current->schedule !== $wanted) {
-			wp_clear_scheduled_hook(self::CRON_HOOK);
-			$current = false;
+		if ($wanted === '') {
+			$this->cron_manager->clear_hook(self::CRON_HOOK);
+			return;
 		}
 
-		if ($wanted !== '' && !$current) {
-			wp_schedule_event(time() + HOUR_IN_SECONDS, $wanted, self::CRON_HOOK);
-		}
+		$this->cron_manager->schedule_recurring(self::CRON_HOOK, $wanted, time() + HOUR_IN_SECONDS);
 	}
 
 	/**

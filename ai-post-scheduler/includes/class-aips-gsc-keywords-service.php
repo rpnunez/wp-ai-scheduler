@@ -61,14 +61,27 @@ class AIPS_GSC_Keywords_Service {
 	private $resolver;
 
 	/**
-	 * @param AIPS_GSC_Client|null        $client   Search Console client.
-	 * @param AIPS_Config|null            $config   Config.
-	 * @param AIPS_Link_Url_Resolver|null $resolver URL resolver.
+	 * @var AIPS_Cron_Manager
 	 */
-	public function __construct(?AIPS_GSC_Client $client = null, ?AIPS_Config $config = null, ?AIPS_Link_Url_Resolver $resolver = null) {
-		$this->config   = $config ?: AIPS_Config::get_instance();
-		$this->client   = $client ?: new AIPS_GSC_Client($this->config);
-		$this->resolver = $resolver ?: new AIPS_Link_Url_Resolver();
+	private $cron_manager;
+
+	/**
+	 * @param AIPS_GSC_Client|null        $client       Search Console client.
+	 * @param AIPS_Config|null            $config       Config.
+	 * @param AIPS_Link_Url_Resolver|null $resolver     URL resolver.
+	 * @param AIPS_Cron_Manager|null      $cron_manager Cron manager.
+	 */
+	public function __construct(
+		?AIPS_GSC_Client $client = null,
+		?AIPS_Config $config = null,
+		?AIPS_Link_Url_Resolver $resolver = null,
+		?AIPS_Cron_Manager $cron_manager = null
+	) {
+		$container          = AIPS_Container::get_instance();
+		$this->config       = $config ?: AIPS_Config::get_instance();
+		$this->client       = $client ?: new AIPS_GSC_Client($this->config);
+		$this->resolver     = $resolver ?: new AIPS_Link_Url_Resolver();
+		$this->cron_manager = $cron_manager ?: ( $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager() );
 	}
 
 	/**
@@ -93,14 +106,10 @@ class AIPS_GSC_Keywords_Service {
 	 * @return void
 	 */
 	public function ensure_schedule(): void {
-		$next = wp_next_scheduled(self::CRON_HOOK);
-
 		if ($this->client->is_configured()) {
-			if (!$next) {
-				wp_schedule_event(time() + 5 * MINUTE_IN_SECONDS, 'daily', self::CRON_HOOK);
-			}
-		} elseif ($next) {
-			wp_clear_scheduled_hook(self::CRON_HOOK);
+			$this->cron_manager->schedule_recurring(self::CRON_HOOK, 'daily', time() + 5 * MINUTE_IN_SECONDS);
+		} else {
+			$this->cron_manager->clear_hook(self::CRON_HOOK);
 		}
 	}
 
