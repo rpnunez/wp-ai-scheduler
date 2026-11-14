@@ -12,6 +12,11 @@ class AIPS_Sources_Maintenance {
 	private $lease;
 	private $logger;
 
+	/**
+	 * @var AIPS_Cron_Manager
+	 */
+	private $cron_manager;
+
 	public static function instance(): self {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -19,10 +24,12 @@ class AIPS_Sources_Maintenance {
 		return self::$instance;
 	}
 
-	public function __construct( $repository = null, $lease = null, $logger = null ) {
-		$this->repository = $repository ?: new AIPS_Sources_Data_Repository();
-		$this->lease = $lease ?: new AIPS_Sources_Fetch_Lease( 'aips_sources_maintenance_lease' );
-		$this->logger = $logger ?: new AIPS_Logger();
+	public function __construct( $repository = null, $lease = null, $logger = null, ?AIPS_Cron_Manager $cron_manager = null ) {
+		$container          = AIPS_Container::get_instance();
+		$this->repository   = $repository ?: new AIPS_Sources_Data_Repository();
+		$this->lease        = $lease ?: new AIPS_Sources_Fetch_Lease( 'aips_sources_maintenance_lease' );
+		$this->logger       = $logger ?: new AIPS_Logger();
+		$this->cron_manager = $cron_manager ?: ( $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager() );
 		add_action( self::HOOK, array( $this, 'run' ) );
 		add_action( self::CONTINUATION_HOOK, array( $this, 'run' ) );
 		add_action( 'update_option_aips_source_archive_retention_days', array( $this, 'schedule' ), 10, 0 );
@@ -38,18 +45,18 @@ class AIPS_Sources_Maintenance {
 
 	public function schedule(): void {
 		if ( 0 === $this->retention_days() ) {
-			wp_clear_scheduled_hook( self::HOOK );
-			wp_clear_scheduled_hook( self::CONTINUATION_HOOK );
+			$this->cron_manager->clear_hook( self::HOOK );
+			$this->cron_manager->clear_hook( self::CONTINUATION_HOOK );
 			return;
 		}
-		if ( ! wp_next_scheduled( self::HOOK ) ) {
-			wp_schedule_event( AIPS_DateTime::now()->timestamp() + DAY_IN_SECONDS, 'daily', self::HOOK );
+		if ( ! $this->cron_manager->next_scheduled( self::HOOK ) ) {
+			$this->cron_manager->schedule_recurring( self::HOOK, 'daily', AIPS_DateTime::now()->timestamp() + DAY_IN_SECONDS );
 		}
 	}
 
 	private function continue_later(): void {
-		if ( ! wp_next_scheduled( self::CONTINUATION_HOOK ) ) {
-			wp_schedule_single_event( AIPS_DateTime::now()->timestamp() + 60, self::CONTINUATION_HOOK );
+		if ( ! $this->cron_manager->next_scheduled( self::CONTINUATION_HOOK ) ) {
+			$this->cron_manager->schedule_single( self::CONTINUATION_HOOK, AIPS_DateTime::now()->timestamp() + 60, array(), false );
 		}
 	}
 

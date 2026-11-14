@@ -66,6 +66,11 @@ class AIPS_Schedule_Processor {
     private $result_handler;
 
     /**
+     * @var AIPS_Cron_Manager
+     */
+    private $cron_manager;
+
+    /**
      * @var AIPS_Batch_Queue_Service|null Lazy-loaded batch queue service.
      */
     private $batch_queue_service;
@@ -101,6 +106,7 @@ class AIPS_Schedule_Processor {
      * @param AIPS_Logger_Interface|null            $logger
      * @param AIPS_Generation_Execution_Runner|null $runner
      * @param AIPS_Schedule_Result_Handler|null     $result_handler
+     * @param AIPS_Cron_Manager|null                $cron_manager
      */
     public function __construct(
         ?AIPS_Schedule_Repository_Interface $repository = null,
@@ -110,7 +116,8 @@ class AIPS_Schedule_Processor {
         $template_type_selector = null,
         ?AIPS_Logger_Interface $logger = null,
         $runner = null,
-        $result_handler = null
+        $result_handler = null,
+        ?AIPS_Cron_Manager $cron_manager = null
     ) {
         $container = AIPS_Container::get_instance();
         $this->repository = $repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class) ? $container->make(AIPS_Schedule_Repository_Interface::class) : new AIPS_Schedule_Repository());
@@ -123,6 +130,7 @@ class AIPS_Schedule_Processor {
         $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
         $this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
         $this->result_handler = $result_handler ?: new AIPS_Schedule_Result_Handler($this->repository, $this->history_service, $this->history_repository, $this->logger);
+        $this->cron_manager = $cron_manager ?: ($container->has(AIPS_Cron_Manager::class) ? $container->make(AIPS_Cron_Manager::class) : new AIPS_Cron_Manager());
     }
 
     /**
@@ -619,15 +627,16 @@ class AIPS_Schedule_Processor {
         foreach ($due_schedules as $schedule) {
             $schedule_id = (int) $schedule->schedule_id;
 
-            if (wp_next_scheduled(self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id))) {
+            if ($this->cron_manager->next_scheduled(self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id))) {
                 continue;
             }
 
             $offset += $stagger_seconds;
-            wp_schedule_single_event(
-                AIPS_DateTime::now()->addSeconds($offset)->timestamp(),
+            $this->cron_manager->schedule_single(
                 self::QUEUED_DUE_SCHEDULE_HOOK,
-                array($schedule_id)
+                AIPS_DateTime::now()->addSeconds($offset)->timestamp(),
+                array($schedule_id),
+                false
             );
 
             $this->logger->log(
@@ -1065,8 +1074,8 @@ class AIPS_Schedule_Processor {
             $this->repository->update_run_state($schedule_id, $run_state);
             $this->repository->update($schedule_id, array('next_run' => $resume_at));
 
-            if (!wp_next_scheduled(self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id))) {
-                wp_schedule_single_event($resume_at, self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id));
+            if (!$this->cron_manager->next_scheduled(self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id))) {
+                $this->cron_manager->schedule_single(self::QUEUED_DUE_SCHEDULE_HOOK, $resume_at, array($schedule_id), false);
             }
         } else {
             $resume_at = $claimed;
