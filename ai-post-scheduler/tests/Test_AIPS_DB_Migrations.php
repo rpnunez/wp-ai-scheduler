@@ -6,6 +6,25 @@
  */
 
 class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
+	public function test_notification_transient_cleanup_is_scoped_and_idempotent() {
+		set_transient( 'aips_notif_' . md5( 'legacy-key' ), 1, 3600 );
+		set_transient( 'aips_other_key', 1, 3600 );
+		set_transient( 'aipsXnotif_other_key', 1, 3600 );
+		update_option( 'aips_notif_digest_queue', array( 'keep' ), false );
+		$migrations = new AIPS_DB_Migrations();
+		$method = new ReflectionMethod( $migrations, 'migrate_to_3_7_25' );
+		$method->setAccessible( true );
+		$this->assertTrue( $method->invoke( $migrations ) );
+		$this->assertTrue( $method->invoke( $migrations ) );
+		global $wpdb;
+		$this->assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name IN (%s, %s)", '_transient_aips_notif_' . md5( 'legacy-key' ), '_transient_timeout_aips_notif_' . md5( 'legacy-key' ) ) ) );
+		$this->assertSame( 1, get_transient( 'aips_other_key' ) );
+		$this->assertSame( 1, get_transient( 'aipsXnotif_other_key' ) );
+		$this->assertSame( array( 'keep' ), get_option( 'aips_notif_digest_queue' ) );
+		delete_transient( 'aips_other_key' );
+		delete_transient( 'aipsXnotif_other_key' );
+		delete_option( 'aips_notif_digest_queue' );
+	}
 
 	public function setUp(): void {
 		parent::setUp();
@@ -722,9 +741,9 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			$wpdb->get_var( $wpdb->prepare( "SELECT id FROM `{$log}` WHERE id = %d", $orphan_log_id ) ),
 			'Upgrade from 3.7.21 must run migrate_to_3_7_22() and delete orphaned history_log rows'
 		);
-		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ) );
 		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
-		$this->assertSame( '3.7.24', AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+		$this->assertSame( AIPS_VERSION, AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
 	}
 
 	/**
@@ -787,7 +806,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.22' );
 		AIPS_DB_Migrations::check_and_run();
 		$assert_slug_columns( 'must gain slug columns on upgrade from 3.7.22' );
-		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ) );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
 		$this->assertSame( AIPS_VERSION, AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
 	}
 
@@ -829,7 +848,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.23' );
 		AIPS_DB_Migrations::check_and_run();
 		$assert_image_columns( 'must gain author image columns on upgrade from 3.7.23' );
-		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ) );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
 
 		// The test suite rewrites DROP TABLE to DROP TEMPORARY TABLE, which
 		// cannot remove the permanent tables this assertion has to hide.

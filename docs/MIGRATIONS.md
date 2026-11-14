@@ -1,5 +1,9 @@
 # AI Post Scheduler - Database Schema Updates
 
+## Notification dedupe cleanup (3.7.25)
+
+Notification dispatch now uses the indexed `aips_notifications` dedupe lookup. Email-only deliveries store an already-read receipt so they retain deduplication without a transient. The versioned cleanup deletes legacy `_transient_aips_notif_%` and `_transient_timeout_aips_notif_%` options. The SQL pattern escapes the literal underscores and is safe to rerun; a failed delete leaves the prior version gate for retry. Existing notification records and the digest queue are preserved.
+
 ## Author featured images and post content images (3.7.24)
 
 `aips_authors` gains `image_prompt`, `featured_image_unsplash_keywords`, and `featured_image_media_ids` (all text, nullable). `aips_post_images` stores content-image configuration per template or author. `aips_post_images_generated` stores each generated image per post and history run. Featured-image settings stay on the template and author rows.
