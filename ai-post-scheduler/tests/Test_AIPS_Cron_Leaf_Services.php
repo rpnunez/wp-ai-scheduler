@@ -3,7 +3,8 @@
  * Tests for migrated pure-cron leaf services (issue #2372).
  *
  * Verifies that AIPS_Duplicate_Group_Service, AIPS_GSC_Keywords_Service,
- * and AIPS_Publish_Linking_Service route their scheduling through AIPS_Cron_Manager.
+ * AIPS_Publish_Linking_Service, AIPS_Sources_Cron, AIPS_Sources_Maintenance,
+ * and AIPS_Schedule_Processor route their scheduling through AIPS_Cron_Manager.
  *
  * @package AI_Post_Scheduler
  */
@@ -24,14 +25,25 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 		wp_unschedule_hook( AIPS_Duplicate_Group_Service::CRON_HOOK );
 		wp_unschedule_hook( AIPS_GSC_Keywords_Service::CRON_HOOK );
 		wp_unschedule_hook( AIPS_Publish_Linking_Service::CRON_HOOK );
+		wp_unschedule_hook( AIPS_Sources_Cron::HOOK );
+		wp_unschedule_hook( AIPS_Sources_Cron::CONTINUATION_HOOK );
+		wp_unschedule_hook( AIPS_Sources_Maintenance::HOOK );
+		wp_unschedule_hook( AIPS_Sources_Maintenance::CONTINUATION_HOOK );
+		wp_unschedule_hook( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK );
 	}
 
 	public function tearDown(): void {
 		wp_unschedule_hook( AIPS_Duplicate_Group_Service::CRON_HOOK );
 		wp_unschedule_hook( AIPS_GSC_Keywords_Service::CRON_HOOK );
 		wp_unschedule_hook( AIPS_Publish_Linking_Service::CRON_HOOK );
+		wp_unschedule_hook( AIPS_Sources_Cron::HOOK );
+		wp_unschedule_hook( AIPS_Sources_Cron::CONTINUATION_HOOK );
+		wp_unschedule_hook( AIPS_Sources_Maintenance::HOOK );
+		wp_unschedule_hook( AIPS_Sources_Maintenance::CONTINUATION_HOOK );
+		wp_unschedule_hook( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK );
 		delete_option( 'aips_duplicate_scan_schedule' );
 		delete_option( 'aips_publish_linking_mode' );
+		delete_option( 'aips_source_archive_retention_days' );
 		parent::tearDown();
 	}
 
@@ -49,6 +61,15 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 
 		$pub_service = new AIPS_Publish_Linking_Service();
 		$this->assertInstanceOf( AIPS_Publish_Linking_Service::class, $pub_service );
+
+		$sources_cron = new AIPS_Sources_Cron();
+		$this->assertInstanceOf( AIPS_Sources_Cron::class, $sources_cron );
+
+		$sources_maint = new AIPS_Sources_Maintenance();
+		$this->assertInstanceOf( AIPS_Sources_Maintenance::class, $sources_maint );
+
+		$sched_proc = new AIPS_Schedule_Processor();
+		$this->assertInstanceOf( AIPS_Schedule_Processor::class, $sched_proc );
 	}
 
 	// -------------------------------------------------------------------------
@@ -145,5 +166,86 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 			)
 		);
 		$this->assertFalse( $service->maybe_schedule( $post_id2 ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// Sources Cron & Maintenance Tests
+	// -------------------------------------------------------------------------
+
+	public function test_sources_cron_reconciles_via_cron_manager() {
+		$repo_mock = $this->createMock( AIPS_Sources_Repository::class );
+		$target_time = time() + 3600;
+		$repo_mock->method( 'get_next_fetch_at' )->willReturn( $target_time );
+
+		$cron = new AIPS_Sources_Cron( $repo_mock, null, null, null, $this->cron_manager );
+		$cron->reconcile_owned();
+
+		// Should have scheduled single event for target time
+		$next = $this->cron_manager->next_scheduled( AIPS_Sources_Cron::HOOK );
+		$this->assertSame( $target_time, $next );
+
+		// When get_next_fetch_at returns null -> clears hooks
+		$empty_repo = $this->createMock( AIPS_Sources_Repository::class );
+		$empty_repo->method( 'get_next_fetch_at' )->willReturn( null );
+		$cron_empty = new AIPS_Sources_Cron( $empty_repo, null, null, null, $this->cron_manager );
+		$cron_empty->reconcile_owned();
+
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Sources_Cron::HOOK ) );
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Sources_Cron::CONTINUATION_HOOK ) );
+	}
+
+	public function test_sources_maintenance_schedules_via_cron_manager() {
+		update_option( 'aips_source_archive_retention_days', 30 );
+		$maint = new AIPS_Sources_Maintenance( null, null, null, $this->cron_manager );
+
+		$next = $this->cron_manager->next_scheduled( AIPS_Sources_Maintenance::HOOK );
+		$this->assertIsInt( $next );
+
+		// With retention days = 0 -> clears
+		update_option( 'aips_source_archive_retention_days', 0 );
+		$maint->schedule();
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Sources_Maintenance::HOOK ) );
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Sources_Maintenance::CONTINUATION_HOOK ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// Schedule Processor Single Queue Tests
+	// -------------------------------------------------------------------------
+
+	public function test_schedule_processor_queues_due_schedules_via_cron_manager() {
+		$schedule1 = (object) array( 'schedule_id' => 101 );
+		$schedule2 = (object) array( 'schedule_id' => 102 );
+
+		$repo_mock = $this->createMock( AIPS_Schedule_Repository_Interface::class );
+		$repo_mock->method( 'get_due_schedules' )->willReturn( array( $schedule1, $schedule2 ) );
+
+		$processor = new AIPS_Schedule_Processor(
+			$repo_mock,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			$this->cron_manager
+		);
+
+		// First schedule runs immediately, second schedule is queued via cron_manager
+		$processor->process_due_schedules();
+
+		$queued_next = $this->cron_manager->next_scheduled(
+			AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK,
+			array( 102 )
+		);
+		$this->assertIsInt( $queued_next );
+
+		// The first schedule should not be queued as a separate cron event
+		$this->assertFalse(
+			$this->cron_manager->next_scheduled(
+				AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK,
+				array( 101 )
+			)
+		);
 	}
 }
