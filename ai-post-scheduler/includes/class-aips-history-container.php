@@ -630,13 +630,4 @@ class AIPS_History_Container {
 		$this->session->start($context, $voice);
 		return $this;
 	}
-	
-	/**
-	 * Get the session tracker if attached
-	 *
-	 * @return AIPS_Generation_Session|null
-	 */
-	public function get_session() {
-		return $this->session;
-	}
 }

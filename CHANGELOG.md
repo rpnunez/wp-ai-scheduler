@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Removed
+- **Unused Template and Voice Snapshot in `AIPS_Generation_Session` (#2317):**
+  - Removed dead `$template` and `$voice` properties along with their initializations from `AIPS_Generation_Session`.
+  - Removed redundant template/voice array copying in `AIPS_Generation_Session::start()`, keeping `$this->context` and standard context population for legacy callers.
+  - Removed unused dead getters from `AIPS_Generation_Session`: `get_template()`, `get_voice()`, `get_started_at()`, `get_completed_at()`, and `get_result()`.
+  - Removed unused dead method `AIPS_History_Container::get_session()`.
+
 ### Added
 - **Scheduling Backend Deactivation Cleanup & Diagnostics — Slice 3:** Updated `AIPS_Cron_Manager::unschedule_all_plugin_crons()` and `unschedule_all_for_hook()` to clear ActionScheduler actions across all registered hooks and groups on plugin deactivation, guaranteeing zero orphaned actions across both backends (AS-A5). Enhanced `AIPS_System_Diagnostics_Scheduler_Provider` to surface scheduled actions across WP-Cron and ActionScheduler and display the active scheduling backend adapter in system health (AS-A7, issue #2375).
 - **Scheduling Backend Call Sites & AS-A4 Fix — Slice 2:** Migrated `AIPS_Content_Indexer_Service`, `AIPS_Internal_Links_Controller`, and `AIPS_Embeddings_Cron` from opportunistic `function_exists('as_*')` checks and raw `wp_schedule_*` calls to `AIPS_Cron_Backend_Interface` and registry group constants (issue #2375). Fixed AS-A4 argument spreading defect in `AIPS_Embeddings_Cron` so that author embedding batches receive their payload array intact across both backends.

@@ -174,11 +174,14 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('template', $context_data['type']);
 		$this->assertEquals(123, $context_data['id']);
 		$this->assertEquals('Test Template', $context_data['name']);
-		
-		// Should also still populate legacy template data
-		$template_data = $session->get_template();
-		$this->assertNotNull($template_data);
-		$this->assertEquals(123, $template_data['id']);
+		$this->assertArrayNotHasKey('voice_id', $context_data);
+
+		// With voice object in legacy mode
+		$voice = (object) array('id' => 456, 'name' => 'Legacy Voice');
+		$session->start($template, $voice);
+		$context_with_voice = $session->get_context();
+		$this->assertNotNull($context_with_voice);
+		$this->assertEquals(456, $context_with_voice['voice_id']);
 	}
 
 	/**
