@@ -288,7 +288,7 @@ return array(
     'AIPS_Schedule_Batch_Resume_Service' => $baseDir . '/includes/class-aips-schedule-batch-resume-service.php',
     'AIPS_Schedule_Controller' => $baseDir . '/includes/class-aips-schedule-controller.php',
     'AIPS_Schedule_Entry' => $baseDir . '/includes/class-aips-schedule-entry.php',
-    'AIPS_Schedule_Processor' => $baseDir . '/includes/class-aips-schedule-processor.php',
+    'AIPS_Schedule_Generation_Service' => $baseDir . '/includes/class-aips-schedule-generation-service.php',
     'AIPS_Schedule_Repository' => $baseDir . '/includes/class-aips-schedule-repository.php',
     'AIPS_Schedule_Repository_Interface' => $baseDir . '/includes/interface-aips-schedule-repository-interface.php',
     'AIPS_Schedule_Result_Handler' => $baseDir . '/includes/class-aips-schedule-result-handler.php',

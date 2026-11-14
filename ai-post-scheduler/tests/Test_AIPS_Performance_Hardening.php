@@ -21,11 +21,11 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 		parent::setUp();
 		$this->group = 'perf-' . uniqid();
 		AIPS_Cache::reset_request_cache();
-		wp_unschedule_hook( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK );
+		wp_unschedule_hook( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK );
 	}
 
 	public function tearDown(): void {
-		wp_unschedule_hook( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK );
+		wp_unschedule_hook( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK );
 		delete_option( 'aips_batch_resume_cooldown_minutes' );
 		delete_option( 'aips_generation_delay_seconds' );
 		AIPS_Config::get_instance()->flush_option_cache();
@@ -235,7 +235,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 	 *
 	 * @param AIPS_Schedule_Repository_Interface $repository Repository mock.
 	 * @param object|null                        $generator  Generator mock.
-	 * @return AIPS_Schedule_Processor
+	 * @return AIPS_Schedule_Generation_Service
 	 */
 	private function make_processor( $repository, $generator = null ) {
 		$generator = $generator ?: $this->getMockBuilder( AIPS_Generator::class )
@@ -270,7 +270,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 			->disableOriginalConstructor()
 			->getMock();
 
-		$processor = new AIPS_Schedule_Processor(
+		$processor = new AIPS_Schedule_Generation_Service(
 			$repository,
 			$template_repository,
 			$generator,
@@ -318,11 +318,18 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 			->willReturn( false );
 		$repository->expects( $this->never() )->method( 'update' );
 
+		global $wpdb;
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_jobs' );
+
 		$this->make_processor( $repository )->process_due_schedules();
 
-		$this->assertNotFalse( wp_next_scheduled( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array( 2 ) ) );
-		$this->assertNotFalse( wp_next_scheduled( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array( 3 ) ) );
-		$this->assertFalse( wp_next_scheduled( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array( 1 ) ) );
+		$job_repo  = AIPS_Container::get_instance()->get_job_repository();
+		$jobs      = $job_repo->query( array( 'job_type' => AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION ) );
+		$sched_ids = array_map( function( $j ) { return $j->get_payload()['schedule_id']; }, $jobs );
+
+		$this->assertContains( 2, $sched_ids );
+		$this->assertContains( 3, $sched_ids );
+		$this->assertNotContains( 1, $sched_ids );
 	}
 
 	public function test_queued_schedule_is_skipped_when_no_longer_due() {
@@ -370,7 +377,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 				array(
 					'run_state' => wp_json_encode(
 						array(
-							'status'          => AIPS_Schedule_Processor::RUN_STATE_YIELDED,
+							'status'          => AIPS_Schedule_Generation_Service::RUN_STATE_YIELDED,
 							'resume_next_run' => $resume_next_run,
 						)
 					),
@@ -407,7 +414,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 	private $previous_request_time;
 
 	private function run_batch_progress( $processor, $schedule, $quantity, $is_manual ) {
-		$method = new ReflectionMethod( AIPS_Schedule_Processor::class, 'execute_batch_progress' );
+		$method = new ReflectionMethod( AIPS_Schedule_Generation_Service::class, 'execute_batch_progress' );
 		$method->setAccessible( true );
 		return $method->invoke( $processor, $schedule, null, $quantity, $is_manual );
 	}
@@ -474,7 +481,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 				12,
 				$this->callback(
 					function ( $state ) use ( $claimed_next_run ) {
-						return AIPS_Schedule_Processor::RUN_STATE_YIELDED === $state['status']
+						return AIPS_Schedule_Generation_Service::RUN_STATE_YIELDED === $state['status']
 							&& $claimed_next_run === $state['resume_next_run']
 							&& 1 === $state['completed']
 							&& 3 === $state['total'];
@@ -493,7 +500,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 			);
 		$repository->expects( $this->never() )->method( 'delete' );
 
-		$method = new ReflectionMethod( AIPS_Schedule_Processor::class, 'defer_yielded_batch' );
+		$method = new ReflectionMethod( AIPS_Schedule_Generation_Service::class, 'defer_yielded_batch' );
 		$method->setAccessible( true );
 		$method->invoke(
 			$this->make_processor( $repository ),
@@ -502,7 +509,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 			null
 		);
 
-		$event = wp_next_scheduled( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array( 12 ) );
+		$event = wp_next_scheduled( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK, array( 12 ) );
 		$this->assertNotFalse( $event );
 		$this->assertLessThanOrEqual( 2, abs( $event - ( $now + 10 * MINUTE_IN_SECONDS ) ) );
 	}
@@ -518,7 +525,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 		$repository->expects( $this->once() )->method( 'update_run_state' );
 		$repository->expects( $this->never() )->method( 'update' );
 
-		$method = new ReflectionMethod( AIPS_Schedule_Processor::class, 'defer_yielded_batch' );
+		$method = new ReflectionMethod( AIPS_Schedule_Generation_Service::class, 'defer_yielded_batch' );
 		$method->setAccessible( true );
 		$method->invoke(
 			$this->make_processor( $repository ),
@@ -527,7 +534,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 			null
 		);
 
-		$this->assertFalse( wp_next_scheduled( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array( 13 ) ) );
+		$this->assertFalse( wp_next_scheduled( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK, array( 13 ) ) );
 	}
 
 	public function test_defer_yielded_batch_handles_missing_claimed_next_run() {
@@ -544,7 +551,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 				14,
 				$this->callback(
 					function ( $state ) use ( $now ) {
-						return AIPS_Schedule_Processor::RUN_STATE_YIELDED === $state['status']
+						return AIPS_Schedule_Generation_Service::RUN_STATE_YIELDED === $state['status']
 							&& isset( $state['resume_next_run'] )
 							&& $state['resume_next_run'] > $now
 							&& 2 === $state['completed']
@@ -563,7 +570,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 				)
 			);
 
-		$method = new ReflectionMethod( AIPS_Schedule_Processor::class, 'defer_yielded_batch' );
+		$method = new ReflectionMethod( AIPS_Schedule_Generation_Service::class, 'defer_yielded_batch' );
 		$method->setAccessible( true );
 		$method->invoke(
 			$this->make_processor( $repository ),
@@ -572,7 +579,7 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 			null
 		);
 
-		$event = wp_next_scheduled( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array( 14 ) );
+		$event = wp_next_scheduled( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK, array( 14 ) );
 		$this->assertNotFalse( $event );
 		$this->assertLessThanOrEqual( 2, abs( $event - ( $now + 10 * MINUTE_IN_SECONDS ) ) );
 	}

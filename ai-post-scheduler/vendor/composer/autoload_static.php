@@ -323,7 +323,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Schedule_Batch_Resume_Service' => __DIR__ . '/../..' . '/includes/class-aips-schedule-batch-resume-service.php',
         'AIPS_Schedule_Controller' => __DIR__ . '/../..' . '/includes/class-aips-schedule-controller.php',
         'AIPS_Schedule_Entry' => __DIR__ . '/../..' . '/includes/class-aips-schedule-entry.php',
-        'AIPS_Schedule_Processor' => __DIR__ . '/../..' . '/includes/class-aips-schedule-processor.php',
+        'AIPS_Schedule_Generation_Service' => __DIR__ . '/../..' . '/includes/class-aips-schedule-generation-service.php',
         'AIPS_Schedule_Repository' => __DIR__ . '/../..' . '/includes/class-aips-schedule-repository.php',
         'AIPS_Schedule_Repository_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-schedule-repository-interface.php',
         'AIPS_Schedule_Result_Handler' => __DIR__ . '/../..' . '/includes/class-aips-schedule-result-handler.php',

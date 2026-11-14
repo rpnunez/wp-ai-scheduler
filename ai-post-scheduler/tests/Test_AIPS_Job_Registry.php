@@ -23,12 +23,16 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH, $definitions );
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_BULK_BATCH_SLICE, $definitions );
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_LINK_INDEX_SCAN, $definitions );
+		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION, $definitions );
+		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_SCHEDULE_BATCH_SLICE, $definitions );
 
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_SLICE ) );
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_POST_GENERATION ) );
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH ) );
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_BATCH_SLICE ) );
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_LINK_INDEX_SCAN ) );
+		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION ) );
+		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_SCHEDULE_BATCH_SLICE ) );
 		$this->assertFalse( $this->registry->has( 'non_existent_job_type' ) );
 	}
 
@@ -55,6 +59,7 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$this->assertContains( AIPS_Job_Registry::GROUP_BULK_BATCH, $groups );
 		$this->assertContains( AIPS_Job_Registry::GROUP_INDEXER, $groups );
 		$this->assertContains( AIPS_Job_Registry::GROUP_EMBEDDINGS, $groups );
+		$this->assertContains( AIPS_Job_Registry::GROUP_SCHEDULES, $groups );
 
 		$hooks = $this->registry->get_hooks();
 		$this->assertContains( AIPS_Job_Registry::DEFAULT_TICK_HOOK, $hooks );

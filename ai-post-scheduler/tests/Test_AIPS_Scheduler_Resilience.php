@@ -22,8 +22,8 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
      * Test that an exception in one schedule does not block subsequent schedules.
      *
      * process() runs the first due schedule inline and queues the rest as
-     * single cron events (AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK),
-     * so the second schedule runs when its queued event fires.
+     * staggered background jobs (schedule_post_generation),
+     * so the second schedule runs when its queued job fires.
      */
     public function test_scheduler_resilience_to_exceptions() {
         // 1. Create a dummy template
@@ -110,14 +110,17 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         }
 
         // 5. Run the scheduler: Topic 1 crashes inline, Topic 2 is queued.
-        wp_unschedule_hook(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK);
+        global $wpdb;
+        $wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_jobs' );
         $this->scheduler->process();
 
-        $queued = wp_next_scheduled(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array((int) $schedule2_id));
-        $this->assertNotFalse($queued, 'The second due schedule should be queued, not dropped.');
+        $job_repo = AIPS_Container::get_instance()->get_job_repository();
+        $jobs     = $job_repo->query( array( 'job_type' => AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION ) );
+        $this->assertNotEmpty( $jobs, 'The second due schedule should be queued, not dropped.' );
+        $payload  = $jobs[0]->get_payload();
+        $this->assertSame( (int) $schedule2_id, (int) $payload['schedule_id'] );
 
         // 6. Fire the queued event: the crash must not have blocked it.
         $this->scheduler->process_queued_due_schedule((int) $schedule2_id);
-        wp_unschedule_hook(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK);
     }
 }

@@ -101,7 +101,6 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 		$hooks = array_keys( $this->registry->get_single_event_hooks() );
 
 		foreach ( array(
-			AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK,
 			AIPS_Batch_Queue_Service::HOOK,
 			'aips_resume_terminated_batches',
 			'aips_process_author_topics_slice',
@@ -141,6 +140,7 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 		// Legacy clear-only.
 		$this->assertContains( 'aips_daily_rollup_insights', $all );
 		$this->assertContains( 'aips_process_bulk_batch', $all );
+		$this->assertContains( 'aips_process_single_due_schedule', $all );
 	}
 
 	public function test_all_hooks_has_no_duplicates() {

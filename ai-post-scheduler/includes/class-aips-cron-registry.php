@@ -271,7 +271,6 @@ class AIPS_Cron_Registry {
 	 */
 	public function get_single_event_hooks() {
 		return array(
-			AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK => __( 'Queued Due Schedule', 'ai-post-scheduler' ),
 			AIPS_Batch_Queue_Service::HOOK                    => __( 'Schedule Batch Slice', 'ai-post-scheduler' ),
 			'aips_resume_terminated_batches'                  => __( 'Resume Terminated Batches', 'ai-post-scheduler' ),
 			'aips_process_author_topics_slice'                => __( 'Author Topic Slice', 'ai-post-scheduler' ),
@@ -306,6 +305,7 @@ class AIPS_Cron_Registry {
 			'aips_weekly_send_digest',
 			'aips_monthly_send_digest',
 			'aips_process_bulk_batch',
+			'aips_process_single_due_schedule',
 		);
 	}
 
@@ -412,7 +412,7 @@ class AIPS_Cron_Registry {
 				},
 				'accepted_args' => 1,
 			),
-			AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK => array(
+			'aips_process_single_due_schedule' => array(
 				'callback'      => static function ( $schedule_id ) {
 					AIPS_Scheduler::instance()->process_queued_due_schedule( (int) $schedule_id );
 				},

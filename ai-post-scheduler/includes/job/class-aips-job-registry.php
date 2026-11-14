@@ -19,12 +19,15 @@ class AIPS_Job_Registry {
 	const GROUP_BULK_BATCH    = 'aips-bulk-batch';
 	const GROUP_INDEXER       = 'aips-indexer';
 	const GROUP_EMBEDDINGS    = 'aips-embeddings';
+	const GROUP_SCHEDULES     = 'aips-schedules';
 
-	const TYPE_AUTHOR_TOPIC_SLICE    = 'author_topic_slice';
-	const TYPE_BULK_BATCH_SLICE      = 'bulk_batch_slice';
-	const TYPE_BULK_POST_GENERATION  = 'bulk_post_generation';
-	const TYPE_BULK_POST_PUBLISH     = 'bulk_post_publish';
-	const TYPE_LINK_INDEX_SCAN       = 'link_index_scan';
+	const TYPE_AUTHOR_TOPIC_SLICE       = 'author_topic_slice';
+	const TYPE_BULK_BATCH_SLICE         = 'bulk_batch_slice';
+	const TYPE_BULK_POST_GENERATION     = 'bulk_post_generation';
+	const TYPE_BULK_POST_PUBLISH        = 'bulk_post_publish';
+	const TYPE_LINK_INDEX_SCAN          = 'link_index_scan';
+	const TYPE_SCHEDULE_POST_GENERATION = 'schedule_post_generation';
+	const TYPE_SCHEDULE_BATCH_SLICE     = 'schedule_batch_slice';
 
 	/**
 	 * Default job tick hook name.
@@ -76,7 +79,7 @@ class AIPS_Job_Registry {
 				'batch_size'        => 25,
 				'handler'           => 'AIPS_Bulk_Generator_Service',
 			),
-			self::TYPE_LINK_INDEX_SCAN       => array(
+			self::TYPE_LINK_INDEX_SCAN          => array(
 				'label'             => __( 'Link Index Scan', 'ai-post-scheduler' ),
 				'hook'              => self::DEFAULT_TICK_HOOK,
 				'group'             => self::GROUP_INDEXER,
@@ -84,6 +87,24 @@ class AIPS_Job_Registry {
 				'retry_backoff_sec' => 60,
 				'batch_size'        => 50,
 				'handler'           => 'AIPS_Link_Index_Service',
+			),
+			self::TYPE_SCHEDULE_POST_GENERATION => array(
+				'label'             => __( 'Schedule Post Generation', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_SCHEDULES,
+				'max_retries'       => 2,
+				'retry_backoff_sec' => 120,
+				'batch_size'        => 1,
+				'handler'           => 'AIPS_Schedule_Generation_Service',
+			),
+			self::TYPE_SCHEDULE_BATCH_SLICE     => array(
+				'label'             => __( 'Schedule Batch Slice', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_SCHEDULES,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 10,
+				'handler'           => 'AIPS_Schedule_Generation_Service',
 			),
 		);
 
