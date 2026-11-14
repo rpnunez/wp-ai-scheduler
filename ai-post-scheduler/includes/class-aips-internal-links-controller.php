@@ -55,6 +55,11 @@ class AIPS_Internal_Links_Controller {
 	private $job_scheduler;
 
 	/**
+	 * @var AIPS_Cron_Backend_Interface
+	 */
+	private $cron_backend;
+
+	/**
 	 * Initialize the controller and register AJAX hooks.
 	 *
 	 * @param AIPS_Internal_Links_Service|null          $service          Internal links service.
@@ -63,6 +68,7 @@ class AIPS_Internal_Links_Controller {
 	 * @param AIPS_Logger|null                          $logger           Logger instance.
 	 * @param AIPS_Internal_Link_Inserter_Service|null  $inserter_service Link inserter service.
 	 * @param AIPS_Job_Scheduler|null                   $job_scheduler    Job scheduler service.
+	 * @param AIPS_Cron_Backend_Interface|null          $cron_backend     Cron backend adapter.
 	 */
 	public function __construct(
 		$service = null,
@@ -70,7 +76,8 @@ class AIPS_Internal_Links_Controller {
 		$embeddings_repo = null,
 		$logger = null,
 		$inserter_service = null,
-		$job_scheduler = null
+		$job_scheduler = null,
+		$cron_backend = null
 	) {
 		$container              = AIPS_Container::get_instance();
 		$this->service          = $service          ?: new AIPS_Internal_Links_Service();
@@ -79,6 +86,7 @@ class AIPS_Internal_Links_Controller {
 		$this->logger           = $logger           ?: new AIPS_Logger();
 		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
 		$this->job_scheduler    = $job_scheduler    ?: new AIPS_Job_Scheduler();
+		$this->cron_backend     = $cron_backend     ?: ($container->has(AIPS_Cron_Backend_Interface::class) ? $container->make(AIPS_Cron_Backend_Interface::class) : AIPS_Cron_Backend_Resolver::resolve());
 
 		// AJAX endpoints — suggestion management
 		add_action('wp_ajax_aips_internal_links_get_suggestions', array($this, 'ajax_get_suggestions'));
@@ -826,21 +834,11 @@ class AIPS_Internal_Links_Controller {
 
 		$timestamp = time() + 5;
 
-		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action($timestamp, 'aips_index_posts_batch', array($args), 'aips-internal-links');
-		} else {
-			// Use centralized job scheduler
-			$this->job_scheduler->schedule_simple(
-				'aips_index_posts_batch',
-				$timestamp,
-				array($args),
-				array(
-					'job_type'      => 'internal_links_indexing',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
-				)
-			);
-		}
+		$this->cron_backend->schedule_single(
+			$timestamp,
+			'aips_index_posts_batch',
+			array($args),
+			AIPS_Cron_Registry::GROUP_INTERNAL_LINKS
+		);
 	}
 }

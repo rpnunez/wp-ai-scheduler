@@ -53,17 +53,29 @@ class AIPS_Embeddings_Cron {
 	private $job_scheduler;
 
 	/**
+	 * @var AIPS_Cron_Backend_Interface Cron backend adapter
+	 */
+	private $cron_backend;
+
+	/**
 	 * Initialize the cron handler.
 	 *
 	 * @param AIPS_Logger_Interface|null          $logger          Logger instance.
 	 * @param AIPS_History_Service_Interface|null $history_service History service.
 	 * @param AIPS_Job_Scheduler|null             $job_scheduler   Job scheduler service.
+	 * @param AIPS_Cron_Backend_Interface|null    $cron_backend    Cron backend adapter.
 	 */
-	public function __construct(?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
-		$container = AIPS_Container::get_instance();
+	public function __construct(
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Job_Scheduler $job_scheduler = null,
+		?AIPS_Cron_Backend_Interface $cron_backend = null
+	) {
+		$container             = AIPS_Container::get_instance();
 		$this->logger          = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 		$this->job_scheduler   = $job_scheduler ?: new AIPS_Job_Scheduler();
+		$this->cron_backend    = $cron_backend ?: ($container->has(AIPS_Cron_Backend_Interface::class) ? $container->make(AIPS_Cron_Backend_Interface::class) : AIPS_Cron_Backend_Resolver::resolve());
 	}
 
 	/**
@@ -301,24 +313,14 @@ class AIPS_Embeddings_Cron {
 			'last_processed_id' => $last_processed_id,
 		);
 
-		// Schedule to run in a few seconds
+		// Schedule to run in a few seconds via the central cron backend
 		$timestamp = AIPS_DateTime::now()->advance(5)->timestamp();
 
-		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
-		if (function_exists('as_schedule_single_action')) {
-			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
-		} else {
-			$this->job_scheduler->schedule_simple(
-				'aips_process_author_embeddings',
-				$timestamp,
-				array($args),
-				array(
-					'job_type'      => 'author_embeddings',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
-				)
-			);
-		}
+		$this->cron_backend->schedule_single(
+			$timestamp,
+			'aips_process_author_embeddings',
+			array($args),
+			AIPS_Cron_Registry::GROUP_EMBEDDINGS
+		);
 	}
 }
