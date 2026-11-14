@@ -31,6 +31,11 @@ class Test_AIPS_Admin_Page_Context extends WP_UnitTestCase {
 			$this->assertNotEmpty($hubs[$key]['label']);
 			$this->assertNotEmpty($hubs[$key]['slug']);
 		}
+
+		$this->assertSame('templates', $hubs[AIPS_Admin_Page_Context::HUB_STUDIO]['default_tab']);
+		$this->assertArrayHasKey('structure-sections', $hubs[AIPS_Admin_Page_Context::HUB_STUDIO]['sections']);
+		$this->assertArrayHasKey('aips-broken-links', $hubs[AIPS_Admin_Page_Context::HUB_CONTENT]['sections']);
+		$this->assertArrayHasKey('ai-errors', $hubs[AIPS_Admin_Page_Context::HUB_DIAGNOSTICS]['sections']);
 	}
 
 	/**
@@ -149,7 +154,7 @@ class Test_AIPS_Admin_Page_Context extends WP_UnitTestCase {
 	public function test_studio_controller_get_page_context() {
 		$controller = new AIPS_Studio_Controller();
 
-		$sections = array('', 'launchpad', 'templates', 'voices', 'structures', 'post-slices');
+		$sections = array('', 'launchpad', 'templates', 'voices', 'structures', 'structure-sections', 'post-slices');
 
 		foreach ($sections as $sec) {
 			$ctx = $controller->get_page_context($sec);
@@ -158,6 +163,17 @@ class Test_AIPS_Admin_Page_Context extends WP_UnitTestCase {
 			$this->assertIsArray($ctx->summary_items);
 			$this->assertIsArray($ctx->actions);
 		}
+	}
+
+	/**
+	 * Studio root and legacy Launchpad requests resolve to Templates.
+	 */
+	public function test_studio_defaults_to_templates_without_launchpad() {
+		$this->assertSame('templates', AIPS_Studio_Controller::get_active_section_key());
+
+		$_GET['tab'] = 'launchpad';
+		$this->assertSame('templates', AIPS_Studio_Controller::get_active_section_key());
+		unset($_GET['tab']);
 	}
 }
 

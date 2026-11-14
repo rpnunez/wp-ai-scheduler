@@ -18,15 +18,20 @@ if (!isset($structures) || !is_array($structures)) {
 if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
+
+$initial_structure_tab = isset($initial_structure_tab) && 'aips-structure-sections' === $initial_structure_tab
+	? 'aips-structure-sections'
+	: 'aips-structures';
+$structures_active = 'aips-structures' === $initial_structure_tab;
 ?>
 	<div class="aips-content-panel aips-panel-with-tabs">
 		<!-- Tab Navigation -->
-		<div class="aips-tab-nav aips-panel-tab-nav">
-			<a href="#aips-structures" class="aips-tab-link active" data-tab="aips-structures"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-structure-sections" class="aips-tab-link" data-tab="aips-structure-sections"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
+		<div class="aips-tab-nav aips-panel-tab-nav" role="tablist">
+			<a href="#aips-structures" class="aips-tab-link<?php echo $structures_active ? ' active' : ''; ?>" data-tab="aips-structures" data-route-tab="structures" role="tab" aria-selected="<?php echo $structures_active ? 'true' : 'false'; ?>"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-structure-sections" class="aips-tab-link<?php echo $structures_active ? '' : ' active'; ?>" data-tab="aips-structure-sections" data-route-tab="structure-sections" role="tab" aria-selected="<?php echo $structures_active ? 'false' : 'true'; ?>"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
 		</div>
 
-		<div id="aips-structures-tab" class="aips-tab-content active">
+		<div id="aips-structures-tab" class="aips-tab-content<?php echo $structures_active ? ' active' : ' aips-is-hidden'; ?>" role="tabpanel" aria-hidden="<?php echo $structures_active ? 'false' : 'true'; ?>">
 			<div class="aips-structures-container">
 				<?php if (!empty($structures)): ?>
 				<div class="aips-filter-bar">
@@ -144,7 +149,7 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 		</div>
 
-		<div id="aips-structure-sections-tab" class="aips-tab-content" style="display:none;">
+		<div id="aips-structure-sections-tab" class="aips-tab-content<?php echo $structures_active ? ' aips-is-hidden' : ' active'; ?>" role="tabpanel" aria-hidden="<?php echo $structures_active ? 'true' : 'false'; ?>">
 			<div class="aips-structures-container">
 				<?php if (!empty($sections)): ?>
 				<div class="aips-filter-bar">

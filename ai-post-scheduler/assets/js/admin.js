@@ -752,6 +752,7 @@
         switchAipsTab: function(e) {
             var $tabLink = $(e.currentTarget);
             var tabId = $tabLink.data('tab');
+			var routeTab = $tabLink.data('route-tab') || tabId;
 
             // Links without data-tab (for example Diagnostics top-level tabs)
             // are regular navigation links and should not be intercepted.
@@ -777,8 +778,8 @@
             }
 
             // Update active state only for the local tab nav
-            $tabNav.find('.aips-tab-link, .aips-rail-item').removeClass('active');
-            $tabLink.addClass('active');
+            $tabNav.find('.aips-tab-link, .aips-rail-item').removeClass('active').attr('aria-selected', 'false');
+            $tabLink.addClass('active').attr('aria-selected', 'true');
 
             // Check if within vertical rail layout
             var $railLayout = $tabNav.closest('.aips-rail-layout');
@@ -809,10 +810,10 @@
                 var $scopedTabs = $container.children('.aips-tab-content');
 
                 if ($scopedTabs.length) {
-                    $scopedTabs.hide().removeClass('active').attr('aria-hidden', 'true');
+                    $scopedTabs.hide().removeClass('active').addClass('aips-is-hidden').attr('aria-hidden', 'true');
                     var $targetTab = $container.children('#' + tabId + '-tab, #' + tabId);
                     if ($targetTab.length) {
-                        $targetTab.show().addClass('active').attr('aria-hidden', 'false');
+                        $targetTab.removeClass('aips-is-hidden').show().addClass('active').attr('aria-hidden', 'false');
                         // Ensure active inner tab within the newly revealed panel is visible
                         $targetTab.find('.aips-tab-content:not(.active)').hide().attr('aria-hidden', 'true');
                         $targetTab.find('.aips-tab-content.active').show().attr('aria-hidden', 'false');
@@ -822,10 +823,10 @@
                     if (!$scope.length) {
                         $scope = $(document);
                     }
-                    $scope.children('.aips-tab-content').hide().removeClass('active').attr('aria-hidden', 'true');
+                    $scope.children('.aips-tab-content').hide().removeClass('active').addClass('aips-is-hidden').attr('aria-hidden', 'true');
                     var $targetTab = $scope.find('#' + tabId + '-tab, #' + tabId).first();
                     if ($targetTab.length) {
-                        $targetTab.show().addClass('active').attr('aria-hidden', 'false');
+                        $targetTab.removeClass('aips-is-hidden').show().addClass('active').attr('aria-hidden', 'false');
                         $targetTab.find('.aips-tab-content:not(.active)').hide().attr('aria-hidden', 'true');
                         $targetTab.find('.aips-tab-content.active').show().attr('aria-hidden', 'false');
                     }
@@ -836,7 +837,7 @@
             try {
                 if (window.history && window.history.replaceState) {
                     var currentUrl = new URL(window.location.href);
-                    currentUrl.searchParams.set('tab', tabId);
+					currentUrl.searchParams.set('tab', routeTab);
                     currentUrl.hash = tabId;
                     window.history.replaceState(null, '', currentUrl.toString());
                 } else {
@@ -849,7 +850,7 @@
             try {
                 var pageName = new URLSearchParams(window.location.search).get('page') || '';
                 if (pageName) {
-                    localStorage.setItem('aips_active_tab_' + pageName, tabId);
+					localStorage.setItem('aips_active_tab_' + pageName, routeTab);
                 }
             } catch (err) {}
 
@@ -865,9 +866,9 @@
                             $(this).val(refUrl.pathname + refUrl.search + refUrl.hash);
                         } catch (e) {
                             if (val.indexOf('tab=') > -1) {
-                                val = val.replace(/([?&])tab=[^&#]*/, '$1tab=' + encodeURIComponent(tabId));
+								val = val.replace(/([?&])tab=[^&#]*/, '$1tab=' + encodeURIComponent(routeTab));
                             } else {
-                                val += (val.indexOf('?') > -1 ? '&' : '?') + 'tab=' + encodeURIComponent(tabId);
+								val += (val.indexOf('?') > -1 ? '&' : '?') + 'tab=' + encodeURIComponent(routeTab);
                             }
                             $(this).val(val);
                         }
