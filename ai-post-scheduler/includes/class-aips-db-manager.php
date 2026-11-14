@@ -43,6 +43,7 @@ class AIPS_DB_Manager {
         'aips_background_processes',
         'aips_post_images',
         'aips_post_images_generated',
+        'aips_jobs',
     );
 
     public function __construct() {
@@ -114,6 +115,7 @@ class AIPS_DB_Manager {
         $table_background_processes = $tables['aips_background_processes'];
         $table_post_images          = $tables['aips_post_images'];
         $table_post_images_generated = $tables['aips_post_images_generated'];
+        $table_jobs                 = $tables['aips_jobs'];
 
         $sql = array();
 
@@ -898,6 +900,33 @@ class AIPS_DB_Manager {
             KEY post_id (post_id),
             KEY config_image_id (config_image_id),
             KEY post_status (post_id, status)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_jobs (
+            job_id varchar(36) NOT NULL,
+            job_type varchar(100) NOT NULL,
+            group_name varchar(64) NOT NULL DEFAULT 'aips-default',
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            total int(11) NOT NULL DEFAULT 0,
+            processed int(11) NOT NULL DEFAULT 0,
+            failed int(11) NOT NULL DEFAULT 0,
+            cursor_id bigint(20) unsigned NOT NULL DEFAULT 0,
+            payload_json longtext,
+            result_json longtext,
+            error_message text DEFAULT NULL,
+            attempts int(11) NOT NULL DEFAULT 0,
+            max_retries int(11) NOT NULL DEFAULT 3,
+            next_run_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_tick_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            started_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            finished_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (job_id),
+            KEY type_status (job_type, status),
+            KEY group_status (group_name, status),
+            KEY status_next_run (status, next_run_at),
+            KEY updated_at (updated_at)
         ) $charset_collate;";
 
         return $sql;
