@@ -32,14 +32,25 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			? $overrides['date_time_db_repair']
 			: $this->mock_date_time_db_repair();
 
-		return new AIPS_System_Diagnostics_Service(
-			$history_repository,
-			$bulk_batch_job_store,
-			$resilience_service,
-			$cache_monitor_service,
-			$notifications_repository,
-			$date_time_db_repair
-		);
+		// clear_embeddings_cache() builds its own embeddings repository and
+		// deletes transients via $wpdb, so stub it to keep the service isolated.
+		$service = $this->getMockBuilder('AIPS_System_Diagnostics_Service')
+			->setConstructorArgs(array(
+				$history_repository,
+				$bulk_batch_job_store,
+				$resilience_service,
+				$cache_monitor_service,
+				$notifications_repository,
+				$date_time_db_repair,
+			))
+			->onlyMethods(array('clear_embeddings_cache'))
+			->getMock();
+		$service->method('clear_embeddings_cache')->willReturn(array(
+			'success' => true,
+			'message' => 'Embeddings cache cleared.',
+		));
+
+		return $service;
 	}
 
 	private function mock_history_repository() {
