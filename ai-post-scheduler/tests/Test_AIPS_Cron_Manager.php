@@ -188,7 +188,7 @@ class Test_AIPS_Cron_Manager extends WP_UnitTestCase {
 		$this->manager->schedule_single( 'aips_process_author_topics_slice', time() + 100, array( 11, 'corr-a' ) );
 		$this->manager->schedule_single( 'aips_process_author_post_slice', time() + 200, array( 22, 'corr-b' ) );
 		$this->manager->schedule_single( 'aips_process_bulk_batch', time() + 300, array( 'job-1', 0, 5, 50, 'corr-c' ) );
-		$this->manager->schedule_single( AIPS_Managed_Background_Process::TICK_HOOK, time() + 400, array( 'proc-key' ) );
+		$this->manager->schedule_single( 'aips_bg_process_tick', time() + 400, array( 'proc-key' ) );
 		wp_schedule_event( time(), 'daily', AIPS_Duplicate_Group_Service::CRON_HOOK );
 		wp_schedule_event( time(), 'daily', AIPS_GSC_Keywords_Service::CRON_HOOK );
 		wp_schedule_single_event( time() + 500, 'aips_daily_rollup_insights' );

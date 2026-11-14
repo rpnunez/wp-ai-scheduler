@@ -22,10 +22,13 @@ class AIPS_Job_Registry {
 	const GROUP_SCHEDULES     = 'aips-schedules';
 
 	const TYPE_AUTHOR_TOPIC_SLICE       = 'author_topic_slice';
+	const TYPE_AUTHOR_TOPIC_EMBEDDINGS  = 'author_topic_embeddings';
 	const TYPE_BULK_BATCH_SLICE         = 'bulk_batch_slice';
 	const TYPE_BULK_POST_GENERATION     = 'bulk_post_generation';
 	const TYPE_BULK_POST_PUBLISH        = 'bulk_post_publish';
+	const TYPE_INTERNAL_LINKS_INDEXING  = 'internal_links_indexing';
 	const TYPE_LINK_INDEX_SCAN          = 'link_index_scan';
+	const TYPE_RELATIONSHIPS_RECOMPUTE  = 'relationships_recompute';
 	const TYPE_SCHEDULE_POST_GENERATION = 'schedule_post_generation';
 	const TYPE_SCHEDULE_BATCH_SLICE     = 'schedule_batch_slice';
 
@@ -105,6 +108,33 @@ class AIPS_Job_Registry {
 				'retry_backoff_sec' => 60,
 				'batch_size'        => 10,
 				'handler'           => 'AIPS_Schedule_Generation_Service',
+			),
+			self::TYPE_AUTHOR_TOPIC_EMBEDDINGS  => array(
+				'label'             => __( 'Author Topic Embeddings', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_EMBEDDINGS,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 10,
+				'handler'           => 'AIPS_Author_Embeddings_Service',
+			),
+			self::TYPE_INTERNAL_LINKS_INDEXING  => array(
+				'label'             => __( 'Internal Links Indexing', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_EMBEDDINGS,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 10,
+				'handler'           => 'AIPS_Internal_Links_Indexing_Service',
+			),
+			self::TYPE_RELATIONSHIPS_RECOMPUTE  => array(
+				'label'             => __( 'Related Posts Recompute', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_INDEXER,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 10,
+				'handler'           => 'AIPS_Relationships_Recompute_Service',
 			),
 		);
 

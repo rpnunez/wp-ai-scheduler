@@ -387,11 +387,11 @@ class AIPS_Internal_Links_Controller {
 			AIPS_Ajax_Response::error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
 		}
 
-		// The indexing job runs under the background process manager, which
-		// applies the embeddings rate limits and supports pause/resume/stop.
+		// The indexing job runs under AIPS_Job_Manager via AIPS_Background_Processes_Controller,
+		// which applies the embeddings rate limits and supports pause/resume/stop.
 		$result = AIPS_Container::get_instance()
-			->make(AIPS_Background_Process_Manager::class)
-			->control(AIPS_Internal_Links_Indexing_Process::KEY, AIPS_Background_Process_Manager::ACTION_START);
+			->make(AIPS_Background_Processes_Controller::class)
+			->control(AIPS_Internal_Links_Indexing_Service::KEY, AIPS_Background_Processes_Controller::ACTION_START);
 
 		if (is_wp_error($result)) {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
@@ -799,11 +799,10 @@ class AIPS_Internal_Links_Controller {
 	 */
 	private function get_indexing_process_snapshot() {
 		try {
-			$process = AIPS_Container::get_instance()
-				->make(AIPS_Background_Process_Manager::class)
-				->get(AIPS_Internal_Links_Indexing_Process::KEY);
+			$controller = AIPS_Container::get_instance()
+				->make(AIPS_Background_Processes_Controller::class);
 
-			return $process ? $process->get_snapshot() : array();
+			return $controller ? $controller->get_snapshot(AIPS_Internal_Links_Indexing_Service::KEY) : array();
 		} catch (\Throwable $e) {
 			return array();
 		}

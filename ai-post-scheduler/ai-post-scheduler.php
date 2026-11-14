@@ -457,9 +457,9 @@ final class AI_Post_Scheduler {
             return new AIPS_Relationships_Repository();
         });
 
-        // Background process registry/manager (start, pause, resume, stop, Heartbeat snapshots)
-        $container->singleton(AIPS_Background_Process_Manager::class, function( $container ) {
-            return new AIPS_Background_Process_Manager();
+        // Background process registry/controller (start, pause, resume, stop, Heartbeat snapshots)
+        $container->singleton(AIPS_Background_Processes_Controller::class, function( $container ) {
+            return new AIPS_Background_Processes_Controller();
         });
 
         // Register the link index (actual <a href> links in post content)
@@ -820,7 +820,7 @@ final class AI_Post_Scheduler {
             if (empty($data['aips_bg'])) {
                 return $response;
             }
-            return AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->on_heartbeat_received($response, $data);
+            return AIPS_Container::get_instance()->make(AIPS_Background_Processes_Controller::class)->on_heartbeat_received($response, $data);
         }, 10, 2);
 
         // Related Posts Frontend integration (content filter, shortcode, block)

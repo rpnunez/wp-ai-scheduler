@@ -111,13 +111,14 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 			AIPS_Publish_Linking_Service::CRON_HOOK,
 			AIPS_Link_Index_Service::SCAN_TICK_HOOK,
 			AIPS_Autolink_Run_Service::TICK_HOOK,
-			AIPS_Managed_Background_Process::TICK_HOOK,
 			AIPS_Job_Registry::DEFAULT_TICK_HOOK,
 			'aips_index_posts_batch',
 			'aips_process_pending_indexer_queue',
 		) as $expected ) {
 			$this->assertContains( $expected, $hooks, "Single-event registry must declare {$expected}" );
 		}
+
+		$this->assertContains( 'aips_bg_process_tick', $this->registry->get_legacy_hooks() );
 	}
 
 	public function test_all_hooks_is_union_of_every_category() {
@@ -171,7 +172,6 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 		$handlers = $this->registry->get_dispatch_handlers( 'common' );
 
 		$this->assertArrayHasKey( 'aips_process_pending_indexer_queue', $handlers );
-		$this->assertArrayHasKey( AIPS_Managed_Background_Process::TICK_HOOK, $handlers );
 		$this->assertArrayHasKey( AIPS_Job_Registry::DEFAULT_TICK_HOOK, $handlers );
 	}
 

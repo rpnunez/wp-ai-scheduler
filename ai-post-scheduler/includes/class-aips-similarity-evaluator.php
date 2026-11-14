@@ -1680,15 +1680,20 @@ class AIPS_Similarity_Evaluator {
 	 * @return void
 	 */
 	private function enqueue_missing_topic_embeddings(int $author_id = 0): void {
-		if (class_exists('AIPS_Background_Process_Manager') && class_exists('AIPS_Author_Embeddings_Process')) {
-			$container = AIPS_Container::get_instance();
-			if ($container->has(AIPS_Background_Process_Manager::class)) {
-				$manager = $container->make(AIPS_Background_Process_Manager::class);
-				$manager->control(
-					AIPS_Author_Embeddings_Process::KEY,
-					AIPS_Background_Process_Manager::ACTION_START,
-					array('author_id' => $author_id)
-				);
+		$container = AIPS_Container::get_instance();
+		if ( $container->has( AIPS_Job_Manager::class ) ) {
+			$repo = $container->get_job_repository();
+			$active = $repo->get_active_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
+			if ( empty( $active ) ) {
+				$service   = new AIPS_Author_Embeddings_Service();
+				$remaining = $service->count_remaining( $author_id );
+				if ( $remaining > 0 && ! is_wp_error( $service->can_run() ) ) {
+					$container->get_job_manager()->dispatch(
+						AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS,
+						array( 'author_id' => $author_id ),
+						array( 'total' => $remaining )
+					);
+				}
 			}
 		}
 	}

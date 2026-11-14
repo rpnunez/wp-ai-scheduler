@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
+$bg_status_labels = AIPS_Background_Processes_Controller::get_status_labels();
 ?>
 <div class="aips-status-page aips-background-processes-page">
 
@@ -80,7 +80,7 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 							</td>
 							<td>
 								<div class="aips-bg-actions">
-									<?php $is_recompute = AIPS_Relationships_Recompute_Process::KEY === $snapshot['key']; ?>
+									<?php $is_recompute = AIPS_Relationships_Recompute_Service::KEY === $snapshot['key']; ?>
 									<button type="button" class="aips-btn aips-btn-primary aips-btn-sm" data-aips-bg-action="start" <?php echo empty($snapshot['can_start']) ? 'hidden' : ''; ?>>
 										<?php echo $is_recompute ? esc_html__('Fill missing', 'ai-post-scheduler') : esc_html__('Start', 'ai-post-scheduler'); ?>
 									</button>

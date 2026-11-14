@@ -126,7 +126,7 @@ class AIPS_Admin_Bar {
 		);
 
 		$bg_snapshots = $this->get_background_snapshots();
-		$bg_active    = AIPS_Background_Process_Manager::filter_active($bg_snapshots);
+		$bg_active    = AIPS_Background_Processes_Controller::filter_active($bg_snapshots);
 
 		$this->add_root_node($wp_admin_bar, $unread_count, $bg_active);
 		$this->add_quick_links_group($wp_admin_bar);
@@ -365,7 +365,7 @@ class AIPS_Admin_Bar {
 	 */
 	private function get_background_snapshots(): array {
 		try {
-			return AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->get_summary();
+			return AIPS_Container::get_instance()->make(AIPS_Background_Processes_Controller::class)->get_summary();
 		} catch (\Throwable $e) {
 			return array();
 		}

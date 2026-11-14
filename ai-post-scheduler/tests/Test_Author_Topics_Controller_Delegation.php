@@ -175,11 +175,10 @@ private function create_unembedded_topic( $author_id, $title ) {
  */
 private function reset_embeddings_run() {
 		global $wpdb;
-		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_background_processes" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_jobs WHERE job_type = 'author_topic_embeddings'" );
 		// Start from a clean slate so topics left by other tests cannot change the counts.
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_author_topics" );
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_embeddings WHERE object_type = 'topic'" );
-		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Author_Embeddings_Process::KEY ) );
 }
 
 /**
@@ -205,9 +204,9 @@ public function test_compute_embeddings_for_author_starts_the_background_process
 		$this->assertTrue( $response['success'] );
 		$this->assertEquals( 1, $response['data']['queued_count'] );
 
-		$run = ( new AIPS_Background_Process_Repository() )->get_open( AIPS_Author_Embeddings_Process::KEY );
-		$this->assertNotNull( $run );
-		$this->assertSame( 3, (int) $run->options['author_id'] );
+		$jobs = AIPS_Container::get_instance()->get_job_repository()->get_active_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
+		$this->assertNotEmpty( $jobs );
+		$this->assertSame( 3, (int) $jobs[0]->get_payload()['author_id'] );
 
 		$this->reset_embeddings_run();
 }
@@ -235,9 +234,9 @@ public function test_compute_embeddings_for_all_starts_one_run() {
 		$this->assertTrue( $response['success'] );
 		$this->assertGreaterThanOrEqual( 2, $response['data']['queued_count'] );
 
-		$run = ( new AIPS_Background_Process_Repository() )->get_open( AIPS_Author_Embeddings_Process::KEY );
-		$this->assertNotNull( $run );
-		$this->assertSame( 0, (int) $run->options['author_id'] );
+		$jobs = AIPS_Container::get_instance()->get_job_repository()->get_active_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
+		$this->assertNotEmpty( $jobs );
+		$this->assertSame( 0, (int) $jobs[0]->get_payload()['author_id'] );
 
 		$this->reset_embeddings_run();
 }
@@ -262,7 +261,7 @@ public function test_compute_embeddings_reports_when_nothing_is_queued() {
 
 		$this->assertTrue( $response['success'] );
 		$this->assertEquals( 0, $response['data']['queued_count'] );
-		$this->assertNull( ( new AIPS_Background_Process_Repository() )->get_open( AIPS_Author_Embeddings_Process::KEY ) );
+		$this->assertEmpty( AIPS_Container::get_instance()->get_job_repository()->get_active_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS ) );
 }
 
 /**
@@ -278,10 +277,14 @@ private function compute_embeddings_with_open_run( $run_author, $run_status, $re
 		$this->reset_embeddings_run();
 		wp_set_current_user( $this->admin_user_id );
 
-		$runs   = new AIPS_Background_Process_Repository();
-		$run_id = $runs->create( AIPS_Author_Embeddings_Process::KEY, 5, array( 'author_id' => $run_author ) );
-		if ( 'running' !== $run_status ) {
-			$runs->transition( $run_id, $run_status, array( 'running' ) );
+		$job_manager = AIPS_Container::get_instance()->get_job_manager();
+		$job_id      = $job_manager->dispatch(
+			AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS,
+			array( 'author_id' => $run_author ),
+			array( 'total' => 5 )
+		);
+		if ( 'paused' === $run_status ) {
+			$job_manager->pause( $job_id );
 		}
 
 		$_POST = array(

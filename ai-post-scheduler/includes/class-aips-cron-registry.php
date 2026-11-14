@@ -281,7 +281,6 @@ class AIPS_Cron_Registry {
 			AIPS_Publish_Linking_Service::CRON_HOOK           => __( 'Publish Linking', 'ai-post-scheduler' ),
 			AIPS_Link_Index_Service::SCAN_TICK_HOOK           => __( 'Link Index Scan Tick', 'ai-post-scheduler' ),
 			AIPS_Autolink_Run_Service::TICK_HOOK              => __( 'Auto-link Run Tick', 'ai-post-scheduler' ),
-			AIPS_Managed_Background_Process::TICK_HOOK        => __( 'Managed Background Process Tick', 'ai-post-scheduler' ),
 			AIPS_Job_Registry::DEFAULT_TICK_HOOK              => __( 'Background Job Tick', 'ai-post-scheduler' ),
 			'aips_index_posts_batch'                          => __( 'Internal Links Index Batch', 'ai-post-scheduler' ),
 			'aips_process_pending_indexer_queue'              => __( 'Pending Indexer Queue', 'ai-post-scheduler' ),
@@ -306,6 +305,7 @@ class AIPS_Cron_Registry {
 			'aips_monthly_send_digest',
 			'aips_process_bulk_batch',
 			'aips_process_single_due_schedule',
+			'aips_bg_process_tick',
 		);
 	}
 
@@ -384,9 +384,9 @@ class AIPS_Cron_Registry {
 				},
 				'accepted_args' => 1,
 			),
-			AIPS_Managed_Background_Process::TICK_HOOK => array(
+			'aips_bg_process_tick' => array(
 				'callback'      => static function ( $process_key ) {
-					AIPS_Container::get_instance()->make( AIPS_Background_Process_Manager::class )->tick( (string) $process_key );
+					// Legacy no-op handler for any old in-flight ticks
 				},
 				'accepted_args' => 1,
 			),
@@ -516,8 +516,7 @@ class AIPS_Cron_Registry {
 			),
 			'aips_cleanup_bulk_batch_jobs' => array(
 				'callback'      => static function () {
-					$deleted  = AIPS_Container::get_instance()->get_job_manager()->cleanup_finished_jobs( 7 * DAY_IN_SECONDS );
-					$deleted += ( new AIPS_Background_Process_Repository() )->cleanup_old();
+					$deleted = AIPS_Container::get_instance()->get_job_manager()->cleanup_finished_jobs( 7 * DAY_IN_SECONDS );
 					if ( $deleted > 0 ) {
 						( new AIPS_Logger() )->log(
 							sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),

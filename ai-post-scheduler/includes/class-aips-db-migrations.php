@@ -2062,8 +2062,11 @@ class AIPS_DB_Migrations {
 			);
 		}
 
-		// Drop the legacy table
+		// Drop the legacy tables
 		$wpdb->query( "DROP TABLE IF EXISTS `{$legacy_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$bg_table = $wpdb->prefix . 'aips_background_processes';
+		$wpdb->query( "DROP TABLE IF EXISTS `{$bg_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		return true;
 	}
