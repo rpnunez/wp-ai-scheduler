@@ -220,6 +220,15 @@ class AIPS_Job_Record {
 	}
 
 	/**
+	 * Alias for get_progress_percentage().
+	 *
+	 * @return float
+	 */
+	public function get_percent(): float {
+		return $this->get_progress_percentage();
+	}
+
+	/**
 	 * Convert record to associative array suitable for API responses or serialization.
 	 *
 	 * @return array
