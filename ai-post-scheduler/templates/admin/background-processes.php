@@ -179,7 +179,7 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 								<td><strong><?php echo esc_html( $job->get_job_type() ); ?></strong></td>
 								<td><?php echo esc_html( $job->get_group_name() ); ?></td>
 								<td><span class="aips-bg-chip"><?php echo esc_html( $job->get_status() ); ?></span></td>
-								<td><?php echo esc_html( number_format_i18n( $job->get_processed() ) ); ?> / <?php echo esc_html( number_format_i18n( $job->get_total() ) ); ?> (<?php echo esc_html( (string) $job->get_percent() ); ?>%)</td>
+								<td><?php echo esc_html( number_format_i18n( $job->get_processed() ) ); ?> / <?php echo esc_html( number_format_i18n( $job->get_total() ) ); ?> (<?php echo esc_html( (string) $job->get_progress_percentage() ); ?>%)</td>
 								<td><?php echo esc_html( (string) $job->get_attempts() ); ?> / <?php echo esc_html( (string) $job->get_max_retries() ); ?></td>
 								<td><?php echo esc_html( $job->get_next_run_at() ? wp_date( 'Y-m-d H:i:s', $job->get_next_run_at() ) : '—' ); ?></td>
 							</tr>

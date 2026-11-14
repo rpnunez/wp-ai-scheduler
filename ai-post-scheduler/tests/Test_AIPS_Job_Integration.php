@@ -228,4 +228,109 @@ class Test_AIPS_Job_Integration extends WP_UnitTestCase {
 
 		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Job_Registry::DEFAULT_TICK_HOOK, array( $job_id ) ) );
 	}
+
+	public function test_lifecycle_pause_resume_cancel_and_retry() {
+		$job_id = $this->manager->dispatch(
+			AIPS_Job_Registry::TYPE_BULK_BATCH_SLICE,
+			array( 'items' => array( 1, 2, 3, 4 ) ),
+			array( 'total' => 4 )
+		);
+
+		// Pause
+		$this->assertTrue( $this->manager->pause( $job_id ) );
+		$this->assertSame( AIPS_Job_Record::STATUS_PAUSED, $this->manager->get_status( $job_id ) );
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Job_Registry::DEFAULT_TICK_HOOK, array( $job_id ) ) );
+
+		// Resume
+		$this->assertTrue( $this->manager->resume( $job_id ) );
+		$this->assertSame( AIPS_Job_Record::STATUS_PENDING, $this->manager->get_status( $job_id ) );
+		$this->assertNotFalse( $this->cron_manager->next_scheduled( AIPS_Job_Registry::DEFAULT_TICK_HOOK, array( $job_id ) ) );
+
+		// Cancel
+		$this->assertTrue( $this->manager->cancel( $job_id ) );
+		$this->assertSame( AIPS_Job_Record::STATUS_CANCELLED, $this->manager->get_status( $job_id ) );
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Job_Registry::DEFAULT_TICK_HOOK, array( $job_id ) ) );
+
+		// Transition manually to failed to test retry
+		$this->repository->update( $job_id, array( 'status' => AIPS_Job_Record::STATUS_FAILED, 'attempts' => 3 ) );
+		$this->assertTrue( $this->manager->retry( $job_id ) );
+		$record = $this->manager->get_job( $job_id );
+		$this->assertSame( AIPS_Job_Record::STATUS_PENDING, $record->get_status() );
+		$this->assertSame( 0, $record->get_attempts() );
+	}
+
+	public function test_actionscheduler_backend_receives_declared_group() {
+		$scheduled_calls = array();
+
+		// Create a test double implementing AIPS_Cron_Backend_Interface
+		$backend_double = new class( $scheduled_calls ) implements AIPS_Cron_Backend_Interface {
+			public $calls;
+			public function __construct( &$calls ) {
+				$this->calls = &$calls;
+			}
+			public function get_backend_name(): string {
+				return 'spy';
+			}
+			public function schedule_single( $timestamp, $hook, array $args = array(), $group = '' ) {
+				$this->calls[] = array(
+					'timestamp' => $timestamp,
+					'hook'      => $hook,
+					'args'      => $args,
+					'group'     => $group,
+				);
+				return true;
+			}
+			public function schedule_recurring( $timestamp, $interval, $hook, array $args = array(), $group = '' ) {
+				return true;
+			}
+			public function next_scheduled( $hook, array $args = array() ) {
+				return false;
+			}
+			public function has_scheduled( $hook, array $args = array(), $group = '' ) {
+				return false;
+			}
+			public function unschedule( $hook, array $args = array() ) {
+				return true;
+			}
+			public function unschedule_all( $hook, $group = '' ) {
+				return true;
+			}
+			public function get_scheduled_actions( $hook = '', $group = '' ) {
+				return array();
+			}
+		};
+
+		$manager = new AIPS_Job_Manager(
+			$this->registry,
+			$this->repository,
+			$this->cron_manager,
+			null,
+			$backend_double
+		);
+
+		$job_id = $manager->dispatch(
+			AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_SLICE,
+			array( 'test' => 1 )
+		);
+
+		$this->assertNotEmpty( $scheduled_calls );
+		$this->assertSame( AIPS_Job_Registry::GROUP_AUTHOR_TOPICS, $scheduled_calls[0]['group'] );
+		$this->assertSame( AIPS_Job_Registry::DEFAULT_TICK_HOOK, $scheduled_calls[0]['hook'] );
+		$this->assertSame( array( $job_id ), $scheduled_calls[0]['args'] );
+	}
+
+	public function test_job_record_percent_and_progress_percentage_aliases() {
+		$record = new AIPS_Job_Record(
+			array(
+				'job_id'    => 'test-percent',
+				'job_type'  => 'sample',
+				'total'     => 20,
+				'processed' => 10,
+				'failed'    => 0,
+			)
+		);
+
+		$this->assertSame( 50.0, $record->get_progress_percentage() );
+		$this->assertSame( 50.0, $record->get_percent() );
+	}
 }

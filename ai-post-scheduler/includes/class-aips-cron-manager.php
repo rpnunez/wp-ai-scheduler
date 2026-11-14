@@ -116,7 +116,8 @@ class AIPS_Cron_Manager {
 		}
 
 		if ( function_exists( 'as_next_scheduled_action' ) ) {
-			$as_next = as_next_scheduled_action( $hook, $args );
+			$as_args = $this->normalize_action_scheduler_args( $args );
+			$as_next = as_next_scheduled_action( $hook, $as_args );
 			if ( false !== $as_next && null !== $as_next ) {
 				return is_object( $as_next ) && method_exists( $as_next, 'getTimestamp' ) ? $as_next->getTimestamp() : (int) $as_next;
 			}
@@ -152,10 +153,32 @@ class AIPS_Cron_Manager {
 		$result = wp_clear_scheduled_hook( $hook, $args );
 
 		if ( function_exists( 'as_unschedule_action' ) ) {
-			as_unschedule_action( $hook, $args );
+			$as_args = $this->normalize_action_scheduler_args( $args );
+			as_unschedule_action( $hook, $as_args );
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Normalize arguments for ActionScheduler comparisons and unscheduling.
+	 *
+	 * Associative arrays are wrapped in a sequential array to match ActionScheduler's
+	 * internal unpacking/storage convention.
+	 *
+	 * @param array $args Arguments array.
+	 * @return array
+	 */
+	private function normalize_action_scheduler_args( array $args ) {
+		if ( empty( $args ) ) {
+			return array();
+		}
+
+		if ( array_keys( $args ) !== range( 0, count( $args ) - 1 ) ) {
+			return array( $args );
+		}
+
+		return $args;
 	}
 
 	/**

@@ -27,21 +27,21 @@ class AIPS_Job_Manager {
 	/** @var AIPS_Cron_Backend_Interface */
 	private $cron_backend;
 
-	/** @var AIPS_Logger */
+	/** @var AIPS_Logger_Interface */
 	private $logger;
 
 	/**
 	 * @param AIPS_Job_Registry|null            $registry
 	 * @param AIPS_Job_Repository|null          $repository
 	 * @param AIPS_Cron_Manager|null           $cron_manager
-	 * @param AIPS_Logger|null                 $logger
+	 * @param AIPS_Logger_Interface|null       $logger
 	 * @param AIPS_Cron_Backend_Interface|null $cron_backend
 	 */
 	public function __construct(
 		?AIPS_Job_Registry $registry = null,
 		?AIPS_Job_Repository $repository = null,
 		?AIPS_Cron_Manager $cron_manager = null,
-		?AIPS_Logger $logger = null,
+		?AIPS_Logger_Interface $logger = null,
 		?AIPS_Cron_Backend_Interface $cron_backend = null
 	) {
 		$container          = AIPS_Container::get_instance();
@@ -49,7 +49,7 @@ class AIPS_Job_Manager {
 		$this->repository   = $repository ?: ( $container->has( AIPS_Job_Repository::class ) ? $container->make( AIPS_Job_Repository::class ) : new AIPS_Job_Repository() );
 		$this->cron_manager = $cron_manager ?: ( $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager() );
 		$this->cron_backend = $cron_backend ?: ( $container->has( AIPS_Cron_Backend_Interface::class ) ? $container->make( AIPS_Cron_Backend_Interface::class ) : AIPS_Cron_Backend_Resolver::resolve( $this->cron_manager ) );
-		$this->logger       = $logger ?: new AIPS_Logger();
+		$this->logger       = $logger ?: ( $container->has( AIPS_Logger_Interface::class ) ? $container->make( AIPS_Logger_Interface::class ) : new AIPS_Logger() );
 
 		$this->register_hook_listeners();
 	}
@@ -68,7 +68,7 @@ class AIPS_Job_Manager {
 	 */
 	public function register_hook_listeners(): void {
 		foreach ( $this->registry->get_hooks() as $hook ) {
-			if ( ! has_action( $hook, array( $this, 'handle_tick' ) ) ) {
+			if ( ! has_action( $hook ) ) {
 				add_action( $hook, array( $this, 'handle_tick' ), 10, 1 );
 			}
 		}
