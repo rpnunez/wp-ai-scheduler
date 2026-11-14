@@ -42,41 +42,9 @@ $page_context = AIPS_Admin_Page_Context::resolve(
         <?php
         AIPS_Admin_UI_Primitives::render_page_header($page_context);
 
-        $rail_items = array(
-            array(
-                'key'         => 'trending',
-                'label'       => __('Trending Topics', 'ai-post-scheduler'),
-                'icon'        => 'dashicons-chart-line',
-                'description' => __('AI niche trends & discovery', 'ai-post-scheduler'),
-                'active'      => ($active_tab === 'trending'),
-            ),
-            array(
-                'key'         => 'gap-analysis',
-                'label'       => __('Content Auditor', 'ai-post-scheduler'),
-                'icon'        => 'dashicons-analytics',
-                'description' => __('Content gap & SEO audit', 'ai-post-scheduler'),
-                'active'      => ($active_tab === 'gap-analysis'),
-            ),
-            array(
-                'key'         => 'planner',
-                'label'       => __('Keyword Planner', 'ai-post-scheduler'),
-                'icon'        => 'dashicons-calendar-alt',
-                'description' => __('Topic calendar & keywords', 'ai-post-scheduler'),
-                'active'      => ($active_tab === 'planner'),
-            ),
-        );
         ?>
 
-        <!-- Vertical Sidebar Rail Layout -->
-        <div class="aips-rail-layout">
-            <?php
-            AIPS_Admin_UI_Primitives::render_rail(array(
-                'aria_label' => __('Research Navigation', 'ai-post-scheduler'),
-                'items'      => $rail_items,
-            ));
-            ?>
-
-            <main class="aips-rail-main">
+            <main class="aips-hub-main">
                 <div id="trending-tab" class="aips-tab-content<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'trending' ? '' : 'display:none;'; ?>">
         <!-- Research Stats -->
         <div class="aips-topics-stats">
@@ -376,7 +344,6 @@ $page_context = AIPS_Admin_Page_Context::resolve(
         <?php include AIPS_PLUGIN_DIR . 'templates/admin/planner.php'; ?>
     </div>
     </main>
-</div><!-- /.aips-rail-layout -->
 
     <!-- Generate Now — Template Selection Modal -->
     <div id="aips-generate-now-modal" class="aips-modal" style="display: none;">

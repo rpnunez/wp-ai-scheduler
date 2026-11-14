@@ -777,8 +777,8 @@
             }
 
             // Update active state only for the local tab nav
-            $tabNav.find('.aips-tab-link, .aips-rail-item').removeClass('active');
-            $tabLink.addClass('active');
+            $tabNav.find('.aips-tab-link, .aips-rail-item').removeClass('active').attr('aria-selected', 'false');
+            $tabLink.addClass('active').attr('aria-selected', 'true');
 
             // Check if within vertical rail layout
             var $railLayout = $tabNav.closest('.aips-rail-layout');
@@ -809,10 +809,10 @@
                 var $scopedTabs = $container.children('.aips-tab-content');
 
                 if ($scopedTabs.length) {
-                    $scopedTabs.hide().removeClass('active').attr('aria-hidden', 'true');
+                    $scopedTabs.hide().removeClass('active').addClass('aips-is-hidden').attr('aria-hidden', 'true');
                     var $targetTab = $container.children('#' + tabId + '-tab, #' + tabId);
                     if ($targetTab.length) {
-                        $targetTab.show().addClass('active').attr('aria-hidden', 'false');
+                        $targetTab.removeClass('aips-is-hidden').show().addClass('active').attr('aria-hidden', 'false');
                         // Ensure active inner tab within the newly revealed panel is visible
                         $targetTab.find('.aips-tab-content:not(.active)').hide().attr('aria-hidden', 'true');
                         $targetTab.find('.aips-tab-content.active').show().attr('aria-hidden', 'false');
@@ -822,10 +822,10 @@
                     if (!$scope.length) {
                         $scope = $(document);
                     }
-                    $scope.children('.aips-tab-content').hide().removeClass('active').attr('aria-hidden', 'true');
+                    $scope.children('.aips-tab-content').hide().removeClass('active').addClass('aips-is-hidden').attr('aria-hidden', 'true');
                     var $targetTab = $scope.find('#' + tabId + '-tab, #' + tabId).first();
                     if ($targetTab.length) {
-                        $targetTab.show().addClass('active').attr('aria-hidden', 'false');
+                        $targetTab.removeClass('aips-is-hidden').show().addClass('active').attr('aria-hidden', 'false');
                         $targetTab.find('.aips-tab-content:not(.active)').hide().attr('aria-hidden', 'true');
                         $targetTab.find('.aips-tab-content.active').show().attr('aria-hidden', 'false');
                     }

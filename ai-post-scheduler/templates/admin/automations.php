@@ -1,6 +1,6 @@
 <?php
 /**
- * Automations Admin Template (Vertical Sidebar Rail Layout)
+ * Automations Admin Template
  *
  * @package AI_Post_Scheduler
  * @since 3.7.0
@@ -12,22 +12,7 @@ if (!defined('ABSPATH')) {
 
 /** @var AIPS_Automations_Controller $automations_controller */
 /** @var string $active_tab */
-/** @var array<string, array{label:string, icon:string, description?:string, special?:bool}> $tabs */
 /** @var array<int, array<string, mixed>> $tab_actions */
-
-$rail_items = array();
-foreach ($tabs as $tab_key => $tab) {
-	$rail_items[] = array(
-		'key'         => $tab_key,
-		'label'       => $tab['label'],
-		'icon'        => $tab['icon'],
-		'description' => isset($tab['description']) ? $tab['description'] : '',
-		'url'         => $automations_controller->get_tab_url($tab_key),
-		'active'      => ($active_tab === $tab_key),
-		'special'     => !empty($tab['special']),
-		'is_child'    => !empty($tab['is_child']),
-	);
-}
 ?>
 <div class="wrap aips-wrap aips-automations-wrap">
 	<div class="aips-page-container">
@@ -46,20 +31,10 @@ foreach ($tabs as $tab_key => $tab) {
 		}
 		?>
 
-		<!-- Vertical Sidebar Rail Layout -->
-		<div class="aips-rail-layout">
-			<?php
-			AIPS_Admin_UI_Primitives::render_rail(array(
-				'aria_label' => __('Automations Navigation', 'ai-post-scheduler'),
-				'items'      => $rail_items,
-			));
-			?>
-
-			<main class="aips-rail-main">
+			<main class="aips-hub-main">
 				<div class="aips-automations-stage">
 					<?php $automations_controller->render_tab_content($active_tab); ?>
 				</div>
 			</main>
-		</div>
 	</div>
 </div>

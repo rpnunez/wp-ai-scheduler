@@ -1,0 +1,188 @@
+.aips-admin-flyout {
+	position: fixed;
+	display: flex;
+	max-width: calc(100vw - var(--aips-space-4));
+	padding: var(--aips-space-2);
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-300);
+	border-left: 0;
+	border-radius: 0 var(--aips-radius-md) var(--aips-radius-md) var(--aips-radius-md);
+	box-shadow: var(--aips-shadow-lg);
+	z-index: var(--aips-z-popover);
+	box-sizing: border-box;
+}
+
+.aips-admin-flyout[hidden] {
+	display: none;
+}
+
+.aips-admin-flyout .aips-is-hidden {
+	display: none !important;
+}
+
+.aips-admin-flyout-groups {
+	display: grid;
+	grid-template-columns: repeat(2, 218px);
+	gap: var(--aips-space-2);
+}
+
+.aips-admin-flyout-group {
+	width: auto;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+.aips-admin-flyout[data-hub="aips-diagnostics"] .aips-admin-flyout-group:nth-child(2),
+.aips-admin-flyout[data-hub="aips-automations"] .aips-admin-flyout-group:nth-child(3),
+.aips-admin-flyout[data-hub="aips-generated-posts"] .aips-admin-flyout-group:nth-child(3) {
+	padding-left: var(--aips-space-2);
+	border-left: 1px solid var(--aips-gray-200);
+}
+
+.aips-admin-flyout[data-hub="aips-automations"] .aips-admin-flyout-group:nth-child(2),
+.aips-admin-flyout[data-hub="aips-generated-posts"] .aips-admin-flyout-group:nth-child(2) {
+	grid-row: 2;
+	grid-column: 1;
+}
+
+.aips-admin-flyout[data-hub="aips-automations"] .aips-admin-flyout-group:nth-child(3),
+.aips-admin-flyout[data-hub="aips-generated-posts"] .aips-admin-flyout-group:nth-child(3) {
+	grid-row: 1 / span 2;
+	grid-column: 2;
+}
+
+.aips-admin-flyout[data-hub="aips-studio"] .aips-admin-flyout-groups,
+.aips-admin-flyout[data-hub="aips-research"] .aips-admin-flyout-groups {
+	grid-template-columns: 218px;
+}
+
+.aips-admin-flyout-heading {
+	margin: 0 0 var(--aips-space-1);
+	padding: var(--aips-space-2) var(--aips-space-3) var(--aips-space-1);
+	color: var(--aips-gray-500);
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-semibold);
+	line-height: var(--aips-leading-tight);
+	letter-spacing: .06em;
+	text-transform: uppercase;
+}
+
+.aips-admin-flyout-items {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.aips-admin-flyout-item {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--aips-space-3);
+	padding: var(--aips-space-2);
+	color: var(--aips-gray-900);
+	text-decoration: none;
+	border-radius: var(--aips-radius-base);
+	box-sizing: border-box;
+}
+
+.aips-admin-flyout-item:hover,
+.aips-admin-flyout-item:focus-visible {
+	color: var(--aips-gray-900);
+	background: var(--aips-gray-50);
+	box-shadow: 0 0 0 2px var(--aips-primary-light);
+	outline: 0;
+}
+
+.aips-admin-flyout-item.is-active {
+	color: var(--aips-primary);
+	background: var(--aips-primary-light);
+	box-shadow: inset 3px 0 0 var(--aips-primary);
+}
+
+.aips-admin-flyout-icon {
+	flex: 0 0 20px;
+	width: 20px;
+	height: 20px;
+	margin-top: 1px;
+	color: var(--aips-gray-600);
+	font-size: 20px;
+}
+
+.aips-admin-flyout-item.is-active .aips-admin-flyout-icon {
+	color: var(--aips-primary);
+}
+
+.aips-admin-flyout-copy {
+	min-width: 0;
+	flex: 1;
+}
+
+.aips-admin-flyout-title-row {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--aips-space-2);
+}
+
+.aips-admin-flyout-title {
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-normal);
+	line-height: var(--aips-leading-tight);
+}
+
+.aips-admin-flyout-item.is-active .aips-admin-flyout-title {
+	font-weight: var(--aips-font-semibold);
+}
+
+.aips-admin-flyout-description {
+	display: block;
+	margin-top: 2px;
+	color: var(--aips-gray-600);
+	font-size: var(--aips-text-2xs);
+	line-height: var(--aips-leading-snug);
+	overflow-wrap: anywhere;
+}
+
+.aips-admin-flyout-badge {
+	flex: 0 0 auto;
+	padding: 1px var(--aips-space-2);
+	color: var(--aips-white);
+	background: var(--aips-error);
+	border-radius: var(--aips-radius-full);
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-semibold);
+	line-height: var(--aips-leading-snug);
+}
+
+.rtl .aips-admin-flyout {
+	border-right: 0;
+	border-left: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-md) 0 var(--aips-radius-md) var(--aips-radius-md);
+}
+
+.rtl .aips-admin-flyout[data-hub="aips-diagnostics"] .aips-admin-flyout-group:nth-child(2),
+.rtl .aips-admin-flyout[data-hub="aips-automations"] .aips-admin-flyout-group:nth-child(3),
+.rtl .aips-admin-flyout[data-hub="aips-generated-posts"] .aips-admin-flyout-group:nth-child(3) {
+	padding-right: var(--aips-space-2);
+	padding-left: 0;
+	border-right: 1px solid var(--aips-gray-200);
+	border-left: 0;
+}
+
+.rtl .aips-admin-flyout-item.is-active {
+	box-shadow: inset -3px 0 0 var(--aips-primary);
+}
+
+@media screen and (max-width: 782px), (hover: none) and (pointer: coarse) {
+	.aips-admin-flyout {
+		display: none !important;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.aips-admin-flyout,
+	.aips-admin-flyout * {
+		scroll-behavior: auto !important;
+		transition: none !important;
+	}
+}
