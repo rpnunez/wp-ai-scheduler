@@ -265,6 +265,31 @@ class AIPS_Batch_Queue_Service {
 			}
 		}
 
+		if ( function_exists( 'as_get_scheduled_actions' ) && function_exists( 'as_unschedule_action' ) ) {
+			$as_actions = as_get_scheduled_actions(
+				array(
+					'hook'     => self::HOOK,
+					'status'   => 'pending',
+					'per_page' => 100,
+				)
+			);
+			if ( is_array( $as_actions ) ) {
+				foreach ( $as_actions as $action ) {
+					if ( ! is_object( $action ) || ! method_exists( $action, 'get_args' ) ) {
+						continue;
+					}
+					$args = (array) $action->get_args();
+					if ( count( $args ) === 1 && isset( $args[0] ) && is_array( $args[0] ) ) {
+						$args = $args[0];
+					}
+					if ( ! empty( $args ) && (int) $args[0] === $schedule_id ) {
+						as_unschedule_action( self::HOOK, $action->get_args() );
+						$cleared++;
+					}
+				}
+			}
+		}
+
 		if ( $cleared > 0 ) {
 			$this->logger->log(
 				sprintf( 'Cleared %d queued batch slice(s) for schedule %d.', $cleared, $schedule_id ),

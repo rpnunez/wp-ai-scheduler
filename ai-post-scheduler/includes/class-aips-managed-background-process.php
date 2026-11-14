@@ -230,7 +230,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		);
 
 		if ($changed) {
-			wp_clear_scheduled_hook(self::TICK_HOOK, array($this->get_key()));
+			$this->get_cron_manager()->clear_hook(self::TICK_HOOK, array($this->get_key()));
 		}
 
 		return $changed;
@@ -283,7 +283,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		);
 
 		if ($changed) {
-			wp_clear_scheduled_hook(self::TICK_HOOK, array($this->get_key()));
+			$this->get_cron_manager()->clear_hook(self::TICK_HOOK, array($this->get_key()));
 		}
 
 		return $changed;
@@ -301,7 +301,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 			return;
 		}
 
-		if (!wp_next_scheduled(self::TICK_HOOK, array($this->get_key()))) {
+		if (!$this->get_cron_manager()->next_scheduled(self::TICK_HOOK, array($this->get_key()))) {
 			$this->schedule_tick(max(0, $run->next_run_at - time()));
 		}
 	}
@@ -354,7 +354,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 			// next tick: drop the watchdog. An active run already has its real tick.
 			$latest = $this->repository->get($run->id);
 			if (!$latest || !in_array($latest->status, AIPS_Background_Process_Repository::active_statuses(), true)) {
-				wp_clear_scheduled_hook(self::TICK_HOOK, array($this->get_key()));
+				$this->get_cron_manager()->clear_hook(self::TICK_HOOK, array($this->get_key()));
 			}
 		}
 	}
@@ -436,6 +436,17 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	}
 
 	/**
+	 * Backing cron manager.
+	 *
+	 * @return AIPS_Cron_Manager
+	 */
+	protected function get_cron_manager(): AIPS_Cron_Manager {
+		return AIPS_Container::get_instance()->has( AIPS_Cron_Manager::class )
+			? AIPS_Container::get_instance()->make( AIPS_Cron_Manager::class )
+			: new AIPS_Cron_Manager();
+	}
+
+	/**
 	 * Schedule the next tick unless one is already queued.
 	 *
 	 * @param int $delay Seconds from now.
@@ -444,8 +455,8 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	protected function schedule_tick(int $delay): void {
 		$args = array($this->get_key());
 
-		if (!wp_next_scheduled(self::TICK_HOOK, $args)) {
-			wp_schedule_single_event(time() + max(0, $delay), self::TICK_HOOK, $args);
+		if (!$this->get_cron_manager()->next_scheduled(self::TICK_HOOK, $args)) {
+			$this->get_cron_manager()->schedule_single(self::TICK_HOOK, time() + max(0, $delay), $args);
 		}
 	}
 
@@ -458,8 +469,8 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	private function replace_tick(int $delay): void {
 		$args = array($this->get_key());
 
-		wp_clear_scheduled_hook(self::TICK_HOOK, $args);
-		wp_schedule_single_event(time() + max(0, $delay), self::TICK_HOOK, $args);
+		$this->get_cron_manager()->clear_hook(self::TICK_HOOK, $args);
+		$this->get_cron_manager()->schedule_single(self::TICK_HOOK, time() + max(0, $delay), $args);
 	}
 
 	/**

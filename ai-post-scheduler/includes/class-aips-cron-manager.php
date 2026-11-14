@@ -110,7 +110,19 @@ class AIPS_Cron_Manager {
 	 * @return int|false Timestamp, or false when nothing is scheduled.
 	 */
 	public function next_scheduled( $hook, array $args = array() ) {
-		return wp_next_scheduled( $hook, $args );
+		$timestamp = wp_next_scheduled( $hook, $args );
+		if ( false !== $timestamp ) {
+			return $timestamp;
+		}
+
+		if ( function_exists( 'as_next_scheduled_action' ) ) {
+			$as_next = as_next_scheduled_action( $hook, $args );
+			if ( false !== $as_next && null !== $as_next ) {
+				return is_object( $as_next ) && method_exists( $as_next, 'getTimestamp' ) ? $as_next->getTimestamp() : (int) $as_next;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -129,15 +141,21 @@ class AIPS_Cron_Manager {
 	 * Clear every occurrence matching a hook + specific args.
 	 *
 	 * Mirrors {@see wp_clear_scheduled_hook()}: only events whose args equal the
-	 * ones passed are removed. Use {@see unschedule_all_for_hook()} to strip
-	 * events regardless of their arguments.
+	 * ones passed are removed. Also cleans matching ActionScheduler actions if present.
+	 * Use {@see unschedule_all_for_hook()} to strip events regardless of their arguments.
 	 *
 	 * @param string $hook Cron hook name.
 	 * @param array  $args Arguments to match.
 	 * @return int|false Number cleared, or false on failure.
 	 */
 	public function clear_hook( $hook, array $args = array() ) {
-		return wp_clear_scheduled_hook( $hook, $args );
+		$result = wp_clear_scheduled_hook( $hook, $args );
+
+		if ( function_exists( 'as_unschedule_action' ) ) {
+			as_unschedule_action( $hook, $args );
+		}
+
+		return $result;
 	}
 
 	/**

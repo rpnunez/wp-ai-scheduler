@@ -106,6 +106,35 @@ class AIPS_Bulk_Generation_Process extends AIPS_Background_Process_Base {
 			}
 		}
 
+		if (function_exists('as_get_scheduled_actions')) {
+			$as_actions = as_get_scheduled_actions(
+				array(
+					'hook'     => AIPS_Bulk_Batch_Processor::HOOK,
+					'status'   => 'pending',
+					'per_page' => 100,
+				)
+			);
+			if (is_array($as_actions)) {
+				foreach ($as_actions as $action) {
+					if (!is_object($action) || !method_exists($action, 'get_args')) {
+						continue;
+					}
+					$args = (array) $action->get_args();
+					if (count($args) === 1 && isset($args[0]) && is_array($args[0])) {
+						$args = $args[0];
+					}
+					$job_id = isset($args[0]) ? (string) $args[0] : '';
+					if ($job_id !== '') {
+						$schedule  = method_exists($action, 'get_schedule') ? $action->get_schedule() : null;
+						$timestamp = ($schedule && method_exists($schedule, 'get_date') && $schedule->get_date())
+							? $schedule->get_date()->getTimestamp()
+							: 0;
+						$slices[$job_id][] = array('timestamp' => (int) $timestamp, 'args' => $args);
+					}
+				}
+			}
+		}
+
 		return $slices;
 	}
 
@@ -202,6 +231,9 @@ class AIPS_Bulk_Generation_Process extends AIPS_Background_Process_Base {
 
 			foreach ($queued as $slice) {
 				wp_unschedule_event($slice['timestamp'], AIPS_Bulk_Batch_Processor::HOOK, $slice['args']);
+				if (function_exists('as_unschedule_action')) {
+					as_unschedule_action(AIPS_Bulk_Batch_Processor::HOOK, $slice['args']);
+				}
 			}
 
 			$paused = true;
@@ -255,6 +287,9 @@ class AIPS_Bulk_Generation_Process extends AIPS_Background_Process_Base {
 			if (!empty($slices[$job->job_id])) {
 				foreach ($slices[$job->job_id] as $slice) {
 					wp_unschedule_event($slice['timestamp'], AIPS_Bulk_Batch_Processor::HOOK, $slice['args']);
+					if (function_exists('as_unschedule_action')) {
+						as_unschedule_action(AIPS_Bulk_Batch_Processor::HOOK, $slice['args']);
+					}
 				}
 			}
 

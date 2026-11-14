@@ -252,9 +252,18 @@ class AIPS_Background_Process_Manager {
 		$snapshots = $this->get_snapshots();
 		set_transient(self::SUMMARY_TRANSIENT, $snapshots, self::SUMMARY_TTL);
 
+		$job_manager = AIPS_Container::get_instance()->has( AIPS_Job_Manager::class )
+			? AIPS_Container::get_instance()->make( AIPS_Job_Manager::class )
+			: null;
+		$active_jobs  = $job_manager ? $job_manager->get_active_jobs() : array();
+		$job_payloads = array_map( function( $job ) {
+			return $job->to_array();
+		}, $active_jobs );
+
 		return array(
 			'processes'    => $snapshots,
-			'active_count' => count(self::filter_active($snapshots)),
+			'jobs'         => $job_payloads,
+			'active_count' => count(self::filter_active($snapshots)) + count($active_jobs),
 			'server_time'  => time(),
 		);
 	}
