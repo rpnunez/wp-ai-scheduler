@@ -24,7 +24,14 @@ Use this skill when changing WordPress admin pages, menus, templates, and admin 
 5. **CSS Layout Structure**
    - Wrap pages in `div.wrap.aips-wrap` → `div.aips-page-container` → `div.aips-page-header` / `div.aips-content-panel`.
    - Re-use standard button classes (`aips-btn`, `aips-btn-primary`, `aips-btn-danger`) and table classes (`table.aips-table`).
-6. **Validation**
+6. **Responsive design**
+   - Never write a new page-specific `@media` block for a dense table, modal, or tab strip. Reuse the opt-in classes in `assets/css/admin-responsive.css` (loaded globally on every admin page):
+     - `.aips-table-responsive` on `table.aips-table` — reflows to stacked cards below 600px. Requires `data-label="..."` on every `<td>`, matching the `<th>` text, so no column is ever hidden on mobile.
+     - `.aips-modal-fullscreen-mobile` on `.aips-modal-content` — goes edge-to-edge below 600px instead of a centered/drawer panel.
+     - `.aips-tabs-scrollable` on a tab/pill nav — scrolls horizontally below 600px instead of wrapping.
+   - Breakpoints are documented as `--aips-bp-tablet` (782px) and `--aips-bp-mobile` (600px) in `design-tokens.css`; copy those literal px values into new `@media` queries (custom properties don't work inside `@media` feature queries).
+   - Never lay out a component with inline `style="display:grid;..."` etc. in a template — it silences any later `@media` override. Put layout in a class in `admin.css` (or the component's own CSS file) instead.
+7. **Validation**
    - Exercise affected admin pages.
    - Run relevant PHPUnit tests for touched controllers/services.
 

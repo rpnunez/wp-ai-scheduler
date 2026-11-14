@@ -1,0 +1,118 @@
+/**
+ * AI Post Scheduler - Shared Responsive Patterns
+ *
+ * Opt-in, component-agnostic classes any admin page/template can apply
+ * instead of writing a new page-specific @media block. Loaded after
+ * admin.css so these rules win ties without needing !important everywhere.
+ *
+ * Breakpoints mirror --aips-bp-tablet / --aips-bp-mobile in design-tokens.css
+ * (782px / 600px) — CSS custom properties can't be used inside @media
+ * feature queries, so the literal values are repeated here on purpose.
+ *
+ * @package AI_Post_Scheduler
+ */
+
+/* ==========================================================================
+   .aips-table-responsive
+   Dense admin tables -> stacked cards below 600px, instead of horizontal
+   scroll or hidden columns. Apply to table.aips-table. Add
+   data-label="Column Name" (matching the <th> text) to each <td>.
+   ========================================================================== */
+@media (max-width: 600px) {
+    .aips-table-responsive thead {
+        display: none;
+    }
+
+    /* !important on display: jQuery's .show()/.hide() (used to expand/
+       collapse grouped rows) sets an inline display value (e.g. table-row),
+       which would otherwise beat this class rule on mobile. */
+    .aips-table-responsive,
+    .aips-table-responsive tbody,
+    .aips-table-responsive tr,
+    .aips-table-responsive td,
+    .aips-table-responsive th {
+        display: block !important;
+        width: auto !important;
+        float: none !important;
+    }
+
+    .aips-table-responsive tr {
+        margin-bottom: var(--aips-space-3, 12px);
+        padding: var(--aips-space-3, 12px);
+        border: 1px solid var(--aips-gray-200, #c3c4c7);
+        border-radius: var(--aips-radius-md, 6px);
+        background: var(--aips-white, #fff);
+    }
+
+    .aips-table-responsive tr.aips-history-group-child {
+        margin-left: var(--aips-space-4, 16px);
+    }
+
+    .aips-table-responsive td,
+    .aips-table-responsive th {
+        padding: 6px 0;
+        border: 0;
+        text-align: left;
+    }
+
+    .aips-table-responsive .check-column {
+        display: inline-block !important;
+        padding: 0 8px 0 0;
+    }
+
+    .aips-table-responsive td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-weight: var(--aips-font-bold, 700);
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--aips-gray-500, #646970);
+        margin-bottom: 2px;
+    }
+
+    .aips-table-responsive td.column-date .cell-actions {
+        float: none !important;
+        margin: 8px 0 0;
+    }
+}
+
+/* ==========================================================================
+   .aips-modal-fullscreen-mobile
+   Edge-to-edge modal below 600px instead of a centered dialog or side
+   drawer. Apply to the .aips-modal-content element.
+   ========================================================================== */
+@media (max-width: 600px) {
+    .aips-modal-fullscreen-mobile {
+        width: 100% !important;
+        max-width: none !important;
+        height: 100% !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    .aips-modal-fullscreen-mobile .aips-modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--aips-white, #fff);
+    }
+}
+
+/* ==========================================================================
+   .aips-tabs-scrollable
+   Horizontally-scrolling tab/pill navigation below 600px instead of
+   wrapping or squeezing labels. Apply to the tab list container.
+   ========================================================================== */
+@media (max-width: 600px) {
+    .aips-tabs-scrollable {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .aips-tabs-scrollable > * {
+        flex: 0 0 auto;
+    }
+}
