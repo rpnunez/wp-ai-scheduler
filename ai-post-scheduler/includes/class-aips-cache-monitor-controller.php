@@ -40,11 +40,22 @@ class AIPS_Cache_Monitor_Controller {
 
 	/**
 	 * Resolve dependencies and register AJAX hooks.
+	 *
+	 * @param AIPS_Cache_Monitor_Service|null $service Optional cache monitor service.
 	 */
-	public function __construct() {
-		$repository  = new AIPS_Cache_Monitor_Repository();
-		$cache_index = new AIPS_Cache_Index();
-		$this->service = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
+	public function __construct(?AIPS_Cache_Monitor_Service $service = null) {
+		if ($service !== null) {
+			$this->service = $service;
+		} else {
+			$container = AIPS_Container::get_instance();
+			if ($container->has(AIPS_Cache_Monitor_Service::class)) {
+				$this->service = $container->make(AIPS_Cache_Monitor_Service::class);
+			} else {
+				$repository  = new AIPS_Cache_Monitor_Repository();
+				$cache_index = new AIPS_Cache_Index();
+				$this->service = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
+			}
+		}
 
 		add_action('wp_ajax_aips_cache_monitor_summary',          array($this, 'ajax_summary'));
 		add_action('wp_ajax_aips_cache_monitor_entries',          array($this, 'ajax_entries'));
