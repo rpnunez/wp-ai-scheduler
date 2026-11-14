@@ -39,8 +39,10 @@ class AIPS_System_Diagnostics_Logs_Provider implements AIPS_System_Diagnostic_Pr
 		$weekly_marker  = $digest['weekly_last_sent'];
 		$monthly_marker = $digest['monthly_last_sent'];
 
-		$new_cron    = wp_next_scheduled( 'aips_notification_rollups' );
-		$legacy_cron = wp_next_scheduled( 'aips_send_review_notifications' );
+		$container    = AIPS_Container::get_instance();
+		$cron_manager = $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager();
+		$new_cron     = $cron_manager->next_scheduled( 'aips_notification_rollups' );
+		$legacy_cron  = $cron_manager->next_scheduled( 'aips_send_review_notifications' );
 
 		$counts_24h   = array();
 		$unread_count = 0;

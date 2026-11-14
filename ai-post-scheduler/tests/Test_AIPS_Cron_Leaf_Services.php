@@ -70,6 +70,9 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 
 		$sched_proc = new AIPS_Schedule_Processor();
 		$this->assertInstanceOf( AIPS_Schedule_Processor::class, $sched_proc );
+
+		$sched_ctrl = new AIPS_Schedule_Controller();
+		$this->assertInstanceOf( AIPS_Schedule_Controller::class, $sched_ctrl );
 	}
 
 	// -------------------------------------------------------------------------
