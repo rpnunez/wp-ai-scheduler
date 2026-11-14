@@ -40,7 +40,27 @@ History (its table, filter bar, buttons, and both modals) remains the **referenc
 | Schedules | `AIPS_List_Table` → core `WP_List_Table` | core `views()`/`search_box()` | core `row_actions()` | core native | Core's own stacking, untouched |
 | Authors | same as Schedules | core `views()`/`search_box()` | core `row_actions()` | core native | Core's own stacking, untouched |
 | Author Topics | same as Schedules | core `views()`/`search_box()` | core `row_actions()` | core native | Core's own stacking, untouched |
-| All other admin pages (~24 more) | not yet audited | — | — | — | Not started — audit before assuming any of the above systems apply as-is |
+| 28 more hand-rolled `aips-table` pages | custom (not `AIPS_List_Table`) | mostly custom/varies | mostly custom (kebab or bespoke) | mostly custom/AJAX | Audited in §4a — classified by whether migrating to `AIPS_List_Table` is worth it |
+
+## 4a. `AIPS_List_Table` migration candidates — audit of the other 28 hand-rolled table pages
+
+Prompted by "how much would migrating all relevant table pages to `AIPS_List_Table` actually buy us" — audited every remaining `<table class="aips-table">` template (not already on `AIPS_List_Table`) for whether it's a real paginated/filterable record list (vs. a dashboard/health-check/test-runner page) and whether it's AJAX-rich enough that retrofitting WP core's page-reload-oriented `WP_List_Table` model would mean ripping out working live-update UX.
+
+**Good `AIPS_List_Table` candidates (4)** — full row set server-rendered on page load, plain client-side search/filter only, AJAX (if any) is isolated CRUD that ends in `location.reload()` rather than live re-render. These map cleanly onto `WP_List_Table`'s column/row/bulk-action model:
+
+| Page | Why it's a candidate |
+|---|---|
+| `templates/admin/campaigns.php` | Server-rendered rows; AJAX duplicate/archive/delete all end in `location.reload()` — no live re-render to preserve. |
+| `templates/admin/post-slices.php` | Server-rendered rows; edit/toggle/delete via AJAX then a full `refreshPage()` reload; only client-side search, no AJAX pagination. |
+| `templates/admin/templates.php` | Server-rendered rows, simple CRUD. One wrinkle: "Run Now" fires AJAX generation from a row action — fine to keep as a custom `WP_List_Table` row action, doesn't block migration. |
+| `templates/admin/voices.php` | Server-rendered rows; modal CRUD via AJAX then `location.reload()` (`assets/js/admin.js:72-86`); client-side filter only. |
+
+**Not applicable (5)** — not really paginated record lists, so neither system fits better than what's there:
+`content-intelligence.php` (fixed stats table), `dashboard.php` (small fixed-N recent-activity widgets), `stress-test.php` (built-in test-case runner, not DB records), `system-health.php`, `system-status.php` (health-check/status dashboards).
+
+**Keep custom (18)** — AJAX-rich: empty `<tbody>` placeholders populated entirely over AJAX, Mustache-style `{{...}}` row templates via `AIPS.Templates.render`, AJAX pagination widgets, bulk actions over AJAX, or Heartbeat-driven live updates. Migrating these would mean losing working live-update UX for little gain: `affiliate-links.php`, `background-processes.php`, `broken-links.php`, `cache-monitor.php`, `content-intelligence-cannibalization.php`, `content-intelligence-clusters.php`, `internal-links.php`, `link-report.php`, `link-rules.php`, `redirects.php`, `research.php`, `silos.php`, `structures.php`, `tab-ai-errors.php`, `tab-generated-posts.php`, `tab-partial-generations.php`, `tab-stress-test-history.php`, `taxonomy.php`, `telemetry.php`.
+
+**Net read:** of 28 pages audited, only 4 are genuinely good migration candidates. The other 24 either aren't real record lists or would lose live-update UX for a page-reload-oriented model. For everything in "keep custom," the right move is adopting `.aips-table-responsive` (§1) on the existing hand-rolled table, not migrating to `AIPS_List_Table`.
 
 ## 4. Decision log (open questions, not yet resolved)
 
