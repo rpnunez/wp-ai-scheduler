@@ -94,7 +94,7 @@ class AIPS_Schedule_Controller {
             'aips_retry_failed_author_slices_topics',
             'aips_process_author_post_slice',
             'aips_retry_failed_author_slices_posts',
-            'aips_process_bulk_batch',
+            'aips_job_tick',
             'aips_process_author_embeddings',
             'aips_index_posts_batch',
         );
@@ -193,8 +193,11 @@ class AIPS_Schedule_Controller {
             return (int) $a['timestamp'] - (int) $b['timestamp'];
         });
 
-        $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
-        $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
+        $job_repo    = AIPS_Container::get_instance()->get_job_repository();
+        $bulk_counts = $job_repo->get_status_counts(array('pending', 'running', 'failed'));
+        if (isset($bulk_counts['running'])) {
+            $bulk_counts['processing'] = $bulk_counts['running'];
+        }
 
         $last_success = array();
         foreach ($families as $family => $hook) {

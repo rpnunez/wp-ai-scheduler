@@ -17,8 +17,11 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 	/** @var AIPS_Embeddings_Repository */
 	private $embeddings_repo;
 
-	/** @var AIPS_Bulk_Batch_Job_Store */
-	private $store;
+	/** @var AIPS_Job_Repository */
+	private $job_repo;
+
+	/** @var AIPS_Job_Manager */
+	private $job_manager;
 
 	/** @var int Embeddings the mock has generated. */
 	public $generated = 0;
@@ -33,7 +36,7 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_author_topics' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
-		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_bulk_batch_jobs' );
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_jobs' );
 
 		$config = AIPS_Config::get_instance();
 		$config->set_option( 'aips_indexer_batch_size', 10 );
@@ -43,10 +46,12 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 		update_option( 'aips_embeddings_weekly_limit', 0 );
 		update_option( 'aips_embeddings_monthly_limit', 0 );
 
+		$container             = AIPS_Container::get_instance();
 		$this->runs            = new AIPS_Background_Process_Repository();
 		$this->limiter         = new AIPS_Embeddings_Rate_Limiter( $config );
 		$this->embeddings_repo = new AIPS_Embeddings_Repository();
-		$this->store           = new AIPS_Bulk_Batch_Job_Store();
+		$this->job_repo        = $container->get_job_repository();
+		$this->job_manager     = $container->get_job_manager();
 		$this->generated       = 0;
 		$this->rate_limited    = false;
 		$this->limiter->reset_history();
@@ -222,38 +227,30 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Create a bulk job with two queued slices.
+	 * Create a bulk job.
 	 *
 	 * @param string $job_type Job type.
-	 * @return array{id:string, first:array, second:array}
+	 * @return string Job ID.
 	 */
-	private function bulk_job( string $job_type = 'author_topic_post' ): array {
-		$id = $this->store->create( $job_type, array( 1, 2, 3, 4 ), array( 'history_meta' => array( 'template_id' => 7 ) ) );
-		$this->store->update_status( $id, AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING );
-
-		$first  = array( $id, 0, 2, 4, '' );
-		$second = array( $id, 2, 2, 4, '' );
-		$base   = time() + 600;
-		wp_schedule_single_event( $base, AIPS_Bulk_Batch_Processor::HOOK, $first );
-		wp_schedule_single_event( $base + 60, AIPS_Bulk_Batch_Processor::HOOK, $second );
-
-		return array( 'id' => $id, 'first' => $first, 'second' => $second );
-	}
-
-	private function clear_bulk_events( array $job ): void {
-		wp_clear_scheduled_hook( AIPS_Bulk_Batch_Processor::HOOK, $job['first'] );
-		wp_clear_scheduled_hook( AIPS_Bulk_Batch_Processor::HOOK, $job['second'] );
+	private function bulk_job( string $job_type = 'bulk_post_generation' ): string {
+		return $this->job_manager->dispatch_batch(
+			$job_type,
+			array( 1, 2, 3, 4 ),
+			2,
+			60,
+			array( 'history_meta' => array( 'template_id' => 7 ) )
+		);
 	}
 
 	public function test_bulk_generation_reports_open_jobs_and_cannot_be_started_here() {
-		$process = new AIPS_Bulk_Generation_Process( $this->store );
+		$process = new AIPS_Bulk_Generation_Process( $this->job_manager );
 
 		$idle = $process->get_snapshot();
 		$this->assertSame( 'idle', $idle['status'] );
 		$this->assertFalse( $idle['can_start'] );
 
-		$job  = $this->bulk_job();
-		$snap = $process->get_snapshot();
+		$job_id = $this->bulk_job();
+		$snap   = $process->get_snapshot();
 		$this->assertSame( 'running', $snap['status'] );
 		$this->assertSame( 4, $snap['total'] );
 		$this->assertTrue( $snap['can_pause'] );
@@ -263,182 +260,42 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 		$this->assertWPError( $start );
 		$this->assertSame( 'aips_bg_start_elsewhere', $start->get_error_code() );
 
-		$this->clear_bulk_events( $job );
+		$this->job_manager->cancel( $job_id );
 	}
 
 	public function test_bulk_generation_ignores_jobs_of_other_types() {
-		$other = $this->store->create( 'link_index_backfill', array( 1, 2 ) );
-		$this->store->update_status( $other, AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING );
+		$other = $this->job_manager->dispatch( 'unrelated_test_type', array( 1, 2 ) );
 
-		$this->assertSame( 'idle', ( new AIPS_Bulk_Generation_Process( $this->store ) )->get_snapshot()['status'] );
+		$this->assertSame( 'idle', ( new AIPS_Bulk_Generation_Process( $this->job_manager ) )->get_snapshot()['status'] );
+		$this->job_manager->cancel( $other );
 	}
 
-	public function test_bulk_generation_pause_unschedules_slices_and_resume_restores_their_spacing() {
-		$process = new AIPS_Bulk_Generation_Process( $this->store );
-		$job     = $this->bulk_job();
+	public function test_bulk_generation_pause_and_resume() {
+		$process = new AIPS_Bulk_Generation_Process( $this->job_manager );
+		$job_id  = $this->bulk_job();
 
 		$this->assertTrue( $process->pause() );
-
-		$this->assertFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['first'] ) );
-		$this->assertFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['second'] ) );
-		$stored = $this->store->get( $job['id'] );
-		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED, $stored->status );
-		$this->assertCount( 2, $stored->options[ AIPS_Bulk_Generation_Process::PAUSED_SLICES_OPTION ] );
+		$stored = $this->job_repo->find_by_id( $job_id );
+		$this->assertSame( 'paused', $stored->get_status() );
 		$this->assertSame( 'paused', $process->get_snapshot()['status'] );
 		$this->assertFalse( $process->pause(), 'Nothing left to pause.' );
 
 		$this->assertTrue( $process->resume() );
+		$stored = $this->job_repo->find_by_id( $job_id );
+		$this->assertSame( 'pending', $stored->get_status() );
+		$this->assertSame( 'running', $process->get_snapshot()['status'] );
 
-		$first  = wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['first'] );
-		$second = wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['second'] );
-		$this->assertNotFalse( $first );
-		$this->assertNotFalse( $second );
-		$this->assertSame( 60, $second - $first, 'Slices keep their original spacing.' );
-		$this->assertLessThan( time() + 60, $first, 'Resumed slices start soon, not at their old time.' );
-
-		$stored = $this->store->get( $job['id'] );
-		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, $stored->status );
-		$this->assertArrayNotHasKey( AIPS_Bulk_Generation_Process::PAUSED_SLICES_OPTION, $stored->options );
-		$this->assertSame( 7, $stored->options['history_meta']['template_id'], 'Original options survive.' );
-
-		$this->clear_bulk_events( $job );
+		$this->job_manager->cancel( $job_id );
 	}
 
-	public function test_bulk_generation_cancel_removes_slices_and_marks_the_job_cancelled() {
-		$process = new AIPS_Bulk_Generation_Process( $this->store );
-		$job     = $this->bulk_job();
+	public function test_bulk_generation_cancel() {
+		$process = new AIPS_Bulk_Generation_Process( $this->job_manager );
+		$job_id  = $this->bulk_job();
 
 		$this->assertTrue( $process->cancel() );
-
-		$this->assertFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['first'] ) );
-		$this->assertFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['second'] ) );
-		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED, $this->store->get( $job['id'] )->status );
+		$stored = $this->job_repo->find_by_id( $job_id );
+		$this->assertSame( 'cancelled', $stored->get_status() );
 		$this->assertSame( 'idle', $process->get_snapshot()['status'] );
-	}
-
-	public function test_a_failed_job_with_slices_still_queued_stays_controllable() {
-		$process = new AIPS_Bulk_Generation_Process( $this->store );
-		$job     = $this->bulk_job();
-		$this->store->update_status( $job['id'], AIPS_Bulk_Batch_Job_Store::STATUS_FAILED );
-
-		$this->assertSame( 'running', $process->get_snapshot()['status'], 'A bad slice does not stop the later ones.' );
-
-		$this->assertTrue( $process->cancel() );
-	}
-
-	public function test_processor_skips_cancelled_jobs_and_requeues_slices_of_paused_jobs() {
-		$calls = 0;
-		$proc  = new AIPS_Bulk_Batch_Processor( $this->store );
-		$proc->register( 'author_topic_post', function () use ( &$calls ) {
-			$calls++;
-			return 1;
-		} );
-
-		$job = $this->bulk_job();
-		$this->clear_bulk_events( $job );
-
-		$this->store->update_status( $job['id'], AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED );
-		$proc->process( $job['id'], 0, 2, 4, '' );
-		$this->assertSame( 0, $calls );
-		$this->assertFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['first'] ) );
-
-		$this->store->update_status( $job['id'], AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
-		$proc->process( $job['id'], 0, 2, 4, '' );
-		$this->assertSame( 0, $calls );
-		$this->assertNotFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['first'] ), 'A slice that fires while paused is put back.' );
-
-		$this->clear_bulk_events( $job );
-	}
-
-	public function test_a_failing_slice_cannot_overwrite_a_pause_or_stop() {
-		$paused = $this->store->create( 'author_topic_post', array( 1, 2 ) );
-		$this->store->update_status( $paused, AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
-		$this->store->mark_failed( $paused );
-		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED, $this->store->get( $paused )->status );
-
-		$stopped = $this->store->create( 'author_topic_post', array( 1, 2 ) );
-		$this->store->update_status( $stopped, AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED );
-		$this->store->mark_failed( $stopped );
-		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED, $this->store->get( $stopped )->status );
-
-		$running = $this->store->create( 'author_topic_post', array( 1, 2 ) );
-		$this->store->update_status( $running, AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING );
-		$this->store->mark_failed( $running );
-		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_FAILED, $this->store->get( $running )->status );
-	}
-
-	public function test_a_job_paused_during_its_last_slice_still_completes() {
-		$paused = $this->store->create( 'author_topic_post', array( 1, 2 ) );
-		$this->store->update_status( $paused, AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
-		$this->assertTrue( $this->store->mark_completed( $paused ) );
-		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED, $this->store->get( $paused )->status );
-
-		$stopped = $this->store->create( 'author_topic_post', array( 1, 2 ) );
-		$this->store->update_status( $stopped, AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED );
-		$this->assertFalse( $this->store->mark_completed( $stopped ), 'A stopped job stays stopped.' );
-	}
-
-	public function test_processor_does_not_requeue_a_slice_that_pause_already_recorded() {
-		$proc = new AIPS_Bulk_Batch_Processor( $this->store );
-		$proc->register( 'author_topic_post', function () {
-			return 1;
-		} );
-
-		$job = $this->bulk_job();
-		$this->clear_bulk_events( $job );
-
-		$this->store->update_options( $job['id'], array(
-			AIPS_Bulk_Generation_Process::PAUSED_SLICES_OPTION => array(
-				array( 'timestamp' => time() + 600, 'args' => $job['first'] ),
-			),
-		) );
-		$this->store->update_status( $job['id'], AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
-
-		$proc->process( $job['id'], 0, 2, 4, '' );
-		$this->assertFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['first'] ), 'resume() will schedule it; requeuing here would run it twice.' );
-
-		$proc->process( $job['id'], 2, 2, 4, '' );
-		$this->assertNotFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['second'] ), 'A slice pause() did not capture is still put back.' );
-
-		$this->clear_bulk_events( $job );
-	}
-
-	public function test_cleanup_removes_only_long_abandoned_paused_jobs() {
-		global $wpdb;
-
-		$old    = $this->store->create( 'author_topic_post', array( 1 ) );
-		$recent = $this->store->create( 'author_topic_post', array( 1 ) );
-		$this->store->update_status( $old, AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
-		$this->store->update_status( $recent, AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
-
-		$wpdb->update(
-			$wpdb->prefix . 'aips_bulk_batch_jobs',
-			array( 'updated_at' => time() - ( ( AIPS_Bulk_Batch_Job_Store::PAUSED_CLEANUP_DAYS + 1 ) * DAY_IN_SECONDS ) ),
-			array( 'job_id' => $old )
-		);
-
-		$this->assertSame( 1, $this->store->cleanup_old_jobs() );
-		$this->assertNull( $this->store->get( $old ) );
-		$this->assertNotNull( $this->store->get( $recent ) );
-	}
-
-	public function test_job_store_lists_jobs_without_items_and_updates_options() {
-		$id = $this->store->create( 'author_topic_post', array( 1, 2, 3 ), array( 'a' => 1 ) );
-
-		$rows = $this->store->get_jobs_by_status( array( 'author_topic_post' ), array( 'pending' ) );
-		$this->assertCount( 1, $rows );
-		$this->assertSame( $id, $rows[0]->job_id );
-		$this->assertSame( 3, $rows[0]->total );
-		$this->assertFalse( isset( $rows[0]->items_json ), 'The item list is not loaded for status queries.' );
-
-		$this->assertTrue( $this->store->update_options( $id, array( 'a' => 2, 'nested' => array( 'x' => 1 ), 'closure' => function () {} ) ) );
-		$stored = $this->store->get( $id );
-		$this->assertSame( 2, $stored->options['a'] );
-		$this->assertSame( array( 'x' => 1 ), $stored->options['nested'] );
-		$this->assertArrayNotHasKey( 'closure', $stored->options );
-		$this->assertSame( array( 1, 2, 3 ), $stored->items, 'Items are untouched.' );
-
-		$this->assertSame( array(), $this->store->get_jobs_by_status( array(), array( 'pending' ) ) );
 	}
 
 	// -------------------------------------------------------------------------

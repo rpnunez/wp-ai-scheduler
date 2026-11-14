@@ -20,9 +20,11 @@ class AIPS_Job_Registry {
 	const GROUP_INDEXER       = 'aips-indexer';
 	const GROUP_EMBEDDINGS    = 'aips-embeddings';
 
-	const TYPE_AUTHOR_TOPIC_SLICE = 'author_topic_slice';
-	const TYPE_BULK_BATCH_SLICE   = 'bulk_batch_slice';
-	const TYPE_LINK_INDEX_SCAN    = 'link_index_scan';
+	const TYPE_AUTHOR_TOPIC_SLICE    = 'author_topic_slice';
+	const TYPE_BULK_BATCH_SLICE      = 'bulk_batch_slice';
+	const TYPE_BULK_POST_GENERATION  = 'bulk_post_generation';
+	const TYPE_BULK_POST_PUBLISH     = 'bulk_post_publish';
+	const TYPE_LINK_INDEX_SCAN       = 'link_index_scan';
 
 	/**
 	 * Default job tick hook name.
@@ -38,7 +40,7 @@ class AIPS_Job_Registry {
 	 */
 	public function get_definitions(): array {
 		$definitions = array(
-			self::TYPE_AUTHOR_TOPIC_SLICE => array(
+			self::TYPE_AUTHOR_TOPIC_SLICE    => array(
 				'label'             => __( 'Author Topic Slice', 'ai-post-scheduler' ),
 				'hook'              => self::DEFAULT_TICK_HOOK,
 				'group'             => self::GROUP_AUTHOR_TOPICS,
@@ -47,16 +49,34 @@ class AIPS_Job_Registry {
 				'batch_size'        => 10,
 				'handler'           => 'AIPS_Author_Topics_Service',
 			),
-			self::TYPE_BULK_BATCH_SLICE   => array(
+			self::TYPE_BULK_POST_GENERATION  => array(
+				'label'             => __( 'Bulk Post Generation', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_BULK_BATCH,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 5,
+				'handler'           => 'AIPS_Bulk_Generator_Service',
+			),
+			self::TYPE_BULK_POST_PUBLISH     => array(
+				'label'             => __( 'Bulk Post Publish', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_BULK_BATCH,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 25,
+				'handler'           => 'AIPS_Bulk_Generator_Service',
+			),
+			self::TYPE_BULK_BATCH_SLICE      => array(
 				'label'             => __( 'Bulk Batch Slice', 'ai-post-scheduler' ),
 				'hook'              => self::DEFAULT_TICK_HOOK,
 				'group'             => self::GROUP_BULK_BATCH,
 				'max_retries'       => 5,
 				'retry_backoff_sec' => 60,
 				'batch_size'        => 25,
-				'handler'           => 'AIPS_Bulk_Batch_Processor',
+				'handler'           => 'AIPS_Bulk_Generator_Service',
 			),
-			self::TYPE_LINK_INDEX_SCAN    => array(
+			self::TYPE_LINK_INDEX_SCAN       => array(
 				'label'             => __( 'Link Index Scan', 'ai-post-scheduler' ),
 				'hook'              => self::DEFAULT_TICK_HOOK,
 				'group'             => self::GROUP_INDEXER,

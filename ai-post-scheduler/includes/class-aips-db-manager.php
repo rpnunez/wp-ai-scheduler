@@ -32,7 +32,6 @@ class AIPS_DB_Manager {
         'aips_cache',
         'aips_telemetry',
         'aips_ai_assistance',
-        'aips_bulk_batch_jobs',
         'aips_cache_index',
         'aips_cache_events',
         'aips_integration_field_mappings',
@@ -104,7 +103,6 @@ class AIPS_DB_Manager {
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
         $table_ai_assistance        = $tables['aips_ai_assistance'];
-        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
@@ -733,23 +731,6 @@ class AIPS_DB_Manager {
             KEY form_context_field (form_context, field_key),
             KEY user_id (user_id),
             KEY created_at (created_at)
-        ) $charset_collate;";
-      
-        $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
-            job_id varchar(36) NOT NULL,
-            job_type varchar(100) NOT NULL,
-            items_json longtext NOT NULL,
-            options_json longtext NOT NULL,
-            status varchar(20) NOT NULL DEFAULT 'pending',
-            total int(11) NOT NULL DEFAULT 0,
-            processed int(11) NOT NULL DEFAULT 0,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (job_id),
-            KEY job_type (job_type),
-            KEY status (status),
-            KEY created_at (created_at),
-            KEY status_updated (status, updated_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_background_processes (

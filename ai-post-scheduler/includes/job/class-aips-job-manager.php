@@ -172,9 +172,12 @@ class AIPS_Job_Manager {
 		$batch_size = isset( $options['batch_size'] ) ? max( 1, (int) $options['batch_size'] ) : ( $type_spec ? $type_spec->get_batch_size() : 10 );
 
 		$options['total'] = count( $items );
-		$payload          = array(
-			'items'      => $items,
-			'batch_size' => $batch_size,
+		$payload          = array_merge(
+			$options,
+			array(
+				'items'      => $items,
+				'batch_size' => $batch_size,
+			)
 		);
 
 		return $this->dispatch( $job_type, $payload, $options );

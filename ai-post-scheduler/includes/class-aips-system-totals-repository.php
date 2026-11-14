@@ -237,9 +237,20 @@ class AIPS_System_Totals_Repository {
 	 * @return array{total:int, processed:int}
 	 */
 	private function get_bulk_job_totals() {
+		$table        = $this->table( 'jobs' );
+		$types        = array( 'bulk_post_generation', 'bulk_post_publish', 'bulk_batch_slice' );
+		$placeholders = implode( ',', array_fill( 0, count( $types ), '%s' ) );
+
+		$total = (int) $this->wpdb->get_var(
+			$this->wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE job_type IN ($placeholders)", $types ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+		$processed = (int) $this->wpdb->get_var(
+			$this->wpdb->prepare( "SELECT COALESCE(SUM(processed), 0) FROM {$table} WHERE job_type IN ($placeholders)", $types ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+
 		return array(
-			'total'     => $this->count_rows('bulk_batch_jobs'),
-			'processed' => $this->sum_column('bulk_batch_jobs', 'processed'),
+			'total'     => $total,
+			'processed' => $processed,
 		);
 	}
 

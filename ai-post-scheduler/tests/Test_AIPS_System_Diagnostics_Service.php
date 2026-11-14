@@ -52,12 +52,7 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 	}
 
 	private function mock_bulk_batch_job_store() {
-		$mock = $this->getMockBuilder('AIPS_Bulk_Batch_Job_Store')
-			->disableOriginalConstructor()
-			->onlyMethods(array('cleanup_old_jobs'))
-			->getMock();
-		$mock->method('cleanup_old_jobs')->willReturn(0);
-		return $mock;
+		return null;
 	}
 
 	private function mock_resilience_service() {

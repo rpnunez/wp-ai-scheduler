@@ -1,25 +1,25 @@
 <?php
 /**
- * Bulk Generator Service
+ * Shared bulk generation service
  *
- * Centralises the "generate a batch of posts" pattern that was previously
- * copy-pasted across multiple AJAX handlers:
- *   - AIPS_Author_Topics_Controller::ajax_bulk_generate_topics
- *   - AIPS_Author_Topics_Controller::ajax_bulk_generate_from_queue
- *   - AIPS_Planner::ajax_bulk_generate_now
- *   - AIPS_Post_Review::ajax_bulk_regenerate_posts
- *   - AIPS_Research_Controller::ajax_generate_trending_topics_bulk
+ * Provides a unified, hardened execution harness for bulk post generation
+ * across Author Topics, the Content Planner, and Topic Research.
  *
- * Each caller passes a $generate_fn callable — the only thing that truly
- * differs per call site.  Everything else (limit enforcement, generation
- * loop, per-item error accumulation, history container lifecycle) lives
- * here once.
+ * Responsibilities:
+ *   1. Batch limit enforcement (hard limit rejects, soft limit truncates)
+ *   2. Large-batch async queuing onto AIPS_Job_Manager (threshold check,
+ *      job dispatch, history record)
+ *   3. History container lifecycle (create, record per-post activity/warnings,
+ *      complete with overall success/failure status)
+ *   4. Uniform error collection and AIPS_Bulk_Generation_Result production
+ *   5. Native background slice execution (handle_generation_slice,
+ *      handle_publish_slice) honoring AIPS_Job_Context
  *
  * @package AI_Post_Scheduler
- * @since   1.8.0
+ * @since 1.8.0
  */
 
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -140,68 +140,29 @@ class AIPS_Bulk_Generation_Result {
 }
 
 // ---------------------------------------------------------------------------
-// Service
+// Service class
 // ---------------------------------------------------------------------------
 
 /**
  * Class AIPS_Bulk_Generator_Service
  *
- * Shared harness for all synchronous bulk post-generation AJAX handlers.
- *
- * Usage
- * -----
- * ```php
- * $result = $this->bulk_generator_service->run(
- *     $items,
- *     function( $item ) { return $generator->generate_post( $template, null, $item ); },
- *     array(
- *         'history_type'   => 'bulk_generate_now',
- *         'trigger_name'   => 'ajax_bulk_generate_now',
- *         'queue_job_type' => 'planner_post',   // enables async queuing
- *     )
- * );
- * ```
- *
- * Supported $options keys
- * -----------------------
- *   limit_filter   string   Filter name for the max-items limit.
- *                           Default: 'aips_bulk_run_now_limit'.
- *   limit_default  int      Fallback limit when filter returns 0.
- *                           Default: AIPS_Bulk_Generator_Service::DEFAULT_LIMIT (5).
- *   limit_mode     string   'hard' (reject request) or 'soft' (truncate items).
- *                           Default: 'hard'.
- *                           Note: when queue_job_type is provided and the batch is
- *                           large enough, the request is queued async regardless of
- *                           limit_mode, so no items are rejected or truncated.
- *   queue_job_type string   When set, large batches (≥ aips_large_batch_threshold)
- *                           are persisted to AIPS_Bulk_Batch_Job_Store and dispatched
- *                           as a series of cron events instead of running synchronously.
- *                           The strategy for this job_type must be registered in
- *                           AIPS_Bulk_Batch_Processor before the cron fires.
- *   history_type   string   History container type string.
- *   history_meta   array    Extra metadata merged into the history container.
- *   trigger_name   string   Identifies the calling handler in history.
- *   user_action    string   Action label for record_user_action().
- *   user_message   string   Message for record_user_action().
- *   error_formatter callable($item, $error_message): string
- *                           Formats per-item failure strings.
- *                           Default: JSON-encodes non-scalar items to avoid
- *                           "Array to string conversion" warnings.
- *                           **Required** when $items contains non-scalar values
- *                           (arrays or objects); omitting it triggers
- *                           _doing_it_wrong() and falls back to wp_json_encode().
+ * Shared harness for all bulk post-generation and publishing actions.
  */
 class AIPS_Bulk_Generator_Service {
 
 	/**
 	 * Default item limit when no limit_default option and no filter override are given.
 	 *
-	 * Exposed as a class constant so callers can reference it without magic numbers.
-	 * Use the 'aips_bulk_run_now_limit' filter to override at runtime.
-	 *
 	 * @var int
 	 */
 	const DEFAULT_LIMIT = 5;
+
+	/**
+	 * Registered strategy callables, keyed by strategy name.
+	 *
+	 * @var array<string, callable>
+	 */
+	private static array $custom_strategies = array();
 
 	/**
 	 * @var AIPS_History_Service_Interface
@@ -209,75 +170,116 @@ class AIPS_Bulk_Generator_Service {
 	private $history_service;
 
 	/**
-	 * @var AIPS_Bulk_Batch_Job_Store|null Lazy-loaded job store.
+	 * @var AIPS_Job_Manager|null Lazy-loaded job manager.
 	 */
-	private $job_store;
+	private $job_manager;
 
 	/**
-	 * @var AIPS_Batch_Queue_Service|null Lazy-loaded batch queue service.
+	 * @var AIPS_Logger
 	 */
-	private $batch_queue_service;
+	private $logger;
 
 	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_History_Service_Interface|null $history_service Injectable for testing.
-	 * @param AIPS_Bulk_Batch_Job_Store|null      $job_store       Injectable for testing.
-	 * @param AIPS_Batch_Queue_Service|null       $batch_queue_service Injectable for testing.
+	 * @param AIPS_Job_Manager|object|null        $job_manager_or_store Injectable job manager.
+	 * @param AIPS_Logger|object|null             $logger_or_queue Injectable logger.
 	 */
 	public function __construct(
-		?AIPS_History_Service_Interface $history_service     = null,
-		?AIPS_Bulk_Batch_Job_Store      $job_store           = null,
-		?AIPS_Batch_Queue_Service       $batch_queue_service = null
+		?AIPS_History_Service_Interface $history_service      = null,
+		$job_manager_or_store                                 = null,
+		$logger_or_queue                                      = null
 	) {
-		$container = AIPS_Container::get_instance();
-		$this->history_service     = $history_service     ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->job_store           = $job_store;
-		$this->batch_queue_service = $batch_queue_service;
+		$container             = AIPS_Container::get_instance();
+		$this->history_service = $history_service ?: ( $container->has( AIPS_History_Service_Interface::class ) ? $container->make( AIPS_History_Service_Interface::class ) : new AIPS_History_Service() );
+		$this->job_manager     = ( $job_manager_or_store instanceof AIPS_Job_Manager ) ? $job_manager_or_store : null;
+		$this->logger          = ( $logger_or_queue instanceof AIPS_Logger ) ? $logger_or_queue : new AIPS_Logger();
 	}
 
 	/**
-	 * Lazy-load the job store.
+	 * Register a custom strategy callable.
 	 *
-	 * @return AIPS_Bulk_Batch_Job_Store
+	 * @param string   $strategy Strategy key.
+	 * @param callable $handler  fn( $item, string $job_id, object $job ): int|WP_Error
+	 * @return void
 	 */
-	private function get_job_store(): AIPS_Bulk_Batch_Job_Store {
-		if ( $this->job_store === null ) {
-			$this->job_store = new AIPS_Bulk_Batch_Job_Store();
-		}
-		return $this->job_store;
+	public static function register_strategy( string $strategy, callable $handler ): void {
+		self::$custom_strategies[ $strategy ] = $handler;
 	}
 
 	/**
-	 * Lazy-load the batch queue service.
+	 * Check if a custom strategy is registered.
 	 *
-	 * @return AIPS_Batch_Queue_Service
+	 * @param string $strategy Strategy key.
+	 * @return bool
 	 */
-	private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
-		if ( $this->batch_queue_service === null ) {
-			$this->batch_queue_service = new AIPS_Batch_Queue_Service();
+	public static function has_strategy( string $strategy ): bool {
+		return isset( self::$custom_strategies[ $strategy ] );
+	}
+
+	/**
+	 * Clear registered custom strategies (primarily for testing).
+	 *
+	 * @return void
+	 */
+	public static function reset_strategies(): void {
+		self::$custom_strategies = array();
+	}
+
+	/**
+	 * Set a custom job manager (dependency injection).
+	 *
+	 * @param AIPS_Job_Manager $job_manager
+	 */
+	public function set_job_manager( AIPS_Job_Manager $job_manager ): void {
+		$this->job_manager = $job_manager;
+	}
+
+	/**
+	 * Lazy-load the job manager.
+	 *
+	 * @return AIPS_Job_Manager
+	 */
+	private function get_job_manager(): AIPS_Job_Manager {
+		if ( null === $this->job_manager ) {
+			$this->job_manager = AIPS_Container::get_instance()->get_job_manager();
 		}
-		return $this->batch_queue_service;
+		return $this->job_manager;
+	}
+
+	/**
+	 * Return the configured large-batch threshold.
+	 *
+	 * @return int
+	 */
+	public function get_large_batch_threshold(): int {
+		$threshold = (int) apply_filters( 'aips_large_batch_threshold', self::DEFAULT_LIMIT );
+		return max( 2, $threshold );
+	}
+
+	/**
+	 * Determine whether an item count qualifies as a large batch.
+	 *
+	 * @param int $count Total items requested.
+	 * @return bool
+	 */
+	public function needs_batch_queue( int $count ): bool {
+		return $count >= $this->get_large_batch_threshold();
 	}
 
 	/**
 	 * Run a bulk generation batch.
 	 *
-	 * @param array    $items       Sanitized items to process (topic IDs, topic strings, or
-	 *                              associative arrays — whatever $generate_fn expects).
+	 * @param array    $items       Sanitized items to process.
 	 * @param callable $generate_fn fn( $item ): int|WP_Error
-	 *                              Must return a new post ID on success or a WP_Error on failure.
-	 * @param array    $options     See class-level docblock.
+	 * @param array    $options     Options array.
 	 * @return AIPS_Bulk_Generation_Result
 	 */
 	public function run( array $items, callable $generate_fn, array $options = array() ): AIPS_Bulk_Generation_Result {
-
-		// ------------------------------------------------------------------
-		// 1. Resolve and apply the batch limit
-		// ------------------------------------------------------------------
-		$limit_filter  = isset( $options['limit_filter'] )  ? (string) $options['limit_filter']  : 'aips_bulk_run_now_limit';
-		$limit_default = isset( $options['limit_default'] ) ? (int)    $options['limit_default'] : self::DEFAULT_LIMIT;
-		$limit_mode    = isset( $options['limit_mode'] )    ? (string) $options['limit_mode']    : 'hard';
+		$limit_filter   = isset( $options['limit_filter'] ) ? (string) $options['limit_filter'] : 'aips_bulk_run_now_limit';
+		$limit_default  = isset( $options['limit_default'] ) ? (int) $options['limit_default'] : self::DEFAULT_LIMIT;
+		$limit_mode     = isset( $options['limit_mode'] ) ? (string) $options['limit_mode'] : 'hard';
 		$queue_job_type = isset( $options['queue_job_type'] ) ? (string) $options['queue_job_type'] : '';
 
 		$max_bulk = absint( apply_filters( $limit_filter, $limit_default ) );
@@ -287,28 +289,16 @@ class AIPS_Bulk_Generator_Service {
 
 		$was_limited = false;
 
-		// ------------------------------------------------------------------
-		// 1a. Large-batch async queuing (when queue_job_type is provided)
-		//
-		// When the caller has opted in to async queuing (by providing a
-		// queue_job_type) and the item count meets the large-batch threshold,
-		// persist the job and dispatch cron events instead of running
-		// synchronously.  This bypasses the hard/soft limit entirely —
-		// the whole point is to generate *all* requested items eventually.
-		// ------------------------------------------------------------------
-		if ( $queue_job_type !== '' ) {
-			$batch_service = $this->get_batch_queue_service();
-			if ( $batch_service->needs_batch_queue( count( $items ) ) ) {
-				return $this->dispatch_async( $items, $options, $queue_job_type, $max_bulk, $batch_service );
-			}
+		// Large-batch async queuing (when queue_job_type is provided)
+		if ( '' !== $queue_job_type && $this->needs_batch_queue( count( $items ) ) ) {
+			return $this->dispatch_async( $items, $options, $queue_job_type, $max_bulk );
 		}
 
 		if ( count( $items ) > $max_bulk ) {
-			if ( $limit_mode === 'soft' ) {
+			if ( 'soft' === $limit_mode ) {
 				$was_limited = true;
 				$items       = array_slice( $items, 0, $max_bulk );
 			} else {
-				// Hard mode: reject immediately without creating a history container.
 				return new AIPS_Bulk_Generation_Result(
 					0,
 					count( $items ),
@@ -320,15 +310,12 @@ class AIPS_Bulk_Generator_Service {
 			}
 		}
 
-		// ------------------------------------------------------------------
-		// 2. Create the history container for this bulk run
-		// ------------------------------------------------------------------
-		$history_type   = isset( $options['history_type'] )  ? (string) $options['history_type']  : 'bulk_generation';
-		$history_meta   = isset( $options['history_meta'] )  ? (array)  $options['history_meta']  : array();
-		$trigger_name   = isset( $options['trigger_name'] )  ? (string) $options['trigger_name']  : 'bulk_generator_service';
-		$user_action    = isset( $options['user_action'] )   ? (string) $options['user_action']   : 'bulk_generate';
-		$user_message   = isset( $options['user_message'] )  ? (string) $options['user_message']
-			/* translators: %d: number of items */
+		// Create history container for synchronous run
+		$history_type    = isset( $options['history_type'] ) ? (string) $options['history_type'] : 'bulk_generation';
+		$history_meta    = isset( $options['history_meta'] ) ? (array) $options['history_meta'] : array();
+		$trigger_name    = isset( $options['trigger_name'] ) ? (string) $options['trigger_name'] : 'bulk_generator_service';
+		$user_action     = isset( $options['user_action'] ) ? (string) $options['user_action'] : 'bulk_generate';
+		$user_message    = isset( $options['user_message'] ) ? (string) $options['user_message']
 			: sprintf( __( 'User initiated bulk generation for %d items', 'ai-post-scheduler' ), count( $items ) );
 		$error_formatter = isset( $options['error_formatter'] ) && is_callable( $options['error_formatter'] )
 			? $options['error_formatter']
@@ -344,7 +331,6 @@ class AIPS_Bulk_Generator_Service {
 			$history_meta
 		);
 
-		// The summary container for a bulk run is a job; the per-post runs are generations.
 		$history = $this->history_service->create( $history_type, array_merge( $meta, array( 'record_kind' => AIPS_History_Record_Kind::JOB ) ) );
 		AIPS_Generation_Trigger::record(
 			$history,
@@ -359,7 +345,6 @@ class AIPS_Bulk_Generator_Service {
 		if ( $was_limited ) {
 			$history->record(
 				'activity',
-				/* translators: %d: item count after truncation */
 				sprintf( __( 'Batch was limited to %d items to avoid timeouts.', 'ai-post-scheduler' ), count( $items ) ),
 				null,
 				null,
@@ -367,9 +352,6 @@ class AIPS_Bulk_Generator_Service {
 			);
 		}
 
-		// ------------------------------------------------------------------
-		// 3. Execute the generation loop
-		// ------------------------------------------------------------------
 		$success_count = 0;
 		$failed_count  = 0;
 		$errors        = array();
@@ -384,8 +366,6 @@ class AIPS_Bulk_Generator_Service {
 				if ( $error_formatter ) {
 					$error_msg = call_user_func( $error_formatter, $item, $result->get_error_message() );
 				} elseif ( ! is_scalar( $item ) ) {
-					// Non-scalar item without a formatter: warn the developer and fall back
-					// to a JSON representation to avoid "Array to string conversion" notices.
 					_doing_it_wrong(
 						__METHOD__,
 						'AIPS_Bulk_Generator_Service::run() received a non-scalar item without an error_formatter option. Provide an error_formatter to generate meaningful error messages.',
@@ -395,7 +375,7 @@ class AIPS_Bulk_Generator_Service {
 				} else {
 					$error_msg = sprintf( '%s: %s', (string) $item, $result->get_error_message() );
 				}
-				$errors[]  = $error_msg;
+				$errors[] = $error_msg;
 				$history->record(
 					'warning',
 					$error_msg,
@@ -409,7 +389,6 @@ class AIPS_Bulk_Generator_Service {
 				$post_ids[]     = $post_id_or_ids;
 				$history->record(
 					'activity',
-					/* translators: %s: post ID */
 					sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_id_or_ids ) ? implode( ',', $post_id_or_ids ) : $post_id_or_ids ),
 					null,
 					null,
@@ -418,12 +397,8 @@ class AIPS_Bulk_Generator_Service {
 			}
 		}
 
-		// ------------------------------------------------------------------
-		// 4. Complete the history container
-		// ------------------------------------------------------------------
 		if ( $failed_count > 0 ) {
 			$history->complete_failure(
-				/* translators: %d: number of failures */
 				sprintf( __( 'Bulk generation completed with %d failures', 'ai-post-scheduler' ), $failed_count ),
 				array( 'success_count' => $success_count, 'failed_count' => $failed_count )
 			);
@@ -443,81 +418,51 @@ class AIPS_Bulk_Generator_Service {
 		);
 	}
 
-	// -----------------------------------------------------------------------
-	// Private helpers
-	// -----------------------------------------------------------------------
-
 	/**
-	 * Persist a large-batch job and dispatch async cron events.
+	 * Persist a large-batch job and dispatch async via AIPS_Job_Manager.
 	 *
-	 * Called from run() when queue_job_type is set and the item count meets
-	 * the large-batch threshold.
-	 *
-	 * @param array                  $items          Items to queue.
-	 * @param array                  $options        Raw options from run() caller.
-	 * @param string                 $queue_job_type Strategy key.
-	 * @param int                    $max_bulk       Effective per-request limit.
-	 * @param AIPS_Batch_Queue_Service $batch_service Batch queue service instance.
+	 * @param array  $items          Items to queue.
+	 * @param array  $options        Raw options from run() caller.
+	 * @param string $queue_job_type Strategy key.
+	 * @param int    $max_bulk       Effective per-request limit.
 	 * @return AIPS_Bulk_Generation_Result Result with was_queued = true.
 	 */
 	private function dispatch_async(
 		array $items,
 		array $options,
 		string $queue_job_type,
-		int $max_bulk,
-		AIPS_Batch_Queue_Service $batch_service
+		int $max_bulk
 	): AIPS_Bulk_Generation_Result {
+		$job_type = ( 'review_publish' === $queue_job_type )
+			? AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH
+			: AIPS_Job_Registry::TYPE_BULK_POST_GENERATION;
 
-		$job_store = $this->get_job_store();
+		$options['strategy']       = $queue_job_type;
+		$options['queue_job_type'] = $queue_job_type;
+		if ( ! isset( $options['user_id'] ) ) {
+			$options['user_id'] = get_current_user_id();
+		}
+		unset( $options['error_formatter'] );
 
-		// Persist serialisable options (strip closures automatically).
-		$job_id = $job_store->create( $queue_job_type, $items, $options );
-
-		if ( is_wp_error( $job_id ) ) {
-			// Job store failure: cannot dispatch async — return an all-failed result so
-			// the caller knows the items were not processed and can surface the error.
-			// A synchronous fallback is not possible here because dispatch_async() does
-			// not hold a reference to the per-item $generate_fn closure passed to run().
+		try {
+			$job_id = $this->get_job_manager()->dispatch_batch( $job_type, $items, $options );
+		} catch ( Throwable $e ) {
 			return new AIPS_Bulk_Generation_Result(
 				0,
 				count( $items ),
-				array( $job_id->get_error_message() ),
+				array( $e->getMessage() ),
 				array(),
 				false,
 				$max_bulk
 			);
 		}
 
-		$correlation_id = (string) AIPS_Correlation_ID::get();
-		$now            = time();
-
-		$dispatch_summary = $batch_service->dispatch_generic(
-			AIPS_Bulk_Batch_Processor::HOOK,
-			count( $items ),
-			$now,
-			array( $job_id ),
-			$correlation_id
-		);
-
-		if ( is_wp_error( $dispatch_summary ) ) {
-			$job_store->mark_failed( $job_id );
-			return new AIPS_Bulk_Generation_Result(
-				0,
-				count( $items ),
-				array( $dispatch_summary->get_error_message() ),
-				array(),
-				false,
-				$max_bulk
-			);
-		}
-
-		// Log the dispatch to history.
+		// Log dispatch summary to history
 		$history_type = isset( $options['history_type'] ) ? (string) $options['history_type'] : 'bulk_generation';
-		$history_meta = isset( $options['history_meta'] ) ? (array)  $options['history_meta'] : array();
+		$history_meta = isset( $options['history_meta'] ) ? (array) $options['history_meta'] : array();
 		$trigger_name = isset( $options['trigger_name'] ) ? (string) $options['trigger_name'] : 'bulk_generator_service';
-		$user_action  = isset( $options['user_action'] )  ? (string) $options['user_action']  : 'bulk_generate';
+		$user_action  = isset( $options['user_action'] ) ? (string) $options['user_action'] : 'bulk_generate';
 		$user_message = isset( $options['user_message'] ) ? (string) $options['user_message']
-			/* translators: %d: number of items */
 			: sprintf( __( 'User initiated bulk generation for %d items', 'ai-post-scheduler' ), count( $items ) );
 
 		$meta = array_merge(
@@ -531,7 +476,6 @@ class AIPS_Bulk_Generator_Service {
 			$history_meta
 		);
 
-		// The summary container for a bulk run is a job; the per-post runs are generations.
 		$history = $this->history_service->create( $history_type, array_merge( $meta, array( 'record_kind' => AIPS_History_Record_Kind::JOB ) ) );
 		AIPS_Generation_Trigger::record(
 			$history,
@@ -545,21 +489,15 @@ class AIPS_Bulk_Generator_Service {
 		$history->record(
 			'activity',
 			sprintf(
-				/* translators: 1: number of batch jobs, 2: total items, 3: spread window in seconds */
-				__( 'Large batch detected (%2$d items): queued %1$d batch jobs spread across %3$d seconds.', 'ai-post-scheduler' ),
-				$dispatch_summary['num_batches'],
-				count( $items ),
-				$dispatch_summary['window_seconds']
+				__( 'Large batch detected (%1$d items): queued for background processing via Job Manager.', 'ai-post-scheduler' ),
+				count( $items )
 			),
 			null,
 			null,
 			array(
-				'job_id'          => $job_id,
-				'job_type'        => $queue_job_type,
-				'num_batches'     => $dispatch_summary['num_batches'],
-				'scheduled_batches' => $dispatch_summary['scheduled_batches'],
-				'posts_per_batch' => $dispatch_summary['posts_per_batch'],
-				'window_seconds'  => $dispatch_summary['window_seconds'],
+				'job_id'   => $job_id,
+				'job_type' => $queue_job_type,
+				'total'    => count( $items ),
 			)
 		);
 		$history->complete_success( array( 'queued' => true, 'item_count' => count( $items ) ) );
@@ -574,5 +512,335 @@ class AIPS_Bulk_Generator_Service {
 			true,
 			$job_id
 		);
+	}
+
+	// -----------------------------------------------------------------------
+	// Job Manager Slice Runner Handlers
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Main runner tick callback invoked by AIPS_Job_Manager.
+	 *
+	 * @param AIPS_Job_Context $context
+	 * @return AIPS_Job_Slice_Result
+	 */
+	public function handle_job_slice( AIPS_Job_Context $context ): AIPS_Job_Slice_Result {
+		if ( AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH === $context->get_job_type() ) {
+			return $this->handle_publish_slice( $context );
+		}
+
+		return $this->handle_generation_slice( $context );
+	}
+
+	/**
+	 * Process a batch slice of bulk post generation.
+	 *
+	 * @param AIPS_Job_Context $context
+	 * @return AIPS_Job_Slice_Result
+	 */
+	public function handle_generation_slice( AIPS_Job_Context $context ): AIPS_Job_Slice_Result {
+		$payload    = $context->get_payload();
+		$items      = isset( $payload['items'] ) && is_array( $payload['items'] ) ? $payload['items'] : array();
+		$total      = count( $items );
+		$cursor     = $context->get_cursor_id();
+		$batch_size = isset( $payload['batch_size'] ) ? max( 1, (int) $payload['batch_size'] ) : 5;
+		$strategy   = isset( $payload['strategy'] ) ? (string) $payload['strategy'] : ( isset( $payload['queue_job_type'] ) ? (string) $payload['queue_job_type'] : 'author_topic_post' );
+		$job_id     = $context->get_job_id();
+
+		if ( $cursor >= $total ) {
+			return AIPS_Job_Slice_Result::complete();
+		}
+
+		$history = $this->history_service->create(
+			'bulk_batch_slice',
+			array(
+				'job_id'         => $job_id,
+				'job_type'       => $strategy,
+				'start_index'    => $cursor,
+				'batch_size'     => $batch_size,
+				'total_quantity' => $total,
+			)
+		);
+
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'  => __( 'Bulk batch slice', 'ai-post-scheduler' ),
+				'detail' => sprintf( __( 'Bulk job %1$s (%2$s)', 'ai-post-scheduler' ), $job_id, $strategy ),
+			),
+			'scheduled'
+		);
+
+		$processed = 0;
+		$failed    = 0;
+		$results   = array();
+
+		while ( $cursor < $total && ( $processed + $failed ) < $batch_size ) {
+			if ( ( $processed + $failed ) > 0 && $context->should_yield() ) {
+				break;
+			}
+
+			$item = $items[ $cursor ];
+
+			try {
+				$res = $this->execute_item( $strategy, $item, $payload, $job_id );
+				if ( is_wp_error( $res ) ) {
+					$failed++;
+					$history->record(
+						'warning',
+						$res->get_error_message(),
+						null,
+						null,
+						array( 'item' => $item, 'error_code' => $res->get_error_code() )
+					);
+				} else {
+					$processed++;
+					$post_id_val = is_array( $res ) ? $res : (int) $res;
+					$results[]   = $post_id_val;
+					$history->record(
+						'activity',
+						sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_id_val ) ? implode( ',', $post_id_val ) : $post_id_val ),
+						null,
+						null,
+						array( 'item' => $item, 'post_id' => $post_id_val )
+					);
+				}
+			} catch ( Throwable $e ) {
+				$failed++;
+				$this->logger->log( sprintf( 'Bulk slice item error in job %s: %s', $job_id, $e->getMessage() ), 'error' );
+				$history->record( 'warning', $e->getMessage(), null, null, array( 'item' => $item, 'exception' => $e->getMessage() ) );
+			}
+
+			$cursor++;
+		}
+
+		if ( $failed > 0 ) {
+			$history->complete_failure(
+				sprintf( __( 'Batch slice completed with %d failures', 'ai-post-scheduler' ), $failed ),
+				array( 'success_count' => $processed, 'failed_count' => $failed )
+			);
+		} else {
+			$history->complete_success( array( 'success_count' => $processed, 'failed_count' => 0 ) );
+		}
+
+		$is_complete = ( $cursor >= $total );
+		if ( $is_complete ) {
+			return AIPS_Job_Slice_Result::complete( $processed, $failed, $results );
+		}
+
+		return AIPS_Job_Slice_Result::continue( $processed, $cursor, $failed, $results );
+	}
+
+	/**
+	 * Process a batch slice of bulk post publishing from Pending Review.
+	 *
+	 * @param AIPS_Job_Context $context
+	 * @return AIPS_Job_Slice_Result
+	 */
+	public function handle_publish_slice( AIPS_Job_Context $context ): AIPS_Job_Slice_Result {
+		$payload    = $context->get_payload();
+		$items      = isset( $payload['items'] ) && is_array( $payload['items'] ) ? $payload['items'] : array();
+		$total      = count( $items );
+		$cursor     = $context->get_cursor_id();
+		$batch_size = isset( $payload['batch_size'] ) ? max( 1, (int) $payload['batch_size'] ) : 25;
+		$job_id     = $context->get_job_id();
+
+		if ( $cursor >= $total ) {
+			return AIPS_Job_Slice_Result::complete();
+		}
+
+		$acting_user_id = isset( $payload['history_meta']['acting_user_id'] )
+			? (int) $payload['history_meta']['acting_user_id']
+			: ( isset( $payload['user_id'] ) ? (int) $payload['user_id'] : 0 );
+
+		if ( $acting_user_id > 0 && get_current_user_id() !== $acting_user_id ) {
+			wp_set_current_user( $acting_user_id );
+		}
+
+		$history = $this->history_service->create(
+			'bulk_batch_slice',
+			array(
+				'job_id'         => $job_id,
+				'job_type'       => 'review_publish',
+				'start_index'    => $cursor,
+				'batch_size'     => $batch_size,
+				'total_quantity' => $total,
+			)
+		);
+
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'  => __( 'Bulk publish slice', 'ai-post-scheduler' ),
+				'detail' => sprintf( __( 'Bulk job %s (Publish)', 'ai-post-scheduler' ), $job_id ),
+			),
+			'scheduled'
+		);
+
+		$processed = 0;
+		$failed    = 0;
+		$results   = array();
+		$review    = AIPS_Post_Review::instance();
+
+		while ( $cursor < $total && ( $processed + $failed ) < $batch_size ) {
+			if ( ( $processed + $failed ) > 0 && $context->should_yield() ) {
+				break;
+			}
+
+			$post_id = (int) $items[ $cursor ];
+
+			try {
+				$res = $review->publish_review_post( $post_id );
+				if ( is_wp_error( $res ) ) {
+					$failed++;
+					$history->record( 'warning', $res->get_error_message(), null, null, array( 'post_id' => $post_id ) );
+				} else {
+					$processed++;
+					$results[] = $post_id;
+					$history->record(
+						'activity',
+						sprintf( __( 'Post %d published successfully', 'ai-post-scheduler' ), $post_id ),
+						null,
+						null,
+						array( 'post_id' => $post_id )
+					);
+				}
+			} catch ( Throwable $e ) {
+				$failed++;
+				$this->logger->log( sprintf( 'Bulk publish error for post %d in job %s: %s', $post_id, $job_id, $e->getMessage() ), 'error' );
+				$history->record( 'warning', $e->getMessage(), null, null, array( 'post_id' => $post_id, 'exception' => $e->getMessage() ) );
+			}
+
+			$cursor++;
+		}
+
+		if ( $failed > 0 ) {
+			$history->complete_failure(
+				sprintf( __( 'Publish slice completed with %d failures', 'ai-post-scheduler' ), $failed ),
+				array( 'success_count' => $processed, 'failed_count' => $failed )
+			);
+		} else {
+			$history->complete_success( array( 'success_count' => $processed, 'failed_count' => 0 ) );
+		}
+
+		$is_complete = ( $cursor >= $total );
+		if ( $is_complete ) {
+			return AIPS_Job_Slice_Result::complete( $processed, $failed, $results );
+		}
+
+		return AIPS_Job_Slice_Result::continue( $processed, $cursor, $failed, $results );
+	}
+
+	/**
+	 * Execute a single item under the given strategy.
+	 *
+	 * @param string $strategy Strategy name.
+	 * @param mixed  $item     Item from items collection.
+	 * @param array  $payload  Job payload.
+	 * @param string $job_id   Job UUID.
+	 * @return int|WP_Error
+	 */
+	private function execute_item( string $strategy, $item, array $payload, string $job_id ) {
+		if ( isset( self::$custom_strategies[ $strategy ] ) && is_callable( self::$custom_strategies[ $strategy ] ) ) {
+			$job_obj = (object) array(
+				'job_id'   => $job_id,
+				'job_type' => $strategy,
+				'options'  => $payload,
+				'items'    => isset( $payload['items'] ) && is_array( $payload['items'] ) ? $payload['items'] : array(),
+			);
+			return call_user_func( self::$custom_strategies[ $strategy ], $item, $job_id, $job_obj );
+		}
+
+		if ( 'author_topic_post' === $strategy ) {
+			return AIPS_Author_Post_Generator::instance()->generate_now(
+				(int) $item,
+				'author_topic_post',
+				array( 'detail' => sprintf( __( 'Bulk job %s (Author topics)', 'ai-post-scheduler' ), $job_id ) )
+			);
+		}
+
+		if ( 'planner_post' === $strategy ) {
+			$template_id = isset( $payload['history_meta']['template_id'] )
+				? (int) $payload['history_meta']['template_id']
+				: 0;
+
+			if ( $template_id <= 0 ) {
+				return new WP_Error(
+					'planner_post_missing_template',
+					__( 'planner_post strategy requires a template_id stored in job options.', 'ai-post-scheduler' )
+				);
+			}
+
+			$template = ( new AIPS_Template_Repository() )->get_by_id( $template_id );
+
+			if ( ! $template || empty( $template->is_active ) ) {
+				return new WP_Error(
+					'planner_post_template_not_found',
+					sprintf( __( 'Template %d not found or inactive for planner_post strategy.', 'ai-post-scheduler' ), $template_id )
+				);
+			}
+
+			$topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
+			$generator = new AIPS_Generator();
+
+			return $generator->generate_post(
+				$template,
+				null,
+				$topic,
+				array(
+					'creation_method' => 'planner_post',
+					'trigger_context' => array( 'detail' => sprintf( __( 'Bulk job %s (Planner)', 'ai-post-scheduler' ), $job_id ) ),
+				)
+			);
+		}
+
+		if ( 'trending_topic_post' === $strategy ) {
+			if ( ! is_array( $item ) || empty( $item['id'] ) || ! isset( $item['topic'] ) ) {
+				return new WP_Error(
+					'invalid_trending_topic_item',
+					__( 'Item must be an array with id and topic keys.', 'ai-post-scheduler' )
+				);
+			}
+
+			$template_id = isset( $payload['history_meta']['template_id'] )
+				? (int) $payload['history_meta']['template_id']
+				: 0;
+
+			if ( $template_id <= 0 ) {
+				return new WP_Error(
+					'trending_topic_post_missing_template',
+					__( 'trending_topic_post strategy requires a template_id stored in job options.', 'ai-post-scheduler' )
+				);
+			}
+
+			$template = ( new AIPS_Template_Repository() )->get_by_id( $template_id );
+
+			if ( ! $template || empty( $template->is_active ) ) {
+				return new WP_Error(
+					'trending_topic_post_template_not_found',
+					sprintf( __( 'Template %d not found or inactive for trending_topic_post strategy.', 'ai-post-scheduler' ), $template_id )
+				);
+			}
+
+			$context = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'trending_topic_post' );
+			$context->set_trigger_context(
+				array(
+					'detail' => sprintf( __( 'Bulk job %s (Trending topics)', 'ai-post-scheduler' ), $job_id ),
+				)
+			);
+			$generator = new AIPS_Generator();
+			$post_id   = $generator->generate_post( $context );
+
+			if ( is_wp_error( $post_id ) ) {
+				return $post_id;
+			}
+
+			update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_ID, absint( $item['id'] ) );
+			update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_TEXT, sanitize_text_field( (string) $item['topic'] ) );
+
+			return $post_id;
+		}
+
+		return new WP_Error( 'unknown_bulk_strategy', sprintf( __( 'Unknown bulk strategy: %s', 'ai-post-scheduler' ), $strategy ) );
 	}
 }

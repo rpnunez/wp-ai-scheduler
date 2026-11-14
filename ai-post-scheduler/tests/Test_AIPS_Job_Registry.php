@@ -19,10 +19,14 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$definitions = $this->registry->get_definitions();
 
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_SLICE, $definitions );
+		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_BULK_POST_GENERATION, $definitions );
+		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH, $definitions );
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_BULK_BATCH_SLICE, $definitions );
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_LINK_INDEX_SCAN, $definitions );
 
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_SLICE ) );
+		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_POST_GENERATION ) );
+		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH ) );
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_BATCH_SLICE ) );
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_LINK_INDEX_SCAN ) );
 		$this->assertFalse( $this->registry->has( 'non_existent_job_type' ) );

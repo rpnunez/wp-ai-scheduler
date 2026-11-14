@@ -127,7 +127,7 @@ class Test_AIPS_System_Totals_Repository extends WP_UnitTestCase {
 		$this->insert('link_index', array('source_post_id' => 1, 'target_url' => 'https://a.test', 'link_type' => 'external', 'inserted_by_aips' => 1));
 		$this->insert('background_processes', array('process_key' => 'k', 'ai_calls_used' => 7));
 		$this->insert('sources_data', array('source_id' => 1, 'fetch_status' => 'success', 'num_used' => 4));
-		$this->insert('bulk_batch_jobs', array('job_id' => wp_generate_uuid4(), 'job_type' => 't', 'items_json' => '[]', 'options_json' => '{}', 'processed' => 6));
+		$this->insert('jobs', array('job_id' => wp_generate_uuid4(), 'job_type' => 'bulk_post_generation', 'payload_json' => '[]', 'processed' => 6));
 
 		$after = $this->totals();
 

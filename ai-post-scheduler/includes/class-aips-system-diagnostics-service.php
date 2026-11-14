@@ -74,9 +74,7 @@ class AIPS_System_Diagnostics_Service {
 			? $container->make(AIPS_History_Repository::class)
 			: new AIPS_History_Repository());
 
-		$this->bulk_batch_job_store = $bulk_batch_job_store ?: ($container->has(AIPS_Bulk_Batch_Job_Store::class)
-			? $container->make(AIPS_Bulk_Batch_Job_Store::class)
-			: (class_exists('AIPS_Bulk_Batch_Job_Store') ? new AIPS_Bulk_Batch_Job_Store() : null));
+		$this->bulk_batch_job_store = $bulk_batch_job_store;
 
 		$this->resilience_service = $resilience_service ?: ($container->has(AIPS_Resilience_Service::class)
 			? $container->make(AIPS_Resilience_Service::class)
@@ -461,8 +459,10 @@ class AIPS_System_Diagnostics_Service {
 	public function cleanup_stale_jobs_cache() {
 		$deleted = 0;
 
-		if ($this->bulk_batch_job_store) {
+		if ($this->bulk_batch_job_store && method_exists($this->bulk_batch_job_store, 'cleanup_old_jobs')) {
 			$deleted = $this->bulk_batch_job_store->cleanup_old_jobs();
+		} else {
+			$deleted = AIPS_Container::get_instance()->get_job_manager()->cleanup_finished_jobs( 7 * DAY_IN_SECONDS );
 		}
 
 		$cache_flushed = false;

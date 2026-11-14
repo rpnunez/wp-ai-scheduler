@@ -304,6 +304,14 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		// migrate_to_3_8_0() migrates pending/processing bulk jobs to aips_jobs
+		// and drops the legacy aips_bulk_batch_jobs table (Issue #2390 Slice 1).
+		if ( version_compare( $from_version, '3.8.0', '<' ) && ! $this->migrate_to_3_8_0() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Bulk batch jobs migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1976,6 +1984,86 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.24: Added author featured-image columns and confirmed post-image tables.', 'info' );
+
+		return true;
+	}
+
+	/**
+	 * Migration for version 3.8.0 (Issue #2390 Slice 1).
+	 *
+	 * Migrates uncompleted rows from wp_aips_bulk_batch_jobs into wp_aips_jobs,
+	 * then drops the wp_aips_bulk_batch_jobs table.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_8_0(): bool {
+		global $wpdb;
+
+		$legacy_table = $wpdb->prefix . 'aips_bulk_batch_jobs';
+		$jobs_table   = $wpdb->prefix . 'aips_jobs';
+
+		// If legacy table does not exist, nothing to migrate or drop.
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $legacy_table ) ) !== $legacy_table ) {
+			return true;
+		}
+
+		// Ensure target jobs table exists
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $jobs_table ) ) !== $jobs_table ) {
+			return false;
+		}
+
+		// Fetch any pending, processing, or paused rows from legacy table
+		$active_rows = $wpdb->get_results(
+			"SELECT * FROM `{$legacy_table}` WHERE `status` IN ('pending', 'processing', 'paused')"
+		);
+
+		if ( ! empty( $active_rows ) ) {
+			foreach ( $active_rows as $row ) {
+				$job_type = ( 'review_publish' === $row->job_type )
+					? 'bulk_post_publish'
+					: 'bulk_post_generation';
+
+				$items   = json_decode( $row->items_json, true );
+				$options = json_decode( $row->options_json, true );
+
+				$payload = array_merge(
+					is_array( $options ) ? $options : array(),
+					array(
+						'items'          => is_array( $items ) ? $items : array(),
+						'strategy'       => $row->job_type,
+						'queue_job_type' => $row->job_type,
+					)
+				);
+
+				$status = ( 'processing' === $row->status ) ? 'running' : $row->status;
+
+				$wpdb->replace(
+					$jobs_table,
+					array(
+						'job_id'       => $row->job_id,
+						'job_type'     => $job_type,
+						'group_name'   => 'aips-bulk-batch',
+						'status'       => $status,
+						'total'        => (int) $row->total,
+						'processed'    => (int) $row->processed,
+						'failed'       => 0,
+						'cursor_id'    => (int) $row->processed,
+						'payload_json' => wp_json_encode( $payload ),
+						'max_retries'  => 3,
+						'created_at'   => (int) $row->created_at,
+						'updated_at'   => (int) $row->updated_at,
+					)
+				);
+			}
+
+			$this->logger->log(
+				sprintf( 'migrate_to_3_8_0: migrated %d active rows from %s to %s', count( $active_rows ), $legacy_table, $jobs_table ),
+				'info'
+			);
+		}
+
+		// Drop the legacy table
+		$wpdb->query( "DROP TABLE IF EXISTS `{$legacy_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		return true;
 	}

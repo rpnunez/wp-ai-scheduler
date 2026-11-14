@@ -14,6 +14,7 @@ class AIPS_Job_Record {
 
 	const STATUS_PENDING   = 'pending';
 	const STATUS_RUNNING   = 'running';
+	const STATUS_PROCESSING = 'running';
 	const STATUS_PAUSED    = 'paused';
 	const STATUS_COMPLETED = 'completed';
 	const STATUS_FAILED    = 'failed';
@@ -226,6 +227,36 @@ class AIPS_Job_Record {
 	 */
 	public function get_percent(): float {
 		return $this->get_progress_percentage();
+	}
+
+	/**
+	 * Magic getter for backward compatibility with callers expecting object property access.
+	 *
+	 * @param string $key Property name.
+	 * @return mixed
+	 */
+	public function __get( string $key ) {
+		switch ( $key ) {
+			case 'status':
+				return $this->status;
+			case 'total':
+				return $this->total;
+			case 'processed':
+				return $this->processed;
+			case 'failed':
+				return $this->failed;
+			case 'job_id':
+			case 'id':
+				return $this->job_id;
+			case 'job_type':
+				return $this->job_type;
+			case 'items':
+				return isset( $this->payload['items'] ) && is_array( $this->payload['items'] ) ? $this->payload['items'] : array();
+			case 'options':
+				return isset( $this->payload['options'] ) && is_array( $this->payload['options'] ) ? $this->payload['options'] : ( isset( $this->payload['history_meta'] ) ? $this->payload : array() );
+			default:
+				return null;
+		}
 	}
 
 	/**

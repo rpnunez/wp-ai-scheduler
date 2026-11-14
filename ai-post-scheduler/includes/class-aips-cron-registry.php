@@ -283,7 +283,6 @@ class AIPS_Cron_Registry {
 			AIPS_Link_Index_Service::SCAN_TICK_HOOK           => __( 'Link Index Scan Tick', 'ai-post-scheduler' ),
 			AIPS_Autolink_Run_Service::TICK_HOOK              => __( 'Auto-link Run Tick', 'ai-post-scheduler' ),
 			AIPS_Managed_Background_Process::TICK_HOOK        => __( 'Managed Background Process Tick', 'ai-post-scheduler' ),
-			AIPS_Bulk_Batch_Processor::HOOK                   => __( 'Bulk Batch Slice', 'ai-post-scheduler' ),
 			AIPS_Job_Registry::DEFAULT_TICK_HOOK              => __( 'Background Job Tick', 'ai-post-scheduler' ),
 			'aips_index_posts_batch'                          => __( 'Internal Links Index Batch', 'ai-post-scheduler' ),
 			'aips_process_pending_indexer_queue'              => __( 'Pending Indexer Queue', 'ai-post-scheduler' ),
@@ -306,6 +305,7 @@ class AIPS_Cron_Registry {
 			'aips_daily_rollup_insights',
 			'aips_weekly_send_digest',
 			'aips_monthly_send_digest',
+			'aips_process_bulk_batch',
 		);
 	}
 
@@ -514,22 +514,9 @@ class AIPS_Cron_Registry {
 				},
 				'accepted_args' => 1,
 			),
-			AIPS_Bulk_Batch_Processor::HOOK => array(
-				'callback'      => static function ( $job_id, $start_index, $batch_size, $total_quantity, $correlation_id = '' ) {
-					AIPS_Bulk_Batch_Processor::instance()->process(
-						(string) $job_id,
-						(int) $start_index,
-						(int) $batch_size,
-						(int) $total_quantity,
-						(string) $correlation_id
-					);
-				},
-				'accepted_args' => 5,
-			),
 			'aips_cleanup_bulk_batch_jobs' => array(
 				'callback'      => static function () {
-					$store    = new AIPS_Bulk_Batch_Job_Store();
-					$deleted  = $store->cleanup_old_jobs();
+					$deleted  = AIPS_Container::get_instance()->get_job_manager()->cleanup_finished_jobs( 7 * DAY_IN_SECONDS );
 					$deleted += ( new AIPS_Background_Process_Repository() )->cleanup_old();
 					if ( $deleted > 0 ) {
 						( new AIPS_Logger() )->log(

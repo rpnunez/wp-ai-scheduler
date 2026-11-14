@@ -54,12 +54,13 @@ class AIPS_Link_Index_Scan_Process extends AIPS_Background_Process_Base {
 		}
 
 		$map = array(
-			AIPS_Bulk_Batch_Job_Store::STATUS_PENDING    => 'running',
-			AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING => 'running',
-			AIPS_Link_Index_Service::STATUS_PAUSED       => 'paused',
-			AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED  => 'completed',
-			AIPS_Bulk_Batch_Job_Store::STATUS_FAILED     => 'failed',
-			AIPS_Link_Index_Service::STATUS_CANCELLED    => 'cancelled',
+			AIPS_Job_Record::STATUS_PENDING   => 'running',
+			AIPS_Job_Record::STATUS_RUNNING   => 'running',
+			'processing'                      => 'running',
+			AIPS_Link_Index_Service::STATUS_PAUSED    => 'paused',
+			AIPS_Job_Record::STATUS_COMPLETED => 'completed',
+			AIPS_Job_Record::STATUS_FAILED    => 'failed',
+			AIPS_Link_Index_Service::STATUS_CANCELLED => 'cancelled',
 		);
 		$status = isset($map[$scan['status']]) ? $map[$scan['status']] : self::STATUS_IDLE;
 
