@@ -12,6 +12,8 @@ const vm = require('node:vm');
 
 const sourcePath = path.resolve(__dirname, '../../assets/js/admin-flyout-navigation.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
+const adminSource = fs.readFileSync(path.resolve(__dirname, '../../assets/js/admin.js'), 'utf8');
+const structuresTemplate = fs.readFileSync(path.resolve(__dirname, '../../templates/admin/structures.php'), 'utf8');
 
 test('flyout module is valid JavaScript', function() {
 	assert.doesNotThrow(function() {
@@ -41,4 +43,10 @@ test('flyout includes hover intent, keyboard, responsive, and cleanup behavior',
 	assert.match(source, /event\.key === 'End'/);
 	assert.match(source, /\(hover: none\) and \(pointer: coarse\)/);
 	assert.match(source, /destroy: function\(\)/);
+});
+
+test('Structure sub-tabs preserve canonical Studio route keys', function() {
+	assert.match(adminSource, /data\('route-tab'\) \|\| tabId/);
+	assert.match(structuresTemplate, /data-route-tab="structures"/);
+	assert.match(structuresTemplate, /data-route-tab="structure-sections"/);
 });

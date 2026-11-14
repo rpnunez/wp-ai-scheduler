@@ -27,8 +27,8 @@ $structures_active = 'aips-structures' === $initial_structure_tab;
 	<div class="aips-content-panel aips-panel-with-tabs">
 		<!-- Tab Navigation -->
 		<div class="aips-tab-nav aips-panel-tab-nav" role="tablist">
-			<a href="#aips-structures" class="aips-tab-link<?php echo $structures_active ? ' active' : ''; ?>" data-tab="aips-structures" role="tab" aria-selected="<?php echo $structures_active ? 'true' : 'false'; ?>"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-structure-sections" class="aips-tab-link<?php echo $structures_active ? '' : ' active'; ?>" data-tab="aips-structure-sections" role="tab" aria-selected="<?php echo $structures_active ? 'false' : 'true'; ?>"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-structures" class="aips-tab-link<?php echo $structures_active ? ' active' : ''; ?>" data-tab="aips-structures" data-route-tab="structures" role="tab" aria-selected="<?php echo $structures_active ? 'true' : 'false'; ?>"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-structure-sections" class="aips-tab-link<?php echo $structures_active ? '' : ' active'; ?>" data-tab="aips-structure-sections" data-route-tab="structure-sections" role="tab" aria-selected="<?php echo $structures_active ? 'false' : 'true'; ?>"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
 		</div>
 
 		<div id="aips-structures-tab" class="aips-tab-content<?php echo $structures_active ? ' active' : ' aips-is-hidden'; ?>" role="tabpanel" aria-hidden="<?php echo $structures_active ? 'false' : 'true'; ?>">

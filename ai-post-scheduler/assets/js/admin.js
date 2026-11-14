@@ -752,6 +752,7 @@
         switchAipsTab: function(e) {
             var $tabLink = $(e.currentTarget);
             var tabId = $tabLink.data('tab');
+			var routeTab = $tabLink.data('route-tab') || tabId;
 
             // Links without data-tab (for example Diagnostics top-level tabs)
             // are regular navigation links and should not be intercepted.
@@ -836,7 +837,7 @@
             try {
                 if (window.history && window.history.replaceState) {
                     var currentUrl = new URL(window.location.href);
-                    currentUrl.searchParams.set('tab', tabId);
+					currentUrl.searchParams.set('tab', routeTab);
                     currentUrl.hash = tabId;
                     window.history.replaceState(null, '', currentUrl.toString());
                 } else {
@@ -849,7 +850,7 @@
             try {
                 var pageName = new URLSearchParams(window.location.search).get('page') || '';
                 if (pageName) {
-                    localStorage.setItem('aips_active_tab_' + pageName, tabId);
+					localStorage.setItem('aips_active_tab_' + pageName, routeTab);
                 }
             } catch (err) {}
 
@@ -865,9 +866,9 @@
                             $(this).val(refUrl.pathname + refUrl.search + refUrl.hash);
                         } catch (e) {
                             if (val.indexOf('tab=') > -1) {
-                                val = val.replace(/([?&])tab=[^&#]*/, '$1tab=' + encodeURIComponent(tabId));
+								val = val.replace(/([?&])tab=[^&#]*/, '$1tab=' + encodeURIComponent(routeTab));
                             } else {
-                                val += (val.indexOf('?') > -1 ? '&' : '?') + 'tab=' + encodeURIComponent(tabId);
+								val += (val.indexOf('?') > -1 ? '&' : '?') + 'tab=' + encodeURIComponent(routeTab);
                             }
                             $(this).val(val);
                         }

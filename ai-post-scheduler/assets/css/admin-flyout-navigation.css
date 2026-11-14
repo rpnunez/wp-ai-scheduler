@@ -2,6 +2,8 @@
 	position: fixed;
 	display: flex;
 	max-width: calc(100vw - var(--aips-space-4));
+	max-height: calc(100vh - var(--aips-space-4));
+	overflow-y: auto;
 	padding: var(--aips-space-2);
 	background: var(--aips-white);
 	border: 1px solid var(--aips-gray-300);
