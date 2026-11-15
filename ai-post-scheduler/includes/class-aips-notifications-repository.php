@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
  * @since 1.8.0
  */
 class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Interface {
+	const EMAIL_DEDUPE_RECEIPT_TYPE = 'email_dedupe_receipt';
 
 	/**
 	 * @var self|null Singleton instance.
@@ -251,8 +252,8 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 			return array();
 		}
 
-		$sql = "SELECT type, COUNT(*) AS count FROM {$this->table} WHERE created_at >= %d";
-		$params = array($cutoff_timestamp);
+		$sql = "SELECT type, COUNT(*) AS count FROM {$this->table} WHERE created_at >= %d AND type <> %s";
+		$params = array($cutoff_timestamp, self::EMAIL_DEDUPE_RECEIPT_TYPE);
 
 		if (!empty($types)) {
 			$types = array_values(array_filter(array_map('sanitize_key', $types)));

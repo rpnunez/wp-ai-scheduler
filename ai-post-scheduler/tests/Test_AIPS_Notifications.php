@@ -490,4 +490,56 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->assertStringContainsString( '10', $unread[0]->message );
 		$this->assertStringContainsString( '42', $unread[0]->url );
 	}
+
+	public function test_db_dedupe_uses_notification_row_without_transient() {
+		$notifications = new AIPS_Notifications( $this->repository );
+		$options = array( 'channels' => array( AIPS_Notifications::CHANNEL_DB ), 'title' => 'Test', 'message' => 'Test', 'dedupe_key' => 'db-only-receipt', 'dedupe_window' => 3600 );
+		$this->assertTrue( $notifications->dispatch_notification( 'test_type', $options ) );
+		$this->assertFalse( $notifications->dispatch_notification( 'test_type', $options ) );
+		$this->assertFalse( get_transient( 'aips_notif_' . md5( 'db-only-receipt' ) ) );
+		$this->assertSame( 1, $this->repository->count_unread() );
+	}
+
+	public function test_email_only_receipt_dedupes_without_inbox_row() {
+		$config = AIPS_Config::get_instance();
+		$original_preferences = $config->get_option( 'aips_notification_preferences' );
+		$config->set_option( 'aips_notification_preferences', array( 'generation_failed' => AIPS_Notifications::MODE_EMAIL_ONLY ) );
+		$notifications = new AIPS_Notifications( $this->repository );
+		$options = array( 'to_email' => 'test@example.com', 'dedupe_key' => 'email-only-receipt', 'dedupe_window' => 3600 );
+		add_filter( 'pre_wp_mail', '__return_true' );
+		try {
+			$this->assertTrue( $notifications->dispatch_notification( 'generation_failed', $options ) );
+			$this->assertFalse( $notifications->dispatch_notification( 'generation_failed', $options ) );
+		} finally {
+			remove_filter( 'pre_wp_mail', '__return_true' );
+			$config->set_option( 'aips_notification_preferences', $original_preferences );
+		}
+		$this->assertTrue( $this->repository->was_recently_sent( 'email-only-receipt', 3600 ) );
+		$this->assertSame( 0, $this->repository->count_unread() );
+		$this->assertArrayNotHasKey( AIPS_Notifications_Repository::EMAIL_DEDUPE_RECEIPT_TYPE, $this->repository->get_type_counts_for_window( 3600 ) );
+		$this->assertFalse( get_transient( 'aips_notif_' . md5( 'email-only-receipt' ) ) );
+	}
+
+	public function test_failed_email_does_not_create_dedupe_receipt() {
+		$config = AIPS_Config::get_instance();
+		$original_preferences = $config->get_option( 'aips_notification_preferences' );
+		$config->set_option( 'aips_notification_preferences', array( 'generation_failed' => AIPS_Notifications::MODE_EMAIL_ONLY ) );
+		$notifications = new AIPS_Notifications( $this->repository );
+		$options = array( 'to_email' => 'test@example.com', 'dedupe_key' => 'failed-email', 'dedupe_window' => 3600 );
+		add_filter( 'pre_wp_mail', '__return_false' );
+		try {
+			$this->assertFalse( $notifications->dispatch_notification( 'generation_failed', $options ) );
+		} finally {
+			remove_filter( 'pre_wp_mail', '__return_false' );
+			$config->set_option( 'aips_notification_preferences', $original_preferences );
+		}
+		$this->assertFalse( $this->repository->was_recently_sent( 'failed-email', 3600 ) );
+	}
+
+	public function test_zero_window_does_not_dedupe() {
+		$notifications = new AIPS_Notifications( $this->repository );
+		$options = array( 'channels' => array( AIPS_Notifications::CHANNEL_DB ), 'dedupe_key' => 'zero-window', 'dedupe_window' => 0 );
+		$this->assertTrue( $notifications->dispatch_notification( 'test_type', $options ) );
+		$this->assertTrue( $notifications->dispatch_notification( 'test_type', $options ) );
+	}
 }
