@@ -56,25 +56,18 @@ class AIPS_Settings_AJAX {
 		}
 
 		AIPS_Settings::register_setting_schema(new AIPS_Settings_UI());
-		$registered_settings = AIPS_Settings::get_registered_settings_args();
+		$registry = AIPS_Settings_Registry::instance();
 		$updated = array();
 
 		foreach ($settings as $option_name => $raw_value) {
 			$option_name = is_string($option_name) ? sanitize_key($option_name) : '';
 
-			if (empty($option_name) || !isset($registered_settings[$option_name])) {
+			if (empty($option_name) || !$registry->has_definition($option_name)) {
 				continue;
 			}
 
-			$array_settings = array(
-				'aips_notification_preferences',
-				'aips_ai_assistance_contexts',
-				'aips_wp_ai_connector_ids',
-				'aips_indexer_post_types',
-				'aips_research_niches',
-			);
-
-			if (is_array($raw_value) && !in_array($option_name, $array_settings, true)) {
+			$definition = $registry->get_definition($option_name);
+			if (is_array($raw_value) && $definition->get_type() !== AIPS_Setting_Definition::TYPE_ARRAY) {
 				continue;
 			}
 

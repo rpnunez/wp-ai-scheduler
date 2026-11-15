@@ -13,6 +13,37 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Settings_UI {
 
+	/**
+	 * Magic fallback for retired field callbacks.
+	 *
+	 * Delegates to AIPS_Settings_Form_Renderer or AIPS_Settings_Manager
+	 * ensuring backward compatibility for third-party or test callers.
+	 *
+	 * @param string $name Method name.
+	 * @param array  $arguments Method arguments.
+	 * @return void
+	 */
+	public function __call( $name, $arguments ) {
+		if ( str_ends_with( $name, '_field_callback' ) ) {
+			$raw_key = substr( $name, 0, -strlen( '_field_callback' ) );
+			$registry = AIPS_Settings_Registry::instance();
+			$key = $raw_key;
+			if ( ! $registry->has_definition( $key ) && $registry->has_definition( 'aips_' . $key ) ) {
+				$key = 'aips_' . $key;
+			}
+			$def = $registry->get_definition( $key );
+			if ( $def ) {
+				$renderer = new AIPS_Settings_Form_Renderer();
+				$renderer->render_field( $def );
+				return;
+			}
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			trigger_error( "Call to undefined method AIPS_Settings_UI::{$name}()", E_USER_WARNING );
+		}
+	}
+
 	/** Retention is disabled at zero; never convert a negative value into deletion. */
 	public function sanitize_source_archive_retention_days( $value ) {
 		return max( 0, min( 3650, (int) $value ) );

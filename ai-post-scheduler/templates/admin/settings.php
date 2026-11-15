@@ -33,96 +33,17 @@ if ('engine' === $active_settings_tab || 'settings-engine' === $active_settings_
 	$active_settings_tab = 'settings-developers';
 }
 
-$settings_rail_items = array(
-	array(
-		'key'         => 'settings-general',
-		'label'       => __('General', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-admin-generic',
-		'description' => __('Defaults & post settings', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-general'),
-		'active'      => ($active_settings_tab === 'settings-general'),
-	),
-	array(
-		'key'         => 'settings-ai',
-		'label'       => __('Engine', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-rest-api',
-		'description' => __('Models & AI connection', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-ai'),
-		'active'      => ($active_settings_tab === 'settings-ai'),
-	),
-	array(
-		'key'         => 'settings-ai-assistance',
-		'label'       => __('AI Assistance', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-superhero-alt',
-		'description' => __('Suggestion behavior & privacy', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-ai-assistance'),
-		'active'      => ($active_settings_tab === 'settings-ai-assistance'),
-	),
-	array(
-		'key'         => 'settings-linking',
-		'label'       => __('Internal Linking', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-admin-links',
-		'description' => __('Link index & auto-linking', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-linking'),
-		'active'      => ($active_settings_tab === 'settings-linking'),
-	),
-	array(
-		'key'         => 'settings-feedback',
-		'label'       => __('Feedback & Topics', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-thumbs-up',
-		'description' => __('Deduplication & scoring', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-feedback'),
-		'active'      => ($active_settings_tab === 'settings-feedback'),
-	),
-	array(
-		'key'         => 'settings-notifications',
-		'label'       => __('Notifications', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-email-alt',
-		'description' => __('Email & alert channels', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-notifications'),
-		'active'      => ($active_settings_tab === 'settings-notifications'),
-	),
-	array(
-		'key'         => 'settings-resilience',
-		'label'       => __('Resilience & Limits', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-shield',
-		'description' => __('Failover & circuit breaker', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-resilience'),
-		'active'      => ($active_settings_tab === 'settings-resilience'),
-	),
-	array(
-		'key'         => 'settings-content-strategy',
-		'label'       => __('Content Strategy', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-art',
-		'description' => __('Brand voice & persona', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-content-strategy'),
-		'active'      => ($active_settings_tab === 'settings-content-strategy'),
-	),
-	array(
-		'key'         => 'settings-cache',
-		'label'       => __('Performance', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-performance',
-		'description' => __('Caching layer & driver', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-cache'),
-		'active'      => ($active_settings_tab === 'settings-cache'),
-	),
-	array(
-		'key'         => 'settings-api-keys',
-		'label'       => __('API Keys', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-admin-network',
-		'description' => __('Third-party credentials', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-api-keys'),
-		'active'      => ($active_settings_tab === 'settings-api-keys'),
-	),
-	array(
-		'key'         => 'settings-developers',
-		'label'       => __('Developers', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-editor-code',
-		'description' => __('Debug & dev tools', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-developers'),
-		'active'      => ($active_settings_tab === 'settings-developers'),
-	),
-);
+$settings_rail_items = array();
+foreach ( AIPS_Settings_Registry::instance()->get_tabs() as $tab_key => $tab_data ) {
+	$settings_rail_items[] = array(
+		'key'         => $tab_key,
+		'label'       => $tab_data['label'],
+		'icon'        => $tab_data['icon'],
+		'description' => $tab_data['description'],
+		'url'         => admin_url( 'admin.php?page=aips-settings&tab=' . $tab_key ),
+		'active'      => ( $active_settings_tab === $tab_key ),
+	);
+}
 
 $page_context = AIPS_Admin_Page_Context::resolve(
 	'aips-settings',
