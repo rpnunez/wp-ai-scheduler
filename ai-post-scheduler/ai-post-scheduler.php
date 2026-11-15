@@ -610,6 +610,12 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Prompt_Registry::class, function( $container ) {
             return new AIPS_Prompt_Registry();
         });
+
+        // Register AIPS_Prompt_Composer. The middleware stack starts empty;
+        // concrete middlewares are appended here as they are introduced.
+        $container->singleton(AIPS_Prompt_Composer::class, function( $container ) {
+            return new AIPS_Prompt_Composer();
+        });
     }
 
     /**
