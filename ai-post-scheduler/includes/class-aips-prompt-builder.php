@@ -118,6 +118,61 @@ class AIPS_Prompt_Builder {
     }
 
     /**
+     * Builds the complete content prompt for a generation context through
+     * AIPS_Prompt_Composer, rather than the inline voice/diversity/filter
+     * logic in AIPS_Prompt_Builder_Post_Content::build_from_context().
+     *
+     * The task directive (structured/template-processed prompt text,
+     * content images, related context) still comes from
+     * AIPS_Prompt_Builder_Post_Content::build_task_directive_from_context(),
+     * since that part is genuinely per-context and not a cross-cutting
+     * enrichment. Voice tone, site context, editorial guidelines,
+     * localization, sources, diversity, and the token budget are each
+     * applied by a dedicated middleware instead of being duplicated here.
+     *
+     * The sources selection used during composition is captured back onto
+     * get_post_content_builder(), so existing callers that read
+     * get_post_content_builder()->get_sources_selection() after building a
+     * prompt (e.g. AIPS_Generator, for post-submission usage recording)
+     * keep working unchanged.
+     *
+     * @since 2.0.0
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return string The constructed prompt.
+     */
+    public function compile_content_prompt_via_composer(AIPS_Generation_Context $context) {
+        $content_builder = $this->get_post_content_builder();
+        $task_directive  = $content_builder->build_task_directive_from_context($context);
+
+        $document = new AIPS_Prompt_Document();
+
+        $registry = AIPS_Container::get_instance()->make(AIPS_Prompt_Registry::class);
+        $template = $registry->get_template(AIPS_Prompt_Registry::TYPE_POST_CONTENT);
+        if (!is_wp_error($template)) {
+            $document->set_system_instructions($template['system_instructions']);
+        }
+
+        $document->set_task_directive($task_directive);
+
+        $sources_selection = array();
+        $composer = new AIPS_Prompt_Composer(array(
+            new AIPS_Site_Context_Middleware(),
+            new AIPS_Editorial_Guidelines_Middleware(),
+            new AIPS_Voice_Tone_Middleware(),
+            new AIPS_Localization_Middleware(),
+            new AIPS_Sources_Enrichment_Middleware($this, $sources_selection),
+            new AIPS_Diversity_Injection_Middleware(),
+            new AIPS_Token_Budget_Middleware(),
+        ));
+
+        $document = $composer->compose($document, $context);
+
+        $content_builder->set_sources_selection($sources_selection);
+
+        return $document->compile_text();
+    }
+
+    /**
      * Builds an auxiliary context string for AI Engine queries.
      *
      * This keeps instructions (voice, formatting, safety) out of the main message
