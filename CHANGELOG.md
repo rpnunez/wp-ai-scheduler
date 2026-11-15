@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Removed
+- **Unused Template and Voice Snapshot in `AIPS_Generation_Session` (#2317):**
+  - Removed dead `$template` and `$voice` properties along with their initializations from `AIPS_Generation_Session`.
+  - Removed redundant template/voice array copying in `AIPS_Generation_Session::start()`, keeping `$this->context` and standard context population for legacy callers.
+  - Removed unused dead getters from `AIPS_Generation_Session`: `get_template()`, `get_voice()`, `get_started_at()`, `get_completed_at()`, and `get_result()`.
+  - Removed unused dead method `AIPS_History_Container::get_session()`.
+
 ### Added
 - **Unified Background Job Infrastructure — Slice 3:** Connected `AIPS_Job_Manager` with `AIPS_Cron_Backend_Interface` and container DI; migrated `AIPS_Job_Dispatcher` and `AIPS_Managed_Background_Process` to `AIPS_Cron_Manager`; enhanced `AIPS_Batch_Queue_Service` and `AIPS_Bulk_Generation_Process` to clear and inspect pending ActionScheduler slices alongside WP-Cron; unified Heartbeat payload and Diagnostics UI to surface active jobs from `AIPS_Job_Manager::get_jobs()`; registered `aips_job_tick` in `AIPS_Cron_Registry` with common dispatch closure and deactivation cleanup; added comprehensive end-to-end integration tests in `Test_AIPS_Job_Integration.php` (issue #2376).
 - **Unified Background Job Infrastructure — Slice 2:** Introduced `AIPS_Job_Manager` (asynchronous, synchronous, batched, and staggered dispatching, lifecycle pause/resume/cancel/retry controls, and runner tick processing with retry backoff), `AIPS_Job_Context` (time and memory budgeting guards), and `AIPS_Job_Slice_Result` (issue #2376). Registered `AIPS_Job_Manager` in `AIPS_Container`.
