@@ -33,6 +33,28 @@ Rules:
 4. Delete files you generated and do not intend to keep: `ai-post-scheduler/coverage/`, `ai-post-scheduler/.artifacts/`, scratch SQL/output files, stray background jobs or watchers you started.
 5. Say in your final report what you started and what you stopped (for example "stack was already up, left running" or "started db+web, stopped them").
 
+## Claude Code cloud sessions (no Docker)
+
+Cloud sessions (claude.ai/code, `CLAUDE_CODE_REMOTE=true`) have no Docker daemon, so `make test-session` cannot run there. Use this instead; the agent rules above (one invocation per batch, no output filtering, run the tests that cover your change) still apply:
+
+```bash
+make test-cloud ARGS="tests/Test_A.php tests/Test_B.php"   # WordPress suite on the session's MariaDB
+make test-cloud ARGS="tests/Test_A.php --filter test_foo"  # PHPUnit options pass through
+make test-cloud ARGS="--syntax"                            # php -l on changed PHP files + repository-boundary lint
+make test-cloud ARGS="--syntax path/to/file.php"           # php -l on specific files + lint
+make cloud-site                                            # live WordPress + plugin on :8080 (admin/admin)
+make cloud-site-stop                                       # stop it (ARGS=reset deletes site + DB)
+```
+
+How it is wired:
+
+- **Environment setup script** (cloud environment settings, not in this repo) installs MariaDB and `svn`, creates `wordpress_test`, and installs WordPress core and the test library into `/tmp/wordpress` and `/tmp/wordpress-tests-lib`, the same steps as `.github/workflows/phpunit-tests.yml`. It does not run `composer install`: `vendor/` is committed, and reinstalling rewrites its autoloader files.
+- **SessionStart hook** (`.claude/settings.json` → `scripts/cloud-session-start.sh`) starts MariaDB, because services from the setup script do not survive into the session. It does nothing outside cloud sessions and never blocks a session.
+- **`scripts/cloud-test.sh`** (behind `make test-cloud`) starts MariaDB and installs the test library if either is missing, then runs PHPUnit. Several files run in one process via a temporary `phpunit.cloud-session.xml`, which is deleted afterwards. Nothing needs to be stopped when you finish.
+- **Mode.** The environment variable `AIPS_CLOUD_TEST_MODE` sets the default: `full` (default, the WordPress suite) or `syntax` (no database; only `php -l` and lint). `--syntax` / `--full` as the first argument overrides it for one run.
+- **Live WordPress site** for manual or end-to-end checks with real AI calls: `make cloud-site` (`scripts/cloud-wp-site.sh`) serves WordPress at `http://localhost:8080` (admin/admin) with PHP's built-in server. It copies the WordPress core installed for the tests into `/tmp/aips-site`, uses its own `aips_site` database, symlinks the plugin from this checkout (edits are live), and installs the `ai` and `ai-provider-for-google` plugins, matching `docker-entrypoint.sh`. A must-use plugin and `wp-config.php` route WordPress HTTP requests through the session proxy and trust its CA. `make cloud-site-stop` stops the server; `make cloud-site-stop ARGS=reset` deletes the site and its database. Logs: `/tmp/aips-site/.server.log` and `/tmp/aips-site/wp-content/debug.log`. Stop the server when you are done.
+- **AI provider keys** are saved as network secrets on the cloud environment (for example `generativelanguage.googleapis.com`, header `x-goog-api-key`). The proxy adds the real key to outgoing requests; code in the session only needs a dummy value such as `GOOGLE_API_KEY=placeholder-injected-by-proxy`. The PHPUnit suite does not call real AI providers.
+
 ## Requirements
 
 - Docker Desktop (or Docker Engine + Docker Compose v2), running
