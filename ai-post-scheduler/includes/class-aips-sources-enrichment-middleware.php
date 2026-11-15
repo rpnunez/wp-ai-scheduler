@@ -17,6 +17,13 @@ if (!defined('ABSPATH')) {
  * This is additive scaffolding for the AIPS_Prompt_Composer pipeline; it
  * does not replace AIPS_Prompt_Builder::inject_sources_into_content_prompt().
  *
+ * A caller that needs to record sources usage after a successful AI
+ * submission (as AIPS_Generator does today, via
+ * AIPS_Prompt_Builder_Post_Content::get_sources_selection()) can pass a
+ * $selection_sink array by reference; it is populated with the same
+ * selection array build_sources_selection() returns, so the caller does
+ * not need to recompute or re-select sources after composing.
+ *
  * @package AI_Post_Scheduler
  * @since 2.0.0
  */
@@ -25,11 +32,17 @@ class AIPS_Sources_Enrichment_Middleware implements AIPS_Prompt_Middleware_Inter
     /** @var AIPS_Prompt_Builder */
     private $prompt_builder;
 
+    /** @var array */
+    private $selection_sink;
+
     /**
      * @param AIPS_Prompt_Builder|null $prompt_builder Optional prompt builder used for source selection.
+     * @param array|null               $selection_sink Optional array, passed by reference, populated with the
+     *                                                  last selection computed by process().
      */
-    public function __construct($prompt_builder = null) {
+    public function __construct($prompt_builder = null, &$selection_sink = null) {
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder();
+        $this->selection_sink = &$selection_sink;
     }
 
     /**
@@ -48,6 +61,7 @@ class AIPS_Sources_Enrichment_Middleware implements AIPS_Prompt_Middleware_Inter
         }
 
         $selection = $this->prompt_builder->build_sources_selection($group_ids);
+        $this->selection_sink = $selection;
 
         if (!empty($selection['block'])) {
             $document->add_context_payload($selection['block']);

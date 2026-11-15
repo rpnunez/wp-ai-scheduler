@@ -68,6 +68,39 @@ class Test_AIPS_Sources_Diversity_Middlewares extends WP_UnitTestCase {
 		$this->assertSame(array(), $document->get_context_payload());
 	}
 
+	public function test_sources_middleware_populates_selection_sink_when_injected() {
+		$repo = new AIPS_Sources_Repository();
+		$id = $repo->create(array('url' => 'https://middleware.sink.example.com', 'is_active' => 1));
+		$repo->set_source_terms($id, array(903));
+
+		$data = new AIPS_Sources_Data_Repository();
+		$data->insert_if_new($id, array(
+			'url'            => 'https://middleware.sink.example.com',
+			'extracted_text' => 'Sink reference content.',
+			'fetch_status'   => 'success',
+		));
+
+		$prompt_builder = new AIPS_Prompt_Builder(null, null, $repo);
+		$sink = array();
+		$middleware = new AIPS_Sources_Enrichment_Middleware($prompt_builder, $sink);
+
+		$middleware->process(new AIPS_Prompt_Document(), new AIPS_Test_Stub_Sources_Context(true, array(903)));
+
+		$this->assertArrayHasKey('snapshots', $sink);
+		$this->assertStringContainsString('Sink reference content.', $sink['block']);
+
+		$repo->delete($id);
+	}
+
+	public function test_sources_middleware_leaves_selection_sink_untouched_when_disabled() {
+		$sink = array('preexisting' => true);
+		$middleware = new AIPS_Sources_Enrichment_Middleware(null, $sink);
+
+		$middleware->process(new AIPS_Prompt_Document(), new AIPS_Test_Stub_Sources_Context(false, array(904)));
+
+		$this->assertSame(array('preexisting' => true), $sink);
+	}
+
 	public function test_sources_middleware_injects_block_from_active_source() {
 		$repo = new AIPS_Sources_Repository();
 		$id = $repo->create(array('url' => 'https://middleware.sources.example.com', 'is_active' => 1));
