@@ -7,15 +7,15 @@ if (!defined('ABSPATH')) {
  * Class AIPS_Diversity_Injection_Middleware
  *
  * Injects anti-repetition guidance into a prompt document: titles to
- * avoid as a constraint, and a run-specific uniqueness seed as context
- * payload, so repeated generations don't converge on the same output.
+ * avoid, the rotating content-format, and the rotating post-slice as
+ * constraints, plus a run-specific uniqueness seed as context payload,
+ * so repeated generations don't converge on the same output.
  *
  * This reuses AIPS_Prompt_Builder_Diversity_Injector by composition
- * rather than re-implementing history lookups and rotation logic.
- *
- * This is additive scaffolding for the AIPS_Prompt_Composer pipeline; it
- * does not replace the diversity injector calls already made inline by
- * AIPS_Prompt_Builder_Post_Content and friends.
+ * rather than re-implementing history lookups and rotation logic, and
+ * covers the same four blocks AIPS_Prompt_Builder_Post_Content and
+ * AIPS_Prompt_Builder_Post_Title previously injected inline, so a
+ * caller fully migrated to the composer keeps feature parity.
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -41,6 +41,16 @@ class AIPS_Diversity_Injection_Middleware implements AIPS_Prompt_Middleware_Inte
         $avoid_titles_block = $this->diversity_injector->build_avoid_titles_block($context);
         if (!empty($avoid_titles_block)) {
             $document->add_constraint($avoid_titles_block);
+        }
+
+        $content_format_block = $this->diversity_injector->build_content_format_block($context);
+        if (!empty($content_format_block)) {
+            $document->add_constraint($content_format_block);
+        }
+
+        $post_slice_block = $this->diversity_injector->build_post_slice_block($context);
+        if (!empty($post_slice_block)) {
+            $document->add_constraint($post_slice_block);
         }
 
         $seed_block = $this->diversity_injector->build_uniqueness_seed_line_block($context);

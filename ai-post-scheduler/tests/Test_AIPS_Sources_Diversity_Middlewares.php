@@ -109,13 +109,20 @@ class Test_AIPS_Sources_Diversity_Middlewares extends WP_UnitTestCase {
 
 		$document = $middleware->process(new AIPS_Prompt_Document(), $context);
 
-		$this->assertSame(array(), $document->get_constraints());
+		// Content-format and post-slice blocks have non-empty defaults even with
+		// no history, so only the avoid-titles block (which requires history) is
+		// asserted absent here.
+		foreach ($document->get_constraints() as $constraint) {
+			$this->assertStringNotContainsString('Avoid these existing titles', $constraint);
+		}
 	}
 
 	public function test_diversity_middleware_uses_injected_dependency() {
 		$stub_injector = new class extends AIPS_Prompt_Builder_Diversity_Injector {
 			public function __construct() {}
 			public function build_avoid_titles_block($subject) { return 'Avoid: Stub Title'; }
+			public function build_content_format_block($subject) { return ''; }
+			public function build_post_slice_block($subject) { return ''; }
 			public function build_uniqueness_seed_line_block($subject = null) { return 'Stub seed line'; }
 		};
 
@@ -124,5 +131,20 @@ class Test_AIPS_Sources_Diversity_Middlewares extends WP_UnitTestCase {
 
 		$this->assertSame(array('Avoid: Stub Title'), $document->get_constraints());
 		$this->assertSame(array('Stub seed line'), $document->get_context_payload());
+	}
+
+	public function test_diversity_middleware_adds_content_format_and_post_slice_blocks() {
+		$stub_injector = new class extends AIPS_Prompt_Builder_Diversity_Injector {
+			public function __construct() {}
+			public function build_avoid_titles_block($subject) { return ''; }
+			public function build_content_format_block($subject) { return 'Format: Stub Format'; }
+			public function build_post_slice_block($subject) { return 'Slice: Stub Slice'; }
+			public function build_uniqueness_seed_line_block($subject = null) { return ''; }
+		};
+
+		$middleware = new AIPS_Diversity_Injection_Middleware($stub_injector);
+		$document = $middleware->process(new AIPS_Prompt_Document(), new AIPS_Test_Stub_Sources_Context(false, array()));
+
+		$this->assertSame(array('Format: Stub Format', 'Slice: Stub Slice'), $document->get_constraints());
 	}
 }
