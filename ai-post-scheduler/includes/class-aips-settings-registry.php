@@ -172,7 +172,9 @@ class AIPS_Settings_Registry {
 		$this->ensure_bootstrapped();
 		$tabs = $this->tabs;
 		uasort( $tabs, function( $a, $b ) {
-			return ( $a['order'] ?? 10 ) <=> ( $b['order'] ?? 10 );
+			$order_a = isset( $a['order'] ) ? (int) $a['order'] : 10;
+			$order_b = isset( $b['order'] ) ? (int) $b['order'] : 10;
+			return $order_a <=> $order_b;
 		} );
 		return $tabs;
 	}
@@ -217,7 +219,9 @@ class AIPS_Settings_Registry {
 		}
 
 		uasort( $filtered, function( $a, $b ) {
-			return ( $a['order'] ?? 10 ) <=> ( $b['order'] ?? 10 );
+			$order_a = isset( $a['order'] ) ? (int) $a['order'] : 10;
+			$order_b = isset( $b['order'] ) ? (int) $b['order'] : 10;
+			return $order_a <=> $order_b;
 		} );
 
 		return $filtered;
@@ -308,6 +312,9 @@ class AIPS_Settings_Registry {
 		$defaults = array();
 
 		foreach ( $this->definitions as $key => $definition ) {
+			if ( ! empty( $definition->get_control_option( 'parent_key' ) ) ) {
+				continue;
+			}
 			$defaults[ $key ] = $definition->get_default();
 		}
 
@@ -411,6 +418,7 @@ class AIPS_Settings_Registry {
 			array( 'aips_ai_embeddings_section', __( 'Vector Embeddings Engine & Model', 'ai-post-scheduler' ), 'settings-ai', 30 ),
 			array( 'aips_ai_scope_section', __( 'Indexing Scope, Continuous Sync & Rate Limits', 'ai-post-scheduler' ), 'settings-ai', 40 ),
 			array( 'aips_ai_related_posts_section', __( 'Frontend Related Posts Engine', 'ai-post-scheduler' ), 'settings-ai', 50 ),
+			array( 'aips_ai_deduplication_section', __( 'Semantic Duplicate Detection & Gatekeeper Guard', 'ai-post-scheduler' ), 'settings-ai', 60 ),
 
 			// AI Assistance Tab
 			array( 'aips_ai_assistance_section', __( 'AI Assistance', 'ai-post-scheduler' ), 'settings-ai-assistance', 10 ),
@@ -418,18 +426,21 @@ class AIPS_Settings_Registry {
 			// Internal Linking Tab
 			array( 'aips_link_index_section', __( 'Internal Link Index & Graph', 'ai-post-scheduler' ), 'settings-linking', 10 ),
 			array( 'aips_link_rules_section', __( 'Manual Link Rules & Anchor Optimization', 'ai-post-scheduler' ), 'settings-linking', 20 ),
-			array( 'aips_ai_autolink_section', __( 'Contextual Internal Auto-Linking Engine', 'ai-post-scheduler' ), 'settings-linking', 30 ),
-			array( 'aips_silo_guide_section', __( 'Silo Guide Insertion', 'ai-post-scheduler' ), 'settings-linking', 40 ),
-			array( 'aips_gsc_section', __( 'Google Search Console Integration', 'ai-post-scheduler' ), 'settings-linking', 50 ),
+			array( 'aips_link_clicks_section', __( 'Link Click Tracking', 'ai-post-scheduler' ), 'settings-linking', 25 ),
+			array( 'aips_silo_section', __( 'Topic Silos & Silo Guide Insertion', 'ai-post-scheduler' ), 'settings-linking', 30 ),
+			array( 'aips_ai_autolink_section', __( 'Contextual Internal Auto-Linking Engine', 'ai-post-scheduler' ), 'settings-linking', 40 ),
 
 			// Feedback & Topics Tab
-			array( 'aips_ai_deduplication_section', __( 'Semantic Duplicate Detection & Cannibalization Shield', 'ai-post-scheduler' ), 'settings-feedback', 10 ),
-			array( 'aips_authors_section', __( 'Author Persona Management & Topic Approval', 'ai-post-scheduler' ), 'settings-feedback', 20 ),
-			array( 'aips_feedback_section', __( 'Feedback & Scoring Configuration', 'ai-post-scheduler' ), 'settings-feedback', 30 ),
+			array( 'aips_authors_section', __( 'Author Persona Management & Topic Approval', 'ai-post-scheduler' ), 'settings-feedback', 10 ),
+			array( 'aips_feedback_section', __( 'Feedback & Scoring Configuration', 'ai-post-scheduler' ), 'settings-feedback', 20 ),
 
 			// Notifications Tab
-			array( 'aips_notifications_section', __( 'Notification Settings', 'ai-post-scheduler' ), 'settings-notifications', 10 ),
-			array( 'aips_notifications_summarized_digest_section', __( 'Summarized Notification Digest', 'ai-post-scheduler' ), 'settings-notifications', 20 ),
+			array( 'aips_notifications_delivery_section', __( 'Email Routing & Delivery', 'ai-post-scheduler' ), 'settings-notifications', 10 ),
+			array( 'aips_notifications_system_section', __( 'System Health & Resilience Alerts', 'ai-post-scheduler' ), 'settings-notifications', 20 ),
+			array( 'aips_notifications_content_section', __( 'Content & Editorial Workflow Alerts', 'ai-post-scheduler' ), 'settings-notifications', 30 ),
+			array( 'aips_notifications_automation_section', __( 'Automation & Operational Maintenance', 'ai-post-scheduler' ), 'settings-notifications', 40 ),
+			array( 'aips_notifications_summarized_digest_section', __( 'Summarized Notification Digest', 'ai-post-scheduler' ), 'settings-notifications', 50 ),
+			array( 'aips_notifications_digests_section', __( 'Scheduled Activity Digests & Reports', 'ai-post-scheduler' ), 'settings-notifications', 60 ),
 
 			// Resilience & Limits Tab
 			array( 'aips_resilience_retry_section', __( 'Retry & Backoff Policy', 'ai-post-scheduler' ), 'settings-resilience', 10 ),
@@ -564,6 +575,10 @@ class AIPS_Settings_Registry {
 				'label'        => __( 'Default Category', 'ai-post-scheduler' ),
 				'description'  => __( 'Default category for generated posts.', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'taxonomy'         => 'category',
+					'show_option_none' => __( 'Select Category', 'ai-post-scheduler' ),
+				),
 				'sanitize_callback' => 'absint',
 			),
 			array(
@@ -575,6 +590,9 @@ class AIPS_Settings_Registry {
 				'label'        => __( 'Default Author', 'ai-post-scheduler' ),
 				'description'  => __( 'WordPress user assigned to generated posts when no persona is matched.', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'user_dropdown' => true,
+				),
 				'sanitize_callback' => 'absint',
 			),
 			array(
@@ -637,6 +655,20 @@ class AIPS_Settings_Registry {
 				'label'        => __( 'AI Provider', 'ai-post-scheduler' ),
 				'description'  => __( 'Select the primary AI generation engine. Empty means auto-detect.', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array( '' => __( 'Auto-detect (recommended)', 'ai-post-scheduler' ) );
+						if ( class_exists( 'AIPS_AI_Provider_Factory' ) ) {
+							$all       = AIPS_AI_Provider_Factory::all_providers();
+							$available = AIPS_AI_Provider_Factory::available_providers();
+							foreach ( $all as $id => $label ) {
+								$suffix = isset( $available[ $id ] ) ? '' : ' ' . __( '(currently unavailable)', 'ai-post-scheduler' );
+								$choices[ $id ] = $label . $suffix;
+							}
+						}
+						return $choices;
+					},
+				),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
 			array(
@@ -1298,7 +1330,7 @@ class AIPS_Settings_Registry {
 				'type'         => AIPS_Setting_Definition::TYPE_BOOL,
 				'default'      => false,
 				'tab'          => 'settings-linking',
-				'section'      => 'aips_link_rules_section',
+				'section'      => 'aips_link_clicks_section',
 				'label'        => __( 'Track Link Clicks', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TOGGLE,
 				'sanitize_callback' => 'absint',
@@ -1308,7 +1340,7 @@ class AIPS_Settings_Registry {
 				'type'         => AIPS_Setting_Definition::TYPE_INT,
 				'default'      => 365,
 				'tab'          => 'settings-linking',
-				'section'      => 'aips_link_rules_section',
+				'section'      => 'aips_link_clicks_section',
 				'label'        => __( 'Click Data Retention (Days)', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_NUMBER,
 				'sanitize_callback' => 'absint',
@@ -1340,7 +1372,7 @@ class AIPS_Settings_Registry {
 				'type'         => AIPS_Setting_Definition::TYPE_BOOL,
 				'default'      => true,
 				'tab'          => 'settings-linking',
-				'section'      => 'aips_silo_guide_section',
+				'section'      => 'aips_silo_section',
 				'label'        => __( 'Enable Silo Guides', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TOGGLE,
 				'sanitize_callback' => 'absint',
@@ -1350,7 +1382,7 @@ class AIPS_Settings_Registry {
 				'type'         => AIPS_Setting_Definition::TYPE_STRING,
 				'default'      => 'end',
 				'tab'          => 'settings-linking',
-				'section'      => 'aips_silo_guide_section',
+				'section'      => 'aips_silo_section',
 				'label'        => __( 'Silo Guide Position', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
 				'sanitize_callback' => 'sanitize_key',
@@ -1360,7 +1392,7 @@ class AIPS_Settings_Registry {
 				'type'         => AIPS_Setting_Definition::TYPE_INT,
 				'default'      => 10,
 				'tab'          => 'settings-linking',
-				'section'      => 'aips_silo_guide_section',
+				'section'      => 'aips_silo_section',
 				'label'        => __( 'Max Silo Articles', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_NUMBER,
 				'sanitize_callback' => 'absint',
@@ -1370,7 +1402,7 @@ class AIPS_Settings_Registry {
 				'type'         => AIPS_Setting_Definition::TYPE_STRING,
 				'default'      => 'aips',
 				'tab'          => 'settings-linking',
-				'section'      => 'aips_silo_guide_section',
+				'section'      => 'aips_silo_section',
 				'label'        => __( 'Silo Guide Style', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
 				'sanitize_callback' => 'sanitize_key',
@@ -1380,7 +1412,7 @@ class AIPS_Settings_Registry {
 				'type'         => AIPS_Setting_Definition::TYPE_STRING,
 				'default'      => '',
 				'tab'          => 'settings-linking',
-				'section'      => 'aips_silo_guide_section',
+				'section'      => 'aips_silo_section',
 				'label'        => __( 'Silo Guide Heading', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TEXT,
 				'sanitize_callback' => 'sanitize_text_field',
@@ -1775,7 +1807,7 @@ class AIPS_Settings_Registry {
 				'type'         => AIPS_Setting_Definition::TYPE_STRING,
 				'default'      => '',
 				'tab'          => 'settings-notifications',
-				'section'      => 'aips_notifications_section',
+				'section'      => 'aips_notifications_delivery_section',
 				'label'        => __( 'Notification Email Addresses', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TEXT,
 				'sanitize_callback' => 'sanitize_text_field',
@@ -1798,10 +1830,446 @@ class AIPS_Settings_Registry {
 					'partial_generation_completed' => 'db',
 					'post_generated'               => 'both',
 				),
+			),
+
+			// System Health & Resilience Alerts
+			array(
+				'key'          => 'aips_notification_preferences_generation_failed',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
 				'tab'          => 'settings-notifications',
-				'section'      => 'aips_notifications_section',
-				'label'        => __( 'Notification Event Channels', 'ai-post-scheduler' ),
-				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'section'      => 'aips_notifications_system_section',
+				'label'        => __( 'Generation Failure Alerts', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[generation_failed]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'generation_failed',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_quota_alert',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_system_section',
+				'label'        => __( 'Quota & Rate Exceeded', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[quota_alert]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'quota_alert',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_circuit_breaker_opened',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_system_section',
+				'label'        => __( 'Circuit Breaker Triggered', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[circuit_breaker_opened]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'circuit_breaker_opened',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_rate_limit_reached',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_system_section',
+				'label'        => __( 'API Rate Limit Encountered', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[rate_limit_reached]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'rate_limit_reached',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_integration_error',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_system_section',
+				'label'        => __( 'AI Provider Integration Errors', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[integration_error]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'integration_error',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_scheduler_error',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_system_section',
+				'label'        => __( 'Scheduler Execution Errors', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[scheduler_error]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'scheduler_error',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_system_error',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_system_section',
+				'label'        => __( 'General System & Fatal Errors', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[system_error]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'system_error',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+
+			// Content & Editorial Workflow Alerts
+			array(
+				'key'          => 'aips_notification_preferences_post_ready_for_review',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Post Ready for Review', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[post_ready_for_review]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'post_ready_for_review',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_post_generated',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Post Published / Generated', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[post_generated]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'post_generated',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_partial_generation_completed',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Partial Generation Completed', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[partial_generation_completed]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'partial_generation_completed',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_post_rejected',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Editorial Post Rejection', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[post_rejected]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'post_rejected',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_post_consolidated',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'both',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Topic Deduplication / Consolidation', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[post_consolidated]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'post_consolidated',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_duplicate_groups_found',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Duplicate Clusters Detected', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[duplicate_groups_found]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'duplicate_groups_found',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_author_topics_generated',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Author Persona Topics Generated', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[author_topics_generated]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'author_topics_generated',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_author_suggestions',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Author Persona Topic Suggestions', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[author_suggestions]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'author_suggestions',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_research_topics_ready',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_content_section',
+				'label'        => __( 'Research Topics Ready', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[research_topics_ready]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'research_topics_ready',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+
+			// Automation & Operational Maintenance
+			array(
+				'key'          => 'aips_notification_preferences_template_generated',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_automation_section',
+				'label'        => __( 'Template Generation Finished', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[template_generated]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'template_generated',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_manual_generation_completed',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_automation_section',
+				'label'        => __( 'Manual Generation Batch Completed', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[manual_generation_completed]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'manual_generation_completed',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_template_change',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_automation_section',
+				'label'        => __( 'Template Configuration Changed', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[template_change]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'template_change',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_seeder_complete',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_automation_section',
+				'label'        => __( 'Topic Seeder Run Finished', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[seeder_complete]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'seeder_complete',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_history_cleanup',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'db',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_automation_section',
+				'label'        => __( 'Database History Pruned', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[history_cleanup]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'history_cleanup',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+
+			// Scheduled Activity Digests & Reports
+			array(
+				'key'          => 'aips_notification_preferences_daily_digest',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'email',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_digests_section',
+				'label'        => __( 'Daily Activity Digest', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[daily_digest]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'daily_digest',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_weekly_summary',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'email',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_digests_section',
+				'label'        => __( 'Weekly Publishing Summary', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[weekly_summary]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'weekly_summary',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
+			),
+			array(
+				'key'          => 'aips_notification_preferences_monthly_report',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => 'email',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_digests_section',
+				'label'        => __( 'Monthly Operations Report', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'name'       => 'aips_notification_preferences[monthly_report]',
+					'parent_key' => 'aips_notification_preferences',
+					'sub_key'    => 'monthly_report',
+					'options'    => function() {
+						return class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::get_channel_mode_options() : array( 'both' => 'Email & Admin Bar', 'email' => 'Email Only', 'db' => 'Admin Bar Only', 'none' => 'Disabled' );
+					},
+				),
+				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
 				'key'          => 'aips_notif_digest_enabled',
@@ -1841,6 +2309,30 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_notifications_summarized_digest_section',
 				'label'        => __( 'Digest Event Types', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+			),
+			array(
+				'key'          => 'aips_notif_digest_actions',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => '',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_summarized_digest_section',
+				'label'        => __( 'Queue Actions', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_ACTION,
+				'control_options' => array(
+					'id'           => 'aips-flush-digest-btn',
+					'button_label' => __( 'Send Pending Digest Now', 'ai-post-scheduler' ),
+					'parent_key'   => '_action_virtual',
+					'extra_html'   => function() {
+						$queue_count = class_exists( 'AIPS_Notifications' ) ? AIPS_Notifications::instance()->get_digest_queue_count() : 0;
+						return sprintf(
+							' <span class="description">' .
+							/* translators: %s: span element containing pending count */
+							esc_html__( 'Currently %s pending notifications in the digest queue.', 'ai-post-scheduler' ) .
+							'</span>',
+							'<strong id="aips-digest-queue-count">' . esc_html( $queue_count ) . '</strong>'
+						);
+					},
+				),
 			),
 
 			// -----------------------------------------------------------------

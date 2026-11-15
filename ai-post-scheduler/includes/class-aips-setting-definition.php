@@ -37,6 +37,7 @@ class AIPS_Setting_Definition {
 	const CONTROL_TEXTAREA    = 'textarea';
 	const CONTROL_SECRET      = 'secret';
 	const CONTROL_SLIDER      = 'slider';
+	const CONTROL_ACTION      = 'action';
 
 	/**
 	 * Option key stored in WordPress options table.
@@ -231,6 +232,17 @@ class AIPS_Setting_Definition {
 	 */
 	public function get_control_options() {
 		return $this->control_options;
+	}
+
+	/**
+	 * Get a specific control option.
+	 *
+	 * @param string $name    Option name.
+	 * @param mixed  $default Default value if not set.
+	 * @return mixed
+	 */
+	public function get_control_option( $name, $default = null ) {
+		return array_key_exists( $name, $this->control_options ) ? $this->control_options[ $name ] : $default;
 	}
 
 	/**

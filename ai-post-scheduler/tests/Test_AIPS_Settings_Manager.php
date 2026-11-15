@@ -70,4 +70,17 @@ class Test_AIPS_Settings_Manager extends WP_UnitTestCase {
 		$this->assertNotEmpty( has_action( 'update_option_aips_enable_cache_system' ) );
 		$this->assertNotEmpty( has_action( 'update_option_aips_prevent_scheduled_ai_generation' ) );
 	}
+
+	public function test_render_field_callback_resolves_parent_key() {
+		update_option( 'aips_notification_preferences', array(
+			'generation_failed' => 'email',
+		) );
+
+		ob_start();
+		$this->manager->render_field_callback( array( 'key' => 'aips_notification_preferences_generation_failed' ) );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'name="aips_notification_preferences[generation_failed]"', $output );
+		$this->assertStringContainsString( 'value="email"', $output );
+	}
 }

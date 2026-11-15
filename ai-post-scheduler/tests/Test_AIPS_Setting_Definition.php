@@ -107,4 +107,19 @@ class Test_AIPS_Setting_Definition extends WP_UnitTestCase {
 		$this->assertTrue( $def->validate( 'valid' ) );
 		$this->assertFalse( $def->validate( 'no' ) );
 	}
+
+	public function test_get_control_option() {
+		$def = new AIPS_Setting_Definition( array(
+			'key'             => 'test_opts',
+			'control_options' => array(
+				'step'   => 5,
+				'custom' => 'special_value',
+			),
+		) );
+
+		$this->assertSame( 5, $def->get_control_option( 'step' ) );
+		$this->assertSame( 'special_value', $def->get_control_option( 'custom' ) );
+		$this->assertNull( $def->get_control_option( 'non_existent' ) );
+		$this->assertSame( 'fallback', $def->get_control_option( 'non_existent', 'fallback' ) );
+	}
 }

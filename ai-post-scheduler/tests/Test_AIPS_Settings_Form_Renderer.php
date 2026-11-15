@@ -161,4 +161,68 @@ class Test_AIPS_Settings_Form_Renderer extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'data-aips-depends-on="aips_parent_field"', $html );
 		$this->assertStringContainsString( 'data-aips-depends-value="enabled"', $html );
 	}
+
+	public function test_render_toggle_aria_sync() {
+		$def = new AIPS_Setting_Definition( array(
+			'key'          => 'aips_test_sync',
+			'type'         => AIPS_Setting_Definition::TYPE_BOOL,
+			'control_type' => AIPS_Setting_Definition::CONTROL_TOGGLE,
+		) );
+
+		$html = $this->renderer->get_field_html( $def, true );
+		$this->assertStringContainsString( 'onchange="this.setAttribute(\'aria-checked\', this.checked ? \'true\' : \'false\')"', $html );
+	}
+
+	public function test_render_select_callable_options() {
+		$def = new AIPS_Setting_Definition( array(
+			'key'             => 'aips_test_callable',
+			'type'            => AIPS_Setting_Definition::TYPE_STRING,
+			'control_type'    => AIPS_Setting_Definition::CONTROL_SELECT,
+			'control_options' => array(
+				'options' => function() {
+					return array(
+						'val1' => 'Callable Label 1',
+						'val2' => 'Callable Label 2',
+					);
+				},
+			),
+		) );
+
+		$html = $this->renderer->get_field_html( $def, 'val1' );
+		$this->assertStringContainsString( 'Callable Label 1', $html );
+		$this->assertStringContainsString( 'Callable Label 2', $html );
+		$this->assertStringContainsString( 'selected', $html );
+	}
+
+	public function test_render_secret_inline_toggle() {
+		$def = new AIPS_Setting_Definition( array(
+			'key'          => 'aips_test_secret_inline',
+			'type'         => AIPS_Setting_Definition::TYPE_STRING,
+			'control_type' => AIPS_Setting_Definition::CONTROL_SECRET,
+		) );
+
+		$html = $this->renderer->get_field_html( $def, 'pass123' );
+		$this->assertStringContainsString( 'onclick="', $html );
+		$this->assertStringContainsString( 'dashicons-visibility', $html );
+	}
+
+	public function test_render_action() {
+		$def = new AIPS_Setting_Definition( array(
+			'key'             => 'aips_test_action',
+			'type'            => AIPS_Setting_Definition::TYPE_STRING,
+			'control_type'    => AIPS_Setting_Definition::CONTROL_ACTION,
+			'control_options' => array(
+				'button_label' => 'Flush Queue',
+				'id'           => 'custom-action-id',
+				'class'        => 'button button-primary',
+				'extra_html'   => '<span>Extra info</span>',
+			),
+		) );
+
+		$html = $this->renderer->get_field_html( $def, '' );
+		$this->assertStringContainsString( '<button type="button"', $html );
+		$this->assertStringContainsString( 'id="custom-action-id"', $html );
+		$this->assertStringContainsString( 'Flush Queue', $html );
+		$this->assertStringContainsString( '<span>Extra info</span>', $html );
+	}
 }

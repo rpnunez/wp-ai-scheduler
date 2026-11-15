@@ -70,6 +70,10 @@ class AIPS_Settings_Form_Renderer {
 				$control_html = $this->render_slider( $definition, $value );
 				break;
 
+			case AIPS_Setting_Definition::CONTROL_ACTION:
+				$control_html = $this->render_action( $definition, $value );
+				break;
+
 			case AIPS_Setting_Definition::CONTROL_TEXT:
 			default:
 				$control_html = $this->render_text( $definition, $value );
@@ -109,17 +113,19 @@ class AIPS_Settings_Form_Renderer {
 	 */
 	public function render_toggle( AIPS_Setting_Definition $def, $value ) {
 		$key       = $def->get_key();
+		$opts      = $def->get_control_options();
+		$name      = ! empty( $opts['name'] ) ? $opts['name'] : $key;
+		$id        = ! empty( $opts['id'] ) ? $opts['id'] : $key;
 		$is_active = (bool) $value;
-		$id        = esc_attr( $key );
 
 		return sprintf(
 			'<input type="hidden" name="%1$s" value="0">' .
 			'<label class="aips-switch" for="%2$s">' .
-			'<input type="checkbox" name="%1$s" id="%2$s" value="1" role="switch" aria-checked="%3$s" %4$s>' .
+			'<input type="checkbox" name="%1$s" id="%2$s" value="1" role="switch" aria-checked="%3$s" onchange="this.setAttribute(\'aria-checked\', this.checked ? \'true\' : \'false\')" %4$s>' .
 			'<span class="aips-slider round" aria-hidden="true"></span>' .
 			'</label>',
-			esc_attr( $key ),
-			$id,
+			esc_attr( $name ),
+			esc_attr( $id ),
 			$is_active ? 'true' : 'false',
 			checked( $is_active, true, false )
 		);
@@ -186,8 +192,40 @@ class AIPS_Settings_Form_Renderer {
 	public function render_select( AIPS_Setting_Definition $def, $value ) {
 		$key     = $def->get_key();
 		$opts    = $def->get_control_options();
-		$choices = isset( $opts['options'] ) && is_array( $opts['options'] ) ? $opts['options'] : array();
+		$name    = ! empty( $opts['name'] ) ? $opts['name'] : $key;
+		$id      = ! empty( $opts['id'] ) ? $opts['id'] : $key;
 		$val_str = is_scalar( $value ) ? (string) $value : '';
+
+		// Native WordPress taxonomy dropdown support
+		if ( ! empty( $opts['taxonomy'] ) && 'category' === $opts['taxonomy'] && function_exists( 'wp_dropdown_categories' ) ) {
+			return wp_dropdown_categories( array(
+				'echo'             => 0,
+				'name'             => $name,
+				'id'               => $id,
+				'selected'         => (int) $value,
+				'show_option_none' => ! empty( $opts['show_option_none'] ) ? $opts['show_option_none'] : __( 'None', 'ai-post-scheduler' ),
+				'hide_empty'       => 0,
+			) );
+		}
+
+		// Native WordPress user dropdown support
+		if ( ! empty( $opts['user_dropdown'] ) && function_exists( 'wp_dropdown_users' ) ) {
+			return wp_dropdown_users( array(
+				'echo'     => 0,
+				'name'     => $name,
+				'id'       => $id,
+				'selected' => (int) $value,
+			) );
+		}
+
+		$choices = array();
+		if ( isset( $opts['options'] ) ) {
+			if ( is_callable( $opts['options'] ) ) {
+				$choices = call_user_func( $opts['options'] );
+			} elseif ( is_array( $opts['options'] ) ) {
+				$choices = $opts['options'];
+			}
+		}
 
 		$options_html = '';
 		foreach ( $choices as $opt_key => $opt_label ) {
@@ -200,8 +238,9 @@ class AIPS_Settings_Form_Renderer {
 		}
 
 		return sprintf(
-			'<select name="%1$s" id="%1$s">%2$s</select>',
-			esc_attr( $key ),
+			'<select name="%1$s" id="%2$s">%3$s</select>',
+			esc_attr( $name ),
+			esc_attr( $id ),
 			$options_html
 		);
 	}
@@ -216,7 +255,16 @@ class AIPS_Settings_Form_Renderer {
 	public function render_multiselect( AIPS_Setting_Definition $def, $value ) {
 		$key          = $def->get_key();
 		$opts         = $def->get_control_options();
-		$choices      = isset( $opts['options'] ) && is_array( $opts['options'] ) ? $opts['options'] : array();
+		$name         = ! empty( $opts['name'] ) ? $opts['name'] : $key;
+		$id           = ! empty( $opts['id'] ) ? $opts['id'] : $key;
+		$choices      = array();
+		if ( isset( $opts['options'] ) ) {
+			if ( is_callable( $opts['options'] ) ) {
+				$choices = call_user_func( $opts['options'] );
+			} elseif ( is_array( $opts['options'] ) ) {
+				$choices = $opts['options'];
+			}
+		}
 		$active_items = is_array( $value ) ? $value : array();
 
 		if ( ! empty( $opts['render_as'] ) && 'select' === $opts['render_as'] ) {
@@ -232,19 +280,20 @@ class AIPS_Settings_Form_Renderer {
 
 			return sprintf(
 				'<input type="hidden" name="%1$s[]" value="">' .
-				'<select name="%1$s[]" id="%1$s" multiple size="%2$d" class="regular-text">%3$s</select>',
-				esc_attr( $key ),
+				'<select name="%1$s[]" id="%2$s" multiple size="%3$d" class="regular-text">%4$s</select>',
+				esc_attr( $name ),
+				esc_attr( $id ),
 				min( 8, max( 3, count( $choices ) ) ),
 				$options_html
 			);
 		}
 
 		// Default checkbox group.
-		$html = sprintf( '<input type="hidden" name="%s[]" value="">', esc_attr( $key ) );
+		$html = sprintf( '<input type="hidden" name="%s[]" value="">', esc_attr( $name ) );
 		$html .= '<fieldset class="aips-checkbox-group">';
 
 		foreach ( $choices as $opt_key => $opt_label ) {
-			$item_id   = esc_attr( $key . '_' . sanitize_key( $opt_key ) );
+			$item_id   = esc_attr( $id . '_' . sanitize_key( $opt_key ) );
 			$is_active = in_array( $opt_key, $active_items, true );
 
 			$html .= sprintf(
@@ -253,7 +302,7 @@ class AIPS_Settings_Form_Renderer {
 				'%5$s' .
 				'</label><br>',
 				$item_id,
-				esc_attr( $key ),
+				esc_attr( $name ),
 				esc_attr( (string) $opt_key ),
 				checked( $is_active, true, false ),
 				esc_html( (string) $opt_label )
@@ -274,21 +323,51 @@ class AIPS_Settings_Form_Renderer {
 	public function render_secret( AIPS_Setting_Definition $def, $value ) {
 		$key         = $def->get_key();
 		$opts        = $def->get_control_options();
+		$name        = ! empty( $opts['name'] ) ? $opts['name'] : $key;
+		$id          = ! empty( $opts['id'] ) ? $opts['id'] : $key;
 		$val_str     = is_scalar( $value ) ? (string) $value : '';
 		$has_value   = ! empty( $val_str );
 		$placeholder = ! empty( $opts['placeholder'] ) ? $opts['placeholder'] : ( $has_value ? '••••••••••••••••' : '' );
 
 		return sprintf(
 			'<div class="aips-secret-field-container" style="display:inline-flex;align-items:center;gap:6px;">' .
-			'<input type="password" name="%1$s" id="%1$s" value="%2$s" class="regular-text" autocomplete="new-password" placeholder="%3$s">' .
-			'<button type="button" class="button button-secondary aips-secret-toggle" data-target="%1$s" aria-label="%4$s">' .
+			'<input type="password" name="%1$s" id="%2$s" value="%3$s" class="regular-text" autocomplete="new-password" placeholder="%4$s">' .
+			'<button type="button" class="button button-secondary aips-secret-toggle" data-target="%2$s" aria-label="%5$s" onclick="(function(btn){var input=document.getElementById(\'%2$s\');if(!input)return;var isPass=input.type===\'password\';input.type=isPass?\'text\':\'password\';var icon=btn.querySelector(\'.dashicons\');if(icon){icon.classList.toggle(\'dashicons-visibility\',!isPass);icon.classList.toggle(\'dashicons-hidden\',isPass);}})(this);">' .
 			'<span class="dashicons dashicons-visibility" aria-hidden="true"></span>' .
 			'</button>' .
 			'</div>',
-			esc_attr( $key ),
+			esc_attr( $name ),
+			esc_attr( $id ),
 			esc_attr( $val_str ),
 			esc_attr( $placeholder ),
 			esc_attr__( 'Show or hide secret', 'ai-post-scheduler' )
+		);
+	}
+
+	/**
+	 * Render an action button / trigger control.
+	 *
+	 * @param AIPS_Setting_Definition $def   Setting definition.
+	 * @param mixed                   $value Current value.
+	 * @return string HTML.
+	 */
+	public function render_action( AIPS_Setting_Definition $def, $value ) {
+		$key   = $def->get_key();
+		$opts  = $def->get_control_options();
+		$label = ! empty( $opts['button_label'] ) ? $opts['button_label'] : __( 'Run Action', 'ai-post-scheduler' );
+		$class = ! empty( $opts['class'] ) ? $opts['class'] : 'button button-secondary';
+		$id    = ! empty( $opts['id'] ) ? $opts['id'] : esc_attr( $key );
+		$extra = ! empty( $opts['extra_html'] ) ? ( is_callable( $opts['extra_html'] ) ? call_user_func( $opts['extra_html'] ) : (string) $opts['extra_html'] ) : '';
+
+		return sprintf(
+			'<div class="aips-settings-action-row" style="display:inline-flex;align-items:center;gap:10px;">' .
+			'<button type="button" name="%1$s" id="%2$s" class="%3$s">%4$s</button>%5$s' .
+			'</div>',
+			esc_attr( $key ),
+			esc_attr( $id ),
+			esc_attr( $class ),
+			esc_html( $label ),
+			$extra
 		);
 	}
 

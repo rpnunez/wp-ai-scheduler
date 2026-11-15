@@ -199,6 +199,11 @@ class AIPS_Settings_Manager {
 
 		// 1. Register with WordPress Settings API (register_setting)
 		foreach ( $definitions as $key => $definition ) {
+			// Skip sub-fields or virtual action controls that should not create top-level WP options.
+			if ( ! empty( $definition->get_control_option( 'parent_key' ) ) ) {
+				continue;
+			}
+
 			$args = array(
 				'default' => $definition->get_default(),
 			);
@@ -263,7 +268,17 @@ class AIPS_Settings_Manager {
 			return;
 		}
 
-		$value = AIPS_Config::get_instance()->get_option( $key, $definition->get_default() );
+		$parent_key = $definition->get_control_option( 'parent_key' );
+		if ( ! empty( $parent_key ) && '_action_virtual' !== $parent_key ) {
+			$sub_key    = $definition->get_control_option( 'sub_key' );
+			$parent_val = AIPS_Config::get_instance()->get_option( $parent_key );
+			$value      = ( is_array( $parent_val ) && isset( $parent_val[ $sub_key ] ) )
+				? $parent_val[ $sub_key ]
+				: $definition->get_default();
+		} else {
+			$value = AIPS_Config::get_instance()->get_option( $key, $definition->get_default() );
+		}
+
 		$this->renderer->render_field( $definition, $value );
 	}
 }
