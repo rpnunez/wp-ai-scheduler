@@ -605,6 +605,11 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Logger::class)
             );
         });
+
+        // Register AIPS_Prompt_Registry
+        $container->singleton(AIPS_Prompt_Registry::class, function( $container ) {
+            return new AIPS_Prompt_Registry();
+        });
     }
 
     /**
