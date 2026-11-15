@@ -991,7 +991,7 @@ class AIPS_Generator {
         // Build the full content prompt from context and capture source snapshot usage.
         $this->current_source_snapshots = array();
       
-        $content_prompt = $this->post_content_prompt_builder->build($context);
+        $content_prompt = $this->prompt_builder->compile_content_prompt_via_composer($context);
         $this->pending_sources_selection = $this->post_content_prompt_builder->get_sources_selection();
 
         // Build contextual instructions
@@ -1999,7 +1999,7 @@ class AIPS_Generator {
 	private function generate_and_normalize_content($context, $component_statuses, $generation_start) {
 		// Build the full content prompt from context and capture source snapshot usage.
 		$this->current_source_snapshots = array();
-		$content_prompt = $this->post_content_prompt_builder->build($context);
+		$content_prompt = $this->prompt_builder->compile_content_prompt_via_composer($context);
 		$this->pending_sources_selection = $this->post_content_prompt_builder->get_sources_selection();
 
 		if ($this->current_history) {
