@@ -146,6 +146,59 @@ class AIPS_Prompt_Builder_Post_Content {
 	}
 
 	/**
+	 * Build the task-directive portion of a content prompt from a
+	 * generation context, for callers that compile the rest of the
+	 * prompt (voice, site context, editorial guidelines, localization,
+	 * sources, diversity, token budget) through AIPS_Prompt_Composer
+	 * instead.
+	 *
+	 * This intentionally omits what build_from_context() adds inline:
+	 * voice content instructions, the four diversity blocks, and the
+	 * 'aips_content_prompt' filter — those are each now the
+	 * responsibility of a dedicated middleware (AIPS_Voice_Tone_Middleware,
+	 * AIPS_Diversity_Injection_Middleware) or are being retired in favor
+	 * of typed middleware hooks. What remains here is genuinely
+	 * per-context content: the structured/template-processed prompt
+	 * text, configured content images, and related-published-articles
+	 * context.
+	 *
+	 * @param AIPS_Generation_Context $context Generation context.
+	 * @return string
+	 */
+	public function build_task_directive_from_context($context) {
+		$this->sources_selection = array();
+
+		do_action('aips_before_build_content_prompt', $context, null);
+
+		$processed_prompt = $context->get_content_prompt();
+		$article_structure_id = $context->get_article_structure_id();
+		$topic = $context->get_topic();
+		$used_structured_prompt = false;
+
+		if ($article_structure_id && $topic) {
+			$structured_prompt = $this->article_structure_section_builder->build($article_structure_id, $topic);
+
+			if (!is_wp_error($structured_prompt)) {
+				$processed_prompt = $structured_prompt;
+				$used_structured_prompt = true;
+			}
+		}
+
+		if (!$used_structured_prompt) {
+			// Always process template variables, even when topic is empty.
+			// This prevents raw placeholders like {{topic}} from leaking into prompts.
+			$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
+		}
+
+		$post_images_block = $this->build_post_images_block($context);
+		if (!empty($post_images_block)) {
+			$processed_prompt .= "\n\n" . $post_images_block;
+		}
+
+		return $this->inject_related_context($processed_prompt, $topic);
+	}
+
+	/**
 	 * Build content prompt from a legacy template object.
 	 *
 	 * @param object      $template Template object.
