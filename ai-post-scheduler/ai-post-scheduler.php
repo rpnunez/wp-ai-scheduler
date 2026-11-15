@@ -611,10 +611,21 @@ final class AI_Post_Scheduler {
             return new AIPS_Prompt_Registry();
         });
 
-        // Register AIPS_Prompt_Composer. The middleware stack starts empty;
-        // concrete middlewares are appended here as they are introduced.
+        // Register AIPS_Prompt_Composer with the default middleware stack.
+        // Order matters: context/voice/editorial/localization enrich the
+        // document first, sources and diversity add their own blocks, and
+        // the token budget runs last so it sees the fully-assembled
+        // document before trimming anything.
         $container->singleton(AIPS_Prompt_Composer::class, function( $container ) {
-            return new AIPS_Prompt_Composer();
+            return new AIPS_Prompt_Composer(array(
+                new AIPS_Site_Context_Middleware(),
+                new AIPS_Editorial_Guidelines_Middleware(),
+                new AIPS_Voice_Tone_Middleware(),
+                new AIPS_Localization_Middleware(),
+                new AIPS_Sources_Enrichment_Middleware(),
+                new AIPS_Diversity_Injection_Middleware(),
+                new AIPS_Token_Budget_Middleware(),
+            ));
         });
     }
 
