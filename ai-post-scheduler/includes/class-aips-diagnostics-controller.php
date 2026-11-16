@@ -377,6 +377,10 @@ class AIPS_Diagnostics_Controller {
 	private function render_background_processes_tab() {
 		$bg_processes = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->get_snapshots();
 		$bg_runs      = (new AIPS_Background_Process_Repository())->get_recent(15);
+		$job_manager  = AIPS_Container::get_instance()->has(AIPS_Job_Manager::class)
+			? AIPS_Container::get_instance()->make(AIPS_Job_Manager::class)
+			: null;
+		$jobs         = $job_manager ? $job_manager->get_jobs(array(), 15) : array();
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/background-processes.php';
 	}

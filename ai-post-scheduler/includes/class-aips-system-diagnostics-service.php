@@ -634,16 +634,12 @@ class AIPS_System_Diagnostics_Service {
 			$removed_options++;
 		}
 
-		$unscheduled_events = 0;
+		$container          = AIPS_Container::get_instance();
+		$cron_manager       = $container->has(AIPS_Cron_Manager::class) ? $container->make(AIPS_Cron_Manager::class) : new AIPS_Cron_Manager();
 		$legacy_hook        = 'aips_send_review_notifications';
-		$next_run           = wp_next_scheduled($legacy_hook);
-		while ($next_run) {
-			wp_unschedule_event($next_run, $legacy_hook);
-			$unscheduled_events++;
-			$next_run = wp_next_scheduled($legacy_hook);
-		}
+		$unscheduled_events = ( $cron_manager->next_scheduled($legacy_hook) !== false ) ? 1 : 0;
+		$cron_manager->unschedule_all_for_hook($legacy_hook);
 
-		$cron_manager     = AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class);
 		$rollup_scheduled = ($cron_manager->next_scheduled('aips_notification_rollups') !== false);
 		if (!$rollup_scheduled) {
 			$cron_manager->schedule_recurring('aips_notification_rollups', 'daily', AIPS_DateTime::now()->timestamp());
