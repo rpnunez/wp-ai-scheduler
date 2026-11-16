@@ -683,24 +683,31 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'id'              => 1,
 			'name'            => 'Images Template',
 			'prompt_template' => 'Write about {{topic}}',
-			'content_images'  => wp_json_encode(array(
-				array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto'),
-			)),
+			'post_images'     => array(
+				(object) array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto'),
+			),
 		);
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
 
 		$post_id = $this->factory->post->create(array('post_title' => 'Test Post'));
+		$history_id = $this->history_repository->create(array(
+			'template_id' => 1,
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+		));
 		$repo = new AIPS_Post_Images_Generated_Repository();
-		$row_id = $repo->insert(array(
+		$row_id = $repo->create(array(
 			'post_id'           => $post_id,
-			'history_id'        => 55,
+			'history_id'        => $history_id,
 			'placeholder_index' => 1,
 			'status'            => 'completed',
 			'attachment_id'     => 0,
 		));
 
-		$mock_generator = $this->createMock(AIPS_Generator::class);
-		$mock_generator->method('generate_content_from_context')
+		$mock_generator = $this->getMockBuilder(AIPS_Generator::class)
+			->onlyMethods(array('generate_content'))
+			->getMock();
+		$mock_generator->method('generate_content')
 			->willReturn('<p>Intro</p>[post_image index="1"]<p>Body</p>[post_image index="99"]');
 
 		$ref = new ReflectionProperty($this->service, 'generator');
@@ -710,7 +717,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$result = $this->service->regenerate_content(array(
 			'generation_context' => $generation_context,
 			'post_id'            => $post_id,
-			'history_id'         => 55,
+			'history_id'         => $history_id,
 			'current_title'      => 'Test Post',
 		));
 

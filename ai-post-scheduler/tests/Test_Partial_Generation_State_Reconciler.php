@@ -114,6 +114,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Meta Exists Post',
 		));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, 'some_value');
 		$aips_test_meta = array(
 			$post_id => array(
 				AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES => 'some_value',
@@ -142,6 +143,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Meta Exists Empty Value Post',
 		));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, '');
 		// metadata_exists returns true because the row exists (even with an empty value).
 		$aips_test_meta = array(
 			$post_id => array(
@@ -405,7 +407,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
 
 		$repo = new AIPS_Post_Images_Generated_Repository();
-		$row_id = $repo->insert(array(
+		$row_id = $repo->create(array(
 			'post_id'           => $post_id,
 			'placeholder_index' => 1,
 			'status'            => 'completed',

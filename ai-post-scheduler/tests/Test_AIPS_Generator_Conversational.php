@@ -310,9 +310,9 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 			'title_prompt'            => 'Write the post title.',
 			'generate_slug'           => 1,
 			'slug_prompt'             => 'Slug prompt',
-			'content_images'          => wp_json_encode(array(
-				array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Photo of {{topic}}'),
-			)),
+			'post_images'             => array(
+				(object) array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Photo of {{topic}}'),
+			),
 			'post_status'             => 'draft',
 			'post_type'               => 'post',
 			'post_author'             => 1,
@@ -351,9 +351,9 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 			'prompt_template'         => 'Write the post body.',
 			'title_prompt'            => 'Write the post title.',
 			'generate_slug'           => 1,
-			'content_images'          => wp_json_encode(array(
-				array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Template prompt {{topic}}'),
-			)),
+			'post_images'             => array(
+				(object) array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Template prompt {{topic}}'),
+			),
 			'post_status'             => 'draft',
 			'post_type'               => 'post',
 			'post_author'             => 1,

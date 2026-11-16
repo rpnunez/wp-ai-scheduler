@@ -2158,8 +2158,8 @@ class AIPS_Generator {
 		$metadata = $this->use_metadata_turn() ? $this->generate_metadata_turn($context) : null;
 
 		$title_result   = $this->resolve_generated_title($context, $content, $metadata);
-		$slug_result    = $this->resolve_generated_slug($title_result['title'], $content, $context, $metadata);
 		$excerpt_result = $this->resolve_generated_excerpt($title_result['title'], $content, $context, $metadata);
+		$slug_result    = $this->resolve_generated_slug($title_result['title'], $content, $context, $metadata);
 
 		return array(
 			'title'                          => $title_result['title'],

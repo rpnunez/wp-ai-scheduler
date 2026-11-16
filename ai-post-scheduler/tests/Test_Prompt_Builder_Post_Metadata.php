@@ -66,7 +66,7 @@ class Test_Prompt_Builder_Post_Metadata extends WP_UnitTestCase {
 
 		$this->assertStringContainsString('SLUG INSTRUCTIONS:', $prompt);
 		$this->assertStringContainsString('SEO slug instructions for WordPress Performance', $prompt);
-		$this->assertStringContainsString('"slug": "the-recommended-post-slug"', $prompt);
+		$this->assertStringContainsString('"slug": "the finished lowercase hyphenated URL slug"', $prompt);
 	}
 
 	public function test_metadata_with_topic_context_includes_author_tone_and_style() {
