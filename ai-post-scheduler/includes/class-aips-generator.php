@@ -266,10 +266,6 @@ class AIPS_Generator {
             return false;
         }
 
-        if (!method_exists($this->ai_service, 'supports_conversation')) {
-            return false;
-        }
-
         return (bool) $this->ai_service->supports_conversation();
     }
 
@@ -422,10 +418,6 @@ class AIPS_Generator {
 
         // Avoid building the content context when the title prompt does not
         // contain any AI variables to resolve.
-        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
-            return array();
-        }
-
         $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
         if ($additional_instructions !== '') {
             $ai_variables = array_values(array_unique(array_merge(
@@ -467,10 +459,6 @@ class AIPS_Generator {
      * @return array Associative array of resolved AI variable values.
      */
     private function resolve_ai_variables_for_template_string($template_string, $context_str, $log_type = 'ai_variables') {
-        if (!method_exists($this->template_processor, 'extract_ai_variables')) {
-            return array();
-        }
-
         $ai_variables = $this->template_processor->extract_ai_variables($template_string);
 
         if (empty($ai_variables)) {
@@ -581,7 +569,7 @@ class AIPS_Generator {
         $topic_str = $context->get_topic();
         $resolved_ai_variables = array();
 
-        if (method_exists($this->template_processor, 'has_ai_variables') && $this->template_processor->has_ai_variables($image_prompt)) {
+        if ($this->template_processor->has_ai_variables($image_prompt)) {
             $image_context = ($this->conversation !== null)
                 ? $this->build_featured_image_variable_context_conversational($context)
                 : $this->build_featured_image_variable_context($context, $content, $title);
@@ -589,11 +577,7 @@ class AIPS_Generator {
             $resolved_ai_variables = $this->resolve_ai_variables_for_template_string($image_prompt, $image_context, 'ai_variables_featured_image');
         }
 
-        if (method_exists($this->template_processor, 'process_with_ai_variables')) {
-            $processed_prompt = $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
-        } else {
-            $processed_prompt = $this->template_processor->process($image_prompt, $topic_str);
-        }
+        $processed_prompt = $this->template_processor->process_with_ai_variables($image_prompt, $topic_str, $resolved_ai_variables);
 
         return $this->remove_unresolved_template_placeholders($processed_prompt);
     }
@@ -876,7 +860,7 @@ class AIPS_Generator {
         }
 
         $content_image_templates = array();
-        if (method_exists($context, 'has_content_images') && $context->has_content_images()) {
+        if ($context->has_content_images()) {
             $configured_images = AIPS_Post_Images_Service::limited_content_images($context->get_content_images());
             foreach ($configured_images as $img) {
                 $src = !empty($img->source) ? $img->source : 'ai_prompt';
@@ -892,25 +876,22 @@ class AIPS_Generator {
 
         // Collect the placeholders appearing across templates so the model
         // resolves them once, in the same turn that consumes them.
-        $ai_variables = array();
-        $include_slug = method_exists($context, 'should_generate_slug') && $context->should_generate_slug();
+        $include_slug = $context->should_generate_slug();
 
-        if (method_exists($this->template_processor, 'extract_ai_variables')) {
-            $title_instructions = $this->get_post_metadata_prompt_builder()->resolve_title_instructions($context, $context->get_topic());
-            $slug_instructions  = $include_slug ? $this->post_slug_prompt_builder->resolve_slug_instructions($context, $context->get_topic()) : '';
+        $title_instructions = $this->get_post_metadata_prompt_builder()->resolve_title_instructions($context, $context->get_topic());
+        $slug_instructions  = $include_slug ? $this->post_slug_prompt_builder->resolve_slug_instructions($context, $context->get_topic()) : '';
 
-            $extracted_variables = array_merge(
-                (array) $this->template_processor->extract_ai_variables($title_instructions),
-                (array) $this->template_processor->extract_ai_variables($slug_instructions),
-                (array) $this->template_processor->extract_ai_variables($image_prompt_template)
-            );
+        $extracted_variables = array_merge(
+            (array) $this->template_processor->extract_ai_variables($title_instructions),
+            (array) $this->template_processor->extract_ai_variables($slug_instructions),
+            (array) $this->template_processor->extract_ai_variables($image_prompt_template)
+        );
 
-            foreach ($content_image_templates as $tpl) {
-                $extracted_variables = array_merge($extracted_variables, (array) $this->template_processor->extract_ai_variables($tpl));
-            }
-
-            $ai_variables = array_values(array_unique($extracted_variables));
+        foreach ($content_image_templates as $tpl) {
+            $extracted_variables = array_merge($extracted_variables, (array) $this->template_processor->extract_ai_variables($tpl));
         }
+
+        $ai_variables = array_values(array_unique($extracted_variables));
 
         $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template, $include_slug, $content_image_templates);
         $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '', $include_slug, $content_image_templates);
@@ -1055,7 +1036,7 @@ class AIPS_Generator {
 		$excerpt = $this->generate_excerpt_from_context($title, $content, $context);
 
         $slug = '';
-        if (method_exists($context, 'should_generate_slug') && $context->should_generate_slug()) {
+        if ($context->should_generate_slug()) {
             $slug_success = false;
             $generated_slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
             if (!is_wp_error($generated_slug) && $slug_success) {
@@ -1087,7 +1068,7 @@ class AIPS_Generator {
             }
         }
 
-        if (method_exists($context, 'has_content_images') && $context->has_content_images()) {
+        if ($context->has_content_images()) {
             $content_images = AIPS_Post_Images_Service::limited_content_images($context->get_content_images());
             $total_images = count($content_images);
             foreach ($content_images as $img) {
@@ -1443,9 +1424,7 @@ class AIPS_Generator {
             $template = $context->get_template();
             if ($template && !empty($template->campaign_id) && class_exists('AIPS_Campaigns_Repository')) {
                 $campaigns_repo = AIPS_Campaigns_Repository::instance();
-                if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
-                    $campaigns_repo->flush_campaign_cache((int) $template->campaign_id);
-                }
+                $campaigns_repo->flush_campaign_cache((int) $template->campaign_id);
             }
         }
 
@@ -1909,7 +1888,7 @@ class AIPS_Generator {
                 $resolved['prompt'] = (string) $precomputed_prompt;
             } elseif (!empty($image->image_prompt)) {
                 $raw_prompt = $image->image_prompt;
-                if (method_exists($this->template_processor, 'has_ai_variables') && $this->template_processor->has_ai_variables($raw_prompt)) {
+                if ($this->template_processor->has_ai_variables($raw_prompt)) {
                     $ai_vars = $this->resolve_ai_variables_for_template_string($raw_prompt, $topic, 'ai_variables_content_image');
                     $resolved['prompt'] = $this->template_processor->process_with_ai_variables($raw_prompt, $topic, $ai_vars);
                 } else {
@@ -2204,7 +2183,7 @@ class AIPS_Generator {
 	 * @return array
 	 */
 	private function resolve_generated_slug($title, $content, $context, $metadata) {
-		if (!method_exists($context, 'should_generate_slug') || !$context->should_generate_slug()) {
+		if (!$context->should_generate_slug()) {
 			return array(
 				'slug'    => '',
 				'success' => true,

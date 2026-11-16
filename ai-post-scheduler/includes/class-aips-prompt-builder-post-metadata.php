@@ -69,7 +69,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			if ($voice_obj && !empty($voice_obj->excerpt_instructions)) {
 				$excerpt_instructions .= "\n" . $this->template_processor->process($voice_obj->excerpt_instructions, $topic_str);
 			}
-		} elseif ($context->get_type() === 'topic' && method_exists($context, 'get_author')) {
+		} elseif ($context instanceof AIPS_Topic_Context) {
 			$author_obj = $context->get_author();
 			if ($author_obj) {
 				$author_style = array();
@@ -86,7 +86,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 		$sections[] = "EXCERPT INSTRUCTIONS:\n" . $excerpt_instructions;
 
-		$include_slug = $include_slug !== null ? $include_slug : (method_exists($context, 'should_generate_slug') && $context->should_generate_slug());
+		$include_slug = $include_slug !== null ? $include_slug : $context->should_generate_slug();
 
 		if ($include_slug) {
 			$slug_builder      = new AIPS_Prompt_Builder_Post_Slug($this->template_processor);

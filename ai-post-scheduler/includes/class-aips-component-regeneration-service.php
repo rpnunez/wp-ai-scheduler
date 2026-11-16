@@ -424,7 +424,7 @@ class AIPS_Component_Regeneration_Service {
 			return $result;
 		}
 
-		if ($post_id && method_exists($generation_context, 'has_content_images') && $generation_context->has_content_images()) {
+		if ($post_id && $generation_context->has_content_images()) {
 			$generated_repo = new AIPS_Post_Images_Generated_Repository();
 			$existing_rows  = $generated_repo->get_for_post_history($post_id, $history_id);
 			if (!empty($existing_rows)) {
@@ -548,7 +548,7 @@ class AIPS_Component_Regeneration_Service {
 			$context['current_content'] = $content;
 		}
 
-		if (method_exists($generation_context, 'should_generate_slug') && $generation_context->should_generate_slug()) {
+		if ($generation_context->should_generate_slug()) {
 			$slug = $this->regenerate_slug($context);
 			if (is_wp_error($slug)) {
 				$result['errors']['slug'] = $slug->get_error_message();
