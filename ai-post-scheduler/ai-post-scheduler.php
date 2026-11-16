@@ -405,6 +405,25 @@ final class AI_Post_Scheduler {
             return AIPS_Cron_Backend_Resolver::resolve( $container->make(AIPS_Cron_Manager::class) );
         });
 
+        // Background job infrastructure (issue #2376)
+        $container->singleton(AIPS_Job_Registry::class, function( $container ) {
+            return new AIPS_Job_Registry();
+        });
+
+        $container->singleton(AIPS_Job_Repository::class, function( $container ) {
+            return new AIPS_Job_Repository();
+        });
+
+        $container->singleton(AIPS_Job_Manager::class, function( $container ) {
+            return new AIPS_Job_Manager(
+                $container->make(AIPS_Job_Registry::class),
+                $container->make(AIPS_Job_Repository::class),
+                $container->make(AIPS_Cron_Manager::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_Cron_Backend_Interface::class)
+            );
+        });
+
         $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
             return AIPS_Schedule_Repository::instance();
         });

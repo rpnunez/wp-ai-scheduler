@@ -113,4 +113,33 @@ class Test_AIPS_Cron_Deactivation_And_Diagnostics extends WP_UnitTestCase {
 		$this->assertSame( 'info', $health[ $hook_key ]['status'] );
 		$this->assertSame( 'Idle (no active job)', $health[ $hook_key ]['value'] );
 	}
+
+	// -------------------------------------------------------------------------
+	// Diagnostics Service Repair & Logs Provider Tests
+	// -------------------------------------------------------------------------
+
+	public function test_diagnostics_repair_clears_legacy_review_notifications_via_manager() {
+		// Schedule legacy notification hook
+		wp_schedule_single_event( time() + 3600, 'aips_send_review_notifications' );
+		$this->assertNotFalse( $this->cron_manager->next_scheduled( 'aips_send_review_notifications' ) );
+
+		$service = new AIPS_System_Diagnostics_Service();
+		$result  = $service->repair_legacy_review_notifications();
+
+		$this->assertIsArray( $result );
+		$this->assertTrue( $result['success'] );
+		$this->assertFalse( $this->cron_manager->next_scheduled( 'aips_send_review_notifications' ) );
+		$this->assertNotFalse( $this->cron_manager->next_scheduled( 'aips_notification_rollups' ) );
+	}
+
+	public function test_diagnostics_logs_provider_resolves_crons_via_manager() {
+		wp_schedule_event( time() + 3600, 'daily', 'aips_notification_rollups' );
+
+		$provider = new AIPS_System_Diagnostics_Logs_Provider();
+		$data     = $provider->get_data();
+
+		$this->assertIsArray( $data );
+		$this->assertArrayHasKey( 'new_cron', $data );
+		$this->assertIsInt( $data['new_cron'] );
+	}
 }
