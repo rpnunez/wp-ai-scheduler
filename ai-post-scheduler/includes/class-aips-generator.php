@@ -2183,12 +2183,13 @@ class AIPS_Generator {
 
 			if (!empty($missing_indexes)) {
 				$recovered = array();
-				// Tier 1 (Option 3): In Conversational Mode, attempt a quick mini-turn inside the active conversation.
+				// When conversational generation is active, request the missing image descriptions
+				// via a follow-up exchange in the existing conversation where the article is already in context.
 				if ($this->conversation !== null) {
 					$recovered = $this->recover_missing_content_image_prompts_conversational($context, $missing_indexes);
 				}
 
-				// Check what is still missing after Tier 1.
+				// Identify any placeholder indexes that remain unresolved after the conversational follow-up.
 				$still_missing = array();
 				foreach ($missing_indexes as $idx) {
 					if (!isset($recovered[$idx]) && !isset($recovered[(string) $idx])) {
@@ -2196,7 +2197,8 @@ class AIPS_Generator {
 					}
 				}
 
-				// Tier 2 (Option 2): Fall back to standalone prompt recovery for missing prompts.
+				// If conversational generation was inactive or did not resolve all indexes, fall back
+				// to standalone prompt generation using the article excerpt and title.
 				if (!empty($still_missing)) {
 					$standalone_recovered = $this->recover_missing_content_image_prompts_standalone($context, $still_missing, $content, $title_result['title']);
 					foreach ($standalone_recovered as $k => $v) {
