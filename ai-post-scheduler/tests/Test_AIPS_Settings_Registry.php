@@ -154,4 +154,52 @@ class Test_AIPS_Settings_Registry extends WP_UnitTestCase {
 		$this->assertNotNull( $author_def );
 		$this->assertTrue( is_callable( $author_def->get_control_option( 'render_callback' ) ) );
 	}
+
+	public function test_composite_controls_and_visual_parents() {
+		$registry = AIPS_Settings_Registry::instance();
+
+		// 1. AI Connectors
+		$connectors_def = $registry->get_definition( 'aips_wp_ai_connectors' );
+		$this->assertNotNull( $connectors_def );
+		$this->assertTrue( $connectors_def->is_action() );
+		$this->assertNull( $connectors_def->get_type() );
+		$this->assertTrue( is_callable( $connectors_def->get_render_callback() ) );
+
+		$mode_def = $registry->get_definition( 'aips_wp_ai_connector_mode' );
+		$this->assertNotNull( $mode_def );
+		$this->assertSame( 'aips_wp_ai_connectors', $mode_def->get_control_option( 'visual_parent' ) );
+
+		$ids_def = $registry->get_definition( 'aips_wp_ai_connector_ids' );
+		$this->assertNotNull( $ids_def );
+		$this->assertSame( 'aips_wp_ai_connectors', $ids_def->get_control_option( 'visual_parent' ) );
+
+		// 2. GSC Panel
+		$gsc_def = $registry->get_definition( 'aips_gsc' );
+		$this->assertNotNull( $gsc_def );
+		$this->assertTrue( $gsc_def->is_action() );
+		$this->assertTrue( is_callable( $gsc_def->get_render_callback() ) );
+
+		$gsc_sa_def = $registry->get_definition( 'aips_gsc_service_account' );
+		$this->assertNotNull( $gsc_sa_def );
+		$this->assertSame( 'aips_gsc', $gsc_sa_def->get_control_option( 'visual_parent' ) );
+
+		// 3. Shortcode Action Card
+		$shortcode_def = $registry->get_definition( 'aips_related_posts_shortcode' );
+		$this->assertNotNull( $shortcode_def );
+		$this->assertTrue( $shortcode_def->is_action() );
+		$this->assertTrue( is_callable( $shortcode_def->get_render_callback() ) );
+
+		// 4. Specialized render callbacks
+		$env_def = $registry->get_definition( 'aips_embeddings_env_id' );
+		$this->assertNotNull( $env_def );
+		$this->assertTrue( is_callable( $env_def->get_render_callback() ) );
+
+		$retention_def = $registry->get_definition( 'aips_source_archive_retention_days' );
+		$this->assertNotNull( $retention_def );
+		$this->assertTrue( is_callable( $retention_def->get_render_callback() ) );
+
+		$approval_def = $registry->get_definition( 'aips_author_topic_auto_approval_mode' );
+		$this->assertNotNull( $approval_def );
+		$this->assertTrue( is_callable( $approval_def->get_render_callback() ) );
+	}
 }

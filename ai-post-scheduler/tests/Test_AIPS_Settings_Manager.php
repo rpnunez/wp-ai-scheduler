@@ -83,4 +83,23 @@ class Test_AIPS_Settings_Manager extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'name="aips_notification_preferences[generation_failed]"', $output );
 		$this->assertStringContainsString( 'value="email"', $output );
 	}
+
+	public function test_render_field_callback_supports_custom_render_callback() {
+		$custom_def = new AIPS_Setting_Definition( array(
+			'key'             => 'aips_unit_test_custom_render',
+			'type'            => null,
+			'control_type'    => AIPS_Setting_Definition::CONTROL_ACTION,
+			'render_callback' => static function() {
+				return '<div id="custom-rendered-markup">Special Content</div>';
+			},
+		) );
+
+		$this->registry->register( $custom_def );
+
+		ob_start();
+		$this->manager->render_field_callback( array( 'key' => 'aips_unit_test_custom_render' ) );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( '<div id="custom-rendered-markup">Special Content</div>', $output );
+	}
 }

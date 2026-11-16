@@ -58,13 +58,9 @@ class AIPS_Settings_Manager {
 	 * @return void
 	 */
 	public static function register_runtime_hooks() {
-		static $hooks_registered = false;
-
-		if ( $hooks_registered ) {
+		if ( has_action( 'update_option_aips_enable_cache_system' ) ) {
 			return;
 		}
-
-		$hooks_registered = true;
 
 		$reset_cache_flag = function() {
 			if ( class_exists( 'AIPS_Cache' ) ) {
@@ -199,8 +195,11 @@ class AIPS_Settings_Manager {
 
 		// 1. Register with WordPress Settings API (register_setting)
 		foreach ( $definitions as $key => $definition ) {
-			// Skip sub-fields or virtual action controls that should not create top-level WP options.
-			if ( ! empty( $definition->get_control_option( 'parent_key' ) ) ) {
+			// Skip virtual action controls or sub-fields that should not create top-level WP options.
+			if ( null === $definition->get_type() || $definition->is_action() ) {
+				continue;
+			}
+			if ( ! empty( $definition->get_control_option( 'sub_key' ) ) || '_action_virtual' === $definition->get_control_option( 'parent_key' ) ) {
 				continue;
 			}
 
@@ -234,6 +233,9 @@ class AIPS_Settings_Manager {
 			$section = $definition->get_section();
 			if ( empty( $section ) ) {
 				continue; // Non-UI or unassigned setting.
+			}
+			if ( ! empty( $definition->get_control_option( 'visual_parent' ) ) ) {
+				continue; // Visually rendered inside its composite parent.
 			}
 
 			add_settings_field(
@@ -277,6 +279,12 @@ class AIPS_Settings_Manager {
 				: $definition->get_default();
 		} else {
 			$value = AIPS_Config::get_instance()->get_option( $key, $definition->get_default() );
+		}
+
+		$render_callback = $definition->get_render_callback();
+		if ( ! empty( $render_callback ) && is_callable( $render_callback ) ) {
+			echo call_user_func( $render_callback, $definition, $value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			return;
 		}
 
 		$this->renderer->render_field( $definition, $value );

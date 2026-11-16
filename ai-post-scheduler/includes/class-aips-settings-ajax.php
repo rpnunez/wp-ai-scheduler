@@ -71,7 +71,8 @@ class AIPS_Settings_AJAX {
 				continue;
 			}
 
-			$sanitized_value = sanitize_option($option_name, $raw_value);
+			$sanitized_value = $definition->sanitize($raw_value);
+			$sanitized_value = sanitize_option($option_name, $sanitized_value);
 			AIPS_Config::get_instance()->set_option($option_name, $sanitized_value);
 			$updated[] = $option_name;
 		}

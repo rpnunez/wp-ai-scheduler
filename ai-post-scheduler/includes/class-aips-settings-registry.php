@@ -312,7 +312,10 @@ class AIPS_Settings_Registry {
 		$defaults = array();
 
 		foreach ( $this->definitions as $key => $definition ) {
-			if ( ! empty( $definition->get_control_option( 'parent_key' ) ) ) {
+			if ( null === $definition->get_type() || $definition->is_action() ) {
+				continue;
+			}
+			if ( ! empty( $definition->get_control_option( 'sub_key' ) ) || '_action_virtual' === $definition->get_control_option( 'parent_key' ) ) {
 				continue;
 			}
 			$defaults[ $key ] = $definition->get_default();
@@ -715,6 +718,82 @@ class AIPS_Settings_Registry {
 				'sanitize_callback' => 'sanitize_text_field',
 			),
 			array(
+				'key'          => 'aips_wp_ai_connectors',
+				'type'         => null,
+				'tab'          => 'settings-ai',
+				'section'      => 'aips_ai_provider_section',
+				'label'        => __( 'WordPress AI Connectors', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_ACTION,
+				'render_callback' => function() {
+					$config          = AIPS_Config::get_instance();
+					$mode            = (string) $config->get_option( 'aips_wp_ai_connector_mode', 'all' );
+					$selected        = (array) $config->get_option( 'aips_wp_ai_connector_ids', array() );
+					$failover        = (bool) $config->get_option( 'aips_wp_ai_connector_failover', true );
+					$provider        = class_exists( 'AIPS_WP_AI_Client_Provider' ) ? new AIPS_WP_AI_Client_Provider() : null;
+					$connectors      = $provider ? $provider->get_active_ai_connectors() : array();
+					$ordered_ids     = array_values( array_unique( array_merge( $selected, array_keys( $connectors ) ) ) );
+					$settings_url    = admin_url( 'options-general.php?page=connectors' );
+					ob_start();
+					?>
+					<fieldset class="aips-wp-ai-connectors">
+						<label>
+							<input type="radio" name="aips_wp_ai_connector_mode" value="all" <?php checked( $mode, 'all' ); ?>>
+							<?php esc_html_e( 'Use all available connectors (recommended)', 'ai-post-scheduler' ); ?>
+						</label><br>
+						<label>
+							<input type="radio" name="aips_wp_ai_connector_mode" value="selected" <?php checked( $mode, 'selected' ); ?>>
+							<?php esc_html_e( 'Use only selected connectors', 'ai-post-scheduler' ); ?>
+						</label>
+
+						<?php if ( ! empty( $ordered_ids ) ) : ?>
+							<p><label for="aips_wp_ai_connector_ids"><strong><?php esc_html_e( 'Allowed connectors and priority', 'ai-post-scheduler' ); ?></strong></label></p>
+							<input type="hidden" name="aips_wp_ai_connector_ids[]" value="">
+							<select name="aips_wp_ai_connector_ids[]" id="aips_wp_ai_connector_ids" multiple size="<?php echo esc_attr( (string) min( 8, max( 3, count( $ordered_ids ) ) ) ); ?>" style="min-width: 24em;">
+								<?php foreach ( $ordered_ids as $connector_id ) : ?>
+									<?php
+									$connector  = isset( $connectors[ $connector_id ] ) ? $connectors[ $connector_id ] : null;
+									$name       = is_array( $connector ) && ! empty( $connector['name'] ) ? (string) $connector['name'] : $connector_id;
+									$health     = $provider ? $provider->get_connector_health( $connector_id ) : array();
+									$cooling    = ! empty( $health['cooldown_until'] ) && (int) $health['cooldown_until'] > time();
+									$approved   = $provider ? $provider->get_connector_approval_status( $connector_id ) : true;
+									$configured = is_array( $connector ) && $provider && $provider->is_connector_configured( $connector );
+									$status     = ! $configured
+										? __( 'currently unavailable', 'ai-post-scheduler' )
+										: ( false === $approved
+										? __( 'not approved for AI Post Scheduler', 'ai-post-scheduler' )
+										: ( $cooling
+										? __( 'temporarily unavailable', 'ai-post-scheduler' )
+										: __( 'connected', 'ai-post-scheduler' ) ) );
+									?>
+									<option value="<?php echo esc_attr( $connector_id ); ?>" <?php selected( in_array( $connector_id, $selected, true ) ); ?>>
+										<?php echo esc_html( sprintf( '%1$s (%2$s)', $name, $status ) ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+							<p>
+								<button type="button" class="button" data-aips-connector-move="up"><?php esc_html_e( 'Move up', 'ai-post-scheduler' ); ?></button>
+								<button type="button" class="button" data-aips-connector-move="down"><?php esc_html_e( 'Move down', 'ai-post-scheduler' ); ?></button>
+							</p>
+							<p class="description"><?php esc_html_e( 'When selected-connector mode is active, highlighted connectors are attempted from top to bottom. Use Ctrl/Cmd to select more than one.', 'ai-post-scheduler' ); ?></p>
+						<?php else : ?>
+							<p class="description"><?php esc_html_e( 'No active WordPress AI connectors are registered.', 'ai-post-scheduler' ); ?></p>
+						<?php endif; ?>
+
+						<input type="hidden" name="aips_wp_ai_connector_failover" value="0">
+						<label>
+							<input type="checkbox" name="aips_wp_ai_connector_failover" value="1" <?php checked( $failover ); ?>>
+							<?php esc_html_e( 'Try the next allowed connector when a connector-specific failure occurs', 'ai-post-scheduler' ); ?>
+						</label>
+						<p class="description">
+							<?php esc_html_e( 'Credentials remain managed by WordPress. Request validation and content-policy failures do not trigger connector failover.', 'ai-post-scheduler' ); ?>
+							<a href="<?php echo esc_url( $settings_url ); ?>"><?php esc_html_e( 'Manage Connectors', 'ai-post-scheduler' ); ?></a>
+						</p>
+					</fieldset>
+					<?php
+					return (string) ob_get_clean();
+				},
+			),
+			array(
 				'key'          => 'aips_wp_ai_connector_mode',
 				'type'         => AIPS_Setting_Definition::TYPE_STRING,
 				'default'      => 'all',
@@ -722,6 +801,7 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_provider_section',
 				'label'        => __( 'WP AI Connector Mode', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array( 'visual_parent' => 'aips_wp_ai_connectors' ),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -732,6 +812,23 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_provider_section',
 				'label'        => __( 'WP AI Connector IDs', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'control_options' => array( 'visual_parent' => 'aips_wp_ai_connectors' ),
+				'sanitize_callback' => static function( $value ) {
+					if ( ! is_array( $value ) ) {
+						return array();
+					}
+					$ids = array();
+					foreach ( $value as $id ) {
+						if ( ! is_scalar( $id ) ) {
+							continue;
+						}
+						$id = strtolower( trim( (string) $id ) );
+						if ( '' !== $id && preg_match( '/^[a-z0-9_-]+$/', $id ) ) {
+							$ids[] = $id;
+						}
+					}
+					return array_values( array_unique( $ids ) );
+				},
 			),
 			array(
 				'key'          => 'aips_wp_ai_connector_failover',
@@ -741,6 +838,7 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_provider_section',
 				'label'        => __( 'Enable Failover', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TOGGLE,
+				'control_options' => array( 'visual_parent' => 'aips_wp_ai_connectors' ),
 				'sanitize_callback' => 'absint',
 			),
 			array(
@@ -877,6 +975,26 @@ class AIPS_Settings_Registry {
 				'label'        => __( 'Embeddings Environment ID', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TEXT,
 				'sanitize_callback' => 'sanitize_text_field',
+				'render_callback' => function( AIPS_Setting_Definition $def, $value ) {
+					$val = (string) ( null !== $value ? $value : AIPS_Config::get_instance()->get_option( 'aips_embeddings_env_id', '' ) );
+					ob_start();
+					?>
+					<div class="aips-env-input-wrap">
+						<input type="text" name="aips_embeddings_env_id" id="aips_embeddings_env_id" value="<?php echo esc_attr( $val ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. default, percona_db, pinecone_env', 'ai-post-scheduler' ); ?>">
+						<button type="button" id="aips-fetch-meow-envs-btn" class="aips-btn aips-btn-secondary aips-btn-sm">
+							<span class="dashicons dashicons-rest-api"></span>
+							<?php esc_html_e( 'Fetch Environments from Meow Apps', 'ai-post-scheduler' ); ?>
+						</button>
+					</div>
+					<div id="aips-meow-envs-dropdown-container" class="aips-meow-envs-container aips-hidden">
+						<select id="aips-meow-envs-select" class="regular-text">
+							<option value=""><?php esc_html_e( '— Select a discovered environment —', 'ai-post-scheduler' ); ?></option>
+						</select>
+					</div>
+					<p class="description"><?php esc_html_e( 'Optional connection / environment ID from Meow AI Engine (e.g. Percona Server vector database, OpenAI, Pinecone, Qdrant, Ollama).', 'ai-post-scheduler' ); ?></p>
+					<?php
+					return (string) ob_get_clean();
+				},
 			),
 			array(
 				'key'          => 'aips_embeddings_dimensions',
@@ -1190,6 +1308,36 @@ class AIPS_Settings_Registry {
 				'control_type' => AIPS_Setting_Definition::CONTROL_TOGGLE,
 				'sanitize_callback' => 'absint',
 			),
+			array(
+				'key'          => 'aips_related_posts_shortcode',
+				'type'         => null,
+				'tab'          => 'settings-ai',
+				'section'      => 'aips_ai_related_posts_section',
+				'label'        => __( 'Shortcode & Block Integration', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_ACTION,
+				'render_callback' => function() {
+					ob_start();
+					?>
+					<div class="aips-shortcode-preview-card">
+						<div class="aips-shortcode-code-wrap">
+							<code class="aips-shortcode-display" id="aips-related-posts-shortcode">[aips_related_posts]</code>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-btn" id="aips-copy-shortcode-btn" data-clipboard-text="[aips_related_posts]" title="<?php esc_attr_e( 'Copy shortcode to clipboard', 'ai-post-scheduler' ); ?>">
+								<span class="dashicons dashicons-clipboard"></span>
+								<span class="aips-copy-text"><?php esc_html_e( 'Copy Shortcode', 'ai-post-scheduler' ); ?></span>
+							</button>
+						</div>
+						<p class="description">
+							<?php esc_html_e( 'Place this shortcode anywhere in your content, page builders (Elementor, Divi, Beaver Builder), or widget templates to insert semantic related recommendations.', 'ai-post-scheduler' ); ?>
+						</p>
+						<div class="aips-shortcode-attributes-hint">
+							<span class="aips-hint-tag"><strong><?php esc_html_e( 'Gutenberg Block:', 'ai-post-scheduler' ); ?></strong> <code>/Related Posts (AIPS)</code></span>
+							<span class="aips-hint-tag"><strong><?php esc_html_e( 'Attributes:', 'ai-post-scheduler' ); ?></strong> <code>count="4"</code>, <code>heading="Related Articles"</code>, <code>layout="grid|list"</code></span>
+						</div>
+					</div>
+					<?php
+					return (string) ob_get_clean();
+				},
+			),
 
 			// -----------------------------------------------------------------
 			// Tab: AI Assistance ('settings-ai-assistance')
@@ -1212,6 +1360,7 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_assistance_section',
 				'label'        => __( 'Assistance Contexts', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'sanitize_callback' => array( 'AIPS_Settings', 'sanitize_ai_assistance_contexts' ),
 			),
 			array(
 				'key'          => 'aips_ai_assistance_response_length',
@@ -1375,6 +1524,28 @@ class AIPS_Settings_Registry {
 				'label'        => __( 'Source Archive Retention (Days)', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_NUMBER,
 				'sanitize_callback' => 'absint',
+				'render_callback' => function( AIPS_Setting_Definition $def, $value ) {
+					$days        = absint( null !== $value ? $value : AIPS_Config::get_instance()->get_option( 'aips_source_archive_retention_days', 0 ) );
+					$review_days = isset( $_GET['aips_retention_review_days'] ) ? absint( wp_unslash( $_GET['aips_retention_review_days'] ) ) : $days;
+					$base        = admin_url( 'admin.php?page=aips-settings&tab=settings-general&aips_retention_review_days=' );
+					ob_start();
+					?>
+					<input type="number" min="0" max="3650" step="1" id="aips_source_archive_retention_days" name="aips_source_archive_retention_days" value="<?php echo esc_attr( (string) $days ); ?>" class="small-text">
+					<p class="description"><?php esc_html_e( 'Days to retain source snapshots. 0 disables deletion. Daily cleanup removes up to 100 expired snapshots per batch and always keeps the newest usable snapshot for each current source URL. Generation history keeps its metadata, but full archived content becomes unavailable after deletion.', 'ai-post-scheduler' ); ?></p>
+					<label for="aips-retention-review-days"><?php esc_html_e( 'Review cutoff (days):', 'ai-post-scheduler' ); ?></label>
+					<input type="number" id="aips-retention-review-days" min="1" max="3650" value="<?php echo esc_attr( (string) max( 1, $review_days ) ); ?>" class="small-text" oninput="this.nextElementSibling.href=this.nextElementSibling.dataset.base+encodeURIComponent(this.value)">
+					<a class="button" data-base="<?php echo esc_url( $base ); ?>" href="<?php echo esc_url( $base . max( 1, $review_days ) ); ?>"><?php esc_html_e( 'Review eligible snapshots', 'ai-post-scheduler' ); ?></a>
+					<?php
+					if ( $review_days > 0 && class_exists( 'AIPS_Sources_Data_Repository' ) ) {
+						try {
+							$count = ( new AIPS_Sources_Data_Repository() )->count_prunable_archive( AIPS_DateTime::now()->timestamp() - $review_days * DAY_IN_SECONDS );
+							echo '<p class="description">' . esc_html( sprintf( __( '%1$d snapshots are eligible for deletion with a %2$d-day cutoff. Review this count before saving a nonzero retention period.', 'ai-post-scheduler' ), $count, $review_days ) ) . '</p>';
+						} catch ( Throwable $error ) {
+							echo '<p class="description">' . esc_html__( 'The eligible snapshot count is unavailable. Check the database before enabling retention.', 'ai-post-scheduler' ) . '</p>';
+						}
+					}
+					return (string) ob_get_clean();
+				},
 			),
 			array(
 				'key'          => 'aips_source_fetch_max_response_bytes',
@@ -1529,6 +1700,100 @@ class AIPS_Settings_Registry {
 				'sanitize_callback' => 'absint',
 			),
 			array(
+				'key'          => 'aips_gsc',
+				'type'         => null,
+				'tab'          => 'settings-linking',
+				'section'      => 'aips_gsc_section',
+				'label'        => __( 'Google Search Console', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_ACTION,
+				'render_callback' => function() {
+					$config     = AIPS_Config::get_instance();
+					$service    = AIPS_Container::get_instance()->has( AIPS_GSC_Keywords_Service::class )
+						? AIPS_Container::get_instance()->make( AIPS_GSC_Keywords_Service::class )
+						: null;
+					$client     = $service ? $service->get_client() : null;
+					$email      = $client ? $client->get_client_email() : '';
+					$unreadable = $client ? $client->has_unreadable_credentials() : false;
+					$property   = $client ? $client->get_property() : (string) $config->get_option( 'aips_gsc_property', '' );
+					$anchor     = (bool) $config->get_option( 'aips_gsc_anchor_enabled', true );
+					$status     = $service ? $service->get_status() : null;
+					ob_start();
+					?>
+					<div class="aips-gsc-field" id="aips-gsc-field">
+						<p class="aips-gsc-status">
+							<?php if ( '' !== $email ) : ?>
+								<span class="aips-badge aips-badge-success"><?php esc_html_e( 'Key saved', 'ai-post-scheduler' ); ?></span>
+								<?php
+								/* translators: %s: service account email */
+								printf( esc_html__( 'Service account: %s', 'ai-post-scheduler' ), '<code>' . esc_html( $email ) . '</code>' );
+								?>
+							<?php elseif ( $unreadable ) : ?>
+								<span class="aips-badge aips-badge-danger"><?php esc_html_e( 'Key unreadable', 'ai-post-scheduler' ); ?></span>
+								<?php esc_html_e( 'The saved key can no longer be decrypted (the site\'s security salts changed). Paste the JSON key again.', 'ai-post-scheduler' ); ?>
+							<?php else : ?>
+								<span class="aips-badge aips-badge-neutral"><?php esc_html_e( 'Not connected', 'ai-post-scheduler' ); ?></span>
+							<?php endif; ?>
+						</p>
+
+						<p>
+							<label for="aips_gsc_service_account"><strong><?php esc_html_e( 'Service account JSON key', 'ai-post-scheduler' ); ?></strong></label><br>
+							<textarea name="aips_gsc_service_account" id="aips_gsc_service_account" rows="4" class="large-text code" autocomplete="off" spellcheck="false" placeholder="<?php echo esc_attr( '' !== $email ? __( 'Leave empty to keep the saved key, or paste a new JSON key to replace it.', 'ai-post-scheduler' ) : __( 'Paste the contents of the downloaded JSON key file ({ "type": "service_account", ... })', 'ai-post-scheduler' ) ); ?>"></textarea>
+						</p>
+
+						<p>
+							<label for="aips_gsc_property"><strong><?php esc_html_e( 'Property', 'ai-post-scheduler' ); ?></strong></label><br>
+							<input type="text" name="aips_gsc_property" id="aips_gsc_property" value="<?php echo esc_attr( $property ); ?>" class="regular-text" placeholder="<?php echo esc_attr( 'sc-domain:' . wp_parse_url( home_url(), PHP_URL_HOST ) ); ?>">
+							<span class="description"><?php esc_html_e( 'Exactly as shown in Search Console: sc-domain:example.com for a Domain property, or https://example.com/ for a URL-prefix property.', 'ai-post-scheduler' ); ?></span>
+						</p>
+
+						<p>
+							<label for="aips_gsc_anchor_enabled">
+								<input type="hidden" name="aips_gsc_anchor_enabled" value="0">
+								<input type="checkbox" name="aips_gsc_anchor_enabled" id="aips_gsc_anchor_enabled" value="1" <?php checked( $anchor ); ?>>
+								<?php esc_html_e( 'Prefer the search queries each post ranks for as anchor text in internal link suggestions', 'ai-post-scheduler' ); ?>
+							</label>
+						</p>
+
+						<p class="aips-gsc-actions">
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-gsc-test"><?php esc_html_e( 'Test Connection', 'ai-post-scheduler' ); ?></button>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-gsc-sync"><?php esc_html_e( 'Sync Keywords Now', 'ai-post-scheduler' ); ?></button>
+							<?php if ( '' !== $email || $unreadable ) : ?>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost" id="aips-gsc-disconnect"><?php esc_html_e( 'Disconnect', 'ai-post-scheduler' ); ?></button>
+							<?php endif; ?>
+						</p>
+
+						<p class="description" id="aips-gsc-last-sync">
+							<?php
+							if ( $status && ! empty( $status['error'] ) ) {
+								/* translators: 1: time ago, 2: error message */
+								printf( esc_html__( 'Last sync failed %1$s ago: %2$s', 'ai-post-scheduler' ), esc_html( human_time_diff( (int) $status['time'] ) ), esc_html( $status['error'] ) );
+							} elseif ( $status && ! empty( $status['time'] ) ) {
+								/* translators: 1: time ago, 2: number of keywords, 3: number of posts */
+								printf( esc_html__( 'Last synced %1$s ago: %2$d target keywords for %3$d posts. Syncs daily.', 'ai-post-scheduler' ), esc_html( human_time_diff( (int) $status['time'] ) ), (int) $status['queries'], (int) $status['posts'] );
+							} else {
+								esc_html_e( 'Not synced yet. Save your settings first, then test and sync.', 'ai-post-scheduler' );
+							}
+							?>
+						</p>
+
+						<details class="aips-gsc-help">
+							<summary><?php esc_html_e( 'How to connect (why not an API key?)', 'ai-post-scheduler' ); ?></summary>
+							<p><?php esc_html_e( 'Search Console data is private to verified site owners, so Google does not allow reading it with a plain API key. A service account is a robot Google user you create once and grant read-only access:', 'ai-post-scheduler' ); ?></p>
+							<ol>
+								<li><?php esc_html_e( 'In Google Cloud Console, create (or pick) a project and enable the "Google Search Console API".', 'ai-post-scheduler' ); ?></li>
+								<li><?php esc_html_e( 'Go to IAM & Admin → Service Accounts → Create service account (no roles needed).', 'ai-post-scheduler' ); ?></li>
+								<li><?php esc_html_e( 'Open it → Keys → Add key → Create new key → JSON. Paste the downloaded file above.', 'ai-post-scheduler' ); ?></li>
+								<li><?php esc_html_e( 'In Search Console → Settings → Users and permissions, add the service account email as a user with Restricted permission.', 'ai-post-scheduler' ); ?></li>
+								<li><?php esc_html_e( 'Enter the property, save settings, then click Test Connection and Sync Keywords Now.', 'ai-post-scheduler' ); ?></li>
+							</ol>
+							<p><?php esc_html_e( 'The key is stored encrypted and only has read-only access. Only the top search queries per post are stored.', 'ai-post-scheduler' ); ?></p>
+						</details>
+					</div>
+					<?php
+					return (string) ob_get_clean();
+				},
+			),
+			array(
 				'key'          => 'aips_gsc_service_account',
 				'type'         => AIPS_Setting_Definition::TYPE_STRING,
 				'default'      => '',
@@ -1536,6 +1801,7 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_gsc_section',
 				'label'        => __( 'GSC Service Account JSON', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TEXTAREA,
+				'control_options' => array( 'visual_parent' => 'aips_gsc' ),
 			),
 			array(
 				'key'          => 'aips_gsc_property',
@@ -1545,6 +1811,7 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_gsc_section',
 				'label'        => __( 'GSC Property URL', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TEXT,
+				'control_options' => array( 'visual_parent' => 'aips_gsc' ),
 				'sanitize_callback' => 'sanitize_text_field',
 			),
 			array(
@@ -1555,6 +1822,7 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_gsc_section',
 				'label'        => __( 'Optimize Anchors via GSC', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_TOGGLE,
+				'control_options' => array( 'visual_parent' => 'aips_gsc' ),
 				'sanitize_callback' => 'absint',
 			),
 
@@ -1768,6 +2036,27 @@ class AIPS_Settings_Registry {
 				'label'        => __( 'Topic Auto-Approval Mode', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
 				'sanitize_callback' => 'sanitize_key',
+				'render_callback' => function( AIPS_Setting_Definition $def, $value ) {
+					$mode       = (string) ( null !== $value ? $value : AIPS_Config::get_instance()->get_option( 'aips_author_topic_auto_approval_mode', 'manual' ) );
+					$embeddings = AIPS_Container::get_instance()->has( AIPS_Embeddings_Service::class )
+						? AIPS_Container::get_instance()->make( AIPS_Embeddings_Service::class )
+						: null;
+					$disabled   = ! $embeddings || ! $embeddings->is_enabled();
+					ob_start();
+					?>
+					<select name="aips_author_topic_auto_approval_mode" id="aips_author_topic_auto_approval_mode">
+						<option value="manual" <?php selected( $mode, 'manual' ); ?>><?php esc_html_e( 'Manual Review (Hold in Pending)', 'ai-post-scheduler' ); ?></option>
+						<option value="all" <?php selected( $mode, 'all' ); ?>><?php esc_html_e( 'Auto-Approve All (Unfiltered)', 'ai-post-scheduler' ); ?></option>
+						<option value="score" <?php selected( $mode, 'score' ); ?>><?php esc_html_e( 'Quality Score Threshold', 'ai-post-scheduler' ); ?></option>
+						<option value="similarity" <?php selected( $mode, 'similarity' ); ?>><?php esc_html_e( 'Dual-Boundary Semantic Gate (Vector Similarity)', 'ai-post-scheduler' ); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e( 'Applies only to authors whose Topic Auto-Approval Policy is set to "Use Global Settings". Changing this affects every one of those authors. Authors with their own policy are not affected.', 'ai-post-scheduler' ); ?></p>
+					<p class="description aips-embeddings-warning<?php echo $disabled ? '' : ' aips-hidden'; ?>" id="aips-auto-approval-embeddings-warning" style="color: #b32d2e;<?php echo $disabled ? '' : ' display: none;'; ?>">
+						<?php esc_html_e( 'Embeddings are currently disabled. The semantic gate cannot measure niche relevance until embeddings are enabled.', 'ai-post-scheduler' ); ?>
+					</p>
+					<?php
+					return (string) ob_get_clean();
+				},
 			),
 			array(
 				'key'          => 'aips_author_topic_auto_approval_min_score',
@@ -1817,7 +2106,12 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_feedback_section',
 				'label'        => __( 'Topic Similarity Threshold', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SLIDER,
-				'sanitize_callback' => 'floatval',
+				'sanitize_callback' => static function( $value ) {
+					if ( ! is_numeric( $value ) ) {
+						return 0.85;
+					}
+					return min( 1.0, max( 0.1, (float) $value ) );
+				},
 			),
 
 			// -----------------------------------------------------------------
@@ -1851,6 +2145,30 @@ class AIPS_Settings_Registry {
 					'partial_generation_completed' => 'db',
 					'post_generated'               => 'both',
 				),
+				'sanitize_callback' => static function( $value ) {
+					$preferences = is_array( $value ) ? $value : array();
+					$defaults    = AIPS_Config::get_instance()->get_option( 'aips_notification_preferences' );
+					$allowed_modes = class_exists( 'AIPS_Notifications' )
+						? array_keys( AIPS_Notifications::get_channel_mode_options() )
+						: array( 'both', 'email', 'db', 'none' );
+					$registry    = class_exists( 'AIPS_Notifications' )
+						? AIPS_Notifications::get_notification_type_registry()
+						: array();
+					$sanitized   = array();
+
+					foreach ( $registry as $type => $meta ) {
+						$fallback_mode = isset( $defaults[ $type ] ) ? $defaults[ $type ] : ( isset( $meta['default_mode'] ) ? $meta['default_mode'] : 'both' );
+						$mode = isset( $preferences[ $type ] ) ? sanitize_key( $preferences[ $type ] ) : $fallback_mode;
+
+						if ( ! in_array( $mode, $allowed_modes, true ) ) {
+							$mode = $fallback_mode;
+						}
+
+						$sanitized[ $type ] = $mode;
+					}
+
+					return $sanitized;
+				},
 			),
 
 			// System Health & Resilience Alerts

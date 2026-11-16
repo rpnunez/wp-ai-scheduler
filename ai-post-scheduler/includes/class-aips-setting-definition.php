@@ -124,13 +124,20 @@ class AIPS_Setting_Definition {
 	private $dependencies;
 
 	/**
+	 * Optional custom render callback.
+	 *
+	 * @var callable|null
+	 */
+	private $render_callback;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array $args Setting definition arguments.
 	 */
 	public function __construct( array $args ) {
 		$this->key               = isset( $args['key'] ) ? sanitize_key( $args['key'] ) : '';
-		$this->type              = isset( $args['type'] ) ? (string) $args['type'] : self::TYPE_STRING;
+		$this->type              = array_key_exists( 'type', $args ) ? ( null !== $args['type'] ? (string) $args['type'] : null ) : self::TYPE_STRING;
 		$this->default           = array_key_exists( 'default', $args ) ? $args['default'] : null;
 		$this->tab               = isset( $args['tab'] ) ? sanitize_key( $args['tab'] ) : '';
 		$this->section           = isset( $args['section'] ) ? sanitize_key( $args['section'] ) : '';
@@ -141,6 +148,11 @@ class AIPS_Setting_Definition {
 		$this->sanitize_callback = isset( $args['sanitize_callback'] ) ? $args['sanitize_callback'] : null;
 		$this->validate_callback = isset( $args['validate_callback'] ) && is_callable( $args['validate_callback'] ) ? $args['validate_callback'] : null;
 		$this->dependencies      = isset( $args['dependencies'] ) && is_array( $args['dependencies'] ) ? $args['dependencies'] : array();
+		$this->render_callback   = isset( $args['render_callback'] ) && is_callable( $args['render_callback'] )
+			? $args['render_callback']
+			: ( isset( $this->control_options['render_callback'] ) && is_callable( $this->control_options['render_callback'] )
+				? $this->control_options['render_callback']
+				: null );
 	}
 
 	/**
@@ -270,6 +282,24 @@ class AIPS_Setting_Definition {
 	 */
 	public function get_dependencies() {
 		return $this->dependencies;
+	}
+
+	/**
+	 * Get optional custom render callback.
+	 *
+	 * @return callable|null
+	 */
+	public function get_render_callback() {
+		return $this->render_callback;
+	}
+
+	/**
+	 * Check if setting is an action or virtual non-persisted control.
+	 *
+	 * @return bool
+	 */
+	public function is_action() {
+		return self::CONTROL_ACTION === $this->control_type || null === $this->type;
 	}
 
 	/**

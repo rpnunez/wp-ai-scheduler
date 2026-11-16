@@ -42,7 +42,10 @@ class AIPS_Settings_Form_Renderer {
 		$opts         = $definition->get_control_options();
 		$control_html = '';
 
-		if ( ! empty( $opts['render_callback'] ) && is_callable( $opts['render_callback'] ) ) {
+		$render_callback = $definition->get_render_callback();
+		if ( ! empty( $render_callback ) && is_callable( $render_callback ) ) {
+			$control_html = (string) call_user_func( $render_callback, $definition, $value );
+		} elseif ( ! empty( $opts['render_callback'] ) && is_callable( $opts['render_callback'] ) ) {
 			$control_html = (string) call_user_func( $opts['render_callback'], $definition, $value );
 		} else {
 			switch ( $control_type ) {

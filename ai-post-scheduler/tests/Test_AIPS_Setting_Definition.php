@@ -122,4 +122,29 @@ class Test_AIPS_Setting_Definition extends WP_UnitTestCase {
 		$this->assertNull( $def->get_control_option( 'non_existent' ) );
 		$this->assertSame( 'fallback', $def->get_control_option( 'non_existent', 'fallback' ) );
 	}
+
+	public function test_render_callback_and_is_action() {
+		$callback = static function() {
+			return '<button type="button">Action</button>';
+		};
+
+		$action_def = new AIPS_Setting_Definition( array(
+			'key'             => 'test_action',
+			'type'            => null,
+			'control_type'    => AIPS_Setting_Definition::CONTROL_ACTION,
+			'render_callback' => $callback,
+		) );
+
+		$this->assertTrue( $action_def->is_action() );
+		$this->assertNull( $action_def->get_type() );
+		$this->assertSame( $callback, $action_def->get_render_callback() );
+
+		$regular_def = new AIPS_Setting_Definition( array(
+			'key'  => 'test_regular',
+			'type' => AIPS_Setting_Definition::TYPE_STRING,
+		) );
+
+		$this->assertFalse( $regular_def->is_action() );
+		$this->assertNull( $regular_def->get_render_callback() );
+	}
 }
