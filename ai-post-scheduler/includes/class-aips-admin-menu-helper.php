@@ -27,6 +27,7 @@ class AIPS_Admin_Menu_Helper {
 	private static $page_slugs = array(
 		'dashboard'            => 'ai-post-scheduler',
 		'automations'          => 'aips-automations',
+		'campaigns'            => 'aips-campaigns',
 		'studio'               => 'aips-studio',
 		'research'             => 'aips-research',
 		'generated_posts'      => 'aips-generated-posts',
@@ -38,7 +39,6 @@ class AIPS_Admin_Menu_Helper {
 		'campaign_detail'      => 'aips-campaign-detail',
 		'author_topics'        => 'aips-author-topics',
 		'onboarding'           => 'aips-onboarding',
-		'dev_tools'            => 'aips-dev-tools',
 	);
 
 	/**
@@ -62,9 +62,7 @@ class AIPS_Admin_Menu_Helper {
 	private static $automations_tabs = array(
 		'schedule'        => 'schedules',
 		'schedules'       => 'schedules',
-		'campaigns'       => 'campaigns',
 		'authors'         => 'authors',
-		'author_topics'   => 'author-topics',
 		'sources'         => 'sources',
 		'monetization'    => 'monetization',
 		'affiliate_links' => 'monetization',
@@ -78,11 +76,11 @@ class AIPS_Admin_Menu_Helper {
 	 * @var array<string, string>
 	 */
 	private static $diagnostics_tabs = array(
-		'system_status'       => 'status',
-		'seeder'              => 'dev-tools',
-		'operations_insights' => 'operations-insights',
-		'telemetry'           => 'telemetry',
-		'dev_tools'           => 'dev-tools',
+		'system_status'        => 'health',
+		'seeder'               => 'dev-tools',
+		'operations_insights'  => 'insights',
+		'telemetry'            => 'telemetry',
+		'dev_tools'            => 'dev-tools',
 		'background_processes' => 'background-processes',
 	);
 
@@ -92,7 +90,9 @@ class AIPS_Admin_Menu_Helper {
 	 * @var array<string, string>
 	 */
 	private static $content_tabs = array(
-		'content_indexer' => 'content-indexer',
+		'content_indexer'         => 'aips-content-indexer',
+		'content_cannibalization' => 'aips-content-cannibalization',
+		'content_clusters'        => 'aips-content-clusters',
 	);
 
 	/**

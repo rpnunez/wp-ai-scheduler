@@ -4699,7 +4699,7 @@
 
             var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
                 ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
-                : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
+                : 'admin.php?page=aips-automations&tab=schedules&schedule_template=' + templateId;
             $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
             $('#aips-quick-run-now-btn').data('template-id', templateId);
         },
@@ -4723,7 +4723,7 @@
             // Use the aipsAjax.schedulePageUrl if available or fallback
             var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
                 ? aipsAjax.schedulePageUrl
-                : 'admin.php?page=aips-schedule';
+                : 'admin.php?page=aips-automations&tab=schedules';
 
             // Build the URL safely, handling whether scheduleUrlBase already contains a query string
             var url = new URL(scheduleUrlBase, window.location.href);

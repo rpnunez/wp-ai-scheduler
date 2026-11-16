@@ -36,13 +36,13 @@ See the reference table at the end of this doc for every option name and its def
 
 ## Finding the System Status page
 
-This page is registered as a **hidden submenu** (`add_submenu_page(null, ...)`), so it won't appear in the left-hand AI Post Scheduler nav. Reach it by direct URL:
+System Status lives on the Diagnostics hub under the Health tab:
 
 ```
-wp-admin/admin.php?page=aips-status
+wp-admin/admin.php?page=aips-diagnostics&tab=health
 ```
 
-It's also linked automatically from some system error notifications, but there's no persistent menu link today.
+It's also linked automatically from some system error notifications.
 
 ## Manual actions on System Status
 
