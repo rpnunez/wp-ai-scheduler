@@ -576,8 +576,19 @@ class AIPS_Settings_Registry {
 				'description'  => __( 'Default category for generated posts.', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
 				'control_options' => array(
-					'taxonomy'         => 'category',
-					'show_option_none' => __( 'Select Category', 'ai-post-scheduler' ),
+					'render_callback' => function( AIPS_Setting_Definition $def, $value ) {
+						if ( ! function_exists( 'wp_dropdown_categories' ) ) {
+							return '';
+						}
+						return wp_dropdown_categories( array(
+							'echo'             => 0,
+							'name'             => $def->get_key(),
+							'id'               => $def->get_key(),
+							'selected'         => (int) $value,
+							'show_option_none' => __( 'Select Category', 'ai-post-scheduler' ),
+							'hide_empty'       => 0,
+						) );
+					},
 				),
 				'sanitize_callback' => 'absint',
 			),
@@ -591,7 +602,17 @@ class AIPS_Settings_Registry {
 				'description'  => __( 'WordPress user assigned to generated posts when no persona is matched.', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
 				'control_options' => array(
-					'user_dropdown' => true,
+					'render_callback' => function( AIPS_Setting_Definition $def, $value ) {
+						if ( ! function_exists( 'wp_dropdown_users' ) ) {
+							return '';
+						}
+						return wp_dropdown_users( array(
+							'echo'     => 0,
+							'name'     => $def->get_key(),
+							'id'       => $def->get_key(),
+							'selected' => (int) $value,
+						) );
+					},
 				),
 				'sanitize_callback' => 'absint',
 			),

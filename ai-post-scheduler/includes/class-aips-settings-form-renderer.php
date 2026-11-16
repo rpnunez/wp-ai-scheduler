@@ -39,45 +39,50 @@ class AIPS_Settings_Form_Renderer {
 		}
 
 		$control_type = $definition->get_control_type();
+		$opts         = $definition->get_control_options();
 		$control_html = '';
 
-		switch ( $control_type ) {
-			case AIPS_Setting_Definition::CONTROL_TOGGLE:
-				$control_html = $this->render_toggle( $definition, $value );
-				break;
+		if ( ! empty( $opts['render_callback'] ) && is_callable( $opts['render_callback'] ) ) {
+			$control_html = (string) call_user_func( $opts['render_callback'], $definition, $value );
+		} else {
+			switch ( $control_type ) {
+				case AIPS_Setting_Definition::CONTROL_TOGGLE:
+					$control_html = $this->render_toggle( $definition, $value );
+					break;
 
-			case AIPS_Setting_Definition::CONTROL_NUMBER:
-				$control_html = $this->render_number( $definition, $value );
-				break;
+				case AIPS_Setting_Definition::CONTROL_NUMBER:
+					$control_html = $this->render_number( $definition, $value );
+					break;
 
-			case AIPS_Setting_Definition::CONTROL_SELECT:
-				$control_html = $this->render_select( $definition, $value );
-				break;
+				case AIPS_Setting_Definition::CONTROL_SELECT:
+					$control_html = $this->render_select( $definition, $value );
+					break;
 
-			case AIPS_Setting_Definition::CONTROL_MULTISELECT:
-				$control_html = $this->render_multiselect( $definition, $value );
-				break;
+				case AIPS_Setting_Definition::CONTROL_MULTISELECT:
+					$control_html = $this->render_multiselect( $definition, $value );
+					break;
 
-			case AIPS_Setting_Definition::CONTROL_TEXTAREA:
-				$control_html = $this->render_textarea( $definition, $value );
-				break;
+				case AIPS_Setting_Definition::CONTROL_TEXTAREA:
+					$control_html = $this->render_textarea( $definition, $value );
+					break;
 
-			case AIPS_Setting_Definition::CONTROL_SECRET:
-				$control_html = $this->render_secret( $definition, $value );
-				break;
+				case AIPS_Setting_Definition::CONTROL_SECRET:
+					$control_html = $this->render_secret( $definition, $value );
+					break;
 
-			case AIPS_Setting_Definition::CONTROL_SLIDER:
-				$control_html = $this->render_slider( $definition, $value );
-				break;
+				case AIPS_Setting_Definition::CONTROL_SLIDER:
+					$control_html = $this->render_slider( $definition, $value );
+					break;
 
-			case AIPS_Setting_Definition::CONTROL_ACTION:
-				$control_html = $this->render_action( $definition, $value );
-				break;
+				case AIPS_Setting_Definition::CONTROL_ACTION:
+					$control_html = $this->render_action( $definition, $value );
+					break;
 
-			case AIPS_Setting_Definition::CONTROL_TEXT:
-			default:
-				$control_html = $this->render_text( $definition, $value );
-				break;
+				case AIPS_Setting_Definition::CONTROL_TEXT:
+				default:
+					$control_html = $this->render_text( $definition, $value );
+					break;
+			}
 		}
 
 		$wrapper_attrs = $this->build_wrapper_attributes( $definition );
@@ -121,7 +126,7 @@ class AIPS_Settings_Form_Renderer {
 		return sprintf(
 			'<input type="hidden" name="%1$s" value="0">' .
 			'<label class="aips-switch" for="%2$s">' .
-			'<input type="checkbox" name="%1$s" id="%2$s" value="1" role="switch" aria-checked="%3$s" onchange="this.setAttribute(\'aria-checked\', this.checked ? \'true\' : \'false\')" %4$s>' .
+			'<input type="checkbox" name="%1$s" id="%2$s" value="1" role="switch" aria-checked="%3$s" %4$s>' .
 			'<span class="aips-slider round" aria-hidden="true"></span>' .
 			'</label>',
 			esc_attr( $name ),
@@ -190,33 +195,16 @@ class AIPS_Settings_Form_Renderer {
 	 * @return string HTML.
 	 */
 	public function render_select( AIPS_Setting_Definition $def, $value ) {
-		$key     = $def->get_key();
-		$opts    = $def->get_control_options();
+		$key  = $def->get_key();
+		$opts = $def->get_control_options();
+
+		if ( ! empty( $opts['render_callback'] ) && is_callable( $opts['render_callback'] ) ) {
+			return (string) call_user_func( $opts['render_callback'], $def, $value );
+		}
+
 		$name    = ! empty( $opts['name'] ) ? $opts['name'] : $key;
 		$id      = ! empty( $opts['id'] ) ? $opts['id'] : $key;
 		$val_str = is_scalar( $value ) ? (string) $value : '';
-
-		// Native WordPress taxonomy dropdown support
-		if ( ! empty( $opts['taxonomy'] ) && 'category' === $opts['taxonomy'] && function_exists( 'wp_dropdown_categories' ) ) {
-			return wp_dropdown_categories( array(
-				'echo'             => 0,
-				'name'             => $name,
-				'id'               => $id,
-				'selected'         => (int) $value,
-				'show_option_none' => ! empty( $opts['show_option_none'] ) ? $opts['show_option_none'] : __( 'None', 'ai-post-scheduler' ),
-				'hide_empty'       => 0,
-			) );
-		}
-
-		// Native WordPress user dropdown support
-		if ( ! empty( $opts['user_dropdown'] ) && function_exists( 'wp_dropdown_users' ) ) {
-			return wp_dropdown_users( array(
-				'echo'     => 0,
-				'name'     => $name,
-				'id'       => $id,
-				'selected' => (int) $value,
-			) );
-		}
 
 		$choices = array();
 		if ( isset( $opts['options'] ) ) {
@@ -330,9 +318,9 @@ class AIPS_Settings_Form_Renderer {
 		$placeholder = ! empty( $opts['placeholder'] ) ? $opts['placeholder'] : ( $has_value ? '••••••••••••••••' : '' );
 
 		return sprintf(
-			'<div class="aips-secret-field-container" style="display:inline-flex;align-items:center;gap:6px;">' .
+			'<div class="aips-secret-field-container">' .
 			'<input type="password" name="%1$s" id="%2$s" value="%3$s" class="regular-text" autocomplete="new-password" placeholder="%4$s">' .
-			'<button type="button" class="button button-secondary aips-secret-toggle" data-target="%2$s" aria-label="%5$s" onclick="(function(btn){var input=document.getElementById(\'%2$s\');if(!input)return;var isPass=input.type===\'password\';input.type=isPass?\'text\':\'password\';var icon=btn.querySelector(\'.dashicons\');if(icon){icon.classList.toggle(\'dashicons-visibility\',!isPass);icon.classList.toggle(\'dashicons-hidden\',isPass);}})(this);">' .
+			'<button type="button" class="button button-secondary aips-secret-toggle" data-target="%2$s" aria-label="%5$s">' .
 			'<span class="dashicons dashicons-visibility" aria-hidden="true"></span>' .
 			'</button>' .
 			'</div>',
@@ -360,7 +348,7 @@ class AIPS_Settings_Form_Renderer {
 		$extra = ! empty( $opts['extra_html'] ) ? ( is_callable( $opts['extra_html'] ) ? call_user_func( $opts['extra_html'] ) : (string) $opts['extra_html'] ) : '';
 
 		return sprintf(
-			'<div class="aips-settings-action-row" style="display:inline-flex;align-items:center;gap:10px;">' .
+			'<div class="aips-settings-action-row">' .
 			'<button type="button" name="%1$s" id="%2$s" class="%3$s">%4$s</button>%5$s' .
 			'</div>',
 			esc_attr( $key ),
@@ -412,9 +400,9 @@ class AIPS_Settings_Form_Renderer {
 		$val   = (float) $value;
 
 		return sprintf(
-			'<div class="aips-slider-container" style="display:inline-flex;align-items:center;gap:12px;">' .
-			'<input type="range" name="%1$s" id="%1$s" min="%2$s" max="%3$s" step="%4$s" value="%5$s" class="aips-slider-input" oninput="this.nextElementSibling.textContent=this.value">' .
-			'<span class="aips-slider-value" aria-live="polite" style="font-weight:600;min-width:3em;">%5$s</span>' .
+			'<div class="aips-slider-container">' .
+			'<input type="range" name="%1$s" id="%1$s" min="%2$s" max="%3$s" step="%4$s" value="%5$s" class="aips-slider-input">' .
+			'<span class="aips-slider-value" aria-live="polite">%5$s</span>' .
 			'</div>',
 			esc_attr( $key ),
 			esc_attr( (string) $min ),

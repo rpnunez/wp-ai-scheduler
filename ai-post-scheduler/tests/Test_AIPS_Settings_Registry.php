@@ -144,5 +144,14 @@ class Test_AIPS_Settings_Registry extends WP_UnitTestCase {
 		$action_def = $registry->get_definition( 'aips_notif_digest_actions' );
 		$this->assertNotNull( $action_def );
 		$this->assertSame( 'aips_notifications_summarized_digest_section', $action_def->get_section() );
+
+		// Custom dropdown render callbacks for native WP functions
+		$cat_def = $registry->get_definition( 'aips_default_category' );
+		$this->assertNotNull( $cat_def );
+		$this->assertTrue( is_callable( $cat_def->get_control_option( 'render_callback' ) ) );
+
+		$author_def = $registry->get_definition( 'aips_default_post_author' );
+		$this->assertNotNull( $author_def );
+		$this->assertTrue( is_callable( $author_def->get_control_option( 'render_callback' ) ) );
 	}
 }

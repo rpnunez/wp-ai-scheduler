@@ -162,7 +162,7 @@ class Test_AIPS_Settings_Form_Renderer extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'data-aips-depends-value="enabled"', $html );
 	}
 
-	public function test_render_toggle_aria_sync() {
+	public function test_render_toggle_clean_attributes() {
 		$def = new AIPS_Setting_Definition( array(
 			'key'          => 'aips_test_sync',
 			'type'         => AIPS_Setting_Definition::TYPE_BOOL,
@@ -170,7 +170,9 @@ class Test_AIPS_Settings_Form_Renderer extends WP_UnitTestCase {
 		) );
 
 		$html = $this->renderer->get_field_html( $def, true );
-		$this->assertStringContainsString( 'onchange="this.setAttribute(\'aria-checked\', this.checked ? \'true\' : \'false\')"', $html );
+		$this->assertStringContainsString( 'role="switch"', $html );
+		$this->assertStringContainsString( 'aria-checked="true"', $html );
+		$this->assertStringNotContainsString( 'onchange=', $html );
 	}
 
 	public function test_render_select_callable_options() {
@@ -194,7 +196,23 @@ class Test_AIPS_Settings_Form_Renderer extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'selected', $html );
 	}
 
-	public function test_render_secret_inline_toggle() {
+	public function test_render_custom_render_callback() {
+		$def = new AIPS_Setting_Definition( array(
+			'key'             => 'aips_test_custom_render',
+			'type'            => AIPS_Setting_Definition::TYPE_INT,
+			'control_type'    => AIPS_Setting_Definition::CONTROL_SELECT,
+			'control_options' => array(
+				'render_callback' => function( AIPS_Setting_Definition $d, $val ) {
+					return '<div class="custom-dropdown">' . esc_html( $d->get_key() ) . ':' . esc_html( (string) $val ) . '</div>';
+				},
+			),
+		) );
+
+		$html = $this->renderer->get_field_html( $def, 42 );
+		$this->assertStringContainsString( '<div class="custom-dropdown">aips_test_custom_render:42</div>', $html );
+	}
+
+	public function test_render_secret_clean_markup() {
 		$def = new AIPS_Setting_Definition( array(
 			'key'          => 'aips_test_secret_inline',
 			'type'         => AIPS_Setting_Definition::TYPE_STRING,
@@ -202,11 +220,13 @@ class Test_AIPS_Settings_Form_Renderer extends WP_UnitTestCase {
 		) );
 
 		$html = $this->renderer->get_field_html( $def, 'pass123' );
-		$this->assertStringContainsString( 'onclick="', $html );
+		$this->assertStringContainsString( 'data-target="aips_test_secret_inline"', $html );
 		$this->assertStringContainsString( 'dashicons-visibility', $html );
+		$this->assertStringNotContainsString( 'onclick=', $html );
+		$this->assertStringNotContainsString( 'style=', $html );
 	}
 
-	public function test_render_action() {
+	public function test_render_action_clean_markup() {
 		$def = new AIPS_Setting_Definition( array(
 			'key'             => 'aips_test_action',
 			'type'            => AIPS_Setting_Definition::TYPE_STRING,
@@ -224,5 +244,18 @@ class Test_AIPS_Settings_Form_Renderer extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'id="custom-action-id"', $html );
 		$this->assertStringContainsString( 'Flush Queue', $html );
 		$this->assertStringContainsString( '<span>Extra info</span>', $html );
+		$this->assertStringNotContainsString( 'style=', $html );
+	}
+
+	public function test_render_slider_clean_markup() {
+		$def = new AIPS_Setting_Definition( array(
+			'key'          => 'aips_test_slider_clean',
+			'type'         => AIPS_Setting_Definition::TYPE_FLOAT,
+			'control_type' => AIPS_Setting_Definition::CONTROL_SLIDER,
+		) );
+
+		$html = $this->renderer->get_field_html( $def, 0.5 );
+		$this->assertStringNotContainsString( 'oninput=', $html );
+		$this->assertStringNotContainsString( 'style=', $html );
 	}
 }

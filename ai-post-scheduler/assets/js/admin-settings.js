@@ -86,6 +86,32 @@
 				$(document).off('click.aipsTestConn', '#aips-test-connection').on('click.aipsTestConn', '#aips-test-connection', AIPS.testConnection);
 			}
 			$(document).off('click.aipsFlushDigest', '#aips-flush-digest-btn').on('click.aipsFlushDigest', '#aips-flush-digest-btn', AIPS.onFlushNotificationDigest);
+
+			// Secret password visibility toggle
+			$(document).off('click.aipsSecretToggle', '.aips-secret-toggle').on('click.aipsSecretToggle', '.aips-secret-toggle', function(e) {
+				e.preventDefault();
+				var $btn = $(this);
+				var targetId = $btn.data('target');
+				var $input = $('#' + targetId);
+				if (!$input.length) {
+					return;
+				}
+				var isPass = $input.attr('type') === 'password';
+				$input.attr('type', isPass ? 'text' : 'password');
+				$btn.find('.dashicons')
+					.toggleClass('dashicons-visibility', !isPass)
+					.toggleClass('dashicons-hidden', isPass);
+			});
+
+			// Switch ARIA synchronization
+			$(document).off('change.aipsSwitch', '.aips-switch input[role="switch"]').on('change.aipsSwitch', '.aips-switch input[role="switch"]', function() {
+				$(this).attr('aria-checked', this.checked ? 'true' : 'false');
+			});
+
+			// Slider live indicator sync
+			$(document).off('input.aipsSlider', '.aips-slider-input').on('input.aipsSlider', '.aips-slider-input', function() {
+				$(this).siblings('.aips-slider-value').text(this.value);
+			});
 			$(document).on('click', '[data-aips-connector-move]', AIPS.onConnectorMove);
 			$(document).on('change', 'input[name="aips_embeddings_scope"], #aips_embeddings_scope', function() {
 				var val = $(this).val();
