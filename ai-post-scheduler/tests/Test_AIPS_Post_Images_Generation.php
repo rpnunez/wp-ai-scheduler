@@ -794,6 +794,27 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 		$this->assertFalse(AIPS_Component_Regeneration_Service::is_ai_edit_component('post_image_0'));
 		$this->assertFalse(AIPS_Component_Regeneration_Service::is_ai_edit_component('post_image_12abc'));
 	}
+
+	public function test_recover_missing_content_image_prompts_standalone() {
+		$mock_ai_service = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai_service->method('generate_json')->willReturn(array(
+			'2' => 'Standalone recovered prompt for image two',
+		));
+
+		$generator = new AIPS_Generator(null, $mock_ai_service);
+		$context = new AIPS_Template_Context(
+			(object) array('id' => 1, 'name' => 'Tpl', 'prompt_template' => 'Body'),
+			null,
+			'Topic'
+		);
+
+		$ref = new ReflectionMethod($generator, 'recover_missing_content_image_prompts_standalone');
+		$ref->setAccessible(true);
+		$result = $ref->invoke($generator, $context, array(2), '<p>Content</p>', 'Title');
+
+		$this->assertIsArray($result);
+		$this->assertSame('Standalone recovered prompt for image two', $result[2]);
+	}
 }
 
 class AIPS_Test_Post_Image_Service extends AIPS_Image_Service {
