@@ -677,4 +677,46 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			$this->assertNotSame('slug_disabled', $result->get_error_code());
 		}
 	}
+
+	public function test_regenerate_content_substitutes_post_image_placeholders_and_strips_unresolved() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Images Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'content_images'  => wp_json_encode(array(
+				array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto'),
+			)),
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$post_id = $this->factory->post->create(array('post_title' => 'Test Post'));
+		$repo = new AIPS_Post_Images_Generated_Repository();
+		$row_id = $repo->insert(array(
+			'post_id'           => $post_id,
+			'history_id'        => 55,
+			'placeholder_index' => 1,
+			'status'            => 'completed',
+			'attachment_id'     => 0,
+		));
+
+		$mock_generator = $this->createMock(AIPS_Generator::class);
+		$mock_generator->method('generate_content_from_context')
+			->willReturn('<p>Intro</p>[post_image index="1"]<p>Body</p>[post_image index="99"]');
+
+		$ref = new ReflectionProperty($this->service, 'generator');
+		$ref->setAccessible(true);
+		$ref->setValue($this->service, $mock_generator);
+
+		$result = $this->service->regenerate_content(array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+			'history_id'         => 55,
+			'current_title'      => 'Test Post',
+		));
+
+		$this->assertIsString($result);
+		$this->assertStringContainsString(sprintf('<!-- aips-image-placeholder id="%d" -->', $row_id), $result);
+		$this->assertStringNotContainsString('[post_image index="1"]', $result);
+		$this->assertStringNotContainsString('[post_image index="99"]', $result);
+	}
 }

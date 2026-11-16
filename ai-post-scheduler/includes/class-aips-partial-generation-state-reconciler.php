@@ -121,6 +121,22 @@ class AIPS_Partial_Generation_State_Reconciler {
 			$overrides['featured_image'] = absint($components['featured_image_id']) > 0;
 		}
 
+		if (in_array('slug', $updated_components, true)) {
+			if (array_key_exists('slug', $components)) {
+				$overrides['post_slug'] = '' !== trim((string) $components['slug']);
+			} else {
+				$post = get_post($post_id);
+				$overrides['post_slug'] = $post && '' !== trim((string) $post->post_name);
+			}
+		}
+
+		if (in_array('post_images', $updated_components, true) || (class_exists('AIPS_Component_Regeneration_Service') && AIPS_Component_Regeneration_Service::post_image_id_from_component(reset($updated_components)) > 0)) {
+			$generated_images = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
+			if (!empty($generated_images)) {
+				$overrides['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
+			}
+		}
+
 		$statuses = $this->post_manager->reconcile_generation_status_meta_from_post($post_id, $overrides);
 		if (is_array($statuses)) {
 			do_action('aips_partial_generation_state_reconciled', $post_id, $statuses, 'aips_post_components_updated');

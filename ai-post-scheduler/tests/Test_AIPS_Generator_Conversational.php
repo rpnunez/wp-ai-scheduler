@@ -290,6 +290,84 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_component_statuses_omits_post_images_when_context_has_no_content_images() {
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.'));
+		$ai_service->conversation_supported = false;
+
+		$post_manager = $this->run_generation($ai_service);
+
+		$this->assertArrayNotHasKey('post_images', $post_manager->created_post_data['component_statuses']);
+	}
+
+	public function test_generate_preview_includes_slug_and_post_images() {
+		$ai_service = $this->make_service(array(self::BODY, 'Preview Title', 'Preview excerpt.', 'preview-slug'));
+		$generator = new AIPS_Generator(null, $ai_service);
+
+		$template = (object) array(
+			'id'                      => 400,
+			'name'                    => 'Preview Template',
+			'prompt_template'         => 'Write the post body.',
+			'title_prompt'            => 'Write the post title.',
+			'generate_slug'           => 1,
+			'slug_prompt'             => 'Slug prompt',
+			'content_images'          => wp_json_encode(array(
+				array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Photo of {{topic}}'),
+			)),
+			'post_status'             => 'draft',
+			'post_type'               => 'post',
+			'post_author'             => 1,
+		);
+		$context = new AIPS_Template_Context($template, null, 'Gadgets');
+
+		$preview = $generator->generate_preview($context);
+
+		$this->assertIsArray($preview);
+		$this->assertArrayHasKey('slug', $preview);
+		$this->assertArrayHasKey('post_images', $preview);
+		$this->assertCount(1, $preview['post_images']);
+		$this->assertSame(1, $preview['post_images'][0]['image_index']);
+		$this->assertStringContainsString('aips-preview-image', $preview['content']);
+	}
+
+	public function test_metadata_turn_resolves_content_image_prompts() {
+		update_option('aips_conversational_generation', 1);
+		update_option('aips_conversational_metadata_turn', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array(
+				'title'                 => 'A Combined Title',
+				'excerpt'               => 'A combined excerpt.',
+				'slug'                  => 'combined-slug',
+				'content_image_prompts' => array('1' => 'High quality photo of widgets'),
+			),
+		);
+
+		$template = (object) array(
+			'id'                      => 500,
+			'name'                    => 'Metadata Content Images Template',
+			'prompt_template'         => 'Write the post body.',
+			'title_prompt'            => 'Write the post title.',
+			'generate_slug'           => 1,
+			'content_images'          => wp_json_encode(array(
+				array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Template prompt {{topic}}'),
+			)),
+			'post_status'             => 'draft',
+			'post_type'               => 'post',
+			'post_author'             => 1,
+		);
+		$context = new AIPS_Template_Context($template, null, 'Widgets');
+
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		$this->assertCount(1, $ai_service->json_calls);
+		$schema = $ai_service->json_calls[0]['options']['json_schema'];
+		$this->assertArrayHasKey('content_image_prompts', $schema['properties']);
+		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_slug']);
+	}
+
 	private function make_context($creation_method = 'scheduled', $generate_slug = false) {
 		$template = (object) array(
 			'id'                      => 321,

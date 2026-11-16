@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Fixed
+- **Post Components Parity & Conversational Integration:**
+  - Resolved `post_slug` status tracking in `AIPS_Generator::generate_post_from_context()`, ensuring slug failures record properly in component statuses while preventing optional slug failures from inappropriately marking posts as incomplete or forcing draft status.
+  - Eliminated `post_images` key pollution in posts without configured content images by checking `$context->has_content_images()` before status initialization.
+  - Added zero-row guard in `AIPS_Post_Manager::reconcile_generation_status_meta_from_post()` preventing empty image collections from falsely reporting success.
+  - Extended `AIPS_Partial_Generation_State_Reconciler::on_post_components_updated()` with handlers for `slug` and `post_images`, enabling full partial-generation reconciliation when saving updates from AI Edit.
+  - Connected content image prompt resolution into Turn 2 of Conversational Mode and Combined Metadata Turn (`AIPS_Prompt_Builder_Post_Metadata` and `AIPS_Generator::generate_metadata_turn()`).
+  - Added preview parity for Post Slug and Post Images in `AIPS_Generator::generate_preview()`.
+  - Fixed shortcode leakage in `AIPS_Component_Regeneration_Service::regenerate_content()`, ensuring placeholder substitution and stripping of unplaced `[post_image index="N"]` tags during content regeneration.
+
 ### Added
 - **Unified Background Job Infrastructure — Slice 3:** Connected `AIPS_Job_Manager` with `AIPS_Cron_Backend_Interface` and container DI; migrated `AIPS_Job_Dispatcher` and `AIPS_Managed_Background_Process` to `AIPS_Cron_Manager`; enhanced `AIPS_Batch_Queue_Service` and `AIPS_Bulk_Generation_Process` to clear and inspect pending ActionScheduler slices alongside WP-Cron; unified Heartbeat payload and Diagnostics UI to surface active jobs from `AIPS_Job_Manager::get_jobs()`; registered `aips_job_tick` in `AIPS_Cron_Registry` with common dispatch closure and deactivation cleanup; added comprehensive end-to-end integration tests in `Test_AIPS_Job_Integration.php` (issue #2376).
 - **Unified Background Job Infrastructure — Slice 2:** Introduced `AIPS_Job_Manager` (asynchronous, synchronous, batched, and staggered dispatching, lifecycle pause/resume/cancel/retry controls, and runner tick processing with retry backoff), `AIPS_Job_Context` (time and memory budgeting guards), and `AIPS_Job_Slice_Result` (issue #2376). Registered `AIPS_Job_Manager` in `AIPS_Container`.

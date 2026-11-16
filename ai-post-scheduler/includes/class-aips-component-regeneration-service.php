@@ -423,7 +423,31 @@ class AIPS_Component_Regeneration_Service {
 		if (is_wp_error($result)) {
 			return $result;
 		}
-		
+
+		if ($post_id && method_exists($generation_context, 'has_content_images') && $generation_context->has_content_images()) {
+			$generated_repo = new AIPS_Post_Images_Generated_Repository();
+			$existing_rows  = $generated_repo->get_for_post_history($post_id, $history_id);
+			if (!empty($existing_rows)) {
+				$total_images = count($existing_rows);
+				$title        = isset($context['current_title']) ? $context['current_title'] : get_the_title($post_id);
+				foreach ($existing_rows as $target_row) {
+					$gen_id        = (int) $target_row->id;
+					$attachment_id = (int) $target_row->attachment_id;
+					$url           = !empty($target_row->image_url) ? $target_row->image_url : ($attachment_id ? (string) wp_get_attachment_url($attachment_id) : '');
+					$config        = $this->resolve_post_image_config($target_row, $generation_context);
+					$caption       = !empty($config->caption) ? $config->caption : '';
+
+					$markup = ($attachment_id > 0 && !empty($url))
+						? $this->generator->build_post_image_markup($gen_id, $attachment_id, $url, $title, $caption)
+						: sprintf('<!-- aips-image-placeholder id="%d" -->', $gen_id);
+
+					$result = $this->replace_post_image_markup($result, $target_row, $markup, $total_images);
+				}
+			}
+		}
+
+		$result = AIPS_Post_Images_Service::strip_unresolved_placeholders($result);
+
 		return $result;
 	}
 

@@ -875,6 +875,21 @@ class AIPS_Generator {
             $image_prompt_template = (string) $this->post_featured_image_prompt_builder->build($context, $context->get_topic());
         }
 
+        $content_image_templates = array();
+        if (method_exists($context, 'has_content_images') && $context->has_content_images()) {
+            $configured_images = AIPS_Post_Images_Service::limited_content_images($context->get_content_images());
+            foreach ($configured_images as $img) {
+                $src = !empty($img->source) ? $img->source : 'ai_prompt';
+                if ($src === 'ai_prompt') {
+                    $order = (int) $img->placeholder_index;
+                    $tpl = !empty($img->image_prompt)
+                        ? $this->template_processor->process($img->image_prompt, $context->get_topic())
+                        : sprintf('An illustrative editorial photograph for the article section, on the topic "%s"', $context->get_topic());
+                    $content_image_templates[$order] = $tpl;
+                }
+            }
+        }
+
         // Collect the placeholders appearing across templates so the model
         // resolves them once, in the same turn that consumes them.
         $ai_variables = array();
@@ -884,15 +899,21 @@ class AIPS_Generator {
             $title_instructions = $this->get_post_metadata_prompt_builder()->resolve_title_instructions($context, $context->get_topic());
             $slug_instructions  = $include_slug ? $this->post_slug_prompt_builder->resolve_slug_instructions($context, $context->get_topic()) : '';
 
-            $ai_variables = array_values(array_unique(array_merge(
+            $extracted_variables = array_merge(
                 (array) $this->template_processor->extract_ai_variables($title_instructions),
                 (array) $this->template_processor->extract_ai_variables($slug_instructions),
                 (array) $this->template_processor->extract_ai_variables($image_prompt_template)
-            )));
+            );
+
+            foreach ($content_image_templates as $tpl) {
+                $extracted_variables = array_merge($extracted_variables, (array) $this->template_processor->extract_ai_variables($tpl));
+            }
+
+            $ai_variables = array_values(array_unique($extracted_variables));
         }
 
-        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template, $include_slug);
-        $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '', $include_slug);
+        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template, $include_slug, $content_image_templates);
+        $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '', $include_slug, $content_image_templates);
 
         if ($this->current_history) {
             $this->current_history->record(
@@ -906,7 +927,7 @@ class AIPS_Generator {
 
         $options = array(
             'json_schema'  => $schema,
-            'max_tokens'   => 800,
+            'max_tokens'   => 1200,
             'conversation' => $this->conversation,
         );
 
@@ -969,13 +990,17 @@ class AIPS_Generator {
 
         $image_prompt = isset($result['image_prompt']) ? trim((string) $result['image_prompt']) : '';
         $slug         = isset($result['slug']) ? trim((string) $result['slug']) : '';
+        $content_image_prompts = (isset($result['content_image_prompts']) && is_array($result['content_image_prompts']))
+            ? $result['content_image_prompts']
+            : array();
 
         return array(
-            'title'        => preg_replace('/^["\']|["\']$/', '', $title),
-            'slug'         => preg_replace('/^["\']|["\']$/', '', $slug),
-            'excerpt'      => $excerpt,
-            'image_prompt' => $image_prompt !== '' ? $this->remove_unresolved_template_placeholders($image_prompt) : '',
-            'ai_variables' => $ai_variable_values,
+            'title'                 => preg_replace('/^["\']|["\']$/', '', $title),
+            'slug'                  => preg_replace('/^["\']|["\']$/', '', $slug),
+            'excerpt'               => $excerpt,
+            'image_prompt'          => $image_prompt !== '' ? $this->remove_unresolved_template_placeholders($image_prompt) : '',
+            'content_image_prompts' => $content_image_prompts,
+            'ai_variables'          => $ai_variable_values,
         );
     }
 
@@ -1029,12 +1054,25 @@ class AIPS_Generator {
         // Generate excerpt
 		$excerpt = $this->generate_excerpt_from_context($title, $content, $context);
 
+        $slug = '';
+        if (method_exists($context, 'should_generate_slug') && $context->should_generate_slug()) {
+            $slug_success = false;
+            $generated_slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
+            if (!is_wp_error($generated_slug) && $slug_success) {
+                $slug = $generated_slug;
+            } else {
+                $slug = sanitize_title($title);
+            }
+        }
+
         $result = array(
-            'title' => $title,
-            'content' => $content,
-            'excerpt' => $excerpt,
+            'title'        => $title,
+            'slug'         => $slug,
+            'content'      => $content,
+            'excerpt'      => $excerpt,
             'image_prompt' => '',
             'image_source' => $context->get_featured_image_source(),
+            'post_images'  => array(),
         );
 
         // Handle image preview data (not generation)
@@ -1047,6 +1085,36 @@ class AIPS_Generator {
                 $processed_keywords = $this->template_processor->process($keywords, $topic_str);
                 $result['image_prompt'] = $processed_keywords;
             }
+        }
+
+        if (method_exists($context, 'has_content_images') && $context->has_content_images()) {
+            $content_images = AIPS_Post_Images_Service::limited_content_images($context->get_content_images());
+            $total_images = count($content_images);
+            foreach ($content_images as $img) {
+                $order     = (int) $img->placeholder_index;
+                $source    = !empty($img->source) ? $img->source : 'ai_prompt';
+                $placement = !empty($img->placement) ? $img->placement : 'auto';
+                $prompt    = !empty($img->image_prompt) ? $this->template_processor->process($img->image_prompt, $context->get_topic()) : '';
+
+                $result['post_images'][] = array(
+                    'image_index'  => $order,
+                    'source'       => $source,
+                    'placement'    => $placement,
+                    'image_prompt' => $prompt,
+                );
+
+                $preview_markup = sprintf(
+                    '<figure class="wp-block-image size-large aips-preview-image" data-preview-index="%d"><div style="border: 2px dashed #999; padding: 16px; text-align: center; background: #f9f9f9;"><strong>%s %d (%s)</strong><br/><small>%s</small></div></figure>',
+                    $order,
+                    esc_html__('Content Image', 'ai-post-scheduler'),
+                    $order,
+                    esc_html($source),
+                    esc_html($prompt ? $prompt : $title)
+                );
+                $content = $this->inject_single_post_image($content, $order, $placement, $preview_markup, $total_images);
+            }
+            $content = AIPS_Post_Images_Service::strip_unresolved_placeholders($content);
+            $result['content'] = $content;
         }
 
         $this->end_conversation();
@@ -1145,9 +1213,12 @@ class AIPS_Generator {
             'post_slug'      => true, // Optional: a failed slug falls back to WordPress's title-based slug.
             'post_excerpt'   => false,
             'featured_image' => !$context->should_generate_featured_image(),
-            'post_images'    => !$context->has_content_images(),
             'post_content'   => false,
         );
+
+        if ($context->has_content_images()) {
+            $component_statuses['post_images'] = false;
+        }
 
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
@@ -1201,18 +1272,23 @@ class AIPS_Generator {
 		$content = $this->strip_leading_title_block_from_content($content);
 
 		$metadata_result = $this->generate_and_resolve_metadata($context, $content);
-		$title                 = $metadata_result['title'];
-		$slug                  = $metadata_result['slug'];
-		$excerpt               = $metadata_result['excerpt'];
-		$resolved_image_prompt = $metadata_result['resolved_image_prompt'];
+		$title                          = $metadata_result['title'];
+		$slug                           = $metadata_result['slug'];
+		$excerpt                        = $metadata_result['excerpt'];
+		$resolved_image_prompt          = $metadata_result['resolved_image_prompt'];
+		$resolved_content_image_prompts = isset($metadata_result['resolved_content_image_prompts']) ? $metadata_result['resolved_content_image_prompts'] : array();
 
 		$component_statuses['post_title']   = $metadata_result['title_success'];
 		$component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
+		if (array_key_exists('slug_success', $metadata_result)) {
+			$component_statuses['post_slug'] = (bool) $metadata_result['slug_success'];
+		}
 
 		// Image components are only resolved after the post exists, so their
 		// initial "not done yet" flags must not count as failures here.
+		// A failed slug is optional and falls back to WordPress's title-based slug.
 		$pre_image_statuses = $component_statuses;
-		unset($pre_image_statuses['featured_image'], $pre_image_statuses['post_images']);
+		unset($pre_image_statuses['featured_image'], $pre_image_statuses['post_images'], $pre_image_statuses['post_slug']);
 
 		$pre_image_incomplete  = in_array(false, $pre_image_statuses, true);
 		$generation_incomplete = $pre_image_incomplete;
@@ -1301,7 +1377,7 @@ class AIPS_Generator {
 
         // Handle post content images generation/selection.
         if ($context->has_content_images()) {
-            $post_images_result = $this->generate_and_inject_post_images($context, $post_id, $title, $content);
+            $post_images_result = $this->generate_and_inject_post_images($context, $post_id, $title, $content, $resolved_content_image_prompts);
             $content = $post_images_result['content'];
             $component_statuses['post_images'] = $post_images_result['success'];
             wp_update_post(array(
@@ -1310,7 +1386,9 @@ class AIPS_Generator {
             ));
         }
 
-        $generation_incomplete = in_array(false, $component_statuses, true);
+        $required_final_statuses = $component_statuses;
+        unset($required_final_statuses['post_slug']);
+        $generation_incomplete = in_array(false, $required_final_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
         // If the featured image failed after post creation and the post was
@@ -1739,7 +1817,7 @@ class AIPS_Generator {
      * @param string                  $content Current post content HTML.
      * @return array Array with 'content' and 'success' (true when every image resolved) keys.
      */
-    private function generate_and_inject_post_images($context, $post_id, $title, $content) {
+    private function generate_and_inject_post_images($context, $post_id, $title, $content, $precomputed_prompts = array()) {
         $images = AIPS_Post_Images_Service::with_placeholder_indexes($context->get_content_images());
         if (empty($images)) {
             return array('content' => $content, 'success' => true);
@@ -1756,7 +1834,11 @@ class AIPS_Generator {
             $placement = !empty($img->placement) ? $img->placement : 'auto';
             $caption   = !empty($img->caption) ? $img->caption : '';
 
-            $resolved = $this->resolve_post_image($img, $title, $context->get_topic());
+            $precomputed = isset($precomputed_prompts[$order])
+                ? $precomputed_prompts[$order]
+                : (isset($precomputed_prompts[(string) $order]) ? $precomputed_prompts[(string) $order] : null);
+
+            $resolved = $this->resolve_post_image($img, $title, $context->get_topic(), $precomputed);
             $is_success = $resolved['attachment_id'] > 0;
             $all_succeeded = $all_succeeded && $is_success;
 
@@ -1797,7 +1879,7 @@ class AIPS_Generator {
      * @param string|null $topic Generation topic.
      * @return array Array with 'attachment_id', 'image_url', 'prompt' and 'error' keys.
      */
-    public function resolve_post_image($image, $title, $topic) {
+    public function resolve_post_image($image, $title, $topic, $precomputed_prompt = null) {
         $source = !empty($image->source) ? $image->source : 'ai_prompt';
         $resolved = array(
             'attachment_id' => 0,
@@ -1823,9 +1905,20 @@ class AIPS_Generator {
         } elseif ($source === 'media_library') {
             $result = $this->image_service->select_media_library_image(!empty($image->media_ids) ? $image->media_ids : '');
         } else {
-            $resolved['prompt'] = !empty($image->image_prompt)
-                ? $this->template_processor->process($image->image_prompt, $topic)
-                : sprintf('An illustrative editorial photograph for the article section titled "%s", on the topic "%s"', $title, $topic);
+            if (!empty($precomputed_prompt)) {
+                $resolved['prompt'] = (string) $precomputed_prompt;
+            } elseif (!empty($image->image_prompt)) {
+                $raw_prompt = $image->image_prompt;
+                if (method_exists($this->template_processor, 'has_ai_variables') && $this->template_processor->has_ai_variables($raw_prompt)) {
+                    $ai_vars = $this->resolve_ai_variables_for_template_string($raw_prompt, $topic, 'ai_variables_content_image');
+                    $resolved['prompt'] = $this->template_processor->process_with_ai_variables($raw_prompt, $topic, $ai_vars);
+                } else {
+                    $resolved['prompt'] = $this->template_processor->process($raw_prompt, $topic);
+                }
+            } else {
+                $resolved['prompt'] = sprintf('An illustrative editorial photograph for the article section titled "%s", on the topic "%s"', $title, $topic);
+            }
+            $resolved['prompt'] = $this->remove_unresolved_template_placeholders($resolved['prompt']);
             $result = $this->image_service->generate_and_upload_featured_image($resolved['prompt'], $title);
         }
 
@@ -2090,13 +2183,14 @@ class AIPS_Generator {
 		$excerpt_result = $this->resolve_generated_excerpt($title_result['title'], $content, $context, $metadata);
 
 		return array(
-			'title'                 => $title_result['title'],
-			'title_success'         => $title_result['success'],
-			'slug'                  => $slug_result['slug'],
-			'slug_success'          => $slug_result['success'],
-			'excerpt'               => $excerpt_result['excerpt'],
-			'excerpt_success'       => $excerpt_result['success'],
-			'resolved_image_prompt' => $metadata !== null ? $metadata['image_prompt'] : null,
+			'title'                          => $title_result['title'],
+			'title_success'                  => $title_result['success'],
+			'slug'                           => $slug_result['slug'],
+			'slug_success'                   => $slug_result['success'],
+			'excerpt'                        => $excerpt_result['excerpt'],
+			'excerpt_success'                => $excerpt_result['success'],
+			'resolved_image_prompt'          => $metadata !== null ? $metadata['image_prompt'] : null,
+			'resolved_content_image_prompts' => ($metadata !== null && !empty($metadata['content_image_prompts'])) ? (array) $metadata['content_image_prompts'] : array(),
 		);
 	}
 

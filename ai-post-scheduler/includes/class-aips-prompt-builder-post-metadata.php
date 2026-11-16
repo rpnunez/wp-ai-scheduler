@@ -48,9 +48,10 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 * @param string                  $image_prompt Raw image prompt template, or '' when the
 	 *                                              post has no AI-generated featured image.
 	 * @param bool|null               $include_slug Whether to include slug generation (null = auto-detect).
+	 * @param array                   $content_image_templates Content image prompt templates keyed by index.
 	 * @return string
 	 */
-	public function build($context, array $ai_variables = array(), $image_prompt = '', $include_slug = null) {
+	public function build($context, array $ai_variables = array(), $image_prompt = '', $include_slug = null, array $content_image_templates = array()) {
 		$topic_str = $context->get_topic();
 		$sections  = array();
 
@@ -101,25 +102,34 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$sections[] = "FEATURED IMAGE INSTRUCTIONS:\nUsing the template below, produce a finished image generation prompt describing the article's featured image. Substitute every placeholder with a concrete value drawn from the article.\n\n" . $image_prompt;
 		}
 
+		if (!empty($content_image_templates)) {
+			$img_instructions = array("CONTENT IMAGES INSTRUCTIONS:\nFor each in-article image listed below, produce a finished image generation prompt based on the article. Substitute any placeholders with concrete details from the article:");
+			foreach ($content_image_templates as $idx => $tmpl) {
+				$img_instructions[] = sprintf('Image %d: %s', $idx, $tmpl);
+			}
+			$sections[] = implode("\n", $img_instructions);
+		}
+
 		if (!empty($ai_variables)) {
 			$sections[] = $this->build_variables_section($ai_variables);
 		}
 
 		$prompt = implode("\n\n", $sections);
 		$prompt = $this->append_diversity_blocks($prompt, $context);
-		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt), $include_slug);
+		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt), $include_slug, $content_image_templates);
 
 		/**
 		 * Filters the combined metadata prompt used by conversational generation.
 		 *
 		 * @since 3.2.0
 		 *
-		 * @param string                  $prompt       The assembled prompt.
-		 * @param AIPS_Generation_Context $context      Generation context.
-		 * @param string[]                $ai_variables AI variable names to resolve.
-		 * @param string                  $image_prompt Raw image prompt template.
+		 * @param string                  $prompt                 The assembled prompt.
+		 * @param AIPS_Generation_Context $context                Generation context.
+		 * @param string[]                $ai_variables           AI variable names to resolve.
+		 * @param string                  $image_prompt           Raw image prompt template.
+		 * @param array                   $content_image_templates Content image templates.
 		 */
-		return apply_filters('aips_post_metadata_prompt', $prompt, $context, $ai_variables, $image_prompt);
+		return apply_filters('aips_post_metadata_prompt', $prompt, $context, $ai_variables, $image_prompt, $content_image_templates);
 	}
 
 	/**
@@ -129,12 +139,13 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 * one fall back to AIPS_AI_Service's text-based JSON extraction, which the
 	 * explicit response shape in the prompt keeps parseable.
 	 *
-	 * @param string[] $ai_variables  AI variable names to resolve.
-	 * @param bool     $include_image Whether an image prompt was requested.
-	 * @param bool     $include_slug  Whether a post slug was requested.
+	 * @param string[] $ai_variables          AI variable names to resolve.
+	 * @param bool     $include_image         Whether an image prompt was requested.
+	 * @param bool     $include_slug          Whether a post slug was requested.
+	 * @param array    $content_image_templates Content image prompt templates keyed by index.
 	 * @return array
 	 */
-	public function get_schema(array $ai_variables = array(), $include_image = false, $include_slug = false) {
+	public function get_schema(array $ai_variables = array(), $include_image = false, $include_slug = false, array $content_image_templates = array()) {
 		$properties = array(
 			'title'   => array('type' => 'string'),
 			'excerpt' => array('type' => 'string'),
@@ -146,6 +157,19 @@ class AIPS_Prompt_Builder_Post_Metadata {
 
 		if ($include_image) {
 			$properties['image_prompt'] = array('type' => 'string');
+		}
+
+		if (!empty($content_image_templates)) {
+			$img_props = array();
+			foreach (array_keys($content_image_templates) as $idx) {
+				$img_props[(string) $idx] = array('type' => 'string');
+			}
+			$properties['content_image_prompts'] = array(
+				'type'                 => 'object',
+				'properties'           => $img_props,
+				'required'             => array_map('strval', array_keys($content_image_templates)),
+				'additionalProperties' => false,
+			);
 		}
 
 		if (!empty($ai_variables)) {
@@ -169,6 +193,9 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 		if ($include_image) {
 			$required[] = 'image_prompt';
+		}
+		if (!empty($content_image_templates)) {
+			$required[] = 'content_image_prompts';
 		}
 		if (!empty($ai_variables)) {
 			$required[] = 'ai_variables';
@@ -231,7 +258,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 * @param bool     $include_slug  Whether a post slug was requested.
 	 * @return string
 	 */
-	private function build_response_shape(array $ai_variables, $include_image, $include_slug = false) {
+	private function build_response_shape(array $ai_variables, $include_image, $include_slug = false, array $content_image_templates = array()) {
 		$shape = array(
 			'"title": "the finished post title, with no surrounding quotes"',
 			'"excerpt": "the 40-60 word excerpt"',
@@ -243,6 +270,14 @@ class AIPS_Prompt_Builder_Post_Metadata {
 
 		if ($include_image) {
 			$shape[] = '"image_prompt": "the finished featured image prompt"';
+		}
+
+		if (!empty($content_image_templates)) {
+			$pairs = array();
+			foreach (array_keys($content_image_templates) as $idx) {
+				$pairs[] = sprintf('"%s": "finished prompt for content image %s"', $idx, $idx);
+			}
+			$shape[] = '"content_image_prompts": { ' . implode(', ', $pairs) . ' }';
 		}
 
 		if (!empty($ai_variables)) {

@@ -361,4 +361,61 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		$this->assertIsArray($statuses);
 		$this->assertTrue($statuses['featured_image']);
 	}
+
+	public function test_on_post_components_updated_reconciles_slug() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Resolved Title',
+			'post_name'    => 'custom-slug',
+			'post_excerpt' => 'Resolved excerpt',
+			'post_content' => 'Resolved content',
+			'post_status'  => 'draft',
+		));
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'   => true,
+			'post_slug'    => false,
+			'post_excerpt' => true,
+			'post_content' => true,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+
+		$this->reconciler->on_post_components_updated($post_id, array('slug'), array(
+			'slug' => 'custom-slug',
+		));
+
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
+		$this->assertIsArray($statuses);
+		$this->assertTrue($statuses['post_slug']);
+	}
+
+	public function test_on_post_components_updated_reconciles_post_images() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Resolved Title',
+			'post_excerpt' => 'Resolved excerpt',
+			'post_content' => 'Resolved content',
+			'post_status'  => 'draft',
+		));
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'   => true,
+			'post_excerpt' => true,
+			'post_images'  => false,
+			'post_content' => true,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+
+		$repo = new AIPS_Post_Images_Generated_Repository();
+		$row_id = $repo->insert(array(
+			'post_id'           => $post_id,
+			'placeholder_index' => 1,
+			'status'            => 'completed',
+			'attachment_id'     => 123,
+		));
+
+		$this->reconciler->on_post_components_updated($post_id, array('post_images'), array());
+
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
+		$this->assertIsArray($statuses);
+		$this->assertTrue($statuses['post_images']);
+	}
 }

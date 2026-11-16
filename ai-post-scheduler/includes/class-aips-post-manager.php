@@ -490,7 +490,11 @@ class AIPS_Post_Manager {
 
         if (is_array($existing_statuses) && array_key_exists('post_images', $existing_statuses)) {
             $generated_images = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
-            $component_statuses['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
+            if (empty($generated_images)) {
+                $component_statuses['post_images'] = false;
+            } else {
+                $component_statuses['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
+            }
         }
 
         $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image', 'post_images', 'post_slug');
