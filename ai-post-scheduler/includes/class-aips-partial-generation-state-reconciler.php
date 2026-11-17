@@ -122,6 +122,8 @@ class AIPS_Partial_Generation_State_Reconciler {
 		}
 
 		if (in_array('slug', $updated_components, true)) {
+			// Reconcile post slug: if the caller supplied a new slug value in $components, verify that it is non-empty;
+			// otherwise inspect the persisted WordPress post entity to confirm a non-empty post_name exists.
 			if (array_key_exists('slug', $components)) {
 				$overrides['post_slug'] = '' !== trim((string) $components['slug']);
 			} else {
@@ -131,6 +133,9 @@ class AIPS_Partial_Generation_State_Reconciler {
 		}
 
 		if (in_array('post_images', $updated_components, true) || (class_exists('AIPS_Component_Regeneration_Service') && AIPS_Component_Regeneration_Service::post_image_id_from_component(reset($updated_components)) > 0)) {
+			// Reconcile post content images: updates can originate from a full-post image regeneration ('post_images')
+			// or an individual image regeneration ('post_image_{id}'). In either case, query all generated image records
+			// for this post: if no image remains with 'failed' status, the component status is considered complete.
 			$generated_images = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
 			if (!empty($generated_images)) {
 				$overrides['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);

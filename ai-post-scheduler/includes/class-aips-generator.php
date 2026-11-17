@@ -861,6 +861,8 @@ class AIPS_Generator {
 
         $content_image_templates = array();
         if ($context->has_content_images()) {
+            // Only content images configured with the 'ai_prompt' source require AI-generated prompts.
+            // Other sources (Unsplash keyword search, Media Library selection) do not query the model during the metadata turn.
             $configured_images = AIPS_Post_Images_Service::limited_content_images($context->get_content_images());
             foreach ($configured_images as $img) {
                 $src = !empty($img->source) ? $img->source : 'ai_prompt';
@@ -1042,6 +1044,8 @@ class AIPS_Generator {
             if (!is_wp_error($generated_slug) && $slug_success) {
                 $slug = $generated_slug;
             } else {
+                // When AI slug generation fails or returns an error, fall back to WordPress's native
+                // sanitize_title($title) so the preview interface still displays a valid permalink slug.
                 $slug = sanitize_title($title);
             }
         }
@@ -1069,6 +1073,8 @@ class AIPS_Generator {
         }
 
         if ($context->has_content_images()) {
+            // Render mock preview cards for in-article content images, injecting placeholder figure markup
+            // at their configured positions so the admin can review post layout without incurring external image API calls.
             $content_images = AIPS_Post_Images_Service::limited_content_images($context->get_content_images());
             $total_images = count($content_images);
             foreach ($content_images as $img) {
@@ -2259,7 +2265,11 @@ class AIPS_Generator {
 		}
 
 		if ($slug === '') {
-			$slug              = sanitize_title($title);
+			$slug = sanitize_title($title);
+			// Determine if the fallback impacts post completeness:
+			// If no custom slug prompt was defined, deriving the slug from $title is a standard, acceptable default (success = true).
+			// If the user explicitly provided a custom slug prompt that the model failed to follow, mark as failed (success = false)
+			// so the Partial Generations system alerts the admin for review/regeneration.
 			$has_custom_prompt = '' !== trim((string) $context->get_slug_prompt());
 			$slug_success      = !$has_custom_prompt;
 

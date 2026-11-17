@@ -490,6 +490,9 @@ class AIPS_Post_Manager {
 
         if (is_array($existing_statuses) && array_key_exists('post_images', $existing_statuses)) {
             $generated_images = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
+            // If the post was supposed to have content images but has no generated records in the database,
+            // wp_list_pluck([], 'status') would evaluate to empty and falsely report !in_array('failed', []) === true.
+            // Guard against empty collections by requiring at least one non-failed record to consider the component complete.
             if (empty($generated_images)) {
                 $component_statuses['post_images'] = false;
             } else {

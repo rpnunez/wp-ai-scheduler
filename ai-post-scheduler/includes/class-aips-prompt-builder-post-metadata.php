@@ -103,6 +103,8 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 
 		if (!empty($content_image_templates)) {
+			// Instruct the model to generate finished visual prompts for each in-article content image,
+			// referencing their corresponding placeholder indices so the output maps directly to template configuration.
 			$img_instructions = array("CONTENT IMAGES INSTRUCTIONS:\nFor each in-article image listed below, produce a finished image generation prompt based on the article. Substitute any placeholders with concrete details from the article:");
 			foreach ($content_image_templates as $idx => $tmpl) {
 				$img_instructions[] = sprintf('Image %d: %s', $idx, $tmpl);
@@ -160,6 +162,11 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 
 		if (!empty($content_image_templates)) {
+			// Structured outputs (OpenAI/Gemini JSON Schema) require object keys to be explicit string properties.
+			// Content images are identified by their shortcode placeholder index (e.g. [post_image index="1"]).
+			// We define each configured index as a distinct string property and require every one of them to ensure
+			// the model generates an image prompt for all requested images without omitting any placeholders.
+			// additionalProperties => false guarantees the response contains no unexpected extra keys.
 			$img_props = array();
 			foreach (array_keys($content_image_templates) as $idx) {
 				$img_props[(string) $idx] = array('type' => 'string');
@@ -273,6 +280,8 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 
 		if (!empty($content_image_templates)) {
+			// For providers without native schema validation, explicitly illustrate the expected
+			// JSON dictionary shape containing stringified index keys to keep response parsing reliable.
 			$pairs = array();
 			foreach (array_keys($content_image_templates) as $idx) {
 				$pairs[] = sprintf('"%s": "finished prompt for content image %s"', $idx, $idx);
