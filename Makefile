@@ -7,11 +7,13 @@
 	test test-verbose test-coverage test-session test-stop test-ci composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
-	urls sync-wp-core sql-batch sql-batch-unpack
+	urls sync-wp-core sql-batch sql-batch-unpack ai-payload-capture
 
 # Git Bash (MSYS) must not rewrite POSIX-looking arguments such as a --filter regex starting with "/"
 test test-verbose test-coverage test-session: export MSYS_NO_PATHCONV := 1
 test test-verbose test-coverage test-session: export MSYS2_ARG_CONV_EXCL := *
+ai-payload-capture: export MSYS_NO_PATHCONV := 1
+ai-payload-capture: export MSYS2_ARG_CONV_EXCL := *
 
 # Default target
 .DEFAULT_GOAL := help
@@ -222,6 +224,10 @@ sql-batch: ## Run read-only SQL diagnostics on the DEV db (QUERIES=path/to/queri
 sql-batch-unpack: ## Unpack a results zip made elsewhere, e.g. prod (ZIP=path/to/results.zip)
 	@[ -n "$(ZIP)" ] || { echo "Usage: make sql-batch-unpack ZIP=path/to/sql-batch-results.zip"; exit 1; }
 	bash ./scripts/sql-batch.sh unpack "$(ZIP)"
+
+ai-payload-capture: ## Capture verbatim AI request/response payloads per generation path (ARGS="--offline" / "--scenario=X" / "--help")
+	@echo "$(BLUE)Capturing AI payloads...$(NC)"
+	bash ./scripts/ai-payload-capture.sh $(ARGS)
 
 composer-install: ## Install Composer dependencies in plugin
 	@echo "$(BLUE)Installing Composer dependencies...$(NC)"
