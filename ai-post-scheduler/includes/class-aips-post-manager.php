@@ -76,7 +76,7 @@ class AIPS_Post_Manager {
 
         // Apply a final exact-title dedupe guard before insertion.
         $title = $this->ensure_unique_post_title($title, 'post');
-        
+
         // Support both legacy template and new context approaches
         $context = isset($data['context']) ? $data['context'] : null;
         $template = isset($data['template']) ? $data['template'] : null;

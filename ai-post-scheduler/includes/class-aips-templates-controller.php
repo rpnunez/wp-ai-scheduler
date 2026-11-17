@@ -151,7 +151,7 @@ class AIPS_Templates_Controller {
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
             'generate_slug' => isset($_POST['generate_slug']) ? $this->normalize_boolean_flag($_POST['generate_slug']) : 0,
-            'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_text_field(wp_unslash($_POST['slug_prompt'])) : '',
+            'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['slug_prompt'])) : '',
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
@@ -476,7 +476,7 @@ class AIPS_Templates_Controller {
 
         // Use Prompt Builder to build all prompts
         $prompt_builder = new AIPS_Prompt_Builder();
-        
+
         // Get voice if selected
         $voice = $prompt_builder->get_voice($template_data->voice_id);
 

@@ -350,6 +350,18 @@ Follow these configured image styles:
 ", $template_instructions);
 		}
 
+		$shape = array();
+		foreach ($missing_indexes as $idx) {
+			$shape[] = sprintf('"%s": "visual prompt description"', $idx);
+		}
+		$prompt .= "
+
+RESPOND WITH EXACTLY THIS JSON SHAPE:
+{
+  " . implode(",
+  ", $shape) . "
+}";
+
 		return $prompt;
 	}
 

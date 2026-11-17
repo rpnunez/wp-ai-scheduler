@@ -1003,7 +1003,7 @@ class AIPS_Generator {
 
         // Build the full content prompt from context and capture source snapshot usage.
         $this->current_source_snapshots = array();
-      
+
         $content_prompt = $this->post_content_prompt_builder->build($context);
         $this->pending_sources_selection = $this->post_content_prompt_builder->get_sources_selection();
 
@@ -2054,7 +2054,7 @@ class AIPS_Generator {
 
         // Remove a leading Markdown "# Title" block when Markdown slipped through.
         $cleaned = preg_replace('/^#\\s+[^\\n]+\\s*/u', '', $cleaned, 1);
-        
+
 
         return ltrim((string) $cleaned);
     }
@@ -2394,8 +2394,12 @@ class AIPS_Generator {
 			);
 		}
 
+		$payload = (isset($result['content_image_prompts']) && is_array($result['content_image_prompts']))
+			? $result['content_image_prompts']
+			: $result;
+
 		$clean = array();
-		foreach ($result as $k => $v) {
+		foreach ($payload as $k => $v) {
 			$k_int = (int) $k;
 			if (in_array($k_int, $missing_indexes, true) && is_scalar($v) && '' !== trim((string) $v)) {
 				$clean[$k_int] = trim((string) $v);
