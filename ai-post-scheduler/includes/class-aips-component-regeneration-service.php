@@ -155,6 +155,34 @@ class AIPS_Component_Regeneration_Service {
 			return null;
 		}
 
+		$stored_transcript = $this->history_repository->get_conversation_transcript_for_post($post_id);
+
+		if (!empty($stored_transcript) && is_array($stored_transcript) && count($stored_transcript) >= 2) {
+			$initial_prompt = isset($stored_transcript[0]['text']) ? $stored_transcript[0]['text'] : '';
+			if ($initial_prompt !== '') {
+				$conversation = new AIPS_AI_Conversation();
+				if ($conversation->add_exchange($initial_prompt, $body)) {
+					if ($include_title) {
+						$title = is_string($title_override) ? $title_override : (string) get_the_title($post_id);
+						if (trim($title) !== '') {
+							if (isset($stored_transcript[2], $stored_transcript[3])
+								&& strpos($stored_transcript[2]['text'], 'title') !== false
+								&& !isset($title_override)
+							) {
+								$conversation->add_exchange($stored_transcript[2]['text'], $stored_transcript[3]['text']);
+							} else {
+								$conversation->add_exchange(
+									$this->post_title_prompt_builder->build_followup($generation_context),
+									$title
+								);
+							}
+						}
+					}
+					return $conversation;
+				}
+			}
+		}
+
 		$conversation = new AIPS_AI_Conversation();
 
 		if (!$conversation->add_exchange($this->post_content_prompt_builder->build($generation_context), $body)) {

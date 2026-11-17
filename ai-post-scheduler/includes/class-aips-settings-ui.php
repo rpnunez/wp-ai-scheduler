@@ -790,7 +790,7 @@ class AIPS_Settings_UI {
             <?php esc_html_e('Generate post components as one conversation instead of separate prompts', 'ai-post-scheduler'); ?>
         </label>
         <p class="description">
-            <?php esc_html_e('The model keeps the article it just wrote in context, so titles and excerpts stay consistent with the body and the article text is not re-sent with every request.', 'ai-post-scheduler'); ?>
+            <?php esc_html_e('The model keeps the article it just wrote in context across follow-up requests, ensuring titles, excerpts, and slugs stay tightly aligned with the body.', 'ai-post-scheduler'); ?>
         </p>
         <?php if (!$supported) : ?>
             <p class="description">

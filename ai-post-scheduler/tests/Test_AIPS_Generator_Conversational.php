@@ -22,6 +22,91 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	public function test_conversational_generation_records_transcript_to_history() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.'));
+		$ai_service->conversation_supported = true;
+
+		$history      = new AIPS_Test_Conversational_History_Service();
+		$post_manager = new AIPS_Test_Conversational_Post_Manager();
+
+		$generator = new AIPS_Generator(
+			null,
+			$ai_service,
+			null,
+			null,
+			null,
+			$post_manager,
+			$history
+		);
+
+		$generator->generate_post($this->make_context());
+
+		$transcript_records = array_filter($history->container->records, function($r) {
+			return $r['type'] === 'conversation_transcript';
+		});
+
+		$this->assertNotEmpty($transcript_records, 'conversation_transcript should be recorded in history');
+		$record = reset($transcript_records);
+		$this->assertSame('conversation_transcript', $record['type']);
+		$this->assertArrayHasKey('transcript', $record['response']);
+		$this->assertCount(6, $record['response']['transcript']);
+	}
+
+	public function test_metadata_turn_empty_excerpt_falls_back_to_standalone_excerpt_call() {
+		update_option('aips_conversational_generation', 1);
+		update_option('aips_conversational_metadata_turn', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		// Body for content call, then fallback excerpt call
+		$ai_service = $this->make_service(array(self::BODY, 'A Standalone Fallback Excerpt.'));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array('title' => 'A Combined Title', 'excerpt' => ''),
+		);
+
+		$post_manager = $this->run_generation($ai_service);
+
+		// One JSON call attempted, then 1 fallback text call for excerpt (plus 1 content call = 2 text calls).
+		$this->assertCount(2, $ai_service->calls);
+		$this->assertCount(1, $ai_service->json_calls);
+		$this->assertSame('A Combined Title', $post_manager->created_post_data['title']);
+		$this->assertSame('A Standalone Fallback Excerpt.', $post_manager->created_post_data['excerpt']);
+		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_title']);
+		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_excerpt']);
+	}
+
+	public function test_preview_uses_metadata_turn_when_enabled() {
+		update_option('aips_conversational_generation', 1);
+		update_option('aips_conversational_metadata_turn', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array('title' => 'Preview Title', 'excerpt' => 'Preview excerpt.'),
+		);
+
+		$generator = new AIPS_Generator(
+			null,
+			$ai_service,
+			null,
+			null,
+			null,
+			new AIPS_Test_Conversational_Post_Manager(),
+			new AIPS_Test_Conversational_History_Service()
+		);
+
+		$result = $generator->generate_preview($this->make_context());
+
+		$this->assertCount(1, $ai_service->calls);
+		$this->assertCount(1, $ai_service->json_calls);
+		$this->assertSame('Preview Title', $result['title']);
+		$this->assertSame('Preview excerpt.', $result['excerpt']);
+	}
+
 	public function test_flag_off_keeps_article_body_in_the_title_prompt() {
 		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.'));
 		$ai_service->conversation_supported = true;
@@ -452,7 +537,7 @@ class AIPS_Test_Conversational_History_Container {
 	}
 
 	public function record($type, $message = '', $request = null, $response = null, $context = array()) {
-		$this->records[] = array('type' => $type, 'message' => $message, 'context' => $context);
+		$this->records[] = array('type' => $type, 'message' => $message, 'request' => $request, 'response' => $response, 'context' => $context);
 
 		return $this;
 	}

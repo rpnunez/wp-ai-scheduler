@@ -677,4 +677,64 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			$this->assertNotSame('slug_disabled', $result->get_error_code());
 		}
 	}
+
+	public function test_build_conversation_uses_persisted_transcript() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Persisted Post Title',
+			'post_content' => '<p>Persisted Post Content</p>',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+			'record_kind' => 'generation',
+		));
+
+		$transcript = array(
+			array('role' => 'user', 'text' => 'Original Historical Prompt for Content'),
+			array('role' => 'model', 'text' => '<p>Persisted Post Content</p>'),
+		);
+
+		$this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'conversation_transcript',
+				'output'      => array(
+					'transcript'       => $transcript,
+					'exchanges_count'  => 1,
+					'estimated_tokens' => 200,
+				),
+			),
+			AIPS_History_Type::AI_CONVERSATION
+		);
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test',
+			'prompt_template' => 'Different template prompt',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+
+		$reflection = new ReflectionClass($this->service);
+		$method     = $reflection->getMethod('build_conversation');
+		$method->setAccessible(true);
+
+		$generator_prop = $reflection->getProperty('generator');
+		$generator_prop->setAccessible(true);
+		$mock_ai = new class {
+			public function supports_conversation() { return true; }
+			public function is_available() { return true; }
+		};
+		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
+
+		$conversation = $method->invoke($this->service, $context, $post_id, false);
+
+		$this->assertInstanceOf('AIPS_AI_Conversation', $conversation);
+		$turns = $conversation->to_array();
+		$this->assertCount(2, $turns);
+		$this->assertSame('Original Historical Prompt for Content', $turns[0]['text']);
+	}
 }
