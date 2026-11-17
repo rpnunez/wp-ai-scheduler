@@ -213,4 +213,17 @@ class Test_AIPS_Templates_Controller_Preview extends WP_Ajax_UnitTestCase {
 		// Explicitly empty image collection means post_images preview array is empty
 		$this->assertSame(array(), $response['data']['result']['post_images']);
 	}
+
+	public function test_ajax_test_template_omits_slug_when_disabled() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['name'] = 'Test Template No Slug';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['generate_slug'] = 0;
+
+		$response = $this->capture_ajax_callable(array($this->controller, 'ajax_test_template'));
+		$this->assertTrue($response['success']);
+		$this->assertArrayHasKey('result', $response['data']);
+		$this->assertEmpty($response['data']['result']['slug']);
+	}
 }

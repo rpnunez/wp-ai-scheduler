@@ -130,6 +130,25 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 		$this->assertSame(1, $rows[0]['image_order']);
 	}
 
+	public function test_submitted_rows_accepts_json_encoded_string() {
+		$json = wp_json_encode(array(
+			array('source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'a sunny beach'),
+		));
+
+		$rows = (new AIPS_Post_Images_Service())->normalize_submitted_rows($json);
+
+		$this->assertCount(1, $rows);
+		$this->assertSame('a sunny beach', $rows[0]['image_prompt']);
+		$this->assertSame('ai_prompt', $rows[0]['source']);
+		$this->assertSame('auto', $rows[0]['placement']);
+		$this->assertSame(1, $rows[0]['image_order']);
+	}
+
+	public function test_submitted_rows_returns_empty_array_for_invalid_json_string() {
+		$rows = (new AIPS_Post_Images_Service())->normalize_submitted_rows('{invalid json');
+		$this->assertSame(array(), $rows);
+	}
+
 	public function test_template_modal_keeps_the_image_prompt_field_id() {
 		$image_field_name_prefix = 'featured_image';
 		$image_field_id_prefix   = 'featured_image';
