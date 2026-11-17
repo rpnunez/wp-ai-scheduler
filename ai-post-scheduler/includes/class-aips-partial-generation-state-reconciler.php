@@ -132,7 +132,17 @@ class AIPS_Partial_Generation_State_Reconciler {
 			}
 		}
 
-		if (in_array('post_images', $updated_components, true) || (class_exists('AIPS_Component_Regeneration_Service') && AIPS_Component_Regeneration_Service::post_image_id_from_component(reset($updated_components)) > 0)) {
+		$has_post_images_update = in_array('post_images', $updated_components, true);
+		if (!$has_post_images_update && class_exists('AIPS_Component_Regeneration_Service')) {
+			foreach ($updated_components as $comp) {
+				if (AIPS_Component_Regeneration_Service::post_image_id_from_component($comp) > 0) {
+					$has_post_images_update = true;
+					break;
+				}
+			}
+		}
+
+		if ($has_post_images_update) {
 			// Reconcile post content images: updates can originate from a full-post image regeneration ('post_images')
 			// or an individual image regeneration ('post_image_{id}'). In either case, query all generated image records
 			// for this post: if no image remains with 'failed' status, the component status is considered complete.

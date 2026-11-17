@@ -795,10 +795,12 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 		$this->assertFalse(AIPS_Component_Regeneration_Service::is_ai_edit_component('post_image_12abc'));
 	}
 
-	public function test_recover_missing_content_image_prompts_standalone() {
+	public function test_execute_content_image_recovery_filters_requested_indexes() {
 		$mock_ai_service = $this->createMock(AIPS_AI_Service_Interface::class);
 		$mock_ai_service->method('generate_json')->willReturn(array(
-			'2' => 'Standalone recovered prompt for image two',
+			'2'       => 'Standalone recovered prompt for image two',
+			'99'      => 'Unexpected out-of-bounds key',
+			'image_1' => 'Invalid non-numeric key',
 		));
 
 		$generator = new AIPS_Generator(null, $mock_ai_service);
@@ -808,12 +810,54 @@ class Test_AIPS_Post_Images_Generation extends WP_UnitTestCase {
 			'Topic'
 		);
 
-		$ref = new ReflectionMethod($generator, 'recover_missing_content_image_prompts_standalone');
+		$ref = new ReflectionMethod($generator, 'execute_content_image_recovery');
 		$ref->setAccessible(true);
-		$result = $ref->invoke($generator, $context, array(2), '<p>Content</p>', 'Title');
+		$result = $ref->invoke($generator, $context, array(2), 'Prompt instructions', null, 'standalone');
 
 		$this->assertIsArray($result);
+		$this->assertArrayHasKey(2, $result);
 		$this->assertSame('Standalone recovered prompt for image two', $result[2]);
+		$this->assertArrayNotHasKey(99, $result, 'Out-of-bounds indexes must be filtered out.');
+		$this->assertArrayNotHasKey(0, $result, 'Non-numeric string keys must not cast to 0.');
+	}
+
+	public function test_non_conversational_uses_configured_image_prompt_without_deficit_recovery() {
+		update_option('aips_conversational_generation', 0);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$mock_ai_service = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai_service->method('generate_text')->willReturnOnConsecutiveCalls(
+			'Article body with [post_image index="1"]',
+			'Article Title',
+			'Article Excerpt'
+		);
+		// Deficit recovery should NOT be called in non-conversational mode (metadata turn is null)
+		$mock_ai_service->expects($this->never())->method('generate_json');
+
+		$generator = new AIPS_Generator(null, $mock_ai_service);
+		$ref = new ReflectionMethod($generator, 'generate_and_resolve_metadata');
+		$ref->setAccessible(true);
+
+		$configured_img = (object) array(
+			'placeholder_index' => 1,
+			'source'            => 'ai_prompt',
+			'image_prompt'      => 'Configured style illustration of {{topic}}',
+		);
+		$context = new AIPS_Template_Context(
+			(object) array(
+				'id'              => 1,
+				'name'            => 'Tpl',
+				'prompt_template' => 'Body',
+				'title_prompt'    => 'Title',
+				'post_images'     => array($configured_img),
+			),
+			null,
+			'WordPress'
+		);
+
+		$result = $ref->invoke($generator, $context, 'Article body');
+		$this->assertIsArray($result);
+		$this->assertEmpty($result['resolved_content_image_prompts']);
 	}
 }
 

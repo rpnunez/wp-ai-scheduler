@@ -150,6 +150,8 @@ class AIPS_Templates_Controller {
             'featured_image_source' => (new AIPS_Post_Images_Service())->normalize_source(isset($_POST['featured_image_source']) ? wp_unslash($_POST['featured_image_source']) : 'ai_prompt'),
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
+            'generate_slug' => isset($_POST['generate_slug']) ? $this->normalize_boolean_flag($_POST['generate_slug']) : 0,
+            'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_text_field(wp_unslash($_POST['slug_prompt'])) : '',
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
@@ -393,6 +395,16 @@ class AIPS_Templates_Controller {
 
         if (mb_strlen($data['name']) > 255) {
             AIPS_Ajax_Response::error(__('Template name cannot exceed 255 characters.', 'ai-post-scheduler'));
+        }
+
+        $raw_post_images = null;
+        if (isset($_POST['post_images'])) {
+            $raw_post_images = is_string($_POST['post_images']) ? json_decode(wp_unslash($_POST['post_images']), true) : $_POST['post_images'];
+        } elseif (isset($_POST['template_post_images'])) {
+            $raw_post_images = is_string($_POST['template_post_images']) ? json_decode(wp_unslash($_POST['template_post_images']), true) : $_POST['template_post_images'];
+        }
+        if (is_array($raw_post_images)) {
+            $data['post_images'] = $raw_post_images;
         }
 
         // Convert to object for context

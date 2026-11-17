@@ -449,7 +449,9 @@ class AIPS_Component_Regeneration_Service {
 		}
 
 		// Strip any placeholder shortcodes (e.g. [post_image index="N"]) that were not matched by configured images.
-		$result = AIPS_Post_Images_Service::strip_unresolved_placeholders($result);
+		if (empty($context['preserve_placeholders'])) {
+			$result = AIPS_Post_Images_Service::strip_unresolved_placeholders($result);
+		}
 
 		return $result;
 	}
@@ -543,6 +545,12 @@ class AIPS_Component_Regeneration_Service {
 			$context['current_title'] = $title;
 		}
 
+		// Preserve model-placed image placeholders in content if post images will be regenerated.
+		$preserve_placeholders = $this->should_regenerate_post_images($post_id, $context['generation_context']);
+		if ($preserve_placeholders) {
+			$context['preserve_placeholders'] = true;
+		}
+
 		$content = $this->regenerate_content($context);
 		if (is_wp_error($content)) {
 			$result['errors']['content'] = $content->get_error_message();
@@ -589,6 +597,21 @@ class AIPS_Component_Regeneration_Service {
 			}
 		} else {
 			$result['skipped']['post_images'] = __('Post images skipped because this post has no content images configured.', 'ai-post-scheduler');
+		}
+
+		// Clean up any remaining unresolved placeholders after content images have run.
+		if ($preserve_placeholders) {
+			$final_post = get_post($post_id);
+			if ($final_post && !empty($final_post->post_content)) {
+				$stripped = AIPS_Post_Images_Service::strip_unresolved_placeholders($final_post->post_content);
+				if ($stripped !== $final_post->post_content) {
+					wp_update_post(array(
+						'ID'           => $post_id,
+						'post_content' => wp_slash($stripped),
+					));
+					$result['regenerated']['content'] = $stripped;
+				}
+			}
 		}
 
 		return $result;

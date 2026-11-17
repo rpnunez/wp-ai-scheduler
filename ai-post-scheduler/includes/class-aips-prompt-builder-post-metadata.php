@@ -303,6 +303,99 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	}
 
 	/**
+	 * Build JSON schema for content image prompt recovery.
+	 *
+	 * @param int[] $missing_indexes Missing placeholder indexes.
+	 * @return array JSON schema definition.
+	 */
+	public function build_recovery_schema(array $missing_indexes): array {
+		$props = array();
+		foreach ($missing_indexes as $idx) {
+			$props[(string) $idx] = array('type' => 'string');
+		}
+
+		return array(
+			'type'                 => 'object',
+			'properties'           => $props,
+			'required'             => array_map('strval', $missing_indexes),
+			'additionalProperties' => false,
+		);
+	}
+
+	/**
+	 * Build conversational mini-turn recovery prompt for missing content image prompts.
+	 *
+	 * @param int[] $missing_indexes Missing placeholder indexes.
+	 * @param array $configured_templates Optional configured prompt templates keyed by index.
+	 * @return string Model prompt.
+	 */
+	public function build_conversational_recovery_prompt(array $missing_indexes, array $configured_templates = array()): string {
+		$template_instructions = array();
+		foreach ($missing_indexes as $idx) {
+			if (!empty($configured_templates[$idx])) {
+				$template_instructions[] = sprintf('Image %1$d style instruction: %2$s', $idx, $configured_templates[$idx]);
+			}
+		}
+
+		$prompt = sprintf(
+			'The previous response was missing image descriptions for content image index(es): %s. Based on the article content above, provide a descriptive visual prompt for each missing content image as JSON matching the schema.',
+			implode(', ', $missing_indexes)
+		);
+
+		if (!empty($template_instructions)) {
+			$prompt .= "
+
+Follow these configured image styles:
+" . implode("
+", $template_instructions);
+		}
+
+		return $prompt;
+	}
+
+	/**
+	 * Build standalone fallback recovery prompt for missing content image prompts.
+	 *
+	 * @param int[]  $missing_indexes Missing placeholder indexes.
+	 * @param string $content         Article content.
+	 * @param string $title           Article title.
+	 * @param array  $configured_templates Optional configured prompt templates keyed by index.
+	 * @return string Model prompt.
+	 */
+	public function build_standalone_recovery_prompt(array $missing_indexes, string $content, string $title, array $configured_templates = array()): string {
+		$clean_excerpt = wp_trim_words(wp_strip_all_tags($content), 120, '...');
+
+		$prompt = sprintf(
+			'Based on the article "%1$s" and its excerpt below, generate a vivid, descriptive visual prompt for each required content image index: %2$s.' . "
+
+" . 'Article excerpt:' . "
+" . '%3$s' . "
+
+" . 'Respond ONLY with a JSON object where keys are the index numbers as strings and values are the image prompts.',
+			$title,
+			implode(', ', $missing_indexes),
+			$clean_excerpt
+		);
+
+		$template_instructions = array();
+		foreach ($missing_indexes as $idx) {
+			if (!empty($configured_templates[$idx])) {
+				$template_instructions[] = sprintf('Image %1$d style instruction: %2$s', $idx, $configured_templates[$idx]);
+			}
+		}
+
+		if (!empty($template_instructions)) {
+			$prompt .= "
+
+Follow these configured image styles:
+" . implode("
+", $template_instructions);
+		}
+
+		return $prompt;
+	}
+
+	/**
 	 * Append the shared diversity blocks so titles stay varied across posts.
 	 *
 	 * Only injects avoid_titles block; content-format and post-slice guidance

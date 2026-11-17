@@ -1405,6 +1405,9 @@
                 voice_id: $('#voice_id').val(),
                 post_quantity: 1, // Force 1 for test
                 generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
+                generate_slug: $('#generate_slug').is(':checked') ? 1 : 0,
+                slug_prompt: $('#slug_prompt').val() || '',
+                template_post_images: (AIPS.PostImages && typeof AIPS.PostImages.collectImages === 'function') ? AIPS.PostImages.collectImages($('#aips-template-post-images-list')) : [],
                 image_prompt: $('#image_prompt').val(),
                 featured_image_source: $('#featured_image_source').val(),
                 featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
@@ -1425,8 +1428,14 @@
 
                         // Populate modal
                         $('#aips-test-title').text(result.title || '-');
+                        if (result.slug) {
+                            $('#aips-test-slug-row').show();
+                            $('#aips-test-slug').text(result.slug);
+                        } else {
+                            $('#aips-test-slug-row').hide();
+                        }
                         $('#aips-test-excerpt').text(result.excerpt || '-');
-                        $('#aips-test-result-modal').find('.aips-modal-content-body').text(result.content || '-');
+                        $('#aips-test-result-modal').find('.aips-modal-content-body').html(result.content || '-');
 
                         if (result.image_prompt) {
                             $('#aips-test-image-row').show();

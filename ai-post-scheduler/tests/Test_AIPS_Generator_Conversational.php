@@ -148,7 +148,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_slug']);
 	}
 
-	public function test_slug_generation_failure_marks_component_failed_and_draft_status() {
+	public function test_slug_generation_failure_marks_component_failed_and_preserves_post_status() {
 		update_option('aips_conversational_generation', 0);
 		AIPS_Config::get_instance()->flush_option_cache();
 
@@ -156,14 +156,15 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', ''));
 		$ai_service->conversation_supported = false;
 
-		$context = $this->make_context('scheduled', true, 'Custom SEO slug prompt');
+		$context = $this->make_context('scheduled', true, 'Custom SEO slug prompt', 'publish');
 		$post_manager = $this->run_generation_with_context($ai_service, $context);
 
 		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_slug']);
-		$this->assertSame('draft', $post_manager->created_post_data['post_status']);
+		$this->assertSame('publish', $post_manager->created_post_data['post_status']);
+		$this->assertSame(sanitize_title('A Title'), $post_manager->created_post_data['slug']);
 	}
 
-	public function test_slug_generation_wp_error_marks_component_failed_and_draft_status() {
+	public function test_slug_generation_wp_error_marks_component_failed_and_preserves_post_status() {
 		update_option('aips_conversational_generation', 0);
 		AIPS_Config::get_instance()->flush_option_cache();
 
@@ -171,11 +172,12 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', new WP_Error('provider_error', 'API error')));
 		$ai_service->conversation_supported = false;
 
-		$context = $this->make_context('scheduled', true, 'Custom SEO slug prompt');
+		$context = $this->make_context('scheduled', true, 'Custom SEO slug prompt', 'publish');
 		$post_manager = $this->run_generation_with_context($ai_service, $context);
 
 		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_slug']);
-		$this->assertSame('draft', $post_manager->created_post_data['post_status']);
+		$this->assertSame('publish', $post_manager->created_post_data['post_status']);
+		$this->assertSame(sanitize_title('A Title'), $post_manager->created_post_data['slug']);
 	}
 
 	public function test_set_conversation_is_ignored_when_the_feature_is_off() {
@@ -483,7 +485,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$this->assertStringContainsString('missing image descriptions for content image index(es): 2', $mini_turn_prompt);
 	}
 
-	private function make_context($creation_method = 'scheduled', $generate_slug = false, $slug_prompt = '') {
+	private function make_context($creation_method = 'scheduled', $generate_slug = false, $slug_prompt = '', $post_status = 'draft') {
 		$template = (object) array(
 			'id'                      => 321,
 			'name'                    => 'Conversational Test',
@@ -493,7 +495,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 			'generate_featured_image' => false,
 			'generate_slug'           => $generate_slug ? 1 : 0,
 			'slug_prompt'             => $slug_prompt,
-			'post_status'             => 'draft',
+			'post_status'             => $post_status,
 			'post_type'               => 'post',
 			'post_category'           => '',
 			'post_tags'               => '',

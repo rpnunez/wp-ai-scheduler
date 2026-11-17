@@ -973,9 +973,14 @@ class AIPS_Generator {
 
         $image_prompt = isset($result['image_prompt']) ? trim((string) $result['image_prompt']) : '';
         $slug         = isset($result['slug']) ? trim((string) $result['slug']) : '';
-        $content_image_prompts = (isset($result['content_image_prompts']) && is_array($result['content_image_prompts']))
-            ? $result['content_image_prompts']
-            : array();
+        $content_image_prompts = array();
+        if (isset($result['content_image_prompts']) && is_array($result['content_image_prompts'])) {
+            foreach ($result['content_image_prompts'] as $k => $v) {
+                if (is_scalar($v)) {
+                    $content_image_prompts[$k] = trim((string) $v);
+                }
+            }
+        }
 
         return array(
             'title'                 => preg_replace('/^["\']|["\']$/', '', $title),
@@ -1041,10 +1046,10 @@ class AIPS_Generator {
         if ($context->should_generate_slug()) {
             $slug_success = false;
             $generated_slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
-            if (!is_wp_error($generated_slug) && $slug_success) {
-                $slug = $generated_slug;
+            if (!is_wp_error($generated_slug) && $slug_success && '' !== trim((string) $generated_slug)) {
+                $slug = trim((string) $generated_slug);
             } else {
-                // When AI slug generation fails or returns an error, fall back to WordPress's native
+                // When AI slug generation fails, is empty, or returns an error, fall back to WordPress's native
                 // sanitize_title($title) so the preview interface still displays a valid permalink slug.
                 $slug = sanitize_title($title);
             }
@@ -2170,14 +2175,21 @@ class AIPS_Generator {
 		$resolved_image_prompt          = $metadata !== null ? $metadata['image_prompt'] : null;
 		$resolved_content_image_prompts = ($metadata !== null && !empty($metadata['content_image_prompts'])) ? (array) $metadata['content_image_prompts'] : array();
 
-		// Check for content image prompts deficit when context has content images configured.
-		if ($context->has_content_images()) {
-			$configured_images = AIPS_Post_Images_Service::limited_content_images($context->get_content_images());
-			$missing_indexes   = array();
+		// Check for content image prompts deficit when context has content images configured
+		// and a metadata turn was executed (non-null $metadata). When no metadata turn ran (e.g. non-conversational),
+		// individual images resolve their prompts directly in resolve_post_image() without triggering deficit recovery.
+		if ($context->has_content_images() && $metadata !== null) {
+			$configured_images    = AIPS_Post_Images_Service::limited_content_images($context->get_content_images());
+			$missing_indexes      = array();
+			$configured_templates = array();
+
 			foreach ($configured_images as $img) {
 				$src = !empty($img->source) ? $img->source : 'ai_prompt';
 				if ($src === 'ai_prompt') {
-					$order           = (int) $img->placeholder_index;
+					$order = (int) $img->placeholder_index;
+					if (!empty($img->image_prompt)) {
+						$configured_templates[$order] = $img->image_prompt;
+					}
 					$existing_prompt = isset($resolved_content_image_prompts[$order])
 						? trim((string) $resolved_content_image_prompts[$order])
 						: (isset($resolved_content_image_prompts[(string) $order]) ? trim((string) $resolved_content_image_prompts[(string) $order]) : '');
@@ -2189,24 +2201,26 @@ class AIPS_Generator {
 
 			if (!empty($missing_indexes)) {
 				$recovered = array();
-				// When conversational generation is active, request the missing image descriptions
-				// via a follow-up exchange in the existing conversation where the article is already in context.
+				$builder   = $this->get_post_metadata_prompt_builder();
+
+				// When conversational generation is active, request missing prompts via a follow-up mini-turn.
 				if ($this->conversation !== null) {
-					$recovered = $this->recover_missing_content_image_prompts_conversational($context, $missing_indexes);
+					$conv_prompt = $builder->build_conversational_recovery_prompt($missing_indexes, $configured_templates);
+					$recovered   = $this->execute_content_image_recovery($context, $missing_indexes, $conv_prompt, $this->conversation, 'conversational');
 				}
 
-				// Identify any placeholder indexes that remain unresolved after the conversational follow-up.
+				// Check which indexes remain unresolved.
 				$still_missing = array();
 				foreach ($missing_indexes as $idx) {
-					if (!isset($recovered[$idx]) && !isset($recovered[(string) $idx])) {
+					if (!isset($recovered[$idx])) {
 						$still_missing[] = $idx;
 					}
 				}
 
-				// If conversational generation was inactive or did not resolve all indexes, fall back
-				// to standalone prompt generation using the article excerpt and title.
+				// Fall back to standalone prompt generation for unresolved indexes.
 				if (!empty($still_missing)) {
-					$standalone_recovered = $this->recover_missing_content_image_prompts_standalone($context, $still_missing, $content, $title_result['title']);
+					$standalone_prompt    = $builder->build_standalone_recovery_prompt($still_missing, $content, $title_result['title'], $configured_templates);
+					$standalone_recovered = $this->execute_content_image_recovery($context, $still_missing, $standalone_prompt, null, 'standalone');
 					foreach ($standalone_recovered as $k => $v) {
 						$recovered[$k] = $v;
 					}
@@ -2266,10 +2280,10 @@ class AIPS_Generator {
 
 		if ($slug === '') {
 			$slug = sanitize_title($title);
-			// Determine if the fallback impacts post completeness:
+			// Determine if the fallback impacts component success telemetry:
 			// If no custom slug prompt was defined, deriving the slug from $title is a standard, acceptable default (success = true).
-			// If the user explicitly provided a custom slug prompt that the model failed to follow, mark as failed (success = false)
-			// so the Partial Generations system alerts the admin for review/regeneration.
+			// If the user explicitly provided a custom slug prompt that the model failed to follow, record component failure (success = false)
+			// in component status history while gracefully utilizing the title-based permalink without forcing a draft downgrade.
 			$has_custom_prompt = '' !== trim((string) $context->get_slug_prompt());
 			$slug_success      = !$has_custom_prompt;
 
@@ -2313,115 +2327,28 @@ class AIPS_Generator {
 	}
 
 	/**
-	 * Attempt to recover missing content image prompts via a mini-turn in the active conversation.
+	 * Execute a content image prompt recovery request against the AI service.
 	 *
-	 * @param AIPS_Generation_Context $context         Generation context.
-	 * @param int[]                   $missing_indexes Missing placeholder indexes.
-	 * @return array<int|string,string> Recovered prompts indexed by placeholder index.
+	 * @param AIPS_Generation_Context   $context         Generation context.
+	 * @param int[]                     $missing_indexes Missing placeholder indexes.
+	 * @param string                    $prompt          Recovery prompt.
+	 * @param AIPS_AI_Conversation|null $conversation    Optional active conversation for mini-turns.
+	 * @param string                    $stage           Recovery stage ('conversational' or 'standalone').
+	 * @return array<int,string> Recovered prompts indexed by integer placeholder index.
 	 */
-	private function recover_missing_content_image_prompts_conversational($context, array $missing_indexes) {
-		if ($this->conversation === null || empty($missing_indexes)) {
-			return array();
-		}
-
-		$props = array();
-		foreach ($missing_indexes as $idx) {
-			$props[(string) $idx] = array('type' => 'string');
-		}
-
-		$schema = array(
-			'type'                 => 'object',
-			'properties'           => $props,
-			'required'             => array_map('strval', $missing_indexes),
-			'additionalProperties' => false,
-		);
-
-		$prompt = sprintf(
-			__('The previous response was missing image descriptions for content image index(es): %s. Based on the article content above, provide a descriptive visual prompt for each missing content image as JSON matching the schema.', 'ai-post-scheduler'),
-			implode(', ', $missing_indexes)
-		);
-
-		if ($this->current_history) {
-			$this->current_history->record(
-				'ai_request',
-				'Requesting conversational mini-turn for missing content image prompts',
-				array('missing_indexes' => $missing_indexes),
-				null,
-				array('component' => 'post_images')
-			);
-		}
-
-		$options = array(
-			'json_schema'  => $schema,
-			'max_tokens'   => 400,
-			'conversation' => $this->conversation,
-		);
-
-		$result = $this->ai_service->generate_json($prompt, $options);
-		if (is_wp_error($result) || !is_array($result)) {
-			return array();
-		}
-
-		$this->conversation->add_exchange($prompt, wp_json_encode($result));
-
-		if ($this->current_history) {
-			$this->current_history->record(
-				'ai_response',
-				'Conversational mini-turn successful for missing content image prompts',
-				null,
-				wp_json_encode($result),
-				array('component' => 'post_images')
-			);
-		}
-
-		$clean = array();
-		foreach ($result as $k => $v) {
-			if (is_scalar($v) && '' !== trim((string) $v)) {
-				$clean[(int) $k] = trim((string) $v);
-			}
-		}
-
-		return $clean;
-	}
-
-	/**
-	 * Attempt to recover missing content image prompts via a standalone prompt call.
-	 *
-	 * @param AIPS_Generation_Context $context         Generation context.
-	 * @param int[]                   $missing_indexes Missing placeholder indexes.
-	 * @param string                  $content         Generated article content.
-	 * @param string                  $title           Generated article title.
-	 * @return array<int|string,string> Recovered prompts indexed by placeholder index.
-	 */
-	private function recover_missing_content_image_prompts_standalone($context, array $missing_indexes, $content, $title) {
+	private function execute_content_image_recovery($context, array $missing_indexes, string $prompt, ?AIPS_AI_Conversation $conversation = null, string $stage = 'conversational'): array {
 		if (empty($missing_indexes)) {
 			return array();
 		}
 
-		$props = array();
-		foreach ($missing_indexes as $idx) {
-			$props[(string) $idx] = array('type' => 'string');
-		}
-
-		$schema = array(
-			'type'                 => 'object',
-			'properties'           => $props,
-			'required'             => array_map('strval', $missing_indexes),
-			'additionalProperties' => false,
-		);
-
-		$prompt = sprintf(
-			__('Based on the article "%1$s" and its excerpt below, generate a vivid, descriptive visual prompt for each required content image index: %2$s.' . "\n\n" . 'Article excerpt:' . "\n" . '%3$s' . "\n\n" . 'Respond ONLY with a JSON object where keys are the index numbers as strings and values are the image prompts.', 'ai-post-scheduler'),
-			$title,
-			implode(', ', $missing_indexes),
-			wp_trim_words(strip_tags($content), 120, '...')
-		);
+		$builder = $this->get_post_metadata_prompt_builder();
+		$schema  = $builder->build_recovery_schema($missing_indexes);
 
 		if ($this->current_history) {
 			$this->current_history->record(
 				'ai_request',
-				'Requesting standalone fallback generation for missing content image prompts',
-				array('missing_indexes' => $missing_indexes),
+				sprintf('Requesting %s recovery for missing content image prompts', $stage),
+				array('missing_indexes' => $missing_indexes, 'prompt' => $prompt),
 				null,
 				array('component' => 'post_images')
 			);
@@ -2431,16 +2358,36 @@ class AIPS_Generator {
 			'json_schema' => $schema,
 			'max_tokens'  => 400,
 		);
+		if ($conversation !== null) {
+			$options['conversation'] = $conversation;
+		}
 
 		$result = $this->ai_service->generate_json($prompt, $options);
 		if (is_wp_error($result) || !is_array($result)) {
+			$error_msg = is_wp_error($result) ? $result->get_error_message() : 'Response was not valid JSON.';
+			$this->logger->log(sprintf('Content image prompt recovery (%s) failed: %s', $stage, $error_msg), 'warning');
+
+			if ($this->current_history) {
+				$this->current_history->record(
+					'warning',
+					sprintf('Content image prompt recovery (%s) failed: %s', $stage, $error_msg),
+					null,
+					null,
+					array('component' => 'post_images')
+				);
+			}
+
 			return array();
+		}
+
+		if ($conversation !== null) {
+			$conversation->add_exchange($prompt, wp_json_encode($result));
 		}
 
 		if ($this->current_history) {
 			$this->current_history->record(
 				'ai_response',
-				'Standalone fallback generation successful for missing content image prompts',
+				sprintf('Content image prompt recovery (%s) successful', $stage),
 				null,
 				wp_json_encode($result),
 				array('component' => 'post_images')
@@ -2449,8 +2396,9 @@ class AIPS_Generator {
 
 		$clean = array();
 		foreach ($result as $k => $v) {
-			if (is_scalar($v) && '' !== trim((string) $v)) {
-				$clean[(int) $k] = trim((string) $v);
+			$k_int = (int) $k;
+			if (in_array($k_int, $missing_indexes, true) && is_scalar($v) && '' !== trim((string) $v)) {
+				$clean[$k_int] = trim((string) $v);
 			}
 		}
 
