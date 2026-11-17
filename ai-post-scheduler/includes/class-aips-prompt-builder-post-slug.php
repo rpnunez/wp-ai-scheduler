@@ -24,6 +24,15 @@ class AIPS_Prompt_Builder_Post_Slug {
 Respond with ONLY one lowercase hyphenated slug, nothing else.";
 
 	/**
+	 * Default cap on the article text pasted into a stateless slug prompt.
+	 *
+	 * A slug is three to six keywords and the title is already in the prompt, so
+	 * this matches the title prompt's cap (aips_title_context_max_chars) rather
+	 * than the much larger general-purpose AIPS_Content_Digest default.
+	 */
+	const CONTEXT_MAX_CHARS = 3000;
+
+	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
 	 */
 	private $template_processor;
@@ -177,7 +186,7 @@ Respond with ONLY one lowercase hyphenated slug, nothing else.";
 		$prompt = $this->assemble_prompt('Generate a clean, SEO-friendly URL slug for a blog post based on its title and content.', $slug_instructions, $title);
 
 		if (!empty($content)) {
-			$max_chars       = (int) apply_filters('aips_slug_context_max_chars', AIPS_Content_Digest::DEFAULT_MAX_CHARS, $subject);
+			$max_chars       = (int) apply_filters('aips_slug_context_max_chars', self::CONTEXT_MAX_CHARS, $subject);
 			$content_context = $this->content_digest->build($content, $max_chars);
 			$content_context = str_ireplace(array('<article_data', '</article_data'), array('&lt;article_data', '&lt;/article_data'), $content_context);
 			$prompt         .= "\n\n<article_data>\n" . $content_context . "\n</article_data>";
