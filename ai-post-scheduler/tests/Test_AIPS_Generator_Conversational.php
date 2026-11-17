@@ -86,7 +86,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$ai_service = $this->make_service(array(self::BODY));
 		$ai_service->conversation_supported = true;
 		$ai_service->json_responses = array(
-			array('title' => 'Preview Title', 'excerpt' => 'Preview excerpt.'),
+			array('title' => 'Preview Title', 'excerpt' => 'Preview excerpt.', 'slug' => 'preview-slug'),
 		);
 
 		$generator = new AIPS_Generator(
@@ -105,6 +105,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$this->assertCount(1, $ai_service->json_calls);
 		$this->assertSame('Preview Title', $result['title']);
 		$this->assertSame('Preview excerpt.', $result['excerpt']);
+		$this->assertSame('preview-slug', $result['slug']);
 	}
 
 	public function test_flag_off_keeps_article_body_in_the_title_prompt() {

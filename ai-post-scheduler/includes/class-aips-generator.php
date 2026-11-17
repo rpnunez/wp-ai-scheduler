@@ -1015,11 +1015,13 @@ class AIPS_Generator {
         $content = $this->strip_leading_title_block_from_content($content);
 
         $resolved_image_prompt = null;
+        $slug                  = '';
 
         if ($this->use_metadata_turn()) {
             $metadata_result       = $this->generate_and_resolve_metadata($context, $content);
             $title                 = $metadata_result['title'];
             $excerpt               = $metadata_result['excerpt'];
+            $slug                  = isset($metadata_result['slug']) ? $metadata_result['slug'] : '';
             $resolved_image_prompt = $metadata_result['resolved_image_prompt'];
         } else {
             // Resolve AI variables
@@ -1041,6 +1043,7 @@ class AIPS_Generator {
             'title'        => $title,
             'content'      => $content,
             'excerpt'      => $excerpt,
+            'slug'         => $slug,
             'image_prompt' => '',
             'image_source' => $context->get_featured_image_source(),
         );

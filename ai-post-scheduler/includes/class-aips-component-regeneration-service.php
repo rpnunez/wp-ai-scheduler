@@ -165,10 +165,11 @@ class AIPS_Component_Regeneration_Service {
 					if ($include_title) {
 						$title = is_string($title_override) ? $title_override : (string) get_the_title($post_id);
 						if (trim($title) !== '') {
-							if (isset($stored_transcript[2], $stored_transcript[3])
-								&& strpos($stored_transcript[2]['text'], 'title') !== false
-								&& !isset($title_override)
-							) {
+							$is_discrete_title_turn = isset($stored_transcript[2], $stored_transcript[3])
+								&& stripos($stored_transcript[2]['text'], 'Now generate a title') !== false
+								&& strpos(trim($stored_transcript[3]['text']), '{') !== 0;
+
+							if ($is_discrete_title_turn && !isset($title_override)) {
 								$conversation->add_exchange($stored_transcript[2]['text'], $stored_transcript[3]['text']);
 							} else {
 								$conversation->add_exchange(
