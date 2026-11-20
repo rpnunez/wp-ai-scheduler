@@ -316,8 +316,8 @@ The tables below document all canonical options registered and maintained by AI 
 | `aips_token_budget_seo_title` | `integer` | `100` | Settings > AI | Max token allocation for meta SEO title generation. |
 | `aips_token_budget_seo_description` | `integer` | `200` | Settings > AI | Max token allocation for meta SEO description generation. |
 | `aips_token_budget_tags` | `integer` | `100` | Settings > AI | Max token allocation for article tags generation. |
-| `aips_conversational_generation` | `boolean` | `false` | Settings > AI | Uses multi-turn conversations to maintain context across generation turns. |
-| `aips_conversational_metadata_turn` | `boolean` | `false` | Settings > AI | Generates title, excerpt, slug, and image prompt in a single combined turn to save API calls. |
+| `aips_conversational_generation` | `boolean` | `false` | Settings > AI | Generates post components conversationally with a combined metadata turn to cut API calls and save tokens. |
+| `aips_conversational_metadata_turn` | `boolean` | `true` | Developer / Filter | Implied by conversational generation; controls whether metadata is combined in one turn (filterable via `aips_conversational_metadata_turn`). |
 
 ### 5. Frontend Related Posts Engine
 
