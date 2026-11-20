@@ -67,6 +67,11 @@ class AIPS_Content_Indexer_Service {
 	private $similarity_evaluator;
 
 	/**
+	 * @var AIPS_Cron_Backend_Interface
+	 */
+	private $cron_backend;
+
+	/**
 	 * @var AIPS_Relationship_Builder|null
 	 */
 	private $relationship_builder = null;
@@ -82,7 +87,8 @@ class AIPS_Content_Indexer_Service {
 		?AIPS_Logger_Interface $logger = null,
 		?AIPS_Config $config = null,
 		?AIPS_Author_Topics_Repository $topics_repo = null,
-		?AIPS_Similarity_Evaluator $similarity_evaluator = null
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null,
+		?AIPS_Cron_Backend_Interface $cron_backend = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -94,6 +100,7 @@ class AIPS_Content_Indexer_Service {
 		$this->config               = $config ?: AIPS_Config::get_instance();
 		$this->topics_repo          = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
+		$this->cron_backend         = $cron_backend ?: ($container->has(AIPS_Cron_Backend_Interface::class) ? $container->make(AIPS_Cron_Backend_Interface::class) : AIPS_Cron_Backend_Resolver::resolve());
 	}
 
 	/**
@@ -814,10 +821,7 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		if (empty($object_type)) {
-			if (function_exists('as_unschedule_all_actions')) {
-				as_unschedule_all_actions('aips_process_pending_indexer_queue', array(), 'aips-indexer');
-			}
-			wp_clear_scheduled_hook('aips_process_pending_indexer_queue');
+			$this->unschedule_queue_worker();
 		}
 	}
 
@@ -964,16 +968,12 @@ class AIPS_Content_Indexer_Service {
 	/**
 	 * Check if the background indexer queue worker is already scheduled.
 	 *
-	 * Checks Action Scheduler if available, falling back to WP-Cron.
+	 * Checks via the central cron backend adapter (Action Scheduler when available, else WP-Cron).
 	 *
 	 * @return bool
 	 */
 	public function is_queue_worker_scheduled(): bool {
-		if (function_exists('as_has_scheduled_action') && as_has_scheduled_action('aips_process_pending_indexer_queue', array(), 'aips-indexer')) {
-			return true;
-		}
-
-		return (bool) wp_next_scheduled('aips_process_pending_indexer_queue');
+		return $this->cron_backend->has_scheduled('aips_process_pending_indexer_queue', array(), AIPS_Cron_Registry::GROUP_INDEXER);
 	}
 
 	/**
@@ -1004,15 +1004,12 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
-	 * Remove the scheduled queue worker from Action Scheduler and WP-Cron.
+	 * Remove the scheduled queue worker via the central cron backend adapter.
 	 *
 	 * @return void
 	 */
 	public function unschedule_queue_worker(): void {
-		if (function_exists('as_unschedule_all_actions')) {
-			as_unschedule_all_actions('aips_process_pending_indexer_queue', array(), 'aips-indexer');
-		}
-		wp_clear_scheduled_hook('aips_process_pending_indexer_queue');
+		$this->cron_backend->unschedule_all('aips_process_pending_indexer_queue', AIPS_Cron_Registry::GROUP_INDEXER);
 	}
 
 	/**
@@ -1045,7 +1042,7 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
-	 * Schedule background indexer queue worker via Action Scheduler (if available) or WP-Cron.
+	 * Schedule background indexer queue worker via the central cron backend adapter.
 	 *
 	 * @param int $timestamp Unix timestamp to run.
 	 * @return void
@@ -1055,11 +1052,7 @@ class AIPS_Content_Indexer_Service {
 			return;
 		}
 
-		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action($timestamp, 'aips_process_pending_indexer_queue', array(), 'aips-indexer');
-		} else {
-			wp_schedule_single_event($timestamp, 'aips_process_pending_indexer_queue');
-		}
+		$this->cron_backend->schedule_single($timestamp, 'aips_process_pending_indexer_queue', array(), AIPS_Cron_Registry::GROUP_INDEXER);
 	}
 
 	/**

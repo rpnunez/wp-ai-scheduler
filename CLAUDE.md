@@ -12,23 +12,28 @@ Project-scoped subagents live in `.claude/agents/` and are auto-delegated by Cla
 
 | Subagent | When to use |
 |---|---|
-| `qa-reviewer` | Test planning, bug hunting, edge-case analysis, implementation verification |
-| `ajax-controller-reviewer` | Reviewing nonce/capability/sanitization compliance in AJAX controllers |
-| `db-migration-reviewer` | Reviewing schema changes against `AIPS_DB_Manager`/`AIPS_DB_Migrations` patterns |
-| `batch-job-reviewer` | Reviewing bulk batch processor strategies, cron slicing, and job store state |
-| `l10n-reviewer` | Reviewing text domain usage, i18n string escaping, language stores, and templates |
+| `qa-reviewer` | Read-only acceptance-criteria, test-quality, edge-case, and verification review for PR Xray |
+| `ajax-controller-reviewer` | Reviewing complete AJAX action paths, authorization, typed input, responses, and denied paths |
+| `db-migration-reviewer` | Reviewing schema, migrations, persistence, queries, upgrade safety, and data preservation |
+| `background-job-reviewer` | Reviewing cron, batch, managed background processes, lifecycle state, idempotency, and cleanup |
+| `l10n-reviewer` | Reviewing translation APIs, placeholders, plurals, language stores, and output-context escaping |
 | `feature-slicer` | Breaking a feature request into independently testable, mergeable slices |
-| `generation-pipeline-reviewer` | Reviewing changes to generation context, prompt builders, or resilience flows |
-| `pr-triage` | Overlap detection, risk classification, and review readiness for pull requests |
+| `generation-pipeline-reviewer` | Reviewing generation semantics across contexts, prompts, providers, entry points, and recovery |
+| `bootstrap-dependency-reviewer` | Reviewing autoloading, boot contexts, container bindings, class moves, and optional dependencies |
+| `pr-portfolio-analyst` | Ranking multiple PRs by readiness, overlap, blockers, risk, and merge order |
+| `pr-xray-coordinator` | Resolving one PR's intent, commits, risk, reviewer routing, and coverage ownership |
+| `pr-xray-adjudicator` | Validating and consolidating PR Xray evidence and assigning the final verdict |
+| `pr-xray-report-assembler` | Writing PR Xray reports and creating a validated downloadable ZIP |
 
 Skills (step-by-step implementation guides) live in `.claude/skills/`:
-`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`).
+`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-portfolio-triage`, `pr-xray`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`).
 
 Saved multi-agent workflows live in `.claude/workflows/`:
 - `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit security compliance.
 - `.claude/workflows/db-migration-audit.md` — audits table schemas, `$wpdb` repository isolation, and migrations.
 - `.claude/workflows/generation-pipeline-sweep.md` — sweeps generation contexts, prompt builders, logging, and retry backoff.
-- `.claude/workflows/full-plugin-pr-audit.md` — master pre-merge sweep fanning out domain reviewers across touched files.
+- `.claude/workflows/pr-portfolio-triage.md` — ranks and routes multiple open PRs without claiming deep-review approval.
+- `.claude/workflows/pr-xray.md` — deep single-PR review with routed domain reviewers, adjudication, and report packaging.
 
 ## Commands
 

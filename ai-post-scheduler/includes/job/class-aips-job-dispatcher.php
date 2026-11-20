@@ -36,16 +36,23 @@ class AIPS_Job_Dispatcher {
 	private $history_service;
 
 	/**
+	 * @var AIPS_Cron_Manager Cron manager
+	 */
+	private $cron_manager;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Resilience_Service|null        $resilience_service Optional resilience service.
 	 * @param AIPS_Logger|null                    $logger             Optional logger.
 	 * @param AIPS_History_Service_Interface|null $history_service    Optional history service.
+	 * @param AIPS_Cron_Manager|null              $cron_manager       Optional cron manager.
 	 */
 	public function __construct(
 		?AIPS_Resilience_Service $resilience_service = null,
 		?AIPS_Logger $logger = null,
-		?AIPS_History_Service_Interface $history_service = null
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Cron_Manager $cron_manager = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -56,6 +63,9 @@ class AIPS_Job_Dispatcher {
 		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
 			? $container->make(AIPS_History_Service_Interface::class)
 			: new AIPS_History_Service());
+		$this->cron_manager = $cron_manager ?: ($container->has(AIPS_Cron_Manager::class)
+			? $container->make(AIPS_Cron_Manager::class)
+			: new AIPS_Cron_Manager());
 	}
 
 	/**
@@ -116,11 +126,11 @@ class AIPS_Job_Dispatcher {
 			function() use ($job, &$attempt_num, &$last_error) {
 				$attempt_num++;
 
-				$result = wp_schedule_single_event(
-					$job->get_fire_at(),
+				$result = $this->cron_manager->schedule_single(
 					$job->get_hook(),
+					$job->get_fire_at(),
 					$job->get_args(),
-					true
+					false
 				);
 
 				if ($result === true) {
@@ -224,7 +234,7 @@ class AIPS_Job_Dispatcher {
 	 * @return int|false Existing timestamp when found, false otherwise.
 	 */
 	private function get_scheduled_timestamp(AIPS_Job_Definition $job): int|false {
-		return wp_next_scheduled($job->get_hook(), $job->get_args());
+		return $this->cron_manager->next_scheduled($job->get_hook(), $job->get_args());
 	}
 
 	/**
