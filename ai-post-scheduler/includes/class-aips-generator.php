@@ -1392,19 +1392,27 @@ class AIPS_Generator {
         $featured_image_success = !$context->should_generate_featured_image();
         $featured_image_id      = 0;
         if ($context->should_generate_featured_image()) {
-            $fi_attempt = $this->retry_runner->execute(
-                'post_featured_image',
-                function () use ($context, $post_id, $title, $content, $resolved_image_prompt, &$featured_image_success) {
-                    $featured_image_success = false;
-                    return $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content, $resolved_image_prompt);
-                },
-                function ($attachment_id) use (&$featured_image_success) {
-                    return (bool) $featured_image_success && !empty($attachment_id);
-                },
-                $this->current_history,
-                $this->logger
-            );
-            $featured_image_id = $fi_attempt['result'];
+            $fi_source = $context->get_featured_image_source();
+            $fi_is_retryable_source = ('ai_prompt' === $fi_source && $this->ai_service->is_available())
+                || ('unsplash' === $fi_source && $this->image_service->has_unsplash_access_key());
+
+            if ($fi_is_retryable_source) {
+                $fi_attempt = $this->retry_runner->execute(
+                    'post_featured_image',
+                    function () use ($context, $post_id, $title, $content, $resolved_image_prompt, &$featured_image_success) {
+                        $featured_image_success = false;
+                        return $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content, $resolved_image_prompt);
+                    },
+                    function ($attachment_id) use (&$featured_image_success) {
+                        return (bool) $featured_image_success && !empty($attachment_id);
+                    },
+                    $this->current_history,
+                    $this->logger
+                );
+                $featured_image_id = $fi_attempt['result'];
+            } else {
+                $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content, $resolved_image_prompt);
+            }
         }
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
