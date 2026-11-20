@@ -146,4 +146,19 @@ class Test_AIPS_Prompt_Builder_Post_Slug extends WP_UnitTestCase {
 		$this->assertStringContainsString('Keep it ultra brief.', $result);
 		$this->assertStringContainsString('Respond with ONLY one lowercase hyphenated slug, nothing else.', $result);
 	}
+
+	/**
+	 * Slug context digests use the harmonized 3,000 character cap.
+	 */
+	public function test_slug_context_uses_harmonized_max_chars_limit() {
+		$template = (object) array(
+			'id'          => 1,
+			'slug_prompt' => '',
+		);
+		$long_content = str_repeat('A long article paragraph discussing web development. ', 100);
+		$result       = $this->builder->build($template, 'Testing', null, $long_content, 'Testing Guide');
+
+		$this->assertSame(3000, AIPS_Prompt_Builder_Post_Slug::DEFAULT_MAX_CHARS);
+		$this->assertLessThan(mb_strlen($long_content), mb_strlen($result));
+	}
 }

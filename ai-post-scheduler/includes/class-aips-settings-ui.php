@@ -773,9 +773,11 @@ class AIPS_Settings_UI {
     /**
      * Render the conversational generation setting field.
      *
-     * When enabled, the title, excerpt, and image-prompt steps continue the same
-     * conversation as the content step instead of each pasting a copy of the
-     * article into a fresh prompt. Requires an AI provider that can replay
+     * When enabled, follow-up requests (title, excerpt, slug, image prompt) continue
+     * the same conversation as the content step. While the article is not pasted
+     * directly into each prompt, replaying it as history across separate follow-up calls
+     * increases overall input volume. Pair with the Combined Metadata Turn to collapse
+     * requests and reduce total input tokens. Requires an AI provider that can replay
      * conversation history.
      *
      * @return void
@@ -790,7 +792,7 @@ class AIPS_Settings_UI {
             <?php esc_html_e('Generate post components as one conversation instead of separate prompts', 'ai-post-scheduler'); ?>
         </label>
         <p class="description">
-            <?php esc_html_e('The model keeps the article it just wrote in context, so titles and excerpts stay consistent with the body and the article text is not re-sent with every request.', 'ai-post-scheduler'); ?>
+            <?php esc_html_e('The model keeps the article it just wrote in context across follow-up requests so titles, excerpts, and slugs stay consistent with the body. Replaying the article as history on each separate request increases total input tokens sent; enable Combined Metadata Turn below to request metadata in one turn and save API usage.', 'ai-post-scheduler'); ?>
         </p>
         <?php if (!$supported) : ?>
             <p class="description">
