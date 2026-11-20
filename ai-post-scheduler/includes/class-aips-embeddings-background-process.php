@@ -59,6 +59,10 @@ abstract class AIPS_Embeddings_Background_Process extends AIPS_Managed_Backgroun
 		return true;
 	}
 
+	public function tracks_ai_calls(): bool {
+		return true;
+	}
+
 	protected function get_batch_size(): int {
 		return max(1, min(50, (int) $this->config->get_option('aips_indexer_batch_size', 10)));
 	}
@@ -101,7 +105,7 @@ abstract class AIPS_Embeddings_Background_Process extends AIPS_Managed_Backgroun
 	}
 
 	protected function count_ai_calls(): int {
-		return count($this->embeddings_service->get_rate_limiter()->get_usage_history());
+		return $this->embeddings_service->get_rate_limiter()->get_provider_call_count();
 	}
 
 	/**

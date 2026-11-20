@@ -535,12 +535,14 @@ class AIPS_Link_Index_Service {
 		}
 
 		return array(
-			'job_id'    => $job_id,
-			'status'    => (string) $job->status,
-			'processed' => (int) $job->processed,
-			'total'     => (int) $job->total,
-			'mode'      => isset($job->options['mode']) ? (string) $job->options['mode'] : self::MODE_ALL,
-			'days'      => isset($job->options['days']) ? (int) $job->options['days'] : 0,
+			'job_id'     => $job_id,
+			'status'     => (string) $job->status,
+			'processed'  => (int) $job->processed,
+			'total'      => (int) $job->total,
+			'mode'       => isset($job->options['mode']) ? (string) $job->options['mode'] : self::MODE_ALL,
+			'days'       => isset($job->options['days']) ? (int) $job->options['days'] : 0,
+			'started_at' => isset($job->created_at) ? (int) $job->created_at : 0,
+			'updated_at' => isset($job->updated_at) ? (int) $job->updated_at : 0,
 		);
 	}
 

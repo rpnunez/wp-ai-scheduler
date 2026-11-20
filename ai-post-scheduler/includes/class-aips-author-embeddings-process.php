@@ -128,11 +128,13 @@ class AIPS_Author_Embeddings_Process extends AIPS_Embeddings_Background_Process 
 				}
 
 				$failed++;
+				$new_cursor = max($new_cursor, $topic_id);
+				$this->checkpoint_progress(0, 1, $new_cursor);
 			} else {
 				$success++;
+				$new_cursor = max($new_cursor, $topic_id);
+				$this->checkpoint_progress(1, 0, $new_cursor);
 			}
-
-			$new_cursor = max($new_cursor, $topic_id);
 		}
 
 		return array(

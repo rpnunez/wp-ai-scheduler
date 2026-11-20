@@ -33,9 +33,23 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 	<div class="aips-content-panel">
 		<div class="aips-panel-header">
 			<h2><?php esc_html_e('Processes', 'ai-post-scheduler'); ?></h2>
-			<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-pause-all>
-				<span class="dashicons dashicons-controls-pause"></span>
-				<?php esc_html_e('Pause all', 'ai-post-scheduler'); ?>
+			<div class="aips-bg-header-actions">
+				<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-refresh hidden>
+					<span class="dashicons dashicons-update" aria-hidden="true"></span>
+					<span data-aips-bg-refresh-label><?php esc_html_e('Refresh', 'ai-post-scheduler'); ?></span>
+				</button>
+				<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-pause-all>
+					<span class="dashicons dashicons-controls-pause" aria-hidden="true"></span>
+					<?php esc_html_e('Pause all', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</div>
+		<div class="aips-bg-transport-notice" data-aips-bg-transport-notice role="status" aria-live="polite" hidden>
+			<span class="dashicons dashicons-warning" aria-hidden="true"></span>
+			<span class="aips-bg-transport-text" data-aips-bg-transport-text></span>
+			<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-refresh>
+				<span class="dashicons dashicons-update" aria-hidden="true"></span>
+				<span data-aips-bg-refresh-label><?php esc_html_e('Refresh', 'ai-post-scheduler'); ?></span>
 			</button>
 		</div>
 		<div class="aips-panel-body no-padding">
@@ -51,7 +65,28 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 				</thead>
 				<tbody>
 					<?php foreach ($bg_processes as $snapshot) : ?>
-						<tr data-aips-bg-key="<?php echo esc_attr($snapshot['key']); ?>" data-aips-bg-status="<?php echo esc_attr($snapshot['status']); ?>" class="<?php echo !empty($snapshot['is_active']) ? 'aips-bg-active' : ''; ?>">
+						<?php
+						$row_classes = array();
+						if (!empty($snapshot['is_active'])) {
+							$row_classes[] = 'aips-bg-active';
+						}
+						if ('running' === $snapshot['status']) {
+							$row_classes[] = 'aips-bg-running';
+							if (0 === (int) $snapshot['percent']) {
+								$row_classes[] = 'aips-bg-zero';
+							}
+						}
+						if ('paused' === $snapshot['status']) {
+							$row_classes[] = 'aips-bg-paused';
+						}
+						$progress_aria_label = sprintf(
+							/* translators: %s: background process label. */
+							__('%s progress', 'ai-post-scheduler'),
+							$snapshot['label']
+						);
+						$tracks_ai_calls = !isset($snapshot['tracks_ai_calls']) || !empty($snapshot['tracks_ai_calls']);
+						?>
+						<tr data-aips-bg-key="<?php echo esc_attr($snapshot['key']); ?>" data-aips-bg-status="<?php echo esc_attr($snapshot['status']); ?>" class="<?php echo esc_attr(implode(' ', $row_classes)); ?>">
 							<td>
 								<strong><?php echo esc_html($snapshot['label']); ?></strong>
 								<?php if (!empty($snapshot['uses_ai'])) : ?>
@@ -68,14 +103,14 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 								<span data-aips-bg-field="processed"><?php echo esc_html(number_format_i18n($snapshot['processed'])); ?></span>
 								/
 								<span data-aips-bg-field="total"><?php echo esc_html(number_format_i18n($snapshot['total'])); ?></span>
-								(<span data-aips-bg-field="percent"><?php echo esc_html((string) $snapshot['percent']); ?>%</span>)
-								<div class="aips-bg-progress-bar"><span data-aips-bg-bar style="width:<?php echo esc_attr((string) $snapshot['percent']); ?>%"></span></div>
+								(<span data-aips-bg-field="percent"><?php echo esc_html((string) $snapshot['percent'] . '%'); ?></span>)
+								<div class="aips-bg-progress-bar" role="progressbar" aria-label="<?php echo esc_attr($progress_aria_label); ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?php echo esc_attr((string) (int) $snapshot['percent']); ?>"><span data-aips-bg-bar style="width:<?php echo esc_attr((string) $snapshot['percent']); ?>%"></span></div>
 							</td>
 							<td>
 								<?php if (!empty($snapshot['uses_ai'])) : ?>
-									<span data-aips-bg-field="ai_calls_used"><?php echo esc_html(number_format_i18n($snapshot['ai_calls_used'])); ?></span>
+									<span data-aips-bg-field="ai_calls_used"><?php echo $tracks_ai_calls ? esc_html(number_format_i18n($snapshot['ai_calls_used'])) : esc_html__('Not tracked', 'ai-post-scheduler'); ?></span>
 								<?php else : ?>
-									&mdash;
+									<span data-aips-bg-field="ai_calls_used">&mdash;</span>
 								<?php endif; ?>
 							</td>
 							<td>

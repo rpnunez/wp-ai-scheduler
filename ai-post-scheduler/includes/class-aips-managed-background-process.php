@@ -44,6 +44,13 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	protected $repository;
 
 	/**
+	 * Intra-slice checkpoint tracker for the currently executing run_tick().
+	 *
+	 * @var array{run_id:int, processed:int, failed:int, cursor:int, ai_calls_baseline:int, ai_calls_committed:int}|null
+	 */
+	private $active_slice_checkpoint = null;
+
+	/**
 	 * @param AIPS_Background_Process_Repository|null $repository Run repository.
 	 */
 	public function __construct(?AIPS_Background_Process_Repository $repository = null) {
@@ -324,12 +331,13 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		}
 
 		// Overlapping ticks (a spawned cron plus a manual run) would double-process a slice.
-		$lock_key = 'aips_bg_lock_' . $this->get_key();
-		if (get_transient($lock_key)) {
+		// Use an atomic token-owned database lock rather than a read-then-set transient.
+		$lock_name  = 'bg_tick_' . $this->get_key();
+		$lock_token = $this->repository->acquire_lock($lock_name, self::LOCK_TTL);
+		if ($lock_token === null) {
 			$this->schedule_tick(30);
 			return;
 		}
-		set_transient($lock_key, 1, self::LOCK_TTL);
 
 		// Arm the watchdog: replaced by the real next tick when the slice returns.
 		$this->replace_tick(self::WATCHDOG_DELAY);
@@ -348,7 +356,8 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 				$e->getMessage()
 			);
 		} finally {
-			delete_transient($lock_key);
+			$this->active_slice_checkpoint = null;
+			$this->repository->release_lock($lock_name, $lock_token);
 
 			// A run that is no longer active (finished, failed, paused or stopped) has no
 			// next tick: drop the watchdog. An active run already has its real tick.
@@ -357,6 +366,52 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 				$this->get_cron_manager()->clear_hook(self::TICK_HOOK, array($this->get_key()));
 			}
 		}
+	}
+
+	/**
+	 * Persist incremental progress during a long slice so Heartbeat polls reflect
+	 * resolved items immediately without waiting for the entire slice to return.
+	 *
+	 * Subclasses may call this after each resolved item; run_tick() reconciles the
+	 * final slice return values against committed checkpoints so items and AI calls
+	 * are never counted twice.
+	 *
+	 * @param int         $processed_delta Resolved items (succeeded) in this step.
+	 * @param int         $failed_delta    Failed items in this step.
+	 * @param int         $cursor_id       Latest cursor value.
+	 * @param string|null $message         Optional status message.
+	 * @return void
+	 */
+	protected function checkpoint_progress(int $processed_delta, int $failed_delta, int $cursor_id, ?string $message = null): void {
+		if ($this->active_slice_checkpoint === null) {
+			return;
+		}
+
+		$processed_delta = max(0, $processed_delta);
+		$failed_delta    = max(0, $failed_delta);
+		$resolved_delta  = $processed_delta + $failed_delta;
+
+		$calls_now   = $this->count_ai_calls();
+		$calls_total = max(0, $calls_now - $this->active_slice_checkpoint['ai_calls_baseline']);
+		$calls_delta = max(0, $calls_total - $this->active_slice_checkpoint['ai_calls_committed']);
+
+		if ($resolved_delta === 0 && $calls_delta === 0 && $cursor_id <= $this->active_slice_checkpoint['cursor'] && $message === null) {
+			return;
+		}
+
+		$this->repository->add_progress(
+			$this->active_slice_checkpoint['run_id'],
+			$resolved_delta,
+			$failed_delta,
+			$cursor_id,
+			$calls_delta,
+			$message
+		);
+
+		$this->active_slice_checkpoint['processed']          += $processed_delta;
+		$this->active_slice_checkpoint['failed']             += $failed_delta;
+		$this->active_slice_checkpoint['cursor']              = max($this->active_slice_checkpoint['cursor'], $cursor_id);
+		$this->active_slice_checkpoint['ai_calls_committed'] += $calls_delta;
 	}
 
 	/**
@@ -400,14 +455,33 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		}
 
 		$calls_before = $this->count_ai_calls();
-		$result       = $this->process_slice($run->cursor_id, $size, $run->options);
-		$calls_made   = max(0, $this->count_ai_calls() - $calls_before);
+		$this->active_slice_checkpoint = array(
+			'run_id'             => (int) $run->id,
+			'processed'          => 0,
+			'failed'             => 0,
+			'cursor'              => (int) $run->cursor_id,
+			'ai_calls_baseline'  => $calls_before,
+			'ai_calls_committed' => 0,
+		);
+
+		$result     = $this->process_slice($run->cursor_id, $size, $run->options);
+		$calls_made = max(0, $this->count_ai_calls() - $calls_before);
+
+		$checkpoint = $this->active_slice_checkpoint;
+		$this->active_slice_checkpoint = null;
 
 		$processed = isset($result['processed']) ? (int) $result['processed'] : 0;
 		$failed    = isset($result['failed']) ? (int) $result['failed'] : 0;
 		$message   = isset($result['message']) ? (string) $result['message'] : '';
+		$cursor    = isset($result['cursor']) ? (int) $result['cursor'] : 0;
 
-		$this->repository->add_progress($run->id, $processed + $failed, $failed, isset($result['cursor']) ? (int) $result['cursor'] : 0, $calls_made, $message);
+		$rem_processed = max(0, $processed - ($checkpoint ? $checkpoint['processed'] : 0));
+		$rem_failed    = max(0, $failed - ($checkpoint ? $checkpoint['failed'] : 0));
+		$rem_calls     = max(0, $calls_made - ($checkpoint ? $checkpoint['ai_calls_committed'] : 0));
+
+		if ($rem_processed > 0 || $rem_failed > 0 || $rem_calls > 0 || $message !== '' || !$checkpoint || ($checkpoint['processed'] === 0 && $checkpoint['failed'] === 0 && $checkpoint['ai_calls_committed'] === 0)) {
+			$this->repository->add_progress($run->id, $rem_processed + $rem_failed, $rem_failed, $cursor, $rem_calls, $message);
+		}
 
 		// Paused or stopped by an administrator while the slice ran: leave that status alone.
 		$latest = $this->repository->get($run->id);

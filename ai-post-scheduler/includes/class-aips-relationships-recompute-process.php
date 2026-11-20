@@ -132,13 +132,16 @@ class AIPS_Relationships_Recompute_Process extends AIPS_Managed_Background_Proce
 			return array('processed' => 0, 'failed' => 0, 'cursor' => $cursor, 'done' => true);
 		}
 
-		$saved  = $this->builder->compute_for_posts($ids);
-		$failed = count($ids) - count($saved);
+		$saved    = $this->builder->compute_for_posts($ids);
+		$failed   = count($ids) - count($saved);
+		$new_curs = max($ids);
+
+		$this->checkpoint_progress(count($saved), $failed, $new_curs);
 
 		return array(
 			'processed' => count($saved),
 			'failed'    => $failed,
-			'cursor'    => max($ids),
+			'cursor'    => $new_curs,
 			'done'      => count($ids) < $limit,
 		);
 	}

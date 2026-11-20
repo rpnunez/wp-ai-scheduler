@@ -13,6 +13,12 @@ class Test_AIPS_Background_Process_Manager extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		AIPS_DB_Manager::install_tables();
+		global $wpdb;
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_background_processes' );
+		delete_option( AIPS_Content_Indexer_Queue_Repository::STATE_OPTION );
+		delete_option( 'aips_pending_index_queue' );
+		delete_option( 'aips_pending_topic_index_queue' );
+		delete_option( AIPS_Content_Indexer_Service::QUEUE_PAUSED_OPTION );
 		$this->manager = new AIPS_Background_Process_Manager();
 		$this->manager->flush_summary();
 	}
@@ -20,6 +26,7 @@ class Test_AIPS_Background_Process_Manager extends WP_UnitTestCase {
 	public function tearDown(): void {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_background_processes' );
+		delete_option( AIPS_Content_Indexer_Queue_Repository::STATE_OPTION );
 		delete_option( 'aips_pending_index_queue' );
 		delete_option( 'aips_pending_topic_index_queue' );
 		delete_option( AIPS_Content_Indexer_Service::QUEUE_PAUSED_OPTION );
@@ -41,7 +48,7 @@ class Test_AIPS_Background_Process_Manager extends WP_UnitTestCase {
 
 	public function test_snapshots_share_one_shape() {
 		foreach ( $this->manager->get_snapshots() as $snapshot ) {
-			foreach ( array( 'key', 'label', 'status', 'status_label', 'is_active', 'can_start', 'can_pause', 'can_resume', 'can_cancel', 'processed', 'total', 'percent', 'message' ) as $field ) {
+			foreach ( array( 'key', 'label', 'status', 'status_label', 'is_active', 'can_start', 'can_pause', 'can_resume', 'can_cancel', 'processed', 'total', 'pending', 'in_flight', 'tracks_ai_calls', 'percent', 'message' ) as $field ) {
 				$this->assertArrayHasKey( $field, $snapshot, "{$snapshot['key']} is missing {$field}" );
 			}
 		}
@@ -82,7 +89,36 @@ class Test_AIPS_Background_Process_Manager extends WP_UnitTestCase {
 
 		$snapshot = $this->manager->control( 'content_indexer_queue', 'cancel' );
 		$this->assertSame( 'idle', $snapshot['status'] );
+		$this->assertSame( 'cancelled', $snapshot['last_status'] );
 		$this->assertEmpty( get_option( 'aips_pending_index_queue' ) );
+	}
+
+	public function test_heartbeat_returns_fresh_snapshots_after_repository_updates() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		// Prime summary cache while idle.
+		$summary = $this->manager->get_summary();
+		$this->assertNotEmpty( $summary );
+
+		// Enqueue items in repository after summary cache was written.
+		$indexer = AIPS_Container::get_instance()->make( AIPS_Content_Indexer_Service::class );
+		$indexer->enqueue_posts_for_indexing( array( 501, 502 ) );
+
+		$response = $this->manager->on_heartbeat_received( array(), array( 'aips_bg' => 1 ) );
+		$this->assertArrayHasKey( 'aips_bg', $response );
+
+		$queue_snap = null;
+		foreach ( $response['aips_bg']['processes'] as $snap ) {
+			if ( 'content_indexer_queue' === $snap['key'] ) {
+				$queue_snap = $snap;
+				break;
+			}
+		}
+
+		$this->assertNotNull( $queue_snap );
+		$this->assertSame( 'running', $queue_snap['status'] );
+		$this->assertSame( 2, $queue_snap['total'] );
+		$this->assertGreaterThanOrEqual( 1, $response['aips_bg']['active_count'] );
 	}
 
 	public function test_pause_all_pauses_running_processes_only() {
