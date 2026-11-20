@@ -336,4 +336,20 @@ class AIPS_Generation_Component_Registry {
 
 		return $this;
 	}
+
+	/**
+	 * Register default AI Assistance form-field suggestion components.
+	 *
+	 * @param AIPS_AI_Service_Interface|null     $ai_service Optional AI service.
+	 * @param AIPS_AI_Assistance_Repository|null $repository Optional AI assistance repository.
+	 * @return self
+	 */
+	public function register_default_ai_assistance_components(
+		$ai_service = null,
+		?AIPS_AI_Assistance_Repository $repository = null
+	): self {
+		$this->register(new AIPS_Field_Suggestion_Component($ai_service, $repository));
+
+		return $this;
+	}
 }

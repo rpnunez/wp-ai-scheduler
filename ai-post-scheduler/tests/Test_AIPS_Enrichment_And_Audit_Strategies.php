@@ -19,12 +19,14 @@ class Test_AIPS_Enrichment_And_Audit_Strategies extends WP_UnitTestCase {
 		$registry->register_default_post_components();
 		$registry->register_default_research_components();
 		$registry->register_default_enrichment_components();
+		$registry->register_default_ai_assistance_components();
 
 		$this->assertTrue($registry->has('post_integration_fields', 'posts'));
 		$this->assertTrue($registry->has('post_affiliate_links', 'posts'));
 		$this->assertTrue($registry->has('competitor_gap', 'research'));
 		$this->assertTrue($registry->has('post_consolidation', 'consolidation'));
 		$this->assertTrue($registry->has('content_audit_pass', 'content_audit'));
+		$this->assertTrue($registry->has('field_suggestion', 'ai_assistance'));
 	}
 
 	/**
@@ -129,5 +131,47 @@ class Test_AIPS_Enrichment_And_Audit_Strategies extends WP_UnitTestCase {
 
 		$this->assertTrue($result->is_success());
 		$this->assertSame(array(array('topic' => 'Missing Guide')), $result->get_data());
+	}
+
+	/**
+	 * AIPS_AI_Assistance_Strategy and AIPS_AI_Assistance_Service execute via AIPS_Generation_Pipeline.
+	 */
+	public function test_ai_assistance_strategy_and_service_pipeline_execution() {
+		update_option('aips_ai_assistance_enabled', 1);
+
+		$ai_mock = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_mock->expects($this->once())
+			->method('generate_text')
+			->willReturn('Pragmatic Cloud Engineering');
+
+		$repo = $this->getMockBuilder(AIPS_AI_Assistance_Repository::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('create'))
+			->getMock();
+		$repo->expects($this->once())
+			->method('create')
+			->willReturn(42);
+
+		$service = new AIPS_AI_Assistance_Service($ai_mock, $repo);
+		$result  = $service->get_field_suggestion(
+			array(
+				'field_name'        => 'Focus Niche',
+				'form_field_id'     => 'field_niche',
+				'form_context'      => 'authors',
+				'description'       => 'Primary niche for the author.',
+				'influence'         => 'Guides topic ideation.',
+				'expected_response' => 'Short phrase',
+				'current_value'     => '',
+			),
+			'session-xyz',
+			1
+		);
+
+		$this->assertIsArray($result);
+		$this->assertSame('Pragmatic Cloud Engineering', $result['response']);
+		$this->assertSame(42, $result['record_id']);
+		$this->assertStringContainsString('Focus Niche', $result['prompt']);
+
+		delete_option('aips_ai_assistance_enabled');
 	}
 }

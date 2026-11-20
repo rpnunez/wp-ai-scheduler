@@ -152,6 +152,9 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
 
         $this->assertContains('save_page', $ids);
         $this->assertContains('generate_slug', $ids);
+        $this->assertContains('post_images_1', $ids);
+        $this->assertContains('post_images_2', $ids);
+        $this->assertContains('post_images_3', $ids);
         $this->assertContains('meta_fields_single', $ids);
         $this->assertContains('meta_fields_multi', $ids);
         $this->assertContains('meta_fields_post_3', $ids);
@@ -196,6 +199,17 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
 
         $this->assertSame('passed', $result['status']);
         $this->assertSame(768, $result['plugin_value']['dimensions']);
+    }
+
+    public function test_post_images_cases_report_requested_quantities() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Meta_AI_Service(), new AIPS_Test_Stress_Logger());
+
+        foreach (array(1 => 'post_images_1', 2 => 'post_images_2', 3 => 'post_images_3') as $qty => $case_id) {
+            $result = $service->run($case_id);
+            $this->assertSame($case_id, $result['case']);
+            $this->assertSame($qty, $result['plugin_value']['requested']);
+            $this->assertNotEmpty($result['artifacts']['post_ids']);
+        }
     }
 
     public function test_cpt_complex_meta_generates_and_writes_3_shapes() {

@@ -742,13 +742,19 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 		}
 
 		$max_qty = isset($author->topic_generation_quantity) ? (int) $author->topic_generation_quantity : 5;
+		$items   = (isset($json_data['topics']) && is_array($json_data['topics'])) ? $json_data['topics'] : $json_data;
 
-		foreach ($json_data as $item) {
-			if (!is_array($item) || !isset($item['title']) || empty($item['title'])) {
+		foreach ($items as $item) {
+			if (!is_array($item)) {
 				continue;
 			}
 
-			$title    = sanitize_text_field($item['title']);
+			$raw_title = !empty($item['title']) ? $item['title'] : (!empty($item['topic']) ? $item['topic'] : '');
+			if (empty($raw_title)) {
+				continue;
+			}
+
+			$title    = sanitize_text_field($raw_title);
 			$score    = isset($item['score']) ? absint($item['score']) : 50;
 			$keywords = isset($item['keywords']) && is_array($item['keywords'])
 				? AIPS_Utilities::sanitize_string_array($item['keywords'])
