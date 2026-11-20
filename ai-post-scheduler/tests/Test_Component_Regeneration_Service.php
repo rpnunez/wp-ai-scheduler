@@ -724,10 +724,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 
 		$generator_prop = $reflection->getProperty('generator');
 		$generator_prop->setAccessible(true);
-		$mock_ai = new class {
-			public function supports_conversation() { return true; }
-			public function is_available() { return true; }
-		};
+		$mock_ai = new Test_Component_Regeneration_Mock_AI_Service();
 		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
 
 		$conversation = $method->invoke($this->service, $context, $post_id, false);
@@ -786,10 +783,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 
 		$generator_prop = $reflection->getProperty('generator');
 		$generator_prop->setAccessible(true);
-		$mock_ai = new class {
-			public function supports_conversation() { return true; }
-			public function is_available() { return true; }
-		};
+		$mock_ai = new Test_Component_Regeneration_Mock_AI_Service();
 		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
 
 		$conversation = $method->invoke($this->service, $context, $post_id, true);
@@ -849,10 +843,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 
 		$generator_prop = $reflection->getProperty('generator');
 		$generator_prop->setAccessible(true);
-		$mock_ai = new class {
-			public function supports_conversation() { return true; }
-			public function is_available() { return true; }
-		};
+		$mock_ai = new Test_Component_Regeneration_Mock_AI_Service();
 		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
 
 		$conversation = $method->invoke($this->service, $context, $post_id, true);
@@ -864,4 +855,15 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$this->assertNotSame('{"title":"Metadata Title","excerpt":"Metadata Excerpt"}', $turns[3]['text']);
 		$this->assertSame('Persisted Post Title', $turns[3]['text']);
 	}
+}
+
+class Test_Component_Regeneration_Mock_AI_Service implements AIPS_AI_Service_Interface {
+	public function is_available() { return true; }
+	public function generate_text($prompt, $options = array()) { return ''; }
+	public function generate_json($prompt, $options = array()) { return array(); }
+	public function generate_image($prompt, $options = array()) { return ''; }
+	public function generate_embedding($text, $options = array()) { return array(); }
+	public function supports_embeddings() { return false; }
+	public function supports_conversation() { return true; }
+	public function get_call_log() { return array(); }
 }

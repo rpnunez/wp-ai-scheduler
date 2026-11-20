@@ -16,6 +16,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 	const BODY = '<p>The generated article body about widgets.</p>';
 
 	public function tearDown(): void {
+		remove_all_filters('aips_conversational_metadata_turn');
 		delete_option('aips_conversational_generation');
 		delete_option('aips_conversational_metadata_turn');
 		AIPS_Config::get_instance()->flush_option_cache();
@@ -26,8 +27,11 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		update_option('aips_conversational_generation', 1);
 		AIPS_Config::get_instance()->flush_option_cache();
 
-		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.'));
+		$ai_service = $this->make_service(array(self::BODY));
 		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array('title' => 'A Title', 'excerpt' => 'An excerpt.'),
+		);
 
 		$history      = new AIPS_Test_Conversational_History_Service();
 		$post_manager = new AIPS_Test_Conversational_Post_Manager();
@@ -52,7 +56,46 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$record = reset($transcript_records);
 		$this->assertSame('conversation_transcript', $record['type']);
 		$this->assertArrayHasKey('transcript', $record['response']);
-		$this->assertCount(6, $record['response']['transcript']);
+		// 4 turns: user prompt 1, content model 1, user metadata prompt 2, metadata model 2.
+		$this->assertCount(4, $record['response']['transcript']);
+	}
+
+	public function test_conversational_generation_implies_metadata_turn_by_default() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array('title' => 'Implied Title', 'excerpt' => 'Implied excerpt.'),
+		);
+
+		$post_manager = $this->run_generation($ai_service);
+
+		// One text call for body, one combined JSON call for metadata.
+		$this->assertCount(1, $ai_service->calls);
+		$this->assertCount(1, $ai_service->json_calls);
+		$this->assertSame('Implied Title', $post_manager->created_post_data['title']);
+		$this->assertSame('Implied excerpt.', $post_manager->created_post_data['excerpt']);
+	}
+
+	public function test_conversational_metadata_turn_can_be_disabled_via_filter() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		add_filter('aips_conversational_metadata_turn', '__return_false');
+
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.'));
+		$ai_service->conversation_supported = true;
+
+		$post_manager = $this->run_generation($ai_service);
+
+		remove_filter('aips_conversational_metadata_turn', '__return_false');
+
+		$this->assertCount(3, $ai_service->calls);
+		$this->assertCount(0, $ai_service->json_calls);
+		$this->assertSame('A Title', $post_manager->created_post_data['title']);
+		$this->assertSame('An excerpt.', $post_manager->created_post_data['excerpt']);
 	}
 
 	public function test_metadata_turn_empty_excerpt_falls_back_to_standalone_excerpt_call() {
@@ -99,7 +142,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 			new AIPS_Test_Conversational_History_Service()
 		);
 
-		$result = $generator->generate_preview($this->make_context());
+		$result = $generator->generate_preview($this->make_context('scheduled', true));
 
 		$this->assertCount(1, $ai_service->calls);
 		$this->assertCount(1, $ai_service->json_calls);
@@ -124,11 +167,13 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 	public function test_flag_on_omits_article_body_and_sends_the_transcript() {
 		update_option('aips_conversational_generation', 1);
 		AIPS_Config::get_instance()->flush_option_cache();
+		add_filter('aips_conversational_metadata_turn', '__return_false');
 
 		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.'));
 		$ai_service->conversation_supported = true;
 
 		$this->run_generation($ai_service);
+		remove_filter('aips_conversational_metadata_turn', '__return_false');
 
 		$title_call = $ai_service->calls[1];
 
@@ -238,8 +283,8 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		update_option('aips_conversational_generation', 0);
 		AIPS_Config::get_instance()->flush_option_cache();
 
-		// Body, Title, Excerpt, then Slug returns empty string (failure)
-		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', ''));
+		// Body, Title, Slug returns empty string (failure), Excerpt
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', '', 'An excerpt.'));
 		$ai_service->conversation_supported = false;
 
 		$context = $this->make_context('scheduled', true);
@@ -253,8 +298,8 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		update_option('aips_conversational_generation', 0);
 		AIPS_Config::get_instance()->flush_option_cache();
 
-		// Body, Title, Excerpt, then Slug returns WP_Error (provider failure)
-		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', new WP_Error('provider_error', 'API error')));
+		// Body, Title, Slug returns WP_Error (provider failure), Excerpt
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', new WP_Error('provider_error', 'API error'), 'An excerpt.'));
 		$ai_service->conversation_supported = false;
 
 		$context = $this->make_context('scheduled', true);

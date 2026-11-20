@@ -988,14 +988,6 @@ class AIPS_Settings {
             'aips_ai_tokens_section'
         );
 
-        add_settings_field(
-            'aips_conversational_metadata_turn',
-            __('Combined Metadata Turn', 'ai-post-scheduler'),
-            array($this->ui, 'conversational_metadata_turn_field_callback'),
-            'aips-settings',
-            'aips_ai_tokens_section'
-        );
-
         // -----------------------------------------------------------------------
         // Card 3: Vector Embeddings Engine & Model
         // -----------------------------------------------------------------------
