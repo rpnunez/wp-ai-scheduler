@@ -29,6 +29,15 @@ class AIPS_Prompt_Builder_Post_Slug {
 Respond with ONLY one lowercase hyphenated slug, nothing else.";
 
 	/**
+	 * Default cap on the article text pasted into a stateless slug prompt.
+	 *
+	 * A slug is three to six keywords and the title is already in the prompt, so
+	 * this matches the title prompt's cap (aips_title_context_max_chars) rather
+	 * than the much larger general-purpose AIPS_Content_Digest default.
+	 */
+	const CONTEXT_MAX_CHARS = self::DEFAULT_MAX_CHARS;
+
+	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
 	 */
 	private $template_processor;

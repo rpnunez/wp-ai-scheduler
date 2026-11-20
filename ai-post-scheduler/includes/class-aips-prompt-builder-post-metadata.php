@@ -48,9 +48,10 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 * @param string                  $image_prompt Raw image prompt template, or '' when the
 	 *                                              post has no AI-generated featured image.
 	 * @param bool|null               $include_slug Whether to include slug generation (null = auto-detect).
+	 * @param array                   $content_image_templates Content image prompt templates keyed by index.
 	 * @return string
 	 */
-	public function build($context, array $ai_variables = array(), $image_prompt = '', $include_slug = null) {
+	public function build($context, array $ai_variables = array(), $image_prompt = '', $include_slug = null, array $content_image_templates = array()) {
 		$topic_str = $context->get_topic();
 		$sections  = array();
 
@@ -68,7 +69,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			if ($voice_obj && !empty($voice_obj->excerpt_instructions)) {
 				$excerpt_instructions .= "\n" . $this->template_processor->process($voice_obj->excerpt_instructions, $topic_str);
 			}
-		} elseif ($context->get_type() === 'topic' && method_exists($context, 'get_author')) {
+		} elseif ($context instanceof AIPS_Topic_Context) {
 			$author_obj = $context->get_author();
 			if ($author_obj) {
 				$author_style = array();
@@ -85,7 +86,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 		$sections[] = "EXCERPT INSTRUCTIONS:\n" . $excerpt_instructions;
 
-		$include_slug = $include_slug !== null ? $include_slug : (method_exists($context, 'should_generate_slug') && $context->should_generate_slug());
+		$include_slug = $include_slug !== null ? $include_slug : $context->should_generate_slug();
 
 		if ($include_slug) {
 			$slug_builder      = new AIPS_Prompt_Builder_Post_Slug($this->template_processor);
@@ -101,25 +102,36 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$sections[] = "FEATURED IMAGE INSTRUCTIONS:\nUsing the template below, produce a finished image generation prompt describing the article's featured image. Substitute every placeholder with a concrete value drawn from the article.\n\n" . $image_prompt;
 		}
 
+		if (!empty($content_image_templates)) {
+			// Instruct the model to generate finished visual prompts for each in-article content image,
+			// referencing their corresponding placeholder indices so the output maps directly to template configuration.
+			$img_instructions = array("CONTENT IMAGES INSTRUCTIONS:\nFor each in-article image listed below, produce a finished image generation prompt based on the article. Substitute any placeholders with concrete details from the article:");
+			foreach ($content_image_templates as $idx => $tmpl) {
+				$img_instructions[] = sprintf('Image %d: %s', $idx, $tmpl);
+			}
+			$sections[] = implode("\n", $img_instructions);
+		}
+
 		if (!empty($ai_variables)) {
 			$sections[] = $this->build_variables_section($ai_variables);
 		}
 
 		$prompt = implode("\n\n", $sections);
 		$prompt = $this->append_diversity_blocks($prompt, $context);
-		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt), $include_slug);
+		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt), $include_slug, $content_image_templates);
 
 		/**
 		 * Filters the combined metadata prompt used by conversational generation.
 		 *
 		 * @since 3.2.0
 		 *
-		 * @param string                  $prompt       The assembled prompt.
-		 * @param AIPS_Generation_Context $context      Generation context.
-		 * @param string[]                $ai_variables AI variable names to resolve.
-		 * @param string                  $image_prompt Raw image prompt template.
+		 * @param string                  $prompt                 The assembled prompt.
+		 * @param AIPS_Generation_Context $context                Generation context.
+		 * @param string[]                $ai_variables           AI variable names to resolve.
+		 * @param string                  $image_prompt           Raw image prompt template.
+		 * @param array                   $content_image_templates Content image templates.
 		 */
-		return apply_filters('aips_post_metadata_prompt', $prompt, $context, $ai_variables, $image_prompt);
+		return apply_filters('aips_post_metadata_prompt', $prompt, $context, $ai_variables, $image_prompt, $content_image_templates);
 	}
 
 	/**
@@ -129,12 +141,13 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 * one fall back to AIPS_AI_Service's text-based JSON extraction, which the
 	 * explicit response shape in the prompt keeps parseable.
 	 *
-	 * @param string[] $ai_variables  AI variable names to resolve.
-	 * @param bool     $include_image Whether an image prompt was requested.
-	 * @param bool     $include_slug  Whether a post slug was requested.
+	 * @param string[] $ai_variables          AI variable names to resolve.
+	 * @param bool     $include_image         Whether an image prompt was requested.
+	 * @param bool     $include_slug          Whether a post slug was requested.
+	 * @param array    $content_image_templates Content image prompt templates keyed by index.
 	 * @return array
 	 */
-	public function get_schema(array $ai_variables = array(), $include_image = false, $include_slug = false) {
+	public function get_schema(array $ai_variables = array(), $include_image = false, $include_slug = false, array $content_image_templates = array()) {
 		$properties = array(
 			'title'   => array('type' => 'string'),
 			'excerpt' => array('type' => 'string'),
@@ -146,6 +159,24 @@ class AIPS_Prompt_Builder_Post_Metadata {
 
 		if ($include_image) {
 			$properties['image_prompt'] = array('type' => 'string');
+		}
+
+		if (!empty($content_image_templates)) {
+			// Structured outputs (OpenAI/Gemini JSON Schema) require object keys to be explicit string properties.
+			// Content images are identified by their shortcode placeholder index (e.g. [post_image index="1"]).
+			// We define each configured index as a distinct string property and require every one of them to ensure
+			// the model generates an image prompt for all requested images without omitting any placeholders.
+			// additionalProperties => false guarantees the response contains no unexpected extra keys.
+			$img_props = array();
+			foreach (array_keys($content_image_templates) as $idx) {
+				$img_props[(string) $idx] = array('type' => 'string');
+			}
+			$properties['content_image_prompts'] = array(
+				'type'                 => 'object',
+				'properties'           => $img_props,
+				'required'             => array_map('strval', array_keys($content_image_templates)),
+				'additionalProperties' => false,
+			);
 		}
 
 		if (!empty($ai_variables)) {
@@ -169,6 +200,9 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 		if ($include_image) {
 			$required[] = 'image_prompt';
+		}
+		if (!empty($content_image_templates)) {
+			$required[] = 'content_image_prompts';
 		}
 		if (!empty($ai_variables)) {
 			$required[] = 'ai_variables';
@@ -231,7 +265,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 * @param bool     $include_slug  Whether a post slug was requested.
 	 * @return string
 	 */
-	private function build_response_shape(array $ai_variables, $include_image, $include_slug = false) {
+	private function build_response_shape(array $ai_variables, $include_image, $include_slug = false, array $content_image_templates = array()) {
 		$shape = array(
 			'"title": "the finished post title, with no surrounding quotes"',
 			'"excerpt": "the 40-60 word excerpt"',
@@ -245,6 +279,16 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$shape[] = '"image_prompt": "the finished featured image prompt"';
 		}
 
+		if (!empty($content_image_templates)) {
+			// For providers without native schema validation, explicitly illustrate the expected
+			// JSON dictionary shape containing stringified index keys to keep response parsing reliable.
+			$pairs = array();
+			foreach (array_keys($content_image_templates) as $idx) {
+				$pairs[] = sprintf('"%s": "finished prompt for content image %s"', $idx, $idx);
+			}
+			$shape[] = '"content_image_prompts": { ' . implode(', ', $pairs) . ' }';
+		}
+
 		if (!empty($ai_variables)) {
 			$pairs = array();
 
@@ -256,6 +300,111 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 
 		return "RESPOND WITH EXACTLY THIS JSON SHAPE:\n{\n  " . implode(",\n  ", $shape) . "\n}";
+	}
+
+	/**
+	 * Build JSON schema for content image prompt recovery.
+	 *
+	 * @param int[] $missing_indexes Missing placeholder indexes.
+	 * @return array JSON schema definition.
+	 */
+	public function build_recovery_schema(array $missing_indexes): array {
+		$props = array();
+		foreach ($missing_indexes as $idx) {
+			$props[(string) $idx] = array('type' => 'string');
+		}
+
+		return array(
+			'type'                 => 'object',
+			'properties'           => $props,
+			'required'             => array_map('strval', $missing_indexes),
+			'additionalProperties' => false,
+		);
+	}
+
+	/**
+	 * Build conversational mini-turn recovery prompt for missing content image prompts.
+	 *
+	 * @param int[] $missing_indexes Missing placeholder indexes.
+	 * @param array $configured_templates Optional configured prompt templates keyed by index.
+	 * @return string Model prompt.
+	 */
+	public function build_conversational_recovery_prompt(array $missing_indexes, array $configured_templates = array()): string {
+		$template_instructions = array();
+		foreach ($missing_indexes as $idx) {
+			if (!empty($configured_templates[$idx])) {
+				$template_instructions[] = sprintf('Image %1$d style instruction: %2$s', $idx, $configured_templates[$idx]);
+			}
+		}
+
+		$prompt = sprintf(
+			'The previous response was missing image descriptions for content image index(es): %s. Based on the article content above, provide a descriptive visual prompt for each missing content image as JSON matching the schema.',
+			implode(', ', $missing_indexes)
+		);
+
+		if (!empty($template_instructions)) {
+			$prompt .= "
+
+Follow these configured image styles:
+" . implode("
+", $template_instructions);
+		}
+
+		$shape = array();
+		foreach ($missing_indexes as $idx) {
+			$shape[] = sprintf('"%s": "visual prompt description"', $idx);
+		}
+		$prompt .= "
+
+RESPOND WITH EXACTLY THIS JSON SHAPE:
+{
+  " . implode(",
+  ", $shape) . "
+}";
+
+		return $prompt;
+	}
+
+	/**
+	 * Build standalone fallback recovery prompt for missing content image prompts.
+	 *
+	 * @param int[]  $missing_indexes Missing placeholder indexes.
+	 * @param string $content         Article content.
+	 * @param string $title           Article title.
+	 * @param array  $configured_templates Optional configured prompt templates keyed by index.
+	 * @return string Model prompt.
+	 */
+	public function build_standalone_recovery_prompt(array $missing_indexes, string $content, string $title, array $configured_templates = array()): string {
+		$clean_excerpt = wp_trim_words(wp_strip_all_tags($content), 120, '...');
+
+		$prompt = sprintf(
+			'Based on the article "%1$s" and its excerpt below, generate a vivid, descriptive visual prompt for each required content image index: %2$s.' . "
+
+" . 'Article excerpt:' . "
+" . '%3$s' . "
+
+" . 'Respond ONLY with a JSON object where keys are the index numbers as strings and values are the image prompts.',
+			$title,
+			implode(', ', $missing_indexes),
+			$clean_excerpt
+		);
+
+		$template_instructions = array();
+		foreach ($missing_indexes as $idx) {
+			if (!empty($configured_templates[$idx])) {
+				$template_instructions[] = sprintf('Image %1$d style instruction: %2$s', $idx, $configured_templates[$idx]);
+			}
+		}
+
+		if (!empty($template_instructions)) {
+			$prompt .= "
+
+Follow these configured image styles:
+" . implode("
+", $template_instructions);
+		}
+
+		return $prompt;
 	}
 
 	/**
