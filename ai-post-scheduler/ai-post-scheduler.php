@@ -411,6 +411,38 @@ final class AI_Post_Scheduler {
             );
         });
 
+        // Universal Generation Strategy & Component Framework (issue #2400 Phase 1)
+        $container->singleton(AIPS_Generation_Component_Registry::class, function( $container ) {
+            $registry = new AIPS_Generation_Component_Registry();
+            $registry->register_default_post_components();
+            return $registry;
+        });
+
+        $container->singleton(AIPS_Post_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Post_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                null,
+                null,
+                $container->make(AIPS_History_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Generation_Pipeline::class, function( $container ) {
+            return new AIPS_Generation_Pipeline(
+                $container->make(AIPS_Post_Generation_Strategy::class),
+                $container->make(AIPS_Generation_Component_Registry::class)
+            );
+        });
+
+        $container->singleton(AIPS_Component_Regeneration_Coordinator::class, function( $container ) {
+            return new AIPS_Component_Regeneration_Coordinator(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                null,
+                $container->make(AIPS_History_Repository_Interface::class)
+            );
+        });
+
         $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
             return AIPS_Schedule_Repository::instance();
         });
