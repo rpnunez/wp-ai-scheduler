@@ -56,10 +56,18 @@ class AIPS_Publish_Linking_Service {
 	private $config;
 
 	/**
-	 * @param AIPS_Config|null $config Config.
+	 * @var AIPS_Cron_Manager
 	 */
-	public function __construct(?AIPS_Config $config = null) {
-		$this->config = $config ?: AIPS_Config::get_instance();
+	private $cron_manager;
+
+	/**
+	 * @param AIPS_Config|null       $config       Config.
+	 * @param AIPS_Cron_Manager|null $cron_manager Cron manager.
+	 */
+	public function __construct(?AIPS_Config $config = null, ?AIPS_Cron_Manager $cron_manager = null) {
+		$container          = AIPS_Container::get_instance();
+		$this->config       = $config ?: AIPS_Config::get_instance();
+		$this->cron_manager = $cron_manager ?: ( $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager() );
 	}
 
 	/**
@@ -148,11 +156,11 @@ class AIPS_Publish_Linking_Service {
 			return false;
 		}
 
-		if (wp_next_scheduled(self::CRON_HOOK, array($post_id))) {
+		if ($this->cron_manager->next_scheduled(self::CRON_HOOK, array($post_id))) {
 			return false;
 		}
 
-		return (bool) wp_schedule_single_event(time() + self::DELAY, self::CRON_HOOK, array($post_id));
+		return (bool) $this->cron_manager->schedule_single(self::CRON_HOOK, time() + self::DELAY, array($post_id));
 	}
 
 	/**
