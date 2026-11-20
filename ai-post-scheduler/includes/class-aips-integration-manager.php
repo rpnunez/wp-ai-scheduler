@@ -246,8 +246,8 @@ class AIPS_Integration_Manager {
 	 * @return array<string, true|WP_Error> field_key => outcome.
 	 */
 	private function apply_generatable_batch($adapter, $generatable, $post_id, $context) {
-		$prompt = $this->prompt_builder->build_batch($generatable, $context);
-		$batch_response = $this->ai_service->generate_json($prompt);
+		$component      = new AIPS_Integration_Fields_Post_Component(null, $this->ai_service, $this->prompt_builder);
+		$batch_response = $component->generate_batch($generatable, $context);
 
 		if (is_wp_error($batch_response)) {
 			$this->logger->log(
@@ -297,12 +297,12 @@ class AIPS_Integration_Manager {
 	 * @return array<string, true|WP_Error> field_key => outcome.
 	 */
 	private function apply_fields_individually($adapter, $generatable, $post_id, $context) {
-		$results = array();
+		$results   = array();
+		$component = new AIPS_Integration_Fields_Post_Component(null, $this->ai_service, $this->prompt_builder);
 
 		foreach ($generatable as $item) {
 			$mapping = $item['mapping'];
-			$prompt = $this->prompt_builder->build($item['field_def'], $context, $mapping->custom_prompt);
-			$value = $this->ai_service->generate_text($prompt);
+			$value   = $component->generate_single_field($item['field_def'], $context, (string) $mapping->custom_prompt);
 
 			if (is_wp_error($value)) {
 				$this->logger->log(

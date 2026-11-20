@@ -421,6 +421,7 @@ final class AI_Post_Scheduler {
             $registry->register_default_research_components();
             $registry->register_default_taxonomy_components();
             $registry->register_default_planner_components();
+            $registry->register_default_enrichment_components();
             return $registry;
         });
 
@@ -490,6 +491,20 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Planner_Topic_Strategy::class, function( $container ) {
             return new AIPS_Planner_Topic_Strategy(
                 $container->make(AIPS_Generation_Component_Registry::class)
+            );
+        });
+
+        $container->singleton(AIPS_Consolidation_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Consolidation_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Content_Audit_Strategy::class, function( $container ) {
+            return new AIPS_Content_Audit_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class)
             );
         });
 

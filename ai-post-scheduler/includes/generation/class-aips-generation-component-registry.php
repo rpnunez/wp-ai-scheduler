@@ -204,6 +204,8 @@ class AIPS_Generation_Component_Registry {
 		$this->register(new AIPS_Taxonomy_Post_Component($generator));
 		$this->register(new AIPS_Custom_Meta_Post_Component($generator));
 		$this->register(new AIPS_Internal_Links_Post_Component($generator));
+		$this->register(new AIPS_Integration_Fields_Post_Component($generator));
+		$this->register(new AIPS_Affiliate_Links_Post_Component($generator));
 
 		/**
 		 * Allow extensions to register additional generation components.
@@ -288,6 +290,7 @@ class AIPS_Generation_Component_Registry {
 		$this->register(new AIPS_Trending_Topics_Component($ai_service, $logger));
 		$this->register(new AIPS_Topic_Freshness_Component());
 		$this->register(new AIPS_Topic_Comparison_Component());
+		$this->register(new AIPS_Competitor_Gap_Component($ai_service));
 
 		return $this;
 	}
@@ -316,6 +319,19 @@ class AIPS_Generation_Component_Registry {
 	 */
 	public function register_default_planner_components(?AIPS_Generator $generator = null): self {
 		$this->register(new AIPS_Planner_Topics_Component($generator));
+
+		return $this;
+	}
+
+	/**
+	 * Register default Consolidation & Content Audit components.
+	 *
+	 * @param AIPS_AI_Service_Interface|null $ai_service Optional AI service.
+	 * @return self
+	 */
+	public function register_default_enrichment_components(?AIPS_AI_Service_Interface $ai_service = null): self {
+		$this->register(new AIPS_Post_Consolidation_Component($ai_service));
+		$this->register(new AIPS_Content_Audit_Pass_Component($ai_service));
 
 		return $this;
 	}

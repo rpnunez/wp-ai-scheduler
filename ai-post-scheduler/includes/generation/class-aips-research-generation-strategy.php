@@ -177,6 +177,28 @@ class AIPS_Research_Generation_Strategy implements AIPS_Pipeline_Executable_Stra
 			);
 		}
 
+		if ($mode === AIPS_Research_Generation_Context::MODE_GAP_SUGGESTIONS) {
+			$gap = $this->registry->get('competitor_gap', $this->get_key());
+			if (!($gap instanceof AIPS_Competitor_Gap_Component)) {
+				$gap = new AIPS_Competitor_Gap_Component($this->ai_service);
+			}
+
+			$suggestions = $gap->generate($context);
+			if (is_wp_error($suggestions)) {
+				$this->last_error = $suggestions;
+				return AIPS_Generation_Result::from_wp_error($suggestions, microtime(true) - $start);
+			}
+
+			return AIPS_Generation_Result::from_data(
+				$suggestions,
+				AIPS_Generation_Result::STATUS_COMPLETED,
+				array('competitor_gap' => true),
+				array(),
+				0,
+				microtime(true) - $start
+			);
+		}
+
 		// Trending topics or source-grounded research.
 		$trending = $this->registry->get('trending_topics', $this->get_key());
 		if (!($trending instanceof AIPS_Trending_Topics_Component)) {

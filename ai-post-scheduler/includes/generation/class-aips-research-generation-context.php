@@ -20,10 +20,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Research_Generation_Context extends AIPS_Abstract_Generation_Context {
 
 	/** Supported research operation modes. */
-	const MODE_TRENDING   = 'trending';
-	const MODE_SOURCES    = 'sources';
-	const MODE_FRESHNESS  = 'freshness';
-	const MODE_COMPARISON = 'comparison';
+	const MODE_TRENDING        = 'trending';
+	const MODE_SOURCES         = 'sources';
+	const MODE_FRESHNESS       = 'freshness';
+	const MODE_COMPARISON      = 'comparison';
+	const MODE_GAP_SUGGESTIONS = 'gap_suggestions';
 
 	/**
 	 * @var string Operation mode.
