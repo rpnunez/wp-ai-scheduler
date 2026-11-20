@@ -289,11 +289,20 @@ class AIPS_Generator {
     /**
      * Whether the remaining components should be requested in one structured turn.
      *
+     * Conversational generation implies the combined metadata turn by default,
+     * collapsing title, excerpt, slug, and image prompt into a single structured
+     * response. A filter is provided for programmatic control or testing.
+     *
      * @return bool
      */
     private function use_metadata_turn() {
-        return $this->conversation !== null
-            && (bool) AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn');
+        if ($this->conversation === null) {
+            return false;
+        }
+
+        $enabled = (bool) AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn', true);
+
+        return (bool) apply_filters('aips_conversational_metadata_turn', $enabled, $this);
     }
 
     /**
