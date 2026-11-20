@@ -164,6 +164,7 @@ if (!class_exists('AIPS_Generator') || !class_exists('AIPS_AI_Service')) {
 require __DIR__ . '/ai-payload-capture/class-aips-payload-capture-recorder.php';
 require __DIR__ . '/ai-payload-capture/class-aips-payload-capture-provider.php';
 require __DIR__ . '/ai-payload-capture/class-aips-payload-capture-ai-service.php';
+require __DIR__ . '/ai-payload-capture/class-aips-payload-capture-history-service.php';
 require __DIR__ . '/ai-payload-capture/scenarios.php';
 
 $scenarios = aips_capture_scenarios();
@@ -222,14 +223,32 @@ function aips_capture_parse_dotenv($path) {
 }
 
 /**
+ * Placeholder value used only to satisfy a connector's local "is this
+ * configured" check under --offline. It is never sent anywhere: --offline
+ * intercepts every AI HTTP request before it reaches the network, so this
+ * never needs to look like a real key, and (being process-env-only) it never
+ * outlives this run.
+ */
+const AIPS_CAPTURE_OFFLINE_PLACEHOLDER_KEY = 'aips-payload-capture-offline-placeholder-key';
+
+/**
  * Make sure every locally-authenticated, API-key AI connector that has a
  * value available (container env, or the repo's .env) is actually wired up
  * on this WordPress install — the same thing docker-entrypoint.sh does for a
  * fresh container, done here so the script also works when that has not run.
  *
+ * Under --offline, a connector with no real key anywhere still needs to look
+ * "configured" to AIPS_AI_Service's own availability guard, or execution
+ * never reaches the request-building code --offline exists to capture. A
+ * process-local env var (never persisted, never defined as a constant, never
+ * written to options) is enough for that and guarantees nothing fake outlives
+ * this run or leaks into a real request — --offline's own HTTP interception
+ * is what keeps it from ever being sent.
+ *
+ * @param bool $offline Whether this run is fully simulated.
  * @return void
  */
-function aips_capture_ensure_connector_credentials() {
+function aips_capture_ensure_connector_credentials($offline) {
 	if (!function_exists('wp_get_connectors')) {
 		return;
 	}
@@ -273,6 +292,12 @@ function aips_capture_ensure_connector_credentials() {
 		$placeholder = (bool) preg_match('/^(your[_-]|xxx|changeme|placeholder)/i', $value);
 
 		if ($value === '' || $placeholder) {
+			if ($offline) {
+				// Process-local only: never defined as a constant, never
+				// written to an option, so nothing outlives this run.
+				putenv($env_name . '=' . AIPS_CAPTURE_OFFLINE_PLACEHOLDER_KEY);
+			}
+
 			continue;
 		}
 
@@ -292,9 +317,7 @@ function aips_capture_ensure_connector_credentials() {
 	}
 }
 
-if (!$cli_opts['offline']) {
-	aips_capture_ensure_connector_credentials();
-}
+aips_capture_ensure_connector_credentials($cli_opts['offline']);
 
 /* ------------------------------------------------------------------------
  * Wire up the capture layer
@@ -319,12 +342,23 @@ $wrapped_provider = new AIPS_Payload_Capture_Provider($real_provider, $recorder)
 $ai_service        = new AIPS_Payload_Capture_AI_Service($recorder, $wrapped_provider);
 $history_repository = new AIPS_History_Repository();
 
+// AIPS_Generator writes a history row before any content is generated, so a
+// run that errors out or throws before creating a post still leaves one
+// behind. Wrapping the real history service tracks every row a scenario
+// creates (by ID, not by post_id) so cleanup can remove it either way.
+$container             = AIPS_Container::get_instance();
+$real_history_service   = $container->has(AIPS_History_Service_Interface::class)
+	? $container->make(AIPS_History_Service_Interface::class)
+	: new AIPS_History_Service();
+$history_service        = new AIPS_Payload_Capture_History_Service($real_history_service);
+
 /* ------------------------------------------------------------------------
  * Run every scenario
  * --------------------------------------------------------------------- */
 
-$run_id  = gmdate('Ymd-His');
-$out_dir = $cli_opts['out'] ?: (dirname(__DIR__) . '/.artifacts/ai-payload-capture/' . $run_id);
+$run_started_at = AIPS_DateTime::now();
+$run_id         = $run_started_at->format('Ymd-His');
+$out_dir        = $cli_opts['out'] ?: (dirname(__DIR__) . '/.artifacts/ai-payload-capture/' . $run_id);
 if (!is_dir($out_dir) && !mkdir($out_dir, 0775, true) && !is_dir($out_dir)) {
 	fwrite(STDERR, "Could not create output directory: {$out_dir}\n");
 	exit(2);
@@ -395,9 +429,10 @@ foreach ($scenarios as $key => $scenario) {
 		echo '  SKIPPED (fixture setup failed): ' . $build_error->getMessage() . "\n\n";
 	} else {
 		$recorder->begin_scenario($key);
+		$history_service->reset_tracking();
 
 		try {
-			$generator = new AIPS_Generator(null, $ai_service);
+			$generator = new AIPS_Generator(null, $ai_service, null, null, null, null, $history_service);
 			$result    = ($scenario['method'] === 'generate_preview')
 				? $generator->generate_preview($built['context'])
 				: $generator->generate_post($built['context']);
@@ -436,12 +471,17 @@ foreach ($scenarios as $key => $scenario) {
 		$outcome['service_calls'] = count($capture['calls']);
 		echo '  Service calls captured: ' . count($capture['calls']) . "\n\n";
 
-		if ($post_id && !$cli_opts['keep_posts']) {
-			foreach (aips_capture_attachment_ids_for_post($post_id) as $attachment_id) {
-				wp_delete_attachment($attachment_id, true);
+		if (!$cli_opts['keep_posts']) {
+			if ($post_id) {
+				foreach (aips_capture_attachment_ids_for_post($post_id) as $attachment_id) {
+					wp_delete_attachment($attachment_id, true);
+				}
+				wp_delete_post($post_id, true);
 			}
-			$history_repository->delete_by_post_id($post_id);
-			wp_delete_post($post_id, true);
+
+			// Delete every history row this scenario created, by ID — not by
+			// post_id, which generation never reaches on a failed/thrown run.
+			$history_repository->delete_bulk($history_service->get_created_ids());
 		}
 
 		if (isset($built['cleanup']) && is_callable($built['cleanup'])) {
@@ -486,7 +526,7 @@ $report->write(
 		'provider_label' => $real_provider->get_label(),
 		'offline'      => $cli_opts['offline'],
 		'live_images'  => $cli_opts['live_images'],
-		'generated_at' => gmdate('c'),
+		'generated_at' => $run_started_at->toIso8601(),
 	)
 );
 

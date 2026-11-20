@@ -38,7 +38,14 @@ function aips_capture_scenarios() {
 			'label'       => 'Template-based post (content, title, excerpt, slug)',
 			'description' => 'A plain template with no voice override, no article structure, and no featured image — the baseline path through AIPS_Prompt_Builder_Post_Content, _Post_Title, _Post_Excerpt and _Post_Slug.',
 			'method'      => 'generate_post',
-			'options'     => array(),
+			// Force conversational generation off even if the site's own admin
+			// settings have it enabled, so this scenario reliably exercises the
+			// separate title/excerpt/slug prompt paths it is here to show
+			// rather than silently collapsing into the combined metadata turn.
+			'options'     => array(
+				'aips_conversational_generation'    => 0,
+				'aips_conversational_metadata_turn' => 0,
+			),
 			'build'       => function () {
 				$template = (object) array(
 					'id'                      => 900001,
@@ -73,7 +80,14 @@ function aips_capture_scenarios() {
 			'label'       => 'Template + voice + article structure + AI-prompt featured image',
 			'description' => 'A voice override (AIPS_Prompt_Builder_Post_Content/_Title/_Excerpt voice branch), a real AIPS_Article_Structure_Manager structure (AIPS_Prompt_Builder_Article_Structure_Section), and an AI-generated featured image (AIPS_Prompt_Builder_Post_Featured_Image + AIPS_Image_Service). Creates two prompt_sections rows and one article_structures row for the duration of the run, then deletes them.',
 			'method'      => 'generate_post',
-			'options'     => array(),
+			// Force conversational generation off even if the site's own admin
+			// settings have it enabled, so this scenario reliably exercises the
+			// separate title/excerpt/slug prompt paths it is here to show
+			// rather than silently collapsing into the combined metadata turn.
+			'options'     => array(
+				'aips_conversational_generation'    => 0,
+				'aips_conversational_metadata_turn' => 0,
+			),
 			'build'       => function () {
 				$section_repo = new AIPS_Prompt_Section_Repository();
 				$manager      = new AIPS_Article_Structure_Manager();
@@ -155,7 +169,14 @@ function aips_capture_scenarios() {
 			'label'       => 'Author/topic post (no template)',
 			'description' => 'An AIPS_Topic_Context (author + topic pair, the Author Topics pipeline) rather than a template — a different get_content_prompt()/get_title_prompt() implementation.',
 			'method'      => 'generate_post',
-			'options'     => array(),
+			// Force conversational generation off even if the site's own admin
+			// settings have it enabled, so this scenario reliably exercises the
+			// separate title/excerpt/slug prompt paths it is here to show
+			// rather than silently collapsing into the combined metadata turn.
+			'options'     => array(
+				'aips_conversational_generation'    => 0,
+				'aips_conversational_metadata_turn' => 0,
+			),
 			'build'       => function () {
 				$author = (object) array(
 					'id'                      => 900201,
@@ -233,7 +254,14 @@ function aips_capture_scenarios() {
 			'label'       => 'In-body content images',
 			'description' => 'A template with two configured content images — the "Image Placement Instructions" block AIPS_Prompt_Builder_Post_Content injects into the content prompt, and the per-image prompt AIPS_Generator::resolve_post_image() builds afterward.',
 			'method'      => 'generate_post',
-			'options'     => array(),
+			// Force conversational generation off even if the site's own admin
+			// settings have it enabled, so this scenario reliably exercises the
+			// separate title/excerpt/slug prompt paths it is here to show
+			// rather than silently collapsing into the combined metadata turn.
+			'options'     => array(
+				'aips_conversational_generation'    => 0,
+				'aips_conversational_metadata_turn' => 0,
+			),
 			'build'       => function () {
 				$template = (object) array(
 					'id'                      => 900401,

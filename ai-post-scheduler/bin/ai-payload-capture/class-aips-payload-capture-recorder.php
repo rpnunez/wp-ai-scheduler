@@ -171,7 +171,7 @@ class AIPS_Payload_Capture_Recorder {
 			'component'      => $this->resolve_component($method, $options, $origin),
 			'method'         => $method,
 			'caller'         => $origin['caller'],
-			'started_at'     => gmdate('Y-m-d\TH:i:s\Z'),
+			'started_at'     => AIPS_DateTime::now()->toIso8601(),
 			'duration_ms'    => null,
 			'request'        => array(
 				'prompt'  => $prompt,

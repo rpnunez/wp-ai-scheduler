@@ -145,7 +145,12 @@ class AIPS_Payload_Capture_Report {
 		$lines[] = '**Outcome:** ' . $this->status_label($outcome);
 		$lines[] = '';
 
-		if (($outcome['status'] ?? '') === 'skipped' || ($outcome['status'] ?? '') === 'fatal') {
+		// Fixture setup failed before begin_scenario() ever ran — there is
+		// nothing in the recorder to show. A 'fatal' run, by contrast, still
+		// opened a scenario and may have captured real calls before it threw;
+		// those are worth keeping in the report rather than hiding them behind
+		// the per-scenario JSON file.
+		if (($outcome['status'] ?? '') === 'skipped') {
 			return $lines;
 		}
 
