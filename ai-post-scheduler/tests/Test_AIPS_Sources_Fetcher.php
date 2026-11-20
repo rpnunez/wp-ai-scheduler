@@ -172,8 +172,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		);
 		$result  = $fetcher->fetch( $source );
 
-		$this->assertFalse( $result['success'] );
-		$this->assertNotEmpty( $result['error'] );
+		$this->assertWPError( $result );
+		$this->assertNotEmpty( $result->get_error_message() );
 	}
 
 	/** @test */
@@ -188,7 +188,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 		);
 		$result  = $fetcher->fetch( $source );
 
-		$this->assertFalse( $result['success'] );
+		$this->assertWPError( $result );
 	}
 
 	// ------------------------------------------------------------------
@@ -222,8 +222,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 		remove_filter( 'pre_http_request', $filter_cb, 10 );
 
-		$this->assertFalse( $result['success'] );
-		$this->assertStringContainsString( 'Could not connect', $result['error'] );
+		$this->assertWPError( $result );
+		$this->assertStringContainsString( 'Could not connect', $result->get_error_message() );
 	}
 
 	// ------------------------------------------------------------------
@@ -258,7 +258,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 		remove_filter( 'pre_http_request', $filter_cb, 10 );
 
-		$this->assertFalse( $result['success'] );
+		$this->assertWPError( $result );
+		$this->assertSame( 404, $result->get_error_data()['http_status'] );
 	}
 
 	// ------------------------------------------------------------------
@@ -307,9 +308,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 		remove_filter( 'pre_http_request', $filter_cb, 10 );
 
-		$this->assertTrue( $result['success'] );
-		$this->assertGreaterThan( 0, $result['char_count'] );
-		$this->assertEmpty( $result['error'] );
+		$this->assertNotWPError( $result );
+		$this->assertGreaterThan( 0, $result );
 	}
 
 	// ------------------------------------------------------------------
@@ -606,7 +606,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 
 		remove_filter( 'pre_http_request', $filter_cb, 10 );
 
-		$this->assertTrue( $result['success'] );
+		$this->assertNotWPError( $result );
 	}
 
 	public function test_empty_malformed_and_truncated_bodies_never_store_success() {
@@ -631,7 +631,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 			add_filter( 'pre_http_request', $filter, 10, 2 );
 			try {
 				$result = ( new AIPS_Sources_Fetcher( $repo, $sources ) )->fetch( $this->make_source( 42, 'https://example.com' ) );
-				$this->assertFalse( $result['success'] );
+				$this->assertWPError( $result );
 			} finally {
 				remove_filter( 'pre_http_request', $filter, 10 );
 			}

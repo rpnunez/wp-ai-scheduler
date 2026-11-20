@@ -578,10 +578,10 @@ class AIPS_Sources_Controller {
 			return;
 		}
 		try {
-			$result = $fetcher->fetch($source);
+			$fetch_outcome = $fetcher->fetch($source);
 		} catch (Throwable $error) {
 			$this->repo->update_after_fetch($id, false, $error->getMessage());
-			$result = array('success' => false, 'char_count' => 0, 'error' => $error->getMessage());
+			$fetch_outcome = new WP_Error('fetch_exception', $error->getMessage());
 		} finally {
 			try {
 				AIPS_Sources_Cron::instance()->reconcile_owned(true);
@@ -589,6 +589,12 @@ class AIPS_Sources_Controller {
 				$lease->release($owner);
 			}
 		}
+
+		// Translate the fetcher's WP_Error|int contract into the AJAX/history
+		// response shape the UI and existing tests already expect.
+		$result = is_wp_error($fetch_outcome)
+			? array('success' => false, 'char_count' => 0, 'error' => $fetch_outcome->get_error_message())
+			: array('success' => true, 'char_count' => $fetch_outcome, 'error' => '');
 
 		AIPS_History_Event_Recorder::instance()->record_simple(
 			AIPS_History_Event_Type::SOURCE_FETCHED,
