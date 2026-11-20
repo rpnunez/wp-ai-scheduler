@@ -147,87 +147,15 @@ class AIPS_Editor_Directive_Service {
 
 		$variants_count = ($variants_count >= 3) ? 3 : 1;
 
-		if ($variants_count === 3) {
-			return $this->generate_multiple_variants($content, $instruction, $context);
+		$comp = $this->component_registry->get('post_content', 'posts');
+		if (!($comp instanceof AIPS_Content_Post_Component)) {
+			$comp = new AIPS_Content_Post_Component();
 		}
 
-		return $this->generate_single_variant($content, $instruction, $context);
-	}
+		$options               = is_array($context) ? $context : array();
+		$options['ai_service'] = $this->ai_service;
 
-	/**
-	 * Generate a single rewritten variant.
-	 *
-	 * @param string $content     Original content.
-	 * @param string $instruction Directive instruction.
-	 * @param array  $context     Optional context.
-	 * @return array<string>|WP_Error
-	 */
-	private function generate_single_variant(string $content, string $instruction, array $context = array()) {
-		$prompt  = "You are an expert editorial assistant for WordPress.\n\n";
-		$prompt .= "Instruction:\n" . $instruction . "\n\n";
-
-		if (!empty($context['post_title'])) {
-			$prompt .= "Article Context: Post Title is \"" . esc_attr($context['post_title']) . "\".\n\n";
-		}
-
-		$prompt .= "Original Text to Rewrite:\n\"\"\"\n" . $content . "\n\"\"\"\n\n";
-		$prompt .= "Return ONLY the rewritten text without conversational introductions, explanations, or quotes around the output.";
-
-		$response = $this->ai_service->generate_text($prompt);
-		if (is_wp_error($response)) {
-			return $response;
-		}
-
-		$cleaned = trim((string) $response);
-		// Strip outer markdown quotes if LLM added them
-		$cleaned = preg_replace('/^["\']|["\']$/u', '', $cleaned);
-
-		return array($cleaned);
-	}
-
-	/**
-	 * Generate 3 distinct creative variants.
-	 *
-	 * @param string $content     Original content.
-	 * @param string $instruction Directive instruction.
-	 * @param array  $context     Optional context.
-	 * @return array<string>|WP_Error
-	 */
-	private function generate_multiple_variants(string $content, string $instruction, array $context = array()) {
-		$prompt  = "You are an expert editorial assistant for WordPress.\n\n";
-		$prompt .= "Instruction:\n" . $instruction . "\n\n";
-
-		if (!empty($context['post_title'])) {
-			$prompt .= "Article Context: Post Title is \"" . esc_attr($context['post_title']) . "\".\n\n";
-		}
-
-		$prompt .= "Original Text to Rewrite:\n\"\"\"\n" . $content . "\n\"\"\"\n\n";
-		$prompt .= "Provide exactly 3 distinctly different creative variations of the rewritten text.\n";
-		$prompt .= "Output MUST be a valid JSON array of 3 strings, with no additional text or formatting outside the JSON array.\n";
-		$prompt .= "Example format:\n[\"Variation 1 text here\", \"Variation 2 text here\", \"Variation 3 text here\"]";
-
-		$response = $this->ai_service->generate_text($prompt);
-		if (is_wp_error($response)) {
-			return $response;
-		}
-
-		$raw = trim((string) $response);
-
-		// Extract JSON array if surrounded by markdown code blocks
-		if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
-			$decoded = json_decode($matches[0], true);
-			if (is_array($decoded) && count($decoded) > 0) {
-				return array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
-			}
-		}
-
-		// Fallback: split by line breaks or return raw as single variant
-		$lines = array_filter(array_map('trim', explode("\n", $raw)));
-		if (count($lines) >= 3) {
-			return array_slice(array_values($lines), 0, 3);
-		}
-
-		return array($raw);
+		return $comp->rewrite_with_directive($content, $instruction, $variants_count, $options);
 	}
 
 	/**

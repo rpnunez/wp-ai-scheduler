@@ -136,4 +136,91 @@ class Test_AIPS_Universal_AI_Edit_And_Editor_Services extends WP_UnitTestCase {
 		$this->assertContains('campaign_pillar', $campaign_editable);
 		$this->assertContains('campaign_cluster', $campaign_editable);
 	}
+
+	/**
+	 * AIPS_Editor_Directive_Service::apply_directive() delegates rewrites through AIPS_Content_Post_Component.
+	 */
+	public function test_editor_directive_apply_directive_delegates_to_content_component() {
+		$ai_mock = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_mock->method('is_available')->willReturn(true);
+		$ai_mock->method('generate_text')->willReturnOnConsecutiveCalls(
+			'"Sharper, punchier rewrite."',
+			'["Variant A", "Variant B", "Variant C"]'
+		);
+
+		$service = new AIPS_Editor_Directive_Service($ai_mock);
+
+		$single = $service->apply_directive('Original text.', AIPS_Editor_Directive_Service::PRESET_PUNCHY, '', 1);
+		$this->assertSame(array('Sharper, punchier rewrite.'), $single);
+
+		$multi = $service->apply_directive('Original text.', AIPS_Editor_Directive_Service::PRESET_PUNCHY, '', 3);
+		$this->assertSame(array('Variant A', 'Variant B', 'Variant C'), $multi);
+	}
+
+	/**
+	 * AIPS_Taxonomy_Generation_Strategy and AIPS_Planner_Topic_Strategy execute via AIPS_Generation_Pipeline.
+	 */
+	public function test_taxonomy_and_planner_strategies_execute_via_pipeline() {
+		$post_id = self::factory()->post->create(array(
+			'post_title'   => 'Scaling MySQL on WordPress',
+			'post_excerpt' => 'Database indexing and query profiling tips.',
+			'post_status'  => 'publish',
+		));
+
+		$ai_mock = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_mock->method('is_available')->willReturn(true);
+		$ai_mock->method('generate_text')->willReturn("1. Performance\n2. Database Optimization");
+
+		$tax_repo = new class() {
+			private $items = array();
+			public function insert($data) {
+				$id               = count($this->items) + 1;
+				$data['id']       = $id;
+				$this->items[$id] = (object) $data;
+				return $id;
+			}
+			public function get_by_id($id) {
+				return $this->items[$id] ?? null;
+			}
+		};
+
+		$tax_strategy = new AIPS_Taxonomy_Generation_Strategy(null, $ai_mock, $tax_repo);
+		$tax_pipeline = new AIPS_Generation_Pipeline($tax_strategy, new AIPS_Generation_Component_Registry());
+		$tax_result   = $tax_pipeline->execute(new AIPS_Taxonomy_Generation_Context('category', array($post_id)));
+
+		$this->assertTrue($tax_result->is_success());
+		$this->assertCount(2, $tax_result->get_data());
+		$this->assertSame('Performance', $tax_result->get_data()[0]->name);
+
+		$mock_generator = $this->getMockBuilder(AIPS_Generator::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('is_available', 'generate_content'))
+			->getMock();
+		$mock_generator->method('is_available')->willReturn(true);
+		$mock_generator->method('generate_content')->willReturn('["Topic One", "Topic Two"]');
+
+		$planner_strategy = new AIPS_Planner_Topic_Strategy(null, $mock_generator);
+		$planner_pipeline = new AIPS_Generation_Pipeline($planner_strategy, new AIPS_Generation_Component_Registry());
+		$planner_result   = $planner_pipeline->execute(new AIPS_Planner_Topic_Generation_Context('WordPress', 2));
+
+		$this->assertTrue($planner_result->is_success());
+		$this->assertSame(array('Topic One', 'Topic Two'), $planner_result->get_data());
+	}
+
+	/**
+	 * AIPS_Component_Regeneration_Service::resolve_and_persist_component_overrides() persists and clears sticky overrides.
+	 */
+	public function test_component_regeneration_service_sticky_overrides() {
+		$post_id = self::factory()->post->create(array('post_title' => 'Sticky Override Test'));
+		$service = new AIPS_Component_Regeneration_Service();
+
+		$res = $service->resolve_and_persist_component_overrides($post_id, 'title', 'gpt-4o', 0.6, true, true);
+		$this->assertSame('gpt-4o', $res['model']);
+		$this->assertSame(0.6, $res['temperature']);
+		$this->assertSame('gpt-4o', $res['overrides']['title']['model']);
+
+		$reloaded = $service->resolve_and_persist_component_overrides($post_id, 'title', '', null, false, false);
+		$this->assertSame('gpt-4o', $reloaded['model']);
+		$this->assertSame(0.6, $reloaded['temperature']);
+	}
 }

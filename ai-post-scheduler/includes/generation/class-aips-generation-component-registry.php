@@ -291,4 +291,32 @@ class AIPS_Generation_Component_Registry {
 
 		return $this;
 	}
+
+	/**
+	 * Register the default Taxonomy Suggestion component.
+	 *
+	 * @param AIPS_AI_Service_Interface|null    $ai_service     Optional AI service.
+	 * @param AIPS_Prompt_Builder_Taxonomy|null $prompt_builder Optional taxonomy prompt builder.
+	 * @return self
+	 */
+	public function register_default_taxonomy_components(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		$prompt_builder = null
+	): self {
+		$this->register(new AIPS_Taxonomy_Suggestion_Component($ai_service, $prompt_builder));
+
+		return $this;
+	}
+
+	/**
+	 * Register the default Planner Topics component.
+	 *
+	 * @param AIPS_Generator|null $generator Optional generator instance.
+	 * @return self
+	 */
+	public function register_default_planner_components(?AIPS_Generator $generator = null): self {
+		$this->register(new AIPS_Planner_Topics_Component($generator));
+
+		return $this;
+	}
 }

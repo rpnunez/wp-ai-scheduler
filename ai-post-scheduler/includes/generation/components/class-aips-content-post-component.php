@@ -213,6 +213,77 @@ class AIPS_Content_Post_Component extends AIPS_Abstract_Post_Component {
 	}
 
 	/**
+	 * Rewrite an arbitrary content snippet with an editorial directive,
+	 * producing 1 or 3 candidate variants.
+	 *
+	 * Used by AIPS_Editor_Directive_Service::apply_directive() so all editor
+	 * content rewrites flow through the unified Content Post Component.
+	 *
+	 * @param string $content        Original text/HTML snippet.
+	 * @param string $instruction    Resolved editorial directive instruction.
+	 * @param int    $variants_count Number of variants to generate (1 or 3).
+	 * @param array  $options        Optional overrides ('ai_service', 'post_title').
+	 * @return string[]|WP_Error
+	 */
+	public function rewrite_with_directive(string $content, string $instruction, int $variants_count = 1, array $options = array()) {
+		$ai_service = $this->resolve_variant_ai_service($options);
+		if (!$ai_service->is_available()) {
+			return new WP_Error('ai_service_unavailable', __('AI service is currently unavailable. Please check your AI Engine configuration.', 'ai-post-scheduler'));
+		}
+
+		$content = trim($content);
+		if ('' === $content) {
+			return new WP_Error('empty_content', __('No content provided for rewriting.', 'ai-post-scheduler'));
+		}
+
+		$prompt  = "You are an expert editorial assistant for WordPress.\n\n";
+		$prompt .= "Instruction:\n" . $instruction . "\n\n";
+
+		if (!empty($options['post_title'])) {
+			$prompt .= 'Article Context: Post Title is "' . esc_attr((string) $options['post_title']) . "\".\n\n";
+		}
+
+		$prompt .= "Original Text to Rewrite:\n\"\"\"\n" . $content . "\n\"\"\"\n\n";
+
+		if ($variants_count >= 3) {
+			$prompt .= "Provide exactly 3 distinctly different creative variations of the rewritten text.\n";
+			$prompt .= "Output MUST be a valid JSON array of 3 strings, with no additional text or formatting outside the JSON array.\n";
+			$prompt .= "Example format:\n[\"Variation 1 text here\", \"Variation 2 text here\", \"Variation 3 text here\"]";
+
+			$response = $ai_service->generate_text($prompt);
+			if (is_wp_error($response)) {
+				return $response;
+			}
+
+			$raw = trim((string) $response);
+			if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
+				$decoded = json_decode($matches[0], true);
+				if (is_array($decoded) && count($decoded) > 0) {
+					return array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
+				}
+			}
+
+			$lines = array_values(array_filter(array_map('trim', explode("\n", $raw))));
+			if (count($lines) >= 3) {
+				return array_slice($lines, 0, 3);
+			}
+
+			return array($raw);
+		}
+
+		$prompt  .= 'Return ONLY the rewritten text without conversational introductions, explanations, or quotes around the output.';
+		$response = $ai_service->generate_text($prompt);
+		if (is_wp_error($response)) {
+			return $response;
+		}
+
+		$cleaned = trim((string) $response);
+		$cleaned = preg_replace('/^["\']|["\']$/u', '', $cleaned);
+
+		return array($cleaned);
+	}
+
+	/**
 	 * {@inheritdoc}
 	 */
 	public function apply_to_post(int $post_id, $value): bool {

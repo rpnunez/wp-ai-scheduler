@@ -286,6 +286,115 @@ class AIPS_Component_Regeneration_Service {
 	}
 
 	/**
+	 * Unified single-component dispatch entry point for AI Edit controllers.
+	 *
+	 * Routes any supported post component key (including short aliases and
+	 * per-image keys `post_image_{id}`) through the component registry and
+	 * coordinator without requiring a switch statement in controllers.
+	 *
+	 * @param string $component Component key or alias.
+	 * @param array  $context   Regeneration context payload.
+	 * @return mixed Regenerated component value or WP_Error.
+	 */
+	public function regenerate_component(string $component, array $context) {
+		$component = sanitize_key($component);
+
+		$image_id = self::post_image_id_from_component($component);
+		if ('post_images' === $component || $image_id > 0) {
+			return $this->regenerate_post_images($context, $image_id > 0 ? $image_id : 'all');
+		}
+
+		$canonical = AIPS_Generation_Component_Registry::normalize_key($component, 'posts');
+		$method_map = array(
+			'post_title'     => 'regenerate_title',
+			'post_slug'      => 'regenerate_slug',
+			'post_excerpt'   => 'regenerate_excerpt',
+			'post_content'   => 'regenerate_content',
+			'featured_image' => 'regenerate_featured_image',
+		);
+
+		if (isset($method_map[$canonical])) {
+			$method = $method_map[$canonical];
+			return $this->$method($context);
+		}
+
+		return $this->delegate_component_regeneration($canonical, ucwords(str_replace('_', ' ', $canonical)), $context);
+	}
+
+	/**
+	 * Resolve and persist sticky per-component model and temperature overrides
+	 * for a post's AI Edit session.
+	 *
+	 * @param int        $post_id            Post ID.
+	 * @param string     $component          Component key.
+	 * @param string     $model_override     Posted model override string.
+	 * @param float|null $temp_override      Posted temperature override float or null.
+	 * @param bool       $has_model_post     Whether `model_override` was present in the request.
+	 * @param bool       $has_temp_post      Whether a non-empty `temperature_override` was present in the request.
+	 * @return array{model:string,temperature:float|null,overrides:array}
+	 */
+	public function resolve_and_persist_component_overrides(
+		int $post_id,
+		string $component,
+		string $model_override = '',
+		?float $temp_override = null,
+		bool $has_model_post = false,
+		bool $has_temp_post = false
+	): array {
+		$existing_overrides = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
+		if (!is_array($existing_overrides)) {
+			$existing_overrides = array();
+		}
+
+		$comp_override = isset($existing_overrides[$component]) && is_array($existing_overrides[$component])
+			? $existing_overrides[$component]
+			: array();
+
+		$updated_overrides = false;
+		if ($has_model_post) {
+			if ($model_override !== '') {
+				$comp_override['model'] = $model_override;
+			} else {
+				unset($comp_override['model']);
+			}
+			$updated_overrides = true;
+		} elseif (!empty($comp_override['model'])) {
+			$model_override = (string) $comp_override['model'];
+		}
+
+		if ($has_temp_post) {
+			if ($temp_override !== null) {
+				$comp_override['temperature'] = max(0.0, min(1.0, $temp_override));
+			} else {
+				unset($comp_override['temperature']);
+			}
+			$updated_overrides = true;
+		} elseif (isset($comp_override['temperature'])) {
+			$temp_override = floatval($comp_override['temperature']);
+		}
+
+		if ($updated_overrides) {
+			if (!empty($comp_override)) {
+				$existing_overrides[$component] = $comp_override;
+			} else {
+				unset($existing_overrides[$component]);
+			}
+
+			if (empty($existing_overrides)) {
+				delete_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES);
+			} else {
+				update_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, $existing_overrides);
+			}
+		}
+
+		return array(
+			'model'       => $model_override,
+			'temperature' => $temp_override,
+			'overrides'   => $existing_overrides,
+		);
+	}
+
+	/**
 	 * Shared delegation helper routing single-component regeneration through the
 	 * AIPS_Component_Regeneration_Coordinator and component registry.
 	 *

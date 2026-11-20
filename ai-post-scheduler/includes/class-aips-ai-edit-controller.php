@@ -304,99 +304,48 @@ class AIPS_AI_Edit_Controller {
 			}
 		}
 
-		// Handle sticky component overrides (model and temperature)
-		$existing_overrides = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
-		if (!is_array($existing_overrides)) {
-			$existing_overrides = array();
-		}
-		$comp_override = isset($existing_overrides[$component]) && is_array($existing_overrides[$component]) ? $existing_overrides[$component] : array();
+		// Resolve and persist sticky per-component model/temperature overrides.
+		$resolved_overrides   = $this->service->resolve_and_persist_component_overrides(
+			$post_id,
+			$component,
+			$model_override,
+			$temperature_override,
+			isset($_POST['model_override']),
+			isset($_POST['temperature_override']) && '' !== $_POST['temperature_override']
+		);
+		$model_override       = $resolved_overrides['model'];
+		$temperature_override = $resolved_overrides['temperature'];
+		$existing_overrides   = $resolved_overrides['overrides'];
 
-		$updated_overrides = false;
-		if (isset($_POST['model_override'])) {
-			if (!empty($model_override)) {
-				$comp_override['model'] = $model_override;
-			} else {
-				unset($comp_override['model']);
-			}
-			$updated_overrides = true;
-		} elseif (!empty($comp_override['model'])) {
-			$model_override = $comp_override['model'];
-		}
-
-		if (isset($_POST['temperature_override']) && '' !== $_POST['temperature_override']) {
-			if (null !== $temperature_override) {
-				$comp_override['temperature'] = max(0.0, min(1.0, $temperature_override));
-			} else {
-				unset($comp_override['temperature']);
-			}
-			$updated_overrides = true;
-		} elseif (isset($comp_override['temperature'])) {
-			$temperature_override = floatval($comp_override['temperature']);
-		}
-
-		if ($updated_overrides) {
-			if (!empty($comp_override)) {
-				$existing_overrides[$component] = $comp_override;
-			} else {
-				unset($existing_overrides[$component]);
-			}
-			if (empty($existing_overrides)) {
-				delete_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES);
-			} else {
-				update_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, $existing_overrides);
-			}
-		}
-
-		$context['custom_directive']    = $custom_directive;
-		$context['directive_preset']    = $directive_preset;
-		$context['model_override']      = $model_override;
+		$context['custom_directive']     = $custom_directive;
+		$context['directive_preset']     = $directive_preset;
+		$context['model_override']       = $model_override;
 		$context['temperature_override'] = $temperature_override;
 
 		if ($downstream_cascaded) {
 			$context['downstream_cascaded'] = true;
-			$context['trigger_detail']     = __('Cascaded downstream alignment from upstream component acceptance', 'ai-post-scheduler');
+			$context['trigger_detail']      = __('Cascaded downstream alignment from upstream component acceptance', 'ai-post-scheduler');
 			$this->apply_upstream_component_context($context);
 		}
-		
-		// Regenerate component
-		$result = null;
-		switch ($component) {
-			case 'title':
-				$result = $this->service->regenerate_title($context);
-				break;
-			case 'slug':
-				$result = $this->service->regenerate_slug($context);
-				break;
-			case 'excerpt':
-				$result = $this->service->regenerate_excerpt($context);
-				break;
-			case 'content':
-				$result = $this->service->regenerate_content($context);
-				break;
-			case 'featured_image':
-				$result = $this->service->regenerate_featured_image($context);
-				break;
-			default:
-				$image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
-				if ('post_images' === $component || $image_id > 0) {
-					if (isset($_POST['current_content'])) {
-						$context['current_content'] = $this->sanitize_editor_html(wp_unslash($_POST['current_content']));
-					}
-					$result = $this->service->regenerate_post_images($context, $image_id > 0 ? $image_id : 'all');
-				}
-				break;
+
+		$image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
+		if (('post_images' === $component || $image_id > 0) && isset($_POST['current_content'])) {
+			$context['current_content'] = $this->sanitize_editor_html(wp_unslash($_POST['current_content']));
 		}
-		
+
+		// Delegate single-component regeneration through the unified service/coordinator.
+		$result = $this->service->regenerate_component($component, $context);
+
 		if (is_wp_error($result)) {
 			$this->log_wp_error($result, __METHOD__);
 			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'));
 		}
-		
+
 		AIPS_Ajax_Response::success(array(
-			'new_value'    => $result,
-			'model'        => $model_override,
-			'temperature'  => $temperature_override,
-			'overrides'    => $existing_overrides,
+			'new_value'   => $result,
+			'model'       => $model_override,
+			'temperature' => $temperature_override,
+			'overrides'   => $existing_overrides,
 		));
 	}
 

@@ -16,6 +16,8 @@
   - Implemented `AIPS_Internal_Links_Post_Component` (`post_internal_links`) and migrated `AIPS_Editor_Link_Weave_Service` onto it.
   - Added single-call 3-variant JSON generation (`generate_variants()`) to `AIPS_Title_Post_Component`, `AIPS_Slug_Post_Component`, and `AIPS_Excerpt_Post_Component`, migrating `AIPS_Editor_Directive_Service::generate_component_variants()` onto the unified component registry.
   - Enabled Universal AI Edit across Post, Author Topic, and Campaign entities via `aips_universal_ai_edit` and `aips_get_editable_components` AJAX endpoints in `AIPS_AI_Edit_Controller` (registered in `AIPS_Ajax_Registry::$map`).
+  - Refactored `AIPS_AI_Edit_Controller::ajax_regenerate_component()` to remove its hardcoded component `switch` and inline sticky-override post-meta handling in favor of `AIPS_Component_Regeneration_Service::regenerate_component()` and `resolve_and_persist_component_overrides()`.
+  - Migrated `AIPS_Taxonomy_Controller::generate_taxonomy_items()` onto `AIPS_Taxonomy_Generation_Strategy` + `AIPS_Taxonomy_Suggestion_Component`, `AIPS_Planner::ajax_generate_topics()` onto `AIPS_Planner_Topic_Strategy` + `AIPS_Planner_Topics_Component`, and `AIPS_Editor_Directive_Service::apply_directive()` onto `AIPS_Content_Post_Component::rewrite_with_directive()`.
   - Marked legacy procedural entry points in `AIPS_Generator` (`generate_title()`, `generate_excerpt()`, and raw template-object `generate_post()` usage) as `@deprecated 3.7.25` in favor of `AIPS_Generation_Pipeline` and registered components.
 - **Universal Generation Strategy & Component Framework — Phase 3 (issue #2400):**
   - Added `AIPS_Campaign_Generation_Context` and `AIPS_Research_Generation_Context` in `includes/generation/`.
