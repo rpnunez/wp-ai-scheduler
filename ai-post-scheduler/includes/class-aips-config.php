@@ -226,6 +226,15 @@ class AIPS_Config {
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
+            'aips_component_generation_retries' => array(
+                'post_content'        => 2,
+                'post_title'          => 2,
+                'post_excerpt'        => 1,
+                'post_slug'           => 0,
+                'post_featured_image' => 2,
+                'post_images'         => 3,
+                'post_meta'           => 1,
+            ),
             'aips_enable_rate_limiting' => false,
             'aips_rate_limit_requests' => 10,
             'aips_rate_limit_period' => 60,
@@ -612,20 +621,60 @@ class AIPS_Config {
 		return __('Prevent AI Generation (Scheduled & Manual)', 'ai-post-scheduler');
 	}
     
-    /**
-     * Get retry configuration.
-     *
-     * @return array Retry configuration.
-     */
-    public function get_retry_config() {
-        return array(
-            'enabled' => (bool) $this->get_option('aips_enable_retry'),
-            'max_attempts' => (int) $this->get_option('aips_retry_max_attempts'),
-            'initial_delay' => (int) $this->get_option('aips_retry_initial_delay'),
-            'exponential' => true,
-            'jitter' => true,
-        );
-    }
+	/**
+	 * Get retry configuration.
+	 *
+	 * @return array Retry configuration.
+	 */
+	public function get_retry_config() {
+		return array(
+			'enabled'       => (bool) $this->get_option('aips_enable_retry'),
+			'max_attempts'  => (int) $this->get_option('aips_retry_max_attempts'),
+			'initial_delay' => (int) $this->get_option('aips_retry_initial_delay'),
+			'exponential'   => true,
+			'jitter'        => true,
+		);
+	}
+
+	/**
+	 * Get per-component inline generation retry limits.
+	 *
+	 * Merges stored values over defaults and clamps each entry to 0..5.
+	 *
+	 * @return array<string, int> Associative array of component key => max retries.
+	 */
+	public function get_component_generation_retries() {
+		$defaults = $this->get_default_options();
+		$default_map = isset($defaults['aips_component_generation_retries']) && is_array($defaults['aips_component_generation_retries'])
+			? $defaults['aips_component_generation_retries']
+			: array();
+
+		$stored = $this->get_option('aips_component_generation_retries');
+		if (!is_array($stored)) {
+			$stored = array();
+		}
+
+		$resolved = array();
+		foreach ($default_map as $component => $default_limit) {
+			$raw = array_key_exists($component, $stored) ? (int) $stored[$component] : (int) $default_limit;
+			$resolved[$component] = max(0, min(5, $raw));
+		}
+
+		return $resolved;
+	}
+
+	/**
+	 * Get the configured inline retry limit for a single post component.
+	 *
+	 * @param string $component Component key (e.g. 'post_images', 'post_slug').
+	 * @return int Clamped retry limit (0..5).
+	 */
+	public function get_component_retry_limit($component) {
+		$retries = $this->get_component_generation_retries();
+		$key = (string) $component;
+
+		return isset($retries[$key]) ? (int) $retries[$key] : 0;
+	}
     
     /**
      * Get rate limiting configuration.

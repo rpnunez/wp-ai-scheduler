@@ -115,7 +115,7 @@ $placement_field_name = "{$image_field_name_prefix}[placement]";
 			<input type="hidden" id="<?php echo esc_attr($image_field_id_prefix); ?>_media_ids" name="<?php echo esc_attr($media_field_name); ?>" value="<?php echo esc_attr($media_ids); ?>" class="aips-media-ids-input">
 			<button type="button" class="aips-btn aips-btn-secondary aips-media-select-btn" id="<?php echo esc_attr($image_field_id_prefix); ?>_media_select"><?php esc_html_e('Select Images', 'ai-post-scheduler'); ?></button>
 			<button type="button" class="aips-btn aips-btn-ghost aips-media-clear-btn" id="<?php echo esc_attr($image_field_id_prefix); ?>_media_clear"><?php esc_html_e('Clear Selection', 'ai-post-scheduler'); ?></button>
-			<div class="aips-media-preview-container description" style="margin-top: 6px;">
+			<div class="aips-media-preview-container description aips-description-spaced">
 				<?php
 				if (!empty($media_ids)) {
 					$id_array = array_filter(array_map('absint', explode(',', $media_ids)));

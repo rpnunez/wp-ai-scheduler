@@ -205,6 +205,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_retry_initial_delay'],
 			),
+			'aips_component_generation_retries' => array(
+				'sanitize_callback' => array($ui, 'sanitize_component_generation_retries'),
+				'default'           => $defaults['aips_component_generation_retries'],
+			),
 			'aips_enable_rate_limiting' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_rate_limiting'],
@@ -1785,6 +1789,14 @@ class AIPS_Settings {
             'aips_retry_initial_delay',
             __('Retry Initial Delay (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'retry_initial_delay_field_callback'),
+            'aips-settings',
+            'aips_resilience_retry_section'
+        );
+
+        add_settings_field(
+            'aips_component_generation_retries',
+            __('Per-Component Inline Retries', 'ai-post-scheduler'),
+            array($this->ui, 'component_generation_retries_field_callback'),
             'aips-settings',
             'aips_resilience_retry_section'
         );

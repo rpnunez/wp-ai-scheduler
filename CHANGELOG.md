@@ -12,6 +12,10 @@
 - **Slug Prompt Context Cap:** Stateless slug prompts (`AIPS_Prompt_Builder_Post_Slug`) now condense the article to 3,000 characters by default (`AIPS_Prompt_Builder_Post_Slug::CONTEXT_MAX_CHARS`) instead of inheriting the 12,000 character `AIPS_Content_Digest` default, matching the title prompt's cap. A slug is three to six keywords and the title is already in the prompt, so the extra article text only inflated the request. The `aips_slug_context_max_chars` filter still overrides the cap; sites that filtered it are unaffected, and sites that relied on the old default now send at most 3,000 characters of context. Conversational runs are unchanged (issue #2405).
 
 ### Added
+- **Configurable Post Component Inline Retries at Generation Time (#2404):**
+  - Added `aips_component_generation_retries` option in `AIPS_Config` with clamped (0–5) per-component defaults (`post_content: 2`, `post_title: 2`, `post_excerpt: 1`, `post_slug: 0`, `post_featured_image: 2`, `post_images: 3`, `post_meta: 1`) and Settings UI controls under Settings → Resilience → Retry & Backoff Policy.
+  - Introduced `AIPS_Component_Retry_Runner` with exponential jitter backoff (500–1500ms, filterable via `aips_component_retry_delay_ms`), non-retryable error short-circuiting (`ai_unavailable`, `ai_engine_missing`, etc.), iterative multi-image prompt deficit recovery, and structured `AIPS_History_Container` retry telemetry.
+  - Integrated inline component retries across `AIPS_Generator` for content, title, excerpt (with truncated body fallback on exhaustion), slug, featured image, combined metadata turn, and content images.
 - **Conversational & Combined Metadata Modes Optimization & Conversation Persistence:**
   - Registered `AIPS_History_Type::AI_CONVERSATION` and mapped `conversation_transcript` in `AIPS_History_Container` to store serialized multi-turn transcripts in `wp_aips_history_log`.
   - Persisted the generation transcript in `AIPS_Generator::generate_post_from_context()` before closing the conversational session.
