@@ -174,6 +174,37 @@ class AIPS_Excerpt_Post_Component extends AIPS_Abstract_Post_Component {
 	/**
 	 * {@inheritdoc}
 	 */
+	public function generate_variants($target_id, AIPS_Generation_Context $context, int $count = 3, array $options = array()) {
+		$ai_service = $this->resolve_variant_ai_service($options);
+		if (!$ai_service->is_available()) {
+			return new WP_Error('ai_service_unavailable', __('AI service is currently unavailable.', 'ai-post-scheduler'));
+		}
+
+		$source = $this->resolve_post_variant_source($target_id, $options);
+		if (is_wp_error($source)) {
+			return $source;
+		}
+
+		$post  = $source['post'];
+		$count = max(1, min(10, $count));
+
+		$prompt  = "You are an expert editorial writer for WordPress.\n\n";
+		$prompt .= 'Post Title: "' . esc_attr($post->post_title) . "\"\n";
+		$prompt .= "Post Content Sample:\n" . $source['content_sample'] . "\n\n";
+		$prompt .= "Generate {$count} compelling 40-to-60-word excerpt variations summarizing this post.\n";
+		$prompt .= "Return ONLY a valid JSON array of {$count} strings: [\"Excerpt 1\", \"Excerpt 2\", \"Excerpt 3\"]. No extra text.";
+
+		$response = $ai_service->generate_text($prompt);
+		if (is_wp_error($response)) {
+			return $response;
+		}
+
+		return $this->parse_json_variants_response((string) $response, $count);
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function apply_to_post(int $post_id, $value): bool {
 		if ($post_id <= 0) {
 			return false;

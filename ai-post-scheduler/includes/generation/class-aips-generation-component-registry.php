@@ -203,6 +203,7 @@ class AIPS_Generation_Component_Registry {
 		$this->register(new AIPS_Content_Images_Post_Component($generator));
 		$this->register(new AIPS_Taxonomy_Post_Component($generator));
 		$this->register(new AIPS_Custom_Meta_Post_Component($generator));
+		$this->register(new AIPS_Internal_Links_Post_Component($generator));
 
 		/**
 		 * Allow extensions to register additional generation components.

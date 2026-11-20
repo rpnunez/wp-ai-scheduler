@@ -12,6 +12,11 @@
 - **Slug Prompt Context Cap:** Stateless slug prompts (`AIPS_Prompt_Builder_Post_Slug`) now condense the article to 3,000 characters by default (`AIPS_Prompt_Builder_Post_Slug::CONTEXT_MAX_CHARS`) instead of inheriting the 12,000 character `AIPS_Content_Digest` default, matching the title prompt's cap. A slug is three to six keywords and the title is already in the prompt, so the extra article text only inflated the request. The `aips_slug_context_max_chars` filter still overrides the cap; sites that filtered it are unaffected, and sites that relied on the old default now send at most 3,000 characters of context. Conversational runs are unchanged (issue #2405).
 
 ### Added
+- **Universal Generation Strategy & Component Framework — Phase 4 (issue #2400):**
+  - Implemented `AIPS_Internal_Links_Post_Component` (`post_internal_links`) and migrated `AIPS_Editor_Link_Weave_Service` onto it.
+  - Added single-call 3-variant JSON generation (`generate_variants()`) to `AIPS_Title_Post_Component`, `AIPS_Slug_Post_Component`, and `AIPS_Excerpt_Post_Component`, migrating `AIPS_Editor_Directive_Service::generate_component_variants()` onto the unified component registry.
+  - Enabled Universal AI Edit across Post, Author Topic, and Campaign entities via `aips_universal_ai_edit` and `aips_get_editable_components` AJAX endpoints in `AIPS_AI_Edit_Controller` (registered in `AIPS_Ajax_Registry::$map`).
+  - Marked legacy procedural entry points in `AIPS_Generator` (`generate_title()`, `generate_excerpt()`, and raw template-object `generate_post()` usage) as `@deprecated 3.7.25` in favor of `AIPS_Generation_Pipeline` and registered components.
 - **Universal Generation Strategy & Component Framework — Phase 3 (issue #2400):**
   - Added `AIPS_Campaign_Generation_Context` and `AIPS_Research_Generation_Context` in `includes/generation/`.
   - Implemented `AIPS_Campaign_Generation_Strategy`, `AIPS_Campaign_Pillar_Component`, and `AIPS_Campaign_Cluster_Component`, migrating `AIPS_Campaigns_Controller::ajax_ai_generate_campaign()` onto `AIPS_Generation_Pipeline`.

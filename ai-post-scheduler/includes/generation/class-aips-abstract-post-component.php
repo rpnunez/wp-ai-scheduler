@@ -127,6 +127,71 @@ abstract class AIPS_Abstract_Post_Component implements AIPS_Post_Component_Inter
 	}
 
 	/**
+	 * Parse a JSON array of variant strings from an AI text response.
+	 *
+	 * @param string $raw   Raw AI response text.
+	 * @param int    $count Maximum variants to return.
+	 * @return string[]
+	 */
+	protected function parse_json_variants_response(string $raw, int $count = 3): array {
+		$raw      = trim($raw);
+		$variants = array($raw);
+
+		if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
+			$decoded = json_decode($matches[0], true);
+			if (is_array($decoded) && count($decoded) > 0) {
+				$variants = array_slice(array_map('strval', array_map('trim', $decoded)), 0, max(1, $count));
+			}
+		}
+
+		return $variants;
+	}
+
+	/**
+	 * Resolve a post object and truncated plain-text content sample for variant prompts.
+	 *
+	 * @param int|string $target_id Post ID.
+	 * @param array      $options   Optional overrides ('post').
+	 * @return array{post:WP_Post,content_sample:string}|WP_Error
+	 */
+	protected function resolve_post_variant_source($target_id, array $options = array()) {
+		$post = (isset($options['post']) && $options['post'] instanceof WP_Post)
+			? $options['post']
+			: get_post(absint($target_id));
+
+		if (!$post) {
+			return new WP_Error('post_not_found', __('Post not found.', 'ai-post-scheduler'));
+		}
+
+		$content_sample = wp_strip_all_tags((string) $post->post_content);
+		if (strlen($content_sample) > 2000) {
+			$content_sample = substr($content_sample, 0, 2000) . '...';
+		}
+
+		return array(
+			'post'           => $post,
+			'content_sample' => $content_sample,
+		);
+	}
+
+	/**
+	 * Resolve an AI service instance from options or container.
+	 *
+	 * @param array $options Runtime options.
+	 * @return AIPS_AI_Service_Interface
+	 */
+	protected function resolve_variant_ai_service(array $options = array()): AIPS_AI_Service_Interface {
+		if (isset($options['ai_service']) && $options['ai_service'] instanceof AIPS_AI_Service_Interface) {
+			return $options['ai_service'];
+		}
+
+		$container = AIPS_Container::get_instance();
+		return $container->has(AIPS_AI_Service_Interface::class)
+			? $container->make(AIPS_AI_Service_Interface::class)
+			: new AIPS_AI_Service();
+	}
+
+	/**
 	 * Merge a custom directive into an AI options array.
 	 *
 	 * @param array  $options   Base options array.

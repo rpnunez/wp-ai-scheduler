@@ -652,6 +652,8 @@ class AIPS_Generator {
      * and to follow the Single Responsibility Principle.
      *
      * @param object      $template Template object containing prompts and settings.
+     * @deprecated 3.7.25 Use AIPS_Title_Post_Component via AIPS_Generation_Component_Registry or AIPS_Generation_Pipeline.
+     *
      * @param object|null $voice    Optional voice object with overrides.
      * @param string|null $topic    Optional topic to be injected into prompts.
      * @param string      $content  Generated article content used as context.
@@ -723,6 +725,8 @@ class AIPS_Generator {
      * Delegates excerpt prompt construction to AIPS_Prompt_Builder_Post_Excerpt.
      * Ensures the excerpt length is within a reasonable limit and removes
      * surrounding quotes from the AI output.
+     *
+     * @deprecated 3.7.25 Use AIPS_Excerpt_Post_Component via AIPS_Generation_Component_Registry or AIPS_Generation_Pipeline.
      *
      * @param string                         $title   Title of the generated article.
      * @param string                         $content The article content to summarize.
@@ -1231,6 +1235,8 @@ class AIPS_Generator {
      * 3. Generate title and excerpt
      * 4. Create the WordPress post and optionally the featured image
      * 5. Complete session, update history, and dispatch hooks
+     *
+     * @deprecated 3.7.25 Passing a raw template object is deprecated; prefer AIPS_Generation_Pipeline::execute() or generate_post_result() with an AIPS_Generation_Context.
      *
      * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
      * @param object|null $voice Optional voice object with overrides (legacy).

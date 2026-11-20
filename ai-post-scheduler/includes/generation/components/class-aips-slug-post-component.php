@@ -188,6 +188,45 @@ class AIPS_Slug_Post_Component extends AIPS_Abstract_Post_Component {
 	/**
 	 * {@inheritdoc}
 	 */
+	public function generate_variants($target_id, AIPS_Generation_Context $context, int $count = 3, array $options = array()) {
+		$ai_service = $this->resolve_variant_ai_service($options);
+		if (!$ai_service->is_available()) {
+			return new WP_Error('ai_service_unavailable', __('AI service is currently unavailable.', 'ai-post-scheduler'));
+		}
+
+		$source = $this->resolve_post_variant_source($target_id, $options);
+		if (is_wp_error($source)) {
+			return $source;
+		}
+
+		$post  = $source['post'];
+		$count = max(1, min(10, $count));
+
+		$prompt  = "You are an expert SEO editor for WordPress permalinks.\n\n";
+		$prompt .= 'Current Post Title: "' . esc_attr($post->post_title) . "\"\n";
+		$prompt .= 'Current Post Slug: "' . esc_attr($post->post_name) . "\"\n";
+		$prompt .= "Post Content Sample:\n" . $source['content_sample'] . "\n\n";
+		$prompt .= "Generate {$count} SEO URL slug variations for this post.\n";
+		$prompt .= "Each slug must be 3 to 6 words, lowercase, with words separated by hyphens, and must omit stop words.\n";
+		$prompt .= "Return ONLY a valid JSON array of {$count} strings: [\"slug-one\", \"slug-two\", \"slug-three\"]. No extra text.";
+
+		$response = $ai_service->generate_text($prompt);
+		if (is_wp_error($response)) {
+			return $response;
+		}
+
+		$variants = $this->parse_json_variants_response((string) $response, $count);
+		$variants = array_values(array_filter(array_map('sanitize_title', $variants)));
+		if (empty($variants)) {
+			return new WP_Error('slug_generation_failed', __('Failed to generate a valid slug.', 'ai-post-scheduler'));
+		}
+
+		return $variants;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function apply_to_post(int $post_id, $value): bool {
 		if ($post_id <= 0) {
 			return false;

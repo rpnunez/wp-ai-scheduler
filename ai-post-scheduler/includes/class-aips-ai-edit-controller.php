@@ -56,6 +56,8 @@ class AIPS_AI_Edit_Controller {
 		add_action('wp_ajax_aips_get_component_revisions', array($this, 'ajax_get_component_revisions'));
 		add_action('wp_ajax_aips_restore_component_revision', array($this, 'ajax_restore_component_revision'));
 		add_action('wp_ajax_aips_reset_component_overrides', array($this, 'ajax_reset_component_overrides'));
+		add_action('wp_ajax_aips_universal_ai_edit', array($this, 'ajax_universal_ai_edit'));
+		add_action('wp_ajax_aips_get_editable_components', array($this, 'ajax_get_editable_components'));
 	}
 	
 	/**
@@ -1437,5 +1439,168 @@ class AIPS_AI_Edit_Controller {
 		}
 
 		return trim((string) $value);
+	}
+
+	/**
+	 * AJAX handler: List AI-editable generation components across strategies.
+	 *
+	 * Enables Universal AI Edit discovery across Post, Author Topic, and
+	 * Campaign entities via AIPS_Generation_Component_Registry.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_editable_components() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$strategy_key = isset($_POST['strategy_key']) ? sanitize_key(wp_unslash($_POST['strategy_key'])) : '';
+		$container    = AIPS_Container::get_instance();
+		$registry     = $container->has(AIPS_Generation_Component_Registry::class)
+			? $container->make(AIPS_Generation_Component_Registry::class)
+			: (new AIPS_Generation_Component_Registry())
+				->register_default_post_components()
+				->register_default_topic_components()
+				->register_default_campaign_components();
+
+		$editable = $registry->get_ai_editable($strategy_key !== '' ? $strategy_key : null);
+		$payload  = array();
+		foreach ($editable as $component) {
+			$payload[] = array(
+				'key'          => $component->get_key(),
+				'label'        => $component->get_label(),
+				'strategy_key' => $component->get_strategy_key(),
+				'required'     => $component->is_required(),
+			);
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'strategy_key' => $strategy_key !== '' ? $strategy_key : 'all',
+			'components'   => $payload,
+		));
+	}
+
+	/**
+	 * AJAX handler: Universal AI Edit across Post, Author Topic, and Campaign entities.
+	 *
+	 * Routes single-component AI revisions through AIPS_Component_Regeneration_Coordinator
+	 * and optionally applies the sanitized value to the target entity.
+	 *
+	 * @return void
+	 */
+	public function ajax_universal_ai_edit() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$strategy_key  = isset($_POST['strategy_key']) ? sanitize_key(wp_unslash($_POST['strategy_key'])) : 'posts';
+		$component_key = isset($_POST['component_key']) ? sanitize_key(wp_unslash($_POST['component_key'])) : '';
+		$target_id     = isset($_POST['target_id']) ? absint($_POST['target_id']) : 0;
+		$directive     = isset($_POST['directive']) ? sanitize_textarea_field(wp_unslash($_POST['directive'])) : '';
+		$apply_changes = isset($_POST['apply']) ? filter_var(wp_unslash($_POST['apply']), FILTER_VALIDATE_BOOLEAN) : false;
+
+		if ($component_key === '' || $target_id <= 0) {
+			AIPS_Ajax_Response::invalid_request(__('Component key and target ID are required.', 'ai-post-scheduler'));
+		}
+
+		$context = $this->resolve_universal_ai_edit_context($strategy_key, $target_id);
+		if (is_wp_error($context)) {
+			AIPS_Ajax_Response::error($context->get_error_message(), $context->get_error_code());
+		}
+
+		$container   = AIPS_Container::get_instance();
+		$coordinator = $container->has(AIPS_Component_Regeneration_Coordinator::class)
+			? $container->make(AIPS_Component_Regeneration_Coordinator::class)
+			: $this->service->get_coordinator();
+
+		$component = $coordinator->get_registry()->get($component_key, $strategy_key);
+		if (!$component || !$component->supports_ai_edit()) {
+			AIPS_Ajax_Response::error(__('Component does not support Universal AI Edit.', 'ai-post-scheduler'), 'unsupported_component', 400);
+		}
+
+		$result = $coordinator->regenerate($strategy_key, $component_key, $target_id, $context, $directive);
+		if ($result->is_failure()) {
+			$errors  = $result->get_errors();
+			$message = !empty($errors) ? $errors[0] : __('Universal AI Edit regeneration failed.', 'ai-post-scheduler');
+			AIPS_Ajax_Response::error($message, 'regeneration_failed', 500);
+		}
+
+		$value   = $result->get_data();
+		$applied = false;
+		if ($apply_changes) {
+			$applied = $component->apply($target_id, $value);
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'strategy_key'  => $strategy_key,
+			'component_key' => $component->get_key(),
+			'target_id'     => $target_id,
+			'value'         => $value,
+			'applied'       => $applied,
+		));
+	}
+
+	/**
+	 * Resolve a generation context for a Universal AI Edit request.
+	 *
+	 * @param string $strategy_key Strategy key ('posts', 'author_topics', 'campaigns').
+	 * @param int    $target_id    Entity identifier.
+	 * @return AIPS_Generation_Context|WP_Error
+	 */
+	private function resolve_universal_ai_edit_context(string $strategy_key, int $target_id) {
+		if ($strategy_key === 'posts') {
+			$history = $this->history_repository->get_by_post_id($target_id);
+			if (is_object($history) && !empty($history->id)) {
+				$ctx_data = $this->service->get_generation_context((int) $history->id);
+				if (!is_wp_error($ctx_data) && isset($ctx_data['generation_context']) && $ctx_data['generation_context'] instanceof AIPS_Generation_Context) {
+					return $ctx_data['generation_context'];
+				}
+			}
+
+			$post = get_post($target_id);
+			if (!$post) {
+				return new WP_Error('post_not_found', __('Post not found.', 'ai-post-scheduler'));
+			}
+
+			return new AIPS_Template_Context(
+				(object) array(
+					'id'              => 0,
+					'name'            => (string) $post->post_title,
+					'prompt_template' => '',
+					'post_status'     => (string) $post->post_status,
+					'post_type'       => (string) $post->post_type,
+				),
+				null,
+				(string) $post->post_title
+			);
+		}
+
+		if ($strategy_key === 'author_topics') {
+			$topics_repo = new AIPS_Author_Topics_Repository();
+			$topic       = $topics_repo->get_by_id($target_id);
+			if (!$topic) {
+				return new WP_Error('topic_not_found', __('Author topic not found.', 'ai-post-scheduler'));
+			}
+
+			$authors_repo = new AIPS_Authors_Repository();
+			$author       = !empty($topic->author_id) ? $authors_repo->get_by_id((int) $topic->author_id) : null;
+
+			return new AIPS_Author_Topic_Generation_Context($author ?: (object) array('id' => 0, 'name' => '', 'field_niche' => ''));
+		}
+
+		if ($strategy_key === 'campaigns') {
+			$niche = isset($_POST['topic_niche']) ? sanitize_text_field(wp_unslash($_POST['topic_niche'])) : '';
+			return new AIPS_Campaign_Generation_Context(array('topic_niche' => $niche));
+		}
+
+		return new WP_Error('invalid_strategy', __('Unsupported generation strategy for Universal AI Edit.', 'ai-post-scheduler'));
 	}
 }
