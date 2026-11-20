@@ -14,10 +14,13 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		// add_menu_page()/add_submenu_page() register nothing without manage_options.
+		wp_set_current_user(self::factory()->user->create(array('role' => 'administrator')));
 		$this->admin_menu = new AIPS_Admin_Menu();
 	}
 
 	public function tearDown(): void {
+		wp_set_current_user(0);
 		parent::tearDown();
 	}
 
@@ -330,11 +333,15 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		}
 
 		$this->assertNotEmpty($redirect_target, 'Redirect target URL should not be empty.');
-		$this->assertStringContainsString('page=aips-studio', $redirect_target);
-		$this->assertStringContainsString('tab=voices', $redirect_target);
-		$this->assertStringContainsString('s=seo+keywords', $redirect_target);
-		$this->assertStringContainsString('paged=3', $redirect_target);
-		$this->assertStringContainsString('filter_status=active', $redirect_target);
+
+		// Compare decoded values; the space may be encoded as "+" or "%20".
+		$args = array();
+		parse_str((string) wp_parse_url($redirect_target, PHP_URL_QUERY), $args);
+		$this->assertSame('aips-studio', $args['page']);
+		$this->assertSame('voices', $args['tab']);
+		$this->assertSame('seo keywords', $args['s']);
+		$this->assertSame('3', $args['paged']);
+		$this->assertSame('active', $args['filter_status']);
 
 		unset($_GET['s'], $_GET['paged'], $_GET['filter_status'], $_GET['page']);
 	}

@@ -24,28 +24,43 @@ class AIPS_Job_Manager {
 	/** @var AIPS_Cron_Manager */
 	private $cron_manager;
 
-	/** @var AIPS_Logger */
+	/** @var AIPS_Cron_Backend_Interface */
+	private $cron_backend;
+
+	/** @var AIPS_Logger_Interface */
 	private $logger;
 
 	/**
-	 * @param AIPS_Job_Registry|null   $registry
-	 * @param AIPS_Job_Repository|null $repository
-	 * @param AIPS_Cron_Manager|null  $cron_manager
-	 * @param AIPS_Logger|null        $logger
+	 * @param AIPS_Job_Registry|null            $registry
+	 * @param AIPS_Job_Repository|null          $repository
+	 * @param AIPS_Cron_Manager|null           $cron_manager
+	 * @param AIPS_Logger_Interface|null       $logger
+	 * @param AIPS_Cron_Backend_Interface|null $cron_backend
 	 */
 	public function __construct(
 		?AIPS_Job_Registry $registry = null,
 		?AIPS_Job_Repository $repository = null,
 		?AIPS_Cron_Manager $cron_manager = null,
-		?AIPS_Logger $logger = null
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Cron_Backend_Interface $cron_backend = null
 	) {
 		$container          = AIPS_Container::get_instance();
 		$this->registry     = $registry ?: ( $container->has( AIPS_Job_Registry::class ) ? $container->make( AIPS_Job_Registry::class ) : new AIPS_Job_Registry() );
 		$this->repository   = $repository ?: ( $container->has( AIPS_Job_Repository::class ) ? $container->make( AIPS_Job_Repository::class ) : new AIPS_Job_Repository() );
 		$this->cron_manager = $cron_manager ?: ( $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager() );
-		$this->logger       = $logger ?: new AIPS_Logger();
+		$this->cron_backend = $cron_backend ?: ( $container->has( AIPS_Cron_Backend_Interface::class ) ? $container->make( AIPS_Cron_Backend_Interface::class ) : AIPS_Cron_Backend_Resolver::resolve( $this->cron_manager ) );
+		$this->logger       = $logger ?: ( $container->has( AIPS_Logger_Interface::class ) ? $container->make( AIPS_Logger_Interface::class ) : new AIPS_Logger() );
 
 		$this->register_hook_listeners();
+	}
+
+	/**
+	 * Access the backing cron backend.
+	 *
+	 * @return AIPS_Cron_Backend_Interface
+	 */
+	public function get_cron_backend(): AIPS_Cron_Backend_Interface {
+		return $this->cron_backend;
 	}
 
 	/**
@@ -53,7 +68,7 @@ class AIPS_Job_Manager {
 	 */
 	public function register_hook_listeners(): void {
 		foreach ( $this->registry->get_hooks() as $hook ) {
-			if ( ! has_action( $hook, array( $this, 'handle_tick' ) ) ) {
+			if ( ! has_action( $hook ) ) {
 				add_action( $hook, array( $this, 'handle_tick' ), 10, 1 );
 			}
 		}
@@ -99,7 +114,7 @@ class AIPS_Job_Manager {
 		);
 
 		$hook = $type_spec->get_hook();
-		$this->cron_manager->schedule_single( $hook, $next_run_at, array( $job_id ), false );
+		$this->cron_backend->schedule_single( $next_run_at, $hook, array( $job_id ), $group_name );
 
 		$this->logger->log( sprintf( 'Dispatched job %s (%s) with run at %d', $job_id, $job_type, $next_run_at ), 'info' );
 
@@ -209,7 +224,7 @@ class AIPS_Job_Manager {
 		$type_spec = $this->registry->get( $record->get_job_type() );
 		$hook      = $type_spec ? $type_spec->get_hook() : AIPS_Job_Registry::DEFAULT_TICK_HOOK;
 
-		$this->cron_manager->clear_hook( $hook, array( $job_id ) );
+		$this->cron_backend->unschedule( $hook, array( $job_id ) );
 
 		return $this->repository->update( $job_id, array( 'status' => AIPS_Job_Record::STATUS_PAUSED ) );
 	}
@@ -228,6 +243,7 @@ class AIPS_Job_Manager {
 
 		$type_spec = $this->registry->get( $record->get_job_type() );
 		$hook      = $type_spec ? $type_spec->get_hook() : AIPS_Job_Registry::DEFAULT_TICK_HOOK;
+		$group     = $type_spec ? $type_spec->get_group() : AIPS_Job_Registry::GROUP_DEFAULT;
 		$next_run  = AIPS_DateTime::now()->timestamp();
 
 		$this->repository->update(
@@ -238,7 +254,7 @@ class AIPS_Job_Manager {
 			)
 		);
 
-		return $this->cron_manager->schedule_single( $hook, $next_run, array( $job_id ), false );
+		return $this->cron_backend->schedule_single( $next_run, $hook, array( $job_id ), $group );
 	}
 
 	/**
@@ -256,7 +272,7 @@ class AIPS_Job_Manager {
 		$type_spec = $this->registry->get( $record->get_job_type() );
 		$hook      = $type_spec ? $type_spec->get_hook() : AIPS_Job_Registry::DEFAULT_TICK_HOOK;
 
-		$this->cron_manager->clear_hook( $hook, array( $job_id ) );
+		$this->cron_backend->unschedule( $hook, array( $job_id ) );
 
 		return $this->repository->update(
 			$job_id,
@@ -281,6 +297,7 @@ class AIPS_Job_Manager {
 
 		$type_spec = $this->registry->get( $record->get_job_type() );
 		$hook      = $type_spec ? $type_spec->get_hook() : AIPS_Job_Registry::DEFAULT_TICK_HOOK;
+		$group     = $type_spec ? $type_spec->get_group() : AIPS_Job_Registry::GROUP_DEFAULT;
 		$next_run  = AIPS_DateTime::now()->timestamp();
 
 		$this->repository->update(
@@ -293,7 +310,7 @@ class AIPS_Job_Manager {
 			)
 		);
 
-		return $this->cron_manager->schedule_single( $hook, $next_run, array( $job_id ), false );
+		return $this->cron_backend->schedule_single( $next_run, $hook, array( $job_id ), $group );
 	}
 
 	/**
@@ -457,11 +474,11 @@ class AIPS_Job_Manager {
 					)
 				);
 
-				$this->cron_manager->schedule_single(
-					$type_spec->get_hook(),
+				$this->cron_backend->schedule_single(
 					$next_tick,
+					$type_spec->get_hook(),
 					array( $job_id ),
-					false
+					$type_spec->get_group()
 				);
 
 				$context->log( sprintf( 'Yielded slice; next tick scheduled at %d', $next_tick ) );
@@ -498,11 +515,11 @@ class AIPS_Job_Manager {
 				)
 			);
 
-			$this->cron_manager->schedule_single(
-				$type_spec->get_hook(),
+			$this->cron_backend->schedule_single(
 				$next_tick,
+				$type_spec->get_hook(),
 				array( $job_id ),
-				false
+				$type_spec->get_group()
 			);
 		} else {
 			$this->repository->update(
