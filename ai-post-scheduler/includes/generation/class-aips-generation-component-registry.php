@@ -240,6 +240,7 @@ class AIPS_Generation_Component_Registry {
 		$this->register(new AIPS_Topic_Title_Component($ai_service, $typed_topics_repo));
 		$this->register(new AIPS_Topic_Prompt_Component($ai_service, $typed_topics_repo));
 		$this->register(new AIPS_Topic_Keywords_Component($ai_service, $typed_topics_repo));
+		$this->register(new AIPS_Topic_Score_Component($ai_service, $typed_topics_repo));
 		$this->register(new AIPS_Topic_Embedding_Component($embeddings_service, $embeddings_repo, $rate_limiter, $indexer_service));
 
 		return $this;

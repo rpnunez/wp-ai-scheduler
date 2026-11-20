@@ -249,6 +249,26 @@ class AIPS_Internal_Links_Post_Component extends AIPS_Abstract_Post_Component {
 	}
 
 	/**
+	 * Query AI for candidate insertion locations for a specific internal link suggestion.
+	 *
+	 * @param string $prompt     Structured location-finding prompt.
+	 * @param int    $max_tokens Maximum response tokens budget.
+	 * @return array|WP_Error Raw decoded JSON array of location objects or WP_Error.
+	 */
+	public function find_insertion_locations(string $prompt, int $max_tokens) {
+		$ai_service = $this->get_ai_service();
+		$options    = array(
+			'max_tokens' => $max_tokens,
+		);
+
+		if ($ai_service instanceof AIPS_AI_Service) {
+			return $ai_service->generate_json_from_text($prompt, $options);
+		}
+
+		return $ai_service->generate_json($prompt, $options);
+	}
+
+	/**
 	 * {@inheritdoc}
 	 */
 	public function apply_to_post(int $post_id, $value): bool {

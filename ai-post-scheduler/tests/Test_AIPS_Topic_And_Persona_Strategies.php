@@ -47,7 +47,7 @@ class Test_AIPS_Topic_And_Persona_Strategies extends WP_UnitTestCase {
 		$registry->register_default_topic_components();
 		$registry->register_default_persona_components();
 
-		foreach (array('topic_title', 'topic_prompt', 'topic_keywords', 'topic_embedding') as $key) {
+		foreach (array('topic_title', 'topic_prompt', 'topic_keywords', 'topic_score', 'topic_embedding') as $key) {
 			$this->assertTrue($registry->has($key, 'author_topics'), "Expected {$key} registered under author_topics");
 			$this->assertSame('author_topics', $registry->get($key, 'author_topics')->get_strategy_key());
 		}
@@ -74,6 +74,12 @@ class Test_AIPS_Topic_And_Persona_Strategies extends WP_UnitTestCase {
 		$keywords_comp = new AIPS_Topic_Keywords_Component();
 		$this->assertSame(array('raft', 'paxos', 'consensus'), $keywords_comp->sanitize_value('raft, paxos, raft, consensus'));
 		$this->assertArrayHasKey('keywords', $keywords_comp->get_schema_fragment());
+
+		$score_comp = new AIPS_Topic_Score_Component();
+		$this->assertSame(92, $score_comp->sanitize_value('Score: 92/100'));
+		$this->assertSame(100, $score_comp->sanitize_value(150));
+		$this->assertArrayHasKey('score', $score_comp->get_schema_fragment());
+		$this->assertFalse($score_comp->is_required());
 	}
 
 	/**
