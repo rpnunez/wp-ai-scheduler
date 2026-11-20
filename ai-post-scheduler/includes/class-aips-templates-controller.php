@@ -45,7 +45,10 @@ class AIPS_Templates_Controller {
             $slice_count
         );
 
-        $history_service = new AIPS_History_Service();
+        $container       = AIPS_Container::get_instance();
+        $history_service = $container->has(AIPS_History_Service_Interface::class)
+            ? $container->make(AIPS_History_Service_Interface::class)
+            : new AIPS_History_Service();
         $history = $history_service->create('template_lifecycle', array(
             'template_id'     => absint($template_id),
             'creation_method' => 'template_lifecycle',

@@ -194,6 +194,45 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		$this->assertSame('invalid_request', $response['data']['code']);
 	}
 
+	public function test_ajax_flush_notification_digest_rejects_invalid_nonce() {
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = 'invalid';
+		$_REQUEST['nonce'] = 'invalid';
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_flush_notification_digest'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('error', $response['data']['code']);
+		$this->assertSame('Invalid nonce.', $response['data']['message']);
+	}
+
+	public function test_ajax_flush_notification_digest_requires_manage_options() {
+		$subscriber_id = $this->factory->user->create(array('role' => 'subscriber'));
+		wp_set_current_user($subscriber_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_flush_notification_digest'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+	}
+
+	public function test_ajax_flush_notification_digest_returns_empty_queue_shape() {
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_flush_notification_digest'));
+
+		$this->assertTrue($response['success']);
+		$this->assertArrayHasKey('message', $response['data']);
+		$this->assertSame(0, (int) $response['data']['queue_count']);
+	}
+
 	public function test_ajax_save_settings_rejects_invalid_nonce() {
 		wp_set_current_user($this->admin_user_id);
 		$_POST['nonce'] = 'invalid';

@@ -65,6 +65,19 @@ class Test_AIPS_Admin_Flow_Controller extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Instantiating the legacy controller must emit the class deprecation notice.
+	 *
+	 * @return void
+	 */
+	public function test_constructor_emits_deprecated_class_notice() {
+		$this->setExpectedDeprecated('AIPS_Admin_Flow_Controller');
+
+		$controller = new AIPS_Admin_Flow_Controller();
+
+		$this->assertInstanceOf(AIPS_Campaigns_Controller::class, $controller);
+	}
+
+	/**
 	 * Helper for invoking private controller methods.
 	 *
 	 * @param object $object Object instance.
