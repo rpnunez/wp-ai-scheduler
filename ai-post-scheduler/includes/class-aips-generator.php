@@ -72,6 +72,11 @@ class AIPS_Generator {
     private $markdown_parser;
 
     /**
+     * @var AIPS_Component_Retry_Runner Inline component retry runner.
+     */
+    private $retry_runner;
+
+    /**
      * Constructor.
      *
      * Accepts dependencies for easier testing; falls back to concrete
@@ -112,6 +117,7 @@ class AIPS_Generator {
         $this->post_slug_prompt_builder = $this->prompt_builder->get_post_slug_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->retry_runner = new AIPS_Component_Retry_Runner();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -1384,7 +1390,22 @@ class AIPS_Generator {
 
         // Handle featured image generation/selection.
         $featured_image_success = !$context->should_generate_featured_image();
-        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content, $resolved_image_prompt);
+        $featured_image_id      = 0;
+        if ($context->should_generate_featured_image()) {
+            $fi_attempt = $this->retry_runner->execute(
+                'post_featured_image',
+                function () use ($context, $post_id, $title, $content, $resolved_image_prompt, &$featured_image_success) {
+                    $featured_image_success = false;
+                    return $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content, $resolved_image_prompt);
+                },
+                function ($attachment_id) use (&$featured_image_success) {
+                    return (bool) $featured_image_success && !empty($attachment_id);
+                },
+                $this->current_history,
+                $this->logger
+            );
+            $featured_image_id = $fi_attempt['result'];
+        }
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
         // Handle post content images generation/selection.
@@ -2140,7 +2161,23 @@ class AIPS_Generator {
 			$content_options['context'] = $content_context;
 		}
 
-		$content = $this->generate_content($content_prompt, $content_options, 'content');
+		$content_run = $this->retry_runner->execute(
+			'post_content',
+			function () use ($content_prompt, $content_options) {
+				$raw = $this->generate_content($content_prompt, $content_options, 'content');
+				if (is_wp_error($raw)) {
+					return $raw;
+				}
+				return $this->normalize_generated_content_for_wordpress($raw);
+			},
+			function ($candidate) {
+				return !is_wp_error($candidate) && is_string($candidate) && '' !== $candidate;
+			},
+			$this->current_history,
+			$this->logger
+		);
+
+		$content = $content_run['result'];
 
 		if (is_wp_error($content)) {
 			$this->current_history->record_error($content->get_error_message(), array(
@@ -2149,8 +2186,6 @@ class AIPS_Generator {
 			));
 			$content = '';
 		}
-
-		$content = $this->normalize_generated_content_for_wordpress($content);
 
 		if ($content === '') {
 			$error_message = __('Post generation failed before a usable Post Content could be created.', 'ai-post-scheduler');
@@ -2202,8 +2237,25 @@ class AIPS_Generator {
 	 * @return array
 	 */
 	private function generate_and_resolve_metadata($context, $content) {
-		// A failed combined turn falls back to the established per-component requests.
-		$metadata = $this->use_metadata_turn() ? $this->generate_metadata_turn($context) : null;
+		// A failed combined turn retries up to the configured post_meta budget before falling back to per-component requests.
+		$metadata = null;
+		if ($this->use_metadata_turn()) {
+			$meta_run = $this->retry_runner->execute(
+				'post_meta',
+				function () use ($context) {
+					return $this->generate_metadata_turn($context);
+				},
+				function ($candidate) {
+					return is_array($candidate);
+				},
+				$this->current_history,
+				$this->logger,
+				function () {
+					return 'metadata_turn_failed';
+				}
+			);
+			$metadata = $meta_run['valid'] ? $meta_run['result'] : null;
+		}
 
 		$title_result   = $this->resolve_generated_title($context, $content, $metadata);
 		$excerpt_result = $this->resolve_generated_excerpt($title_result['title'], $content, $context, $metadata);
@@ -2237,33 +2289,26 @@ class AIPS_Generator {
 			}
 
 			if (!empty($missing_indexes)) {
-				$recovered = array();
-				$builder   = $this->get_post_metadata_prompt_builder();
+				$builder      = $this->get_post_metadata_prompt_builder();
+				$deficit_run  = $this->retry_runner->execute_deficit_recovery(
+					'post_images',
+					$missing_indexes,
+					function (array $still_missing, $retry_attempt) use ($context, $builder, $configured_templates, $content, $title_result) {
+						// First recovery pass prefers a lightweight conversational mini-turn when active;
+						// subsequent passes use standalone context recovery.
+						if (1 === $retry_attempt && $this->conversation !== null) {
+							$conv_prompt = $builder->build_conversational_recovery_prompt($still_missing, $configured_templates);
+							return $this->execute_content_image_recovery($context, $still_missing, $conv_prompt, $this->conversation, 'conversational');
+						}
 
-				// When conversational generation is active, request missing prompts via a follow-up mini-turn.
-				if ($this->conversation !== null) {
-					$conv_prompt = $builder->build_conversational_recovery_prompt($missing_indexes, $configured_templates);
-					$recovered   = $this->execute_content_image_recovery($context, $missing_indexes, $conv_prompt, $this->conversation, 'conversational');
-				}
+						$standalone_prompt = $builder->build_standalone_recovery_prompt($still_missing, $content, $title_result['title'], $configured_templates);
+						return $this->execute_content_image_recovery($context, $still_missing, $standalone_prompt, null, 'standalone');
+					},
+					$this->current_history,
+					$this->logger
+				);
 
-				// Check which indexes remain unresolved.
-				$still_missing = array();
-				foreach ($missing_indexes as $idx) {
-					if (!isset($recovered[$idx])) {
-						$still_missing[] = $idx;
-					}
-				}
-
-				// Fall back to standalone prompt generation for unresolved indexes.
-				if (!empty($still_missing)) {
-					$standalone_prompt    = $builder->build_standalone_recovery_prompt($still_missing, $content, $title_result['title'], $configured_templates);
-					$standalone_recovered = $this->execute_content_image_recovery($context, $still_missing, $standalone_prompt, null, 'standalone');
-					foreach ($standalone_recovered as $k => $v) {
-						$recovered[$k] = $v;
-					}
-				}
-
-				foreach ($recovered as $idx => $prompt_str) {
+				foreach ($deficit_run['recovered'] as $idx => $prompt_str) {
 					$resolved_content_image_prompts[$idx] = $prompt_str;
 				}
 			}
@@ -2302,17 +2347,59 @@ class AIPS_Generator {
 		$slug         = '';
 
 		if ($metadata !== null) {
-			// The metadata turn already answered; do not spend another AI call if it left the slug blank.
 			$slug         = isset($metadata['slug']) ? sanitize_title((string) $metadata['slug']) : '';
 			$slug_success = ($slug !== '');
-		} else {
-			$slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
-			if (is_wp_error($slug)) {
-				$slug         = '';
-				$slug_success = false;
-			} else {
-				$slug_success = $slug_success && ($slug !== '');
+
+			// If metadata left the slug blank and the admin explicitly configured post_slug retries (> 0),
+			// run standalone slug retries up to the configured budget before falling back to title.
+			if ($slug === '' && $this->retry_runner->get_retry_limit('post_slug') > 0) {
+				$slug_run = $this->retry_runner->execute(
+					'post_slug',
+					function ($attempt) use ($context, $content, $title, &$slug_success) {
+						if (0 === $attempt) {
+							return '';
+						}
+						$attempt_success = false;
+						$candidate       = $this->generate_slug_from_context($context, $content, $title, array(), $attempt_success);
+						if (is_wp_error($candidate)) {
+							$slug_success = false;
+							return $candidate;
+						}
+						$clean        = sanitize_title((string) $candidate);
+						$slug_success = $attempt_success && ($clean !== '');
+						return $clean;
+					},
+					function ($candidate) use (&$slug_success) {
+						return !is_wp_error($candidate) && is_string($candidate) && '' !== $candidate && (bool) $slug_success;
+					},
+					$this->current_history,
+					$this->logger
+				);
+				$slug         = ($slug_run['valid'] && is_string($slug_run['result'])) ? $slug_run['result'] : '';
+				$slug_success = (bool) $slug_run['valid'];
 			}
+		} else {
+			$slug_run = $this->retry_runner->execute(
+				'post_slug',
+				function () use ($context, $content, $title, &$slug_success) {
+					$attempt_success = false;
+					$candidate       = $this->generate_slug_from_context($context, $content, $title, array(), $attempt_success);
+					if (is_wp_error($candidate)) {
+						$slug_success = false;
+						return $candidate;
+					}
+					$clean        = sanitize_title((string) $candidate);
+					$slug_success = $attempt_success && ($clean !== '');
+					return $clean;
+				},
+				function ($candidate) use (&$slug_success) {
+					return !is_wp_error($candidate) && is_string($candidate) && '' !== $candidate && (bool) $slug_success;
+				},
+				$this->current_history,
+				$this->logger
+			);
+			$slug         = ($slug_run['valid'] && is_string($slug_run['result'])) ? $slug_run['result'] : '';
+			$slug_success = (bool) $slug_run['valid'];
 		}
 
 		if ($slug === '') {
@@ -2504,7 +2591,21 @@ class AIPS_Generator {
 			$title = $metadata['title'];
 		} else {
 			$ai_variables = $this->resolve_ai_variables_from_context($context, $content);
-			$title        = $this->generate_title_from_context($context, $content, $ai_variables);
+			$title_run    = $this->retry_runner->execute(
+				'post_title',
+				function () use ($context, $content, $ai_variables) {
+					return $this->generate_title_from_context($context, $content, $ai_variables);
+				},
+				function ($candidate) {
+					if (is_wp_error($candidate) || !is_string($candidate) || '' === trim($candidate)) {
+						return false;
+					}
+					return !(strpos($candidate, '{{') !== false && strpos($candidate, '}}') !== false);
+				},
+				$this->current_history,
+				$this->logger
+			);
+			$title = $title_run['result'];
 		}
 
 		if ($this->current_history) {
@@ -2597,11 +2698,43 @@ class AIPS_Generator {
 						array('component' => 'excerpt')
 					);
 				}
-				$excerpt = $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);
+				$excerpt_run = $this->retry_runner->execute(
+					'post_excerpt',
+					function () use ($title, $content, $context, &$excerpt_success) {
+						$excerpt_success = false;
+						return $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);
+					},
+					function ($candidate) use (&$excerpt_success) {
+						return (bool) $excerpt_success && is_string($candidate) && '' !== trim($candidate);
+					},
+					$this->current_history,
+					$this->logger
+				);
+				$excerpt         = is_string($excerpt_run['result']) ? $excerpt_run['result'] : '';
+				$excerpt_success = (bool) $excerpt_run['valid'];
 			}
 		} else {
 			$excerpt_success = false;
-			$excerpt         = $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);
+			$excerpt_run     = $this->retry_runner->execute(
+				'post_excerpt',
+				function () use ($title, $content, $context, &$excerpt_success) {
+					$excerpt_success = false;
+					return $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);
+				},
+				function ($candidate) use (&$excerpt_success) {
+					return (bool) $excerpt_success && is_string($candidate) && '' !== trim($candidate);
+				},
+				$this->current_history,
+				$this->logger
+			);
+			$excerpt         = is_string($excerpt_run['result']) ? $excerpt_run['result'] : '';
+			$excerpt_success = (bool) $excerpt_run['valid'];
+		}
+
+		// When excerpt retries are exhausted and the result is still blank, provide a safe truncated
+		// fallback from the article body while preserving excerpt_success = false for Partial Generations.
+		if (!$excerpt_success && '' === trim((string) $excerpt) && '' !== trim((string) $content)) {
+			$excerpt = self::truncate_excerpt(wp_strip_all_tags((string) $content));
 		}
 
 		return array(
