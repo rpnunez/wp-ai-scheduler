@@ -159,8 +159,9 @@ class AIPS_Config {
             'aips_max_tokens_content' => 4000,
             'aips_temperature' => 0.7,
             // Conversational generation (requires a provider with supports_conversation())
+            // When conversational generation is enabled, the combined metadata turn is implied by default.
             'aips_conversational_generation' => false,
-            'aips_conversational_metadata_turn' => false,
+            'aips_conversational_metadata_turn' => true,
             // Post defaults
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
