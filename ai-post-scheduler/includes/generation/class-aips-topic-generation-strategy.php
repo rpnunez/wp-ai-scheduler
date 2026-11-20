@@ -271,6 +271,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 			return AIPS_Generation_Result::from_wp_error($error, microtime(true) - $start);
 		}
 
+		$author_name   = isset($author->name) ? (string) $author->name : '';
 		$requested_qty = isset($author->topic_generation_quantity) ? max(1, (int) $author->topic_generation_quantity) : 5;
 		$history       = $this->history_service->create('topic_generation', array(
 			'author_id'       => (int) $author->id,
@@ -279,7 +280,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 		));
 		$history_id = ($history && $history->get_id()) ? (int) $history->get_id() : 0;
 
-		$this->logger->log("Starting topic generation for author: {$author->name} (ID: {$author->id})", 'info', array(
+		$this->logger->log("Starting topic generation for author: {$author_name} (ID: {$author->id})", 'info', array(
 			'author_id' => $author->id,
 			'quantity'  => $requested_qty,
 		));
@@ -287,7 +288,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 		if ($history) {
 			$history->record(
 				'activity',
-				sprintf('Starting topic generation for author: %s (requested: %d)', (string) $author->name, $requested_qty),
+				sprintf('Starting topic generation for author: %s (requested: %d)', $author_name, $requested_qty),
 				array('author_id' => (int) $author->id, 'quantity' => $requested_qty)
 			);
 		}
@@ -376,6 +377,9 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 			'topic_embedding' => true,
 		);
 		$warnings = array();
+		if (!$has_keywords) {
+			$warnings[] = __('Topic keywords were omitted from the AI response.', 'ai-post-scheduler');
+		}
 
 		// Stage 3: Auto Approval & Fuzzy Duplicate Detection.
 		$topics = $this->deduplication_service->evaluate_topics_for_duplicates($topics, $author->id);
@@ -652,8 +656,10 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 			$rejection_guidance[] = "Several topics were rejected for tone mismatch.{$tone_hint} Ensure suggested topics naturally lend themselves to the author's established voice and writing style.";
 		}
 
+		$field_niche = !empty($author->field_niche) ? (string) $author->field_niche : (!empty($author->niche) ? (string) $author->niche : '');
+
 		if (!empty($stats['irrelevant']['rejected'])) {
-			$rejection_guidance[] = "Multiple topics were rejected as off-topic. Stay strictly within the '{$author->field_niche}' space — avoid peripheral subjects that do not directly serve this niche.";
+			$rejection_guidance[] = "Multiple topics were rejected as off-topic. Stay strictly within the '{$field_niche}' space — avoid peripheral subjects that do not directly serve this niche.";
 		}
 
 		if (!empty($stats['policy']['rejected'])) {
@@ -674,7 +680,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 		}
 
 		if (!empty($stats['irrelevant']['approved'])) {
-			$approval_notes[] = "Topics tightly focused on '{$author->field_niche}' are well received.";
+			$approval_notes[] = "Topics tightly focused on '{$field_niche}' are well received.";
 		}
 
 		if (empty($rejection_guidance) && empty($approval_notes)) {
