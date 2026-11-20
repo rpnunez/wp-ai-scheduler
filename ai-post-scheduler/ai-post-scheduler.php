@@ -411,12 +411,14 @@ final class AI_Post_Scheduler {
             );
         });
 
-        // Universal Generation Strategy & Component Framework (issue #2400 Phases 1-2)
+        // Universal Generation Strategy & Component Framework (issue #2400 Phases 1-3)
         $container->singleton(AIPS_Generation_Component_Registry::class, function( $container ) {
             $registry = new AIPS_Generation_Component_Registry();
             $registry->register_default_post_components();
             $registry->register_default_topic_components();
             $registry->register_default_persona_components();
+            $registry->register_default_campaign_components();
+            $registry->register_default_research_components();
             return $registry;
         });
 
@@ -456,6 +458,23 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_AI_Service_Interface::class),
                 $container->make(AIPS_Logger_Interface::class),
                 $container->make(AIPS_History_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Campaign_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Campaign_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_History_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Research_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Research_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class)
             );
         });
 

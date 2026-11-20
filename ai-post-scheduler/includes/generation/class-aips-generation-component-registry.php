@@ -257,4 +257,37 @@ class AIPS_Generation_Component_Registry {
 
 		return $this;
 	}
+
+	/**
+	 * Register the default set of built-in Campaign Generation Components.
+	 *
+	 * @param AIPS_AI_Service_Interface|null $ai_service Optional AI service.
+	 * @return self
+	 */
+	public function register_default_campaign_components(
+		?AIPS_AI_Service_Interface $ai_service = null
+	): self {
+		$this->register(new AIPS_Campaign_Pillar_Component($ai_service));
+		$this->register(new AIPS_Campaign_Cluster_Component());
+
+		return $this;
+	}
+
+	/**
+	 * Register the default set of built-in Research Generation Components.
+	 *
+	 * @param AIPS_AI_Service_Interface|null $ai_service Optional AI service.
+	 * @param AIPS_Logger_Interface|null     $logger     Optional logger.
+	 * @return self
+	 */
+	public function register_default_research_components(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Logger_Interface $logger = null
+	): self {
+		$this->register(new AIPS_Trending_Topics_Component($ai_service, $logger));
+		$this->register(new AIPS_Topic_Freshness_Component());
+		$this->register(new AIPS_Topic_Comparison_Component());
+
+		return $this;
+	}
 }

@@ -12,6 +12,11 @@
 - **Slug Prompt Context Cap:** Stateless slug prompts (`AIPS_Prompt_Builder_Post_Slug`) now condense the article to 3,000 characters by default (`AIPS_Prompt_Builder_Post_Slug::CONTEXT_MAX_CHARS`) instead of inheriting the 12,000 character `AIPS_Content_Digest` default, matching the title prompt's cap. A slug is three to six keywords and the title is already in the prompt, so the extra article text only inflated the request. The `aips_slug_context_max_chars` filter still overrides the cap; sites that filtered it are unaffected, and sites that relied on the old default now send at most 3,000 characters of context. Conversational runs are unchanged (issue #2405).
 
 ### Added
+- **Universal Generation Strategy & Component Framework — Phase 3 (issue #2400):**
+  - Added `AIPS_Campaign_Generation_Context` and `AIPS_Research_Generation_Context` in `includes/generation/`.
+  - Implemented `AIPS_Campaign_Generation_Strategy`, `AIPS_Campaign_Pillar_Component`, and `AIPS_Campaign_Cluster_Component`, migrating `AIPS_Campaigns_Controller::ajax_ai_generate_campaign()` onto `AIPS_Generation_Pipeline`.
+  - Implemented `AIPS_Research_Generation_Strategy`, `AIPS_Trending_Topics_Component`, `AIPS_Topic_Freshness_Component`, and `AIPS_Topic_Comparison_Component`, migrating `AIPS_Research_Service` onto `AIPS_Generation_Pipeline` with typed `*_result()` methods.
+  - Registered Phase 3 components and strategies in `AIPS_Generation_Component_Registry` and `AIPS_Container`.
 - **Universal Generation Strategy & Component Framework — Phase 2 (issue #2400):**
   - Added `AIPS_Pipeline_Executable_Strategy_Interface`, `AIPS_Abstract_Generation_Context`, `AIPS_Author_Topic_Generation_Context`, and `AIPS_Author_Persona_Generation_Context` in `includes/generation/` so `AIPS_Generation_Pipeline` dispatches domain strategies polymorphically.
   - Implemented `AIPS_Topic_Generation_Strategy` and concrete Topic Components (`AIPS_Topic_Title_Component`, `AIPS_Topic_Prompt_Component`, `AIPS_Topic_Keywords_Component`, `AIPS_Topic_Embedding_Component`) with history container tracking (`topic_generation`) and partial-generation status detection.
