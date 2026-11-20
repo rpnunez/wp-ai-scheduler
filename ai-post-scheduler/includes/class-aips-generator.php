@@ -1025,33 +1025,46 @@ class AIPS_Generator {
         }
 
         $content = $this->normalize_generated_content_for_wordpress($content);
-
-        // Resolve AI variables
-        $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
-
-        // Generate the title
-        $title = $this->generate_title_from_context($context, $content, $ai_variables);
-
-        if (is_wp_error($title)) {
-            // Fallback title on error
-            $title = __('Error generating title', 'ai-post-scheduler');
-        }
-
         $content = $this->strip_leading_title_block_from_content($content);
 
-        // Generate excerpt
-		$excerpt = $this->generate_excerpt_from_context($title, $content, $context);
+        $resolved_image_prompt          = null;
+        $resolved_content_image_prompts = array();
+        $slug                           = '';
 
-        $slug = '';
-        if ($context->should_generate_slug()) {
-            $slug_success = false;
-            $generated_slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
-            if (!is_wp_error($generated_slug) && $slug_success && '' !== trim((string) $generated_slug)) {
-                $slug = trim((string) $generated_slug);
-            } else {
-                // When AI slug generation fails, is empty, or returns an error, fall back to WordPress's native
-                // sanitize_title($title) so the preview interface still displays a valid permalink slug.
-                $slug = sanitize_title($title);
+        if ($this->use_metadata_turn()) {
+            $metadata_result                = $this->generate_and_resolve_metadata($context, $content);
+            $title                          = $metadata_result['title'];
+            $excerpt                        = $metadata_result['excerpt'];
+            $slug                           = isset($metadata_result['slug']) ? $metadata_result['slug'] : '';
+            $resolved_image_prompt          = $metadata_result['resolved_image_prompt'];
+            $resolved_content_image_prompts = isset($metadata_result['resolved_content_image_prompts'])
+                ? (array) $metadata_result['resolved_content_image_prompts']
+                : array();
+        } else {
+            // Resolve AI variables
+            $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
+
+            // Generate the title
+            $title = $this->generate_title_from_context($context, $content, $ai_variables);
+
+            if (is_wp_error($title)) {
+                // Fallback title on error
+                $title = __('Error generating title', 'ai-post-scheduler');
+            }
+
+            // Generate excerpt
+            $excerpt = $this->generate_excerpt_from_context($title, $content, $context);
+
+            if ($context->should_generate_slug()) {
+                $slug_success   = false;
+                $generated_slug = $this->generate_slug_from_context($context, $content, $title, array(), $slug_success);
+                if (!is_wp_error($generated_slug) && $slug_success && '' !== trim((string) $generated_slug)) {
+                    $slug = trim((string) $generated_slug);
+                } else {
+                    // When AI slug generation fails, is empty, or returns an error, fall back to WordPress's native
+                    // sanitize_title($title) so the preview interface still displays a valid permalink slug.
+                    $slug = sanitize_title($title);
+                }
             }
         }
 
@@ -1068,7 +1081,9 @@ class AIPS_Generator {
         // Handle image preview data (not generation)
         if ($context->should_generate_featured_image()) {
             if ($context->get_featured_image_source() === 'ai_prompt') {
-                $result['image_prompt'] = $this->process_featured_image_prompt($context, $content, $title);
+                $result['image_prompt'] = ($resolved_image_prompt !== null && $resolved_image_prompt !== '')
+                    ? $resolved_image_prompt
+                    : $this->process_featured_image_prompt($context, $content, $title);
             } elseif ($context->get_featured_image_source() === 'unsplash') {
                 $keywords = $context->get_unsplash_keywords();
                 $topic_str = $context->get_topic();
@@ -1086,7 +1101,12 @@ class AIPS_Generator {
                 $order     = (int) $img->placeholder_index;
                 $source    = !empty($img->source) ? $img->source : 'ai_prompt';
                 $placement = !empty($img->placement) ? $img->placement : 'auto';
-                $prompt    = !empty($img->image_prompt) ? $this->template_processor->process($img->image_prompt, $context->get_topic()) : '';
+                $prompt    = '';
+                if ($source === 'ai_prompt' && isset($resolved_content_image_prompts[$order]) && '' !== trim((string) $resolved_content_image_prompts[$order])) {
+                    $prompt = trim((string) $resolved_content_image_prompts[$order]);
+                } elseif (!empty($img->image_prompt)) {
+                    $prompt = $this->template_processor->process($img->image_prompt, $context->get_topic());
+                }
 
                 $result['post_images'][] = array(
                     'image_index'  => $order,
@@ -1507,6 +1527,23 @@ class AIPS_Generator {
             do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id(), $context);
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
+        }
+
+        if ($this->conversation !== null && !$this->conversation->is_empty() && $this->current_history) {
+            $this->current_history->record(
+                'conversation_transcript',
+                'Conversation transcript for post generation',
+                null,
+                array(
+                    'exchanges_count'  => $this->conversation->count_exchanges(),
+                    'estimated_tokens' => $this->conversation->estimated_tokens(),
+                    'transcript'       => $this->conversation->to_array(),
+                ),
+                array(
+                    'component' => 'conversation',
+                    'post_id'   => $post_id,
+                )
+            );
         }
 
         $this->end_conversation();
@@ -2537,16 +2574,30 @@ class AIPS_Generator {
 	 */
 	private function resolve_generated_excerpt($title, $content, $context, $metadata) {
 		if ($metadata !== null) {
-			$excerpt         = self::truncate_excerpt($metadata['excerpt']);
+			$excerpt         = self::truncate_excerpt(isset($metadata['excerpt']) ? $metadata['excerpt'] : '');
 			$excerpt_success = ($excerpt !== '');
-			if ($this->current_history && $excerpt_success) {
-				$this->current_history->record(
-					'ai_response',
-					'Post excerpt generated successfully',
-					null,
-					$excerpt,
-					array('component' => 'excerpt')
-				);
+			if ($excerpt_success) {
+				if ($this->current_history) {
+					$this->current_history->record(
+						'ai_response',
+						'Post excerpt generated successfully',
+						null,
+						$excerpt,
+						array('component' => 'excerpt')
+					);
+				}
+			} else {
+				$this->logger->log('Metadata turn returned empty excerpt; falling back to separate excerpt generation.', 'warning');
+				if ($this->current_history) {
+					$this->current_history->record(
+						'warning',
+						'Metadata turn returned empty excerpt; falling back to separate excerpt generation.',
+						null,
+						null,
+						array('component' => 'excerpt')
+					);
+				}
+				$excerpt = $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);
 			}
 		} else {
 			$excerpt_success = false;

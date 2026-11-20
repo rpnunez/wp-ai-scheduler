@@ -19,6 +19,11 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Prompt_Builder_Post_Slug {
 
+	/**
+	 * Default character budget for article context, matching post title.
+	 */
+	const DEFAULT_MAX_CHARS = 3000;
+
 	const RESPONSE_INSTRUCTION = "
 
 Respond with ONLY one lowercase hyphenated slug, nothing else.";
@@ -30,7 +35,7 @@ Respond with ONLY one lowercase hyphenated slug, nothing else.";
 	 * this matches the title prompt's cap (aips_title_context_max_chars) rather
 	 * than the much larger general-purpose AIPS_Content_Digest default.
 	 */
-	const CONTEXT_MAX_CHARS = 3000;
+	const CONTEXT_MAX_CHARS = self::DEFAULT_MAX_CHARS;
 
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
@@ -186,7 +191,7 @@ Respond with ONLY one lowercase hyphenated slug, nothing else.";
 		$prompt = $this->assemble_prompt('Generate a clean, SEO-friendly URL slug for a blog post based on its title and content.', $slug_instructions, $title);
 
 		if (!empty($content)) {
-			$max_chars       = (int) apply_filters('aips_slug_context_max_chars', self::CONTEXT_MAX_CHARS, $subject);
+			$max_chars       = (int) apply_filters('aips_slug_context_max_chars', self::DEFAULT_MAX_CHARS, $subject);
 			$content_context = $this->content_digest->build($content, $max_chars);
 			$content_context = str_ireplace(array('<article_data', '</article_data'), array('&lt;article_data', '&lt;/article_data'), $content_context);
 			$prompt         .= "\n\n<article_data>\n" . $content_context . "\n</article_data>";

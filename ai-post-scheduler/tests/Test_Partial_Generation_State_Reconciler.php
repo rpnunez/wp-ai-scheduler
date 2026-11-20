@@ -431,10 +431,11 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 
 		$manager = new AIPS_Post_Manager();
 		$manager->update_generation_status_meta($post_id, array(
-			'post_title'   => true,
-			'post_excerpt' => true,
-			'post_content' => true,
-			'post_images'  => true,
+			'post_title'     => true,
+			'post_excerpt'   => true,
+			'post_content'   => true,
+			'featured_image' => true,
+			'post_images'    => true,
 		), false);
 
 		$reconciled = $manager->reconcile_generation_status_meta_from_post($post_id);

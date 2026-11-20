@@ -777,4 +777,188 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$post_in_db = get_post($post_id);
 		$this->assertSame($initial_db_content, $post_in_db->post_content, 'Database post must not be mutated during Regenerate All staging.');
 	}
+
+	public function test_build_conversation_uses_persisted_transcript() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Persisted Post Title',
+			'post_content' => '<p>Persisted Post Content</p>',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+			'record_kind' => 'generation',
+		));
+
+		$transcript = array(
+			array('role' => 'user', 'text' => 'Original Historical Prompt for Content'),
+			array('role' => 'model', 'text' => '<p>Persisted Post Content</p>'),
+		);
+
+		$this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'conversation_transcript',
+				'output'      => array(
+					'transcript'       => $transcript,
+					'exchanges_count'  => 1,
+					'estimated_tokens' => 200,
+				),
+			),
+			AIPS_History_Type::AI_CONVERSATION
+		);
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test',
+			'prompt_template' => 'Different template prompt',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+
+		$reflection = new ReflectionClass($this->service);
+		$method     = $reflection->getMethod('build_conversation');
+		$method->setAccessible(true);
+
+		$generator_prop = $reflection->getProperty('generator');
+		$generator_prop->setAccessible(true);
+		$mock_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai->method('supports_conversation')->willReturn(true);
+		$mock_ai->method('is_available')->willReturn(true);
+		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
+
+		$conversation = $method->invoke($this->service, $context, $post_id, false);
+
+		$this->assertInstanceOf('AIPS_AI_Conversation', $conversation);
+		$turns = $conversation->to_array();
+		$this->assertCount(2, $turns);
+		$this->assertSame('Original Historical Prompt for Content', $turns[0]['text']);
+	}
+
+	public function test_build_conversation_with_discrete_title_exchange() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Persisted Post Title',
+			'post_content' => '<p>Persisted Post Content</p>',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+			'record_kind' => 'generation',
+		));
+
+		$transcript = array(
+			array('role' => 'user', 'text' => 'Content prompt'),
+			array('role' => 'model', 'text' => '<p>Persisted Post Content</p>'),
+			array('role' => 'user', 'text' => 'Now generate a title for the article you just wrote.'),
+			array('role' => 'model', 'text' => 'Discrete Historical Title'),
+		);
+
+		$this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'conversation_transcript',
+				'output'      => array(
+					'transcript'       => $transcript,
+					'exchanges_count'  => 2,
+					'estimated_tokens' => 300,
+				),
+			),
+			AIPS_History_Type::AI_CONVERSATION
+		);
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test',
+			'prompt_template' => 'Template prompt',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+
+		$reflection = new ReflectionClass($this->service);
+		$method     = $reflection->getMethod('build_conversation');
+		$method->setAccessible(true);
+
+		$generator_prop = $reflection->getProperty('generator');
+		$generator_prop->setAccessible(true);
+		$mock_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai->method('supports_conversation')->willReturn(true);
+		$mock_ai->method('is_available')->willReturn(true);
+		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
+
+		$conversation = $method->invoke($this->service, $context, $post_id, true);
+
+		$this->assertInstanceOf('AIPS_AI_Conversation', $conversation);
+		$turns = $conversation->to_array();
+		$this->assertCount(4, $turns);
+		$this->assertSame('Now generate a title for the article you just wrote.', $turns[2]['text']);
+		$this->assertSame('Discrete Historical Title', $turns[3]['text']);
+	}
+
+	public function test_build_conversation_with_metadata_turn_falls_back_to_prompt_builder_for_title() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Persisted Post Title',
+			'post_content' => '<p>Persisted Post Content</p>',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+			'record_kind' => 'generation',
+		));
+
+		$transcript = array(
+			array('role' => 'user', 'text' => 'Content prompt'),
+			array('role' => 'model', 'text' => '<p>Persisted Post Content</p>'),
+			array('role' => 'user', 'text' => 'Generate title and excerpt JSON: TITLE INSTRUCTIONS: ...'),
+			array('role' => 'model', 'text' => '{"title":"Metadata Title","excerpt":"Metadata Excerpt"}'),
+		);
+
+		$this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'conversation_transcript',
+				'output'      => array(
+					'transcript'       => $transcript,
+					'exchanges_count'  => 2,
+					'estimated_tokens' => 350,
+				),
+			),
+			AIPS_History_Type::AI_CONVERSATION
+		);
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test',
+			'prompt_template' => 'Template prompt',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+
+		$reflection = new ReflectionClass($this->service);
+		$method     = $reflection->getMethod('build_conversation');
+		$method->setAccessible(true);
+
+		$generator_prop = $reflection->getProperty('generator');
+		$generator_prop->setAccessible(true);
+		$mock_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai->method('supports_conversation')->willReturn(true);
+		$mock_ai->method('is_available')->willReturn(true);
+		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
+
+		$conversation = $method->invoke($this->service, $context, $post_id, true);
+
+		$this->assertInstanceOf('AIPS_AI_Conversation', $conversation);
+		$turns = $conversation->to_array();
+		$this->assertCount(4, $turns);
+		// Should NOT use the JSON string
+		$this->assertNotSame('{"title":"Metadata Title","excerpt":"Metadata Excerpt"}', $turns[3]['text']);
+		$this->assertSame('Persisted Post Title', $turns[3]['text']);
+	}
 }

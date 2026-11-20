@@ -196,6 +196,38 @@ class Test_AIPS_Templates_Controller_Preview extends WP_Ajax_UnitTestCase {
 		$this->assertStringContainsString('Permission denied', $response['data']['message']);
 	}
 
+	private function with_mock_ai_service(callable $callback) {
+		$container = AIPS_Container::get_instance();
+		$singletons_prop = new ReflectionProperty($container, 'singletons');
+		$singletons_prop->setAccessible(true);
+		$bindings_prop = new ReflectionProperty($container, 'singleton_bindings');
+		$bindings_prop->setAccessible(true);
+
+		$prev_singletons = $singletons_prop->getValue($container);
+		$prev_bindings   = $bindings_prop->getValue($container);
+
+		$mock_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai->method('is_available')->willReturn(true);
+		$mock_ai->method('supports_conversation')->willReturn(false);
+		$mock_ai->method('generate_text')->willReturn('Generated Preview Text');
+
+		$singletons = $prev_singletons;
+		$bindings   = $prev_bindings;
+		$singletons[AIPS_AI_Service_Interface::class] = $mock_ai;
+		$bindings[AIPS_AI_Service_Interface::class]   = static function () use ($mock_ai) {
+			return $mock_ai;
+		};
+		$singletons_prop->setValue($container, $singletons);
+		$bindings_prop->setValue($container, $bindings);
+
+		try {
+			return $callback();
+		} finally {
+			$singletons_prop->setValue($container, $prev_singletons);
+			$bindings_prop->setValue($container, $prev_bindings);
+		}
+	}
+
 	public function test_ajax_test_template_passes_slug_and_empty_images_override() {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST['nonce'] = $_POST['nonce'];
@@ -205,7 +237,9 @@ class Test_AIPS_Templates_Controller_Preview extends WP_Ajax_UnitTestCase {
 		$_POST['slug_prompt'] = 'custom slug instruction';
 		$_POST['template_post_images'] = '[]'; // Explicitly empty image configuration
 
-		$response = $this->capture_ajax_callable(array($this->controller, 'ajax_test_template'));
+		$response = $this->with_mock_ai_service(function () {
+			return $this->capture_ajax_callable(array($this->controller, 'ajax_test_template'));
+		});
 		$this->assertTrue($response['success']);
 		$this->assertArrayHasKey('result', $response['data']);
 		// Slug was enabled in preview context, so it should be populated (either AI or title fallback)
@@ -221,7 +255,9 @@ class Test_AIPS_Templates_Controller_Preview extends WP_Ajax_UnitTestCase {
 		$_POST['prompt_template'] = 'Write about {{topic}}';
 		$_POST['generate_slug'] = 0;
 
-		$response = $this->capture_ajax_callable(array($this->controller, 'ajax_test_template'));
+		$response = $this->with_mock_ai_service(function () {
+			return $this->capture_ajax_callable(array($this->controller, 'ajax_test_template'));
+		});
 		$this->assertTrue($response['success']);
 		$this->assertArrayHasKey('result', $response['data']);
 		$this->assertEmpty($response['data']['result']['slug']);

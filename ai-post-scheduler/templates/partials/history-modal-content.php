@@ -21,7 +21,7 @@ $display_logs = !empty($display_logs) && is_array($display_logs) ? $display_logs
 $filter_counts = !empty($filter_counts) && is_array($filter_counts) ? $filter_counts : array('all' => count($display_logs));
 $timeline_data = !empty($timeline_data) && is_array($timeline_data) ? $timeline_data : array();
 $ai_logs = array_values(array_filter($display_logs, static function($log) {
-	return in_array('5', $log['type_ids'], true) || in_array('6', $log['type_ids'], true);
+	return in_array('5', $log['type_ids'], true) || in_array('6', $log['type_ids'], true) || in_array('11', $log['type_ids'], true);
 }));
 
 $type_labels = array(
@@ -33,6 +33,7 @@ $type_labels = array(
 	7 => AIPS_History_Type::get_label(7),
 	9 => AIPS_History_Type::get_label(9),
 	10 => AIPS_History_Type::get_label(10),
+	11 => AIPS_History_Type::get_label(11),
 );
 ?>
 
