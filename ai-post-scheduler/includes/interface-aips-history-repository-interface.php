@@ -155,6 +155,14 @@ interface AIPS_History_Repository_Interface {
 	public function get_ai_error_summary_stats($args = array());
 
 	/**
+	 * Retrieve aggregate statistics for generation runs and background jobs.
+	 *
+	 * @param array $filters Optional filters (e.g. campaign_id).
+	 * @return array
+	 */
+	public function get_stats($filters = array());
+
+	/**
 	 * Retrieve a single AI error record with full details by history log ID.
 	 *
 	 * @param int $log_id History log row ID.

@@ -695,11 +695,13 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A stored 3.7.21 stamp must still run migrate_to_3_7_22() and then stamp
-	 * the current plugin version.
+	 * Upgrading from 3.7.21 — the version owned by the author featured-image
+	 * migration — must still run migrate_to_3_7_22().
 	 *
 	 * A shared 3.7.21 gate would treat that stamp as already applied and skip
-	 * the index, metadata, cache, and orphan cleanup.
+	 * the index, metadata, cache, and orphan cleanup. The stored version is
+	 * then stamped to AIPS_VERSION, which stays at or above 3.8.1 so the
+	 * later campaign migrations are not skipped.
 	 */
 	public function test_migrate_to_3_7_22_runs_on_upgrade_from_3_7_21() {
 		AIPS_DB_Manager::install_tables();
@@ -722,9 +724,9 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			$wpdb->get_var( $wpdb->prepare( "SELECT id FROM `{$log}` WHERE id = %d", $orphan_log_id ) ),
 			'Upgrade from 3.7.21 must run migrate_to_3_7_22() and delete orphaned history_log rows'
 		);
-		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ) );
 		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
-		$this->assertSame( '3.7.24', AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
+		$this->assertTrue( version_compare( AIPS_VERSION, '3.8.1', '>=' ) );
+		$this->assertSame( AIPS_VERSION, AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
 	}
 
 	/**
@@ -787,7 +789,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.22' );
 		AIPS_DB_Migrations::check_and_run();
 		$assert_slug_columns( 'must gain slug columns on upgrade from 3.7.22' );
-		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ) );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
 		$this->assertSame( AIPS_VERSION, AIPS_Config::get_instance()->get_option( 'aips_db_version' ) );
 	}
 
@@ -829,7 +831,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.23' );
 		AIPS_DB_Migrations::check_and_run();
 		$assert_image_columns( 'must gain author image columns on upgrade from 3.7.23' );
-		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ) );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
 
 		// The test suite rewrites DROP TABLE to DROP TEMPORARY TABLE, which
 		// cannot remove the permanent tables this assertion has to hide.

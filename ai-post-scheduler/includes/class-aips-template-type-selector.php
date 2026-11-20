@@ -112,7 +112,12 @@ class AIPS_Template_Type_Selector {
 			
 			case 'alternating':
 				return $this->select_alternating($schedule, $active_structures);
-			
+
+			case 'campaign_all':
+			case 'campaign_rotate':
+				// Campaign modes rotate templates, not article structures.
+				return !empty($schedule->article_structure_id) ? absint($schedule->article_structure_id) : null;
+
 			default:
 				return $active_structures[0]->id;
 		}

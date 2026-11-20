@@ -228,18 +228,17 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that campaign ownership columns exist on core child tables.
+	 * Test that campaign ownership columns exist on core child tables and pivot table.
 	 */
 	public function test_campaign_id_columns_exist_on_core_tables() {
 		global $wpdb;
 
-		$tables = array(
-			$wpdb->prefix . 'aips_templates',
+		$tables_with_campaign = array(
 			$wpdb->prefix . 'aips_schedule',
 			$wpdb->prefix . 'aips_history',
 		);
 
-		foreach ($tables as $table_name) {
+		foreach ($tables_with_campaign as $table_name) {
 			$columns = $wpdb->get_results("SHOW COLUMNS FROM {$table_name}");
 			$column_names = array_map(function($col) {
 				return $col->Field;
@@ -247,6 +246,23 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 
 			$this->assertContains('campaign_id', $column_names, "Column 'campaign_id' should exist in {$table_name}");
 		}
+
+		// Templates table dropped campaign_id in 3.8.0 in favor of aips_campaign_templates pivot table.
+		$templates_table = $wpdb->prefix . 'aips_templates';
+		$template_columns = $wpdb->get_results("SHOW COLUMNS FROM {$templates_table}");
+		$template_column_names = array_map(function($col) {
+			return $col->Field;
+		}, $template_columns);
+		$this->assertNotContains('campaign_id', $template_column_names, "Column 'campaign_id' should have been dropped from {$templates_table} in 3.8.0");
+
+		// Pivot table must exist and contain campaign_id and template_id.
+		$pivot_table = $wpdb->prefix . 'aips_campaign_templates';
+		$pivot_columns = $wpdb->get_results("SHOW COLUMNS FROM {$pivot_table}");
+		$pivot_column_names = array_map(function($col) {
+			return $col->Field;
+		}, $pivot_columns);
+		$this->assertContains('campaign_id', $pivot_column_names, "Column 'campaign_id' should exist in {$pivot_table}");
+		$this->assertContains('template_id', $pivot_column_names, "Column 'template_id' should exist in {$pivot_table}");
 	}
 
 	/**

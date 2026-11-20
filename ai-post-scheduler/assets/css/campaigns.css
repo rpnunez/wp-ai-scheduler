@@ -1,5 +1,93 @@
-.aips-campaign-detail-lifecycle-actions {
+/* ==========================================================================
+   Campaign Feature Stylesheet
+   Reuses core design tokens and extends base admin components where required.
+   ========================================================================== */
+
+/* Embedded History tab scoped view */
+.aips-campaign-scoped-history .aips-history-embedded .aips-page-header {
+	display: none;
+}
+
+/* Campaign Directives auto-fit grid */
+.aips-campaign-defaults-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: var(--aips-space-5);
+	margin-bottom: var(--aips-space-6);
+}
+
+/* Two-column layout grid */
+.aips-grid-2col {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--aips-space-4);
+}
+
+/* Multi-Post-Type Rules Repeater */
+.aips-post-type-rule {
+	background: var(--aips-gray-50);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-sm);
+	padding: var(--aips-space-3);
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-post-type-rule-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr 80px 50px;
+	gap: var(--aips-space-3);
+	align-items: start;
+}
+
+.aips-post-type-rule-action {
+	padding-top: 20px;
+}
+
+/* Summary definition list */
+.aips-summary-grid {
+	display: grid;
+	grid-template-columns: 180px 1fr;
+	gap: var(--aips-space-2) var(--aips-space-4);
+	margin: 0;
+}
+
+/* Reusable layout & form utilities using design tokens */
+.aips-required {
+	color: var(--aips-error);
+}
+
+.aips-w-full {
+	width: 100%;
+}
+
+.aips-flex-row {
 	display: flex;
-	gap: 8px;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-flex-between {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 	flex-wrap: wrap;
+	gap: var(--aips-space-3);
+}
+
+.aips-btn-spinner {
+	float: none;
+	margin: 0 var(--aips-space-1) 0 0;
+	vertical-align: middle;
+}
+
+.aips-toggle-summary {
+	cursor: pointer;
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-primary);
+	outline: none;
+}
+
+.aips-label-sm {
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-semibold);
 }

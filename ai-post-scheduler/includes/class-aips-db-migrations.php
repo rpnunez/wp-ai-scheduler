@@ -304,6 +304,18 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		if ( version_compare( $from_version, '3.8.0', '<' ) && ! $this->migrate_to_3_8_0() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Campaign container migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
+		if ( version_compare( $from_version, '3.8.1', '<' ) && ! $this->migrate_to_3_8_1() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Campaign topic silo migration failed; database upgrade will retry.', 'error' );
+			return;
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -2226,5 +2238,135 @@ class AIPS_DB_Migrations {
 		}
 	}
 
-}
+	/**
+	 * Migrate to 3.8.0:
+	 * 1. Ensure aips_campaign_templates exists.
+	 * 2. Add directives and default columns to aips_campaigns.
+	 * 3. Backfill template-campaign relationships into aips_campaign_templates.
+	 * 4. Drop campaign_id from aips_templates.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_8_0() {
+		global $wpdb;
 
+		$campaigns_table          = $wpdb->prefix . 'aips_campaigns';
+		$campaign_templates_table = $wpdb->prefix . 'aips_campaign_templates';
+		$templates_table          = $wpdb->prefix . 'aips_templates';
+
+		// Ensure install_tables has created aips_campaign_templates.
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $campaign_templates_table ) ) !== $campaign_templates_table ) {
+			$this->db_manager->install_tables();
+		}
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $campaign_templates_table ) ) !== $campaign_templates_table ) {
+			return false;
+		}
+
+		// Ensure campaign columns exist.
+		$campaign_cols = array(
+			'prompt_directives'            => 'text DEFAULT NULL',
+			'default_article_structure_id' => 'bigint(20) DEFAULT NULL',
+			'default_post_status'          => 'varchar(50) DEFAULT NULL',
+			'default_voice_id'             => 'bigint(20) DEFAULT NULL',
+			'default_author_id'            => 'bigint(20) DEFAULT NULL',
+			'default_categories'           => 'text DEFAULT NULL',
+			'default_tags'                 => 'text DEFAULT NULL',
+		);
+
+		foreach ( $campaign_cols as $col => $definition ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$campaigns_table}` LIKE %s", $col ) );
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD COLUMN `{$col}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return false;
+			}
+		}
+
+		// Backfill existing template links and drop campaign_id from templates table.
+		$has_template_campaign_col = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$templates_table}` LIKE %s", 'campaign_id' ) );
+		if ( $has_template_campaign_col ) {
+			// Only backfill templates that point to existing, valid campaigns.
+			$backfilled = $wpdb->query( "
+				INSERT IGNORE INTO `{$campaign_templates_table}` (campaign_id, template_id, created_at)
+				SELECT t.campaign_id, t.id, t.created_at
+				FROM `{$templates_table}` t
+				INNER JOIN `{$campaigns_table}` c ON c.id = t.campaign_id
+				WHERE t.campaign_id IS NOT NULL AND t.campaign_id > 0
+			" );
+			if ( false === $backfilled ) {
+				return false;
+			}
+
+			// Verify that every template referencing an existing campaign was successfully migrated.
+			$unmigrated_count = (int) $wpdb->get_var( "
+				SELECT COUNT(*)
+				FROM `{$templates_table}` t
+				INNER JOIN `{$campaigns_table}` c ON c.id = t.campaign_id
+				LEFT JOIN `{$campaign_templates_table}` ct ON ct.campaign_id = t.campaign_id AND ct.template_id = t.id
+				WHERE t.campaign_id IS NOT NULL AND t.campaign_id > 0 AND ct.template_id IS NULL
+			" );
+
+			if ( $unmigrated_count > 0 ) {
+				$this->logger->log( sprintf( 'migrate_to_3_8_0: backfill verification failed. %d templates not migrated to pivot table', $unmigrated_count ), 'error' );
+				return false;
+			}
+
+			// Drop index if exists.
+			$index_exists = $wpdb->get_row( "SHOW INDEX FROM `{$templates_table}` WHERE Key_name = 'campaign_id'" );
+			if ( $index_exists ) {
+				if ( false === $wpdb->query( "ALTER TABLE `{$templates_table}` DROP INDEX `campaign_id`" ) ) {
+					return false;
+				}
+			}
+
+			// Drop column.
+			if ( false === $wpdb->query( "ALTER TABLE `{$templates_table}` DROP COLUMN `campaign_id`" ) ) {
+				return false;
+			}
+		}
+
+		$this->logger->log( 'migrate_to_3_8_0: campaign container schema migration complete', 'info' );
+		return true;
+	}
+
+	/**
+	 * Migrate to 3.8.1:
+	 * Adds silo_enabled, pillar_post_id, pillar_template_id, and pillar_anchor_keywords to aips_campaigns.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_8_1() {
+		global $wpdb;
+		$campaigns_table = $wpdb->prefix . 'aips_campaigns';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $campaigns_table ) ) !== $campaigns_table ) {
+			return true;
+		}
+
+		$cols = array(
+			'silo_enabled'           => 'tinyint(1) NOT NULL DEFAULT 0',
+			'pillar_post_id'         => 'bigint(20) DEFAULT NULL',
+			'pillar_template_id'     => 'bigint(20) DEFAULT NULL',
+			'pillar_anchor_keywords' => 'text DEFAULT NULL',
+		);
+
+		foreach ( $cols as $col => $definition ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$campaigns_table}` LIKE %s", $col ) );
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD COLUMN `{$col}` {$definition}" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				return false;
+			}
+		}
+
+		$has_silo_idx = $wpdb->get_row( "SHOW INDEX FROM `{$campaigns_table}` WHERE Key_name = 'silo_enabled'" );
+		if ( ! $has_silo_idx ) {
+			$wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD KEY silo_enabled (silo_enabled)" );
+		}
+
+		$has_pillar_idx = $wpdb->get_row( "SHOW INDEX FROM `{$campaigns_table}` WHERE Key_name = 'pillar_post_id'" );
+		if ( ! $has_pillar_idx ) {
+			$wpdb->query( "ALTER TABLE `{$campaigns_table}` ADD KEY pillar_post_id (pillar_post_id)" );
+		}
+
+		$this->logger->log( 'migrate_to_3_8_1: campaign topic silo columns migration complete', 'info' );
+		return true;
+	}
+}

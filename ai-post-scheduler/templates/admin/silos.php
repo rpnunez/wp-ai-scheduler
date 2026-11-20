@@ -19,7 +19,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 ?>
-<div class="aips-silos-tab aips-link-report-tab" id="aips-silos" data-review-url="<?php echo esc_url($review_url); ?>" data-report-url="<?php echo esc_url($report_url); ?>">
+$hide_global_controls = !empty($hide_global_controls);
+$campaign_id          = isset($campaign_id) ? (int) $campaign_id : 0;
+?>
+<div class="aips-silos-tab aips-link-report-tab" id="aips-silos" data-campaign-id="<?php echo $campaign_id > 0 ? esc_attr($campaign_id) : ''; ?>" data-review-url="<?php echo esc_url($review_url); ?>" data-report-url="<?php echo esc_url($report_url); ?>">
 
 	<?php
 	AIPS_Admin_UI_Primitives::render_card(
@@ -29,19 +32,40 @@ if (!defined('ABSPATH')) {
 			'icon'        => 'dashicons-index-card',
 			'description' => __('A silo is a topic cluster with a pillar you confirmed. Each article should link up to the pillar, and the pillar should reach every article. Fix silo adds the missing article → pillar links in the articles\' text (inserted when Bulk Auto-Linking is on, otherwise sent to review; undo from the Link Report). The pillar reaches its articles through its own links plus an "In this guide" list shown when it is displayed; its text is never edited.', 'ai-post-scheduler'),
 		),
-		function () use ($guide_enabled, $settings_url) {
+		function () use ($guide_enabled, $settings_url, $hide_global_controls, $campaign_id) {
 			?>
 			<div class="aips-silos-toolbar">
-				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-silos-refresh">
-					<span class="dashicons dashicons-update" aria-hidden="true"></span>
-					<?php esc_html_e('Re-detect Clusters', 'ai-post-scheduler'); ?>
-				</button>
-				<a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url($settings_url); ?>">
-					<span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
-					<?php esc_html_e('"In this guide" Settings', 'ai-post-scheduler'); ?>
-				</a>
-				<?php if (!$guide_enabled) : ?>
-					<span class="aips-badge aips-badge-warning"><?php esc_html_e('"In this guide" list is off', 'ai-post-scheduler'); ?></span>
+				<?php if (!$hide_global_controls) : ?>
+					<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-silos-refresh">
+						<span class="dashicons dashicons-update" aria-hidden="true"></span>
+						<?php esc_html_e('Re-detect Clusters', 'ai-post-scheduler'); ?>
+					</button>
+					<a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url($settings_url); ?>">
+						<span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
+						<?php esc_html_e('"In this guide" Settings', 'ai-post-scheduler'); ?>
+					</a>
+					<?php if (!$guide_enabled) : ?>
+						<span class="aips-badge aips-badge-warning"><?php esc_html_e('"In this guide" list is off', 'ai-post-scheduler'); ?></span>
+					<?php endif; ?>
+
+					<?php
+					if (0 === $campaign_id && class_exists('AIPS_Campaigns_Repository')) :
+						$c_repo           = AIPS_Campaigns_Repository::instance();
+						$campaign_options = $c_repo->get_campaign_filter_options();
+						if (!empty($campaign_options)) :
+							?>
+							<div class="aips-silos-campaign-filter-wrap">
+								<select id="aips-silos-campaign-filter" class="aips-select aips-select-sm">
+									<option value=""><?php esc_html_e('All Campaigns', 'ai-post-scheduler'); ?></option>
+									<?php foreach ($campaign_options as $c_opt) : ?>
+										<option value="<?php echo esc_attr($c_opt->id); ?>"><?php echo esc_html($c_opt->name); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</div>
+							<?php
+						endif;
+					endif;
+					?>
 				<?php endif; ?>
 			</div>
 			<p class="aips-silos-loading" id="aips-silos-loading"><span class="spinner is-active"></span> <?php esc_html_e('Loading silos…', 'ai-post-scheduler'); ?></p>

@@ -82,6 +82,24 @@ class AIPS_Prompt_Builder_Post_Title {
 				}
 			}
 
+			if (method_exists($context, 'get_campaign_goal') || method_exists($context, 'get_campaign_directives')) {
+				$campaign_goal       = method_exists($context, 'get_campaign_goal') ? $context->get_campaign_goal() : '';
+				$campaign_directives = method_exists($context, 'get_campaign_directives') ? $context->get_campaign_directives() : '';
+				$campaign_lines      = array();
+				if (!empty($campaign_goal)) {
+					$campaign_lines[] = "Campaign Goal: {$campaign_goal}";
+				}
+				if (!empty($campaign_directives)) {
+					$campaign_lines[] = "Directives: {$campaign_directives}";
+				}
+				if (!empty($campaign_lines)) {
+					$campaign_block     = implode("\n", $campaign_lines);
+					$title_instructions = !empty($title_instructions)
+						? $campaign_block . "\n" . $title_instructions
+						: $campaign_block;
+				}
+			}
+
 			$prompt = $this->build_base_prompt($title_instructions, $content, $context);
 
 			return apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, $content);
@@ -130,6 +148,24 @@ class AIPS_Prompt_Builder_Post_Title {
 			$title_prompt = $context->get_title_prompt();
 			if (!empty($title_prompt)) {
 				$title_instructions = $this->template_processor->process($title_prompt, $topic_str);
+			}
+		}
+
+		if (method_exists($context, 'get_campaign_goal') || method_exists($context, 'get_campaign_directives')) {
+			$campaign_goal       = method_exists($context, 'get_campaign_goal') ? $context->get_campaign_goal() : '';
+			$campaign_directives = method_exists($context, 'get_campaign_directives') ? $context->get_campaign_directives() : '';
+			$campaign_lines      = array();
+			if (!empty($campaign_goal)) {
+				$campaign_lines[] = "Campaign Goal: {$campaign_goal}";
+			}
+			if (!empty($campaign_directives)) {
+				$campaign_lines[] = "Directives: {$campaign_directives}";
+			}
+			if (!empty($campaign_lines)) {
+				$campaign_block     = implode("\n", $campaign_lines);
+				$title_instructions = !empty($title_instructions)
+					? $campaign_block . "\n" . $title_instructions
+					: $campaign_block;
 			}
 		}
 

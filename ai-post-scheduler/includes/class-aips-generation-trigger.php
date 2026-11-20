@@ -161,33 +161,39 @@ class AIPS_Generation_Trigger {
 			}
 		}
 
-		if ($context instanceof AIPS_Template_Context) {
-			$template = $context->get_template();
-			if ($template) {
-				$source['template_id']   = (int) $context->get_id();
-				$source['template_name'] = (string) $context->get_name();
-				if (!empty($template->campaign_id)) {
-					$source['campaign_id'] = (int) $template->campaign_id;
-					$campaign_name         = self::lookup_campaign_name((int) $template->campaign_id);
-					if ($campaign_name !== '') {
-						$source['campaign_name'] = $campaign_name;
-					}
-				}
+		if (!empty($trigger['campaign_id'])) {
+			$source['campaign_id'] = (int) $trigger['campaign_id'];
+			$campaign_name         = !empty($trigger['campaign_name']) ? (string) $trigger['campaign_name'] : self::lookup_campaign_name((int) $trigger['campaign_id']);
+			if ($campaign_name !== '') {
+				$source['campaign_name'] = $campaign_name;
 			}
-			$topic = $context->get_topic();
+		}
+
+		$effective_context = $context;
+		if ($context instanceof AIPS_Campaign_Context && method_exists($context, 'get_inner_context')) {
+			$effective_context = $context->get_inner_context();
+		}
+
+		if ($effective_context instanceof AIPS_Template_Context) {
+			$template = $effective_context->get_template();
+			if ($template) {
+				$source['template_id']   = (int) $effective_context->get_id();
+				$source['template_name'] = (string) $effective_context->get_name();
+			}
+			$topic = $effective_context->get_topic();
 			if (!empty($topic)) {
 				$source['topic'] = (string) $topic;
 			}
-		} elseif ($context instanceof AIPS_Topic_Context) {
-			$author = $context->get_author();
+		} elseif ($effective_context instanceof AIPS_Topic_Context) {
+			$author = $effective_context->get_author();
 			if ($author && isset($author->id)) {
 				$source['author_id'] = (int) $author->id;
 				if (!empty($author->name)) {
 					$source['author_name'] = (string) $author->name;
 				}
 			}
-			$source['topic_id'] = (int) $context->get_id();
-			$topic              = $context->get_topic();
+			$source['topic_id'] = (int) $effective_context->get_id();
+			$topic              = $effective_context->get_topic();
 			if (!empty($topic)) {
 				$source['topic'] = (string) $topic;
 			}

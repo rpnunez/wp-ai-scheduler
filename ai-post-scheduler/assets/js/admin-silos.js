@@ -30,10 +30,29 @@
 			$(document).on('click', '.aips-silo-change', this.onChange.bind(this));
 			$(document).on('click', '.aips-silo-confirm', this.onConfirm.bind(this));
 			$(document).on('click', '.aips-silo-confirm-picked', this.onConfirmPicked.bind(this));
+			$(document).on('change', '#aips-silos-campaign-filter', function() {
+				$('#aips-silos-loading').removeClass('aips-hidden');
+				AIPS.Silos.load();
+			});
+		},
+
+		getCampaignId: function() {
+			var $wrap = $('#aips-silos');
+			var dataCampaign = $wrap.data('campaign-id');
+			if (dataCampaign) {
+				return parseInt(dataCampaign, 10);
+			}
+			var filterVal = $('#aips-silos-campaign-filter').val();
+			return filterVal ? parseInt(filterVal, 10) : 0;
 		},
 
 		request: function(action, data) {
-			return $.post(ajaxurl, $.extend({ action: action, nonce: l10n.nonce }, data || {}));
+			var payload = $.extend({ action: action, nonce: l10n.nonce }, data || {});
+			var campaignId = this.getCampaignId();
+			if (campaignId > 0 && !payload.campaign_id) {
+				payload.campaign_id = campaignId;
+			}
+			return $.post(ajaxurl, payload);
 		},
 
 		fail: function(response) {
