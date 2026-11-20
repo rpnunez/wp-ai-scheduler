@@ -142,7 +142,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 			new AIPS_Test_Conversational_History_Service()
 		);
 
-		$result = $generator->generate_preview($this->make_context('scheduled', true));
+		$result = $generator->generate_preview($this->make_context('preview', true));
 
 		$this->assertCount(1, $ai_service->calls);
 		$this->assertCount(1, $ai_service->json_calls);
@@ -279,34 +279,36 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_slug']);
 	}
 
-	public function test_slug_generation_failure_marks_component_failed_and_draft_status() {
+	public function test_slug_generation_failure_marks_component_failed_and_preserves_post_status() {
 		update_option('aips_conversational_generation', 0);
 		AIPS_Config::get_instance()->flush_option_cache();
 
-		// Body, Title, Slug returns empty string (failure), Excerpt
-		$ai_service = $this->make_service(array(self::BODY, 'A Title', '', 'An excerpt.'));
+		// Body, Title, Excerpt, then Slug returns empty string (failure)
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', ''));
 		$ai_service->conversation_supported = false;
 
-		$context = $this->make_context('scheduled', true);
+		$context = $this->make_context('scheduled', true, 'Custom SEO slug prompt', 'publish');
 		$post_manager = $this->run_generation_with_context($ai_service, $context);
 
 		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_slug']);
-		$this->assertSame('draft', $post_manager->created_post_data['post_status']);
+		$this->assertSame('publish', $post_manager->created_post_data['post_status']);
+		$this->assertSame(sanitize_title('A Title'), $post_manager->created_post_data['slug']);
 	}
 
-	public function test_slug_generation_wp_error_marks_component_failed_and_draft_status() {
+	public function test_slug_generation_wp_error_marks_component_failed_and_preserves_post_status() {
 		update_option('aips_conversational_generation', 0);
 		AIPS_Config::get_instance()->flush_option_cache();
 
-		// Body, Title, Slug returns WP_Error (provider failure), Excerpt
-		$ai_service = $this->make_service(array(self::BODY, 'A Title', new WP_Error('provider_error', 'API error'), 'An excerpt.'));
+		// Body, Title, Excerpt, then Slug returns WP_Error (provider failure)
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.', new WP_Error('provider_error', 'API error')));
 		$ai_service->conversation_supported = false;
 
-		$context = $this->make_context('scheduled', true);
+		$context = $this->make_context('scheduled', true, 'Custom SEO slug prompt', 'publish');
 		$post_manager = $this->run_generation_with_context($ai_service, $context);
 
 		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_slug']);
-		$this->assertSame('draft', $post_manager->created_post_data['post_status']);
+		$this->assertSame('publish', $post_manager->created_post_data['post_status']);
+		$this->assertSame(sanitize_title('A Title'), $post_manager->created_post_data['slug']);
 	}
 
 	public function test_set_conversation_is_ignored_when_the_feature_is_off() {
@@ -421,7 +423,200 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		);
 	}
 
-	private function make_context($creation_method = 'scheduled', $generate_slug = false) {
+	public function test_component_statuses_omits_post_images_when_context_has_no_content_images() {
+		$ai_service = $this->make_service(array(self::BODY, 'A Title', 'An excerpt.'));
+		$ai_service->conversation_supported = false;
+
+		$post_manager = $this->run_generation($ai_service);
+
+		$this->assertArrayNotHasKey('post_images', $post_manager->created_post_data['component_statuses']);
+	}
+
+	public function test_generate_preview_includes_slug_and_post_images() {
+		$ai_service = $this->make_service(array(self::BODY, 'Preview Title', 'Preview excerpt.', 'preview-slug'));
+		$generator = new AIPS_Generator(null, $ai_service);
+
+		$template = (object) array(
+			'id'                      => 400,
+			'name'                    => 'Preview Template',
+			'prompt_template'         => 'Write the post body.',
+			'title_prompt'            => 'Write the post title.',
+			'generate_slug'           => 1,
+			'slug_prompt'             => 'Slug prompt',
+			'post_images'             => array(
+				(object) array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Photo of {{topic}}'),
+			),
+			'post_status'             => 'draft',
+			'post_type'               => 'post',
+			'post_author'             => 1,
+		);
+		$context = new AIPS_Template_Context($template, null, 'Gadgets');
+
+		$preview = $generator->generate_preview($context);
+
+		$this->assertIsArray($preview);
+		$this->assertArrayHasKey('slug', $preview);
+		$this->assertArrayHasKey('post_images', $preview);
+		$this->assertCount(1, $preview['post_images']);
+		$this->assertSame(1, $preview['post_images'][0]['image_index']);
+		$this->assertStringContainsString('aips-preview-image', $preview['content']);
+	}
+
+	public function test_metadata_turn_resolves_content_image_prompts() {
+		update_option('aips_conversational_generation', 1);
+		update_option('aips_conversational_metadata_turn', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array(
+				'title'                 => 'A Combined Title',
+				'excerpt'               => 'A combined excerpt.',
+				'slug'                  => 'combined-slug',
+				'content_image_prompts' => array('1' => 'High quality photo of widgets'),
+			),
+		);
+
+		$template = (object) array(
+			'id'                      => 500,
+			'name'                    => 'Metadata Content Images Template',
+			'prompt_template'         => 'Write the post body.',
+			'title_prompt'            => 'Write the post title.',
+			'generate_slug'           => 1,
+			'post_images'             => array(
+				(object) array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Template prompt {{topic}}'),
+			),
+			'post_status'             => 'draft',
+			'post_type'               => 'post',
+			'post_author'             => 1,
+		);
+		$context = new AIPS_Template_Context($template, null, 'Widgets');
+
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		$this->assertCount(1, $ai_service->json_calls);
+		$schema = $ai_service->json_calls[0]['options']['json_schema'];
+		$this->assertArrayHasKey('content_image_prompts', $schema['properties']);
+		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_slug']);
+	}
+
+	public function test_slug_fallback_success_when_no_custom_prompt_and_ai_empty() {
+		update_option('aips_conversational_generation', 1);
+		update_option('aips_conversational_metadata_turn', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array(
+				'title'   => 'A Cool Post Title',
+				'excerpt' => 'A cool excerpt.',
+				'slug'    => '', // Empty slug from AI
+			),
+		);
+
+		$template = (object) array(
+			'id'              => 501,
+			'name'            => 'Slug Fallback No Custom Prompt',
+			'prompt_template' => 'Write the post body.',
+			'title_prompt'    => 'Write the post title.',
+			'generate_slug'   => 1,
+			'slug_prompt'     => '', // No custom slug prompt
+			'post_status'     => 'draft',
+			'post_type'       => 'post',
+			'post_author'     => 1,
+		);
+		$context = new AIPS_Template_Context($template, null, 'Widgets');
+
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		$this->assertSame('a-cool-post-title', $post_manager->created_post_data['slug']);
+		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_slug']);
+	}
+
+	public function test_slug_fallback_failure_when_custom_prompt_and_ai_empty() {
+		update_option('aips_conversational_generation', 1);
+		update_option('aips_conversational_metadata_turn', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			array(
+				'title'   => 'A Cool Post Title',
+				'excerpt' => 'A cool excerpt.',
+				'slug'    => '', // Empty slug from AI
+			),
+		);
+
+		$template = (object) array(
+			'id'              => 502,
+			'name'            => 'Slug Fallback With Custom Prompt',
+			'prompt_template' => 'Write the post body.',
+			'title_prompt'    => 'Write the post title.',
+			'generate_slug'   => 1,
+			'slug_prompt'     => 'SEO concise lowercase slug with keyword', // Explicit custom slug prompt
+			'post_status'     => 'draft',
+			'post_type'       => 'post',
+			'post_author'     => 1,
+		);
+		$context = new AIPS_Template_Context($template, null, 'Widgets');
+
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		// Post gets sanitized title slug so the URL is valid...
+		$this->assertSame('a-cool-post-title', $post_manager->created_post_data['slug']);
+		// ...but component status is marked false so Partial Generations alerts the admin!
+		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_slug']);
+	}
+
+	public function test_content_image_prompts_deficit_recovered_via_conversational_mini_turn() {
+		update_option('aips_conversational_generation', 1);
+		update_option('aips_conversational_metadata_turn', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = $this->make_service(array(self::BODY));
+		$ai_service->conversation_supported = true;
+		$ai_service->json_responses = array(
+			// Combined turn returns only index 1 (deficit: index 2 is missing)
+			array(
+				'title'                 => 'A Multi-Image Post',
+				'excerpt'               => 'An excerpt.',
+				'slug'                  => 'multi-image-post',
+				'content_image_prompts' => array('1' => 'Prompt for image one'),
+			),
+			// Mini-turn recovers index 2
+			array(
+				'2' => 'Recovered prompt for image two',
+			),
+		);
+
+		$template = (object) array(
+			'id'              => 503,
+			'name'            => 'Deficit Recovery Template',
+			'prompt_template' => 'Write the post body.',
+			'title_prompt'    => 'Write the post title.',
+			'generate_slug'   => 1,
+			'post_images'     => array(
+				(object) array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Image 1 prompt'),
+				(object) array('placeholder_index' => 2, 'source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Image 2 prompt'),
+			),
+			'post_status'     => 'draft',
+			'post_type'       => 'post',
+			'post_author'     => 1,
+		);
+		$context = new AIPS_Template_Context($template, null, 'Robotics');
+
+		$post_manager = $this->run_generation_with_context($ai_service, $context);
+
+		// Verified 2 JSON calls: 1 for combined turn, 1 for mini-turn deficit recovery!
+		$this->assertCount(2, $ai_service->json_calls);
+		$mini_turn_prompt = $ai_service->json_calls[1]['prompt'];
+		$this->assertStringContainsString('missing image descriptions for content image index(es): 2', $mini_turn_prompt);
+	}
+
+	private function make_context($creation_method = 'scheduled', $generate_slug = false, $slug_prompt = '', $post_status = 'draft') {
 		$template = (object) array(
 			'id'                      => 321,
 			'name'                    => 'Conversational Test',
@@ -430,8 +625,8 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 			'image_prompt'            => '',
 			'generate_featured_image' => false,
 			'generate_slug'           => $generate_slug ? 1 : 0,
-			'slug_prompt'             => '',
-			'post_status'             => 'draft',
+			'slug_prompt'             => $slug_prompt,
+			'post_status'             => $post_status,
 			'post_type'               => 'post',
 			'post_category'           => '',
 			'post_tags'               => '',

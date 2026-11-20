@@ -52,12 +52,12 @@ class AIPS_Component_Regeneration_Service {
 
 		return 0;
 	}
-	
+
 	/**
 	 * @var AIPS_Generator Generator instance
 	 */
 	private $generator;
-	
+
 	/**
 	 * @var AIPS_Prompt_Builder Prompt builder instance
 	 */
@@ -77,12 +77,12 @@ class AIPS_Component_Regeneration_Service {
 	 * @var AIPS_Prompt_Builder_Post_Featured_Image Post featured image prompt builder instance
 	 */
 	private $post_featured_image_prompt_builder;
-	
+
 	/**
 	 * @var AIPS_Image_Service Image service instance
 	 */
 	private $image_service;
-	
+
 	/**
 	 * @var AIPS_History_Repository History repository
 	 */
@@ -92,17 +92,17 @@ class AIPS_Component_Regeneration_Service {
 	 * @var AIPS_Generation_Context_Factory Factory for creating generation contexts
 	 */
 	private $generation_context_factory;
-	
+
 	/**
 	 * @var AIPS_Template_Processor Template processor
 	 */
 	private $template_processor;
-	
+
 	/**
 	 * @var AIPS_Article_Structure_Manager Structure manager
 	 */
 	private $structure_manager;
-	
+
 	/**
 	 * Constructor
 	 */
@@ -111,7 +111,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->generation_context_factory = new AIPS_Generation_Context_Factory();
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
-		
+
 		// Initialize AI services
 		$ai_service = new AIPS_AI_Service();
 		$this->generator = new AIPS_Generator(null, $ai_service);
@@ -124,7 +124,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
 		$this->post_featured_image_prompt_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
 	}
-	
+
 	/**
 	 * Rebuild the original generation conversation for a post.
 	 *
@@ -216,7 +216,7 @@ class AIPS_Component_Regeneration_Service {
 	public function get_generation_context($history_id) {
 		return $this->generation_context_factory->create_from_history_id($history_id);
 	}
-	
+
 	/**
 	 * Regenerate post title
 	 *
@@ -227,17 +227,17 @@ class AIPS_Component_Regeneration_Service {
 		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
 			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
-		
+
 		$generation_context = $context['generation_context'];
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
-		
+
 		$history_container = $this->resolve_history_container($context, $post_id, $history_id);
 		if (is_wp_error($history_container)) {
 			return $history_container;
 		}
 		$this->record_regeneration_trigger($history_container, $context, __('Title', 'ai-post-scheduler'), $post_id);
-		
+
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
 
@@ -333,7 +333,7 @@ class AIPS_Component_Regeneration_Service {
 
 		return $slug;
 	}
-	
+
 	/**
 	 * Regenerate post excerpt
 	 *
@@ -344,22 +344,22 @@ class AIPS_Component_Regeneration_Service {
 		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
 			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
-		
+
 		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		$content = isset($context['current_content']) ? $context['current_content'] : '';
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
-		
+
 		$history_container = $this->resolve_history_container($context, $post_id, $history_id);
 		if (is_wp_error($history_container)) {
 			return $history_container;
 		}
 		$this->record_regeneration_trigger($history_container, $context, __('Excerpt', 'ai-post-scheduler'), $post_id);
-		
+
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
-		
+
 		// Fall back to post data when the caller did not supply current values
 		if (empty($title) && $post_id) {
 			$title = get_the_title($post_id);
@@ -371,7 +371,7 @@ class AIPS_Component_Regeneration_Service {
 		// Get voice and topic for generator
 		$voice = null;
 		$topic_str = $generation_context->get_topic();
-		
+
 		if ($generation_context->get_type() === 'template') {
 			$voice = $generation_context->get_voice();
 		}
@@ -406,7 +406,7 @@ class AIPS_Component_Regeneration_Service {
 
 		return trim($result);
 	}
-	
+
 	/**
 	 * Regenerate post content
 	 *
@@ -417,20 +417,20 @@ class AIPS_Component_Regeneration_Service {
 		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
 			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
-		
+
 		$generation_context = $context['generation_context'];
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
-		
+
 		$history_container = $this->resolve_history_container($context, $post_id, $history_id);
 		if (is_wp_error($history_container)) {
 			return $history_container;
 		}
 		$this->record_regeneration_trigger($history_container, $context, __('Content', 'ai-post-scheduler'), $post_id);
-		
+
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
-		
+
 		// Deliberately not conversational: the component being regenerated IS the
 		// article, so replaying the previous body would bias the model toward
 		// reproducing it rather than writing a fresh one.
@@ -448,11 +448,40 @@ class AIPS_Component_Regeneration_Service {
 
 		// Generate content using the prompt
 		$result = $this->generator->generate_content($prompt, $options);
-		
+
 		if (is_wp_error($result)) {
 			return $result;
 		}
-		
+
+		if ($post_id && $generation_context->has_content_images()) {
+			// When regenerating post content, restore already-generated figure markup or placeholder comments
+			// for each existing image record, ensuring the new article text preserves previously generated visual assets.
+			$generated_repo = new AIPS_Post_Images_Generated_Repository();
+			$existing_rows  = $generated_repo->get_for_post_history($post_id, $history_id);
+			if (!empty($existing_rows)) {
+				$total_images = count($existing_rows);
+				$title        = isset($context['current_title']) ? $context['current_title'] : get_the_title($post_id);
+				foreach ($existing_rows as $target_row) {
+					$gen_id        = (int) $target_row->id;
+					$attachment_id = (int) $target_row->attachment_id;
+					$url           = !empty($target_row->image_url) ? $target_row->image_url : ($attachment_id ? (string) wp_get_attachment_url($attachment_id) : '');
+					$config        = $this->resolve_post_image_config($target_row, $generation_context);
+					$caption       = !empty($config->caption) ? $config->caption : '';
+
+					$markup = ($attachment_id > 0 && !empty($url))
+						? $this->generator->build_post_image_markup($gen_id, $attachment_id, $url, $title, $caption)
+						: sprintf('<!-- aips-image-placeholder id="%d" -->', $gen_id);
+
+					$result = $this->replace_post_image_markup($result, $target_row, $markup, $total_images);
+				}
+			}
+		}
+
+		// Strip any placeholder shortcodes (e.g. [post_image index="N"]) that were not matched by configured images.
+		if (empty($context['preserve_placeholders'])) {
+			$result = AIPS_Post_Images_Service::strip_unresolved_placeholders($result);
+		}
+
 		return $result;
 	}
 
@@ -545,6 +574,12 @@ class AIPS_Component_Regeneration_Service {
 			$context['current_title'] = $title;
 		}
 
+		// Preserve model-placed image placeholders in content if post images will be regenerated.
+		$preserve_placeholders = $this->should_regenerate_post_images($post_id, $context['generation_context']);
+		if ($preserve_placeholders) {
+			$context['preserve_placeholders'] = true;
+		}
+
 		$content = $this->regenerate_content($context);
 		if (is_wp_error($content)) {
 			$result['errors']['content'] = $content->get_error_message();
@@ -553,7 +588,7 @@ class AIPS_Component_Regeneration_Service {
 			$context['current_content'] = $content;
 		}
 
-		if (method_exists($generation_context, 'should_generate_slug') && $generation_context->should_generate_slug()) {
+		if ($generation_context->should_generate_slug()) {
 			$slug = $this->regenerate_slug($context);
 			if (is_wp_error($slug)) {
 				$result['errors']['slug'] = $slug->get_error_message();
@@ -591,6 +626,11 @@ class AIPS_Component_Regeneration_Service {
 			}
 		} else {
 			$result['skipped']['post_images'] = __('Post images skipped because this post has no content images configured.', 'ai-post-scheduler');
+		}
+
+		// Clean up any remaining unresolved placeholders from the staged result in memory.
+		if ($preserve_placeholders && isset($result['regenerated']['content'])) {
+			$result['regenerated']['content'] = AIPS_Post_Images_Service::strip_unresolved_placeholders($result['regenerated']['content']);
 		}
 
 		return $result;
@@ -668,11 +708,11 @@ class AIPS_Component_Regeneration_Service {
 		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
 			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
-		
+
 		if (!isset($context['post_id'])) {
 			return new WP_Error('missing_post_id', __('Post ID is required.', 'ai-post-scheduler'));
 		}
-		
+
 		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		$post_id = absint($context['post_id']);
@@ -690,7 +730,7 @@ class AIPS_Component_Regeneration_Service {
 			return $history_container;
 		}
 		$this->record_regeneration_trigger($history_container, $context, __('Featured image', 'ai-post-scheduler'), $post_id);
-		
+
 		$current_content = '';
 		if ($post_id > 0) {
 			$current_content = (string) get_post_field('post_content', $post_id);
@@ -715,7 +755,7 @@ class AIPS_Component_Regeneration_Service {
 
 			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
 		}
-		
+
 		// Log the AI request for image generation
 		$history_container->record(
 			'ai_request',
@@ -727,10 +767,10 @@ class AIPS_Component_Regeneration_Service {
 			null,
 			array('component' => 'featured_image', 'post_id' => $post_id)
 		);
-		
+
 		// Generate and upload the featured image
 		$attachment_id = $this->image_service->generate_and_upload_featured_image($processed_image_prompt, $title);
-		
+
 		if (is_wp_error($attachment_id)) {
 			// Log the error
 			$history_container->record_error($attachment_id->get_error_message(), array(
@@ -751,7 +791,7 @@ class AIPS_Component_Regeneration_Service {
 
 			return $attachment_id;
 		}
-		
+
 		// Log successful image generation
 		$history_container->record(
 			'ai_response',
@@ -774,7 +814,7 @@ class AIPS_Component_Regeneration_Service {
 				'image_success' => true,
 			)
 		);
-		
+
 		// Return attachment ID and URL
 		return array(
 			'attachment_id' => $attachment_id,

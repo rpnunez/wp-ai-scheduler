@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Fixed
+- **Post Components Parity & Conversational Integration:**
+  - Resolved `post_slug` status tracking in `AIPS_Generator::generate_post_from_context()`, ensuring slug failures record properly in component statuses while preventing optional slug failures from inappropriately marking posts as incomplete or forcing draft status.
+  - Eliminated `post_images` key pollution in posts without configured content images by checking `$context->has_content_images()` before status initialization.
+  - Added zero-row guard in `AIPS_Post_Manager::reconcile_generation_status_meta_from_post()` preventing empty image collections from falsely reporting success.
+  - Extended `AIPS_Partial_Generation_State_Reconciler::on_post_components_updated()` with handlers for `slug` and `post_images`, enabling full partial-generation reconciliation when saving updates from AI Edit.
+  - Connected content image prompt resolution into Turn 2 of Conversational Mode and Combined Metadata Turn (`AIPS_Prompt_Builder_Post_Metadata` and `AIPS_Generator::generate_metadata_turn()`).
+  - Added preview parity for Post Slug and Post Images in `AIPS_Generator::generate_preview()`.
+  - Fixed shortcode leakage in `AIPS_Component_Regeneration_Service::regenerate_content()`, ensuring placeholder substitution and stripping of unplaced `[post_image index="N"]` tags during content regeneration.
+- **Slug Prompt Context Cap:** Stateless slug prompts (`AIPS_Prompt_Builder_Post_Slug`) now condense the article to 3,000 characters by default (`AIPS_Prompt_Builder_Post_Slug::CONTEXT_MAX_CHARS`) instead of inheriting the 12,000 character `AIPS_Content_Digest` default, matching the title prompt's cap. A slug is three to six keywords and the title is already in the prompt, so the extra article text only inflated the request. The `aips_slug_context_max_chars` filter still overrides the cap; sites that filtered it are unaffected, and sites that relied on the old default now send at most 3,000 characters of context. Conversational runs are unchanged (issue #2405).
+
 ### Added
 - **Conversational & Combined Metadata Modes Optimization & Conversation Persistence:**
   - Registered `AIPS_History_Type::AI_CONVERSATION` and mapped `conversation_transcript` in `AIPS_History_Container` to store serialized multi-turn transcripts in `wp_aips_history_log`.

@@ -863,6 +863,11 @@ if (!defined('ABSPATH')) {
                         <div id="aips-test-title" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
                     </div>
 
+                    <div class="aips-form-row" id="aips-test-slug-row" style="display: none;">
+                        <label><strong><?php esc_html_e('Generated Slug:', 'ai-post-scheduler'); ?></strong></label>
+                        <div id="aips-test-slug" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                    </div>
+
                     <div class="aips-form-row">
                         <label><strong><?php esc_html_e('Generated Excerpt:', 'ai-post-scheduler'); ?></strong></label>
                         <div id="aips-test-excerpt" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
