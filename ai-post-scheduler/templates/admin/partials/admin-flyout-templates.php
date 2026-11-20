@@ -11,8 +11,11 @@ if (!defined('ABSPATH')) {
 ?>
 <script type="text/html" id="aips-tmpl-admin-flyout">
 	<nav class="aips-admin-flyout" aria-label="{{label}}" data-hub="{{hub}}" hidden>
-		<div class="aips-admin-flyout-groups">{{groups}}</div>
+		<div class="aips-admin-flyout-columns">{{columns}}</div>
 	</nav>
+</script>
+<script type="text/html" id="aips-tmpl-admin-flyout-column">
+	<div class="aips-admin-flyout-column" data-column="{{column}}">{{groups}}</div>
 </script>
 <script type="text/html" id="aips-tmpl-admin-flyout-group">
 	<section class="aips-admin-flyout-group">

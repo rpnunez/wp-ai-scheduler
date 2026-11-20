@@ -151,8 +151,9 @@
 		},
 
 		render: function(hub) {
-			var groupsHtml = '';
+			var columnGroups = { 1: '', 2: '' };
 			(hub.groups || []).forEach(function(group) {
+				var column = parseInt(group.column, 10) === 2 ? 2 : 1;
 				var itemsHtml = '';
 				(group.items || []).forEach(function(item) {
 					var hasBadge = Number.isInteger(item.badge) && item.badge > 0;
@@ -168,17 +169,27 @@
 						badgeCount: hasBadge ? item.badge : ''
 					});
 				});
-				groupsHtml += AIPS.Templates.renderRaw('aips-tmpl-admin-flyout-group', {
+				columnGroups[column] += AIPS.Templates.renderRaw('aips-tmpl-admin-flyout-group', {
 					label: AIPS.Templates.escape(group.label),
 					items: itemsHtml
 				});
+			});
+
+			var columnsHtml = '';
+			[1, 2].forEach(function(column) {
+				if (columnGroups[column]) {
+					columnsHtml += AIPS.Templates.renderRaw('aips-tmpl-admin-flyout-column', {
+						column: column,
+						groups: columnGroups[column]
+					});
+				}
 			});
 
 			this.$panel.remove();
 			$('body').append(AIPS.Templates.renderRaw('aips-tmpl-admin-flyout', {
 				label: AIPS.Templates.escape(hub.label + ' ' + (config.navigationLabel || 'navigation')),
 				hub: AIPS.Templates.escape(hub.slug),
-				groups: groupsHtml
+				columns: columnsHtml
 			}));
 			this.$panel = $('.aips-admin-flyout').last();
 		},

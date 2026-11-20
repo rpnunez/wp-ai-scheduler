@@ -134,9 +134,9 @@ class AIPS_Admin_Page_Context {
 				'description' => __('Orchestrate generation schedules, goal-based campaigns, authors, data sources, monetization, and SEO linking.', 'ai-post-scheduler'),
 				'default_tab' => 'schedules',
 				'flyout_groups' => array(
-					__('Pipelines', 'ai-post-scheduler')    => array('schedules', 'campaigns'),
-					__('Inputs', 'ai-post-scheduler')       => array('authors', 'sources'),
-					__('Optimization', 'ai-post-scheduler') => array('monetization', 'internal-links', 'taxonomy'),
+					__('Pipelines', 'ai-post-scheduler')    => array('column' => 1, 'sections' => array('schedules', 'campaigns')),
+					__('Inputs', 'ai-post-scheduler')       => array('column' => 1, 'sections' => array('authors', 'sources')),
+					__('Optimization', 'ai-post-scheduler') => array('column' => 2, 'sections' => array('monetization', 'internal-links', 'taxonomy')),
 				),
 				'sections'    => array(
 					'schedules' => array(
@@ -213,33 +213,39 @@ class AIPS_Admin_Page_Context {
 				'description' => __('Craft templates, define brand voices, build article structures, and configure modular post slices.', 'ai-post-scheduler'),
 				'default_tab' => 'templates',
 				'flyout_groups' => array(
-					__('Create', 'ai-post-scheduler') => array('templates', 'voices', 'structures', 'structure-sections', 'post-slices'),
+					__('Generation', 'ai-post-scheduler')      => array('column' => 1, 'sections' => array('templates', 'voices')),
+					__('Building Blocks', 'ai-post-scheduler') => array('column' => 2, 'sections' => array('structures', 'structure-sections', 'post-slices')),
 				),
 				'sections'    => array(
 					'templates' => array(
 						'label'       => __('Templates', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-media-document',
 						'description' => __('Create and configure AI post generation templates and prompt strategies.', 'ai-post-scheduler'),
+						'short_description' => __('Prompt strategies & generation setup', 'ai-post-scheduler'),
 					),
 					'voices' => array(
 						'label'       => __('Voices', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-megaphone',
 						'description' => __('Define brand personality, tone of voice, stylistic rules, and custom excerpt guidelines.', 'ai-post-scheduler'),
+						'short_description' => __('Brand tone & style rules', 'ai-post-scheduler'),
 					),
 					'structures' => array(
 						'label'       => __('Article Structures', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-editor-ol',
 						'description' => __('Build reusable article frameworks, required section outlines, and heading constraints.', 'ai-post-scheduler'),
+						'short_description' => __('Reusable article frameworks', 'ai-post-scheduler'),
 					),
 					'structure-sections' => array(
 						'label'       => __('Structure Sections', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-editor-ul',
 						'description' => __('Reusable sections used inside article structures.', 'ai-post-scheduler'),
+						'short_description' => __('Sections used inside structures', 'ai-post-scheduler'),
 					),
 					'post-slices' => array(
 						'label'       => __('Post Slices', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-grid-view',
 						'description' => __('Manage modular content blocks, dynamic CTAs, and automated slice insertions.', 'ai-post-scheduler'),
+						'short_description' => __('Modular blocks & dynamic CTAs', 'ai-post-scheduler'),
 					),
 				),
 				'child_pages' => array(
@@ -256,23 +262,27 @@ class AIPS_Admin_Page_Context {
 				'description' => __('Discover trending topics in your niche using AI-powered research, perform content gap audits, and plan keyword strategy.', 'ai-post-scheduler'),
 				'default_tab' => 'trending',
 				'flyout_groups' => array(
-					__('Research & Planning', 'ai-post-scheduler') => array('trending', 'gap-analysis', 'planner'),
+					__('Discovery', 'ai-post-scheduler') => array('column' => 1, 'sections' => array('trending', 'gap-analysis')),
+					__('Planning', 'ai-post-scheduler')  => array('column' => 2, 'sections' => array('planner')),
 				),
 				'sections'    => array(
 					'trending' => array(
 						'label'       => __('Trending Topics', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-chart-line',
 						'description' => __('AI niche trends and real-time topic discovery.', 'ai-post-scheduler'),
+						'short_description' => __('Niche trends & topic discovery', 'ai-post-scheduler'),
 					),
 					'gap-analysis' => array(
 						'label'       => __('Content Auditor', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-analytics',
 						'description' => __('Content gap discovery and search engine optimization audit.', 'ai-post-scheduler'),
+						'short_description' => __('Content gaps & SEO audit', 'ai-post-scheduler'),
 					),
 					'planner' => array(
 						'label'       => __('Keyword Planner', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-calendar-alt',
 						'description' => __('Topic calendar, keyword research, and cluster grouping.', 'ai-post-scheduler'),
+						'short_description' => __('Keyword research & topic calendar', 'ai-post-scheduler'),
 					),
 				),
 				'child_pages' => array(),
@@ -284,9 +294,9 @@ class AIPS_Admin_Page_Context {
 				'description' => __('Browse generated posts, review human-in-the-loop drafts, resume partial generations, and manage semantic embeddings.', 'ai-post-scheduler'),
 				'default_tab' => 'aips-generated-posts',
 				'flyout_groups' => array(
-					__('Articles', 'ai-post-scheduler')      => array('aips-generated-posts', 'aips-partial-generations', 'aips-pending-review'),
-					__('Structure', 'ai-post-scheduler')     => array('aips-silos', 'aips-content-clusters', 'aips-content-cannibalization'),
-					__('Index & Links', 'ai-post-scheduler') => array('aips-content-indexer', 'aips-link-report', 'aips-broken-links', 'aips-link-rules', 'aips-redirects'),
+					__('Articles', 'ai-post-scheduler')      => array('column' => 1, 'sections' => array('aips-generated-posts', 'aips-partial-generations', 'aips-pending-review')),
+					__('Structure', 'ai-post-scheduler')     => array('column' => 1, 'sections' => array('aips-silos', 'aips-content-clusters', 'aips-content-cannibalization')),
+					__('Index & Links', 'ai-post-scheduler') => array('column' => 2, 'sections' => array('aips-content-indexer', 'aips-link-report', 'aips-broken-links', 'aips-link-rules', 'aips-redirects')),
 				),
 				'sections'    => array(
 					'aips-generated-posts' => array(
@@ -432,8 +442,8 @@ class AIPS_Admin_Page_Context {
 				'description' => __('Review system health, generation operations, telemetry, seeding utilities, and developer tools from one place.', 'ai-post-scheduler'),
 				'default_tab' => 'system-info',
 				'flyout_groups' => array(
-					__('System', 'ai-post-scheduler')              => array('system-info', 'health', 'operations', 'ai-errors', 'insights'),
-					__('Tools & Performance', 'ai-post-scheduler') => array('telemetry', 'cache-monitor', 'background-processes', 'stress-test', 'dev-tools'),
+					__('System', 'ai-post-scheduler')              => array('column' => 1, 'sections' => array('system-info', 'health', 'operations', 'ai-errors', 'insights')),
+					__('Tools & Performance', 'ai-post-scheduler') => array('column' => 2, 'sections' => array('telemetry', 'cache-monitor', 'background-processes', 'stress-test', 'dev-tools')),
 				),
 				'sections'    => array(
 					'system-info' => array(

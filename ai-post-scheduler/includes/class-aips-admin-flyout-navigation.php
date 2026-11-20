@@ -52,8 +52,10 @@ class AIPS_Admin_Flyout_Navigation {
 			$groups = array();
 			$active = self::get_active_section($hub_key, $context);
 
-			foreach ($hub['flyout_groups'] as $group_label => $section_keys) {
-				$items = array();
+			foreach ($hub['flyout_groups'] as $group_label => $group_definition) {
+				$section_keys = isset($group_definition['sections']) ? (array) $group_definition['sections'] : array();
+				$column       = (isset($group_definition['column']) && 2 === (int) $group_definition['column']) ? 2 : 1;
+				$items        = array();
 				foreach ($section_keys as $section_key) {
 					if (empty($hub['sections'][$section_key]) || !self::is_available($hub_key, $section_key)) {
 						continue;
@@ -81,8 +83,9 @@ class AIPS_Admin_Flyout_Navigation {
 
 				if (!empty($items)) {
 					$groups[] = array(
-						'label' => $group_label,
-						'items' => $items,
+						'label'  => $group_label,
+						'column' => $column,
+						'items'  => $items,
 					);
 				}
 			}

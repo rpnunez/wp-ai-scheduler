@@ -31,6 +31,7 @@ test('flyout follows the established jQuery and AIPS module pattern', function()
 test('flyout renders markup through AIPS Templates', function() {
 	assert.match(source, /AIPS\.Templates\.render\('aips-tmpl-admin-flyout-item'/);
 	assert.match(source, /AIPS\.Templates\.renderRaw\('aips-tmpl-admin-flyout-group'/);
+	assert.match(source, /AIPS\.Templates\.renderRaw\('aips-tmpl-admin-flyout-column'/);
 	assert.match(source, /AIPS\.Templates\.renderRaw\('aips-tmpl-admin-flyout'/);
 	assert.doesNotMatch(source, /'<(?:nav|section|a|span|div)\b/);
 });

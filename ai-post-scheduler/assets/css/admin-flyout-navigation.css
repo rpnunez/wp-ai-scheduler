@@ -1,10 +1,15 @@
 .aips-admin-flyout {
+	--aips-admin-flyout-column-width: 240px;
+	--aips-admin-flyout-min-height: 448px;
+	--aips-admin-flyout-hover-bg: rgba(34, 113, 177, .06);
+	--aips-admin-flyout-active-bg: var(--aips-primary-light);
 	position: fixed;
 	display: flex;
+	min-height: min(var(--aips-admin-flyout-min-height), calc(100vh - var(--aips-space-4)));
 	max-width: calc(100vw - var(--aips-space-4));
 	max-height: calc(100vh - var(--aips-space-4));
 	overflow-y: auto;
-	padding: var(--aips-space-2);
+	padding: var(--aips-space-4);
 	background: var(--aips-white);
 	border: 1px solid var(--aips-gray-300);
 	border-left: 0;
@@ -22,10 +27,27 @@
 	display: none !important;
 }
 
-.aips-admin-flyout-groups {
+/* Every hub shares one two-column grid so all flyouts have the same footprint. */
+.aips-admin-flyout-columns {
 	display: grid;
-	grid-template-columns: repeat(2, 218px);
-	gap: var(--aips-space-2);
+	grid-template-columns: var(--aips-admin-flyout-column-width) calc(var(--aips-admin-flyout-column-width) + (2 * var(--aips-space-4)) + 1px);
+	align-items: stretch;
+}
+
+.aips-admin-flyout-column {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-3);
+	min-width: 0;
+	grid-column: 1;
+	grid-row: 1;
+}
+
+.aips-admin-flyout-column[data-column="2"] {
+	grid-column: 2;
+	margin-inline-start: var(--aips-space-4);
+	padding-inline-start: var(--aips-space-4);
+	border-inline-start: 1px solid var(--aips-gray-200);
 }
 
 .aips-admin-flyout-group {
@@ -33,30 +55,6 @@
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
-}
-
-.aips-admin-flyout[data-hub="aips-diagnostics"] .aips-admin-flyout-group:nth-child(2),
-.aips-admin-flyout[data-hub="aips-automations"] .aips-admin-flyout-group:nth-child(3),
-.aips-admin-flyout[data-hub="aips-generated-posts"] .aips-admin-flyout-group:nth-child(3) {
-	padding-left: var(--aips-space-2);
-	border-left: 1px solid var(--aips-gray-200);
-}
-
-.aips-admin-flyout[data-hub="aips-automations"] .aips-admin-flyout-group:nth-child(2),
-.aips-admin-flyout[data-hub="aips-generated-posts"] .aips-admin-flyout-group:nth-child(2) {
-	grid-row: 2;
-	grid-column: 1;
-}
-
-.aips-admin-flyout[data-hub="aips-automations"] .aips-admin-flyout-group:nth-child(3),
-.aips-admin-flyout[data-hub="aips-generated-posts"] .aips-admin-flyout-group:nth-child(3) {
-	grid-row: 1 / span 2;
-	grid-column: 2;
-}
-
-.aips-admin-flyout[data-hub="aips-studio"] .aips-admin-flyout-groups,
-.aips-admin-flyout[data-hub="aips-research"] .aips-admin-flyout-groups {
-	grid-template-columns: 218px;
 }
 
 .aips-admin-flyout-heading {
@@ -73,31 +71,43 @@
 .aips-admin-flyout-items {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: var(--aips-space-1);
 }
 
 .aips-admin-flyout-item {
 	display: flex;
 	align-items: flex-start;
 	gap: var(--aips-space-3);
-	padding: var(--aips-space-2);
+	padding: 10px var(--aips-space-3);
 	color: var(--aips-gray-900);
 	text-decoration: none;
 	border-radius: var(--aips-radius-base);
 	box-sizing: border-box;
+	transition: background-color .12s ease, color .12s ease;
 }
 
+/* Hover, focus and active share the primary tint; active adds the bar and weight. */
 .aips-admin-flyout-item:hover,
 .aips-admin-flyout-item:focus-visible {
-	color: var(--aips-gray-900);
-	background: var(--aips-gray-50);
-	box-shadow: 0 0 0 2px var(--aips-primary-light);
+	color: var(--aips-primary);
+	background: var(--aips-admin-flyout-hover-bg);
+	box-shadow: none;
+}
+
+.aips-admin-flyout-item:focus {
 	outline: 0;
 }
 
-.aips-admin-flyout-item.is-active {
+.aips-admin-flyout-item:focus-visible {
+	outline: 2px solid var(--aips-primary);
+	outline-offset: -2px;
+}
+
+.aips-admin-flyout-item.is-active,
+.aips-admin-flyout-item.is-active:hover,
+.aips-admin-flyout-item.is-active:focus-visible {
 	color: var(--aips-primary);
-	background: var(--aips-primary-light);
+	background: var(--aips-admin-flyout-active-bg);
 	box-shadow: inset 3px 0 0 var(--aips-primary);
 }
 
@@ -110,6 +120,8 @@
 	font-size: 20px;
 }
 
+.aips-admin-flyout-item:hover .aips-admin-flyout-icon,
+.aips-admin-flyout-item:focus-visible .aips-admin-flyout-icon,
 .aips-admin-flyout-item.is-active .aips-admin-flyout-icon {
 	color: var(--aips-primary);
 }
@@ -162,16 +174,9 @@
 	border-radius: var(--aips-radius-md) 0 var(--aips-radius-md) var(--aips-radius-md);
 }
 
-.rtl .aips-admin-flyout[data-hub="aips-diagnostics"] .aips-admin-flyout-group:nth-child(2),
-.rtl .aips-admin-flyout[data-hub="aips-automations"] .aips-admin-flyout-group:nth-child(3),
-.rtl .aips-admin-flyout[data-hub="aips-generated-posts"] .aips-admin-flyout-group:nth-child(3) {
-	padding-right: var(--aips-space-2);
-	padding-left: 0;
-	border-right: 1px solid var(--aips-gray-200);
-	border-left: 0;
-}
-
-.rtl .aips-admin-flyout-item.is-active {
+.rtl .aips-admin-flyout-item.is-active,
+.rtl .aips-admin-flyout-item.is-active:hover,
+.rtl .aips-admin-flyout-item.is-active:focus-visible {
 	box-shadow: inset -3px 0 0 var(--aips-primary);
 }
 
