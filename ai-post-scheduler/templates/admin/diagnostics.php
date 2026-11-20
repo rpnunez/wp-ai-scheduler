@@ -12,19 +12,6 @@ if (!defined('ABSPATH')) {
 
 /** @var AIPS_Diagnostics_Controller $diagnostics_controller */
 /** @var string $active_tab */
-/** @var array<string, array{label:string, icon:string, description?:string}> $tabs */
-
-$rail_items = array();
-foreach ($tabs as $tab_key => $tab) {
-	$rail_items[] = array(
-		'key'         => $tab_key,
-		'label'       => $tab['label'],
-		'icon'        => !empty($tab['icon']) ? $tab['icon'] : 'dashicons-admin-generic',
-		'description' => !empty($tab['description']) ? $tab['description'] : '',
-		'url'         => $diagnostics_controller->get_tab_url($tab_key),
-		'active'      => ($active_tab === $tab_key),
-	);
-}
 ?>
 <div class="wrap aips-wrap aips-diagnostics-wrap">
 	<div class="aips-page-container">
@@ -40,20 +27,10 @@ foreach ($tabs as $tab_key => $tab) {
 		}
 		?>
 
-		<!-- Vertical Sidebar Rail Layout -->
-		<div class="aips-rail-layout">
-			<?php
-			AIPS_Admin_UI_Primitives::render_rail(array(
-				'aria_label' => __('Diagnostics Navigation', 'ai-post-scheduler'),
-				'items'      => $rail_items,
-			));
-			?>
-
-			<main class="aips-rail-main">
+			<main class="aips-hub-main">
 				<div class="aips-diagnostics-stage">
 					<?php $diagnostics_controller->render_tab_content($active_tab); ?>
 				</div>
 			</main>
-		</div><!-- /.aips-rail-layout -->
 	</div>
 </div>

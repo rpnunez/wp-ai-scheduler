@@ -7323,8 +7323,14 @@ button.aips-rail-item.aips-rail-item-child.active,
 	min-width: 0;
 }
 
+.aips-hub-main {
+	min-width: 0;
+	width: 100%;
+}
+
 .aips-rail-layout .aips-tab-content,
-.aips-rail-main .aips-tab-content {
+.aips-rail-main .aips-tab-content,
+.aips-hub-main .aips-tab-content {
 	background: transparent !important;
 	padding: 0 !important;
 	margin: 0 !important;
@@ -7335,7 +7341,10 @@ button.aips-rail-item.aips-rail-item-child.active,
 
 .aips-rail-layout .aips-tab-content > .aips-content-clusters-tab,
 .aips-rail-layout .aips-tab-content > .aips-content-cannibalization-tab,
-.aips-rail-layout .aips-tab-content > .aips-content-intelligence-tab {
+.aips-rail-layout .aips-tab-content > .aips-content-intelligence-tab,
+.aips-hub-main .aips-tab-content > .aips-content-clusters-tab,
+.aips-hub-main .aips-tab-content > .aips-content-cannibalization-tab,
+.aips-hub-main .aips-tab-content > .aips-content-intelligence-tab {
 	background: transparent;
 	padding: 0;
 	margin: 0;

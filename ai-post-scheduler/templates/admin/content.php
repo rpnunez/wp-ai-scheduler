@@ -62,96 +62,6 @@ if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embedding
 	$active_tab = 'aips-generated-posts';
 }
 
-$rail_items = array(
-	array(
-		'key'         => 'aips-generated-posts',
-		'label'       => __('Generated Posts', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-admin-post',
-		'description' => __('Published & drafted articles', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-generated-posts'),
-		'active'      => ($active_tab === 'aips-generated-posts'),
-	),
-	array(
-		'key'         => 'aips-partial-generations',
-		'label'       => __('Partial Generations', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-warning',
-		'description' => __('Incomplete runs & recovery', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-partial-generations'),
-		'active'      => ($active_tab === 'aips-partial-generations'),
-	),
-	array(
-		'key'         => 'aips-pending-review',
-		'label'       => __('Pending Review', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-visibility',
-		'description' => __('Drafts awaiting human review', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-pending-review'),
-		'active'      => ($active_tab === 'aips-pending-review'),
-	),
-	array(
-		'key'         => 'aips-content-indexer',
-		'label'       => __('Content Indexer', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-database',
-		'description' => __('Vectors & semantic embeddings', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-content-indexer'),
-		'active'      => ($active_tab === 'aips-content-indexer'),
-	),
-	array(
-		'key'         => 'aips-link-report',
-		'label'       => __('Link Report', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-admin-links',
-		'description' => __('Internal links, orphans & broken links', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-link-report'),
-		'active'      => ($active_tab === 'aips-link-report'),
-	),
-	array(
-		'key'         => 'aips-broken-links',
-		'label'       => __('Broken Links', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-editor-unlink',
-		'description' => __('Internal links to pages that no longer exist', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-broken-links'),
-		'active'      => ($active_tab === 'aips-broken-links'),
-	),
-	array(
-		'key'         => 'aips-link-rules',
-		'label'       => __('Link Rules', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-tag',
-		'description' => __('Always link a keyword to a post', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-link-rules'),
-		'active'      => ($active_tab === 'aips-link-rules'),
-	),
-	array(
-		'key'         => 'aips-redirects',
-		'label'       => __('Redirects', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-randomize',
-		'description' => __('Redirects created by AI Post Scheduler', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-redirects'),
-		'active'      => ($active_tab === 'aips-redirects'),
-	),
-	array(
-		'key'         => 'aips-silos',
-		'label'       => __('Silos', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-index-card',
-		'description' => __('Pillars & their articles', 'ai-post-scheduler'),
-		'active'      => ($active_tab === 'aips-silos'),
-	),
-	array(
-		'key'         => 'aips-content-clusters',
-		'label'       => __('Topic Clusters', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-networking',
-		'description' => __('Topic clusters & gap ideas', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-content-clusters'),
-		'active'      => ($active_tab === 'aips-content-clusters'),
-	),
-	array(
-		'key'         => 'aips-content-cannibalization',
-		'label'       => __('Cannibalization Shield', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-shield',
-		'description' => __('Semantic duplicate & overlap audit', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-content-cannibalization'),
-		'active'      => ($active_tab === 'aips-content-cannibalization'),
-	),
-);
-
 $summary_items = array();
 if ('aips-generated-posts' === $active_tab && isset($history['total'])) {
 	$summary_items[] = array('label' => __('Generated Posts', 'ai-post-scheduler'), 'value' => (int) $history['total'], 'type' => 'neutral', 'icon' => 'dashicons-admin-post');
@@ -176,16 +86,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 		<!-- Page Header -->
 		<?php AIPS_Admin_UI_Primitives::render_page_header($page_context); ?>
 
-		<!-- Vertical Sidebar Rail Layout -->
-		<div class="aips-rail-layout">
-			<?php
-			AIPS_Admin_UI_Primitives::render_rail(array(
-				'aria_label' => __('Content Navigation', 'ai-post-scheduler'),
-				'items'      => $rail_items,
-			));
-			?>
-
-			<main class="aips-rail-main">
+			<main class="aips-hub-main">
 				<!-- Tab 1: Generated Posts -->
 				<div id="aips-generated-posts-tab" class="aips-tab-content<?php echo $active_tab === 'aips-generated-posts' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-generated-posts' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-generated-posts' ? '' : 'hidden'; ?>>
 					<div class="aips-content-panel">
@@ -297,7 +198,6 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 					?>
 				</div>
 			</main>
-		</div><!-- /.aips-rail-layout -->
 	</div>
 </div>
 

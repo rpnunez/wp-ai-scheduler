@@ -66,6 +66,7 @@ class AIPS_Admin_Assets {
      */
     public function __construct() {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+		add_action('admin_footer', array($this, 'render_admin_flyout_templates'));
         add_filter('style_loader_src', array($this, 'filter_asset_version_for_dev'), 999, 2);
         add_filter('script_loader_src', array($this, 'filter_asset_version_for_dev'), 999, 2);
     }
@@ -130,6 +131,7 @@ class AIPS_Admin_Assets {
 	 */
 	public function enqueue_admin_assets($hook) {
         $page = $this->get_current_page_slug();
+		$this->enqueue_admin_flyout_assets();
 
         if (!$this->is_plugin_admin_page($hook, $page)) {
             if ($this->is_native_post_admin_page($hook)) {
@@ -265,6 +267,69 @@ class AIPS_Admin_Assets {
 			$this->enqueue_ai_errors_tab_assets();
 		}
 
+	}
+
+	/**
+	 * Enqueue the lightweight flyout navigation on WordPress admin screens.
+	 *
+	 * @return void
+	 */
+	private function enqueue_admin_flyout_assets() {
+		if (!current_user_can('manage_options')) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'aips-design-tokens',
+			AIPS_PLUGIN_URL . 'assets/css/design-tokens.css',
+			array(),
+			self::get_asset_version('assets/css/design-tokens.css')
+		);
+
+		wp_enqueue_style(
+			'aips-admin-flyout-navigation',
+			AIPS_PLUGIN_URL . 'assets/css/admin-flyout-navigation.css',
+			array('aips-design-tokens'),
+			self::get_asset_version('assets/css/admin-flyout-navigation.css')
+		);
+
+		wp_enqueue_script(
+			'aips-templates-script',
+			AIPS_PLUGIN_URL . 'assets/js/templates.js',
+			array('jquery'),
+			self::get_asset_version('assets/js/templates.js'),
+			true
+		);
+
+		wp_enqueue_script(
+			'aips-admin-flyout-navigation',
+			AIPS_PLUGIN_URL . 'assets/js/admin-flyout-navigation.js',
+			array('jquery', 'aips-templates-script'),
+			self::get_asset_version('assets/js/admin-flyout-navigation.js'),
+			true
+		);
+
+		wp_localize_script('aips-admin-flyout-navigation', 'aipsAdminFlyouts', array(
+			'hubs'               => AIPS_Admin_Flyout_Navigation::get_payload(),
+			'openDelay'          => 120,
+			'closeDelay'         => 200,
+			'breakpoint'         => 782,
+			'navigationLabel'    => __('navigation', 'ai-post-scheduler'),
+			'pendingReviewLabel' => __('pending reviews', 'ai-post-scheduler'),
+		));
+	}
+
+	/**
+	 * Print shared client templates only when the flyout script is enqueued.
+	 *
+	 * @return void
+	 */
+	public function render_admin_flyout_templates() {
+		if (!current_user_can('manage_options') || !wp_script_is('aips-admin-flyout-navigation', 'enqueued')) {
+			return;
+		}
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/partials/admin-flyout-templates.php';
 	}
 
 	/**
