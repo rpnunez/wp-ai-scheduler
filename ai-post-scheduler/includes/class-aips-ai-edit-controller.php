@@ -1507,7 +1507,7 @@ class AIPS_AI_Edit_Controller {
 		$directive     = isset($_POST['directive']) ? sanitize_textarea_field(wp_unslash($_POST['directive'])) : '';
 		$apply_changes = isset($_POST['apply']) ? filter_var(wp_unslash($_POST['apply']), FILTER_VALIDATE_BOOLEAN) : false;
 
-		if ($component_key === '' || $target_id <= 0) {
+		if ($component_key === '' || ($target_id <= 0 && $strategy_key !== 'campaigns')) {
 			AIPS_Ajax_Response::invalid_request(__('Component key and target ID are required.', 'ai-post-scheduler'));
 		}
 
