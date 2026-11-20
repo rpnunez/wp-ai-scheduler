@@ -641,95 +641,95 @@ class AIPS_Settings_UI {
         <?php
     }
 
-    /**
-     * Render the per-component inline generation retries setting fields.
-     */
-    public function component_generation_retries_field_callback() {
-        $values = AIPS_Config::get_instance()->get_component_generation_retries();
-        $fields = array(
-            'post_content'        => array(
-                'label' => __('Post Content', 'ai-post-scheduler'),
-                'help'  => __('Retries when the main article body fails or returns empty.', 'ai-post-scheduler'),
-            ),
-            'post_title'          => array(
-                'label' => __('Post Title', 'ai-post-scheduler'),
-                'help'  => __('Retries when title generation fails or returns empty.', 'ai-post-scheduler'),
-            ),
-            'post_excerpt'        => array(
-                'label' => __('Post Excerpt', 'ai-post-scheduler'),
-                'help'  => __('Retries when excerpt generation returns empty before falling back to content.', 'ai-post-scheduler'),
-            ),
-            'post_slug'           => array(
-                'label' => __('Post Slug', 'ai-post-scheduler'),
-                'help'  => __('Recommended: 0 retries. If slug generation is disabled or the AI model does not return a custom slug, WordPress will automatically generate a clean URL slug from the Post Title.', 'ai-post-scheduler'),
-            ),
-            'post_featured_image' => array(
-                'label' => __('Featured Image', 'ai-post-scheduler'),
-                'help'  => __('Retries when featured image generation encounters a transient error.', 'ai-post-scheduler'),
-            ),
-            'post_images'         => array(
-                'label' => __('Post Content Images', 'ai-post-scheduler'),
-                'help'  => __('When multiple content images are configured, prompts or image API generations may encounter partial deficits or transient timeouts. Setting retries to 2–5 allows automatic recovery before finishing the post.', 'ai-post-scheduler'),
-            ),
-            'post_meta'           => array(
-                'label' => __('Combined Metadata Turn', 'ai-post-scheduler'),
-                'help'  => __('Retries when the combined metadata JSON turn returns unparseable output.', 'ai-post-scheduler'),
-            ),
-        );
-        ?>
-        <div class="aips-component-retries-grid" style="display: grid; gap: 10px; max-width: 680px;">
-            <?php foreach ($fields as $key => $meta) : ?>
-                <?php $limit = isset($values[$key]) ? (int) $values[$key] : 0; ?>
-                <div class="aips-component-retry-row" style="padding: 8px 10px; border: 1px solid #dcdcde; border-radius: 4px; background: #fff;">
-                    <label for="aips_component_retry_<?php echo esc_attr($key); ?>" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600;">
-                        <span><?php echo esc_html($meta['label']); ?></span>
-                        <input
-                            type="number"
-                            id="aips_component_retry_<?php echo esc_attr($key); ?>"
-                            name="aips_component_generation_retries[<?php echo esc_attr($key); ?>]"
-                            value="<?php echo esc_attr($limit); ?>"
-                            min="0"
-                            max="5"
-                            class="small-text"
-                        >
-                    </label>
-                    <p class="description" style="margin: 4px 0 0;"><?php echo esc_html($meta['help']); ?></p>
-                </div>
-            <?php endforeach; ?>
-        </div>
-        <p class="description"><?php esc_html_e('Maximum retries per component during post generation (0–5). Exponential jitter backoff (500–1500ms) is applied between attempts.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
+	/**
+	 * Render the per-component inline generation retries setting fields.
+	 */
+	public function component_generation_retries_field_callback() {
+		$values = AIPS_Config::get_instance()->get_component_generation_retries();
+		$fields = array(
+			'post_content'        => array(
+				'label' => __('Post Content', 'ai-post-scheduler'),
+				'help'  => __('Retries when the main article body fails or returns empty.', 'ai-post-scheduler'),
+			),
+			'post_title'          => array(
+				'label' => __('Post Title', 'ai-post-scheduler'),
+				'help'  => __('Retries when title generation fails or returns empty.', 'ai-post-scheduler'),
+			),
+			'post_excerpt'        => array(
+				'label' => __('Post Excerpt', 'ai-post-scheduler'),
+				'help'  => __('Retries when excerpt generation returns empty before falling back to content.', 'ai-post-scheduler'),
+			),
+			'post_slug'           => array(
+				'label' => __('Post Slug', 'ai-post-scheduler'),
+				'help'  => __('Recommended: 0 retries. If slug generation is disabled or the AI model does not return a custom slug, WordPress will automatically generate a clean URL slug from the Post Title.', 'ai-post-scheduler'),
+			),
+			'post_featured_image' => array(
+				'label' => __('Featured Image', 'ai-post-scheduler'),
+				'help'  => __('Retries when featured image generation encounters a transient error.', 'ai-post-scheduler'),
+			),
+			'post_images'         => array(
+				'label' => __('Post Content Images', 'ai-post-scheduler'),
+				'help'  => __('When multiple content images are configured, prompts or image API generations may encounter partial deficits or transient timeouts. Setting retries to 2–5 allows automatic recovery before finishing the post.', 'ai-post-scheduler'),
+			),
+			'post_meta'           => array(
+				'label' => __('Combined Metadata Turn', 'ai-post-scheduler'),
+				'help'  => __('Retries when the combined metadata JSON turn returns unparseable output.', 'ai-post-scheduler'),
+			),
+		);
+		?>
+		<div class="aips-component-retries-grid" style="display: grid; gap: 10px; max-width: 680px;">
+			<?php foreach ($fields as $key => $meta) : ?>
+				<?php $limit = isset($values[$key]) ? (int) $values[$key] : 0; ?>
+				<div class="aips-component-retry-row" style="padding: 8px 10px; border: 1px solid #dcdcde; border-radius: 4px; background: #fff;">
+					<label for="aips_component_retry_<?php echo esc_attr($key); ?>" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600;">
+						<span><?php echo esc_html($meta['label']); ?></span>
+						<input
+							type="number"
+							id="aips_component_retry_<?php echo esc_attr($key); ?>"
+							name="aips_component_generation_retries[<?php echo esc_attr($key); ?>]"
+							value="<?php echo esc_attr($limit); ?>"
+							min="0"
+							max="5"
+							class="small-text"
+						>
+					</label>
+					<p class="description" style="margin: 4px 0 0;"><?php echo esc_html($meta['help']); ?></p>
+				</div>
+			<?php endforeach; ?>
+		</div>
+		<p class="description"><?php esc_html_e('Maximum retries per component during post generation (0–5). Exponential jitter backoff (500–1500ms) is applied between attempts.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
 
-    /**
-     * Sanitize per-component inline generation retry limits.
-     *
-     * Clamps each known component key to an integer in the range 0..5 and discards unknown keys.
-     *
-     * @param mixed $value Submitted option value.
-     * @return array<string, int>
-     */
-    public function sanitize_component_generation_retries($value) {
-        $defaults = AIPS_Config::get_instance()->get_default_options();
-        $default_map = isset($defaults['aips_component_generation_retries']) && is_array($defaults['aips_component_generation_retries'])
-            ? $defaults['aips_component_generation_retries']
-            : array();
+	/**
+	 * Sanitize per-component inline generation retry limits.
+	 *
+	 * Clamps each known component key to an integer in the range 0..5 and discards unknown keys.
+	 *
+	 * @param mixed $value Submitted option value.
+	 * @return array<string, int>
+	 */
+	public function sanitize_component_generation_retries($value) {
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+		$default_map = isset($defaults['aips_component_generation_retries']) && is_array($defaults['aips_component_generation_retries'])
+			? $defaults['aips_component_generation_retries']
+			: array();
 
-        if (!is_array($value)) {
-            $value = array();
-        }
+		if (!is_array($value)) {
+			$value = array();
+		}
 
-        $sanitized = array();
-        foreach ($default_map as $component => $default_limit) {
-            if (array_key_exists($component, $value) && '' !== $value[$component] && null !== $value[$component]) {
-                $sanitized[$component] = max(0, min(5, (int) $value[$component]));
-            } else {
-                $sanitized[$component] = max(0, min(5, (int) $default_limit));
-            }
-        }
+		$sanitized = array();
+		foreach ($default_map as $component => $default_limit) {
+			if (array_key_exists($component, $value) && '' !== $value[$component] && null !== $value[$component]) {
+				$sanitized[$component] = max(0, min(5, (int) $value[$component]));
+			} else {
+				$sanitized[$component] = max(0, min(5, (int) $default_limit));
+			}
+		}
 
-        return $sanitized;
-    }
+		return $sanitized;
+	}
 
     /**
      * Render the enable rate limiting setting field.

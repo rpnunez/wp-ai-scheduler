@@ -322,4 +322,169 @@ class Test_AIPS_Component_Retry_Runner extends WP_UnitTestCase {
 		$this->assertStringContainsString('First paragraph fallback text', $post_manager->created_post_data['excerpt']);
 		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_excerpt']);
 	}
+
+	public function test_generator_blank_title_exhaustion_falls_back_to_safe_title_and_marks_title_failed() {
+		add_filter('aips_component_retry_delay_ms', '__return_zero');
+		update_option('aips_component_generation_retries', array(
+			'post_title' => 2,
+		));
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		// Content returned, but all 3 title attempts return blank whitespace.
+		$ai_service = new AIPS_Test_Conversational_AI_Service(array(
+			'<p>Article body for testing blank titles.</p>',
+			'   ',
+			'',
+			" \n\t ",
+			'Valid excerpt text here.',
+		));
+
+		$post_manager = new AIPS_Test_Conversational_Post_Manager();
+		$history_service = new AIPS_Test_Conversational_History_Service();
+		$generator = new AIPS_Generator(null, $ai_service, null, null, null, $post_manager, $history_service);
+
+		$template = (object) array(
+			'id'                      => 904,
+			'name'                    => 'Blank Title Fallback Template',
+			'prompt_template'         => 'Write about {{topic}}.',
+			'title_prompt'            => 'Generate title.',
+			'generate_featured_image' => false,
+			'generate_slug'           => 0,
+			'post_status'             => 'draft',
+			'post_type'               => 'post',
+			'post_category'           => '',
+			'post_tags'               => '',
+			'post_author'             => 1,
+		);
+
+		$post_id = $generator->generate_post(new AIPS_Template_Context($template, null, 'Blank Titles'));
+
+		$this->assertIsInt($post_id);
+		$this->assertStringStartsWith('AIPS Generated Post: Blank Titles', $post_manager->created_post_data['title']);
+		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_title']);
+	}
+
+	public function test_generator_non_retryable_error_in_excerpt_aborts_without_retrying() {
+		add_filter('aips_component_retry_delay_ms', '__return_zero');
+		update_option('aips_component_generation_retries', array(
+			'post_excerpt' => 3,
+		));
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = new AIPS_Test_Conversational_AI_Service(array(
+			'<p>Content body text for testing non retryable excerpt.</p>',
+			'Valid Title',
+			new WP_Error('circuit_breaker_open', 'Circuit breaker is open.'),
+		));
+
+		$post_manager = new AIPS_Test_Conversational_Post_Manager();
+		$history_service = new AIPS_Test_Conversational_History_Service();
+		$generator = new AIPS_Generator(null, $ai_service, null, null, null, $post_manager, $history_service);
+
+		$template = (object) array(
+			'id'                      => 905,
+			'name'                    => 'Circuit Breaker Excerpt Template',
+			'prompt_template'         => 'Write about {{topic}}.',
+			'title_prompt'            => 'Generate title.',
+			'generate_featured_image' => false,
+			'generate_slug'           => 0,
+			'post_status'             => 'draft',
+			'post_type'               => 'post',
+			'post_category'           => '',
+			'post_tags'               => '',
+			'post_author'             => 1,
+		);
+
+		$post_id = $generator->generate_post(new AIPS_Template_Context($template, null, 'Circuits'));
+
+		$this->assertIsInt($post_id);
+		// AI calls should be exactly 3: 1 content, 1 title, and only 1 excerpt call (0 retries because non-retryable).
+		$this->assertCount(3, $ai_service->calls);
+		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_excerpt']);
+	}
+
+	public function test_execute_deficit_recovery_aborts_on_non_retryable_error() {
+		$runner = new AIPS_Component_Retry_Runner(function () {});
+		$calls = 0;
+
+		$run = $runner->execute_deficit_recovery(
+			'post_images',
+			array(1, 2),
+			function () use (&$calls) {
+				$calls++;
+				return new WP_Error('rate_limit_exceeded', 'Rate limit exceeded.');
+			}
+		);
+
+		$this->assertSame(1, $calls);
+		$this->assertSame(1, $run['retries_used']);
+		$this->assertSame(array(1, 2), $run['remaining']);
+		$this->assertSame(array(), $run['recovered']);
+	}
+
+	public function test_generator_content_image_retries_and_succeeds_on_transient_failure() {
+		add_filter('aips_component_retry_delay_ms', '__return_zero');
+		update_option('aips_component_generation_retries', array(
+			'post_images' => 2,
+		));
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$ai_service = new AIPS_Test_Conversational_AI_Service(array(
+			"<p>Body with placeholder.</p>\n<p>[post_image index=\"1\"]</p>",
+			'Article Title',
+			'Excerpt text',
+		));
+
+		$img_calls = 0;
+		$attachment_id = self::factory()->attachment->create_upload_object(DIR_TESTDATA . '/images/canola.jpg');
+
+		$image_service = $this->getMockBuilder('AIPS_Image_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('generate_and_upload_featured_image'))
+			->getMock();
+
+		$image_service->expects($this->exactly(2))
+			->method('generate_and_upload_featured_image')
+			->willReturnCallback(function () use (&$img_calls, $attachment_id) {
+				$img_calls++;
+				if ($img_calls === 1) {
+					return new WP_Error('timeout', 'Temporary 504 Gateway Timeout');
+				}
+				return $attachment_id;
+			});
+
+		$post_manager = new AIPS_Test_Conversational_Post_Manager();
+		$history_service = new AIPS_Test_Conversational_History_Service();
+		$generator = new AIPS_Generator(null, $ai_service, null, $image_service, null, $post_manager, $history_service);
+
+		$template = (object) array(
+			'id'                      => 906,
+			'name'                    => 'Content Image Retry Template',
+			'prompt_template'         => 'Write about {{topic}}.',
+			'title_prompt'            => 'Generate title.',
+			'generate_featured_image' => false,
+			'generate_slug'           => 0,
+			'post_status'             => 'draft',
+			'post_type'               => 'post',
+			'post_category'           => '',
+			'post_tags'               => '',
+			'post_author'             => 1,
+			'post_images'             => array(
+				(object) array(
+					'id'                => 11,
+					'placeholder_index' => 1,
+					'source'            => 'ai_prompt',
+					'image_prompt'      => 'A photo of {{topic}}',
+					'placement'         => 'auto',
+					'caption'           => 'Test caption',
+				),
+			),
+		);
+
+		$post_id = $generator->generate_post(new AIPS_Template_Context($template, null, 'Robotics'));
+
+		$this->assertIsInt($post_id);
+		$this->assertSame(2, $img_calls);
+		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_images']);
+	}
 }

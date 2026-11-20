@@ -73,6 +73,10 @@ class AIPS_Component_Retry_Runner {
 	 * @return bool
 	 */
 	public function is_non_retryable_error($result) {
+		if (is_array($result) && isset($result['wp_error']) && is_wp_error($result['wp_error'])) {
+			$result = $result['wp_error'];
+		}
+
 		if (!is_wp_error($result)) {
 			return false;
 		}
@@ -219,6 +223,9 @@ class AIPS_Component_Retry_Runner {
 			}
 
 			$pass_recovered = call_user_func($recover_fn, $remaining, $retries_used);
+			if ($this->is_non_retryable_error($pass_recovered)) {
+				break;
+			}
 			if (is_array($pass_recovered)) {
 				foreach ($pass_recovered as $idx => $prompt_str) {
 					$idx_int = (int) $idx;
