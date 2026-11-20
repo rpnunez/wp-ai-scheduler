@@ -303,7 +303,7 @@ class AIPS_Settings_UI {
 			<?php if (!empty($ordered_ids)) : ?>
 				<p><label for="aips_wp_ai_connector_ids"><strong><?php esc_html_e('Allowed connectors and priority', 'ai-post-scheduler'); ?></strong></label></p>
 				<input type="hidden" name="aips_wp_ai_connector_ids[]" value="">
-				<select name="aips_wp_ai_connector_ids[]" id="aips_wp_ai_connector_ids" multiple size="<?php echo esc_attr((string) min(8, max(3, count($ordered_ids)))); ?>" style="min-width: 24em;">
+				<select name="aips_wp_ai_connector_ids[]" id="aips_wp_ai_connector_ids" multiple size="<?php echo esc_attr((string) min(8, max(3, count($ordered_ids)))); ?>" class="aips-connector-select">
 					<?php foreach ($ordered_ids as $connector_id) : ?>
 						<?php
 						$connector = isset($connectors[$connector_id]) ? $connectors[$connector_id] : null;
@@ -500,7 +500,7 @@ class AIPS_Settings_UI {
         <fieldset>
             <legend class="screen-reader-text"><?php esc_html_e('Allowed Image Sources', 'ai-post-scheduler'); ?></legend>
             <?php foreach ($sources as $key => $label): ?>
-                <label style="display: block; margin-bottom: 6px;">
+                <label class="aips-checkbox-label-block">
                     <input type="checkbox" name="aips_allowed_image_sources[]" value="<?php echo esc_attr($key); ?>" <?php checked(in_array($key, $allowed, true)); ?>>
                     <?php echo esc_html($label); ?>
                 </label>
@@ -677,11 +677,11 @@ class AIPS_Settings_UI {
 			),
 		);
 		?>
-		<div class="aips-component-retries-grid" style="display: grid; gap: 10px; max-width: 680px;">
+		<div class="aips-component-retries-grid">
 			<?php foreach ($fields as $key => $meta) : ?>
 				<?php $limit = isset($values[$key]) ? (int) $values[$key] : 0; ?>
-				<div class="aips-component-retry-row" style="padding: 8px 10px; border: 1px solid #dcdcde; border-radius: 4px; background: #fff;">
-					<label for="aips_component_retry_<?php echo esc_attr($key); ?>" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600;">
+				<div class="aips-component-retry-row">
+					<label for="aips_component_retry_<?php echo esc_attr($key); ?>" class="aips-component-retry-label">
 						<span><?php echo esc_html($meta['label']); ?></span>
 						<input
 							type="number"
@@ -693,7 +693,7 @@ class AIPS_Settings_UI {
 							class="small-text"
 						>
 					</label>
-					<p class="description" style="margin: 4px 0 0;"><?php echo esc_html($meta['help']); ?></p>
+					<p class="description aips-component-retry-desc"><?php echo esc_html($meta['help']); ?></p>
 				</div>
 			<?php endforeach; ?>
 		</div>
@@ -1433,7 +1433,7 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_ai_assistance_contexts[]" value="">
 		<?php foreach ( $labels as $context => $label ) : ?>
-			<label style="display:block">
+			<label class="aips-checkbox-label-block">
 				<input type="checkbox" name="aips_ai_assistance_contexts[]" value="<?php echo esc_attr( $context ); ?>" <?php checked( in_array( $context, $enabled, true ) ); ?>>
 				<?php echo esc_html( $label ); ?>
 			</label>
@@ -2510,20 +2510,20 @@ class AIPS_Settings_UI {
 		$value = (string) AIPS_Config::get_instance()->get_option('aips_indexer_publish_execution_timing', 'queued');
 		?>
 		<fieldset>
-			<label style="display:block;margin-bottom:6px;">
+			<label class="aips-checkbox-label-block">
 				<input type="radio" name="aips_indexer_publish_execution_timing" value="queued" <?php checked($value, 'queued'); ?>>
 				<strong><?php esc_html_e('Debounced Background Batch Queue (Recommended)', 'ai-post-scheduler'); ?></strong>
-				<span class="description" style="display:block;margin-left:22px;"><?php esc_html_e('Buffers posts when published and processes them in rate-limited background batches via WP-Cron.', 'ai-post-scheduler'); ?></span>
+				<span class="description aips-checkbox-label-desc-indent"><?php esc_html_e('Buffers posts when published and processes them in rate-limited background batches via WP-Cron.', 'ai-post-scheduler'); ?></span>
 			</label>
-			<label style="display:block;margin-bottom:6px;">
+			<label class="aips-checkbox-label-block">
 				<input type="radio" name="aips_indexer_publish_execution_timing" value="immediate" <?php checked($value, 'immediate'); ?>>
 				<strong><?php esc_html_e('Immediate (Synchronous on Publish)', 'ai-post-scheduler'); ?></strong>
-				<span class="description" style="display:block;margin-left:22px;"><?php esc_html_e('Generates vector embeddings and relationships immediately upon post publishing. May slightly slow down post saving.', 'ai-post-scheduler'); ?></span>
+				<span class="description aips-checkbox-label-desc-indent"><?php esc_html_e('Generates vector embeddings and relationships immediately upon post publishing. May slightly slow down post saving.', 'ai-post-scheduler'); ?></span>
 			</label>
-			<label style="display:block;">
+			<label class="aips-checkbox-label-block">
 				<input type="radio" name="aips_indexer_publish_execution_timing" value="disabled" <?php checked($value, 'disabled'); ?>>
 				<strong><?php esc_html_e('Disabled', 'ai-post-scheduler'); ?></strong>
-				<span class="description" style="display:block;margin-left:22px;"><?php esc_html_e('Do not vectorize posts on publish. Indexing must be initiated manually from Content Indexer.', 'ai-post-scheduler'); ?></span>
+				<span class="description aips-checkbox-label-desc-indent"><?php esc_html_e('Do not vectorize posts on publish. Indexing must be initiated manually from Content Indexer.', 'ai-post-scheduler'); ?></span>
 			</label>
 		</fieldset>
 		<?php
@@ -2541,7 +2541,7 @@ class AIPS_Settings_UI {
 		$quota_pause   = (bool) $config->get_option('aips_indexer_quota_pause_enabled', true);
 		$notifications = (bool) $config->get_option('aips_indexer_queue_notifications_enabled', true);
 		?>
-		<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px;">
+		<div class="aips-flex-row-wrap-start aips-space-bottom-md">
 			<div>
 				<label for="aips_indexer_batch_size"><strong><?php esc_html_e('Batch Size:', 'ai-post-scheduler'); ?></strong></label><br>
 				<input type="number" min="1" max="50" step="1" name="aips_indexer_batch_size" id="aips_indexer_batch_size" value="<?php echo esc_attr((string) $batch_size); ?>" class="small-text">
@@ -2554,11 +2554,11 @@ class AIPS_Settings_UI {
 			</div>
 		</div>
 		<div>
-			<label for="aips_indexer_quota_pause_enabled" style="display:block;margin-bottom:6px;">
+			<label for="aips_indexer_quota_pause_enabled" class="aips-checkbox-label-block">
 				<input type="checkbox" name="aips_indexer_quota_pause_enabled" id="aips_indexer_quota_pause_enabled" value="1" <?php checked($quota_pause); ?>>
 				<?php esc_html_e('Auto-Pause indexing queue when approaching rate limits or remote quota', 'ai-post-scheduler'); ?>
 			</label>
-			<label for="aips_indexer_queue_notifications_enabled" style="display:block;">
+			<label for="aips_indexer_queue_notifications_enabled" class="aips-checkbox-label-block">
 				<input type="checkbox" name="aips_indexer_queue_notifications_enabled" id="aips_indexer_queue_notifications_enabled" value="1" <?php checked($notifications); ?>>
 				<?php esc_html_e('Notify admin via email when background indexing queue is paused or exhausts quota', 'ai-post-scheduler'); ?>
 			</label>
@@ -2577,7 +2577,7 @@ class AIPS_Settings_UI {
 		$unit      = (string) $config->get_option('aips_indexer_error_pause_unit', 'minutes');
 		$threshold = (int) $config->get_option('aips_indexer_consecutive_error_threshold', 2);
 		?>
-		<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+		<div class="aips-flex-row-wrap">
 			<div>
 				<label for="aips_indexer_error_pause_duration"><strong><?php esc_html_e('Cooldown Duration:', 'ai-post-scheduler'); ?></strong></label><br>
 				<input type="number" min="1" max="100" step="1" name="aips_indexer_error_pause_duration" id="aips_indexer_error_pause_duration" value="<?php echo esc_attr((string) $duration); ?>" class="small-text">
@@ -2593,7 +2593,7 @@ class AIPS_Settings_UI {
 				<span class="description"><?php esc_html_e('failures', 'ai-post-scheduler'); ?></span>
 			</div>
 		</div>
-		<p class="description" style="margin-top:8px;">
+		<p class="description aips-description-spaced">
 			<?php esc_html_e('When remote provider returns HTTP 429 ("Resource exhausted" / "Quota exceeded"), indexing halts automatically for the configured duration.', 'ai-post-scheduler'); ?>
 		</p>
 		<?php
@@ -2729,7 +2729,7 @@ class AIPS_Settings_UI {
 			: null;
 		if (!$embeddings || !$embeddings->is_enabled()) :
 			?>
-			<p class="description aips-embeddings-warning" id="aips-auto-approval-embeddings-warning" style="color: #b32d2e;">
+			<p class="description aips-embeddings-warning" id="aips-auto-approval-embeddings-warning">
 				<?php esc_html_e('Embeddings are currently disabled. The semantic gate cannot measure niche relevance until embeddings are enabled.', 'ai-post-scheduler'); ?>
 			</p>
 			<?php
@@ -3378,8 +3378,8 @@ class AIPS_Settings_UI {
 		$value  = (int) $config->get_option('aips_telemetry_retention_value', 30);
 		$unit   = (string) $config->get_option('aips_telemetry_retention_unit', 'days');
 		?>
-		<div style="display: flex; align-items: center; gap: 8px;">
-			<input type="number" name="aips_telemetry_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="365" style="width: 80px;">
+		<div class="aips-settings-action-row">
+			<input type="number" name="aips_telemetry_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="365" class="small-text aips-input-retention">
 			<select name="aips_telemetry_retention_unit">
 				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
 				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
@@ -3463,11 +3463,11 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_clean_orphaned_embeddings" value="0">
 		<input type="hidden" name="aips_clean_expired_topics" value="0">
-		<label style="display: block; margin-bottom: 6px;">
+		<label class="aips-checkbox-label-block">
 			<input type="checkbox" name="aips_clean_orphaned_embeddings" value="1" <?php checked($clean_embeddings, true); ?>>
 			<?php esc_html_e('Purge orphaned embeddings (vectors for posts deleted from WordPress)', 'ai-post-scheduler'); ?>
 		</label>
-		<label style="display: block;">
+		<label class="aips-checkbox-label-block">
 			<input type="checkbox" name="aips_clean_expired_topics" value="1" <?php checked($clean_topics, true); ?>>
 			<?php esc_html_e('Purge rejected and expired author topics older than 30 days', 'ai-post-scheduler'); ?>
 		</label>

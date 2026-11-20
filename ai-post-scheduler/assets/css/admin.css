@@ -8139,7 +8139,8 @@ tr.aips-row-details > td {
 	font-size: var(--aips-text-sm);
 }
 
-.aips-checkbox-label-block input[type="checkbox"] {
+.aips-checkbox-label-block input[type="checkbox"],
+.aips-checkbox-label-block input[type="radio"] {
 	margin-right: 6px;
 }
 
@@ -8148,11 +8149,80 @@ tr.aips-row-details > td {
 	margin-left: var(--aips-space-1);
 }
 
+.aips-checkbox-label-desc-indent {
+	display: block;
+	margin-left: 22px;
+}
+
 /* Settings Action Row */
 .aips-settings-action-row {
 	display: flex;
 	align-items: center;
 	gap: var(--aips-space-3);
+}
+
+/* Component Generation Retries Grid */
+.aips-component-retries-grid {
+	display: grid;
+	gap: var(--aips-space-2);
+	max-width: var(--aips-container-sm);
+}
+
+.aips-component-retry-row {
+	padding: var(--aips-space-2) var(--aips-space-3);
+	border: 1px solid var(--aips-gray-100);
+	border-radius: var(--aips-radius-base);
+	background: var(--aips-white);
+}
+
+.aips-component-retry-label {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--aips-space-3);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-800);
+}
+
+.aips-component-retry-desc {
+	margin: var(--aips-space-1) 0 0;
+	color: var(--aips-gray-600);
+	font-size: var(--aips-text-sm);
+}
+
+/* Settings Form Field Helpers */
+.aips-connector-select {
+	min-width: 24em;
+}
+
+.aips-flex-row-wrap {
+	display: flex;
+	gap: var(--aips-space-5);
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+.aips-flex-row-wrap-start {
+	display: flex;
+	gap: var(--aips-space-6);
+	flex-wrap: wrap;
+	align-items: flex-start;
+}
+
+.aips-space-bottom-md {
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-description-spaced {
+	margin-top: var(--aips-space-2);
+}
+
+.aips-embeddings-warning {
+	color: var(--aips-error-dark);
+}
+
+.aips-input-retention {
+	width: 80px;
 }
 
 /* Meow Environment Discovery */
