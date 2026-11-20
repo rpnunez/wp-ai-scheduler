@@ -20,6 +20,7 @@ class AIPS_Admin_Menu {
      */
     public function __construct() {
         add_action('admin_menu', array($this, 'add_menu_pages'));
+        add_action('admin_init', array($this, 'maybe_redirect_legacy_pages'));
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
         add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
     }
@@ -54,7 +55,17 @@ class AIPS_Admin_Menu {
             array($this, 'render_dashboard_page')
         );
 
-        // 2. Automations
+        // 2. Campaigns (Center Stage Container)
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Campaigns', 'ai-post-scheduler'),
+            __('Campaigns', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-campaigns',
+            array($this, 'render_campaigns_page')
+        );
+
+        // 3. Automations
         $automations_hook = add_submenu_page(
             'ai-post-scheduler',
             __('Automations', 'ai-post-scheduler'),
@@ -133,7 +144,15 @@ class AIPS_Admin_Menu {
             array($this, 'render_diagnostics_page')
         );
 
-        // Hidden child pages accessible directly via URL / redirects
+        add_submenu_page(
+            null,
+            __('Author Topics', 'ai-post-scheduler'),
+            __('Author Topics', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-author-topics',
+            array($this, 'render_author_topics_page')
+        );
+
         add_submenu_page(
             null,
             __('Campaign Wizard', 'ai-post-scheduler'),
@@ -152,24 +171,6 @@ class AIPS_Admin_Menu {
             array($this, 'render_campaign_detail_page')
         );
 
-        add_submenu_page(
-            null,
-            __('Author Topics', 'ai-post-scheduler'),
-            __('Author Topics', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-author-topics',
-            array($this, 'render_author_topics_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Sources', 'ai-post-scheduler'),
-            __('Sources', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-sources',
-            array($this, 'render_sources_page')
-        );
-
         $source_data_hook = add_submenu_page(
             null,
             __('Manage Source Data', 'ai-post-scheduler'),
@@ -180,129 +181,6 @@ class AIPS_Admin_Menu {
         );
         if ($source_data_hook) {
             add_action("load-{$source_data_hook}", array($this, 'setup_source_data_screen_options'));
-        }
-
-        add_submenu_page(
-            null,
-            __('Taxonomy', 'ai-post-scheduler'),
-            __('Taxonomy', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-taxonomy',
-            array($this, 'render_taxonomy_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Internal Links', 'ai-post-scheduler'),
-            __('Internal Links', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-internal-links',
-            array($this, 'render_internal_links_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Content Intelligence', 'ai-post-scheduler'),
-            __('Content Intelligence', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-content-intelligence',
-            array($this, 'render_content_intelligence_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Topic Clusters & Gaps', 'ai-post-scheduler'),
-            __('Topic Clusters & Gaps', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-post-clusters',
-            array($this, 'render_post_clusters_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Cannibalization Audit', 'ai-post-scheduler'),
-            __('Cannibalization Audit', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-cannibalization',
-            array($this, 'render_cannibalization_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Content Indexer', 'ai-post-scheduler'),
-            __('Content Indexer', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-content-indexer',
-            array($this, 'render_content_indexer_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Affiliate Links', 'ai-post-scheduler'),
-            __('Affiliate Links', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-affiliate-links',
-            array($this, 'render_affiliate_links_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('System Status', 'ai-post-scheduler'),
-            __('System Status', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-status',
-            array($this, 'render_status_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Operations Insights', 'ai-post-scheduler'),
-            __('Operations Insights', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-operations-insights',
-            array($this, 'render_operations_insights_page')
-        );
-
-        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
-            add_submenu_page(
-                null,
-                __('Telemetry', 'ai-post-scheduler'),
-                __('Telemetry', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-telemetry',
-                array($this, 'render_telemetry_page')
-            );
-        }
-
-        add_submenu_page(
-            null,
-            __('Stress Test', 'ai-post-scheduler'),
-            __('Stress Test', 'ai-post-scheduler'),
-            'manage_options',
-            AIPS_Stress_Test_Controller::PAGE_SLUG,
-            array($this, 'render_stress_test_page')
-        );
-
-        if (AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled')) {
-            add_submenu_page(
-                null,
-                __('Cache Monitor', 'ai-post-scheduler'),
-                __('Cache Monitor', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-cache-monitor',
-                array($this, 'render_cache_monitor_page')
-            );
-        }
-      
-        if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
-            add_submenu_page(
-                null,
-                __('Dev Tools', 'ai-post-scheduler'),
-                __('Dev Tools', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-dev-tools',
-                array($this, 'render_dev_tools_page')
-            );
         }
     }
 
@@ -317,7 +195,12 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page) || $this->is_studio_child_page($page)) {
+        if (
+            $page === 'aips-author-topics'
+            || $page === AIPS_Campaigns_Controller::PAGE_SLUG
+            || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG
+            || $page === 'aips-source-data'
+        ) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -335,55 +218,79 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_submenu_file($submenu_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($this->is_diagnostics_child_page($page)) {
-            return 'aips-diagnostics';
+        if ($page === AIPS_Campaigns_Controller::PAGE_SLUG || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $page === 'aips-campaigns') {
+            return 'aips-campaigns';
         }
-        if ($this->is_automations_child_page($page)) {
+        if ($page === 'aips-author-topics' || $page === 'aips-source-data') {
             return 'aips-automations';
-        }
-        if ($this->is_studio_child_page($page)) {
-            return 'aips-studio';
         }
         return $submenu_file;
     }
 
     /**
-     * Determine whether a hidden page belongs under Diagnostics.
+     * Redirect retired standalone admin slugs to their hub tab before headers are sent.
      *
-     * @param string $page Current admin page slug.
-     * @return bool
+     * @return void
      */
-    private function is_diagnostics_child_page($page) {
-        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_DIAGNOSTICS)) {
-            return true;
+    public function maybe_redirect_legacy_pages() {
+        if (wp_doing_ajax()) {
+            return;
         }
-        return $page === AIPS_Stress_Test_Controller::PAGE_SLUG;
+
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ('' === $page) {
+            return;
+        }
+
+        $map = $this->get_legacy_redirect_map();
+        if (!isset($map[$page])) {
+            return;
+        }
+
+        $this->redirect_to_hub($map[$page]['page'], $map[$page]['tab']);
     }
 
     /**
-     * Determine whether a hidden page belongs under Automations.
+     * Map retired page slugs to hub page + tab pairs.
      *
-     * @param string $page Current admin page slug.
-     * @return bool
+     * @return array<string, array{page:string, tab:string}>
      */
-    private function is_automations_child_page($page) {
-        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_AUTOMATIONS)) {
-            return true;
-        }
-        return in_array($page, array(AIPS_Campaigns_Controller::PAGE_SLUG, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG), true);
-    }
+    public function get_legacy_redirect_map() {
+        $exclude = array(
+            'aips-campaigns',
+            AIPS_Campaigns_Controller::PAGE_SLUG,
+            AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
+            'aips-source-data',
+            'aips-author-topics',
+        );
 
-    /**
-     * Determine whether a hidden page belongs under Studio.
-     *
-     * @param string $page Current admin page slug.
-     * @return bool
-     */
-    private function is_studio_child_page($page) {
-        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_STUDIO)) {
-            return true;
+        $map = array();
+        if (class_exists('AIPS_Admin_Page_Context')) {
+            foreach (AIPS_Admin_Page_Context::get_canonical_hubs() as $hub) {
+                $hub_slug    = isset($hub['slug']) ? (string) $hub['slug'] : '';
+                $child_pages = isset($hub['child_pages']) && is_array($hub['child_pages']) ? $hub['child_pages'] : array();
+                foreach ($child_pages as $child_slug => $tab) {
+                    if (in_array($child_slug, $exclude, true)) {
+                        continue;
+                    }
+                    $map[$child_slug] = array(
+                        'page' => $hub_slug,
+                        'tab'  => (string) $tab,
+                    );
+                }
+            }
         }
-        return false;
+
+        $map['aips-content-intelligence'] = array(
+            'page' => 'aips-generated-posts',
+            'tab'  => 'aips-content-indexer',
+        );
+
+        return $map;
     }
 
     /**
@@ -634,39 +541,6 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the Voices management page.
-     *
-     * Delegates rendering to the AIPS_Voices class.
-     *
-     * @return void
-     */
-    public function render_voices_page() {
-        $this->redirect_to_hub('aips-studio', 'voices');
-    }
-
-    /**
-     * Render the Templates management page.
-     *
-     * Delegates rendering to the AIPS_Templates class.
-     *
-     * @return void
-     */
-    public function render_templates_page() {
-        $this->redirect_to_hub('aips-studio', 'templates');
-    }
-
-    /**
-     * Render the Schedule management page.
-     *
-     * Includes the schedule template file.
-     *
-     * @return void
-     */
-    public function render_schedule_page() {
-        $this->redirect_to_hub('aips-automations', 'schedules');
-    }
-
-    /**
      * Render the Campaigns page.
      *
      * Delegates to the Campaigns controller.
@@ -702,6 +576,20 @@ class AIPS_Admin_Menu {
     }
 
     /**
+     * Render the Author Topics page.
+     *
+     * Dedicated hidden screen for one author's topic queue. This is not a hub
+     * redirect: the same template can also appear as an Automations tab.
+     *
+     * @return void
+     */
+    public function render_author_topics_page() {
+        AIPS_Admin_Menu_Helper::safe_render(function() {
+            include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
+        }, __('Author Topics', 'ai-post-scheduler'));
+    }
+
+    /**
      * Render the Trending Topics Research page.
      *
      * Includes the research template file.
@@ -715,38 +603,6 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the Authors management page.
-     *
-     * Includes the authors template file.
-     *
-     * @return void
-     */
-    public function render_authors_page() {
-        $this->redirect_to_hub('aips-automations', 'authors');
-    }
-
-    /**
-     * Render the Post Slices management page.
-     *
-     * @return void
-     */
-    public function render_post_slices_page() {
-        $this->redirect_to_hub('aips-studio', 'post-slices');
-    }
-
-    /**
-     * Render the Author Topics page.
-     *
-     * Displays all AI-generated topics for a specific author with full
-     * management capabilities (approve, reject, edit, delete, generate post).
-     *
-     * @return void
-     */
-    public function render_author_topics_page() {
-        $this->redirect_to_hub('aips-automations', 'author-topics');
-    }
-
-    /**
      * Render the Generated Posts page.
      *
      * @return void
@@ -756,17 +612,6 @@ class AIPS_Admin_Menu {
             $controller = new AIPS_Generated_Posts_Controller();
             $controller->render_page();
         }, __('Content', 'ai-post-scheduler'));
-    }
-
-    /*
-     * Render the Article Structures page.
-     *
-     * Fetches structures and sections from repositories and passes them to the template.
-     *
-     * @return void
-     */
-    public function render_structures_page() {
-        $this->redirect_to_hub('aips-studio', 'structures');
     }
 
     /**
@@ -793,30 +638,6 @@ class AIPS_Admin_Menu {
             $controller = new AIPS_Diagnostics_Controller();
             $controller->render_page();
         }, __('Diagnostics', 'ai-post-scheduler'));
-    }
-
-    public function render_operations_insights_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'insights');
-    }
-
-    /**
-     * Render the Telemetry page.
-     *
-     * @return void
-     */
-    public function render_telemetry_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'telemetry');
-    }
-
-    /**
-     * Render the Sources page.
-     *
-     * Loads all sources from the repository and includes the sources template.
-     *
-     * @return void
-     */
-    public function render_sources_page() {
-        $this->redirect_to_hub('aips-automations', 'sources');
     }
 
     /**
@@ -855,88 +676,4 @@ class AIPS_Admin_Menu {
         }, __('Settings', 'ai-post-scheduler'));
     }
 
-    /**
-     * Render the Cache Monitor page.
-     *
-     * @return void
-     */
-    public function render_cache_monitor_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'cache-monitor');
-    }
-
-    /**
-     * Render the System Status page.
-     *
-     * Delegates rendering to the AIPS_System_Status class.
-     *
-     * @return void
-     */
-    public function render_status_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'status');
-    }
-
-    /**
-     * Render the Stress Test page.
-     *
-     * Delegates rendering to AIPS_Stress_Test_Controller.
-     *
-     * @return void
-     */
-    public function render_stress_test_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'stress-test');
-    }
-
-    /**
-     * Render the Dev Tools page.
-     *
-     * Delegates rendering to the AIPS_Dev_Tools class.
-     *
-     * @return void
-     */
-    public function render_dev_tools_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'dev-tools');
-    }
-
-    /**
-     * Render the Taxonomy page.
-     *
-     * Includes the taxonomy template file.
-     *
-     * @return void
-     */
-    public function render_taxonomy_page() {
-        $this->redirect_to_hub('aips-automations', 'taxonomy');
-    }
-
-    /**
-     * Render the Internal Links page.
-     *
-     * Reuses the globally-registered controller instance to avoid
-     * re-registering AJAX hooks.
-     *
-     * @return void
-     */
-    public function render_affiliate_links_page() {
-        $this->redirect_to_hub('aips-automations', 'affiliate-links');
-    }
-
-    public function render_internal_links_page() {
-        $this->redirect_to_hub('aips-automations', 'internal-links');
-    }
-
-    public function render_content_intelligence_page() {
-        $this->redirect_to_hub('aips-content', 'content-indexer');
-    }
-
-    public function render_post_clusters_page() {
-        $this->redirect_to_hub('aips-content', 'clusters');
-    }
-
-    public function render_cannibalization_page() {
-        $this->redirect_to_hub('aips-content', 'cannibalization');
-    }
-
-    public function render_content_indexer_page() {
-        $this->redirect_to_hub('aips-content', 'content-indexer');
-    }
 }

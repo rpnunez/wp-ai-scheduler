@@ -518,7 +518,7 @@ class AIPS_Post_History_UI {
 				$redirect_to = add_query_arg('aips_queued_count', count($post_ids), $redirect_to);
 			}
 		} elseif ($action === 'aips_bulk_audit') {
-			$redirect_to = admin_url('admin.php?page=aips-cannibalization');
+			$redirect_to = AIPS_Admin_Menu_Helper::get_page_url('content_cannibalization');
 		}
 
 		return $redirect_to;
@@ -605,7 +605,7 @@ class AIPS_Post_History_UI {
 		if ($this->is_ui_enabled() && current_user_can('edit_post', $post_id)) {
 			$actions['aips_scan'] = sprintf(
 				'<a href="%1$s" title="%2$s">%3$s</a>',
-				esc_url(admin_url('admin.php?page=aips-cannibalization')),
+				esc_url(AIPS_Admin_Menu_Helper::get_page_url('content_cannibalization')),
 				esc_attr__('Scan Semantic Duplicate Audit', 'ai-post-scheduler'),
 				esc_html__('Audit Duplicates', 'ai-post-scheduler')
 			);
