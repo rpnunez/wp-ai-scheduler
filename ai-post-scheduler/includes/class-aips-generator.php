@@ -1274,29 +1274,6 @@ class AIPS_Generator {
     }
 
     /**
-     * Write the "trigger source" and "trigger method" entries to the current
-     * history container so the History modal can show what started the run
-     * and whether it was manual or automatic.
-     *
-     * @param AIPS_Generation_Context $context Generation context.
-     * @return void
-     */
-    private function record_generation_trigger($context) {
-        if (!$this->current_history) {
-            return;
-        }
-
-        $trigger = AIPS_Generation_Trigger::describe($context);
-        $method  = (string) $context->get_creation_method();
-
-        AIPS_Generation_Trigger::record(
-            $this->current_history,
-            $trigger['source'],
-            $method !== '' ? $method : AIPS_Generation_Trigger::METHOD_MANUAL
-        );
-    }
-
-    /**
      * Generate a post from a Generation Context.
      *
      * Delegates to AIPS_Generation_Pipeline + AIPS_Post_Generation_Strategy and

@@ -112,9 +112,9 @@ class AIPS_Component_Regeneration_Service {
 	private $coordinator = null;
 
 	/**
-	 * @var int|null Object hash of the generator bound to $this->coordinator
+	 * @var string|null Composite object-ID signature of dependencies bound to $this->coordinator
 	 */
-	private $coordinator_generator_id = null;
+	private $coordinator_deps_key = null;
 
 	/**
 	 * Constructor
@@ -145,8 +145,13 @@ class AIPS_Component_Regeneration_Service {
 	 * @return AIPS_Component_Regeneration_Coordinator
 	 */
 	public function get_coordinator(): AIPS_Component_Regeneration_Coordinator {
-		$gen_id = is_object($this->generator) ? spl_object_id($this->generator) : null;
-		if ($this->coordinator === null || $this->coordinator_generator_id !== $gen_id) {
+		$deps_key = implode(':', array(
+			is_object($this->generator) ? (string) spl_object_id($this->generator) : '0',
+			is_object($this->image_service) ? (string) spl_object_id($this->image_service) : '0',
+			is_object($this->history_repository) ? (string) spl_object_id($this->history_repository) : '0',
+		));
+
+		if ($this->coordinator === null || $this->coordinator_deps_key !== $deps_key) {
 			$registry = new AIPS_Generation_Component_Registry();
 			$registry->register(new AIPS_Content_Post_Component($this->generator, $this->post_content_prompt_builder, $this->prompt_builder));
 			$registry->register(new AIPS_Title_Post_Component($this->generator, $this->post_title_prompt_builder));
@@ -164,7 +169,7 @@ class AIPS_Component_Regeneration_Service {
 				$this->post_content_prompt_builder,
 				$this->post_title_prompt_builder
 			);
-			$this->coordinator_generator_id = $gen_id;
+			$this->coordinator_deps_key = $deps_key;
 		}
 
 		return $this->coordinator;
@@ -289,8 +294,8 @@ class AIPS_Component_Regeneration_Service {
 	 * @param array  $context       Regeneration context payload.
 	 * @return mixed Component result or WP_Error.
 	 */
-	private function delegate_component_regeneration(string $component_key, string $trigger_label, array $context) {
-		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+	private function delegate_component_regeneration(string $component_key, string $trigger_label, $context) {
+		if (!is_array($context) || !isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
 			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 
