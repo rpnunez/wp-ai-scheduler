@@ -36,7 +36,7 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
         </label>
         <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" class="aips-history-cb" name="history[]" value="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>"<?php endif; ?>>
     </th>
-    <td class="column-title">
+    <td class="column-title" data-label="<?php esc_attr_e('Run', 'ai-post-scheduler'); ?>">
         <div class="aips-history-title-row">
             <?php if ($is_child_row): ?>
             <span class="dashicons dashicons-arrow-right-alt2 aips-history-child-arrow" aria-hidden="true"></span>
@@ -59,7 +59,7 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
         <span class="aips-history-latest-message"><?php echo esc_html(wp_trim_words((string) $item->latest_message, 14)); ?></span>
         <?php endif; ?>
     </td>
-    <td class="column-post-type">
+    <td class="column-post-type" data-label="<?php esc_attr_e('Type', 'ai-post-scheduler'); ?>">
         <?php if (!empty($item->post_type)): ?>
         <span class="aips-badge aips-badge-neutral">
             <?php echo esc_html(AIPS_History::humanize_post_type_label($item->post_type)); ?>
@@ -68,7 +68,7 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
         <span class="aips-meta-text">&mdash;</span>
         <?php endif; ?>
     </td>
-    <td class="column-status">
+    <td class="column-status" data-label="<?php esc_attr_e('Result', 'ai-post-scheduler'); ?>">
         <?php
         $status_class = 'aips-badge ';
         switch ($display_status) {
@@ -109,7 +109,7 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
             </span>
         <?php endif; ?>
     </td>
-    <td class="column-type">
+    <td class="column-type" data-label="<?php esc_attr_e('Activity', 'ai-post-scheduler'); ?>">
         <strong><?php echo !empty($item->creation_method) ? esc_html(AIPS_History::get_creation_method_label($item->creation_method)) : '&mdash;'; ?></strong>
         <span class="aips-history-activity-meta">
             <?php if (!empty($item->duration_label)): ?>
@@ -120,7 +120,7 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
             <?php if ($item->ai_call_count > 0): ?><span><?php echo esc_html(sprintf(_n('%d AI call', '%d AI calls', $item->ai_call_count, 'ai-post-scheduler'), $item->ai_call_count)); ?></span><?php endif; ?>
         </span>
     </td>
-    <td class="column-date">
+    <td class="column-date" data-label="<?php esc_attr_e('Logged', 'ai-post-scheduler'); ?>">
         <time class="aips-meta-text" datetime="<?php echo esc_attr(wp_date('c', (int) $item->created_at)); ?>" title="<?php echo esc_attr($item->formatted_date); ?>"><?php echo esc_html($item->relative_date); ?></time>
         <div class="cell-actions">
             <div class="aips-row-action-group">

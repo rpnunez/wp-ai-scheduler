@@ -166,4 +166,10 @@
 
     /* Layout offsets */
     --aips-admin-bar-height: 32px;
+
+    /* Responsive breakpoints (documented values for @media queries; CSS custom
+       properties cannot be used inside @media feature queries, so copy the
+       literal px value shown here rather than inventing a new one). */
+    --aips-bp-tablet: 782px; /* matches WP admin's own collapse point */
+    --aips-bp-mobile: 600px;
 }

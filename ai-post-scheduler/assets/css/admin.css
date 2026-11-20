@@ -541,7 +541,15 @@
 .aips-history-ai-call-card > header { display:flex; justify-content:space-between; background:var(--aips-gray-50); padding:10px 12px; }
 .aips-history-ai-call-card details { padding:10px 12px; border-top:1px solid var(--aips-gray-200); }
 .aips-history-ai-call-card pre { max-height:480px; overflow:auto; white-space:pre-wrap; }
-@media (max-width: 782px) { .aips-history-overview { grid-template-columns:repeat(2,1fr); } .aips-history-table .column-type { display:none; } .aips-history-filter-row-selects .aips-form-select, .aips-history-filter-row-inputs .aips-form-input { flex:1 1 100% !important; max-width:none !important; } .aips-history-filter-row-dates .aips-history-filter-apply { margin-left:0; } }
+/* 601-782px (tablet): the table is still a real table here (card mode in
+   admin-responsive.css only starts at 600px), so keep hiding the narrowest
+   column to fit. Below 600px, admin-responsive.css's `!important` card rules
+   take over and show every column again regardless of this `display:none`. */
+/* Filter-bar stacking moved to admin-responsive.css (.aips-filter-bar, shared
+   across History/Sources/Source Data) — the old rule here targeted classes
+   (.aips-history-filter-row-selects / -row-inputs) that never existed in any
+   template and never fired. */
+@media (max-width: 782px) { .aips-history-overview { grid-template-columns:repeat(2,1fr); } .aips-history-table .column-type { display:none; } }
 
 /* History Table Contiguous Grouping */
 .aips-history-group-header {
@@ -3992,6 +4000,29 @@ input[type="submit"].is-busy,
 .aips-history-summary-separator {
     margin: 0 8px;
     color: #a7aaad;
+}
+
+/* These classes used to be shadowed by matching inline styles on the modal
+   markup (see history-modal-content.php), which made them unreachable by
+   any @media query. Now that the inline styles are gone, this is the only
+   override needed to stack the summary panel on phones. */
+@media (max-width: 600px) {
+    .aips-history-summary-panel,
+    .aips-history-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aips-history-summary-meta {
+        padding-left: 0;
+        padding-top: 12px;
+        border-left: 0;
+        border-top: 1px solid #eceff1;
+    }
+
+    #aips-history-logs-modal .aips-history-drawer-panel {
+        width: 100% !important;
+        height: 100%;
+    }
 }
 
 .aips-history-log-type-filter {

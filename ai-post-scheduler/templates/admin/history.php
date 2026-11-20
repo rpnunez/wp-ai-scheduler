@@ -215,7 +215,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
             <div class="aips-history-main-column">
                     <!-- History Containers Table -->
                     <div class="aips-panel-body no-padding">
-                        <table class="aips-table aips-history-table">
+                        <table class="aips-table aips-history-table aips-table-responsive">
                             <thead>
                                 <tr>
                                     <td id="cb" class="manage-column column-cb check-column">
@@ -284,7 +284,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 
 <!-- History Logs Modal -->
 <div id="aips-history-logs-modal" class="aips-modal aips-history-drawer" style="display: none;">
-    <div class="aips-modal-content aips-history-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="aips-history-logs-modal-title">
+    <div class="aips-modal-content aips-history-drawer-panel aips-modal-fullscreen-mobile" role="dialog" aria-modal="true" aria-labelledby="aips-history-logs-modal-title">
         <div class="aips-modal-header">
             <div class="aips-history-modal-header-main">
                 <h3 class="aips-modal-title" id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
