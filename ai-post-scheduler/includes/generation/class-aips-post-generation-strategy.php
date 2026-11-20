@@ -45,7 +45,9 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 	private $logger;
 
 	/**
-	 * @var AIPS_Generation_Logger
+	 * Logger for finalization warnings (status downgrade/release failures).
+	 *
+	 * @var AIPS_Logger_Interface
 	 */
 	private $generation_logger;
 
@@ -66,18 +68,18 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 	 *
 	 * @param AIPS_Generation_Component_Registry|null $registry          Optional component registry.
 	 * @param AIPS_Generator|null                     $generator         Optional generator service.
-	 * @param AIPS_Post_Manager|null                  $post_manager      Optional post manager.
+	 * @param AIPS_Post_Manager|object|null           $post_manager      Optional post manager (or compatible double).
 	 * @param AIPS_History_Service_Interface|null     $history_service   Optional history service.
 	 * @param AIPS_Logger_Interface|null              $logger            Optional logger.
-	 * @param AIPS_Generation_Logger|null             $generation_logger Optional generation logger.
+	 * @param AIPS_Logger_Interface|null              $generation_logger Optional logger for finalization warnings; defaults to $logger.
 	 */
 	public function __construct(
 		?AIPS_Generation_Component_Registry $registry = null,
 		?AIPS_Generator $generator = null,
-		?AIPS_Post_Manager $post_manager = null,
+		$post_manager = null,
 		?AIPS_History_Service_Interface $history_service = null,
 		?AIPS_Logger_Interface $logger = null,
-		?AIPS_Generation_Logger $generation_logger = null
+		?AIPS_Logger_Interface $generation_logger = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -85,7 +87,7 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 		$this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
 		$this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 		$this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->generation_logger  = $generation_logger ?: new AIPS_Generation_Logger($this->logger);
+		$this->generation_logger  = $generation_logger ?: $this->logger;
 		$this->template_processor = new AIPS_Template_Processor();
 
 		if ($registry !== null) {
@@ -638,11 +640,11 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 	/**
 	 * Record trigger source and method in the history container.
 	 *
-	 * @param AIPS_History_Container  $history History container.
-	 * @param AIPS_Generation_Context $context Generation context.
+	 * @param AIPS_History_Container|object $history History container (or a compatible double with record()).
+	 * @param AIPS_Generation_Context       $context Generation context.
 	 * @return void
 	 */
-	private function record_generation_trigger(AIPS_History_Container $history, AIPS_Generation_Context $context): void {
+	private function record_generation_trigger($history, AIPS_Generation_Context $context): void {
 		$trigger = AIPS_Generation_Trigger::describe($context);
 		$method  = (string) $context->get_creation_method();
 

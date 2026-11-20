@@ -833,7 +833,7 @@ class AIPS_Generator {
      * @param string $excerpt Excerpt text.
      * @return string
      */
-    private static function truncate_excerpt($excerpt) {
+    public static function truncate_excerpt($excerpt) {
         $excerpt = (string) $excerpt;
         $limit   = self::EXCERPT_MAX_CHARS;
 
@@ -1019,8 +1019,7 @@ class AIPS_Generator {
             $this,
             $this->post_manager,
             $this->history_service,
-            $this->logger,
-            $this->generation_logger
+            $this->logger
         );
 
         return new AIPS_Generation_Pipeline($strategy, $registry);

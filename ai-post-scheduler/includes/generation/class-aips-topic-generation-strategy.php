@@ -273,10 +273,15 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 
 		$author_name   = isset($author->name) ? (string) $author->name : '';
 		$requested_qty = isset($author->topic_generation_quantity) ? max(1, (int) $author->topic_generation_quantity) : 5;
+		$trigger = $context->get_creation_method() ?: 'manual';
+		// This container only traces the AI exchange. The run itself is recorded by the
+		// caller (e.g. AIPS_Author_Topics_Scheduler's 'author_topic_generation' row), so it
+		// is stored as an event: it must not count as a post-generation run or carry the
+		// 'manual'/'scheduled' creation methods those runs are classified by.
 		$history       = $this->history_service->create('topic_generation', array(
 			'author_id'       => (int) $author->id,
-			'quantity'        => $requested_qty,
-			'creation_method' => $context->get_creation_method() ?: 'manual',
+			'creation_method' => 'topic_generation',
+			'record_kind'     => AIPS_History_Record_Kind::EVENT,
 		));
 		$history_id = ($history && $history->get_id()) ? (int) $history->get_id() : 0;
 
@@ -289,7 +294,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 			$history->record(
 				'activity',
 				sprintf('Starting topic generation for author: %s (requested: %d)', $author_name, $requested_qty),
-				array('author_id' => (int) $author->id, 'quantity' => $requested_qty)
+				array('author_id' => (int) $author->id, 'quantity' => $requested_qty, 'trigger' => $trigger)
 			);
 		}
 

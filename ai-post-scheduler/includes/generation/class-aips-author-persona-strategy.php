@@ -190,7 +190,7 @@ class AIPS_Author_Persona_Strategy implements AIPS_Pipeline_Executable_Strategy_
 				'count' => $count,
 			)
 		);
-		$history_id = ($history && $history->get_id()) ? (int) $history->get_id() : 0;
+		$history_id = ($history && method_exists($history, 'get_id') && $history->get_id()) ? (int) $history->get_id() : 0;
 
 		// Stage 2: Persona Ideation.
 		$prompt = $this->persona_component->build_prompt_from_inputs($merged_inputs, $count);

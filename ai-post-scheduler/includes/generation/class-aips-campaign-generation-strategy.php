@@ -189,7 +189,7 @@ class AIPS_Campaign_Generation_Strategy implements AIPS_Pipeline_Executable_Stra
 
 		$cluster = $this->registry->get('campaign_cluster', $this->get_key());
 		if (!($cluster instanceof AIPS_Campaign_Cluster_Component)) {
-			$cluster = new AIPS_Campaign_Cluster_Component();
+			$cluster = new AIPS_Campaign_Cluster_Component($this->ai_service);
 		}
 
 		$history    = $this->history_service->create('campaign_generation', array(

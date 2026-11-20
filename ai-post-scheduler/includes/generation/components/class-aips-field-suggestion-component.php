@@ -233,6 +233,14 @@ class AIPS_Field_Suggestion_Component implements AIPS_Generation_Component_Inter
 	/**
 	 * {@inheritdoc}
 	 */
+	public function generate_variants($target_id, AIPS_Generation_Context $context, int $count = 3, array $options = array()) {
+		// Field suggestions are not AI-editable; each request already returns a full suggestion set.
+		return array();
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function apply($target, $value): bool {
 		if (!($target instanceof AIPS_AI_Assistance_Generation_Context) || !is_array($value)) {
 			return false;

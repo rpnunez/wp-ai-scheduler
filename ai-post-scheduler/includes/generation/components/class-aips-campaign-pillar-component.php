@@ -150,7 +150,11 @@ class AIPS_Campaign_Pillar_Component implements AIPS_Generation_Component_Interf
 				: new AIPS_AI_Service();
 		}
 
-		$prompt = $this->build_prompt($context, $session);
+		$prompt    = $this->build_prompt($context, $session);
+		$directive = isset($options['directive']) ? trim((string) $options['directive']) : '';
+		if ($directive !== '') {
+			$prompt .= "\n\nAdditional instructions from the user:\n" . $directive;
+		}
 		$schema = isset($options['json_schema']) && is_array($options['json_schema'])
 			? $options['json_schema']
 			: array(
@@ -159,13 +163,21 @@ class AIPS_Campaign_Pillar_Component implements AIPS_Generation_Component_Interf
 				'required'   => $this->get_required_schema_keys(),
 			);
 
-		return $ai_service->generate_json($prompt, array('json_schema' => $schema));
+		$response = $ai_service->generate_json($prompt, array('json_schema' => $schema));
+		if (is_wp_error($response)) {
+			return $response;
+		}
+
+		return $this->sanitize_value($response);
 	}
 
 	/**
 	 * {@inheritdoc}
 	 */
 	public function regenerate($target_id, AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, string $directive = '', array $options = array()) {
+		unset($options['raw_response']);
+		$options['directive'] = $directive;
+
 		return $this->generate($context, $session, $options);
 	}
 

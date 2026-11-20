@@ -765,8 +765,9 @@ class AIPS_Stress_Test_Service {
                 'title'   => $title,
                 'content' => $this->sample_article(),
             ));
-            $result  = is_array($gen_result) && isset($gen_result['slug']) ? (string) $gen_result['slug'] : '';
-            $success = is_array($gen_result) && !empty($gen_result['success']);
+            // generate() returns the sanitized slug string, or a WP_Error.
+            $result  = is_wp_error($gen_result) ? $gen_result : (string) $gen_result;
+            $success = !is_wp_error($result) && $result !== '';
         } else {
             $success = false;
             $result  = $this->get_generator()->generate_slug_from_context($context, $this->sample_article(), $title, array(), $success);
@@ -961,17 +962,21 @@ class AIPS_Stress_Test_Service {
         $attachment_id = 0;
 
         if ($component instanceof AIPS_Featured_Image_Post_Component) {
+            // post_id 0: the stress test only uploads the attachment; there is no post to attach it to.
             $gen_res = $component->generate($context, null, array(
-                'post_id'         => 0,
-                'title'           => __('AIPS Stress Test Image', 'ai-post-scheduler'),
-                'content'         => $this->sample_article(),
-                'resolved_prompt' => $prompt,
+                'post_id'                  => 0,
+                'title'                    => __('AIPS Stress Test Image', 'ai-post-scheduler'),
+                'content'                  => $this->sample_article(),
+                'precomputed_image_prompt' => $prompt,
             ));
             if (is_array($gen_res) && !empty($gen_res['attachment_id'])) {
                 $attachment_id = (int) $gen_res['attachment_id'];
             } else {
-                $image_service = new AIPS_Image_Service($this->ai_service);
-                $attachment_id = $image_service->generate_and_upload_featured_image($prompt, __('AIPS Stress Test Image', 'ai-post-scheduler'));
+                // Report the component failure rather than retrying with a second paid image call.
+                $attachment_id = new WP_Error(
+                    'featured_image_component_failed',
+                    __('The featured image component did not produce an attachment.', 'ai-post-scheduler')
+                );
             }
         } else {
             $image_service = new AIPS_Image_Service($this->ai_service);

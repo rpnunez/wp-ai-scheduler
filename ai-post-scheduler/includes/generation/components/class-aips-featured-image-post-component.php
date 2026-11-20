@@ -32,13 +32,13 @@ class AIPS_Featured_Image_Post_Component extends AIPS_Abstract_Post_Component {
 	 * Constructor.
 	 *
 	 * @param AIPS_Generator|null     $generator     Optional generator instance.
-	 * @param AIPS_Image_Service|null $image_service Optional image service instance.
-	 * @param AIPS_Post_Manager|null  $post_manager  Optional post manager instance.
+	 * @param AIPS_Image_Service|object|null $image_service Optional image service (or compatible double).
+	 * @param AIPS_Post_Manager|object|null  $post_manager  Optional post manager (or compatible double).
 	 */
 	public function __construct(
 		?AIPS_Generator $generator = null,
-		?AIPS_Image_Service $image_service = null,
-		?AIPS_Post_Manager $post_manager = null
+		$image_service = null,
+		$post_manager = null
 	) {
 		parent::__construct($generator);
 		$this->image_service = $image_service;
@@ -50,7 +50,7 @@ class AIPS_Featured_Image_Post_Component extends AIPS_Abstract_Post_Component {
 	 *
 	 * @return AIPS_Image_Service
 	 */
-	private function get_image_service(): AIPS_Image_Service {
+	private function get_image_service() {
 		if ($this->image_service === null) {
 			$this->image_service = new AIPS_Image_Service(new AIPS_AI_Service());
 		}
@@ -63,7 +63,7 @@ class AIPS_Featured_Image_Post_Component extends AIPS_Abstract_Post_Component {
 	 *
 	 * @return AIPS_Post_Manager
 	 */
-	private function get_post_manager(): AIPS_Post_Manager {
+	private function get_post_manager() {
 		if ($this->post_manager === null) {
 			$this->post_manager = new AIPS_Post_Manager();
 		}

@@ -19,6 +19,20 @@ if (!defined('ABSPATH')) {
 class AIPS_Campaign_Cluster_Component implements AIPS_Generation_Component_Interface {
 
 	/**
+	 * @var AIPS_AI_Service_Interface|null
+	 */
+	private $ai_service;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_AI_Service_Interface|null $ai_service Optional AI service.
+	 */
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null) {
+		$this->ai_service = $ai_service;
+	}
+
+	/**
 	 * {@inheritdoc}
 	 */
 	public function get_key(): string {
@@ -86,7 +100,7 @@ class AIPS_Campaign_Cluster_Component implements AIPS_Generation_Component_Inter
 	public function build_prompt(AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null): string {
 		$niche = (string) $context->get_topic();
 		return sprintf(
-			'Generate 5 concrete spoke cluster article ideas and key editorial assumptions for a campaign in the "%s" niche.',
+			'Generate 5 concrete spoke cluster article ideas and key editorial assumptions for a campaign in the "%s" niche. Return a JSON object with "sample_article_ideas" and "risks_assumptions" arrays of strings.',
 			$niche !== '' ? $niche : 'General'
 		);
 	}
@@ -99,17 +113,55 @@ class AIPS_Campaign_Cluster_Component implements AIPS_Generation_Component_Inter
 			return $this->sanitize_value($options['raw_response']);
 		}
 
-		return array(
-			'sample_article_ideas' => array(),
-			'risks_assumptions'    => array(),
-		);
+		$prompt    = $this->build_prompt($context, $session);
+		$directive = isset($options['directive']) ? trim((string) $options['directive']) : '';
+		if ($directive !== '') {
+			$prompt .= "\n\nAdditional instructions from the user:\n" . $directive;
+		}
+
+		$response = $this->get_ai_service()->generate_json($prompt, array(
+			'json_schema' => array(
+				'type'       => 'object',
+				'properties' => $this->get_schema_properties(),
+				'required'   => $this->get_required_schema_keys(),
+			),
+		));
+		if (is_wp_error($response)) {
+			return $response;
+		}
+
+		$value = $this->sanitize_value($response);
+		if (empty($value['sample_article_ideas'])) {
+			return new WP_Error('empty_cluster_ideas', __('The AI response did not include any cluster article ideas.', 'ai-post-scheduler'));
+		}
+
+		return $value;
 	}
 
 	/**
 	 * {@inheritdoc}
 	 */
 	public function regenerate($target_id, AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, string $directive = '', array $options = array()) {
+		unset($options['raw_response']);
+		$options['directive'] = $directive;
+
 		return $this->generate($context, $session, $options);
+	}
+
+	/**
+	 * Resolve the AI service, falling back to the container.
+	 *
+	 * @return AIPS_AI_Service_Interface
+	 */
+	private function get_ai_service() {
+		if ($this->ai_service === null) {
+			$container        = AIPS_Container::get_instance();
+			$this->ai_service = $container->has(AIPS_AI_Service_Interface::class)
+				? $container->make(AIPS_AI_Service_Interface::class)
+				: new AIPS_AI_Service();
+		}
+
+		return $this->ai_service;
 	}
 
 	/**
@@ -123,7 +175,8 @@ class AIPS_Campaign_Cluster_Component implements AIPS_Generation_Component_Inter
 	 * {@inheritdoc}
 	 */
 	public function apply($target, $value): bool {
-		return is_array($value);
+		// Campaign drafts are not persisted by the component; a value is applicable only when it has ideas.
+		return is_array($value) && !empty($value['sample_article_ideas']);
 	}
 
 	/**

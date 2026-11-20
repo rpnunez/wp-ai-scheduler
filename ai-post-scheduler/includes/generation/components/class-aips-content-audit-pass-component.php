@@ -118,21 +118,10 @@ class AIPS_Content_Audit_Pass_Component implements AIPS_Generation_Component_Int
 	 * @return array|WP_Error
 	 */
 	public function parse_json_fallback(string $response) {
-		$text = trim($response);
-		if (preg_match('/```(?:json)?\s*([\s\S]*?)\s*```/i', $text, $matches)) {
-			$text = trim($matches[1]);
-		}
-
-		$decoded = json_decode($text, true);
-		if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+		// Shared extractor: handles Markdown fences and prose with stray brackets around the JSON.
+		$decoded = AIPS_JSON_Extractor::decode_json_response($response);
+		if (!is_wp_error($decoded) && is_array($decoded)) {
 			return $decoded;
-		}
-
-		if (preg_match('/(\[[\s\S]*\]|\{[\s\S]*\})/', $text, $matches)) {
-			$decoded = json_decode($matches[1], true);
-			if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-				return $decoded;
-			}
 		}
 
 		return new WP_Error('audit_json_parse_error', __('Failed to parse JSON response from AI.', 'ai-post-scheduler'));

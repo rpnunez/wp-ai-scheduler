@@ -98,11 +98,11 @@ class Test_AIPS_Universal_AI_Edit_And_Editor_Services extends WP_UnitTestCase {
 	 * AIPS_Ajax_Registry maps Universal AI Edit endpoints to AIPS_AI_Edit_Controller.
 	 */
 	public function test_ajax_registry_registers_universal_ai_edit_endpoints() {
-		$this->assertArrayHasKey('aips_universal_ai_edit', AIPS_Ajax_Registry::$map);
-		$this->assertSame('AIPS_AI_Edit_Controller', AIPS_Ajax_Registry::$map['aips_universal_ai_edit']);
+		$this->assertTrue(AIPS_Ajax_Registry::has_action('aips_universal_ai_edit'));
+		$this->assertSame('AIPS_AI_Edit_Controller', AIPS_Ajax_Registry::get_controller_for('aips_universal_ai_edit'));
 
-		$this->assertArrayHasKey('aips_get_editable_components', AIPS_Ajax_Registry::$map);
-		$this->assertSame('AIPS_AI_Edit_Controller', AIPS_Ajax_Registry::$map['aips_get_editable_components']);
+		$this->assertTrue(AIPS_Ajax_Registry::has_action('aips_get_editable_components'));
+		$this->assertSame('AIPS_AI_Edit_Controller', AIPS_Ajax_Registry::get_controller_for('aips_get_editable_components'));
 	}
 
 	/**

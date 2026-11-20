@@ -170,6 +170,10 @@ class AIPS_Post_Consolidation_Component implements AIPS_Generation_Component_Int
 		$html = trim((string) $value);
 		$html = preg_replace('/^```(?:html)?\s*/i', '', $html);
 		$html = preg_replace('/\s*```\s*$/', '', $html);
-		return wp_kses_post(trim((string) $html));
+		// The kept post already has a title: drop a leading H1 the model repeats it in.
+		$html = preg_replace('/^\s*<h1\b[^>]*>.*?<\/h1>\s*/is', '', (string) $html);
+		// wp_kses_post() strips these tags but keeps their text, which would leave raw CSS/JS visible.
+		$html = preg_replace('/<(script|style|iframe)\b[^>]*>.*?<\/\1\s*>/is', '', (string) $html);
+		return trim(wp_kses_post(trim((string) $html)));
 	}
 }

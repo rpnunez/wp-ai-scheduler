@@ -1532,9 +1532,15 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'generation_context' => $this->createMock(AIPS_Generation_Context::class),
 		));
 		$service_mock->method('capture_component_revision')->willReturn(true);
+		// Override persistence lives in the service; run the real implementation.
+		$real_service = new AIPS_Component_Regeneration_Service();
+		$service_mock->method('resolve_and_persist_component_overrides')
+			->willReturnCallback(function (...$args) use ($real_service) {
+				return $real_service->resolve_and_persist_component_overrides(...$args);
+			});
 		$service_mock->expects($this->once())
-			->method('regenerate_title')
-			->with($this->callback(function ($context) {
+			->method('regenerate_component')
+			->with('title', $this->callback(function ($context) {
 				return isset($context['custom_directive'])
 					&& $context['custom_directive'] === 'Make it punchier and shorter'
 					&& isset($context['directive_preset'])

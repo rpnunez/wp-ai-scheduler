@@ -181,6 +181,15 @@ class AIPS_Topic_Score_Component implements AIPS_Generation_Component_Interface 
 
 	/**
 	 * {@inheritdoc}
+	 *
+	 * A score is a single derived number and is not AI-editable, so it offers no variants.
+	 */
+	public function generate_variants($target_id, AIPS_Generation_Context $context, int $count = 3, array $options = array()) {
+		return array();
+	}
+
+	/**
+	 * {@inheritdoc}
 	 */
 	public function apply($target, $value): bool {
 		$topic_id = is_object($target) && isset($target->id) ? absint($target->id) : absint($target);

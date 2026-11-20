@@ -39,6 +39,28 @@ class AIPS_Generation_Component_Registry {
 	private $components = array();
 
 	/**
+	 * Whether the 'aips_register_generation_components' hook has fired for this registry.
+	 *
+	 * @var bool
+	 */
+	private $extensions_loaded = false;
+
+	/**
+	 * True while the extension hook is running.
+	 *
+	 * @var bool
+	 */
+	private $in_extension_hook = false;
+
+	/**
+	 * Components registered by extensions, keyed "strategy:component", so later
+	 * default registration never overwrites them.
+	 *
+	 * @var array<string, true>
+	 */
+	private $extension_keys = array();
+
+	/**
 	 * Normalize a component key (resolving short aliases for the 'posts' strategy).
 	 *
 	 * @param string $component_key Raw component key or alias.
@@ -69,6 +91,60 @@ class AIPS_Generation_Component_Registry {
 		}
 
 		$this->components[$strategy_key][$component_key] = $component;
+
+		if ($this->in_extension_hook) {
+			$this->extension_keys[$strategy_key . ':' . $component_key] = true;
+		}
+	}
+
+	/**
+	 * Register a built-in component unless an extension already replaced it.
+	 *
+	 * @param AIPS_Generation_Component_Interface $component Component instance.
+	 * @return void
+	 */
+	private function register_default(AIPS_Generation_Component_Interface $component): void {
+		if (isset($this->extension_keys[$component->get_strategy_key() . ':' . $component->get_key()])) {
+			return;
+		}
+
+		$this->register($component);
+	}
+
+	/**
+	 * Fire the extension hook once for this registry, on first lookup.
+	 *
+	 * Callers register the built-in defaults right after constructing a registry and
+	 * before reading from it, so firing lazily lets extensions see, and replace, every
+	 * default no matter which register_default_*() methods the caller used.
+	 *
+	 * @return void
+	 */
+	private function load_extensions(): void {
+		if ($this->extensions_loaded) {
+			return;
+		}
+
+		$this->extensions_loaded = true;
+		if (!function_exists('do_action')) {
+			return;
+		}
+
+		$this->in_extension_hook = true;
+		try {
+			/**
+			 * Allow extensions to register additional or replacement generation components.
+			 *
+			 * Fires once per registry instance, after the caller's built-in defaults are
+			 * registered. A component registered here keeps its key even if a default with
+			 * the same key is registered later.
+			 *
+			 * @param AIPS_Generation_Component_Registry $registry Component registry instance.
+			 */
+			do_action('aips_register_generation_components', $this);
+		} finally {
+			$this->in_extension_hook = false;
+		}
 	}
 
 	/**
@@ -79,6 +155,8 @@ class AIPS_Generation_Component_Registry {
 	 * @return AIPS_Generation_Component_Interface|null
 	 */
 	public function get(string $component_key, ?string $strategy_key = 'posts'): ?AIPS_Generation_Component_Interface {
+		$this->load_extensions();
+
 		if ($strategy_key !== null) {
 			$normalized = self::normalize_key($component_key, $strategy_key);
 			return $this->components[$strategy_key][$normalized] ?? null;
@@ -112,6 +190,8 @@ class AIPS_Generation_Component_Registry {
 	 * @return array<string, AIPS_Generation_Component_Interface>
 	 */
 	public function get_by_strategy(string $strategy_key): array {
+		$this->load_extensions();
+
 		return $this->components[$strategy_key] ?? array();
 	}
 
@@ -157,6 +237,8 @@ class AIPS_Generation_Component_Registry {
 	 * @return AIPS_Generation_Component_Interface[]
 	 */
 	public function get_ai_editable(?string $strategy_key = null): array {
+		$this->load_extensions();
+
 		$matched = array();
 		$sources = $strategy_key !== null
 			? array($strategy_key => $this->get_by_strategy($strategy_key))
@@ -179,6 +261,8 @@ class AIPS_Generation_Component_Registry {
 	 * @return array<string, array<string, AIPS_Generation_Component_Interface>>
 	 */
 	public function all(): array {
+		$this->load_extensions();
+
 		return $this->components;
 	}
 
@@ -186,33 +270,26 @@ class AIPS_Generation_Component_Registry {
 	 * Register the default set of built-in Post Generation Components.
 	 *
 	 * @param AIPS_Generator|null     $generator     Optional generator instance shared by components.
-	 * @param AIPS_Image_Service|null $image_service Optional image service instance.
-	 * @param AIPS_Post_Manager|null  $post_manager  Optional post manager instance.
+	 * @param AIPS_Image_Service|object|null $image_service Optional image service (or compatible double).
+	 * @param AIPS_Post_Manager|object|null  $post_manager  Optional post manager (or compatible double).
 	 * @return self
 	 */
 	public function register_default_post_components(
 		?AIPS_Generator $generator = null,
-		?AIPS_Image_Service $image_service = null,
-		?AIPS_Post_Manager $post_manager = null
+		$image_service = null,
+		$post_manager = null
 	): self {
-		$this->register(new AIPS_Content_Post_Component($generator));
-		$this->register(new AIPS_Title_Post_Component($generator));
-		$this->register(new AIPS_Excerpt_Post_Component($generator));
-		$this->register(new AIPS_Slug_Post_Component($generator));
-		$this->register(new AIPS_Featured_Image_Post_Component($generator, $image_service, $post_manager));
-		$this->register(new AIPS_Content_Images_Post_Component($generator));
-		$this->register(new AIPS_Taxonomy_Post_Component($generator));
-		$this->register(new AIPS_Custom_Meta_Post_Component($generator));
-		$this->register(new AIPS_Internal_Links_Post_Component($generator));
-		$this->register(new AIPS_Integration_Fields_Post_Component($generator));
-		$this->register(new AIPS_Affiliate_Links_Post_Component($generator));
-
-		/**
-		 * Allow extensions to register additional generation components.
-		 *
-		 * @param AIPS_Generation_Component_Registry $registry Component registry instance.
-		 */
-		do_action('aips_register_generation_components', $this);
+		$this->register_default(new AIPS_Content_Post_Component($generator));
+		$this->register_default(new AIPS_Title_Post_Component($generator));
+		$this->register_default(new AIPS_Excerpt_Post_Component($generator));
+		$this->register_default(new AIPS_Slug_Post_Component($generator));
+		$this->register_default(new AIPS_Featured_Image_Post_Component($generator, $image_service, $post_manager));
+		$this->register_default(new AIPS_Content_Images_Post_Component($generator));
+		$this->register_default(new AIPS_Taxonomy_Post_Component($generator));
+		$this->register_default(new AIPS_Custom_Meta_Post_Component($generator));
+		$this->register_default(new AIPS_Internal_Links_Post_Component($generator));
+		$this->register_default(new AIPS_Integration_Fields_Post_Component($generator));
+		$this->register_default(new AIPS_Affiliate_Links_Post_Component($generator));
 
 		return $this;
 	}
@@ -237,11 +314,11 @@ class AIPS_Generation_Component_Registry {
 		?AIPS_Content_Indexer_Service $indexer_service = null
 	): self {
 		$typed_topics_repo = ($topics_repository instanceof AIPS_Author_Topics_Repository) ? $topics_repository : null;
-		$this->register(new AIPS_Topic_Title_Component($ai_service, $typed_topics_repo));
-		$this->register(new AIPS_Topic_Prompt_Component($ai_service, $typed_topics_repo));
-		$this->register(new AIPS_Topic_Keywords_Component($ai_service, $typed_topics_repo));
-		$this->register(new AIPS_Topic_Score_Component($ai_service, $typed_topics_repo));
-		$this->register(new AIPS_Topic_Embedding_Component($embeddings_service, $embeddings_repo, $rate_limiter, $indexer_service));
+		$this->register_default(new AIPS_Topic_Title_Component($ai_service, $typed_topics_repo));
+		$this->register_default(new AIPS_Topic_Prompt_Component($ai_service, $typed_topics_repo));
+		$this->register_default(new AIPS_Topic_Keywords_Component($ai_service, $typed_topics_repo));
+		$this->register_default(new AIPS_Topic_Score_Component($ai_service, $typed_topics_repo));
+		$this->register_default(new AIPS_Topic_Embedding_Component($embeddings_service, $embeddings_repo, $rate_limiter, $indexer_service));
 
 		return $this;
 	}
@@ -257,7 +334,7 @@ class AIPS_Generation_Component_Registry {
 		?AIPS_AI_Service_Interface $ai_service = null,
 		$prompt_builder = null
 	): self {
-		$this->register(new AIPS_Author_Persona_Component($ai_service, $prompt_builder));
+		$this->register_default(new AIPS_Author_Persona_Component($ai_service, $prompt_builder));
 
 		return $this;
 	}
@@ -271,8 +348,8 @@ class AIPS_Generation_Component_Registry {
 	public function register_default_campaign_components(
 		?AIPS_AI_Service_Interface $ai_service = null
 	): self {
-		$this->register(new AIPS_Campaign_Pillar_Component($ai_service));
-		$this->register(new AIPS_Campaign_Cluster_Component());
+		$this->register_default(new AIPS_Campaign_Pillar_Component($ai_service));
+		$this->register_default(new AIPS_Campaign_Cluster_Component($ai_service));
 
 		return $this;
 	}
@@ -288,10 +365,10 @@ class AIPS_Generation_Component_Registry {
 		?AIPS_AI_Service_Interface $ai_service = null,
 		?AIPS_Logger_Interface $logger = null
 	): self {
-		$this->register(new AIPS_Trending_Topics_Component($ai_service, $logger));
-		$this->register(new AIPS_Topic_Freshness_Component());
-		$this->register(new AIPS_Topic_Comparison_Component());
-		$this->register(new AIPS_Competitor_Gap_Component($ai_service));
+		$this->register_default(new AIPS_Trending_Topics_Component($ai_service, $logger));
+		$this->register_default(new AIPS_Topic_Freshness_Component());
+		$this->register_default(new AIPS_Topic_Comparison_Component());
+		$this->register_default(new AIPS_Competitor_Gap_Component($ai_service));
 
 		return $this;
 	}
@@ -307,7 +384,7 @@ class AIPS_Generation_Component_Registry {
 		?AIPS_AI_Service_Interface $ai_service = null,
 		$prompt_builder = null
 	): self {
-		$this->register(new AIPS_Taxonomy_Suggestion_Component($ai_service, $prompt_builder));
+		$this->register_default(new AIPS_Taxonomy_Suggestion_Component($ai_service, $prompt_builder));
 
 		return $this;
 	}
@@ -319,7 +396,7 @@ class AIPS_Generation_Component_Registry {
 	 * @return self
 	 */
 	public function register_default_planner_components(?AIPS_Generator $generator = null): self {
-		$this->register(new AIPS_Planner_Topics_Component($generator));
+		$this->register_default(new AIPS_Planner_Topics_Component($generator));
 
 		return $this;
 	}
@@ -331,8 +408,8 @@ class AIPS_Generation_Component_Registry {
 	 * @return self
 	 */
 	public function register_default_enrichment_components(?AIPS_AI_Service_Interface $ai_service = null): self {
-		$this->register(new AIPS_Post_Consolidation_Component($ai_service));
-		$this->register(new AIPS_Content_Audit_Pass_Component($ai_service));
+		$this->register_default(new AIPS_Post_Consolidation_Component($ai_service));
+		$this->register_default(new AIPS_Content_Audit_Pass_Component($ai_service));
 
 		return $this;
 	}
@@ -348,7 +425,7 @@ class AIPS_Generation_Component_Registry {
 		$ai_service = null,
 		?AIPS_AI_Assistance_Repository $repository = null
 	): self {
-		$this->register(new AIPS_Field_Suggestion_Component($ai_service, $repository));
+		$this->register_default(new AIPS_Field_Suggestion_Component($ai_service, $repository));
 
 		return $this;
 	}

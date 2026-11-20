@@ -121,14 +121,28 @@ class AIPS_Topic_Keywords_Component implements AIPS_Generation_Component_Interfa
 	}
 
 	/**
+	 * @var AIPS_Prompt_Builder_Topic_Component|null
+	 */
+	private $topic_prompt_builder;
+
+	/**
+	 * Shared prompt builder for single-field topic prompts.
+	 *
+	 * @return AIPS_Prompt_Builder_Topic_Component
+	 */
+	private function get_topic_prompt_builder(): AIPS_Prompt_Builder_Topic_Component {
+		if ($this->topic_prompt_builder === null) {
+			$this->topic_prompt_builder = new AIPS_Prompt_Builder_Topic_Component();
+		}
+
+		return $this->topic_prompt_builder;
+	}
+
+	/**
 	 * {@inheritdoc}
 	 */
 	public function build_prompt(AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null): string {
-		$niche = (string) $context->get_topic();
-		return sprintf(
-			'Return 3-5 comma-separated SEO keywords for a blog topic in the "%s" niche.',
-			$niche !== '' ? $niche : 'General'
-		);
+		return $this->get_topic_prompt_builder()->build_keywords($context);
 	}
 
 	/**
@@ -140,10 +154,9 @@ class AIPS_Topic_Keywords_Component implements AIPS_Generation_Component_Interfa
 			return $this->sanitize_value($raw);
 		}
 
-		$prompt = $this->build_prompt($context, $session);
-		if (!empty($options['topic_title'])) {
-			$prompt .= "\n\n" . sprintf('Topic title: %s', (string) $options['topic_title']);
-		}
+		$prompt = $this->get_topic_prompt_builder()->build_keywords($context, array(
+			'topic_title' => isset($options['topic_title']) ? (string) $options['topic_title'] : '',
+		));
 
 		$result = $this->get_ai_service()->generate_text($prompt, array('temperature' => 0.6));
 		if (is_wp_error($result)) {
@@ -158,19 +171,16 @@ class AIPS_Topic_Keywords_Component implements AIPS_Generation_Component_Interfa
 	 */
 	public function regenerate($target_id, AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, string $directive = '', array $options = array()) {
 		$topic_id = absint($target_id);
-		$prompt   = $this->build_prompt($context, $session);
+		$parts    = array('directive' => $directive);
 
 		if ($topic_id > 0) {
 			$existing = $this->get_topics_repository()->get_by_id($topic_id);
 			if ($existing && !empty($existing->topic_title)) {
-				$prompt .= "\n\n" . sprintf('Topic title: %s', (string) $existing->topic_title);
+				$parts['topic_title'] = (string) $existing->topic_title;
 			}
 		}
 
-		$directive = trim($directive);
-		if ($directive !== '') {
-			$prompt .= "\n\n" . sprintf(__('Follow this directive: %s', 'ai-post-scheduler'), $directive);
-		}
+		$prompt = $this->get_topic_prompt_builder()->build_keywords($context, $parts);
 
 		$result = $this->get_ai_service()->generate_text($prompt, array('temperature' => 0.6));
 		if (is_wp_error($result)) {
