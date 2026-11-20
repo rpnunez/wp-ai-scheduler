@@ -502,8 +502,8 @@
 			if ($card.hasClass('is-processing')) {
 				return;
 			}
-			$card.addClass('is-processing');
-			AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.loading || 'Publishing...');
+			AIPS.Utilities.setItemProcessing($card, true, { label: aipsPostReviewL10n.publishing || 'Publishing...' });
+			AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.publishing || 'Publishing...');
 
 			$.ajax({
 				url:  aipsPostReviewL10n.ajaxUrl,
@@ -524,19 +524,18 @@
 						} else {
 							AIPS.Utilities.showToast(safeMsg, 'success');
 						}
-						$card.fadeOut(400, function () {
-							$(this).remove();
+						AIPS.Utilities.finishItemProcessing($card, true, null, function () {
 							AIPS.PostReview.updateDraftCount();
 							AIPS.PostReview.checkEmptyState();
 						});
 					} else {
-						$card.removeClass('is-processing');
+						AIPS.Utilities.setItemProcessing($card, false);
 						AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
 						AIPS.Utilities.resetButton($btn);
 					}
 				},
 				error: function () {
-					$card.removeClass('is-processing');
+					AIPS.Utilities.setItemProcessing($card, false);
 					AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
 					AIPS.Utilities.resetButton($btn);
 				},
@@ -559,6 +558,7 @@
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
 				{ label: 'No, cancel',  className: 'aips-btn aips-btn-secondary' },
 				{ label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					AIPS.Utilities.setItemProcessing($row, true, { label: aipsPostReviewL10n.deleting || 'Deleting...' });
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.deleting || 'Deleting...');
 
 					$.ajax({
@@ -573,17 +573,18 @@
 						success: function (response) {
 							if (response.success) {
 								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteSuccess, 'success');
-								$row.fadeOut(400, function () {
-									$(this).remove();
+								AIPS.Utilities.finishItemProcessing($row, true, null, function () {
 									AIPS.PostReview.updateDraftCount();
 									AIPS.PostReview.checkEmptyState();
 								});
 							} else {
+								AIPS.Utilities.setItemProcessing($row, false);
 								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
 								AIPS.Utilities.resetButton($btn);
 							}
 						},
 						error: function () {
+							AIPS.Utilities.setItemProcessing($row, false);
 							AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
 							AIPS.Utilities.resetButton($btn);
 						},
@@ -607,6 +608,7 @@
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
 				{ label: 'No, cancel',      className: 'aips-btn aips-btn-secondary' },
 				{ label: 'Yes, regenerate', className: 'aips-btn aips-btn-primary', action: function () {
+					AIPS.Utilities.setItemProcessing($row, true, { label: aipsPostReviewL10n.regenerating || 'Regenerating...' });
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.regenerating || 'Regenerating...');
 
 					$.ajax({
@@ -621,18 +623,24 @@
 							if (response.success) {
 								var msg = response.data.message || aipsPostReviewL10n.regenerateSuccess;
 								AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
-								$row.fadeOut(400, function () {
-									$(this).remove();
+								AIPS.Utilities.finishItemProcessing($row, true, null, function () {
 									AIPS.PostReview.updateDraftCount();
 									AIPS.PostReview.checkEmptyState();
 								});
 							} else {
+								AIPS.Utilities.setItemProcessing($row, false);
 								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
 								AIPS.Utilities.resetButton($btn);
 							}
 						},
 						error: function () {
+							AIPS.Utilities.setItemProcessing($row, false);
 							AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
+							AIPS.Utilities.resetButton($btn);
+						},
+					});
+				} },
+			]);
 							AIPS.Utilities.resetButton($btn);
 						},
 					});
@@ -1185,6 +1193,11 @@
 						postIds.push($(this).data('post-id'));
 					});
 
+					var $btn   = $('#aips-bulk-action-btn, #aips-floating-bulk-apply');
+					var $items = checkedBoxes.closest('.aips-post-card, tr');
+					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.publishing || 'Publishing...');
+					AIPS.Utilities.setItemProcessing($items, true, { label: aipsPostReviewL10n.publishing || 'Publishing...' });
+
 					$.ajax({
 						url:  aipsPostReviewL10n.ajaxUrl,
 						type: 'POST',
@@ -1194,6 +1207,7 @@
 							nonce:    aipsPostReviewL10n.nonce,
 						},
 						success: function (response) {
+							AIPS.Utilities.resetButton($btn);
 							if (response.success) {
 								var msg;
 								if (response.data && response.data.queued) {
@@ -1205,10 +1219,13 @@
 								AIPS.Utilities.showToast(msg, 'success');
 								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {
+								AIPS.Utilities.setItemProcessing($items, false);
 								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
 							}
 						},
 						error: function () {
+							AIPS.Utilities.resetButton($btn);
+							AIPS.Utilities.setItemProcessing($items, false);
 							AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
 						},
 					});
@@ -1242,6 +1259,11 @@
 						});
 					});
 
+					var $btn   = $('#aips-bulk-action-btn, #aips-floating-bulk-apply');
+					var $items = checkedBoxes.closest('.aips-post-card, tr');
+					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.deleting || 'Deleting...');
+					AIPS.Utilities.setItemProcessing($items, true, { label: aipsPostReviewL10n.deleting || 'Deleting...' });
+
 					$.ajax({
 						url:  aipsPostReviewL10n.ajaxUrl,
 						type: 'POST',
@@ -1251,15 +1273,19 @@
 							nonce:  aipsPostReviewL10n.nonce,
 						},
 						success: function (response) {
+							AIPS.Utilities.resetButton($btn);
 							if (response.success) {
 								var msg = aipsPostReviewL10n.bulkDeleteSuccess.replace('%d', response.data.count || count);
 								AIPS.Utilities.showToast(msg, 'success');
 								AIPS.PostReview.removeRowsThenRefresh(checkedBoxes);
 							} else {
+								AIPS.Utilities.setItemProcessing($items, false);
 								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
 							}
 						},
 						error: function () {
+							AIPS.Utilities.resetButton($btn);
+							AIPS.Utilities.setItemProcessing($items, false);
 							AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
 						},
 					});
@@ -1293,6 +1319,11 @@
 						});
 					});
 
+					var $btn   = $('#aips-bulk-action-btn, #aips-floating-bulk-apply');
+					var $items = checkedBoxes.closest('.aips-post-card, tr');
+					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.regenerating || 'Regenerating...');
+					AIPS.Utilities.setItemProcessing($items, true, { label: aipsPostReviewL10n.regenerating || 'Regenerating...' });
+
 					$.ajax({
 						url:  aipsPostReviewL10n.ajaxUrl,
 						type: 'POST',
@@ -1302,6 +1333,7 @@
 							nonce:  aipsPostReviewL10n.nonce,
 						},
 						success: function (response) {
+							AIPS.Utilities.resetButton($btn);
 							if (response && response.success) {
 								var successCount = (response.data && typeof response.data.success_count !== 'undefined') ? response.data.success_count : count;
 								var msg          = aipsPostReviewL10n.bulkRegenerateSuccess.replace('%d', successCount);
@@ -1325,6 +1357,12 @@
 									$rowsToRemove = checkedBoxes.filter(function () {
 										return $.inArray($(this).data('post-id'), successIds) !== -1;
 									});
+									var $failedBoxes = checkedBoxes.filter(function () {
+										return $.inArray($(this).data('post-id'), successIds) === -1;
+									});
+									if ($failedBoxes.length) {
+										AIPS.Utilities.setItemProcessing($failedBoxes.closest('.aips-post-card, tr'), false);
+									}
 								}
 
 								AIPS.PostReview.removeRowsThenRefresh($rowsToRemove);
@@ -1335,10 +1373,13 @@
 									AIPS.Utilities.showToast(failMsg, 'warning');
 								}
 							} else {
+								AIPS.Utilities.setItemProcessing($items, false);
 								AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.regenerateError, 'error');
 							}
 						},
 						error: function () {
+							AIPS.Utilities.resetButton($btn);
+							AIPS.Utilities.setItemProcessing($items, false);
 							AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
 						},
 					});
@@ -1473,12 +1514,8 @@
 				AIPS.PostReview.refreshList();
 				return;
 			}
-			var pending = $items.length;
-			$items.fadeOut(300, function () {
-				$(this).remove();
-				if (--pending === 0) {
-					AIPS.PostReview.refreshList();
-				}
+			AIPS.Utilities.finishItemProcessing($items, true, null, function () {
+				AIPS.PostReview.refreshList();
 			});
 		},
 
