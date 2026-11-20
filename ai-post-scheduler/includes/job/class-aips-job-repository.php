@@ -304,4 +304,29 @@ class AIPS_Job_Repository {
 
 		return false !== $deleted ? (int) $deleted : 0;
 	}
+
+	/**
+	 * Return count of jobs grouped by status for given statuses.
+	 *
+	 * @param string[] $statuses
+	 * @return array<string,int>
+	 */
+	public function get_status_counts( array $statuses = array( 'pending', 'running', 'failed' ) ): array {
+		$counts = array_fill_keys( $statuses, 0 );
+		if ( empty( $statuses ) ) {
+			return $counts;
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+		$sql          = "SELECT status, COUNT(*) as cnt FROM {$this->table_name} WHERE status IN ($placeholders) GROUP BY status";
+		$rows         = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $statuses ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				$counts[ $row['status'] ] = (int) $row['cnt'];
+			}
+		}
+
+		return $counts;
+	}
 }

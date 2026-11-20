@@ -144,11 +144,11 @@ The core content-generation flow uses context objects rather than ad hoc paramet
 
 ### Bulk/batch jobs
 
-`AIPS_Bulk_Batch_Processor` dispatches `aips_process_bulk_batch` single-event cron slices. Job types (`author_topic_post`, `planner_post`, `trending_topic_post`) are registered as strategies via `$processor->register(type, callable)` in `boot_cron()`. Job state lives in `AIPS_Bulk_Batch_Job_Store`.
+Background jobs (post generation, indexing, embeddings, recomputes, scans) are unified under `AIPS_Job_Manager` and defined in `AIPS_Job_Registry`.
 
 ### Background processes
 
-Long-running jobs (indexing, scans) are exposed through `AIPS_Background_Process_Interface` and registered in `AIPS_Background_Process_Manager` (filter `aips_background_processes`). Managed jobs extend `AIPS_Managed_Background_Process` (one `aips_bg_process_tick` cron slice at a time, runs stored in `aips_background_processes`, quota/cooldown waits, per-run AI budget); `AIPS_Embeddings_Background_Process` adds the embeddings quota/cooldown rules for AI-backed jobs (`AIPS_Internal_Links_Indexing_Process`, `AIPS_Author_Embeddings_Process`); `AIPS_Relationships_Recompute_Process` is the CPU-only example. Pipelines that schedule themselves get a thin adapter (`AIPS_Content_Indexer_Queue_Process`, `AIPS_Link_Index_Scan_Process`, `AIPS_Bulk_Generation_Process`, which pauses by unscheduling a bulk job's slices and restoring them on resume). The UI (admin bar pulse, Internal Links card, Diagnostics → Background Processes) is driven by `assets/js/background-processes.js` over the Heartbeat API; never poll separately. New heavy jobs should register here rather than schedule their own cron chain.
+Background jobs and processes are coordinated through `AIPS_Job_Manager` and `AIPS_Background_Processes_Controller`. Domain services (`AIPS_Author_Embeddings_Service`, `AIPS_Internal_Links_Indexing_Service`, `AIPS_Relationships_Recompute_Service`, `AIPS_Schedule_Generation_Service`, `AIPS_Bulk_Generator_Service`, `AIPS_Link_Index_Service`) act as job slice handlers. The UI (admin bar pulse, Internal Links card, Diagnostics → Background Processes) is driven by `assets/js/background-processes.js` over the Heartbeat API; never poll separately. New heavy background jobs should register in `AIPS_Job_Registry`.
 
 ### JavaScript module pattern
 

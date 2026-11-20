@@ -457,9 +457,9 @@ final class AI_Post_Scheduler {
             return new AIPS_Relationships_Repository();
         });
 
-        // Background process registry/manager (start, pause, resume, stop, Heartbeat snapshots)
-        $container->singleton(AIPS_Background_Process_Manager::class, function( $container ) {
-            return new AIPS_Background_Process_Manager();
+        // Background process registry/controller (start, pause, resume, stop, Heartbeat snapshots)
+        $container->singleton(AIPS_Background_Processes_Controller::class, function( $container ) {
+            return new AIPS_Background_Processes_Controller();
         });
 
         // Register the link index (actual <a href> links in post content)
@@ -820,7 +820,7 @@ final class AI_Post_Scheduler {
             if (empty($data['aips_bg'])) {
                 return $response;
             }
-            return AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->on_heartbeat_received($response, $data);
+            return AIPS_Container::get_instance()->make(AIPS_Background_Processes_Controller::class)->on_heartbeat_received($response, $data);
         }, 10, 2);
 
         // Related Posts Frontend integration (content filter, shortcode, block)
@@ -852,140 +852,8 @@ final class AI_Post_Scheduler {
      */
     private function boot_cron() {
         // Lazy cron-hook dispatch: the registry maps each plugin cron hook to a
-        // closure that resolves only the service handling the currently firing
-        // hook, so a cron request for one hook never instantiates the whole
-        // scheduler object graph (issue #2369). This covers the main scheduler,
-        // due-schedule/batch-queue single events, author topic/post slices and
-        // retries, publish-linking, duplicate scan, Search Console sync, link
-        // index / auto-link ticks, bulk-batch slices, the daily cleanup /
-        // maintenance / prune jobs, author embeddings, the internal-links index
-        // batch, and export-file cleanup.
+        // Register lazy cron dispatch handlers via AIPS_Cron_Manager.
         AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class)->register_dispatch_handlers('cron');
-
-        // Register bulk-batch strategies for each supported job type.
-        // Strategies are registered directly (not via add_action) so they are
-        // available immediately when boot_cron() runs — before any later cron
-        // hook could fire in the same request.  Closures are safe here because
-        // they are never serialised; only the job_type string goes to the DB.
-        //
-        // Every handler receives ($item, $job_id, $job) so that per-job context
-        // stored in $job->options (e.g. template_id) can be read inside the closure.
-        $processor = AIPS_Bulk_Batch_Processor::instance();
-
-        $processor->register(
-            'author_topic_post',
-            function( $topic_id, $job_id, $job ) {
-                return AIPS_Author_Post_Generator::instance()->generate_now(
-                    (int) $topic_id,
-                    'author_topic_post',
-                    array( 'detail' => sprintf( __( 'Bulk job %s (Author topics)', 'ai-post-scheduler' ), $job_id ) )
-                );
-            }
-        );
-
-        $processor->register(
-            'planner_post',
-            function( $item, $job_id, $job ) {
-                $template_id = isset( $job->options['history_meta']['template_id'] )
-                    ? (int) $job->options['history_meta']['template_id']
-                    : 0;
-
-                if ( $template_id <= 0 ) {
-                    return new WP_Error(
-                        'planner_post_missing_template',
-                        __( 'planner_post strategy requires a template_id stored in job options.', 'ai-post-scheduler' )
-                    );
-                }
-
-                $template = ( new AIPS_Template_Repository() )->get_by_id( $template_id );
-
-                if ( ! $template || empty( $template->is_active ) ) {
-                    return new WP_Error(
-                        'planner_post_template_not_found',
-                        /* translators: %d: template ID */
-                        sprintf( __( 'Template %d not found or inactive for planner_post strategy.', 'ai-post-scheduler' ), $template_id )
-                    );
-                }
-
-                $topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
-                $generator = new AIPS_Generator();
-
-                return $generator->generate_post( $template, null, $topic, array(
-                    'creation_method' => 'planner_post',
-                    'trigger_context' => array( 'detail' => sprintf( __( 'Bulk job %s (Planner)', 'ai-post-scheduler' ), $job_id ) ),
-                ) );
-            }
-        );
-
-        $processor->register(
-            'trending_topic_post',
-            function( $item, $job_id, $job ) {
-                if ( ! is_array( $item ) || empty( $item['id'] ) || ! isset( $item['topic'] ) ) {
-                    return new WP_Error(
-                        'invalid_trending_topic_item',
-                        __( 'Item must be an array with id and topic keys.', 'ai-post-scheduler' )
-                    );
-                }
-
-                $template_id = isset( $job->options['history_meta']['template_id'] )
-                    ? (int) $job->options['history_meta']['template_id']
-                    : 0;
-
-                if ( $template_id <= 0 ) {
-                    return new WP_Error(
-                        'trending_topic_post_missing_template',
-                        __( 'trending_topic_post strategy requires a template_id stored in job options.', 'ai-post-scheduler' )
-                    );
-                }
-
-                $template = ( new AIPS_Template_Repository() )->get_by_id( $template_id );
-
-                if ( ! $template || empty( $template->is_active ) ) {
-                    return new WP_Error(
-                        'trending_topic_post_template_not_found',
-                        /* translators: %d: template ID */
-                        sprintf( __( 'Template %d not found or inactive for trending_topic_post strategy.', 'ai-post-scheduler' ), $template_id )
-                    );
-                }
-
-                $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'trending_topic_post' );
-                $context->set_trigger_context( array(
-                    'detail' => sprintf( __( 'Bulk job %s (Trending topics)', 'ai-post-scheduler' ), $job_id ),
-                ) );
-                $generator = new AIPS_Generator();
-                $post_id   = $generator->generate_post( $context );
-
-                if ( is_wp_error( $post_id ) ) {
-                    return $post_id;
-                }
-
-                update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_ID,  absint( $item['id'] ) );
-                update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_TEXT, sanitize_text_field( (string) $item['topic'] ) );
-
-                return $post_id;
-            }
-        );
-
-        // Background bulk-publish from the Pending Review queue. Each slice item is
-        // a draft post ID; AIPS_Post_Review::publish_review_post() runs the same
-        // review-queue guards and wp_publish_post() transition as the synchronous
-        // path. Cron has no current user, so we restore the administrator who
-        // enqueued the job (stored in job options) before the per-post capability
-        // check runs.
-        $processor->register(
-            'review_publish',
-            function( $item, $job_id, $job ) {
-                $acting_user_id = isset( $job->options['history_meta']['acting_user_id'] )
-                    ? (int) $job->options['history_meta']['acting_user_id']
-                    : 0;
-
-                if ( $acting_user_id > 0 && get_current_user_id() !== $acting_user_id ) {
-                    wp_set_current_user( $acting_user_id );
-                }
-
-                return AIPS_Post_Review::instance()->publish_review_post( (int) $item );
-            }
-        );
 
         // Research controller registers the aips_scheduled_research cron hook.
         new AIPS_Research_Controller();

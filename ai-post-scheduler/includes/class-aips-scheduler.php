@@ -61,7 +61,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     private $history_repository;
 
     /**
-     * @var AIPS_Schedule_Processor Processor for executing schedules
+     * @var AIPS_Schedule_Generation_Service Processor for executing schedules
      */
     private $processor;
 
@@ -81,12 +81,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
         $this->history_service = new AIPS_History_Service($this->history_repository);
         $this->template_type_selector = new AIPS_Template_Type_Selector();
         
-        // Instantiate the processor with dependencies
-        // We pass the generator if it's already set (which it isn't in __construct usually)
-        // or let the processor instantiate its own.
-        // For consistency with current dependency injection pattern, we instantiate the processor
-        // and rely on setters or internal defaults.
-        $this->processor = new AIPS_Schedule_Processor(
+        $this->processor = new AIPS_Schedule_Generation_Service(
             $this->repository,
             $this->template_repository,
             null, // Generator will be lazy loaded or set via set_generator
@@ -135,7 +130,7 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     /**
      * Set a custom processor instance (dependency injection).
      *
-     * @param AIPS_Schedule_Processor $processor
+     * @param AIPS_Schedule_Generation_Service $processor
      */
     public function set_processor($processor) {
         $this->processor = $processor;

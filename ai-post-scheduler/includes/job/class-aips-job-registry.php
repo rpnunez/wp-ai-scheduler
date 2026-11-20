@@ -19,10 +19,18 @@ class AIPS_Job_Registry {
 	const GROUP_BULK_BATCH    = 'aips-bulk-batch';
 	const GROUP_INDEXER       = 'aips-indexer';
 	const GROUP_EMBEDDINGS    = 'aips-embeddings';
+	const GROUP_SCHEDULES     = 'aips-schedules';
 
-	const TYPE_AUTHOR_TOPIC_SLICE = 'author_topic_slice';
-	const TYPE_BULK_BATCH_SLICE   = 'bulk_batch_slice';
-	const TYPE_LINK_INDEX_SCAN    = 'link_index_scan';
+	const TYPE_AUTHOR_TOPIC_SLICE       = 'author_topic_slice';
+	const TYPE_AUTHOR_TOPIC_EMBEDDINGS  = 'author_topic_embeddings';
+	const TYPE_BULK_BATCH_SLICE         = 'bulk_batch_slice';
+	const TYPE_BULK_POST_GENERATION     = 'bulk_post_generation';
+	const TYPE_BULK_POST_PUBLISH        = 'bulk_post_publish';
+	const TYPE_INTERNAL_LINKS_INDEXING  = 'internal_links_indexing';
+	const TYPE_LINK_INDEX_SCAN          = 'link_index_scan';
+	const TYPE_RELATIONSHIPS_RECOMPUTE  = 'relationships_recompute';
+	const TYPE_SCHEDULE_POST_GENERATION = 'schedule_post_generation';
+	const TYPE_SCHEDULE_BATCH_SLICE     = 'schedule_batch_slice';
 
 	/**
 	 * Default job tick hook name.
@@ -38,7 +46,7 @@ class AIPS_Job_Registry {
 	 */
 	public function get_definitions(): array {
 		$definitions = array(
-			self::TYPE_AUTHOR_TOPIC_SLICE => array(
+			self::TYPE_AUTHOR_TOPIC_SLICE    => array(
 				'label'             => __( 'Author Topic Slice', 'ai-post-scheduler' ),
 				'hook'              => self::DEFAULT_TICK_HOOK,
 				'group'             => self::GROUP_AUTHOR_TOPICS,
@@ -47,16 +55,34 @@ class AIPS_Job_Registry {
 				'batch_size'        => 10,
 				'handler'           => 'AIPS_Author_Topics_Service',
 			),
-			self::TYPE_BULK_BATCH_SLICE   => array(
+			self::TYPE_BULK_POST_GENERATION  => array(
+				'label'             => __( 'Bulk Post Generation', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_BULK_BATCH,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 5,
+				'handler'           => 'AIPS_Bulk_Generator_Service',
+			),
+			self::TYPE_BULK_POST_PUBLISH     => array(
+				'label'             => __( 'Bulk Post Publish', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_BULK_BATCH,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 25,
+				'handler'           => 'AIPS_Bulk_Generator_Service',
+			),
+			self::TYPE_BULK_BATCH_SLICE      => array(
 				'label'             => __( 'Bulk Batch Slice', 'ai-post-scheduler' ),
 				'hook'              => self::DEFAULT_TICK_HOOK,
 				'group'             => self::GROUP_BULK_BATCH,
 				'max_retries'       => 5,
 				'retry_backoff_sec' => 60,
 				'batch_size'        => 25,
-				'handler'           => 'AIPS_Bulk_Batch_Processor',
+				'handler'           => 'AIPS_Bulk_Generator_Service',
 			),
-			self::TYPE_LINK_INDEX_SCAN    => array(
+			self::TYPE_LINK_INDEX_SCAN          => array(
 				'label'             => __( 'Link Index Scan', 'ai-post-scheduler' ),
 				'hook'              => self::DEFAULT_TICK_HOOK,
 				'group'             => self::GROUP_INDEXER,
@@ -64,6 +90,51 @@ class AIPS_Job_Registry {
 				'retry_backoff_sec' => 60,
 				'batch_size'        => 50,
 				'handler'           => 'AIPS_Link_Index_Service',
+			),
+			self::TYPE_SCHEDULE_POST_GENERATION => array(
+				'label'             => __( 'Schedule Post Generation', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_SCHEDULES,
+				'max_retries'       => 2,
+				'retry_backoff_sec' => 120,
+				'batch_size'        => 1,
+				'handler'           => 'AIPS_Schedule_Generation_Service',
+			),
+			self::TYPE_SCHEDULE_BATCH_SLICE     => array(
+				'label'             => __( 'Schedule Batch Slice', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_SCHEDULES,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 10,
+				'handler'           => 'AIPS_Schedule_Generation_Service',
+			),
+			self::TYPE_AUTHOR_TOPIC_EMBEDDINGS  => array(
+				'label'             => __( 'Author Topic Embeddings', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_EMBEDDINGS,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 10,
+				'handler'           => 'AIPS_Author_Embeddings_Service',
+			),
+			self::TYPE_INTERNAL_LINKS_INDEXING  => array(
+				'label'             => __( 'Internal Links Indexing', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_EMBEDDINGS,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 10,
+				'handler'           => 'AIPS_Internal_Links_Indexing_Service',
+			),
+			self::TYPE_RELATIONSHIPS_RECOMPUTE  => array(
+				'label'             => __( 'Related Posts Recompute', 'ai-post-scheduler' ),
+				'hook'              => self::DEFAULT_TICK_HOOK,
+				'group'             => self::GROUP_INDEXER,
+				'max_retries'       => 3,
+				'retry_backoff_sec' => 60,
+				'batch_size'        => 10,
+				'handler'           => 'AIPS_Relationships_Recompute_Service',
 			),
 		);
 

@@ -423,7 +423,7 @@ class AIPS_Post_Review {
 	 *
 	 * Reuses the shared AIPS_Bulk_Generator_Service dispatch harness with the
 	 * 'review_publish' job type (registered in boot_cron()). The request returns
-	 * immediately; AIPS_Bulk_Batch_Processor publishes each post in cron slices
+	 * immediately; AIPS_Job_Manager publishes each post in background slices
 	 * and progress is visible under Diagnostics → Background Processes.
 	 *
 	 * Publishing has no AI rate limits, so the batch spread is tightened relative

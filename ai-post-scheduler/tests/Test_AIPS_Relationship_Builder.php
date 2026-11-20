@@ -188,49 +188,50 @@ class Test_AIPS_Relationship_Builder extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual( 1, $this->builder->get_batch_size_for_budget( 0.0001, 50 ) );
 	}
 
-	public function test_recompute_process_fills_in_missing_relationships_then_completes() {
+	public function test_recompute_service_fills_in_missing_relationships_then_completes() {
 		$a = $this->indexed_post( array( 1.0, 0.0 ) );
 		$b = $this->indexed_post( array( 0.95, 0.31 ) );
 		$c = $this->indexed_post( array( 0.9, 0.43 ) );
 
-		$process = new AIPS_Relationships_Recompute_Process( null, $this->builder, $this->relationships );
+		$service = new AIPS_Relationships_Recompute_Service( $this->builder, $this->relationships );
+		$this->assertSame( 3, $service->count_remaining() );
+		$this->assertFalse( $service->uses_ai() );
 
-		$snapshot = $process->start();
-		$this->assertIsArray( $snapshot );
-		$this->assertSame( 3, $snapshot['total'] );
+		$record  = new AIPS_Job_Record( array(
+			'job_id'   => 'test-recompute-1',
+			'job_type' => AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE,
+			'payload'  => array( 'mode' => 'missing' ),
+		) );
+		$context = new AIPS_Job_Context( $record, 10, 30.0 );
+		$result  = $service->handle_job_slice( $context );
 
-		$process->tick();
 		$this->assertArrayHasKey( $b, $this->related_of( $a ) );
 		$this->assertArrayHasKey( $a, $this->related_of( $c ) );
-
-		$snapshot = $process->get_snapshot();
-		$this->assertSame( 'idle', $snapshot['status'] );
-		$this->assertSame( 'completed', $snapshot['last_status'] );
-		$this->assertSame( 3, $snapshot['processed'] );
-		$this->assertSame( 0, $snapshot['ai_calls_used'], 'Recompute makes no AI calls.' );
-		$this->assertFalse( $process->uses_ai() );
-
-		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Relationships_Recompute_Process::KEY ) );
+		$this->assertTrue( $result->is_completed() );
+		$this->assertSame( 3, $result->get_processed_count() );
 	}
 
-	public function test_recompute_process_skips_posts_that_already_have_relationships_unless_asked() {
+	public function test_recompute_service_skips_posts_that_already_have_relationships_unless_asked() {
 		$a = $this->indexed_post( array( 1.0, 0.0 ) );
 		$b = $this->indexed_post( array( 0.95, 0.31 ) );
 		$this->builder->compute_for_posts( array( $a, $b ) );
 
-		$process  = new AIPS_Relationships_Recompute_Process( null, $this->builder, $this->relationships );
-		$estimate = $process->get_estimate();
+		$service = new AIPS_Relationships_Recompute_Service( $this->builder, $this->relationships );
+		$this->assertSame( 0, $service->count_remaining( 'missing' ) );
+		$this->assertSame( 2, $service->count_remaining( 'all' ) );
+
+		$controller = new AIPS_Background_Processes_Controller();
+		$estimate   = $controller->get_estimate( AIPS_Relationships_Recompute_Service::KEY );
 		$this->assertSame( 0, $estimate['items'] );
 
-		$start = $process->start();
+		$start = $controller->control( AIPS_Relationships_Recompute_Service::KEY, AIPS_Background_Processes_Controller::ACTION_START );
 		$this->assertWPError( $start );
 		$this->assertSame( 'aips_bg_nothing_to_do', $start->get_error_code() );
 
-		$snapshot = $process->start( array( 'mode' => 'all' ) );
+		$snapshot = $controller->control( AIPS_Relationships_Recompute_Service::KEY, AIPS_Background_Processes_Controller::ACTION_START, array( 'mode' => 'all' ) );
 		$this->assertIsArray( $snapshot );
 		$this->assertSame( 2, $snapshot['total'] );
 
-		$process->cancel();
-		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Relationships_Recompute_Process::KEY ) );
+		$controller->control( AIPS_Relationships_Recompute_Service::KEY, AIPS_Background_Processes_Controller::ACTION_CANCEL );
 	}
 }

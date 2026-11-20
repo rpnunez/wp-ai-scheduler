@@ -192,8 +192,8 @@ class Test_AIPS_Job_Integration extends WP_UnitTestCase {
 			array( 'total' => 3 )
 		);
 
-		$bg_manager = new AIPS_Background_Process_Manager();
-		$payload    = $bg_manager->get_heartbeat_payload();
+		$controller = new AIPS_Background_Processes_Controller( $this->manager, $this->repo );
+		$payload    = $controller->get_heartbeat_payload();
 
 		$this->assertArrayHasKey( 'processes', $payload );
 		$this->assertArrayHasKey( 'jobs', $payload );

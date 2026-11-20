@@ -115,9 +115,9 @@ class AIPS_Autolink_Run_Service {
 	private $config;
 
 	/**
-	 * @var AIPS_Bulk_Batch_Job_Store
+	 * @var AIPS_Job_Repository
 	 */
-	private $job_store;
+	private $job_repo;
 
 	/**
 	 * @param AIPS_Inbound_Links_Service|null     $inbound    Inbound suggestions.
@@ -125,7 +125,7 @@ class AIPS_Autolink_Run_Service {
 	 * @param AIPS_Internal_Links_Repository|null $links_repo Suggestions repository.
 	 * @param AIPS_Autolink_Policy|null           $policy     Auto-link policy.
 	 * @param AIPS_Config|null                    $config     Config.
-	 * @param AIPS_Bulk_Batch_Job_Store|null      $job_store  Job store.
+	 * @param AIPS_Job_Repository|null            $job_repo   Job repository.
 	 */
 	public function __construct(
 		?AIPS_Inbound_Links_Service $inbound = null,
@@ -133,7 +133,7 @@ class AIPS_Autolink_Run_Service {
 		?AIPS_Internal_Links_Repository $links_repo = null,
 		?AIPS_Autolink_Policy $policy = null,
 		?AIPS_Config $config = null,
-		?AIPS_Bulk_Batch_Job_Store $job_store = null
+		?AIPS_Job_Repository $job_repo = null
 	) {
 		$container        = AIPS_Container::get_instance();
 		$this->link_index = $link_index ?: ($container->has(AIPS_Link_Index_Service::class) ? $container->make(AIPS_Link_Index_Service::class) : new AIPS_Link_Index_Service());
@@ -141,7 +141,7 @@ class AIPS_Autolink_Run_Service {
 		$this->links_repo = $links_repo ?: new AIPS_Internal_Links_Repository();
 		$this->policy     = $policy ?: new AIPS_Autolink_Policy();
 		$this->config     = $config ?: AIPS_Config::get_instance();
-		$this->job_store  = $job_store ?: new AIPS_Bulk_Batch_Job_Store();
+		$this->job_repo   = $job_repo ?: new AIPS_Job_Repository();
 	}
 
 	/**
@@ -153,7 +153,7 @@ class AIPS_Autolink_Run_Service {
 	 */
 	public function start(string $scope = self::SCOPE_ORPHANS, bool $dry_run = false) {
 		$current = $this->get_current();
-		if ($current && in_array($current['status'], array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, AIPS_Link_Index_Service::STATUS_PAUSED), true)) {
+		if ($current && in_array($current['status'], array(AIPS_Job_Record::STATUS_RUNNING, 'processing', AIPS_Link_Index_Service::STATUS_PAUSED), true)) {
 			return new WP_Error('aips_autolink_run_in_progress', __('An auto-link run is already running or paused. Resume or cancel it first.', 'ai-post-scheduler'));
 		}
 
@@ -169,11 +169,18 @@ class AIPS_Autolink_Run_Service {
 			return new WP_Error('aips_autolink_nothing_to_do', __('No posts need inbound links right now.', 'ai-post-scheduler'));
 		}
 
-		$job_id = $this->job_store->create(self::JOB_TYPE, $targets, array('scope' => $scope));
-		if (is_wp_error($job_id)) {
-			return $job_id;
-		}
-		$this->job_store->update_status($job_id, AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING);
+		$job_id = wp_generate_uuid4();
+		$this->job_repo->insert(
+			array(
+				'job_id'      => $job_id,
+				'job_type'    => self::JOB_TYPE,
+				'group_name'  => AIPS_Job_Registry::GROUP_INDEXER,
+				'status'      => AIPS_Job_Record::STATUS_RUNNING,
+				'total'       => count( $targets ),
+				'payload'     => array( 'items' => $targets, 'scope' => $scope ),
+				'next_run_at' => time(),
+			)
+		);
 
 		$state = array(
 			'job_id'      => $job_id,
@@ -183,7 +190,7 @@ class AIPS_Autolink_Run_Service {
 			'user_id'     => get_current_user_id(),
 			'started_at'  => time(),
 			'finished_at' => 0,
-			'status'      => AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING,
+			'status'      => AIPS_Job_Record::STATUS_RUNNING,
 			'processed'   => 0,
 			'total'       => count($targets),
 			'applied'     => 0,
@@ -211,8 +218,8 @@ class AIPS_Autolink_Run_Service {
 			return;
 		}
 
-		$job = $this->job_store->get($state['job_id']);
-		if (!$job || $job->status !== AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+		$job = $this->job_repo->find($state['job_id']);
+		if (!$job || !in_array($job->status, array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), true)) {
 			return;
 		}
 
@@ -246,23 +253,23 @@ class AIPS_Autolink_Run_Service {
 		$processed          = $offset + $done;
 		$state['processed'] = $processed;
 
-		$latest = $this->job_store->get($state['job_id']);
-		$status = $latest ? $latest->status : AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING;
+		$latest = $this->job_repo->find($state['job_id']);
+		$status = $latest ? $latest->status : AIPS_Job_Record::STATUS_RUNNING;
 
 		if ($processed >= (int) $job->total) {
-			$this->job_store->update_status($state['job_id'], AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED, $processed);
-			$state['status']      = AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED;
+			$this->job_repo->update($state['job_id'], array('status' => AIPS_Job_Record::STATUS_COMPLETED, 'processed' => $processed, 'finished_at' => time()));
+			$state['status']      = AIPS_Job_Record::STATUS_COMPLETED;
 			$state['finished_at'] = time();
 			$this->save_current($state);
 			$this->archive($state);
 			return;
 		}
 
-		$this->job_store->update_status($state['job_id'], $status, $processed);
+		$this->job_repo->update($state['job_id'], array('status' => $status, 'processed' => $processed));
 		$state['status'] = $status;
 		$this->save_current($state);
 
-		if ($status === AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+		if (in_array($status, array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), true)) {
 			$this->schedule_tick($state['job_id'], min(600, max(0, (int) $this->config->get_option('aips_link_index_batch_delay', 20))));
 		}
 	}
@@ -296,7 +303,7 @@ class AIPS_Autolink_Run_Service {
 			'user_id'     => $user_id,
 			'started_at'  => time(),
 			'finished_at' => 0,
-			'status'      => AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING,
+			'status'      => AIPS_Job_Record::STATUS_RUNNING,
 			'processed'   => 0,
 			'total'       => count($target_ids),
 			'applied'     => 0,
@@ -324,7 +331,7 @@ class AIPS_Autolink_Run_Service {
 		}
 
 		unset($state['only_sources'], $state['ignore_target_cap']);
-		$state['status']      = AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED;
+		$state['status']      = AIPS_Job_Record::STATUS_COMPLETED;
 		$state['finished_at'] = time();
 		$this->archive($state);
 
@@ -337,7 +344,7 @@ class AIPS_Autolink_Run_Service {
 	 * @return bool
 	 */
 	public function pause(): bool {
-		return $this->transition(array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING), AIPS_Link_Index_Service::STATUS_PAUSED);
+		return $this->transition(array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), AIPS_Link_Index_Service::STATUS_PAUSED);
 	}
 
 	/**
@@ -346,7 +353,7 @@ class AIPS_Autolink_Run_Service {
 	 * @return bool
 	 */
 	public function resume(): bool {
-		if (!$this->transition(array(AIPS_Link_Index_Service::STATUS_PAUSED), AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING)) {
+		if (!$this->transition(array(AIPS_Link_Index_Service::STATUS_PAUSED), AIPS_Job_Record::STATUS_RUNNING)) {
 			return false;
 		}
 		$state = $this->get_raw_current();
@@ -360,7 +367,7 @@ class AIPS_Autolink_Run_Service {
 	 * @return bool
 	 */
 	public function cancel(): bool {
-		if (!$this->transition(array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, AIPS_Link_Index_Service::STATUS_PAUSED), AIPS_Link_Index_Service::STATUS_CANCELLED)) {
+		if (!$this->transition(array(AIPS_Job_Record::STATUS_RUNNING, 'processing', AIPS_Link_Index_Service::STATUS_PAUSED), AIPS_Link_Index_Service::STATUS_CANCELLED)) {
 			return false;
 		}
 		$state                = $this->get_raw_current();
@@ -378,7 +385,7 @@ class AIPS_Autolink_Run_Service {
 	 */
 	public function undo_run(string $job_id) {
 		$current = $this->get_raw_current();
-		if ($current && $current['job_id'] === $job_id && in_array($current['status'], array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, AIPS_Link_Index_Service::STATUS_PAUSED), true)) {
+		if ($current && $current['job_id'] === $job_id && in_array($current['status'], array(AIPS_Job_Record::STATUS_RUNNING, 'processing', AIPS_Link_Index_Service::STATUS_PAUSED), true)) {
 			return new WP_Error('aips_autolink_run_active', __('Cancel the run before undoing it.', 'ai-post-scheduler'));
 		}
 
@@ -443,7 +450,7 @@ class AIPS_Autolink_Run_Service {
 	 */
 	public function ensure_scheduled(): void {
 		$state = $this->get_raw_current();
-		if ($state && $state['status'] === AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING && !wp_next_scheduled(self::TICK_HOOK, array($state['job_id']))) {
+		if ($state && in_array($state['status'], array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), true) && !wp_next_scheduled(self::TICK_HOOK, array($state['job_id']))) {
 			$this->schedule_tick($state['job_id'], 0);
 		}
 	}
@@ -555,17 +562,17 @@ class AIPS_Autolink_Run_Service {
 			return false;
 		}
 
-		$job    = $this->job_store->get($state['job_id']);
+		$job    = $this->job_repo->find($state['job_id']);
 		$status = $job ? $job->status : $state['status'];
 		if (!in_array($status, $from, true)) {
 			return false;
 		}
 
-		$this->job_store->update_status($state['job_id'], $to);
+		$this->job_repo->update($state['job_id'], array('status' => $to));
 		$state['status'] = $to;
 		$this->save_current($state);
 
-		if ($to !== AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+		if (!in_array($to, array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), true)) {
 			wp_clear_scheduled_hook(self::TICK_HOOK, array($state['job_id']));
 		}
 

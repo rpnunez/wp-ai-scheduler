@@ -101,7 +101,6 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 		$hooks = array_keys( $this->registry->get_single_event_hooks() );
 
 		foreach ( array(
-			AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK,
 			AIPS_Batch_Queue_Service::HOOK,
 			'aips_resume_terminated_batches',
 			'aips_process_author_topics_slice',
@@ -112,14 +111,14 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 			AIPS_Publish_Linking_Service::CRON_HOOK,
 			AIPS_Link_Index_Service::SCAN_TICK_HOOK,
 			AIPS_Autolink_Run_Service::TICK_HOOK,
-			AIPS_Managed_Background_Process::TICK_HOOK,
-			AIPS_Bulk_Batch_Processor::HOOK,
 			AIPS_Job_Registry::DEFAULT_TICK_HOOK,
 			'aips_index_posts_batch',
 			'aips_process_pending_indexer_queue',
 		) as $expected ) {
 			$this->assertContains( $expected, $hooks, "Single-event registry must declare {$expected}" );
 		}
+
+		$this->assertContains( 'aips_bg_process_tick', $this->registry->get_legacy_hooks() );
 	}
 
 	public function test_all_hooks_is_union_of_every_category() {
@@ -137,10 +136,12 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 		$this->assertContains( AIPS_Sources_Cron::HOOK, $all );
 		$this->assertContains( AIPS_Sources_Maintenance::HOOK, $all );
 		// Parameterised single/tick.
-		$this->assertContains( AIPS_Bulk_Batch_Processor::HOOK, $all );
+		$this->assertContains( AIPS_Job_Registry::DEFAULT_TICK_HOOK, $all );
 		$this->assertContains( 'aips_process_author_topics_slice', $all );
 		// Legacy clear-only.
 		$this->assertContains( 'aips_daily_rollup_insights', $all );
+		$this->assertContains( 'aips_process_bulk_batch', $all );
+		$this->assertContains( 'aips_process_single_due_schedule', $all );
 	}
 
 	public function test_all_hooks_has_no_duplicates() {
@@ -163,7 +164,6 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 
 		// Multi-arg slices must declare their full argument count.
 		$this->assertSame( 5, $handlers[ AIPS_Batch_Queue_Service::HOOK ]['accepted_args'] );
-		$this->assertSame( 5, $handlers[ AIPS_Bulk_Batch_Processor::HOOK ]['accepted_args'] );
 		$this->assertSame( 2, $handlers['aips_process_author_topics_slice']['accepted_args'] );
 		$this->assertSame( 2, $handlers['aips_retry_failed_author_slices_posts']['accepted_args'] );
 	}
@@ -172,7 +172,6 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 		$handlers = $this->registry->get_dispatch_handlers( 'common' );
 
 		$this->assertArrayHasKey( 'aips_process_pending_indexer_queue', $handlers );
-		$this->assertArrayHasKey( AIPS_Managed_Background_Process::TICK_HOOK, $handlers );
 		$this->assertArrayHasKey( AIPS_Job_Registry::DEFAULT_TICK_HOOK, $handlers );
 	}
 

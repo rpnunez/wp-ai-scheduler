@@ -91,29 +91,39 @@ class AIPS_Link_Index_Service {
 	private $config;
 
 	/**
-	 * @var AIPS_Bulk_Batch_Job_Store|null
+	 * @var AIPS_Job_Repository|null
 	 */
-	private $job_store;
+	private $job_repo;
 
 	/**
 	 * @param AIPS_Link_Index_Repository|null $repository          Link index repository.
 	 * @param AIPS_Link_Extractor|null        $extractor           HTML link extractor.
 	 * @param AIPS_Link_Url_Resolver|null     $resolver            URL resolver.
 	 * @param AIPS_Config|null                $config              Config.
-	 * @param AIPS_Bulk_Batch_Job_Store|null  $job_store           Job store (scans).
+	 * @param AIPS_Job_Repository|null        $job_repo            Job repository.
 	 */
 	public function __construct(
 		?AIPS_Link_Index_Repository $repository = null,
 		?AIPS_Link_Extractor $extractor = null,
 		?AIPS_Link_Url_Resolver $resolver = null,
 		?AIPS_Config $config = null,
-		?AIPS_Bulk_Batch_Job_Store $job_store = null
+		?AIPS_Job_Repository $job_repo = null
 	) {
 		$this->repository          = $repository ?: new AIPS_Link_Index_Repository();
 		$this->extractor           = $extractor ?: new AIPS_Link_Extractor();
 		$this->resolver            = $resolver ?: new AIPS_Link_Url_Resolver();
 		$this->config              = $config ?: AIPS_Config::get_instance();
-		$this->job_store           = $job_store;
+		$this->job_repo            = $job_repo;
+	}
+
+	/**
+	 * @return AIPS_Job_Repository
+	 */
+	private function get_job_repo(): AIPS_Job_Repository {
+		if ($this->job_repo === null) {
+			$this->job_repo = AIPS_Container::get_instance()->get_job_repository();
+		}
+		return $this->job_repo;
 	}
 
 	/**
@@ -375,7 +385,7 @@ class AIPS_Link_Index_Service {
 		$days = min(3650, max(1, $days));
 
 		$current = $this->get_backfill_status();
-		if ($current && in_array($current['status'], array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, self::STATUS_PAUSED), true)) {
+		if ($current && in_array($current['status'], array(AIPS_Job_Record::STATUS_RUNNING, 'processing', self::STATUS_PAUSED), true)) {
 			return new WP_Error('aips_link_scan_in_progress', __('A link scan is already running or paused. Resume or cancel it first.', 'ai-post-scheduler'));
 		}
 
@@ -387,20 +397,25 @@ class AIPS_Link_Index_Service {
 			return new WP_Error('aips_link_index_nothing_to_index', $message);
 		}
 
-		$job_store = $this->get_job_store();
-		$job_id    = $job_store->create(
-			self::BACKFILL_JOB_TYPE,
-			$post_ids,
+		$job_repo = $this->get_job_repo();
+		$job_id   = wp_generate_uuid4();
+		$job_repo->insert(
 			array(
-				'mode' => $mode,
-				'days' => $days,
+				'job_id'      => $job_id,
+				'job_type'    => self::BACKFILL_JOB_TYPE,
+				'group_name'  => AIPS_Job_Registry::GROUP_INDEXER,
+				'status'      => AIPS_Job_Record::STATUS_RUNNING,
+				'total'       => count( $post_ids ),
+				'payload'     => array(
+					'items'   => $post_ids,
+					'options' => array(
+						'mode' => $mode,
+						'days' => $days,
+					),
+				),
+				'next_run_at' => time(),
 			)
 		);
-		if (is_wp_error($job_id)) {
-			return $job_id;
-		}
-
-		$job_store->update_status($job_id, AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING);
 		$this->config->set_option(self::BACKFILL_JOB_OPTION, $job_id);
 		$this->schedule_tick($job_id, 0);
 
@@ -423,9 +438,9 @@ class AIPS_Link_Index_Service {
 			return;
 		}
 
-		$job_store = $this->get_job_store();
-		$job       = $job_store->get($job_id);
-		if (!$job || $job->status !== AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+		$job_repo = $this->get_job_repo();
+		$job      = $job_repo->find($job_id);
+		if (!$job || !in_array($job->status, array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), true)) {
 			return;
 		}
 
@@ -451,17 +466,17 @@ class AIPS_Link_Index_Service {
 		$processed = $offset + $done;
 
 		// Re-read the status: the user may have paused or cancelled mid-batch.
-		$latest = $job_store->get($job_id);
-		$status = $latest ? $latest->status : AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING;
+		$latest = $job_repo->find($job_id);
+		$status = $latest ? $latest->status : AIPS_Job_Record::STATUS_RUNNING;
 
 		if ($processed >= (int) $job->total) {
-			$job_store->update_status($job_id, AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED, $processed);
+			$job_repo->update($job_id, array('status' => AIPS_Job_Record::STATUS_COMPLETED, 'processed' => $processed, 'finished_at' => time()));
 			return;
 		}
 
-		$job_store->update_status($job_id, $status, $processed);
+		$job_repo->update($job_id, array('status' => $status, 'processed' => $processed));
 
-		if ($status === AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+		if (in_array($status, array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), true)) {
 			$this->schedule_tick($job_id, $this->get_batch_delay());
 		}
 	}
@@ -472,7 +487,7 @@ class AIPS_Link_Index_Service {
 	 * @return bool True when a running scan was paused.
 	 */
 	public function pause_backfill(): bool {
-		return $this->transition(array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING), self::STATUS_PAUSED);
+		return $this->transition(array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), self::STATUS_PAUSED);
 	}
 
 	/**
@@ -481,7 +496,7 @@ class AIPS_Link_Index_Service {
 	 * @return bool True when a paused scan was resumed.
 	 */
 	public function resume_backfill(): bool {
-		if (!$this->transition(array(self::STATUS_PAUSED), AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING)) {
+		if (!$this->transition(array(self::STATUS_PAUSED), AIPS_Job_Record::STATUS_RUNNING)) {
 			return false;
 		}
 
@@ -496,7 +511,7 @@ class AIPS_Link_Index_Service {
 	 */
 	public function cancel_backfill(): bool {
 		return $this->transition(
-			array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, self::STATUS_PAUSED),
+			array(AIPS_Job_Record::STATUS_RUNNING, 'processing', self::STATUS_PAUSED),
 			self::STATUS_CANCELLED
 		);
 	}
@@ -509,7 +524,7 @@ class AIPS_Link_Index_Service {
 	 */
 	public function ensure_scan_scheduled(): void {
 		$status = $this->get_backfill_status();
-		if (!$status || $status['status'] !== AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+		if (!$status || !in_array($status['status'], array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), true)) {
 			return;
 		}
 
@@ -529,7 +544,7 @@ class AIPS_Link_Index_Service {
 			return null;
 		}
 
-		$job = $this->get_job_store()->get($job_id);
+		$job = $this->get_job_repo()->find($job_id);
 		if (!$job) {
 			return null;
 		}
@@ -593,23 +608,13 @@ class AIPS_Link_Index_Service {
 			return false;
 		}
 
-		$this->get_job_store()->update_status($status['job_id'], $to);
+		$this->get_job_repo()->update($status['job_id'], array('status' => $to));
 
-		if ($to !== AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+		if (!in_array($to, array(AIPS_Job_Record::STATUS_RUNNING, 'processing'), true)) {
 			wp_clear_scheduled_hook(self::SCAN_TICK_HOOK, array($status['job_id']));
 		}
 
 		return true;
-	}
-
-	/**
-	 * @return AIPS_Bulk_Batch_Job_Store
-	 */
-	private function get_job_store(): AIPS_Bulk_Batch_Job_Store {
-		if ($this->job_store === null) {
-			$this->job_store = new AIPS_Bulk_Batch_Job_Store();
-		}
-		return $this->job_store;
 	}
 }
 
