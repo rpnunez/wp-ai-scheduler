@@ -176,18 +176,12 @@ class AIPS_Content_Auditor_Engine {
 			'json_schema' => $schema,
 		);
 
-		$result = $this->ai_service->generate_json($prompt, $options);
-
-		if (is_wp_error($result) || !is_array($result)) {
-			// Fallback text parsing
-			$text_res = $this->ai_service->generate_text($prompt, array('temperature' => 0.6));
-			$result   = is_string($text_res) ? $this->parse_json_fallback($text_res) : array();
-		}
+		$result = $this->execute_audit_pass('topic_gaps', $prompt, $options, 0.6);
 
 		return array(
-			'gaps'        => is_array($result) ? $result : array(),
-			'gap_count'   => is_array($result) ? count($result) : 0,
-			'niche'       => $niche,
+			'gaps'      => $result,
+			'gap_count' => count($result),
+			'niche'     => $niche,
 		);
 	}
 
@@ -252,12 +246,7 @@ class AIPS_Content_Auditor_Engine {
 			'json_schema' => $schema,
 		);
 
-		$result = $this->ai_service->generate_json($prompt, $options);
-
-		if (is_wp_error($result) || !is_array($result)) {
-			$text_res = $this->ai_service->generate_text($prompt, array('temperature' => 0.5));
-			$result   = is_string($text_res) ? $this->parse_json_fallback($text_res) : array();
-		}
+		$result = $this->execute_audit_pass('cannibalization', $prompt, $options, 0.5);
 
 		$conflicts = array();
 		if (is_array($result)) {
@@ -326,12 +315,7 @@ class AIPS_Content_Auditor_Engine {
 			'json_schema' => $schema,
 		);
 
-		$result = $this->ai_service->generate_json($prompt, $options);
-
-		if (is_wp_error($result) || !is_array($result)) {
-			$text_res = $this->ai_service->generate_text($prompt, array('temperature' => 0.5));
-			$result   = is_string($text_res) ? $this->parse_json_fallback($text_res) : array();
-		}
+		$result = $this->execute_audit_pass('content_decay', $prompt, $options, 0.5);
 
 		return array(
 			'recommendations' => is_array($result) ? $result : array(),
@@ -485,19 +469,41 @@ class AIPS_Content_Auditor_Engine {
 			'json_schema' => $schema,
 		);
 
-		$result = $this->ai_service->generate_json($prompt, $options);
-
-		if (is_wp_error($result) || !is_array($result)) {
-			$text_res = $this->ai_service->generate_text($prompt, array('temperature' => 0.6));
-			$result   = is_string($text_res) ? $this->parse_json_fallback($text_res) : array();
-		}
+		$result = $this->execute_audit_pass('source_trends', $prompt, $options, 0.6);
 
 		return array(
-			'trends'       => is_array($result) ? $result : array(),
-			'trend_count'  => is_array($result) ? count($result) : 0,
+			'trends'       => $result,
+			'trend_count'  => count($result),
 			'sources_used' => count($source_rows),
 			'status'       => 'success',
 		);
+	}
+
+	/**
+	 * Execute a single AI audit pass through AIPS_Generation_Pipeline and
+	 * AIPS_Content_Audit_Strategy.
+	 *
+	 * @param string $pass_type            Pass key.
+	 * @param string $prompt               Prompt string.
+	 * @param array  $options              AI options (temperature, json_schema).
+	 * @param float  $fallback_temperature Temperature for text fallback.
+	 * @return array
+	 */
+	private function execute_audit_pass(string $pass_type, string $prompt, array $options, float $fallback_temperature): array {
+		$context  = new AIPS_Content_Audit_Generation_Context($pass_type, $prompt, $options, $fallback_temperature, false);
+		$registry = new AIPS_Generation_Component_Registry();
+		$registry->register(new AIPS_Content_Audit_Pass_Component($this->ai_service));
+
+		$strategy = new AIPS_Content_Audit_Strategy($registry, $this->ai_service);
+		$pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+		$result   = $pipeline->execute($context);
+
+		if ($result->is_failure()) {
+			return array();
+		}
+
+		$data = $result->get_data();
+		return is_array($data) ? $data : array();
 	}
 
 	/**

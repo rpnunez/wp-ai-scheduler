@@ -411,6 +411,119 @@ final class AI_Post_Scheduler {
             );
         });
 
+        // Universal Generation Strategy & Component Framework (issue #2400)
+        $container->singleton(AIPS_Generation_Component_Registry::class, function( $container ) {
+            $registry = new AIPS_Generation_Component_Registry();
+            $registry->register_default_post_components();
+            $registry->register_default_topic_components();
+            $registry->register_default_persona_components();
+            $registry->register_default_campaign_components();
+            $registry->register_default_research_components();
+            $registry->register_default_taxonomy_components();
+            $registry->register_default_planner_components();
+            $registry->register_default_enrichment_components();
+            $registry->register_default_ai_assistance_components();
+            return $registry;
+        });
+
+        $container->singleton(AIPS_Post_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Post_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                null,
+                null,
+                $container->make(AIPS_History_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Topic_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Topic_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                $container->make(AIPS_History_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Author_Persona_Strategy::class, function( $container ) {
+            return new AIPS_Author_Persona_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_History_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Campaign_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Campaign_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_History_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Research_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Research_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Taxonomy_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Taxonomy_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Planner_Topic_Strategy::class, function( $container ) {
+            return new AIPS_Planner_Topic_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class)
+            );
+        });
+
+        $container->singleton(AIPS_Consolidation_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Consolidation_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Content_Audit_Strategy::class, function( $container ) {
+            return new AIPS_Content_Audit_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_AI_Assistance_Strategy::class, function( $container ) {
+            return new AIPS_AI_Assistance_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Component_Regeneration_Coordinator::class, function( $container ) {
+            return new AIPS_Component_Regeneration_Coordinator(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                null,
+                $container->make(AIPS_History_Repository_Interface::class)
+            );
+        });
+
         $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {
             return AIPS_Schedule_Repository::instance();
         });

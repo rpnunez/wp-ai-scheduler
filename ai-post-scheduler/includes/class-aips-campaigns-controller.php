@@ -607,16 +607,36 @@ class AIPS_Campaigns_Controller {
 			AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'), 'ai_unavailable', 503);
 		}
 
-		$intake = $this->get_ai_intake_payload();
-		$prompt = $this->build_ai_campaign_prompt($intake);
-		$response = $this->ai_service->generate_json($prompt, array(
-			'json_schema' => $this->get_campaign_json_schema(),
-		));
+		$intake  = $this->get_ai_intake_payload();
+		$context = new AIPS_Campaign_Generation_Context(
+			$intake,
+			array_keys((new AIPS_Interval_Calculator())->get_intervals()),
+			array_keys($this->get_supported_post_types()),
+			$this->get_allowed_output_styles()
+		);
 
-		if (is_wp_error($response)) {
-			AIPS_Ajax_Response::error($response->get_error_message(), 'ai_generation_failed', 500);
+		$registry = new AIPS_Generation_Component_Registry();
+		$registry->register_default_campaign_components($this->ai_service);
+		$strategy = new AIPS_Campaign_Generation_Strategy($registry, $this->ai_service);
+		$pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+		$result   = $pipeline->execute($context);
+
+		if ($result->is_failure()) {
+			$last_error = $strategy->get_last_error();
+			$error_code = ($last_error instanceof WP_Error) ? $last_error->get_error_code() : 'ai_generation_failed';
+			$error_msg  = ($last_error instanceof WP_Error) ? $last_error->get_error_message() : __('Campaign generation failed.', 'ai-post-scheduler');
+
+			if ('ai_unavailable' === $error_code) {
+				AIPS_Ajax_Response::error($error_msg, 'ai_unavailable', 503);
+			}
+			if ('invalid_ai_response' === $error_code) {
+				AIPS_Ajax_Response::error($error_msg, 'invalid_ai_response', 500);
+			}
+
+			AIPS_Ajax_Response::error($error_msg, 'ai_generation_failed', 500);
 		}
 
+		$response = $result->get_data();
 		if (!is_array($response)) {
 			AIPS_Ajax_Response::error(__('AI response was not valid JSON.', 'ai-post-scheduler'), 'invalid_ai_response', 500);
 		}
@@ -625,7 +645,7 @@ class AIPS_Campaigns_Controller {
 		update_option($this->get_draft_option_name(), $draft, false);
 
 		AIPS_Ajax_Response::success(array(
-			'draft' => $draft,
+			'draft'   => $draft,
 			'summary' => $this->build_summary($draft),
 			'preview' => $this->build_ai_strategy_preview($draft, $intake, $response),
 		), __('Campaign fields generated successfully.', 'ai-post-scheduler'));
@@ -733,64 +753,6 @@ class AIPS_Campaigns_Controller {
 			'post_type'        => $this->normalise_post_type($intake['post_type'] ?? 'post'),
 			'output_style'     => $output_style,
 		);
-	}
-
-	/**
-	 * JSON schema for the campaign object returned by the AI.
-	 *
-	 * @return array<string, mixed>
-	 */
-	private function get_campaign_json_schema(): array {
-		return array(
-			'type'       => 'object',
-			'properties' => array(
-				'campaign_name'        => array('type' => 'string'),
-				'content_goal'         => array('type' => 'string'),
-				'post_type'            => array('type' => 'string'),
-				'prompt_template'      => array('type' => 'string'),
-				'title_prompt'         => array('type' => 'string'),
-				'author_persona'       => array('type' => 'string'),
-				'campaign_mode'        => array('type' => 'string', 'enum' => array('template', 'author')),
-				'review_policy'        => array('type' => 'string', 'enum' => array('draft', 'approval', 'auto_publish')),
-				'frequency'            => array('type' => 'string'),
-				'time_window_start'    => array('type' => 'string'),
-				'time_window_end'      => array('type' => 'string'),
-				'post_tags'            => array('type' => 'string'),
-				'post_category'        => array('type' => 'integer'),
-				'template_style'       => array('type' => 'string'),
-				'sample_article_ideas' => array('type' => 'array', 'items' => array('type' => 'string')),
-				'risks_assumptions'    => array('type' => 'array', 'items' => array('type' => 'string')),
-			),
-			'required' => array('campaign_name', 'content_goal', 'post_type', 'prompt_template', 'title_prompt', 'campaign_mode', 'review_policy', 'sample_article_ideas'),
-		);
-	}
-
-	/**
-	 * Build AI prompt for campaign wizard generation.
-	 *
-	 * @param array $intake Sanitized intake values.
-	 * @return string
-	 */
-	private function build_ai_campaign_prompt($intake) {
-		$context = array(
-			'intake' => $intake,
-			'available_frequencies' => array_keys((new AIPS_Interval_Calculator())->get_intervals()),
-			'available_post_types' => array_keys($this->get_supported_post_types()),
-			'available_output_styles' => $this->get_allowed_output_styles(),
-			'review_policy_allowed' => array('draft', 'approval', 'auto_publish'),
-			'campaign_mode_allowed' => array('template', 'author'),
-		);
-
-		return
-			"You are helping a WordPress user configure an AI content campaign.\n" .
-			"Return a single JSON object with realistic, user-friendly values suitable for immediate editing and publishing.\n\n" .
-			"Important constraints:\n" .
-			"- prompt_template: use {{topic}} (lowercase, double curly braces) as the sole placeholder for the article subject — never [TOPIC] or any other format.\n" .
-			"- title_prompt: must instruct the AI to generate exactly 1 title; do NOT use {{topic}} here (it maps to the final title in this system); make it self-contained.\n" .
-			"- campaign_mode: must be one of template|author\n" .
-			"- review_policy: must be one of draft|approval|auto_publish\n" .
-			"- post_category: use 0 when unknown\n\n" .
-			"Context:\n" . wp_json_encode($context);
 	}
 
 	/**

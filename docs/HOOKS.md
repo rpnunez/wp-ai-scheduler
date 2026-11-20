@@ -20,6 +20,14 @@ Filters active WordPress AI connectors before AIPS applies its connector allowli
 
 ## Action Hooks
 
+### Generation Framework
+
+#### `aips_register_generation_components`
+Fires once after a generation component registry has registered its built-in defaults. Use this to register or replace components.
+
+*   **Arguments:**
+    *   `AIPS_Generation_Component_Registry $registry`: The registry receiving extensions.
+
 ### Post Generation
 
 #### `aips_post_generation_started`

@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Fixed
+- **Generation Strategy Xray follow-ups (issue #2400 / PR #2413):**
+  - Variant JSON parsing now uses `AIPS_JSON_Extractor` and ignores nested non-scalars instead of calling `trim()` on arrays/objects.
+  - Content regeneration injects the same `build_content_context` AI Engine channel as initial generate.
+  - Internal-link insertion locations use text generation plus JSON extraction for every `AIPS_AI_Service_Interface` implementation.
+  - Universal AI Edit regeneration failures return HTTP 200 with a generic message (details logged).
+  - Admin boot no longer constructs the full generation registry from `AIPS_Editor_Directive_Service`; embeddings/AI component constructors are lazy.
+  - `AIPS_Generation_Pipeline` is no longer bound as a posts-only container singleton.
+  - Planner/topic/taxonomy user-facing generation errors are localized.
 - **Post Components Parity & Conversational Integration:**
   - Resolved `post_slug` status tracking in `AIPS_Generator::generate_post_from_context()`, ensuring slug failures record properly in component statuses while preventing optional slug failures from inappropriately marking posts as incomplete or forcing draft status.
   - Eliminated `post_images` key pollution in posts without configured content images by checking `$context->has_content_images()` before status initialization.
@@ -12,6 +20,30 @@
 - **Slug Prompt Context Cap:** Stateless slug prompts (`AIPS_Prompt_Builder_Post_Slug`) now condense the article to 3,000 characters by default (`AIPS_Prompt_Builder_Post_Slug::CONTEXT_MAX_CHARS`) instead of inheriting the 12,000 character `AIPS_Content_Digest` default, matching the title prompt's cap. A slug is three to six keywords and the title is already in the prompt, so the extra article text only inflated the request. The `aips_slug_context_max_chars` filter still overrides the cap; sites that filtered it are unaffected, and sites that relied on the old default now send at most 3,000 characters of context. Conversational runs are unchanged (issue #2405).
 
 ### Added
+- **Universal Generation Strategy & Component Framework — Phase 4 (issue #2400):**
+  - Implemented `AIPS_Internal_Links_Post_Component` (`post_internal_links`) and migrated `AIPS_Editor_Link_Weave_Service` onto it.
+  - Added single-call 3-variant JSON generation (`generate_variants()`) to `AIPS_Title_Post_Component`, `AIPS_Slug_Post_Component`, and `AIPS_Excerpt_Post_Component`, migrating `AIPS_Editor_Directive_Service::generate_component_variants()` onto the unified component registry.
+  - Enabled Universal AI Edit across Post, Author Topic, and Campaign entities via `aips_universal_ai_edit` and `aips_get_editable_components` AJAX endpoints in `AIPS_AI_Edit_Controller` (registered in `AIPS_Ajax_Registry::$map`).
+  - Refactored `AIPS_AI_Edit_Controller::ajax_regenerate_component()` to remove its hardcoded component `switch` and inline sticky-override post-meta handling in favor of `AIPS_Component_Regeneration_Service::regenerate_component()` and `resolve_and_persist_component_overrides()`.
+  - Migrated `AIPS_Taxonomy_Controller::generate_taxonomy_items()` onto `AIPS_Taxonomy_Generation_Strategy` + `AIPS_Taxonomy_Suggestion_Component`, `AIPS_Planner::ajax_generate_topics()` onto `AIPS_Planner_Topic_Strategy` + `AIPS_Planner_Topics_Component`, and `AIPS_Editor_Directive_Service::apply_directive()` onto `AIPS_Content_Post_Component::rewrite_with_directive()`.
+  - Migrated Tier 2 enrichment and audit services onto the unified pipeline: `AIPS_Consolidation_Service` (`AIPS_Consolidation_Generation_Strategy` + `AIPS_Post_Consolidation_Component`), `AIPS_Similarity_Evaluator::generate_gap_suggestions()` (`AIPS_Competitor_Gap_Component` under `AIPS_Research_Generation_Strategy`), `AIPS_Integration_Manager` (`AIPS_Integration_Fields_Post_Component`), `AIPS_Affiliate_Link_Inserter_Service` (`AIPS_Affiliate_Links_Post_Component`), and `AIPS_Content_Auditor_Engine` / `AIPS_Content_Auditor` (`AIPS_Content_Audit_Strategy` + `AIPS_Content_Audit_Pass_Component`).
+  - Marked legacy procedural entry points in `AIPS_Generator` (`generate_title()`, `generate_excerpt()`, and raw template-object `generate_post()` usage) as `@deprecated 3.7.25` in favor of `AIPS_Generation_Pipeline` and registered components.
+- **Universal Generation Strategy & Component Framework — Phase 3 (issue #2400):**
+  - Added `AIPS_Campaign_Generation_Context` and `AIPS_Research_Generation_Context` in `includes/generation/`.
+  - Implemented `AIPS_Campaign_Generation_Strategy`, `AIPS_Campaign_Pillar_Component`, and `AIPS_Campaign_Cluster_Component`, migrating `AIPS_Campaigns_Controller::ajax_ai_generate_campaign()` onto `AIPS_Generation_Pipeline`.
+  - Implemented `AIPS_Research_Generation_Strategy`, `AIPS_Trending_Topics_Component`, `AIPS_Topic_Freshness_Component`, and `AIPS_Topic_Comparison_Component`, migrating `AIPS_Research_Service` onto `AIPS_Generation_Pipeline` with typed `*_result()` methods.
+  - Registered Phase 3 components and strategies in `AIPS_Generation_Component_Registry` and `AIPS_Container`.
+- **Universal Generation Strategy & Component Framework — Phase 2 (issue #2400):**
+  - Added `AIPS_Pipeline_Executable_Strategy_Interface`, `AIPS_Abstract_Generation_Context`, `AIPS_Author_Topic_Generation_Context`, and `AIPS_Author_Persona_Generation_Context` in `includes/generation/` so `AIPS_Generation_Pipeline` dispatches domain strategies polymorphically.
+  - Implemented `AIPS_Topic_Generation_Strategy` and concrete Topic Components (`AIPS_Topic_Title_Component`, `AIPS_Topic_Prompt_Component`, `AIPS_Topic_Keywords_Component`, `AIPS_Topic_Embedding_Component`) with history container tracking (`topic_generation`) and partial-generation status detection.
+  - Implemented `AIPS_Author_Persona_Strategy` and `AIPS_Author_Persona_Component`.
+  - Migrated `AIPS_Author_Topics_Generator` and `AIPS_Author_Suggestions_Service` onto `AIPS_Generation_Pipeline` with full backward compatibility and new typed `*_result()` methods, and registered Phase 2 components/strategies in `AIPS_Generation_Component_Registry` and `AIPS_Container`.
+- **Universal Generation Strategy & Component Framework — Phase 1 (issue #2400):**
+  - Introduced core contracts and pipeline infrastructure in `includes/generation/`: `AIPS_Generation_Strategy_Interface`, `AIPS_Generation_Component_Interface`, `AIPS_Post_Component_Interface`, `AIPS_Abstract_Post_Component`, `AIPS_Generation_Component_Registry`, `AIPS_Generation_Pipeline`, `AIPS_Post_Generation_Strategy`, and `AIPS_Component_Regeneration_Coordinator`.
+  - Implemented 8 concrete Post Components in `includes/generation/components/`: `AIPS_Content_Post_Component`, `AIPS_Title_Post_Component`, `AIPS_Excerpt_Post_Component`, `AIPS_Slug_Post_Component`, `AIPS_Featured_Image_Post_Component`, `AIPS_Content_Images_Post_Component`, `AIPS_Taxonomy_Post_Component`, and `AIPS_Custom_Meta_Post_Component`.
+  - Extended `AIPS_Generation_Result` with universal `$data` / `$history_id` fields, `from_data()` factory, and getters while maintaining full backward compatibility.
+  - Unified `AIPS_Component_Regeneration_Service` to delegate single-component regeneration through `AIPS_Component_Regeneration_Coordinator` and `AIPS_Generation_Component_Registry`, eliminating duplicated generation logic.
+  - Delegated `AIPS_Generator::generate_post_from_context()` and `AIPS_Generator::generate_preview()` through `AIPS_Generation_Pipeline` + `AIPS_Post_Generation_Strategy` with backward-compatible proxy methods, and registered framework singletons in `AIPS_Container` and `AIPS_Autoloader`.
 - **Conversational & Combined Metadata Modes Optimization & Conversation Persistence:**
   - Registered `AIPS_History_Type::AI_CONVERSATION` and mapped `conversation_transcript` in `AIPS_History_Container` to store serialized multi-turn transcripts in `wp_aips_history_log`.
   - Persisted the generation transcript in `AIPS_Generator::generate_post_from_context()` before closing the conversational session.

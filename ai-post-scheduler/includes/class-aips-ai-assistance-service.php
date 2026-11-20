@@ -2,7 +2,8 @@
 /**
  * AI Assistance Service
  *
- * Business logic for generating AI field suggestions.
+ * Business logic for generating AI field suggestions, delegating through
+ * AIPS_Generation_Pipeline and AIPS_AI_Assistance_Strategy.
  *
  * @package AI_Post_Scheduler
  * @since 2.5.1
@@ -15,12 +16,13 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_AI_Assistance_Service
  *
- * Builds prompts, calls the AI engine, and persists AI field suggestions.
+ * Builds prompts, calls the AI engine, and persists AI field suggestions via
+ * the Universal Generation Strategy & Component Framework.
  */
 class AIPS_AI_Assistance_Service {
 
 	/**
-	 * @var AIPS_AI_Service AI service instance.
+	 * @var AIPS_AI_Service_Interface AI service instance.
 	 */
 	private $ai_service;
 
@@ -30,28 +32,41 @@ class AIPS_AI_Assistance_Service {
 	private $repository;
 
 	/**
-	 * Prompt preamble describing the kind of form being filled in, keyed by
-	 * form_context. Falls back to a generic description for an unrecognised
-	 * context so a new form never gets Author-specific wording by default.
-	 *
-	 * @var array<string, string>
+	 * @var AIPS_Generation_Pipeline|null
 	 */
-	private $preambles = array(
-		'authors'          => 'an AI author persona',
-		'templates'        => 'an AI content-generation template',
-		'sources'          => 'a tracked external content source',
-		'content_strategy' => 'a site-wide AI content strategy',
-	);
+	private $pipeline;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_AI_Service               $ai_service AI service.
+	 * @param AIPS_AI_Service_Interface     $ai_service AI service.
 	 * @param AIPS_AI_Assistance_Repository $repository Repository.
+	 * @param AIPS_Generation_Pipeline|null $pipeline   Optional generation pipeline.
 	 */
-	public function __construct( $ai_service, AIPS_AI_Assistance_Repository $repository ) {
+	public function __construct(
+		$ai_service,
+		AIPS_AI_Assistance_Repository $repository,
+		?AIPS_Generation_Pipeline $pipeline = null
+	) {
 		$this->ai_service = $ai_service;
 		$this->repository = $repository;
+		$this->pipeline   = $pipeline;
+	}
+
+	/**
+	 * Resolve the AI Assistance generation pipeline.
+	 *
+	 * @return AIPS_Generation_Pipeline
+	 */
+	private function get_pipeline(): AIPS_Generation_Pipeline {
+		if ($this->pipeline === null) {
+			$registry = new AIPS_Generation_Component_Registry();
+			$registry->register_default_ai_assistance_components($this->ai_service, $this->repository);
+			$strategy       = new AIPS_AI_Assistance_Strategy($registry, $this->ai_service, $this->repository);
+			$this->pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+		}
+
+		return $this->pipeline;
 	}
 
 	/**
@@ -74,92 +89,48 @@ class AIPS_AI_Assistance_Service {
 	 * @param int    $user_id     WordPress user ID.
 	 * @return array|WP_Error Array with 'response', 'record_id', 'prompt', or WP_Error on failure.
 	 */
-	public function get_field_suggestion( array $field_config, string $session_id, int $user_id ) {
-		if ( ! AIPS_Settings::is_ai_assistance_enabled_for( $field_config['form_context'] ?? '' ) ) {
+	public function get_field_suggestion(array $field_config, string $session_id, int $user_id) {
+		$result = $this->get_field_suggestion_result($field_config, $session_id, $user_id);
+
+		if (!$result->is_success()) {
+			$strategy = $this->get_pipeline()->get_strategy();
+			if ($strategy instanceof AIPS_AI_Assistance_Strategy && $strategy->get_last_error() instanceof WP_Error) {
+				return $strategy->get_last_error();
+			}
+
+			$errors = $result->get_errors();
 			return new WP_Error(
-				'ai_assistance_disabled',
-				__( 'AI Assistance is disabled for this workflow. Enable it in Settings > AI Assistance.', 'ai-post-scheduler' )
-			);
-		}
-		$prompt = $this->build_prompt( $field_config );
-
-		$response = $this->ai_service->generate_text( $prompt );
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$record_id = $this->repository->create( array(
-			'session_id'     => $session_id,
-			'user_id'        => $user_id,
-			'form_context'   => sanitize_text_field( $field_config['form_context'] ),
-			'field_key'      => sanitize_text_field( $field_config['form_field_id'] ),
-			'request_object' => wp_json_encode( $field_config ),
-			'prompt'         => $prompt,
-			'response'       => $response,
-		) );
-
-		if ( $record_id === false ) {
-			return new WP_Error(
-				'db_insert_failed',
-				__( 'AI suggestion was generated but could not be saved to history.', 'ai-post-scheduler' )
+				'ai_assistance_failed',
+				!empty($errors) ? $errors[0] : __('Failed to generate AI field suggestion.', 'ai-post-scheduler')
 			);
 		}
 
-		return array(
-			'response'  => $response,
-			'record_id' => $record_id,
-			'prompt'    => $prompt,
-		);
+		return $result->get_data();
+	}
+
+	/**
+	 * Execute the AI Assistance generation pipeline and return the typed AIPS_Generation_Result.
+	 *
+	 * @param array  $field_config Field configuration map.
+	 * @param string $session_id   Browser session identifier.
+	 * @param int    $user_id      WordPress user ID.
+	 * @return AIPS_Generation_Result
+	 */
+	public function get_field_suggestion_result(array $field_config, string $session_id, int $user_id): AIPS_Generation_Result {
+		$context = new AIPS_AI_Assistance_Generation_Context($field_config, $session_id, $user_id);
+		return $this->get_pipeline()->execute($context);
 	}
 
 	/**
 	 * Build a structured prompt from the field configuration.
 	 *
+	 * Retained for backward compatibility; delegates to AIPS_Field_Suggestion_Component.
+	 *
 	 * @param array $field_config Field configuration (see get_field_suggestion()).
 	 * @return string The prompt string.
 	 */
-	private function build_prompt( array $field_config ): string {
-		$form_context = $field_config['form_context'] ?? '';
-		$preamble     = $this->preambles[ $form_context ] ?? 'a WordPress admin form';
-		$lengths = array(
-			'concise'  => 'Keep it concise.',
-			'standard' => 'Use an appropriately complete answer.',
-			'detailed' => 'Provide a detailed, useful answer.',
-		);
-		$policy = AIPS_Settings::get_ai_assistance_policy();
-		$lines = array(
-			'You are a helpful assistant for an AI content creation WordPress plugin.',
-			'Help fill in a form field for ' . $preamble . '.',
-			'',
-			'Field: ' . ( $field_config['field_name'] ?? '' ),
-			'Purpose: ' . ( $field_config['description'] ?? '' ),
-			'How it influences AI content generation: ' . ( $field_config['influence'] ?? '' ),
-			'Current value: ' . ( $field_config['current_value'] ?? '' ),
-		);
-		$lines[] = 'Workflow: ' . ( $field_config['form_context'] ?? '' );
-		$lines[] = $lengths[$policy['responseLength']];
-		$guidance = AIPS_Config::get_instance()->get_option('aips_ai_assistance_guidance');
-		if ( ! empty( $guidance ) ) {
-			$lines[] = 'Additional site guidance: ' . $guidance;
-		}
-		foreach ( (array) AIPS_Site_Context::get() as $context_key => $context_value ) {
-			if ( '' === $context_value || is_array( $context_value ) ) {
-				continue;
-			}
-			$lines[] = 'Site Content Strategy — ' . ucwords( str_replace( '_', ' ', $context_key ) ) . ': ' . $context_value;
-		}
-
-		foreach ( (array) ( $field_config['context'] ?? array() ) as $context_key => $context_value ) {
-			if ( '' === $context_value ) {
-				continue;
-			}
-			$lines[] = ucwords( str_replace( array( '_', '-' ), ' ', $context_key ) ) . ': ' . $context_value;
-		}
-
-		$lines[] = '';
-		$lines[] = 'Respond with ONLY the suggested value for this field. No explanation, no quotes, no prefix. Expected format: ' . ( $field_config['expected_response'] ?? '' );
-
-		return implode( "\n", $lines );
+	private function build_prompt(array $field_config): string {
+		$component = new AIPS_Field_Suggestion_Component($this->ai_service, $this->repository);
+		return $component->build_prompt(new AIPS_AI_Assistance_Generation_Context($field_config));
 	}
 }

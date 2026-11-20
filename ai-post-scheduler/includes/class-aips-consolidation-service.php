@@ -144,20 +144,26 @@ class AIPS_Consolidation_Service {
 		}
 		list($keep, $retire) = $pair;
 
-		$builder = new AIPS_Prompt_Builder_Consolidation();
-		$prompt  = $builder->build($keep, $retire, (string) get_permalink($retire), $instructions);
+		$context  = new AIPS_Consolidation_Generation_Context($keep, $retire, $instructions);
+		$registry = new AIPS_Generation_Component_Registry();
+		$registry->register(new AIPS_Post_Consolidation_Component($this->get_ai_service()));
 
-		$response = $this->get_ai_service()->generate_text($prompt, array('temperature' => 0.4, 'max_tokens' => 8000));
-		if (is_wp_error($response)) {
-			return $response;
+		$strategy = new AIPS_Consolidation_Generation_Strategy($registry, $this->get_ai_service());
+		$pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+		$result   = $pipeline->execute($context);
+
+		if ($result->is_failure()) {
+			$last_error = $strategy->get_last_error();
+			if ($last_error instanceof WP_Error) {
+				return $last_error;
+			}
+
+			$errors  = $result->get_errors();
+			$message = !empty($errors) ? $errors[0] : __('The AI returned an empty article. Try again.', 'ai-post-scheduler');
+			return new WP_Error('aips_consolidation_empty_merge', $message);
 		}
 
-		$html = $this->clean_ai_html((string) $response);
-		if (trim(wp_strip_all_tags($html)) === '') {
-			return new WP_Error('aips_consolidation_empty_merge', __('The AI returned an empty article. Try again.', 'ai-post-scheduler'));
-		}
-
-		return $html;
+		return (string) $result->get_data();
 	}
 
 	/**

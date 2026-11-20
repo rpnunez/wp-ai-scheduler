@@ -170,76 +170,36 @@ class AIPS_Taxonomy_Controller {
 	/**
 	 * Generate taxonomy items using AI based on posts.
 	 *
-	 * @param string $taxonomy_type Taxonomy type (category or post_tag).
-	 * @param array  $post_ids Array of post IDs.
+	 * Delegates through AIPS_Generation_Pipeline and
+	 * AIPS_Taxonomy_Generation_Strategy.
+	 *
+	 * @param string $taxonomy_type     Taxonomy type (category or post_tag).
+	 * @param array  $post_ids          Array of post IDs.
 	 * @param string $generation_prompt Optional generation prompt.
 	 * @return array|WP_Error Array of generated items or WP_Error on failure.
 	 */
 	private function generate_taxonomy_items($taxonomy_type, $post_ids, $generation_prompt = '') {
-		if (!$this->ai_service->is_available()) {
-			return new WP_Error('ai_not_available', __('AI Engine plugin is not installed or active.', 'ai-post-scheduler'));
-		}
+		$context  = new AIPS_Taxonomy_Generation_Context((string) $taxonomy_type, (array) $post_ids, (string) $generation_prompt);
+		$registry = new AIPS_Generation_Component_Registry();
+		$registry->register_default_taxonomy_components($this->ai_service, $this->prompt_builder);
 
-		// Build post content summary
-		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
-			_prime_post_caches(array_unique(array_map('intval', $post_ids)), false, true);
-		}
+		$strategy = new AIPS_Taxonomy_Generation_Strategy($registry, $this->ai_service, $this->repository, $this->prompt_builder);
+		$pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+		$result   = $pipeline->execute($context);
 
-		$post_contents = array();
-		foreach ($post_ids as $post_id) {
-			$post = get_post($post_id);
-			if ($post) {
-				$post_contents[] = array(
-					'title' => $post->post_title,
-					'excerpt' => $post->post_excerpt,
-				);
-			}
-		}
-
-		if (empty($post_contents)) {
-			return new WP_Error('taxonomy_no_posts', __('No valid posts were found for taxonomy generation.', 'ai-post-scheduler'));
-		}
-
-		$prompt = $this->prompt_builder->build($taxonomy_type, $post_contents, $generation_prompt);
-
-		// Call AI service
-		try {
-			$response = $this->ai_service->generate_text($prompt);
-			if (is_wp_error($response)) {
-				return $response;
+		if ($result->is_failure()) {
+			$last_error = $strategy->get_last_error();
+			if ($last_error instanceof WP_Error) {
+				return $last_error;
 			}
 
-			// Parse response into individual items
-			$lines = array_filter(array_map('trim', explode("\n", $response)));
-			$generated_items = array();
-
-			foreach ($lines as $line) {
-				// Clean up line (remove numbers, bullets, etc.)
-				$line = preg_replace('/^[\d\-\*\.\)]+\s*/', '', $line);
-				$line = sanitize_text_field(trim($line));
-
-				if (empty($line)) {
-					continue;
-				}
-
-				// Insert into database
-				$item_id = $this->repository->insert(array(
-					'name' => $line,
-					'taxonomy_type' => $taxonomy_type,
-					'status' => 'pending',
-					'base_post_ids' => implode(',', $post_ids),
-					'generation_prompt' => $generation_prompt,
-				));
-
-				if ($item_id) {
-					$generated_items[] = $this->repository->get_by_id($item_id);
-				}
-			}
-
-			return $generated_items;
-		} catch (Throwable $e) {
-			return new WP_Error('ai_generation_failed', $e->getMessage());
+			$errors  = $result->get_errors();
+			$message = !empty($errors) ? $errors[0] : __('Taxonomy generation failed.', 'ai-post-scheduler');
+			return new WP_Error('ai_generation_failed', $message);
 		}
+
+		$data = $result->get_data();
+		return is_array($data) ? $data : array();
 	}
 
 	/**
