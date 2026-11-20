@@ -682,8 +682,12 @@ class AIPS_AI_Edit_Controller {
 			$updated_components[] = 'post_images';
 		}
 
+		// Ensure reconciler is listening for component updates in AJAX mode.
+		if (class_exists('AIPS_Partial_Generation_State_Reconciler')) {
+			new AIPS_Partial_Generation_State_Reconciler();
+		}
+
 		do_action('aips_post_components_updated', $post_id, $updated_components, $sanitized_components);
-		$this->reconcile_partial_generation_state($post_id);
 
 		// Record timeline activity events for each saved/regenerated component
 		$history_container = AIPS_History_Container::resolve_or_create($this->history_repository, $post_id);
@@ -917,8 +921,12 @@ class AIPS_AI_Edit_Controller {
 			}
 		}
 
+		// Ensure reconciler is listening for component updates in AJAX mode.
+		if (class_exists('AIPS_Partial_Generation_State_Reconciler')) {
+			new AIPS_Partial_Generation_State_Reconciler();
+		}
+
 		do_action('aips_post_components_updated', $post_id, array($component), $sanitized_components);
-		$this->reconcile_partial_generation_state($post_id);
 
 		$history_container = AIPS_History_Container::resolve_or_create($this->history_repository, $post_id);
 		if ($history_container && !is_wp_error($history_container)) {

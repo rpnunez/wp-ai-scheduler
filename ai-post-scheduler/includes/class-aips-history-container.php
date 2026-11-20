@@ -397,6 +397,7 @@ class AIPS_History_Container {
 			'trigger_method' => AIPS_History_Type::ACTIVITY,
 			'metric_generation_result' => AIPS_History_Type::METRIC,
 			'session_metadata' => AIPS_History_Type::SESSION_METADATA,
+			'conversation_transcript' => AIPS_History_Type::AI_CONVERSATION,
 		);
 		
 		return isset($map[$log_type]) ? $map[$log_type] : AIPS_History_Type::LOG;

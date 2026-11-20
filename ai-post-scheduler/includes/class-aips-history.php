@@ -1524,7 +1524,7 @@ class AIPS_History {
                 $type_key = (string) $type_id;
                 $counts[$type_key] = isset($counts[$type_key]) ? $counts[$type_key] + 1 : 1;
 
-                if ($type_key === '5' || $type_key === '6') {
+                if ($type_key === '5' || $type_key === '6' || $type_key === '11') {
                     $row_has_ai_pair_type = true;
                 }
             }
