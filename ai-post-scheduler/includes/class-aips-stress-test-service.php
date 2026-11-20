@@ -1047,6 +1047,7 @@ class AIPS_Stress_Test_Service {
                 'source'            => 'ai_prompt',
                 'placement'         => 'auto',
                 'image_prompt'      => isset($visual_prompts[$i]) ? $visual_prompts[$i] : $visual_prompts[1],
+                /* translators: %d: Image sequence number */
                 'caption'           => sprintf(__('Stress Test Content Image %d', 'ai-post-scheduler'), $i),
             );
         }

@@ -219,6 +219,13 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 
 		$this->record_generation_trigger($history, $context);
 
+		// Note on Stage Execution (Issue #2400 / Sub-issue #2407):
+		// Full post generation delegates each multi-turn stage (content, metadata, post-processing)
+		// through AIPS_Generator's stage bridge methods (run_content_stage, run_metadata_stage,
+		// run_post_processing_stage). This maintains conversational session continuity, telemetry,
+		// and historical lifecycle hooks during the Phase 1 pipeline migration. Component-level
+		// prompt builder absorption directly into concrete post components is scheduled for sub-issue #2407.
+
 		// Stage 1: Content (opens conversational session if enabled).
 		$this->generator->open_conversation_session();
 

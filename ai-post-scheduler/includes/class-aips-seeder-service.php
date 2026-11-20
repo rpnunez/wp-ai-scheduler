@@ -6,14 +6,18 @@ if (!defined('ABSPATH')) {
 class AIPS_Seeder_Service {
 
     private $generator;
+    private $ai_service;
     private $voices;
     private $templates;
     private $schedule_repository;
 
-    public function __construct() {
-        $this->generator = new AIPS_Generator();
-        $this->voices = new AIPS_Voices();
-        $this->templates = new AIPS_Templates();
+    public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Generator $generator = null) {
+        $this->generator           = $generator ?: new AIPS_Generator();
+        $this->ai_service         = $ai_service ?: (AIPS_Container::get_instance()->has(AIPS_AI_Service_Interface::class)
+            ? AIPS_Container::get_instance()->make(AIPS_AI_Service_Interface::class)
+            : new AIPS_AI_Service());
+        $this->voices              = new AIPS_Voices();
+        $this->templates           = new AIPS_Templates();
         $this->schedule_repository = new AIPS_Schedule_Repository();
     }
 
@@ -217,24 +221,13 @@ class AIPS_Seeder_Service {
     }
 
     private function generate_json($prompt) {
-        $result = $this->generator->generate_content($prompt, array('temperature' => 0.7), 'seeder_json');
+        $data = $this->ai_service->generate_json($prompt, array('temperature' => 0.7));
 
-        if (is_wp_error($result)) {
+        if (is_wp_error($data) || empty($data)) {
             return null;
         }
 
-        $json_str = trim($result);
-        $json_str = preg_replace('/^```json/', '', $json_str);
-        $json_str = preg_replace('/^```/', '', $json_str);
-        $json_str = preg_replace('/```$/', '', $json_str);
-        $json_str = trim($json_str);
-
-        $data = json_decode($json_str);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return null;
-        }
-
-        return $data;
+        // Return object-decoded representation matching historic method contract.
+        return json_decode(wp_json_encode($data));
     }
 }

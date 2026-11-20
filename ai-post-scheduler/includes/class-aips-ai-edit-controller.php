@@ -1484,6 +1484,7 @@ class AIPS_AI_Edit_Controller {
 
 		$result = $coordinator->regenerate($strategy_key, $component_key, $target_id, $context, $directive);
 		if ($result->is_failure()) {
+		if ($result->is_failure()) {
 			$errors = $result->get_errors();
 			$logged = new WP_Error(
 				'regeneration_failed',
@@ -1491,6 +1492,7 @@ class AIPS_AI_Edit_Controller {
 			);
 			$this->log_wp_error($logged, __METHOD__);
 			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'), 'regeneration_failed');
+		}
 		}
 
 		$value   = $result->get_data();

@@ -167,6 +167,7 @@ class AIPS_Component_Regeneration_Coordinator {
 	) {
 		$component = $this->registry->get($component_key, $strategy_key);
 		if (!$component) {
+			/* translators: %s: Component key identifier */
 			return new WP_Error(
 				'unknown_component',
 				sprintf(__('Unknown generation component: %s', 'ai-post-scheduler'), sanitize_key($component_key))

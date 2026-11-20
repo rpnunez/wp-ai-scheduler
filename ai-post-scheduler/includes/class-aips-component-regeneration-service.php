@@ -161,6 +161,17 @@ class AIPS_Component_Regeneration_Service {
 			$registry->register(new AIPS_Content_Images_Post_Component($this->generator, $this->history_repository));
 			$registry->register(new AIPS_Taxonomy_Post_Component($this->generator));
 			$registry->register(new AIPS_Custom_Meta_Post_Component($this->generator));
+			$registry->register(new AIPS_Internal_Links_Post_Component($this->generator));
+			$registry->register(new AIPS_Affiliate_Links_Post_Component($this->generator));
+			$registry->register(new AIPS_Integration_Fields_Post_Component($this->generator));
+			$registry->register_default_topic_components();
+			$registry->register_default_persona_components();
+			$registry->register_default_campaign_components();
+			$registry->register_default_research_components();
+			$registry->register_default_taxonomy_components();
+			$registry->register_default_planner_components();
+			$registry->register_default_enrichment_components();
+			$registry->register_default_ai_assistance_components();
 
 			$this->coordinator = new AIPS_Component_Regeneration_Coordinator(
 				$registry,

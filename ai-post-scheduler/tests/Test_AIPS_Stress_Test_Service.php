@@ -123,6 +123,15 @@ class AIPS_Test_Stress_Meta_AI_Service implements AIPS_AI_Service_Interface {
     }
 }
 
+/**
+ * AI service stub that successfully returns an image data URI for stress test image cases.
+ */
+class AIPS_Test_Stress_Image_Success_AI_Service extends AIPS_Test_Stress_Meta_AI_Service {
+    public function generate_image($prompt, $options = array()) {
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    }
+}
+
 class AIPS_Test_Stress_Base_Config {
     public function get_circuit_breaker_config() {
         return array('enabled' => false, 'failure_threshold' => 5, 'timeout' => 300);
@@ -210,6 +219,18 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
             $this->assertSame($qty, $result['plugin_value']['requested']);
             $this->assertNotEmpty($result['artifacts']['post_ids']);
         }
+    }
+
+    public function test_post_images_cases_success_path_generates_and_injects_figures() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Image_Success_AI_Service(), new AIPS_Test_Stress_Logger());
+
+        $result = $service->run('post_images_2');
+        $this->assertSame('passed', $result['status'], isset($result['error']) ? (string) $result['error'] : '');
+        $this->assertSame('post_images_2', $result['case']);
+        $this->assertSame(2, $result['plugin_value']['requested']);
+        $this->assertSame(2, $result['plugin_value']['generated']);
+        $this->assertCount(2, $result['artifacts']['attachment_ids']);
+        $this->assertGreaterThanOrEqual(2, $result['plugin_value']['figure_count']);
     }
 
     public function test_cpt_complex_meta_generates_and_writes_3_shapes() {

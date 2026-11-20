@@ -379,6 +379,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 			'topic_title'     => true,
 			'topic_prompt'    => true,
 			'topic_keywords'  => $has_keywords,
+			'topic_score'     => true,
 			'topic_embedding' => true,
 		);
 		$warnings = array();
@@ -411,11 +412,13 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 				$status = isset($topic_arr['status']) ? $topic_arr['status'] : 'pending';
 
 				if ($status === 'approved' && !empty($meta['auto_approved'])) {
+					/* translators: %s: Auto-approval policy rule name */
+					$note = isset($meta['auto_approval_note']) ? $meta['auto_approval_note'] : sprintf(__('Topic auto-approved via %s policy.', 'ai-post-scheduler'), isset($meta['auto_approval_rule']) ? $meta['auto_approval_rule'] : 'auto');
 					$this->logs_repository->create(array(
 						'author_topic_id' => $topic_arr['id'],
 						'action'          => 'approved',
 						'user_id'         => null,
-						'notes'           => isset($meta['auto_approval_note']) ? $meta['auto_approval_note'] : sprintf(__('Topic auto-approved via %s policy.', 'ai-post-scheduler'), isset($meta['auto_approval_rule']) ? $meta['auto_approval_rule'] : 'auto'),
+						'notes'           => $note,
 						'metadata'        => wp_json_encode(array(
 							'source' => 'auto_rule',
 							'rule'   => isset($meta['auto_approval_rule']) ? $meta['auto_approval_rule'] : 'auto',
@@ -423,11 +426,13 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 						)),
 					));
 				} elseif ($status === 'rejected' && !empty($meta['auto_rejected'])) {
+					/* translators: %s: Auto-rejection policy rule name */
+					$note = isset($meta['auto_rejection_note']) ? $meta['auto_rejection_note'] : sprintf(__('Topic auto-rejected via %s policy fallback.', 'ai-post-scheduler'), isset($meta['auto_rejection_rule']) ? $meta['auto_rejection_rule'] : 'auto');
 					$this->logs_repository->create(array(
 						'author_topic_id' => $topic_arr['id'],
 						'action'          => 'rejected',
 						'user_id'         => null,
-						'notes'           => isset($meta['auto_rejection_note']) ? $meta['auto_rejection_note'] : sprintf(__('Topic auto-rejected via %s policy fallback.', 'ai-post-scheduler'), isset($meta['auto_rejection_rule']) ? $meta['auto_rejection_rule'] : 'auto'),
+						'notes'           => $note,
 						'metadata'        => wp_json_encode(array(
 							'source' => 'auto_rule',
 							'rule'   => isset($meta['auto_rejection_rule']) ? $meta['auto_rejection_rule'] : 'auto',
@@ -463,6 +468,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 
 		$count = count($saved_topics);
 		if ($count < $requested_qty) {
+			/* translators: 1: Number of generated topics, 2: Number of requested topics */
 			$warnings[] = sprintf(
 				__('Generated %1$d of %2$d requested topics.', 'ai-post-scheduler'),
 				$count,
@@ -746,8 +752,11 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 			return array();
 		}
 
-		$max_qty = isset($author->topic_generation_quantity) ? (int) $author->topic_generation_quantity : 5;
-		$items   = (isset($json_data['topics']) && is_array($json_data['topics'])) ? $json_data['topics'] : $json_data;
+		$max_qty       = isset($author->topic_generation_quantity) ? (int) $author->topic_generation_quantity : 5;
+		$items         = (isset($json_data['topics']) && is_array($json_data['topics'])) ? $json_data['topics'] : $json_data;
+		$title_comp    = $this->registry ? $this->registry->get('topic_title', $this->get_key()) : null;
+		$score_comp    = $this->registry ? $this->registry->get('topic_score', $this->get_key()) : null;
+		$keywords_comp = $this->registry ? $this->registry->get('topic_keywords', $this->get_key()) : null;
 
 		foreach ($items as $item) {
 			if (!is_array($item)) {
@@ -759,11 +768,17 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 				continue;
 			}
 
-			$title    = sanitize_text_field($raw_title);
-			$score    = isset($item['score']) ? absint($item['score']) : 50;
-			$keywords = isset($item['keywords']) && is_array($item['keywords'])
-				? AIPS_Utilities::sanitize_string_array($item['keywords'])
-				: array();
+			$title = ($title_comp instanceof AIPS_Topic_Title_Component)
+				? $title_comp->sanitize_value($raw_title)
+				: sanitize_text_field($raw_title);
+
+			$score = ($score_comp instanceof AIPS_Topic_Score_Component)
+				? $score_comp->sanitize_value(isset($item['score']) ? $item['score'] : 50)
+				: (isset($item['score']) ? absint($item['score']) : 50);
+
+			$keywords = ($keywords_comp instanceof AIPS_Topic_Keywords_Component)
+				? $keywords_comp->sanitize_value(isset($item['keywords']) ? $item['keywords'] : array())
+				: (isset($item['keywords']) && is_array($item['keywords']) ? AIPS_Utilities::sanitize_string_array($item['keywords']) : array());
 
 			if (strlen($title) < 10) {
 				continue;
