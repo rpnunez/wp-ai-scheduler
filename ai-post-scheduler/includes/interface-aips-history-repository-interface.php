@@ -163,6 +163,14 @@ interface AIPS_History_Repository_Interface {
 	public function get_ai_error_by_id($log_id);
 
 	/**
+	 * Retrieve the persisted conversation transcript for a given post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array|null Array of turns or null if not found.
+	 */
+	public function get_conversation_transcript_for_post($post_id);
+
+	/**
 	 * Delete history records and associated logs for a given post ID.
 	 *
 	 * Child logs are removed first. A failed child delete leaves the parent

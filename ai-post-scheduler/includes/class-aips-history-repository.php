@@ -1422,6 +1422,44 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $post_id
         ));
     }
+
+    /**
+     * Retrieve the persisted conversation transcript for a given post.
+     *
+     * @param int $post_id Post ID.
+     * @return array|null Array of turns or null if not found.
+     */
+    public function get_conversation_transcript_for_post($post_id) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return null;
+        }
+
+        $history = $this->get_by_post_id($post_id);
+        if (!$history || empty($history->id)) {
+            return null;
+        }
+
+        $row = $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT details FROM {$this->table_name_log}
+             WHERE history_id = %d AND history_type_id = %d
+             ORDER BY timestamp DESC, id DESC LIMIT 1",
+            $history->id,
+            AIPS_History_Type::AI_CONVERSATION
+        ));
+
+        if (!$row || empty($row->details)) {
+            return null;
+        }
+
+        $details = json_decode($row->details, true);
+        if (!is_array($details) || empty($details['output']) || !is_array($details['output'])) {
+            return null;
+        }
+
+        $output = $details['output'];
+        return (!empty($output['transcript']) && is_array($output['transcript'])) ? $output['transcript'] : null;
+    }
     
     /**
      * Add a log entry to a history item.
