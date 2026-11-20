@@ -213,4 +213,48 @@ class AIPS_Generation_Component_Registry {
 
 		return $this;
 	}
+
+	/**
+	 * Register the default set of built-in Author Topic Generation Components.
+	 *
+	 * @param AIPS_AI_Service_Interface|null      $ai_service         Optional AI service.
+	 * @param AIPS_Author_Topics_Repository|null  $topics_repository  Optional topics repository.
+	 * @param AIPS_Embeddings_Service|null        $embeddings_service Optional embeddings service.
+	 * @param AIPS_Embeddings_Repository|null     $embeddings_repo    Optional embeddings repository.
+	 * @param AIPS_Embeddings_Rate_Limiter|null   $rate_limiter       Optional rate limiter.
+	 * @param AIPS_Content_Indexer_Service|null   $indexer_service    Optional content indexer service.
+	 * @return self
+	 */
+	public function register_default_topic_components(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		$topics_repository = null,
+		$embeddings_service = null,
+		$embeddings_repo = null,
+		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
+		?AIPS_Content_Indexer_Service $indexer_service = null
+	): self {
+		$typed_topics_repo = ($topics_repository instanceof AIPS_Author_Topics_Repository) ? $topics_repository : null;
+		$this->register(new AIPS_Topic_Title_Component($ai_service, $typed_topics_repo));
+		$this->register(new AIPS_Topic_Prompt_Component($ai_service, $typed_topics_repo));
+		$this->register(new AIPS_Topic_Keywords_Component($ai_service, $typed_topics_repo));
+		$this->register(new AIPS_Topic_Embedding_Component($embeddings_service, $embeddings_repo, $rate_limiter, $indexer_service));
+
+		return $this;
+	}
+
+	/**
+	 * Register the default set of built-in Author Persona Generation Components.
+	 *
+	 * @param AIPS_AI_Service_Interface|null   $ai_service     Optional AI service.
+	 * @param AIPS_Prompt_Builder_Authors|null $prompt_builder Optional authors prompt builder.
+	 * @return self
+	 */
+	public function register_default_persona_components(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		$prompt_builder = null
+	): self {
+		$this->register(new AIPS_Author_Persona_Component($ai_service, $prompt_builder));
+
+		return $this;
+	}
 }

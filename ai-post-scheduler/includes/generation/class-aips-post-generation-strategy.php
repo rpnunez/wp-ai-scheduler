@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_Post_Generation_Strategy
  */
-class AIPS_Post_Generation_Strategy implements AIPS_Generation_Strategy_Interface {
+class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy_Interface {
 
 	/**
 	 * @var AIPS_Generation_Component_Registry

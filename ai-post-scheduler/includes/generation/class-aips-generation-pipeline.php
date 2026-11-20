@@ -70,7 +70,7 @@ class AIPS_Generation_Pipeline {
 	public function execute(AIPS_Generation_Context $context): AIPS_Generation_Result {
 		$this->strategy->before_pipeline($context);
 
-		if ($this->strategy instanceof AIPS_Post_Generation_Strategy) {
+		if ($this->strategy instanceof AIPS_Pipeline_Executable_Strategy_Interface) {
 			$result = $this->strategy->execute_run($context);
 			return $this->strategy->after_pipeline($context, $result);
 		}
@@ -140,7 +140,7 @@ class AIPS_Generation_Pipeline {
 	public function execute_preview(AIPS_Generation_Context $context) {
 		$this->strategy->before_pipeline($context);
 
-		if ($this->strategy instanceof AIPS_Post_Generation_Strategy) {
+		if ($this->strategy instanceof AIPS_Pipeline_Executable_Strategy_Interface) {
 			return $this->strategy->execute_preview_run($context);
 		}
 

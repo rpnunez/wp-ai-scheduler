@@ -411,10 +411,12 @@ final class AI_Post_Scheduler {
             );
         });
 
-        // Universal Generation Strategy & Component Framework (issue #2400 Phase 1)
+        // Universal Generation Strategy & Component Framework (issue #2400 Phases 1-2)
         $container->singleton(AIPS_Generation_Component_Registry::class, function( $container ) {
             $registry = new AIPS_Generation_Component_Registry();
             $registry->register_default_post_components();
+            $registry->register_default_topic_components();
+            $registry->register_default_persona_components();
             return $registry;
         });
 
@@ -425,6 +427,35 @@ final class AI_Post_Scheduler {
                 null,
                 $container->make(AIPS_History_Service_Interface::class),
                 $container->make(AIPS_Logger_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Topic_Generation_Strategy::class, function( $container ) {
+            return new AIPS_Topic_Generation_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                $container->make(AIPS_History_Service_Interface::class)
+            );
+        });
+
+        $container->singleton(AIPS_Author_Persona_Strategy::class, function( $container ) {
+            return new AIPS_Author_Persona_Strategy(
+                $container->make(AIPS_Generation_Component_Registry::class),
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_History_Service_Interface::class)
             );
         });
 
