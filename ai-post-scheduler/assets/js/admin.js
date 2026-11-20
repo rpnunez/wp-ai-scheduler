@@ -738,7 +738,7 @@
                 .removeAttr('hidden')
                 .attr('aria-hidden', 'false');
         },
-        
+
         /**
          * Switch to an AIPS sub-tab identified by the clicked `.aips-tab-link`'s
          * `data-tab` attribute.
@@ -992,7 +992,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
 
             $.ajax({
@@ -1288,7 +1288,7 @@
         saveDraftTemplate: function(e) {
             e.preventDefault();
             var $btn = $(this);
-            
+
             // Validate at least name is provided
             var nameRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 1; })[0];
             if (nameRule && !$(nameRule.selector).val().trim()) {
@@ -1381,7 +1381,7 @@
          */
         testTemplate: function(e) {
             e.preventDefault();
-            
+
             // Cross-step validation: navigate to the first step with an unfilled required field.
             var invalid = AIPS.getFirstInvalidStep($('#aips-template-modal'));
             if (invalid) {
@@ -1405,6 +1405,9 @@
                 voice_id: $('#voice_id').val(),
                 post_quantity: 1, // Force 1 for test
                 generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
+                generate_slug: $('#generate_slug').is(':checked') ? 1 : 0,
+                slug_prompt: $('#slug_prompt').val() || '',
+                template_post_images: (AIPS.PostImages && typeof AIPS.PostImages.collectImages === 'function') ? JSON.stringify(AIPS.PostImages.collectImages($('#aips-template-post-images-list'))) : '[]',
                 image_prompt: $('#image_prompt').val(),
                 featured_image_source: $('#featured_image_source').val(),
                 featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
@@ -1425,8 +1428,14 @@
 
                         // Populate modal
                         $('#aips-test-title').text(result.title || '-');
+                        if (result.slug) {
+                            $('#aips-test-slug-row').show();
+                            $('#aips-test-slug').text(result.slug);
+                        } else {
+                            $('#aips-test-slug-row').hide();
+                        }
                         $('#aips-test-excerpt').text(result.excerpt || '-');
-                        $('#aips-test-result-modal').find('.aips-modal-content-body').text(result.content || '-');
+                        $('#aips-test-result-modal').find('.aips-modal-content-body').html(result.content || '-');
 
                         if (result.image_prompt) {
                             $('#aips-test-image-row').show();
@@ -2238,7 +2247,7 @@
          */
         saveSchedule: function(e) {
             e.preventDefault();
-            
+
             var $btn = $(this);
             var $form = $('#aips-schedule-form');
 
@@ -5288,24 +5297,24 @@
          */
         previewPrompts: function(e) {
             e.preventDefault();
-            
+
             var $drawer = $('#aips-preview-drawer');
             var $content = $drawer.find('.aips-preview-drawer-content');
             var $loading = $drawer.find('.aips-preview-loading');
             var $error = $drawer.find('.aips-preview-error');
             var $sections = $drawer.find('.aips-preview-sections');
-            
+
             // Expand drawer if collapsed
             if (!$drawer.hasClass('expanded')) {
                 AIPS.togglePreviewDrawer.call($drawer.find('.aips-preview-drawer-handle'));
             }
-            
+
             // Show loading state
             $content.show();
             $loading.show();
             $error.hide();
             $sections.hide();
-            
+
             // Gather form data
             var formData = {
                 action: 'aips_preview_template_prompts',
@@ -5324,45 +5333,45 @@
                     return ids;
                 }())
             };
-            
+
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: formData,
                 success: function(response) {
                     $loading.hide();
-                    
+
                     if (response.success) {
                         var prompts = response.data.prompts;
                         var metadata = response.data.metadata;
-                        
+
                         // Update metadata section
                         if (metadata.voice) {
                             $('#aips-preview-voice').show().find('.aips-preview-voice-name').text(metadata.voice);
                         } else {
                             $('#aips-preview-voice').hide();
                         }
-                        
+
                         if (metadata.article_structure) {
                             $('#aips-preview-structure').show().find('.aips-preview-structure-name').text(metadata.article_structure);
                         } else {
                             $('#aips-preview-structure').hide();
                         }
-                        
+
                         $('.aips-preview-sample-topic').text(metadata.sample_topic || aipsTemplatesL10n.exampleTopic);
-                        
+
                         // Update prompt sections
                         $('#aips-preview-content-prompt').text(prompts.content || '-');
                         $('#aips-preview-title-prompt').text(prompts.title || '-');
                         $('#aips-preview-excerpt-prompt').text(prompts.excerpt || '-');
-                        
+
                         if (prompts.image) {
                             $('#aips-preview-image-section').show();
                             $('#aips-preview-image-prompt').text(prompts.image);
                         } else {
                             $('#aips-preview-image-section').hide();
                         }
-                        
+
                         $sections.show();
                     } else {
                         var errorMsg = response.data.message || aipsTemplatesL10n.failedToGeneratePreview;
@@ -5389,10 +5398,10 @@
             if (e) {
                 e.preventDefault();
             }
-            
+
             var $drawer = $('#aips-preview-drawer');
             var $content = $drawer.find('.aips-preview-drawer-content');
-            
+
             if ($drawer.hasClass('expanded')) {
                 $drawer.removeClass('expanded');
                 $content.slideUp(300);

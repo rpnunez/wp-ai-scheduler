@@ -676,4 +676,40 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			'delete_bulk() must remove child history_log rows'
 		);
 	}
+
+	public function test_get_conversation_transcript_for_post() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Transcript Test Post',
+		));
+
+		$history_id = $this->repository->create(array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'record_kind'     => 'generation',
+			'creation_method' => 'manual',
+			'created_at'      => time(),
+		));
+
+		$expected_transcript = array(
+			array('role' => 'user', 'text' => 'Prompt'),
+			array('role' => 'model', 'text' => 'Answer'),
+		);
+
+		$this->repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'conversation_transcript',
+				'output'      => array(
+					'transcript' => $expected_transcript,
+				),
+			),
+			AIPS_History_Type::AI_CONVERSATION
+		);
+
+		$retrieved = $this->repository->get_conversation_transcript_for_post($post_id);
+
+		$this->assertIsArray($retrieved);
+		$this->assertSame($expected_transcript, $retrieved);
+		$this->assertNull($this->repository->get_conversation_transcript_for_post(999999));
+	}
 }
