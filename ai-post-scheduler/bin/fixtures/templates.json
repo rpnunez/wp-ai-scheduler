@@ -1,0 +1,32 @@
+[
+  {
+    "id_alias": "tpl-tech-deep-dive",
+    "name": "AI Technology Deep Dive",
+    "description": "In-depth technical analysis and architectural overview of modern AI systems.",
+    "prompt_template": "Write an in-depth article analyzing modern AI architecture, key tradeoffs, and benchmarks.",
+    "title_prompt": "Create an authoritative, technical headline for an AI engineering deep dive.",
+    "post_status": "draft",
+    "post_type": "post",
+    "is_active": 1
+  },
+  {
+    "id_alias": "tpl-weekly-roundup",
+    "name": "Weekly Industry Roundup",
+    "description": "Curated weekly briefing covering major artificial intelligence announcements.",
+    "prompt_template": "Summarize the top stories in artificial intelligence from this week with actionable executive takeaways.",
+    "title_prompt": "Create an engaging weekly digest headline with date reference.",
+    "post_status": "draft",
+    "post_type": "post",
+    "is_active": 1
+  },
+  {
+    "id_alias": "tpl-how-to-guide",
+    "name": "How-To Step-by-Step Guide",
+    "description": "Practical hands-on walkthroughs for software developers and DevOps engineers.",
+    "prompt_template": "Produce a step-by-step practical guide with prerequisite checks, code blocks, and troubleshooting steps.",
+    "title_prompt": "Create a clear, high-intent action-oriented title starting with 'How to'.",
+    "post_status": "draft",
+    "post_type": "post",
+    "is_active": 1
+  }
+]

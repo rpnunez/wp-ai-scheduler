@@ -1,0 +1,44 @@
+[
+  {
+    "title": "Published: The Evolution of Large Language Model Alignment",
+    "excerpt": "Tracing the progression from Reinforcement Learning with Human Feedback (RLHF) to Direct Preference Optimization (DPO).",
+    "content": "<p>Model alignment methodologies have evolved dramatically. Direct Preference Optimization (DPO) has largely bypassed complex reward model architectures, delivering stable training convergence.</p>",
+    "template_alias": "tpl-tech-deep-dive",
+    "post_status": "publish"
+  },
+  {
+    "title": "Published: The Definitive Guide to WordPress Custom Block Development",
+    "excerpt": "A complete modern handbook for creating reactive Gutenberg blocks using React, block.json, and PHP render callbacks.",
+    "content": "<p>Block-first architectures enable non-technical editors to compose rich interactive layouts without touching custom HTML templates.</p>",
+    "template_alias": "tpl-how-to-guide",
+    "post_status": "publish"
+  },
+  {
+    "title": "Published: Weekly Dispatch: Multimodal Reasoning and Vision-Language Advancements",
+    "excerpt": "Key breakthroughs in spatial reasoning, diagram interpretation, and document intelligence across contemporary frontier models.",
+    "content": "<p>Multimodal models are achieving unprecedented accuracy in interpreting technical schematics and data tables directly from document images.</p>",
+    "template_alias": "tpl-weekly-roundup",
+    "post_status": "publish"
+  },
+  {
+    "title": "Published: Architecting Resilient Background Queues in PHP 8.2+",
+    "excerpt": "Best practices for asynchronous job execution, worker heartbeats, and memory management in modern PHP web applications.",
+    "content": "<p>Managing asynchronous workloads in PHP requires disciplined process lifecycle control and strict memory budgeting per execution slice.</p>",
+    "template_alias": "tpl-tech-deep-dive",
+    "post_status": "publish"
+  },
+  {
+    "title": "Published: How to Build Custom MCP Servers with the Python SDK",
+    "excerpt": "Step-by-step tutorial on exposing local services and tools to generative AI agents using the Model Context Protocol.",
+    "content": "<p>The Model Context Protocol (MCP) provides a universal standard for agents to interact with host applications and external databases.</p>",
+    "template_alias": "tpl-how-to-guide",
+    "post_status": "publish"
+  },
+  {
+    "title": "Published: Synthetic Data Generation: Principles, Safety, and Evaluation",
+    "excerpt": "How to generate high-fidelity domain-specific training data with automated validation checks and contamination screening.",
+    "content": "<p>Synthetic data pipelines are enabling high-quality domain specialization where empirical training samples are constrained by privacy regulations.</p>",
+    "template_alias": "tpl-tech-deep-dive",
+    "post_status": "publish"
+  }
+]
