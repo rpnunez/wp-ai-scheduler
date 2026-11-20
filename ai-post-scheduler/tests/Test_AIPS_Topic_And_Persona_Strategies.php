@@ -181,6 +181,56 @@ class Test_AIPS_Topic_And_Persona_Strategies extends WP_UnitTestCase {
 		$this->assertSame('invalid_author', $invalid->get_error_code());
 	}
 
+	public function test_topic_strategy_ai_failure_does_not_create_topics() {
+		$author = $this->make_author(array('topic_generation_quantity' => 2));
+
+		$ai_mock = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_mock->method('generate_json')->willReturn(new WP_Error('ai_unavailable', 'AI down'));
+
+		$topics_repo = new class() {
+			public $created = false;
+			public function get_approved_summary($author_id, $limit = 10) { return array(); }
+			public function get_rejected_summary($author_id, $limit = 10) { return array(); }
+			public function create_bulk($topics) {
+				$this->created = true;
+				return true;
+			}
+			public function get_latest_by_author($author_id, $limit) { return array(); }
+		};
+
+		$authors_repo = new class() {
+			public $last_run_updated = false;
+			public function update_topic_generation_last_run($author_id, $ts) {
+				$this->last_run_updated = true;
+				return true;
+			}
+		};
+
+		$generator = new AIPS_Author_Topics_Generator(
+			$ai_mock,
+			null,
+			$topics_repo,
+			new class() { public function create($data) { return 1; } },
+			new class() { public function is_enabled() { return false; } },
+			new class() { public function get_reason_category_statistics($author_id) { return array(); } },
+			new class() {
+				public function build($author, $approved, $rejected, $guidance) { return 'Topic prompt'; }
+				public function get_sources_selection() { return array(); }
+				public function record_sources_usage($selection) {}
+			},
+			new class() { public function evaluate_topics_for_duplicates($topics, $author_id) { return $topics; } },
+			$authors_repo
+		);
+
+		$result = $generator->generate_topics_result($author, false);
+		$this->assertTrue($result->is_failure());
+		$this->assertFalse($topics_repo->created);
+		$this->assertFalse($authors_repo->last_run_updated);
+		$legacy = $generator->generate_topics($author, false);
+		$this->assertWPError($legacy);
+		$this->assertSame('ai_unavailable', $legacy->get_error_code());
+	}
+
 	/**
 	 * AIPS_Author_Persona_Strategy + AIPS_Author_Suggestions_Service normalize enums and return typed results.
 	 */

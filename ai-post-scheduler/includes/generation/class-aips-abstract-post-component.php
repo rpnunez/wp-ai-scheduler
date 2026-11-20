@@ -131,17 +131,41 @@ abstract class AIPS_Abstract_Post_Component implements AIPS_Post_Component_Inter
 	 *
 	 * @param string $raw   Raw AI response text.
 	 * @param int    $count Maximum variants to return.
-	 * @return string[]
+	 * @return string[]|WP_Error
 	 */
-	protected function parse_json_variants_response(string $raw, int $count = 3): array {
-		$raw      = trim($raw);
-		$variants = array($raw);
+	protected function parse_json_variants_response(string $raw, int $count = 3) {
+		$count   = max(1, $count);
+		$decoded = AIPS_JSON_Extractor::decode_json_response($raw);
+		if (is_wp_error($decoded)) {
+			return $decoded;
+		}
 
-		if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
-			$decoded = json_decode($matches[0], true);
-			if (is_array($decoded) && count($decoded) > 0) {
-				$variants = array_slice(array_map('strval', array_map('trim', $decoded)), 0, max(1, $count));
+		if (!array_is_list($decoded)) {
+			return new WP_Error(
+				'invalid_variants_payload',
+				__('AI response did not contain a JSON array of variant strings.', 'ai-post-scheduler')
+			);
+		}
+
+		$variants = array();
+		foreach ($decoded as $item) {
+			if (!is_scalar($item)) {
+				continue;
 			}
+			$cleaned = trim((string) $item);
+			if ($cleaned !== '') {
+				$variants[] = $cleaned;
+			}
+			if (count($variants) >= $count) {
+				break;
+			}
+		}
+
+		if (empty($variants)) {
+			return new WP_Error(
+				'invalid_variants_payload',
+				__('AI response did not contain a JSON array of variant strings.', 'ai-post-scheduler')
+			);
 		}
 
 		return $variants;

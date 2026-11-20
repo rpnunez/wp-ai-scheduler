@@ -216,6 +216,9 @@ class AIPS_Slug_Post_Component extends AIPS_Abstract_Post_Component {
 		}
 
 		$variants = $this->parse_json_variants_response((string) $response, $count);
+		if (is_wp_error($variants)) {
+			return $variants;
+		}
 		$variants = array_values(array_filter(array_map('sanitize_title', $variants)));
 		if (empty($variants)) {
 			return new WP_Error('slug_generation_failed', __('Failed to generate a valid slug.', 'ai-post-scheduler'));

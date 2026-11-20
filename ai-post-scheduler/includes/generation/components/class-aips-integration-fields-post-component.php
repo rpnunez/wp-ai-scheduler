@@ -171,7 +171,24 @@ class AIPS_Integration_Fields_Post_Component extends AIPS_Abstract_Post_Componen
 	 * {@inheritdoc}
 	 */
 	public function apply_to_post(int $post_id, $value): bool {
-		return $post_id > 0 && is_array($value);
+		if ($post_id <= 0 || !is_array($value) || empty($value)) {
+			return false;
+		}
+
+		foreach ($value as $meta_key => $meta_value) {
+			$key = sanitize_key((string) $meta_key);
+			if ($key === '') {
+				continue;
+			}
+
+			if (is_scalar($meta_value) || $meta_value === null) {
+				update_post_meta($post_id, $key, sanitize_text_field((string) $meta_value));
+			} else {
+				update_post_meta($post_id, $key, wp_json_encode($meta_value));
+			}
+		}
+
+		return true;
 	}
 
 	/**

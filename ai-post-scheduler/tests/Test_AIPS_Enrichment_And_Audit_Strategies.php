@@ -174,4 +174,47 @@ class Test_AIPS_Enrichment_And_Audit_Strategies extends WP_UnitTestCase {
 
 		delete_option('aips_ai_assistance_enabled');
 	}
+
+	public function test_integration_fields_component_generate_and_apply() {
+		$post_id = self::factory()->post->create(array('post_status' => 'draft'));
+		$ai_mock = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_mock->method('generate_json')->willReturn(array(
+			'seo_title' => 'Mapped SEO Title',
+		));
+
+		$component = new AIPS_Integration_Fields_Post_Component(null, $ai_mock);
+		$context   = new AIPS_Template_Context((object) array(
+			'id'              => 1,
+			'name'            => 'Integration',
+			'prompt_template' => 'Write',
+			'title_prompt'    => '',
+			'post_status'     => 'draft',
+			'post_type'       => 'post',
+		), null, 'Integrations');
+
+		$generated = $component->generate($context, null, array(
+			'generatable' => array(
+				array(
+					'mapping'   => array('meta_key' => 'seo_title'),
+					'shape'     => array(),
+					'field_def' => array('label' => 'SEO Title', 'name' => 'seo_title'),
+				),
+			),
+		));
+
+		$this->assertSame(array('seo_title' => 'Mapped SEO Title'), $generated);
+		$this->assertTrue($component->apply_to_post($post_id, $generated));
+		$this->assertSame('Mapped SEO Title', get_post_meta($post_id, 'seo_title', true));
+
+		$empty = $component->generate($context, null, array(
+			'generatable' => array(
+				array(
+					'mapping'   => array('meta_key' => 'required_key'),
+					'shape'     => array(),
+					'field_def' => array('label' => 'Required', 'name' => 'required_key'),
+				),
+			),
+		));
+		$this->assertArrayNotHasKey('required_key', is_array($empty) ? $empty : array());
+	}
 }

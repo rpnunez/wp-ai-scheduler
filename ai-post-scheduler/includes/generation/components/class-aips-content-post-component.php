@@ -173,6 +173,12 @@ class AIPS_Content_Post_Component extends AIPS_Abstract_Post_Component {
 
 		$ai_options = $this->extract_provider_options($options);
 		unset($ai_options['custom_directive']);
+
+		$content_context = $this->get_prompt_builder()->build_content_context($context);
+		if (!empty($content_context) && empty($ai_options['context'])) {
+			$ai_options['context'] = $content_context;
+		}
+
 		$ai_options['_aips_sources_selection'] = $builder->get_sources_selection();
 
 		$result = $generator->generate_content($prompt, $ai_options);
@@ -255,12 +261,10 @@ class AIPS_Content_Post_Component extends AIPS_Abstract_Post_Component {
 				return $response;
 			}
 
-			$raw = trim((string) $response);
-			if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
-				$decoded = json_decode($matches[0], true);
-				if (is_array($decoded) && count($decoded) > 0) {
-					return array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
-				}
+			$raw    = trim((string) $response);
+			$parsed = $this->parse_json_variants_response($raw, 3);
+			if (!is_wp_error($parsed)) {
+				return $parsed;
 			}
 
 			$lines = array_values(array_filter(array_map('trim', explode("\n", $raw))));

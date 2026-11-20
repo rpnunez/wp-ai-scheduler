@@ -384,4 +384,154 @@ class Test_AIPS_Generation_Strategy_Review_Fixes extends WP_UnitTestCase {
 		$component->generate($context, null, array('topic_title' => 'Balcony herbs'));
 		$this->assertSame($builder->build_keywords($context, array('topic_title' => 'Balcony herbs')), $ai->text_prompts[0]);
 	}
+
+	public function test_universal_ai_edit_requires_nonce() {
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'strategy_key'  => 'posts',
+			'component_key' => 'post_title',
+			'target_id'     => 1,
+		);
+
+		$controller = new AIPS_AI_Edit_Controller();
+		$response   = $this->run_ajax(array($controller, 'ajax_universal_ai_edit'));
+		$this->assertFalse($response['success']);
+	}
+
+	public function test_get_editable_components_requires_nonce() {
+		$_POST = array(
+			'action'       => 'aips_get_editable_components',
+			'strategy_key' => 'posts',
+		);
+
+		$controller = new AIPS_AI_Edit_Controller();
+		$response   = $this->run_ajax(array($controller, 'ajax_get_editable_components'));
+		$this->assertFalse($response['success']);
+	}
+
+	public function test_universal_ai_edit_denied_without_manage_options() {
+		wp_set_current_user($this->factory->user->create(array('role' => 'subscriber')));
+
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+			'strategy_key'  => 'posts',
+			'component_key' => 'post_title',
+			'target_id'     => 1,
+		);
+
+		$controller = new AIPS_AI_Edit_Controller();
+		$response   = $this->run_ajax(array($controller, 'ajax_universal_ai_edit'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+	}
+
+	public function test_get_editable_components_denied_without_manage_options() {
+		wp_set_current_user($this->factory->user->create(array('role' => 'subscriber')));
+
+		$_POST = array(
+			'action'       => 'aips_get_editable_components',
+			'nonce'        => wp_create_nonce('aips_ajax_nonce'),
+			'strategy_key' => 'posts',
+		);
+
+		$controller = new AIPS_AI_Edit_Controller();
+		$response   = $this->run_ajax(array($controller, 'ajax_get_editable_components'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+	}
+
+	public function test_get_editable_components_lists_post_keys() {
+		$_POST = array(
+			'action'       => 'aips_get_editable_components',
+			'nonce'        => wp_create_nonce('aips_ajax_nonce'),
+			'strategy_key' => 'posts',
+		);
+
+		$controller = new AIPS_AI_Edit_Controller();
+		$response   = $this->run_ajax(array($controller, 'ajax_get_editable_components'));
+		$this->assertTrue($response['success']);
+		$keys = array_column($response['data']['components'], 'key');
+		$this->assertContains('post_title', $keys);
+	}
+
+	public function test_universal_ai_edit_rejects_unsupported_component() {
+		$post_id = $this->factory->post->create(array('post_title' => 'Keep'));
+
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+			'strategy_key'  => 'posts',
+			'component_key' => 'not_a_component',
+			'target_id'     => $post_id,
+		);
+
+		$controller = new AIPS_AI_Edit_Controller();
+		$response   = $this->run_ajax(array($controller, 'ajax_universal_ai_edit'));
+		$this->assertFalse($response['success']);
+		$this->assertSame('unsupported_component', $response['data']['code']);
+		$this->assertSame('Keep', get_post_field('post_title', $post_id));
+	}
+
+	public function test_universal_ai_edit_apply_updates_post_title() {
+		$post_id = $this->factory->post->create(array('post_title' => 'Old Title'));
+
+		$mock_generator = $this->getMockBuilder(AIPS_Generator::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('supports_conversation', 'set_conversation', 'set_history_container', 'generate_title_for_context'))
+			->getMock();
+		$mock_generator->method('supports_conversation')->willReturn(false);
+		$mock_generator->method('generate_title_for_context')->willReturn('New Title From AI');
+
+		$registry = new AIPS_Generation_Component_Registry();
+		$registry->register_default_post_components($mock_generator);
+		$coordinator = new AIPS_Component_Regeneration_Coordinator($registry, $mock_generator);
+		$container   = AIPS_Container::get_instance();
+		$container->singleton(AIPS_Component_Regeneration_Coordinator::class, static function () use ($coordinator) {
+			return $coordinator;
+		});
+		$singletons = new ReflectionProperty($container, 'singletons');
+		$singletons->setAccessible(true);
+		$cached = $singletons->getValue($container);
+		$cached[AIPS_Component_Regeneration_Coordinator::class] = $coordinator;
+		$singletons->setValue($container, $cached);
+
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+			'strategy_key'  => 'posts',
+			'component_key' => 'post_title',
+			'target_id'     => $post_id,
+			'apply'         => '1',
+		);
+
+		$controller = new AIPS_AI_Edit_Controller();
+		$response   = $this->run_ajax(array($controller, 'ajax_universal_ai_edit'));
+		$this->assertTrue($response['success']);
+		$this->assertTrue($response['data']['applied']);
+		$this->assertSame('New Title From AI', get_post_field('post_title', $post_id));
+	}
+
+	public function test_legacy_generate_title_is_documented_deprecated() {
+		$method = new ReflectionMethod(AIPS_Generator::class, 'generate_title');
+		$this->assertStringContainsString('@deprecated 3.7.25', $method->getDocComment());
+	}
+
+	public function test_link_weave_service_uses_injected_component() {
+		$component = $this->getMockBuilder(AIPS_Internal_Links_Post_Component::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('weave_links'))
+			->getMock();
+		$component->expects($this->once())
+			->method('weave_links')
+			->willReturn(array(
+				'modified_html'  => '<p>Linked</p>',
+				'inserted_links' => array(),
+			));
+
+		$ai      = new AIPS_Test_Review_Fixes_AI_Service();
+		$service = new AIPS_Editor_Link_Weave_Service($ai, $component);
+		$result  = $service->weave_internal_links(1, '<p>Body</p>');
+		$this->assertSame('<p>Linked</p>', $result['modified_html']);
+	}
 }

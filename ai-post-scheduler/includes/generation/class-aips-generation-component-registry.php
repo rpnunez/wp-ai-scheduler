@@ -429,4 +429,23 @@ class AIPS_Generation_Component_Registry {
 
 		return $this;
 	}
+
+	/**
+	 * Register every built-in generation component set.
+	 *
+	 * @return self
+	 */
+	public function register_all_defaults(): self {
+		$this->register_default_post_components();
+		$this->register_default_topic_components();
+		$this->register_default_persona_components();
+		$this->register_default_campaign_components();
+		$this->register_default_research_components();
+		$this->register_default_taxonomy_components();
+		$this->register_default_planner_components();
+		$this->register_default_enrichment_components();
+		$this->register_default_ai_assistance_components();
+
+		return $this;
+	}
 }

@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Fixed
+- **Generation Strategy Xray follow-ups (issue #2400 / PR #2413):**
+  - Variant JSON parsing now uses `AIPS_JSON_Extractor` and ignores nested non-scalars instead of calling `trim()` on arrays/objects.
+  - Content regeneration injects the same `build_content_context` AI Engine channel as initial generate.
+  - Internal-link insertion locations use text generation plus JSON extraction for every `AIPS_AI_Service_Interface` implementation.
+  - Universal AI Edit regeneration failures return HTTP 200 with a generic message (details logged).
+  - Admin boot no longer constructs the full generation registry from `AIPS_Editor_Directive_Service`; embeddings/AI component constructors are lazy.
+  - `AIPS_Generation_Pipeline` is no longer bound as a posts-only container singleton.
+  - Planner/topic/taxonomy user-facing generation errors are localized.
 - **Post Components Parity & Conversational Integration:**
   - Resolved `post_slug` status tracking in `AIPS_Generator::generate_post_from_context()`, ensuring slug failures record properly in component statuses while preventing optional slug failures from inappropriately marking posts as incomplete or forcing draft status.
   - Eliminated `post_images` key pollution in posts without configured content images by checking `$context->has_content_images()` before status initialization.

@@ -30,8 +30,21 @@ class AIPS_Competitor_Gap_Component implements AIPS_Generation_Component_Interfa
 	 * @param AIPS_AI_Service_Interface|null $ai_service Optional AI service.
 	 */
 	public function __construct(?AIPS_AI_Service_Interface $ai_service = null) {
-		$container        = AIPS_Container::get_instance();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->ai_service = $ai_service;
+	}
+
+	/**
+	 * @return AIPS_AI_Service_Interface
+	 */
+	private function get_ai_service(): AIPS_AI_Service_Interface {
+		if ($this->ai_service === null) {
+			$container        = AIPS_Container::get_instance();
+			$this->ai_service = $container->has(AIPS_AI_Service_Interface::class)
+				? $container->make(AIPS_AI_Service_Interface::class)
+				: new AIPS_AI_Service();
+		}
+
+		return $this->ai_service;
 	}
 
 	/**
@@ -106,7 +119,7 @@ class AIPS_Competitor_Gap_Component implements AIPS_Generation_Component_Interfa
 		$post_title = isset($payload['post_title']) ? (string) $payload['post_title'] : '';
 		$prompt     = $this->build_prompt($context, $session);
 
-		$response = $this->ai_service->generate_text($prompt, array(
+		$response = $this->get_ai_service()->generate_text($prompt, array(
 			'temperature' => 0.7,
 			'max_tokens'  => 1200,
 		));

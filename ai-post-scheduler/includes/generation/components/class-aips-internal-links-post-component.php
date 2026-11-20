@@ -261,11 +261,12 @@ class AIPS_Internal_Links_Post_Component extends AIPS_Abstract_Post_Component {
 			'max_tokens' => $max_tokens,
 		);
 
-		if ($ai_service instanceof AIPS_AI_Service) {
-			return $ai_service->generate_json_from_text($prompt, $options);
+		$text = $ai_service->generate_text($prompt, $options);
+		if (is_wp_error($text)) {
+			return $text;
 		}
 
-		return $ai_service->generate_json($prompt, $options);
+		return AIPS_JSON_Extractor::decode_json_response((string) $text);
 	}
 
 	/**

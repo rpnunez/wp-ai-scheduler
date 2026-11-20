@@ -140,7 +140,11 @@ class AIPS_Taxonomy_Suggestion_Component implements AIPS_Generation_Component_In
 
 			return $this->sanitize_value($response);
 		} catch (Throwable $e) {
-			return new WP_Error('ai_generation_failed', $e->getMessage());
+			return new WP_Error(
+				'ai_generation_failed',
+				__('AI generation failed. Please try again.', 'ai-post-scheduler'),
+				array('exception' => $e->getMessage())
+			);
 		}
 	}
 

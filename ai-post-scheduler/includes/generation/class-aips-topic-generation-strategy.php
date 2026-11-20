@@ -266,7 +266,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 		$apply_auto_approval = ($context instanceof AIPS_Author_Topic_Generation_Context) ? $context->should_apply_auto_approval() : true;
 
 		if (!$author || !isset($author->id)) {
-			$error            = new WP_Error('invalid_author', 'Invalid author object provided');
+			$error            = new WP_Error('invalid_author', __('Invalid author object provided', 'ai-post-scheduler'));
 			$this->last_error = $error;
 			return AIPS_Generation_Result::from_wp_error($error, microtime(true) - $start);
 		}
@@ -355,12 +355,12 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 
 		$topics = $this->parse_json_topics($response, $author);
 		if (empty($topics)) {
-			$error            = new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
+			$error            = new WP_Error('no_topics_parsed', __('Failed to parse topics from AI response', 'ai-post-scheduler'));
 			$this->last_error = $error;
 			$this->logger->log("No topics parsed from AI response for author {$author->id}", 'warning');
 			if ($history) {
 				$history->record_error('No topics could be parsed from AI response', array('author_id' => (int) $author->id));
-				$history->complete_failure('Failed to parse topics from AI response');
+				$history->complete_failure(__('Failed to parse topics from AI response', 'ai-post-scheduler'));
 			}
 
 			return AIPS_Generation_Result::from_wp_error($error, microtime(true) - $start, $history_id);
@@ -450,12 +450,12 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 				$embedding_component->apply($saved_topics, null);
 			}
 		} else {
-			$error            = new WP_Error('db_insert_error', 'Failed to save generated topics to database');
+			$error            = new WP_Error('db_insert_error', __('Failed to save generated topics to database', 'ai-post-scheduler'));
 			$this->last_error = $error;
 			$this->logger->log("Failed to bulk create topics for author {$author->id}", 'error');
 			if ($history) {
 				$history->record_error('Failed to bulk create topics in database', array('author_id' => (int) $author->id));
-				$history->complete_failure('Failed to save generated topics to database');
+				$history->complete_failure(__('Failed to save generated topics to database', 'ai-post-scheduler'));
 			}
 
 			return AIPS_Generation_Result::from_wp_error($error, microtime(true) - $start, $history_id);
@@ -508,7 +508,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 	public function execute_preview_run(AIPS_Generation_Context $context) {
 		$author = ($context instanceof AIPS_Author_Topic_Generation_Context) ? $context->get_author() : null;
 		if (!$author || !isset($author->id)) {
-			return new WP_Error('invalid_author', 'Invalid author object provided');
+			return new WP_Error('invalid_author', __('Invalid author object provided', 'ai-post-scheduler'));
 		}
 
 		$approved_topics   = $this->topics_repository->get_approved_summary($author->id, 10);

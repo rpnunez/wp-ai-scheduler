@@ -318,13 +318,172 @@ class Test_AIPS_Generation_Framework extends WP_UnitTestCase {
 			AIPS_Post_Generation_Strategy::class,
 			$container->make(AIPS_Post_Generation_Strategy::class)
 		);
-		$this->assertInstanceOf(
-			AIPS_Generation_Pipeline::class,
-			$container->make(AIPS_Generation_Pipeline::class)
+		$this->assertFalse(
+			$container->has(AIPS_Generation_Pipeline::class),
+			'Pipeline must not be bound as a posts-only process singleton.'
 		);
 		$this->assertInstanceOf(
 			AIPS_Component_Regeneration_Coordinator::class,
 			$container->make(AIPS_Component_Regeneration_Coordinator::class)
 		);
+	}
+
+	/**
+	 * Nested JSON objects must not TypeError; invalid payloads return WP_Error.
+	 */
+	public function test_parse_json_variants_response_rejects_non_scalar_elements() {
+		$component = new AIPS_Title_Post_Component();
+		$method    = new ReflectionMethod(AIPS_Abstract_Post_Component::class, 'parse_json_variants_response');
+		$method->setAccessible(true);
+
+		$ok = $method->invoke($component, 'Here is prose [before] ["Alpha", "Beta", "Gamma"]', 3);
+		$this->assertSame(array('Alpha', 'Beta', 'Gamma'), $ok);
+
+		$nested = $method->invoke($component, '[{"title":"Nope"}, "Keep me"]', 3);
+		$this->assertSame(array('Keep me'), $nested);
+
+		$object = $method->invoke($component, '{"title":"Nope"}', 3);
+		$this->assertWPError($object);
+		$this->assertSame('invalid_variants_payload', $object->get_error_code());
+	}
+
+	/**
+	 * Production post pipeline execute_run handles required failure, optional partial, and completed persist.
+	 */
+	public function test_post_generation_strategy_execute_run_outcomes() {
+		$context = $this->make_template_context(array('generate_featured_image' => 0));
+
+		$history = new class() {
+			public function with_session($context) {
+				return $this;
+			}
+			public function get_id() {
+				return 42;
+			}
+			public function record() {}
+			public function complete_failure() {}
+			public function complete_partial() {}
+			public function complete_success() {}
+		};
+
+		$history_service = $this->createMock(AIPS_History_Service_Interface::class);
+		$history_service->method('create')->willReturn($history);
+
+		$logger = $this->createMock(AIPS_Logger_Interface::class);
+
+		$fail_generator = $this->getMockBuilder(AIPS_Generator::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array(
+				'set_history_container',
+				'open_conversation_session',
+				'run_content_stage',
+				'close_conversation_session',
+			))
+			->getMock();
+		$fail_generator->method('run_content_stage')->willReturn(new WP_Error('content_failed', 'Required content failed'));
+
+		$fail_strategy = new AIPS_Post_Generation_Strategy(
+			new AIPS_Generation_Component_Registry(),
+			$fail_generator,
+			$this->createMock(AIPS_Post_Manager::class),
+			$history_service,
+			$logger
+		);
+		$fail_pipeline = new AIPS_Generation_Pipeline($fail_strategy, new AIPS_Generation_Component_Registry());
+		$fail_result   = $fail_pipeline->execute($context);
+		$this->assertTrue($fail_result->is_failure());
+		$this->assertSame(array('Required content failed'), $fail_result->get_errors());
+		$this->assertSame(42, $fail_result->get_history_id());
+
+		$ok_generator = $this->getMockBuilder(AIPS_Generator::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array(
+				'set_history_container',
+				'open_conversation_session',
+				'run_content_stage',
+				'run_metadata_stage',
+				'get_current_source_snapshots',
+				'close_conversation_session',
+				'get_active_conversation',
+			))
+			->getMock();
+		$ok_generator->method('run_content_stage')->willReturn('<p>Generated body.</p>');
+		$ok_generator->method('run_metadata_stage')->willReturn(array(
+			'title'                          => 'Generated Title',
+			'slug'                           => 'generated-title',
+			'excerpt'                        => 'Generated excerpt',
+			'resolved_image_prompt'          => '',
+			'resolved_content_image_prompts' => array(),
+			'title_success'                  => true,
+			'excerpt_success'                => true,
+			'slug_success'                   => true,
+		));
+		$ok_generator->method('get_current_source_snapshots')->willReturn(array());
+		$ok_generator->method('get_active_conversation')->willReturn(null);
+
+		$post_manager = $this->getMockBuilder(AIPS_Post_Manager::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('create_post', 'update_generation_status_meta'))
+			->getMock();
+		$post_manager->method('create_post')->willReturn(555);
+		$post_manager->expects($this->once())->method('update_generation_status_meta');
+
+		$ok_strategy = new AIPS_Post_Generation_Strategy(
+			new AIPS_Generation_Component_Registry(),
+			$ok_generator,
+			$post_manager,
+			$history_service,
+			$logger
+		);
+		$ok_pipeline = new AIPS_Generation_Pipeline($ok_strategy, new AIPS_Generation_Component_Registry());
+		$ok_result   = $ok_pipeline->execute($context);
+		$this->assertTrue($ok_result->is_success());
+		$this->assertSame(555, $ok_result->get_data());
+		$this->assertTrue($ok_result->get_component_statuses()['post_content']);
+		$this->assertTrue($ok_result->get_component_statuses()['post_title']);
+
+		$partial_generator = $this->getMockBuilder(AIPS_Generator::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array(
+				'set_history_container',
+				'open_conversation_session',
+				'run_content_stage',
+				'run_metadata_stage',
+				'get_current_source_snapshots',
+				'close_conversation_session',
+				'get_active_conversation',
+			))
+			->getMock();
+		$partial_generator->method('run_content_stage')->willReturn('<p>Generated body.</p>');
+		$partial_generator->method('run_metadata_stage')->willReturn(array(
+			'title'                          => 'Generated Title',
+			'slug'                           => 'generated-title',
+			'excerpt'                        => '',
+			'resolved_image_prompt'          => '',
+			'resolved_content_image_prompts' => array(),
+			'title_success'                  => true,
+			'excerpt_success'                => false,
+			'slug_success'                   => true,
+		));
+		$partial_generator->method('get_current_source_snapshots')->willReturn(array());
+		$partial_generator->method('get_active_conversation')->willReturn(null);
+
+		$partial_manager = $this->getMockBuilder(AIPS_Post_Manager::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('create_post', 'update_generation_status_meta'))
+			->getMock();
+		$partial_manager->method('create_post')->willReturn(556);
+
+		$partial_strategy = new AIPS_Post_Generation_Strategy(
+			new AIPS_Generation_Component_Registry(),
+			$partial_generator,
+			$partial_manager,
+			$history_service,
+			$logger
+		);
+		$partial_result = (new AIPS_Generation_Pipeline($partial_strategy, new AIPS_Generation_Component_Registry()))->execute($context);
+		$this->assertTrue($partial_result->is_partial());
+		$this->assertSame(556, $partial_result->get_data());
+		$this->assertFalse($partial_result->get_component_statuses()['post_excerpt']);
 	}
 }

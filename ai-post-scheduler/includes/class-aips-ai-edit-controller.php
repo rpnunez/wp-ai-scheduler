@@ -1411,10 +1411,7 @@ class AIPS_AI_Edit_Controller {
 		$container    = AIPS_Container::get_instance();
 		$registry     = $container->has(AIPS_Generation_Component_Registry::class)
 			? $container->make(AIPS_Generation_Component_Registry::class)
-			: (new AIPS_Generation_Component_Registry())
-				->register_default_post_components()
-				->register_default_topic_components()
-				->register_default_campaign_components();
+			: (new AIPS_Generation_Component_Registry())->register_all_defaults();
 
 		$editable = $registry->get_ai_editable($strategy_key !== '' ? $strategy_key : null);
 		$payload  = array();
@@ -1487,9 +1484,13 @@ class AIPS_AI_Edit_Controller {
 
 		$result = $coordinator->regenerate($strategy_key, $component_key, $target_id, $context, $directive);
 		if ($result->is_failure()) {
-			$errors  = $result->get_errors();
-			$message = !empty($errors) ? $errors[0] : __('Universal AI Edit regeneration failed.', 'ai-post-scheduler');
-			AIPS_Ajax_Response::error($message, 'regeneration_failed', 500);
+			$errors = $result->get_errors();
+			$logged = new WP_Error(
+				'regeneration_failed',
+				!empty($errors) ? (string) $errors[0] : __('Universal AI Edit regeneration failed.', 'ai-post-scheduler')
+			);
+			$this->log_wp_error($logged, __METHOD__);
+			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'), 'regeneration_failed');
 		}
 
 		$value   = $result->get_data();

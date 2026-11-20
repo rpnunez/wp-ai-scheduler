@@ -50,14 +50,28 @@ class AIPS_Editor_Directive_Service {
 		$container        = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 
-		if ($component_registry !== null) {
-			$this->component_registry = $component_registry;
-		} elseif ($container->has(AIPS_Generation_Component_Registry::class)) {
+		$this->component_registry = $component_registry;
+	}
+
+	/**
+	 * Resolve the component registry on first use so admin boot does not
+	 * instantiate the full generation graph.
+	 *
+	 * @return AIPS_Generation_Component_Registry
+	 */
+	private function get_component_registry(): AIPS_Generation_Component_Registry {
+		if ($this->component_registry instanceof AIPS_Generation_Component_Registry) {
+			return $this->component_registry;
+		}
+
+		$container = AIPS_Container::get_instance();
+		if ($container->has(AIPS_Generation_Component_Registry::class)) {
 			$this->component_registry = $container->make(AIPS_Generation_Component_Registry::class);
 		} else {
-			$this->component_registry = new AIPS_Generation_Component_Registry();
-			$this->component_registry->register_default_post_components();
+			$this->component_registry = (new AIPS_Generation_Component_Registry())->register_all_defaults();
 		}
+
+		return $this->component_registry;
 	}
 
 	/**
@@ -147,7 +161,7 @@ class AIPS_Editor_Directive_Service {
 
 		$variants_count = ($variants_count >= 3) ? 3 : 1;
 
-		$comp = $this->component_registry->get('post_content', 'posts');
+		$comp = $this->get_component_registry()->get('post_content', 'posts');
 		if (!($comp instanceof AIPS_Content_Post_Component)) {
 			$comp = new AIPS_Content_Post_Component();
 		}
@@ -179,7 +193,7 @@ class AIPS_Editor_Directive_Service {
 		}
 
 		$target_key = in_array($component, array('title', 'post_title', 'slug', 'post_slug'), true) ? $component : 'post_excerpt';
-		$comp       = $this->component_registry->get($target_key, 'posts');
+		$comp       = $this->get_component_registry()->get($target_key, 'posts');
 
 		if (!$comp) {
 			$comp = new AIPS_Excerpt_Post_Component();

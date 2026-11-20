@@ -117,9 +117,14 @@ class AIPS_Planner_Topics_Component implements AIPS_Generation_Component_Interfa
 
 		$topics = $this->sanitize_value($raw_result);
 		if (empty($topics)) {
+			$excerpt = substr(trim($raw_result), 0, 100);
 			return new WP_Error(
 				'parse_failed',
-				__('Failed to parse AI response. Raw response: ', 'ai-post-scheduler') . substr(trim($raw_result), 0, 100) . '...'
+				sprintf(
+					/* translators: %s: truncated AI response excerpt */
+					__('Failed to parse AI response. Raw response: %s', 'ai-post-scheduler'),
+					$excerpt
+				)
 			);
 		}
 

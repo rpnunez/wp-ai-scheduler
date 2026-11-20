@@ -39,9 +39,36 @@ class AIPS_Trending_Topics_Component implements AIPS_Generation_Component_Interf
 		?AIPS_AI_Service_Interface $ai_service = null,
 		?AIPS_Logger_Interface $logger = null
 	) {
-		$container        = AIPS_Container::get_instance();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->logger     = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->ai_service = $ai_service;
+		$this->logger     = $logger;
+	}
+
+	/**
+	 * @return AIPS_AI_Service_Interface
+	 */
+	private function get_ai_service(): AIPS_AI_Service_Interface {
+		if ($this->ai_service === null) {
+			$container        = AIPS_Container::get_instance();
+			$this->ai_service = $container->has(AIPS_AI_Service_Interface::class)
+				? $container->make(AIPS_AI_Service_Interface::class)
+				: new AIPS_AI_Service();
+		}
+
+		return $this->ai_service;
+	}
+
+	/**
+	 * @return AIPS_Logger_Interface
+	 */
+	private function get_logger(): AIPS_Logger_Interface {
+		if ($this->logger === null) {
+			$container    = AIPS_Container::get_instance();
+			$this->logger = $container->has(AIPS_Logger_Interface::class)
+				? $container->make(AIPS_Logger_Interface::class)
+				: new AIPS_Logger();
+		}
+
+		return $this->logger;
 	}
 
 	/**
@@ -200,25 +227,25 @@ class AIPS_Trending_Topics_Component implements AIPS_Generation_Component_Interf
 			return new WP_Error('missing_niche', __('Niche parameter is required for research.', 'ai-post-scheduler'));
 		}
 
-		if (!$this->ai_service->is_available()) {
+		if (!$this->get_ai_service()->is_available()) {
 			return new WP_Error('ai_unavailable', __('AI Engine is not available for research.', 'ai-post-scheduler'));
 		}
 
 		$prompt = $this->build_trending_prompt($niche, $count, $keywords);
 
-		$this->logger->log("Starting trending topics research for niche: {$niche}", 'info', array(
+		$this->get_logger()->log("Starting trending topics research for niche: {$niche}", 'info', array(
 			'niche'    => $niche,
 			'count'    => $count,
 			'keywords' => $keywords,
 		));
 
-		$result = $this->ai_service->generate_json($prompt, array(
+		$result = $this->get_ai_service()->generate_json($prompt, array(
 			'temperature' => 0.7,
 			'json_schema' => $this->get_topic_json_schema(),
 		));
 
 		if (is_wp_error($result)) {
-			$this->logger->log('Research failed: ' . $result->get_error_message(), 'error');
+			$this->get_logger()->log('Research failed: ' . $result->get_error_message(), 'error');
 			return $result;
 		}
 
@@ -227,7 +254,7 @@ class AIPS_Trending_Topics_Component implements AIPS_Generation_Component_Interf
 			return $topics;
 		}
 
-		$this->logger->log('Research completed successfully', 'info', array(
+		$this->get_logger()->log('Research completed successfully', 'info', array(
 			'topics_found' => count($topics),
 		));
 
@@ -254,7 +281,7 @@ class AIPS_Trending_Topics_Component implements AIPS_Generation_Component_Interf
 			return new WP_Error('missing_niche', __('Niche parameter is required for source-based research.', 'ai-post-scheduler'));
 		}
 
-		if (!$this->ai_service->is_available()) {
+		if (!$this->get_ai_service()->is_available()) {
 			return new WP_Error('ai_unavailable', __('AI Engine is not available for research.', 'ai-post-scheduler'));
 		}
 
@@ -290,18 +317,18 @@ class AIPS_Trending_Topics_Component implements AIPS_Generation_Component_Interf
 
 		$prompt = $this->build_source_research_prompt($niche, $count, $keywords, $source_context);
 
-		$this->logger->log(
+		$this->get_logger()->log(
 			sprintf('AIPS_Research_Service: source-based research for niche "%s" with %d source(s).', $niche, count($source_rows)),
 			'info'
 		);
 
-		$result = $this->ai_service->generate_json($prompt, array(
+		$result = $this->get_ai_service()->generate_json($prompt, array(
 			'temperature' => 0.7,
 			'json_schema' => $this->get_topic_json_schema(),
 		));
 
 		if (is_wp_error($result)) {
-			$this->logger->log('Source-based research failed: ' . $result->get_error_message(), 'error');
+			$this->get_logger()->log('Source-based research failed: ' . $result->get_error_message(), 'error');
 			return $result;
 		}
 

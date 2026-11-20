@@ -53,11 +53,66 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
 		?AIPS_Content_Indexer_Service $indexer_service = null
 	) {
-		$container                = AIPS_Container::get_instance();
-		$this->embeddings_repo    = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->rate_limiter       = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter());
-		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service(null, null, null, $this->rate_limiter, $this->embeddings_repo));
-		$this->indexer_service    = $indexer_service ?: ($container->has(AIPS_Content_Indexer_Service::class) ? $container->make(AIPS_Content_Indexer_Service::class) : null);
+		$this->embeddings_service = $embeddings_service;
+		$this->embeddings_repo    = $embeddings_repo;
+		$this->rate_limiter       = $rate_limiter;
+		$this->indexer_service    = $indexer_service;
+	}
+
+	/**
+	 * @return AIPS_Embeddings_Repository
+	 */
+	private function get_embeddings_repo() {
+		if ($this->embeddings_repo === null) {
+			$container             = AIPS_Container::get_instance();
+			$this->embeddings_repo = $container->has(AIPS_Embeddings_Repository::class)
+				? $container->make(AIPS_Embeddings_Repository::class)
+				: new AIPS_Embeddings_Repository();
+		}
+
+		return $this->embeddings_repo;
+	}
+
+	/**
+	 * @return AIPS_Embeddings_Rate_Limiter
+	 */
+	private function get_rate_limiter() {
+		if ($this->rate_limiter === null) {
+			$container          = AIPS_Container::get_instance();
+			$this->rate_limiter = $container->has(AIPS_Embeddings_Rate_Limiter::class)
+				? $container->make(AIPS_Embeddings_Rate_Limiter::class)
+				: new AIPS_Embeddings_Rate_Limiter();
+		}
+
+		return $this->rate_limiter;
+	}
+
+	/**
+	 * @return AIPS_Embeddings_Service
+	 */
+	private function get_embeddings_service() {
+		if ($this->embeddings_service === null) {
+			$container                = AIPS_Container::get_instance();
+			$this->embeddings_service = $container->has(AIPS_Embeddings_Service::class)
+				? $container->make(AIPS_Embeddings_Service::class)
+				: new AIPS_Embeddings_Service(null, null, null, $this->get_rate_limiter(), $this->get_embeddings_repo());
+		}
+
+		return $this->embeddings_service;
+	}
+
+	/**
+	 * @return AIPS_Content_Indexer_Service|null
+	 */
+	private function get_indexer_service() {
+		if ($this->indexer_service === null) {
+			$container             = AIPS_Container::get_instance();
+			$this->indexer_service = $container->has(AIPS_Content_Indexer_Service::class)
+				? $container->make(AIPS_Content_Indexer_Service::class)
+				: null;
+		}
+
+		return $this->indexer_service;
 	}
 
 	/**
@@ -85,7 +140,7 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 	 * {@inheritdoc}
 	 */
 	public function is_enabled(AIPS_Generation_Context $context): bool {
-		return (bool) $this->embeddings_service->is_enabled();
+		return (bool) $this->get_embeddings_service()->is_enabled();
 	}
 
 	/**
@@ -143,7 +198,7 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 		$config      = AIPS_Config::get_instance();
 		$sync_topics = (bool) $config->get_option('aips_indexer_topics_continuous_sync', true);
 
-		if (!$sync_topics || !$this->embeddings_service->is_enabled() || !$this->indexer_service) {
+		if (!$sync_topics || !$this->get_embeddings_service()->is_enabled() || !$this->get_indexer_service()) {
 			return true;
 		}
 
@@ -165,7 +220,7 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 			return true;
 		}
 
-		$this->indexer_service->enqueue_topics_for_indexing($topic_ids);
+		$this->get_indexer_service()->enqueue_topics_for_indexing($topic_ids);
 		return true;
 	}
 
@@ -174,11 +229,11 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 	 */
 	public function reconcile_status($target_id): bool {
 		$topic_id = absint($target_id);
-		if ($topic_id <= 0 || !$this->embeddings_repo) {
+		if ($topic_id <= 0 || !$this->get_embeddings_repo()) {
 			return false;
 		}
 
-		$existing = $this->embeddings_repo->get_by_object('topic', $topic_id);
+		$existing = $this->get_embeddings_repo()->get_by_object('topic', $topic_id);
 		return !empty($existing);
 	}
 
@@ -203,7 +258,7 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 	 * @return array|null Composite vector array or null if unavailable.
 	 */
 	public function compute_author_composite_embedding($author): ?array {
-		if (!$this->embeddings_service->is_enabled()) {
+		if (!$this->get_embeddings_service()->is_enabled()) {
 			return null;
 		}
 
@@ -232,10 +287,10 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 			return $cached;
 		}
 
-		if ($this->embeddings_repo && $author_id > 0) {
-			$existing = $this->embeddings_repo->get_by_object('author', $author_id);
+		if ($this->get_embeddings_repo() && $author_id > 0) {
+			$existing = $this->get_embeddings_repo()->get_by_object('author', $author_id);
 			if ($existing && !empty($existing->content_hash) && $existing->content_hash === $content_hash) {
-				$decoded = $this->embeddings_repo->decode_embedding($existing->embedding, 'author', $author_id, $content_hash);
+				$decoded = $this->get_embeddings_repo()->decode_embedding($existing->embedding, 'author', $author_id, $content_hash);
 				if (!empty($decoded) && is_array($decoded)) {
 					set_transient($cache_key, $decoded, 12 * HOUR_IN_SECONDS);
 					set_transient($legacy_cache_key, $decoded, 12 * HOUR_IN_SECONDS);
@@ -244,11 +299,11 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 			}
 		}
 
-		if ($this->rate_limiter->is_in_cooldown()) {
+		if ($this->get_rate_limiter()->is_in_cooldown()) {
 			return null;
 		}
 
-		$profile_vec = $this->embeddings_service->generate_embedding($profile_text);
+		$profile_vec = $this->get_embeddings_service()->generate_embedding($profile_text);
 		if (is_wp_error($profile_vec) || !is_array($profile_vec)) {
 			return null;
 		}
@@ -266,9 +321,9 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 
 			if (!empty($post_ids)) {
 				foreach ($post_ids as $pid) {
-					$row = $this->embeddings_repo->get_by_post_id((int) $pid);
+					$row = $this->get_embeddings_repo()->get_by_post_id((int) $pid);
 					if ($row && !empty($row->embedding)) {
-						$pvec = $this->embeddings_repo->decode_embedding($row->embedding, 'post', (int) $pid, !empty($row->content_hash) ? $row->content_hash : '');
+						$pvec = $this->get_embeddings_repo()->decode_embedding($row->embedding, 'post', (int) $pid, !empty($row->content_hash) ? $row->content_hash : '');
 						if (!empty($pvec) && count($pvec) === count($profile_vec)) {
 							$vectors[] = $pvec;
 						}
@@ -291,9 +346,9 @@ class AIPS_Topic_Embedding_Component implements AIPS_Generation_Component_Interf
 			$composite[$i] /= $count;
 		}
 
-		if ($this->embeddings_repo && $author_id > 0) {
-			$model = $this->embeddings_service->get_active_model();
-			$this->embeddings_repo->upsert(
+		if ($this->get_embeddings_repo() && $author_id > 0) {
+			$model = $this->get_embeddings_service()->get_active_model();
+			$this->get_embeddings_repo()->upsert(
 				'author',
 				$author_id,
 				$composite,

@@ -516,13 +516,6 @@ final class AI_Post_Scheduler {
             );
         });
 
-        $container->singleton(AIPS_Generation_Pipeline::class, function( $container ) {
-            return new AIPS_Generation_Pipeline(
-                $container->make(AIPS_Post_Generation_Strategy::class),
-                $container->make(AIPS_Generation_Component_Registry::class)
-            );
-        });
-
         $container->singleton(AIPS_Component_Regeneration_Coordinator::class, function( $container ) {
             return new AIPS_Component_Regeneration_Coordinator(
                 $container->make(AIPS_Generation_Component_Registry::class),
