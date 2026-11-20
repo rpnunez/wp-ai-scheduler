@@ -114,6 +114,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Meta Exists Post',
 		));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, 'some_value');
 		$aips_test_meta = array(
 			$post_id => array(
 				AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES => 'some_value',
@@ -142,6 +143,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Meta Exists Empty Value Post',
 		));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, '');
 		// metadata_exists returns true because the row exists (even with an empty value).
 		$aips_test_meta = array(
 			$post_id => array(
@@ -360,5 +362,119 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
 		$this->assertIsArray($statuses);
 		$this->assertTrue($statuses['featured_image']);
+	}
+
+	public function test_on_post_components_updated_reconciles_slug() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Resolved Title',
+			'post_name'    => 'custom-slug',
+			'post_excerpt' => 'Resolved excerpt',
+			'post_content' => 'Resolved content',
+			'post_status'  => 'draft',
+		));
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'   => true,
+			'post_slug'    => false,
+			'post_excerpt' => true,
+			'post_content' => true,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+
+		$this->reconciler->on_post_components_updated($post_id, array('slug'), array(
+			'slug' => 'custom-slug',
+		));
+
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
+		$this->assertIsArray($statuses);
+		$this->assertTrue($statuses['post_slug']);
+	}
+
+	public function test_on_post_components_updated_reconciles_post_images() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Resolved Title',
+			'post_excerpt' => 'Resolved excerpt',
+			'post_content' => 'Resolved content',
+			'post_status'  => 'draft',
+		));
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'   => true,
+			'post_excerpt' => true,
+			'post_images'  => false,
+			'post_content' => true,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+
+		$repo = new AIPS_Post_Images_Generated_Repository();
+		$row_id = $repo->create(array(
+			'post_id'           => $post_id,
+			'placeholder_index' => 1,
+			'status'            => 'completed',
+			'attachment_id'     => 123,
+		));
+
+		$this->reconciler->on_post_components_updated($post_id, array('post_images'), array());
+
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
+		$this->assertIsArray($statuses);
+		$this->assertTrue($statuses['post_images']);
+	}
+
+	public function test_reconcile_preserves_legacy_post_images_true_when_no_generated_rows() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Legacy Post',
+			'post_excerpt' => 'Legacy excerpt',
+			'post_content' => 'Legacy content without content images',
+			'post_status'  => 'publish',
+		));
+
+		$manager = new AIPS_Post_Manager();
+		$manager->update_generation_status_meta($post_id, array(
+			'post_title'     => true,
+			'post_excerpt'   => true,
+			'post_content'   => true,
+			'featured_image' => true,
+			'post_images'    => true,
+		), false);
+
+		$reconciled = $manager->reconcile_generation_status_meta_from_post($post_id);
+		$this->assertIsArray($reconciled);
+		$this->assertTrue($reconciled['post_images'], 'Legacy post_images: true must be preserved when no generated rows exist.');
+
+		$incomplete = get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true);
+		$this->assertSame('false', $incomplete);
+	}
+
+	public function test_on_post_components_updated_matches_post_image_id_when_not_first_in_array() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Multi Component Update',
+			'post_excerpt' => 'Excerpt',
+			'post_content' => 'Content',
+			'post_status'  => 'draft',
+		));
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'   => true,
+			'post_excerpt' => true,
+			'post_images'  => false,
+			'post_content' => true,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+
+		$repo = new AIPS_Post_Images_Generated_Repository();
+		$repo->create(array(
+			'post_id'           => $post_id,
+			'placeholder_index' => 1,
+			'status'            => 'completed',
+			'attachment_id'     => 456,
+		));
+
+		// Pass 'post_image_1' as second element in updated_components array.
+		$this->reconciler->on_post_components_updated($post_id, array('content', 'post_image_1'), array());
+
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
+		$this->assertIsArray($statuses);
+		$this->assertTrue($statuses['post_images'], 'post_images override must be applied when post_image_{id} is not the first element in updated_components.');
 	}
 }

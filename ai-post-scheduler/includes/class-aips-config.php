@@ -131,11 +131,6 @@ class AIPS_Config {
     // ========================================
     
     /**
-     * Get default plugin options.
-     *
-     * @return array Default options array.
-     */
-    /**
      * Return the authoritative list of plugin option defaults.
      *
      * Delegates directly to AIPS_Settings_Registry as the single source of truth.

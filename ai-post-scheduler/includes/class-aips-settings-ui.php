@@ -804,10 +804,11 @@ class AIPS_Settings_UI {
     /**
      * Render the conversational generation setting field.
      *
-     * When enabled, the title, excerpt, and image-prompt steps continue the same
-     * conversation as the content step instead of each pasting a copy of the
-     * article into a fresh prompt. Requires an AI provider that can replay
-     * conversation history.
+     * When enabled, post generation uses a 2-turn conversational workflow:
+     * Turn 1 generates the article body, and Turn 2 requests the title, excerpt,
+     * slug, and image prompt in a single combined metadata turn. This preserves context,
+     * cuts API calls in half, and reduces input tokens. Automatically falls back
+     * to individual conversational turns if structured parsing fails.
      *
      * @return void
      */
@@ -818,10 +819,10 @@ class AIPS_Settings_UI {
         <input type="hidden" name="aips_conversational_generation" value="0">
         <label>
             <input type="checkbox" name="aips_conversational_generation" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Generate post components as one conversation instead of separate prompts', 'ai-post-scheduler'); ?>
+            <?php esc_html_e('Generate post components conversationally with a combined metadata turn', 'ai-post-scheduler'); ?>
         </label>
         <p class="description">
-            <?php esc_html_e('The model keeps the article it just wrote in context, so titles and excerpts stay consistent with the body and the article text is not re-sent with every request.', 'ai-post-scheduler'); ?>
+            <?php esc_html_e('The model keeps the article in context and generates the title, excerpt, slug, and image prompt in a single combined turn, cutting API calls in half and saving tokens. If structured metadata parsing fails, generation automatically falls back to individual conversational turns.', 'ai-post-scheduler'); ?>
         </p>
         <?php if (!$supported) : ?>
             <p class="description">
@@ -834,6 +835,7 @@ class AIPS_Settings_UI {
     /**
      * Render the combined metadata turn setting field.
      *
+     * @deprecated 3.7.25 Kept for backward compatibility; conversational generation now implies the combined metadata turn.
      * @return void
      */
     public function conversational_metadata_turn_field_callback() {

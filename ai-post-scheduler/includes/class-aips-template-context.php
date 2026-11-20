@@ -196,7 +196,7 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 		$images = array();
 		$template_id = $this->get_id();
 
-		if (!empty($this->template->post_images) && is_array($this->template->post_images)) {
+		if (isset($this->template->post_images) && is_array($this->template->post_images)) {
 			$images = $this->template->post_images;
 		} elseif ($template_id > 0) {
 			$images = (new AIPS_Post_Images_Repository())->get_content_images_for_entity('template', $template_id);
