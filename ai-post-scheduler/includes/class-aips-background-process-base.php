@@ -50,9 +50,9 @@ abstract class AIPS_Background_Process_Base implements AIPS_Background_Process_I
 	/**
 	 * Build a normalized snapshot, deriving the control flags from the status.
 	 *
-	 * Keys: key, label, description, uses_ai, status, status_label, is_active,
-	 * can_start (pass `can_start` to override, for processes started elsewhere),
-	 * can_pause, can_resume, can_cancel, processed, total, failed,
+	 * Keys: key, label, description, uses_ai, tracks_ai_calls, status, status_label,
+	 * is_active, can_start (pass `can_start` to override, for processes started elsewhere),
+	 * can_pause, can_resume, can_cancel, processed, total, failed, pending, in_flight,
 	 * percent, ai_calls_used, ai_calls_budget, message, next_run_at, started_at,
 	 * updated_at, run_id, last_status, last_finished_at.
 	 *
@@ -74,11 +74,15 @@ abstract class AIPS_Background_Process_Base implements AIPS_Background_Process_I
 		$is_active = self::is_active_status($status);
 		$is_open   = $is_active || $status === 'paused';
 
+		$in_flight = isset($data['in_flight']) ? max(0, (int) $data['in_flight']) : 0;
+		$pending   = isset($data['pending']) ? max(0, (int) $data['pending']) : ($is_open ? max(0, $total - $processed - $in_flight) : 0);
+
 		return array(
 			'key'              => $this->get_key(),
 			'label'            => $this->get_label(),
 			'description'      => $this->get_description(),
 			'uses_ai'          => $this->uses_ai(),
+			'tracks_ai_calls'  => isset($data['tracks_ai_calls']) ? (bool) $data['tracks_ai_calls'] : $this->tracks_ai_calls(),
 			'status'           => $status,
 			'status_label'     => isset($labels[$status]) ? $labels[$status] : $status,
 			'is_active'        => $is_active,
@@ -89,6 +93,8 @@ abstract class AIPS_Background_Process_Base implements AIPS_Background_Process_I
 			'processed'        => $processed,
 			'total'            => $total,
 			'failed'           => isset($data['failed']) ? max(0, (int) $data['failed']) : 0,
+			'pending'          => $pending,
+			'in_flight'        => $in_flight,
 			'percent'          => $percent,
 			'ai_calls_used'    => isset($data['ai_calls_used']) ? max(0, (int) $data['ai_calls_used']) : 0,
 			'ai_calls_budget'  => isset($data['ai_calls_budget']) ? max(0, (int) $data['ai_calls_budget']) : 0,
@@ -118,6 +124,18 @@ abstract class AIPS_Background_Process_Base implements AIPS_Background_Process_I
 	 * @return bool
 	 */
 	public function uses_ai(): bool {
+		return false;
+	}
+
+	/**
+	 * Whether this process reliably attributes its own AI calls to the run.
+	 *
+	 * Processes that use AI across separate async jobs without per-process AI call
+	 * attribution return false so the UI displays "Not tracked" instead of a misleading 0.
+	 *
+	 * @return bool
+	 */
+	public function tracks_ai_calls(): bool {
 		return false;
 	}
 }

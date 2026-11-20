@@ -74,7 +74,15 @@ class AIPS_Internal_Links_Indexing_Process extends AIPS_Embeddings_Background_Pr
 	}
 
 	protected function process_slice(int $cursor, int $limit, array $options): array {
-		$result = $this->service->process_indexing_batch($limit, $cursor);
+		$result = $this->service->process_indexing_batch(
+			$limit,
+			$cursor,
+			null,
+			'publish',
+			function (int $success_delta, int $failed_delta, int $cursor_id): void {
+				$this->checkpoint_progress($success_delta, $failed_delta, $cursor_id);
+			}
+		);
 
 		$success    = isset($result['success']) ? (int) $result['success'] : 0;
 		$failed     = isset($result['failed']) ? (int) $result['failed'] : 0;

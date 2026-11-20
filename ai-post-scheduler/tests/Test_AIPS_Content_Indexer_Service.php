@@ -20,6 +20,23 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		parent::setUp();
 		AIPS_DB_Manager::install_tables();
 
+		global $wpdb;
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_background_processes' );
+		delete_option( AIPS_Content_Indexer_Queue_Repository::STATE_OPTION );
+		delete_option( 'aips_pending_index_queue' );
+		delete_option( 'aips_pending_topic_index_queue' );
+		delete_option( 'aips_indexer_paused_until' );
+		delete_option( 'aips_indexer_pause_reason' );
+
+		$config = AIPS_Config::get_instance();
+		$config->set_option( 'aips_embeddings_enabled', true );
+		$config->set_option( 'aips_embeddings_scope', 'all' );
+		$config->set_option( 'aips_indexer_post_types', array( 'post' ) );
+		$config->set_option( 'aips_indexer_publish_execution_timing', 'immediate' );
+		update_option( 'aips_embeddings_rate_limits_enabled', false );
+
 		$this->embeddings_repo    = new AIPS_Embeddings_Repository();
 		$this->relationships_repo = new AIPS_Relationships_Repository();
 
@@ -38,6 +55,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 			$mock_ai_service,
 			new AIPS_Logger()
 		);
+		$embeddings_service->get_rate_limiter()->reset_history();
+		$embeddings_service->get_rate_limiter()->clear_cooldown();
 
 		$this->indexer_service = new AIPS_Content_Indexer_Service(
 			$this->embeddings_repo,
@@ -50,6 +69,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_background_processes' );
+		delete_option( AIPS_Content_Indexer_Queue_Repository::STATE_OPTION );
 		delete_option( 'aips_pending_index_queue' );
 		delete_option( 'aips_pending_topic_index_queue' );
 		delete_option( 'aips_indexer_paused_until' );
@@ -74,7 +95,7 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$record = $this->embeddings_repo->get_by_post_id( $post_id );
 		$this->assertNotNull( $record );
 		$this->assertEquals( 'post', $record->object_type );
-		$this->assertEquals( array( 1.0, 0.0 ), json_decode( $record->embedding, true ) );
+		$this->assertEquals( array( 1.0, 0.0 ), $this->embeddings_repo->decode_embedding( $record->embedding ) );
 	}
 
 	/**
@@ -93,6 +114,7 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$embeddings_repo->method( 'upsert' )->willReturn( false );
 
 		$embeddings_service = $this->createMock( AIPS_Embeddings_Service::class );
+		$embeddings_service->method( 'is_enabled' )->willReturn( true );
 		$embeddings_service->method( 'generate_embedding' )->willReturn( array( 1.0, 0.0 ) );
 
 		$history_container = new class {
@@ -149,6 +171,7 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$embeddings_repo->method( 'get_by_post_id' )->willReturn( null );
 
 		$embeddings_service = $this->createMock( AIPS_Embeddings_Service::class );
+		$embeddings_service->method( 'is_enabled' )->willReturn( true );
 		$embeddings_service->method( 'generate_embedding' )->willReturn(
 			new WP_Error( 'embedding_failed', 'Embedding request failed.' )
 		);
@@ -201,6 +224,7 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$embeddings_repo->method( 'upsert' )->willReturn( 1 );
 
 		$embeddings_service = $this->createMock( AIPS_Embeddings_Service::class );
+		$embeddings_service->method( 'is_enabled' )->willReturn( true );
 		$embeddings_service->method( 'generate_embedding' )->willReturn( array( 1.0, 0.0 ) );
 
 		$history_container = new class {
@@ -258,8 +282,15 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 	 * Test process_indexing_batch.
 	 */
 	public function test_process_indexing_batch() {
-		wp_insert_post( array( 'post_title' => 'Alpha 1', 'post_status' => 'publish', 'post_type' => 'post' ) );
-		wp_insert_post( array( 'post_title' => 'Beta 2', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		AIPS_Config::get_instance()->set_option( 'aips_auto_index_on_publish', false );
+
+		wp_insert_post( array( 'post_title' => 'Alpha 1', 'post_content' => 'Alpha body 1', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		wp_insert_post( array( 'post_title' => 'Beta 2', 'post_content' => 'Beta body 2', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$this->embeddings_repo->clear_all();
+		delete_option( 'aips_indexer_paused_until' );
+		delete_option( 'aips_indexer_pause_reason' );
+		delete_transient( 'aips_indexer_consecutive_errors' );
 
 		$batch_res = $this->indexer_service->process_indexing_batch( 10, 0 );
 		$this->assertIsArray( $batch_res );
@@ -354,6 +385,7 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 	 * Test get_queue_status reports pending counts and worker state.
 	 */
 	public function test_get_queue_status() {
+		delete_option( AIPS_Content_Indexer_Queue_Repository::STATE_OPTION );
 		delete_option( 'aips_pending_index_queue' );
 		delete_option( 'aips_pending_topic_index_queue' );
 		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
@@ -436,12 +468,19 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		} );
 
 		$embeddings_service = new AIPS_Embeddings_Service( $mock_ai_service, new AIPS_Logger() );
+		$embeddings_service->get_rate_limiter()->reset_history();
+		$embeddings_service->get_rate_limiter()->clear_cooldown();
+
+		global $wpdb;
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
+
 		$indexer = new AIPS_Content_Indexer_Service(
 			$this->embeddings_repo,
 			$this->relationships_repo,
 			$embeddings_service
 		);
 
+		delete_option( AIPS_Content_Indexer_Queue_Repository::STATE_OPTION );
 		update_option( 'aips_pending_index_queue', array( $post1, $post2, $post3 ) );
 
 		$result = $indexer->process_pending_indexer_queue();

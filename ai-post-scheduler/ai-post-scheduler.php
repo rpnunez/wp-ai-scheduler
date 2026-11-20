@@ -528,6 +528,11 @@ final class AI_Post_Scheduler {
             );
         });
 
+        // Register AIPS_Content_Indexer_Queue_Repository
+        $container->singleton(AIPS_Content_Indexer_Queue_Repository::class, function( $container ) {
+            return new AIPS_Content_Indexer_Queue_Repository();
+        });
+
         // Register AIPS_Content_Indexer_Service
         $container->singleton(AIPS_Content_Indexer_Service::class, function( $container ) {
             return new AIPS_Content_Indexer_Service(
@@ -537,7 +542,10 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_History_Service_Interface::class),
                 $container->make(AIPS_Logger_Interface::class),
                 $container->make(AIPS_Config::class),
-                $container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository()
+                $container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository(),
+                null,
+                null,
+                $container->make(AIPS_Content_Indexer_Queue_Repository::class)
             );
         });
 

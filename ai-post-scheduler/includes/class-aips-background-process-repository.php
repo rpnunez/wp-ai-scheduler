@@ -221,6 +221,143 @@ class AIPS_Background_Process_Repository {
 	}
 
 	/**
+	 * Increase or decrease a run's total work count (for example when new items enter
+	 * an open queue session, or when an in-flight edit is collapsed on a retryable outcome).
+	 *
+	 * Never drops `total` below `processed`.
+	 *
+	 * @param int         $id          Run ID.
+	 * @param int         $total_delta Signed delta to apply to `total`.
+	 * @param string|null $message     Optional status message.
+	 * @return bool
+	 */
+	public function add_total(int $id, int $total_delta, ?string $message = null): bool {
+		global $wpdb;
+
+		if ($total_delta === 0 && $message === null) {
+			return true;
+		}
+
+		$now  = time();
+		$sets = array('total = GREATEST(processed, CAST(total AS SIGNED) + %d)', 'updated_at = %d');
+		$args = array($total_delta, $now);
+
+		if ($message !== null) {
+			$sets[] = 'message = %s';
+			$args[] = $this->clip_message($message);
+		}
+
+		$args[] = $id;
+
+		$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"UPDATE {$this->table()} SET " . implode(', ', $sets) . " WHERE id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				...$args
+			)
+		);
+
+		return $result !== false;
+	}
+
+	/**
+	 * Update options stored on a run row.
+	 *
+	 * @param int   $id      Run ID.
+	 * @param array $options Updated options map.
+	 * @return bool
+	 */
+	public function update_options(int $id, array $options): bool {
+		global $wpdb;
+
+		$result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$this->table(),
+			array(
+				'options_json' => wp_json_encode($options),
+				'updated_at'   => time(),
+			),
+			array('id' => $id),
+			array('%s', '%d'),
+			array('%d')
+		);
+
+		return $result !== false;
+	}
+
+	/**
+	 * Acquire an atomic, token-owned database lock in wp_options.
+	 *
+	 * Uses an atomic INSERT ... ON DUPLICATE KEY UPDATE conditional expression
+	 * so concurrent processes cannot both read an expired lock and overwrite each other.
+	 *
+	 * @param string $lock_name Unique lock key (without prefix).
+	 * @param int    $ttl       Lock time-to-live in seconds.
+	 * @return string|null Lock token when acquired, or null when held by another owner.
+	 */
+	public function acquire_lock(string $lock_name, int $ttl = 30): ?string {
+		global $wpdb;
+
+		$option_name = 'aips_lock_' . sanitize_key($lock_name);
+		$now         = time();
+		$expires_at  = $now + max(1, $ttl);
+		$token       = sprintf('%010d:%s', $expires_at, wp_generate_password(16, false, false));
+
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"INSERT INTO {$wpdb->options} (option_name, option_value, autoload)
+				VALUES (%s, %s, 'no')
+				ON DUPLICATE KEY UPDATE option_value = IF(
+					CAST(SUBSTRING_INDEX(option_value, ':', 1) AS UNSIGNED) < %d,
+					VALUES(option_value),
+					option_value
+				)",
+				$option_name,
+				$token,
+				$now
+			)
+		);
+
+		$stored = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+				$option_name
+			)
+		);
+
+		return ($stored === $token) ? $token : null;
+	}
+
+	/**
+	 * Release a token-owned database lock if and only if the caller still owns it.
+	 *
+	 * @param string $lock_name Unique lock key (without prefix).
+	 * @param string $token     Token returned by acquire_lock().
+	 * @return bool True when released by this owner.
+	 */
+	public function release_lock(string $lock_name, string $token): bool {
+		global $wpdb;
+
+		if ($token === '') {
+			return false;
+		}
+
+		$option_name = 'aips_lock_' . sanitize_key($lock_name);
+
+		$deleted = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
+				$option_name,
+				$token
+			)
+		);
+
+		if (function_exists('wp_cache_delete')) {
+			wp_cache_delete($option_name, 'options');
+		}
+
+		return $deleted !== false && $deleted > 0;
+	}
+
+	/**
 	 * Remove a run's AI call budget (it then runs without a limit).
 	 *
 	 * @param int $id Run ID.

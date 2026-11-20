@@ -54,34 +54,50 @@ class AIPS_Background_Process_Assets {
 
 		$manager = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class);
 
+		$page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tab  = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$is_dedicated_screen = (
+			($page === 'aips-diagnostics' && ($tab === 'background-processes' || $tab === ''))
+			|| $page === 'aips-internal-links'
+			|| ($page === 'aips-automations' && $tab === 'internal-links')
+		);
+
 		wp_localize_script('aips-background-processes', 'aipsBgL10n', array(
-			'ajaxUrl'        => admin_url('admin-ajax.php'),
-			'nonce'          => wp_create_nonce(AIPS_Background_Processes_Controller::NONCE_ACTION),
-			'initial'        => $manager->get_summary(),
-			'serverTime'     => time(),
-			'statusLabels'   => AIPS_Background_Process_Base::get_status_labels(),
-			'lastRun'        => __('last run: %s', 'ai-post-scheduler'),
-			'resumesIn'      => __('Resumes in %s', 'ai-post-scheduler'),
-			'lessThanMinute' => __('under a minute', 'ai-post-scheduler'),
-			'minutes'        => __('min', 'ai-post-scheduler'),
-			'hours'          => __('h', 'ai-post-scheduler'),
-			'days'           => __('d', 'ai-post-scheduler'),
-			'noneRunning'    => __('No background processes running', 'ai-post-scheduler'),
-			'playing'        => __('Playing', 'ai-post-scheduler'),
-			'pause'          => __('Pause', 'ai-post-scheduler'),
-			'resume'         => __('Resume', 'ai-post-scheduler'),
-			'stop'           => __('Stop', 'ai-post-scheduler'),
-			'cancel'         => __('Cancel', 'ai-post-scheduler'),
-			'start'          => __('Start', 'ai-post-scheduler'),
-			'startHeading'   => __('Start background process', 'ai-post-scheduler'),
-			'budgetLabel'    => __('AI call budget (optional)', 'ai-post-scheduler'),
-			'budgetHelp'     => __('Pause this run after it has made this many AI calls. 0 means no limit.', 'ai-post-scheduler'),
-			'startFallback'  => __('Start this process? It runs in the background and can be paused or stopped at any time.', 'ai-post-scheduler'),
-			'stopHeading'    => __('Stop process', 'ai-post-scheduler'),
-			'confirmStop'    => __('Stop this process? Work already done is kept, but it will not continue unless you start it again.', 'ai-post-scheduler'),
-			'confirmStopAgain' => __('Click Stop again within 5 seconds to stop this process.', 'ai-post-scheduler'),
-			'startElsewhere'   => __('Open Diagnostics > Background Processes to start this process.', 'ai-post-scheduler'),
-			'requestFailed'  => __('Request failed. Please try again.', 'ai-post-scheduler'),
+			'ajaxUrl'                => admin_url('admin-ajax.php'),
+			'nonce'                  => wp_create_nonce(AIPS_Background_Processes_Controller::NONCE_ACTION),
+			'initial'                => $manager->get_summary(),
+			'serverTime'             => time(),
+			'isDedicatedScreen'      => $is_dedicated_screen,
+			'statusLabels'           => AIPS_Background_Process_Base::get_status_labels(),
+			'lastRun'                => __('last run: %s', 'ai-post-scheduler'),
+			'resumesIn'              => __('Resumes in %s', 'ai-post-scheduler'),
+			'lessThanMinute'         => __('under a minute', 'ai-post-scheduler'),
+			'minutes'                => __('min', 'ai-post-scheduler'),
+			'hours'                  => __('h', 'ai-post-scheduler'),
+			'days'                   => __('d', 'ai-post-scheduler'),
+			'noneRunning'            => __('No background processes running', 'ai-post-scheduler'),
+			'playing'                => __('Playing', 'ai-post-scheduler'),
+			'pause'                  => __('Pause', 'ai-post-scheduler'),
+			'resume'                 => __('Resume', 'ai-post-scheduler'),
+			'stop'                   => __('Stop', 'ai-post-scheduler'),
+			'cancel'                 => __('Cancel', 'ai-post-scheduler'),
+			'start'                  => __('Start', 'ai-post-scheduler'),
+			'startHeading'           => __('Start background process', 'ai-post-scheduler'),
+			'budgetLabel'            => __('AI call budget (optional)', 'ai-post-scheduler'),
+			'budgetHelp'             => __('Pause this run after it has made this many AI calls. 0 means no limit.', 'ai-post-scheduler'),
+			'startFallback'          => __('Start this process? It runs in the background and can be paused or stopped at any time.', 'ai-post-scheduler'),
+			'stopHeading'            => __('Stop process', 'ai-post-scheduler'),
+			'confirmStop'            => __('Stop this process? Work already done is kept, but it will not continue unless you start it again.', 'ai-post-scheduler'),
+			'confirmStopAgain'       => __('Click Stop again within 5 seconds to stop this process.', 'ai-post-scheduler'),
+			'startElsewhere'         => __('Open Diagnostics > Background Processes to start this process.', 'ai-post-scheduler'),
+			'requestFailed'          => __('Request failed. Please try again.', 'ai-post-scheduler'),
+			'notTracked'             => __('Not tracked', 'ai-post-scheduler'),
+			'liveUpdatesInterrupted' => __('Live updates interrupted', 'ai-post-scheduler'),
+			'heartbeatUnavailable'   => __('WordPress Heartbeat is unavailable on this page. Live progress will not update automatically.', 'ai-post-scheduler'),
+			'refreshNow'             => __('Refresh', 'ai-post-scheduler'),
+			'refreshing'             => __('Refreshing…', 'ai-post-scheduler'),
+			/* translators: %s: background process label. */
+			'progressAriaLabel'      => __('%s progress', 'ai-post-scheduler'),
 		));
 	}
 }

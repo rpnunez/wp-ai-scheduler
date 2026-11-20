@@ -243,4 +243,76 @@ class Test_AIPS_Background_Process_Review_Fixes extends WP_UnitTestCase {
 		$this->assertCount( 1, $pairs );
 		$this->assertEquals( 0.93, (float) $pairs[0]->similarity );
 	}
+
+	public function test_intra_slice_checkpoints_persist_immediately_and_reconcile_without_double_counting() {
+		$runs    = $this->runs;
+		$seen_in = null;
+
+		$process = new class( $runs, $seen_in ) extends AIPS_Managed_Background_Process {
+			public $seen_mid_slice = null;
+			private $simulated_ai  = 0;
+
+			public function __construct( $repository, &$seen ) {
+				parent::__construct( $repository );
+				$this->seen_mid_slice = &$seen;
+			}
+
+			public function get_key(): string {
+				return 'test_checkpoint';
+			}
+
+			public function get_label(): string {
+				return 'Test checkpoint process';
+			}
+
+			public function get_description(): string {
+				return 'Tests intra-slice checkpointing.';
+			}
+
+			protected function count_remaining(): int {
+				return 3;
+			}
+
+			protected function count_ai_calls(): int {
+				return $this->simulated_ai;
+			}
+
+			protected function process_slice( int $cursor, int $limit, array $options ): array {
+				$this->simulated_ai += 1;
+				$this->checkpoint_progress( 1, 0, $cursor + 1 );
+
+				$this->simulated_ai += 1;
+				$this->checkpoint_progress( 0, 1, $cursor + 2 );
+
+				// Observe database state mid-slice before the slice returns.
+				$this->seen_mid_slice = $this->repository->get_open( $this->get_key() );
+
+				// Final item resolved without an explicit checkpoint to verify end-of-slice reconciliation.
+				$this->simulated_ai += 1;
+
+				return array(
+					'processed' => 2,
+					'failed'    => 1,
+					'cursor'    => $cursor + 3,
+					'done'      => true,
+				);
+			}
+		};
+
+		$process->start();
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( 'test_checkpoint' ) );
+		$process->tick();
+
+		$this->assertNotNull( $seen_in, 'Run row must be observable mid-slice.' );
+		$this->assertSame( 2, $seen_in->processed, 'Mid-slice checkpoint must persist 1 success + 1 failure = 2 resolved.' );
+		$this->assertSame( 1, $seen_in->failed );
+		$this->assertSame( 2, $seen_in->ai_calls_used );
+
+		$final = $this->runs->get_latest( 'test_checkpoint' );
+		$this->assertSame( 'completed', $final->status );
+		$this->assertSame( 3, $final->processed, 'Final reconciliation must equal 3 total resolved, not double-counted.' );
+		$this->assertSame( 1, $final->failed );
+		$this->assertSame( 3, $final->ai_calls_used );
+		$this->assertSame( 3, $final->cursor_id );
+	}
 }

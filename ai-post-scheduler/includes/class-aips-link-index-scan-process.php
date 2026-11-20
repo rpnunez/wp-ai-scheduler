@@ -66,17 +66,22 @@ class AIPS_Link_Index_Scan_Process extends AIPS_Background_Process_Base {
 		// A finished scan is history, not an open run: report idle plus the last result.
 		if (in_array($status, array('completed', 'failed', 'cancelled'), true)) {
 			return $this->make_snapshot(array(
-				'status'      => self::STATUS_IDLE,
-				'last_status' => $status,
-				'processed'   => $scan['processed'],
-				'total'       => $scan['total'],
+				'status'           => self::STATUS_IDLE,
+				'last_status'      => $status,
+				'last_finished_at' => isset($scan['updated_at']) ? (int) $scan['updated_at'] : 0,
+				'processed'        => $scan['processed'],
+				'total'            => $scan['total'],
+				'started_at'       => isset($scan['started_at']) ? (int) $scan['started_at'] : 0,
+				'updated_at'       => isset($scan['updated_at']) ? (int) $scan['updated_at'] : 0,
 			));
 		}
 
 		return $this->make_snapshot(array(
-			'status'    => $status,
-			'processed' => $scan['processed'],
-			'total'     => $scan['total'],
+			'status'     => $status,
+			'processed'  => $scan['processed'],
+			'total'      => $scan['total'],
+			'started_at' => isset($scan['started_at']) ? (int) $scan['started_at'] : 0,
+			'updated_at' => isset($scan['updated_at']) ? (int) $scan['updated_at'] : 0,
 		));
 	}
 
