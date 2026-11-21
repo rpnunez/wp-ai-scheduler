@@ -534,6 +534,12 @@ class AIPS_Admin_Assets {
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
             'fieldRequired'            => __('%s is required.', 'ai-post-scheduler'),
+            // Processing state strings
+            'processing'               => __('Processing\u2026', 'ai-post-scheduler'),
+            'publishing'               => __('Publishing\u2026', 'ai-post-scheduler'),
+            'deleting'                 => __('Deleting\u2026', 'ai-post-scheduler'),
+            'regenerating'             => __('Regenerating\u2026', 'ai-post-scheduler'),
+            'done'                     => __('Done!', 'ai-post-scheduler'),
             // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
@@ -635,6 +641,12 @@ class AIPS_Admin_Assets {
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
             'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
             'fieldRequired'            => __('%s is required.', 'ai-post-scheduler'),
+            // Processing state strings
+            'processing'               => __('Processing\u2026', 'ai-post-scheduler'),
+            'publishing'               => __('Publishing\u2026', 'ai-post-scheduler'),
+            'deleting'                 => __('Deleting\u2026', 'ai-post-scheduler'),
+            'regenerating'             => __('Regenerating\u2026', 'ai-post-scheduler'),
+            'done'                     => __('Done!', 'ai-post-scheduler'),
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
             'takingLonger'             => __('Taking a little bit longer than expected\u2026', 'ai-post-scheduler'),
@@ -981,6 +993,10 @@ class AIPS_Admin_Assets {
             'logDetails' => __('Details', 'ai-post-scheduler'),
             // Action strings
             'processing' => __('Processing...', 'ai-post-scheduler'),
+            'publishing' => __('Publishing...', 'ai-post-scheduler'),
+            'deleting' => __('Deleting...', 'ai-post-scheduler'),
+            'generating' => __('Generating...', 'ai-post-scheduler'),
+            'done' => __('Done!', 'ai-post-scheduler'),
             'approveWithFeedback' => __('Approve with Feedback', 'ai-post-scheduler'),
             'rejectWithFeedback' => __('Reject with Feedback', 'ai-post-scheduler'),
             'approveTopicsWithFeedbackTitle' => __('Approve %d Topics with Feedback', 'ai-post-scheduler'),
@@ -1549,6 +1565,9 @@ class AIPS_Admin_Assets {
                 'regenerateError' => __('Failed to regenerate post.', 'ai-post-scheduler'),
                 'loadingError' => __('Failed to load draft posts.', 'ai-post-scheduler'),
                 'loading' => __('Loading...', 'ai-post-scheduler'),
+                'processing' => __('Processing...', 'ai-post-scheduler'),
+                'publishing' => __('Publishing...', 'ai-post-scheduler'),
+                'done' => __('Done!', 'ai-post-scheduler'),
                 'publish' => __('Publish', 'ai-post-scheduler'),
                 'deleting' => __('Deleting...', 'ai-post-scheduler'),
                 'delete' => __('Delete', 'ai-post-scheduler'),
@@ -1662,7 +1681,10 @@ class AIPS_Admin_Assets {
                 'deletedSuccess'       => __('Items deleted successfully.', 'ai-post-scheduler'),
                 'errorDeleting'        => __('Error deleting items.', 'ai-post-scheduler'),
                 'deleting'             => __('Deleting…', 'ai-post-scheduler'),
+                'clearing'             => __('Clearing…', 'ai-post-scheduler'),
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
+                'processing'           => __('Processing…', 'ai-post-scheduler'),
+                'done'                 => __('Done!', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
                 'heartbeatUnavailable' => __('Heartbeat API unavailable.', 'ai-post-scheduler'),
                 'processingGroup'      => __('Processing', 'ai-post-scheduler'),

@@ -12,6 +12,16 @@
 - **Slug Prompt Context Cap:** Stateless slug prompts (`AIPS_Prompt_Builder_Post_Slug`) now condense the article to 3,000 characters by default (`AIPS_Prompt_Builder_Post_Slug::CONTEXT_MAX_CHARS`) instead of inheriting the 12,000 character `AIPS_Content_Digest` default, matching the title prompt's cap. A slug is three to six keywords and the title is already in the prompt, so the extra article text only inflated the request. The `aips_slug_context_max_chars` filter still overrides the cap; sites that filtered it are unaffected, and sites that relied on the old default now send at most 3,000 characters of context. Conversational runs are unchanged (issue #2405).
 
 ### Added
+- **Interactive "Processing" UI State Infrastructure:**
+  - Introduced `.aips-processing-overlay` and `.aips-row-processing-indicator` CSS in `admin.css` and `admin-post-review.css` featuring frosted-glass backdrop, Dashicon spinner animations (`.aips-spin`), status labels, and green checkmark `.is-success-flash` completion transitions.
+  - Added reusable `AIPS.Utilities.setItemProcessing($elements, isProcessing, options)` and `AIPS.Utilities.finishItemProcessing($elements, isSuccess, options, onComplete)` helpers in `utilities.js` providing multi-tiered visual state handling for cards, panels, and table rows (`tr`).
+  - Integrated the processing state into `admin-post-review.js` for Pending Review bulk publish, bulk delete, bulk regenerate, and single item actions in both Card and List views.
+  - Integrated the processing state into `authors.js` for Author Topics bulk actions, queue generation, and single topic publish/generate.
+  - Integrated the processing state into `admin-history.js` for bulk delete, clear processing runs, and single retry generation.
+  - Registered localized processing strings across `aipsUtilitiesL10n`, `aipsPostReviewL10n`, `aipsAuthorsL10n`, and `aipsHistoryL10n` in `class-aips-admin-assets.php`.
+- **Deterministic Developer Data Seeder Tooling (`seed-dev-data`):**
+  - Added `scripts/seed-dev-data.sh` and `ai-post-scheduler/bin/dev-seeder-runner.php` allowing developers to seed deterministic dummy data (Templates, Pending Review posts, Published posts, Authors, Topics) for UI testing without making external AI API calls.
+  - Added realistic JSON fixtures in `ai-post-scheduler/bin/fixtures/` and integrated the `make seed-dev-data` target with `--clean`, `--preset`, `--count`, and `--include` options.
 - **Conversational & Combined Metadata Modes Optimization & Conversation Persistence:**
   - Registered `AIPS_History_Type::AI_CONVERSATION` and mapped `conversation_transcript` in `AIPS_History_Container` to store serialized multi-turn transcripts in `wp_aips_history_log`.
   - Persisted the generation transcript in `AIPS_Generator::generate_post_from_context()` before closing the conversational session.

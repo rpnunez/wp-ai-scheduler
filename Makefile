@@ -7,7 +7,7 @@
 	test test-verbose test-coverage test-session test-stop test-ci composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
-	urls sync-wp-core sql-batch sql-batch-unpack
+	urls sync-wp-core sql-batch sql-batch-unpack seed-dev-data
 
 # Git Bash (MSYS) must not rewrite POSIX-looking arguments such as a --filter regex starting with "/"
 test test-verbose test-coverage test-session: export MSYS_NO_PATHCONV := 1
@@ -222,6 +222,9 @@ sql-batch: ## Run read-only SQL diagnostics on the DEV db (QUERIES=path/to/queri
 sql-batch-unpack: ## Unpack a results zip made elsewhere, e.g. prod (ZIP=path/to/results.zip)
 	@[ -n "$(ZIP)" ] || { echo "Usage: make sql-batch-unpack ZIP=path/to/sql-batch-results.zip"; exit 1; }
 	bash ./scripts/sql-batch.sh unpack "$(ZIP)"
+
+seed-dev-data: ## Seed deterministic test data without AI calls (PRESET=ui-processing CLEAN=1 COUNT=1 INCLUDE=...)
+	bash ./scripts/seed-dev-data.sh $(if $(PRESET),--preset=$(PRESET),) $(if $(CLEAN),--clean,) $(if $(COUNT),--count=$(COUNT),) $(if $(INCLUDE),--include=$(INCLUDE),)
 
 composer-install: ## Install Composer dependencies in plugin
 	@echo "$(BLUE)Installing Composer dependencies...$(NC)"

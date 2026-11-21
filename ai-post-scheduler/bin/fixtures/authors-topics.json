@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Dr. Sarah Chen",
+    "niche": "AI Infrastructure & Distributed Systems",
+    "voice_tone": "Technical, precise, and analytical",
+    "writing_style": "Engineering post-mortems with benchmarks and architectural diagrams",
+    "topics": [
+      { "topic": "Designing Fault-Tolerant Event Buses for AI Agent Fleets", "status": "approved" },
+      { "topic": "Memory Leaks in Long-Running Python LLM Worker Slices", "status": "pending" },
+      { "topic": "Benchmarking NVMe vs. RAM Disks for Dynamic Embedding Lookup", "status": "pending" }
+    ]
+  },
+  {
+    "name": "Marcus Vance",
+    "niche": "Applied Generative AI & Developer Tooling",
+    "voice_tone": "Hands-on, pragmatic, and accessible",
+    "writing_style": "Tutorials with working code examples, pitfalls, and practical recipes",
+    "topics": [
+      { "topic": "Implementing Streaming Markdown Parsers in Gutenberg", "status": "approved" },
+      { "topic": "Automating WordPress Taxonomy Generation with Small Language Models", "status": "pending" },
+      { "topic": "Hardening Webhook Endpoints against Prompt Manipulation", "status": "rejected" }
+    ]
+  }
+]

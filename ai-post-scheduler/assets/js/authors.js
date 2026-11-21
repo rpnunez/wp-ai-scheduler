@@ -1788,6 +1788,7 @@
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('topic-id') || $(e.currentTarget).data('id');
 			const $btn = $(e.currentTarget);
+			const $row = $btn.closest('tr');
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGeneratePost, 'Notice', [
 				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
@@ -1795,6 +1796,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-primary',
 					action: () => {
+						AIPS.Utilities.setItemProcessing($row, true, { label: aipsAuthorsL10n.generating || 'Generating...' });
 						var req = $.ajax({
 							url: ajaxurl,
 							type: 'POST',
@@ -1806,9 +1808,12 @@
 							success: (response) => {
 								if (response.success) {
 									AIPS.Utilities.showToast(aipsAuthorsL10n.postGenerated, 'success');
-									const activeTab = $('.aips-tab-link.active').data('tab');
-									this.loadTopics(activeTab);
+									AIPS.Utilities.finishItemProcessing($row, true, null, () => {
+										const activeTab = $('.aips-tab-link.active').data('tab');
+										this.loadTopics(activeTab);
+									});
 								} else {
+									AIPS.Utilities.setItemProcessing($row, false);
 									AIPS.Utilities.showToast(
 										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost,
 										'error'
@@ -1816,6 +1821,7 @@
 								}
 							},
 							error: () => {
+								AIPS.Utilities.setItemProcessing($row, false);
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
 							}
 						});
@@ -2141,6 +2147,8 @@
 					label: 'Yes, publish',
 					className: 'aips-btn aips-btn-primary',
 					action: () => {
+						const $row = $button.closest('tr, .aips-card');
+						AIPS.Utilities.setItemProcessing($row, true, { label: aipsAuthorsL10n.publishing || 'Publishing...' });
 						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.publishing || 'Publishing...');
 
 						$.ajax({
@@ -2154,12 +2162,15 @@
 							success: (response) => {
 								if (response.success) {
 									AIPS.Utilities.showToast(aipsAuthorsL10n.postPublished || 'Post published successfully.', 'success');
-									if (this.currentTopicPostsTopicId) {
-										this.loadTopicPosts(this.currentTopicPostsTopicId);
-									}
+									AIPS.Utilities.finishItemProcessing($row, true, null, () => {
+										if (this.currentTopicPostsTopicId) {
+											this.loadTopicPosts(this.currentTopicPostsTopicId);
+										}
+									});
 									return;
 								}
 
+								AIPS.Utilities.setItemProcessing($row, false);
 								AIPS.Utilities.resetButton($button);
 								AIPS.Utilities.showToast(
 									response.data && response.data.message ? response.data.message : (aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.'),
@@ -2167,6 +2178,7 @@
 								);
 							},
 							error: () => {
+								AIPS.Utilities.setItemProcessing($row, false);
 								AIPS.Utilities.resetButton($button);
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.', 'error');
 							}
@@ -2330,6 +2342,13 @@
 						}
 
 						// Execute all other bulk actions normally (no progress bar needed)
+						var $rows = $('.aips-topics-table tbody tr, .aips-feedback-table tbody tr').filter(function () {
+							var val = $(this).find('input[type="checkbox"]').val();
+							return ids.indexOf(val) !== -1;
+						});
+						var actionLabel = action === 'delete' ? (aipsAuthorsL10n.deleting || 'Deleting...') : (aipsAuthorsL10n.processing || 'Processing...');
+						AIPS.Utilities.setItemProcessing($rows, true, { label: actionLabel });
+
 						$.ajax({
 							url: ajaxurl,
 							type: 'POST',
@@ -2337,15 +2356,18 @@
 							success: (response) => {
 								if (response.success) {
 									AIPS.Utilities.showToast(response.data.message, 'success');
-									// Reload content for current tab
-									if (activeTab === 'feedback') {
-										this.loadFeedback();
-									} else if ($('#aips-topics-content').length) {
-										this.loadTopics(activeTab);
-									} else {
-										window.location.reload();
-									}
+									AIPS.Utilities.finishItemProcessing($rows, true, null, () => {
+										// Reload content for current tab
+										if (activeTab === 'feedback') {
+											this.loadFeedback();
+										} else if ($('#aips-topics-content').length) {
+											this.loadTopics(activeTab);
+										} else {
+											window.location.reload();
+										}
+									});
 								} else {
+									AIPS.Utilities.setItemProcessing($rows, false);
 									AIPS.Utilities.showToast(
 										response.data && response.data.message
 											? response.data.message
@@ -2355,6 +2377,7 @@
 								}
 							},
 							error: () => {
+								AIPS.Utilities.setItemProcessing($rows, false);
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 							},
 							complete: () => {
@@ -3073,6 +3096,12 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-primary',
 					action: () => {
+						const $rows = $('#aips-queue-table-body tr').filter(function () {
+							var val = $(this).find('.aips-select-topic').val();
+							return topicIds.indexOf(val) !== -1 || topicIds.indexOf(String(val)) !== -1;
+						});
+						AIPS.Utilities.setItemProcessing($rows, true, { label: aipsAuthorsL10n.generating || 'Generating...' });
+
 						var req = $.ajax({
 							url: ajaxurl,
 							type: 'POST',
@@ -3087,9 +3116,11 @@
 										response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.',
 										'success'
 									);
-									// Reload the queue
-									this.loadQueueTopics();
+									AIPS.Utilities.finishItemProcessing($rows, true, null, () => {
+										this.loadQueueTopics();
+									});
 								} else {
+									AIPS.Utilities.setItemProcessing($rows, false);
 									AIPS.Utilities.showToast(
 										response.data && response.data.message
 											? response.data.message
@@ -3099,6 +3130,7 @@
 								}
 							},
 							error: () => {
+								AIPS.Utilities.setItemProcessing($rows, false);
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 							}
 						});

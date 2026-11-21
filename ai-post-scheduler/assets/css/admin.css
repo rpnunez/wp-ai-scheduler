@@ -1608,6 +1608,11 @@
     color: var(--aips-gray-700);
 }
 
+.aips-badge-processing {
+    background: rgba(34, 113, 177, 0.12);
+    color: #2271b1;
+}
+
 .aips-badge .dashicons {
     font-size: 14px;
     width: 14px;
@@ -9403,3 +9408,105 @@ tr.aips-row-details > td {
 	justify-content: space-between;
 	align-items: center;
 }
+
+/* ==========================================================================
+   Item Processing State (Cards, Tables, Panels)
+   ========================================================================== */
+.aips-processing-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(2px);
+	-webkit-backdrop-filter: blur(2px);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	z-index: 25;
+	border-radius: inherit;
+	pointer-events: all;
+	transition: opacity 0.2s ease, background 0.3s ease;
+}
+
+.aips-processing-overlay .aips-processing-spinner {
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+	color: var(--aips-primary, #2271b1);
+}
+
+.aips-processing-overlay .aips-processing-label {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--aips-gray-800, #1d2327);
+}
+
+/* Success flash transition */
+.aips-processing-overlay.is-success-flash {
+	background: rgba(237, 247, 237, 0.92);
+}
+
+.aips-processing-overlay.is-success-flash .aips-processing-spinner {
+	color: #46b450;
+	animation: none;
+}
+
+.aips-processing-overlay.is-success-flash .aips-processing-label {
+	color: #2e7d32;
+}
+
+/* Card processing state */
+.is-processing:not(tr) {
+	position: relative;
+}
+
+.aips-post-card.is-processing,
+.aips-card.is-processing {
+	pointer-events: none;
+	user-select: none;
+}
+
+/* Table row processing state */
+tr.is-processing {
+	background-color: rgba(240, 246, 252, 0.7) !important;
+	opacity: 0.65;
+	pointer-events: none;
+	user-select: none;
+	transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+tr.is-processing.is-success-flash {
+	background-color: rgba(237, 247, 237, 0.85) !important;
+	opacity: 0.9;
+}
+
+.aips-row-processing-indicator {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-left: 8px;
+	padding: 2px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.4;
+	background: rgba(34, 113, 177, 0.1);
+	color: #2271b1;
+	border-radius: 4px;
+	vertical-align: middle;
+}
+
+.aips-row-processing-indicator .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.aips-row-processing-indicator.is-success-flash {
+	background: rgba(70, 180, 80, 0.15);
+	color: #2e7d32;
+}
+

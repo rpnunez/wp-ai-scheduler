@@ -201,13 +201,14 @@ class AIPS_Admin_UI_Primitives {
 		$class = isset($args['class']) ? ' ' . $args['class'] : '';
 
 		$type_class_map = array(
-			'success'   => 'aips-badge-success',
-			'warning'   => 'aips-badge-warning',
-			'error'     => 'aips-badge-danger',
-			'danger'    => 'aips-badge-danger',
-			'info'      => 'aips-badge-info',
-			'secondary' => 'aips-badge-secondary',
-			'neutral'   => 'aips-badge-neutral',
+			'success'    => 'aips-badge-success',
+			'warning'    => 'aips-badge-warning',
+			'error'      => 'aips-badge-danger',
+			'danger'     => 'aips-badge-danger',
+			'info'       => 'aips-badge-info',
+			'processing' => 'aips-badge-processing',
+			'secondary'  => 'aips-badge-secondary',
+			'neutral'    => 'aips-badge-neutral',
 		);
 
 		$badge_class = isset($type_class_map[$type]) ? $type_class_map[$type] : 'aips-badge-neutral';

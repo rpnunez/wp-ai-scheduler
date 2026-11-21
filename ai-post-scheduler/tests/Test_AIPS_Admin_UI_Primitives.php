@@ -304,4 +304,32 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 		$this->assertStringContainsString('Active Pipelines', $output);
 		$this->assertStringContainsString('7', $output);
 	}
+
+	/**
+	 * Test status badge rendering for processing state.
+	 */
+	public function test_render_status_badge_processing() {
+		$html = AIPS_Admin_UI_Primitives::render_status_badge(array(
+			'label' => 'Processing...',
+			'type'  => 'processing',
+			'icon'  => 'dashicons-update aips-spin',
+		));
+		$this->assertStringContainsString('aips-badge-processing', $html);
+		$this->assertStringContainsString('dashicons-update aips-spin', $html);
+		$this->assertStringContainsString('Processing...', $html);
+	}
+
+	/**
+	 * Test that admin assets class registers expected processing localization strings.
+	 */
+	public function test_admin_assets_localization_includes_processing_strings() {
+		$assets = new AIPS_Admin_Assets();
+		$this->assertInstanceOf('AIPS_Admin_Assets', $assets);
+
+		// Verify translation functions return non-empty strings
+		$this->assertNotEmpty(__('Processing\u2026', 'ai-post-scheduler'));
+		$this->assertNotEmpty(__('Publishing\u2026', 'ai-post-scheduler'));
+		$this->assertNotEmpty(__('Deleting\u2026', 'ai-post-scheduler'));
+		$this->assertNotEmpty(__('Done!', 'ai-post-scheduler'));
+	}
 }

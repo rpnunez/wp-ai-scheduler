@@ -1228,6 +1228,157 @@
             return this.setButtonLoading(btn, false);
         },
 
+        /**
+         * Set or reset the visual processing state on cards, table rows, or containers.
+         *
+         * For cards/panels: mounts a semi-transparent frosted overlay with a spinning icon and status label.
+         * For table rows (tr): adds .is-processing class and appends an inline status indicator in the primary column.
+         * Also disables child checkboxes, inputs, and buttons to prevent duplicate interaction.
+         *
+         * @param {jQuery|string|HTMLElement} elements - Card(s) or table row(s).
+         * @param {boolean} [isProcessing=true] - Whether to apply or remove the processing state.
+         * @param {Object} [options] - Options.
+         * @param {string} [options.label] - Status label (e.g. 'Publishing...', 'Deleting...').
+         * @return {jQuery} The affected element(s).
+         */
+        setItemProcessing: function(elements, isProcessing, options) {
+            var $elements = $(elements);
+            if (!$elements || !$elements.length) {
+                return $elements;
+            }
+
+            if (isProcessing === undefined) {
+                isProcessing = true;
+            }
+            options = options || {};
+            var l10n = window.aipsUtilitiesL10n || {};
+            var label = options.label || l10n.processing || 'Processing\u2026';
+
+            $elements.each(function() {
+                var $el = $(this);
+                if (isProcessing) {
+                    $el.addClass('is-processing');
+                    $el.find('input, button, select, a').prop('disabled', true).attr('aria-disabled', 'true');
+
+                    if ($el.is('tr')) {
+                        // Table row: inject inline indicator in first content cell if not already present
+                        var $targetCell = $el.find('.column-primary, .title, .row-title, td:nth-child(2), td:first-child').first();
+                        if ($targetCell.length && !$targetCell.find('.aips-row-processing-indicator').length) {
+                            var $indicator = $('<span class="aips-row-processing-indicator" role="status" aria-live="polite">' +
+                                '<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> ' +
+                                '<span class="aips-processing-label"></span>' +
+                            '</span>');
+                            $indicator.find('.aips-processing-label').text(label);
+                            $targetCell.append($indicator);
+                        }
+                    } else {
+                        // Card or container: mount overlay if not present
+                        var $overlay = $el.children('.aips-processing-overlay');
+                        if (!$overlay.length) {
+                            $overlay = $('<div class="aips-processing-overlay" role="status" aria-live="polite">' +
+                                '<span class="dashicons dashicons-update aips-spin aips-processing-spinner" aria-hidden="true"></span>' +
+                                '<span class="aips-processing-label"></span>' +
+                            '</div>');
+                            $el.append($overlay);
+                        }
+                        $overlay.find('.aips-processing-label').text(label);
+                    }
+                } else {
+                    $el.removeClass('is-processing is-success-flash');
+                    $el.find('input, button, select, a').prop('disabled', false).removeAttr('aria-disabled');
+                    $el.children('.aips-processing-overlay').remove();
+                    $el.find('.aips-row-processing-indicator').remove();
+                }
+            });
+
+            return $elements;
+        },
+
+        /**
+         * Finish the processing state on elements with optional success flash animation and fadeOut removal.
+         *
+         * @param {jQuery|string|HTMLElement} elements - Card(s) or table row(s).
+         * @param {boolean} isSuccess - Whether the operation succeeded.
+         * @param {Object} [options] - Options.
+         * @param {string} [options.successLabel] - Label during success flash (default: 'Done!').
+         * @param {number} [options.flashDuration] - Flash duration in ms (default: 400).
+         * @param {boolean} [options.remove=true] - Whether to fadeOut and remove the element from DOM on success.
+         * @param {Function} [onComplete] - Callback executed after completion.
+         * @return {jQuery}
+         */
+        finishItemProcessing: function(elements, isSuccess, options, onComplete) {
+            var $elements = $(elements);
+            if (!$elements || !$elements.length) {
+                if (typeof onComplete === 'function') {
+                    onComplete();
+                }
+                return $elements;
+            }
+
+            if (typeof options === 'function') {
+                onComplete = options;
+                options = {};
+            }
+            options = options || {};
+            var l10n = window.aipsUtilitiesL10n || {};
+            var successLabel = options.successLabel || l10n.done || 'Done!';
+            var flashDuration = typeof options.flashDuration === 'number' ? options.flashDuration : 400;
+            var shouldRemove = options.remove !== false;
+            var self = this;
+
+            if (isSuccess) {
+                $elements.each(function() {
+                    var $el = $(this);
+                    $el.addClass('is-success-flash');
+                    var $overlay = $el.children('.aips-processing-overlay');
+                    if ($overlay.length) {
+                        $overlay.addClass('is-success-flash');
+                        $overlay.find('.aips-processing-spinner')
+                            .removeClass('dashicons-update aips-spin')
+                            .addClass('dashicons-yes-alt');
+                        $overlay.find('.aips-processing-label').text(successLabel);
+                    }
+                    var $rowInd = $el.find('.aips-row-processing-indicator');
+                    if ($rowInd.length) {
+                        $rowInd.addClass('is-success-flash');
+                        $rowInd.find('.dashicons')
+                            .removeClass('dashicons-update aips-spin')
+                            .addClass('dashicons-yes-alt');
+                        $rowInd.find('.aips-processing-label').text(successLabel);
+                    }
+                });
+
+                if (shouldRemove) {
+                    var doneCount = 0;
+                    var total = $elements.length;
+                    setTimeout(function() {
+                        $elements.fadeOut(300, function() {
+                            $(this).remove();
+                            doneCount++;
+                            if (doneCount === total && typeof onComplete === 'function') {
+                                onComplete();
+                            }
+                        });
+                    }, flashDuration);
+                } else {
+                    setTimeout(function() {
+                        self.setItemProcessing($elements, false);
+                        if (typeof onComplete === 'function') {
+                            onComplete();
+                        }
+                    }, flashDuration);
+                }
+            } else {
+                // Revert processing state on failure
+                this.setItemProcessing($elements, false);
+                if (typeof onComplete === 'function') {
+                    onComplete();
+                }
+            }
+
+            return $elements;
+        },
+
         // ── String / escaping helpers ───────────────────────────────────────────
 
         /**
