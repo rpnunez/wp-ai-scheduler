@@ -3048,19 +3048,15 @@
                                 if (response.success) {
                                     AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
 
-                                    // Update the row's circuit state
-                                    var $row = $btn.closest('.aips-unified-row');
+                                    // The button may live in the row's ⋯ menu or in its details row,
+                                    // so resolve the schedule row by key rather than by DOM ancestry.
+                                    var $row = $('tr.aips-unified-row[data-row-key="' + type + ':' + id + '"]');
                                     $row.attr('data-circuit-state', 'closed');
-
-                                    // Update health indicator badge
-                                    $row.find('.column-status .aips-schedule-status-wrapper').first().html(
-                                        '<div style="display:flex;align-items:center;gap:8px;">' +
-                                        '<span class="aips-badge aips-badge-success" title="Circuit Breaker Status">' +
-                                        '<span class="dashicons dashicons-yes"></span> Healthy</span></div>'
-                                    );
-
-                                    // Remove the reset button
+                                    $row.find('.aips-reset-circuit, .aips-sched-alert, .aips-sched-alert + .screen-reader-text').remove();
                                     $btn.remove();
+
+                                    // Re-fetch the details row so Health reflects the reset.
+                                    $(document).trigger('aips:schedule-changed', [type, id]);
                                 } else {
                                     AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
                                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
@@ -3516,26 +3512,15 @@
          * @param {number} isActive 1 = active/resumed, 0 = paused.
          */
         updateUnifiedRowStatus: function($row, isActive) {
-            var $toggle  = $row.find('.aips-unified-toggle-schedule');
-            var $wrapper = $row.find('.aips-schedule-status-wrapper');
-            var $badge   = $wrapper.find('.aips-badge').last();
-            var $icon    = $badge.find('.dashicons');
+            isActive = isActive ? 1 : 0;
 
-            $toggle.prop('checked', isActive === 1);
-            $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
-            $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
-            $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
+            // The Enabled / Paused label lives inside the switch and follows :checked via CSS.
+            $row.find('.aips-unified-toggle-schedule').prop('checked', isActive === 1);
+            $row.toggleClass('is-paused', isActive === 0)
+                .attr('data-is-active', String(isActive))
+                .data('is-active', isActive);
 
-            if (isActive) {
-                $badge.addClass('aips-badge-success');
-                $icon.addClass('dashicons-yes-alt');
-                $icon.after(' Active');
-            } else {
-                $badge.addClass('aips-badge-neutral');
-                $icon.addClass('dashicons-minus');
-                $icon.after(' Paused');
-            }
-            $row.data('is-active', isActive);
+            $(document).trigger('aips:schedule-changed', [$row.data('type'), $row.data('id')]);
         },
 
         /**
@@ -3591,6 +3576,8 @@
                             }
                         }
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+                        // New output exists now; refresh the row's details if they were loaded.
+                        $(document).trigger('aips:schedule-changed', [type, id]);
                     } else {
                         AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
                     }
@@ -5483,7 +5470,10 @@
                 $btn.attr('title', (window.aipsAdminL10n && aipsAdminL10n.collapseDetails) || 'Collapse details');
                 $icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
                 $detailsRow.prop('hidden', false).addClass('is-expanded');
+                // Lets page modules lazily fill the details row (e.g. AIPS.SchedulesTable).
+                $detailsRow.trigger('aips:row-expanded');
             }
+            $btn.closest('tr').toggleClass('is-expanded', !isExpanded);
         },
 
         /**
@@ -5560,6 +5550,10 @@
                         var $select = $(this);
                         var name = $select.attr('name');
                         var val = $select.val();
+                        // Bulk-action selects are one-off commands, not filters; never persist them.
+                        if (name === 'action' || name === 'action2') {
+                            return;
+                        }
                         if (name && val && val !== '-1' && val !== 'all') {
                             submittedFilters[name] = val;
                         }

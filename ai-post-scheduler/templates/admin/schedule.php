@@ -21,16 +21,92 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 			</div>
 		</div>
 
-		<!-- Schedules List Table Panel -->
-		<div class="aips-content-panel">
-			<div class="aips-panel-body no-padding">
-				<?php
-				$schedules_list_table = new AIPS_Schedules_List_Table();
-				$schedules_list_table->prepare_items();
-				$schedules_list_table->display_page();
-				?>
-			</div>
-		</div>
+		<!-- Schedules List Table (renders its own card; no outer panel) -->
+		<?php
+		$schedules_list_table = new AIPS_Schedules_List_Table();
+		$schedules_list_table->prepare_items();
+		$schedules_list_table->display_page();
+		?>
+
+<!-- ============================================================ -->
+<!-- Schedule details row templates (AIPS.SchedulesTable)         -->
+<!-- ============================================================ -->
+<script type="text/html" id="aips-tmpl-sched-details">
+	<div class="aips-sched-details-grid">
+		<section class="aips-sched-panel aips-sched-panel-activity">
+			<h4 class="aips-sched-panel-title"><?php esc_html_e('Activity', 'ai-post-scheduler'); ?></h4>
+			<div class="aips-sched-stats">{{stats}}</div>
+			{{stages}}
+		</section>
+		<section class="aips-sched-panel aips-sched-panel-health">
+			<h4 class="aips-sched-panel-title"><?php esc_html_e('Health', 'ai-post-scheduler'); ?></h4>
+			{{health}}
+		</section>
+		<section class="aips-sched-panel aips-sched-panel-recent">
+			<h4 class="aips-sched-panel-title">{{recent_title}}</h4>
+			{{recent}}
+		</section>
+	</div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-stat">
+	<div class="aips-sched-stat"><span class="aips-sched-stat-value">{{value}}</span><span class="aips-sched-stat-label">{{label}}</span></div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-stages">
+	<table class="aips-sched-stages">
+		<thead><tr><th scope="col"><?php esc_html_e('Stage', 'ai-post-scheduler'); ?></th><th scope="col"><?php esc_html_e('Runs', 'ai-post-scheduler'); ?></th><th scope="col"><?php esc_html_e('Output', 'ai-post-scheduler'); ?></th><th scope="col"><?php esc_html_e('Last run', 'ai-post-scheduler'); ?></th></tr></thead>
+		<tbody>{{rows}}</tbody>
+	</table>
+</script>
+<script type="text/html" id="aips-tmpl-sched-stage-row">
+	<tr class="{{row_class}}"><td>{{label}} {{paused}}</td><td>{{frequency}}</td><td>{{output}}</td><td>{{last_run}}</td></tr>
+</script>
+<script type="text/html" id="aips-tmpl-sched-stage-paused">
+	<span class="aips-sched-chip aips-sched-chip--paused"><?php esc_html_e('Paused', 'ai-post-scheduler'); ?></span>
+</script>
+<script type="text/html" id="aips-tmpl-sched-health">
+	<div class="aips-sched-health aips-sched-health--{{state}}">
+		<span class="aips-sched-health-badge"><span class="dashicons {{icon}}" aria-hidden="true"></span>{{label}}</span>
+		<p class="aips-sched-health-message">{{message}}</p>
+	</div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-health-error">
+	<div class="aips-sched-last-error">
+		<div class="aips-sched-last-error-head"><?php esc_html_e('Last error', 'ai-post-scheduler'); ?> <time datetime="{{time_iso}}">{{time_display}}</time></div>
+		<p>{{message}}</p>
+	</div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-health-action">
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary {{class_name}}" data-id="{{id}}" data-type="{{type}}"><span class="dashicons {{icon}}" aria-hidden="true"></span> {{label}}</button>
+</script>
+<script type="text/html" id="aips-tmpl-sched-recent-list">
+	<ol class="aips-sched-recent">{{items}}</ol>
+</script>
+<script type="text/html" id="aips-tmpl-sched-recent-item">
+	<li class="aips-sched-recent-item">
+		<span class="dashicons {{icon}}" aria-hidden="true" title="{{kind_label}}"></span>
+		<a class="aips-sched-recent-title" href="{{url}}">{{title}}</a>
+		<span class="aips-sched-chip aips-sched-chip--{{status}}">{{status_label}}</span>
+		<time class="aips-sched-recent-time" datetime="{{time_iso}}" title="{{time_full}}">{{time_display}}</time>
+	</li>
+</script>
+<script type="text/html" id="aips-tmpl-sched-recent-item-nolink">
+	<li class="aips-sched-recent-item">
+		<span class="dashicons {{icon}}" aria-hidden="true" title="{{kind_label}}"></span>
+		<span class="aips-sched-recent-title">{{title}}</span>
+		<span class="aips-sched-chip aips-sched-chip--{{status}}">{{status_label}}</span>
+		<time class="aips-sched-recent-time" datetime="{{time_iso}}" title="{{time_full}}">{{time_display}}</time>
+	</li>
+</script>
+<script type="text/html" id="aips-tmpl-sched-recent-empty">
+	<p class="aips-sched-empty"><?php esc_html_e('Nothing generated yet. Output appears here after the first run.', 'ai-post-scheduler'); ?></p>
+</script>
+<script type="text/html" id="aips-tmpl-sched-details-error">
+	<div class="aips-sched-details-error">
+		<span class="dashicons dashicons-warning" aria-hidden="true"></span>
+		<span>{{message}}</span>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-sched-details-retry"><?php esc_html_e('Retry', 'ai-post-scheduler'); ?></button>
+	</div>
+</script>
 
 <!-- ============================================================ -->
 <!-- Add / Edit Template Schedule Modal                           -->
