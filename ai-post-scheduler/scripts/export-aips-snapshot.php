@@ -61,22 +61,13 @@ class AIPS_Snapshot_Exporter {
 	);
 
 	/**
-	 * Config tables exported in full (table suffix => columns to drop).
+	 * Columns dropped from a config table's export (table suffix => columns).
+	 * These are large runtime-state or rendered-HTML columns, not configuration.
+	 * The catalog of which tables are exported lives in AIPS_Config_Reader.
 	 */
-	private const CONFIG_TABLES = array(
-		'aips_campaigns'             => array(),
-		'aips_templates'             => array(),
-		'aips_schedule'              => array('run_state', 'batch_progress'),
-		'aips_authors'               => array(),
-		'aips_voices'                => array(),
-		'aips_article_structures'    => array(),
-		'aips_prompt_sections'       => array(),
-		'aips_post_slices'           => array(),
-		'aips_sources'               => array(),
-		'aips_source_group_terms'    => array(),
-		'aips_post_images'           => array(),
-		'aips_affiliate_links'       => array('cta_html'),
-		'aips_taxonomy'              => array(),
+	private const EXPORT_DROP_COLUMNS = array(
+		'aips_schedule'        => array('run_state', 'batch_progress'),
+		'aips_affiliate_links' => array('cta_html'),
 	);
 
 	/**
@@ -88,6 +79,9 @@ class AIPS_Snapshot_Exporter {
 
 	/** @var wpdb */
 	private $wpdb;
+
+	/** @var AIPS_Config_Reader */
+	private $reader;
 
 	/** @var string */
 	private $work_dir;
@@ -107,6 +101,7 @@ class AIPS_Snapshot_Exporter {
 	public function __construct($output_dir) {
 		global $wpdb;
 		$this->wpdb = $wpdb;
+		$this->reader = new AIPS_Config_Reader($wpdb);
 		$this->output_dir = rtrim($output_dir, '/\\');
 	}
 
@@ -254,16 +249,16 @@ class AIPS_Snapshot_Exporter {
 	private function export_config_tables() {
 		$index = 10;
 
-		foreach (self::CONFIG_TABLES as $suffix => $drop_columns) {
+		foreach (AIPS_Config_Reader::CONFIG_TABLES as $suffix) {
 			$table = $this->wpdb->prefix . $suffix;
 
-			if (!$this->table_exists($table)) {
+			if (!$this->reader->table_exists($table)) {
 				$this->summary[] = sprintf('%s: table missing (skipped)', $suffix);
 				continue;
 			}
 
-			$rows = $this->wpdb->get_results("SELECT * FROM `{$table}` ORDER BY 1", ARRAY_A);
-			$rows = is_array($rows) ? $rows : array();
+			$rows = $this->reader->read_table($suffix, ARRAY_A);
+			$drop_columns = isset(self::EXPORT_DROP_COLUMNS[$suffix]) ? self::EXPORT_DROP_COLUMNS[$suffix] : array();
 
 			foreach ($rows as &$row) {
 				foreach ($drop_columns as $column) {
@@ -619,7 +614,7 @@ class AIPS_Snapshot_Exporter {
 	 * @return bool
 	 */
 	private function table_exists($table) {
-		return $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->wpdb->esc_like($table))) === $table;
+		return $this->reader->table_exists($table);
 	}
 
 	/**
