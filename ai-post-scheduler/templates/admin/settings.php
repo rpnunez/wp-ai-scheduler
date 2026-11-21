@@ -392,6 +392,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 									</table>
 								</div>
 
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Post Generation Limits & Ceilings', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_resilience_generation_limits_section'); ?>
+									</table>
+								</div>
+
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
