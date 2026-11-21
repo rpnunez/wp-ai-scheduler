@@ -19,6 +19,9 @@
   - Integrated the processing state into `authors.js` for Author Topics bulk actions, queue generation, and single topic publish/generate.
   - Integrated the processing state into `admin-history.js` for bulk delete, clear processing runs, and single retry generation.
   - Registered localized processing strings across `aipsUtilitiesL10n`, `aipsPostReviewL10n`, `aipsAuthorsL10n`, and `aipsHistoryL10n` in `class-aips-admin-assets.php`.
+- **Deterministic Developer Data Seeder Tooling (`seed-dev-data`):**
+  - Added `scripts/seed-dev-data.sh` and `ai-post-scheduler/bin/dev-seeder-runner.php` allowing developers to seed deterministic dummy data (Templates, Pending Review posts, Published posts, Authors, Topics) for UI testing without making external AI API calls.
+  - Added realistic JSON fixtures in `ai-post-scheduler/bin/fixtures/` and integrated the `make seed-dev-data` target with `--clean`, `--preset`, `--count`, and `--include` options.
 - **Conversational & Combined Metadata Modes Optimization & Conversation Persistence:**
   - Registered `AIPS_History_Type::AI_CONVERSATION` and mapped `conversation_transcript` in `AIPS_History_Container` to store serialized multi-turn transcripts in `wp_aips_history_log`.
   - Persisted the generation transcript in `AIPS_Generator::generate_post_from_context()` before closing the conversational session.

@@ -9460,6 +9460,10 @@ tr.aips-row-details > td {
 }
 
 /* Card processing state */
+.is-processing:not(tr) {
+	position: relative;
+}
+
 .aips-post-card.is-processing,
 .aips-card.is-processing {
 	pointer-events: none;

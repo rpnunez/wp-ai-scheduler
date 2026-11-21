@@ -3,7 +3,7 @@
  * Developer Data Seeder Runner for WP AI Scheduler
  *
  * Executed via WP-CLI inside the container:
- * wp eval-file scripts/dev-seeder-runner.php -- [options]
+ * wp eval-file /var/www/html/wp-content/plugins/ai-post-scheduler/bin/dev-seeder-runner.php -- [options]
  *
  * @package AI_Post_Scheduler
  */
@@ -178,7 +178,8 @@ class AIPS_Dev_Data_Seeder_Runner {
 		}
 
 		$history_repo = new AIPS_History_Repository();
-		$created = 0;
+		$created      = 0;
+		$now          = AIPS_DateTime::now()->timestamp();
 
 		for ($i = 0; $i < $this->multiplier; $i++) {
 			foreach ($items as $idx => $item) {
@@ -214,8 +215,8 @@ class AIPS_Dev_Data_Seeder_Runner {
 					'generated_content' => $item['content'],
 					'post_id'           => $post_id,
 					'post_type'         => 'post',
-					'created_at'        => time() - (rand(60, 7200) + ($idx * 300)),
-					'completed_at'      => time() - rand(10, 50),
+					'created_at'        => $now - (rand(60, 7200) + ($idx * 300)),
+					'completed_at'      => $now - rand(10, 50),
 				));
 
 				$created++;
@@ -237,7 +238,8 @@ class AIPS_Dev_Data_Seeder_Runner {
 		}
 
 		$history_repo = new AIPS_History_Repository();
-		$created = 0;
+		$created      = 0;
+		$now          = AIPS_DateTime::now()->timestamp();
 
 		foreach ($items as $idx => $item) {
 			$post_id = wp_insert_post(array(
@@ -269,8 +271,8 @@ class AIPS_Dev_Data_Seeder_Runner {
 				'generated_content' => $item['content'],
 				'post_id'           => $post_id,
 				'post_type'         => 'post',
-				'created_at'        => time() - (86400 + ($idx * 600)),
-				'completed_at'      => time() - 86300,
+				'created_at'        => $now - (86400 + ($idx * 600)),
+				'completed_at'      => $now - 86300,
 			));
 
 			$created++;
@@ -290,10 +292,11 @@ class AIPS_Dev_Data_Seeder_Runner {
 			return;
 		}
 
-		$author_repo = new AIPS_Authors_Repository();
-		$topic_repo  = new AIPS_Author_Topics_Repository();
+		$author_repo   = new AIPS_Authors_Repository();
+		$topic_repo    = new AIPS_Author_Topics_Repository();
 		$authors_count = 0;
 		$topics_count  = 0;
+		$now           = AIPS_DateTime::now()->timestamp();
 
 		foreach ($items as $author_data) {
 			$author_id = $author_repo->create(array(
@@ -316,7 +319,7 @@ class AIPS_Dev_Data_Seeder_Runner {
 						'author_id'    => $author_id,
 						'topic_title'  => sanitize_text_field($topic_item['topic']),
 						'status'       => sanitize_text_field($topic_item['status']),
-						'generated_at' => time() - rand(300, 3600),
+						'generated_at' => $now - rand(300, 3600),
 					));
 					$topics_count++;
 				}

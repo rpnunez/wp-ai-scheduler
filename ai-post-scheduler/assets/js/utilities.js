@@ -1302,7 +1302,8 @@
          * @param {Object} [options] - Options.
          * @param {string} [options.successLabel] - Label during success flash (default: 'Done!').
          * @param {number} [options.flashDuration] - Flash duration in ms (default: 400).
-         * @param {Function} [onComplete] - Callback executed after fadeOut and DOM removal.
+         * @param {boolean} [options.remove=true] - Whether to fadeOut and remove the element from DOM on success.
+         * @param {Function} [onComplete] - Callback executed after completion.
          * @return {jQuery}
          */
         finishItemProcessing: function(elements, isSuccess, options, onComplete) {
@@ -1322,6 +1323,8 @@
             var l10n = window.aipsUtilitiesL10n || {};
             var successLabel = options.successLabel || l10n.done || 'Done!';
             var flashDuration = typeof options.flashDuration === 'number' ? options.flashDuration : 400;
+            var shouldRemove = options.remove !== false;
+            var self = this;
 
             if (isSuccess) {
                 $elements.each(function() {
@@ -1345,17 +1348,26 @@
                     }
                 });
 
-                var doneCount = 0;
-                var total = $elements.length;
-                setTimeout(function() {
-                    $elements.fadeOut(300, function() {
-                        $(this).remove();
-                        doneCount++;
-                        if (doneCount === total && typeof onComplete === 'function') {
+                if (shouldRemove) {
+                    var doneCount = 0;
+                    var total = $elements.length;
+                    setTimeout(function() {
+                        $elements.fadeOut(300, function() {
+                            $(this).remove();
+                            doneCount++;
+                            if (doneCount === total && typeof onComplete === 'function') {
+                                onComplete();
+                            }
+                        });
+                    }, flashDuration);
+                } else {
+                    setTimeout(function() {
+                        self.setItemProcessing($elements, false);
+                        if (typeof onComplete === 'function') {
                             onComplete();
                         }
-                    });
-                }, flashDuration);
+                    }, flashDuration);
+                }
             } else {
                 // Revert processing state on failure
                 this.setItemProcessing($elements, false);
