@@ -19,9 +19,23 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Prompt_Builder_Post_Slug {
 
+	/**
+	 * Default character budget for article context, matching post title.
+	 */
+	const DEFAULT_MAX_CHARS = 3000;
+
 	const RESPONSE_INSTRUCTION = "
 
 Respond with ONLY one lowercase hyphenated slug, nothing else.";
+
+	/**
+	 * Default cap on the article text pasted into a stateless slug prompt.
+	 *
+	 * A slug is three to six keywords and the title is already in the prompt, so
+	 * this matches the title prompt's cap (aips_title_context_max_chars) rather
+	 * than the much larger general-purpose AIPS_Content_Digest default.
+	 */
+	const CONTEXT_MAX_CHARS = self::DEFAULT_MAX_CHARS;
 
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
@@ -67,12 +81,13 @@ Respond with ONLY one lowercase hyphenated slug, nothing else.";
 
 		$template = $template_or_context;
 
-		if (!empty($template->slug_prompt)) {
-			$slug_instructions = $this->template_processor->process($template->slug_prompt, $topic);
-		}
-
-		if (!empty($slug_instructions) && !empty($title)) {
-			$slug_instructions = str_replace('{{title}}', (string) $title, $slug_instructions);
+		// Same precedence as title and excerpt prompts: a voice instruction wins,
+		// then the template. Voices have no slug_prompt column today, so a
+		// database voice leaves the template prompt in place.
+		if ($voice && !empty($voice->slug_prompt)) {
+			$slug_instructions = $this->process_slug_prompt($voice->slug_prompt, $topic, $title);
+		} elseif (!empty($template->slug_prompt)) {
+			$slug_instructions = $this->process_slug_prompt($template->slug_prompt, $topic, $title);
 		}
 
 		$prompt = $this->build_base_prompt($slug_instructions, $content, $title, $template);
@@ -108,21 +123,59 @@ Respond with ONLY one lowercase hyphenated slug, nothing else.";
 		$slug_instructions = '';
 
 		if ($context instanceof AIPS_Generation_Context) {
-			if (method_exists($context, 'get_slug_prompt')) {
+			if ($context->get_type() === 'template' && $context->get_voice_id()) {
+				$voice_obj = $context->get_voice();
+				if ($voice_obj && !empty($voice_obj->slug_prompt)) {
+					$slug_instructions = $this->process_slug_prompt($voice_obj->slug_prompt, $topic, $title);
+				}
+			}
+
+			if ('' === $slug_instructions && method_exists($context, 'get_slug_prompt')) {
 				$slug_prompt = $context->get_slug_prompt();
 				if (!empty($slug_prompt)) {
-					$slug_instructions = $this->template_processor->process($slug_prompt, $topic);
+					$slug_instructions = $this->process_slug_prompt($slug_prompt, $topic, $title);
 				}
 			}
 		} elseif (is_object($context) && !empty($context->slug_prompt)) {
-			$slug_instructions = $this->template_processor->process($context->slug_prompt, $topic);
-		}
-
-		if (!empty($slug_instructions) && !empty($title)) {
-			$slug_instructions = str_replace('{{title}}', (string) $title, $slug_instructions);
+			$slug_instructions = $this->process_slug_prompt($context->slug_prompt, $topic, $title);
 		}
 
 		return $slug_instructions;
+	}
+
+	/**
+	 * Resolve variables in a slug instruction.
+	 *
+	 * The shared template processor treats {{title}} as an alias for the topic,
+	 * because most prompts are written before an article title exists. A slug
+	 * prompt runs after the title, so {{title}} is that article title when one
+	 * was supplied. The title is held out of process() so it is not replaced
+	 * by the topic, and so placeholders inside the title itself are left alone.
+	 *
+	 * @param string      $slug_prompt Raw slug instructions.
+	 * @param string|null $topic       Topic string.
+	 * @param string      $title       Generated article title.
+	 * @return string
+	 */
+	private function process_slug_prompt($slug_prompt, $topic, $title) {
+		$slug_prompt = (string) $slug_prompt;
+		if ('' === $slug_prompt) {
+			return '';
+		}
+
+		$sentinel = '';
+		if (null !== $title && '' !== (string) $title) {
+			$sentinel    = "\x00AIPS_SLUG_ARTICLE_TITLE\x00";
+			$slug_prompt = str_replace('{{title}}', $sentinel, $slug_prompt);
+		}
+
+		$processed = $this->template_processor->process($slug_prompt, $topic);
+
+		if ('' !== $sentinel) {
+			$processed = str_replace($sentinel, (string) $title, $processed);
+		}
+
+		return $processed;
 	}
 
 	/**
@@ -138,7 +191,7 @@ Respond with ONLY one lowercase hyphenated slug, nothing else.";
 		$prompt = $this->assemble_prompt('Generate a clean, SEO-friendly URL slug for a blog post based on its title and content.', $slug_instructions, $title);
 
 		if (!empty($content)) {
-			$max_chars       = (int) apply_filters('aips_slug_context_max_chars', AIPS_Content_Digest::DEFAULT_MAX_CHARS, $subject);
+			$max_chars       = (int) apply_filters('aips_slug_context_max_chars', self::DEFAULT_MAX_CHARS, $subject);
 			$content_context = $this->content_digest->build($content, $max_chars);
 			$content_context = str_ireplace(array('<article_data', '</article_data'), array('&lt;article_data', '&lt;/article_data'), $content_context);
 			$prompt         .= "\n\n<article_data>\n" . $content_context . "\n</article_data>";

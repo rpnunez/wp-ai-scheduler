@@ -1,0 +1,16 @@
+{
+  "schema_version": "pr-xray.v1",
+  "run_id": "{{run_id}}",
+  "repository": "{{repository}}",
+  "target": "{{target}}",
+  "base": { "ref": "{{base_ref}}", "sha": "{{base_sha}}" },
+  "head": { "ref": "{{head_ref}}", "sha": "{{head_sha}}" },
+  "reviewed_at": "{{reviewed_at}}",
+  "verdict": "{{verdict}}",
+  "reviewers": [],
+  "verification": [],
+  "finding_counts": {},
+  "artifacts": [],
+  "limitations": [],
+  "packaging": { "status": "pending", "archive": null }
+}
