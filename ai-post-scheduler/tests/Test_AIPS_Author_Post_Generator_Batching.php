@@ -124,6 +124,96 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Build a batching generator whose per-topic results are scripted.
+	 *
+	 * @param array $results Topic ID => post ID or WP_Error.
+	 * @return AIPS_Author_Post_Generator
+	 */
+	private function make_scripted_generator(array $results) {
+		$topics_repository = new class {
+			public function get_approved_for_generation($author_id, $limit = 1, $after_id = 0) {
+				return array(
+					(object) array('id' => 41, 'topic_title' => 'Topic 41'),
+					(object) array('id' => 42, 'topic_title' => 'Topic 42'),
+					(object) array('id' => 43, 'topic_title' => 'Topic 43'),
+				);
+			}
+		};
+
+		$post_generator = new class extends AIPS_Author_Post_Generator {
+			public $results = array();
+			public $attempted = array();
+
+			public function generate_post_from_topic($topic, $author, $creation_method = 'manual', $trigger_context = array()) {
+				$this->attempted[] = (int) $topic->id;
+				return $this->results[(int) $topic->id];
+			}
+		};
+
+		$post_generator->results = $results;
+		$this->inject_property($post_generator, 'topics_repository', $topics_repository);
+
+		return $post_generator;
+	}
+
+	/**
+	 * A rate limit (wrapped by the generator as missing content) stops the batch;
+	 * the remaining topics are not attempted.
+	 *
+	 * @return void
+	 */
+	public function test_batch_stops_after_systemic_error() {
+		$rate_limited = new WP_Error(
+			'aips_generation_missing_required_content',
+			'Post generation failed before a usable Post Content could be created. Cause: Rate limit exceeded.',
+			array('cause_code' => 'rate_limit_exceeded')
+		);
+
+		$post_generator = $this->make_scripted_generator(array(
+			41 => 5041,
+			42 => $rate_limited,
+			43 => 5043,
+		));
+
+		$author = (object) array('id' => 14, 'name' => 'Batch Author', 'scheduled_post_generation_quantity' => 3);
+		$result = $post_generator->generate_posts_for_author($author, null, 'scheduled', false);
+
+		$this->assertSame(array(5041), $result);
+		$this->assertSame(array(41, 42), $post_generator->attempted);
+	}
+
+	/**
+	 * An ordinary per-topic failure does not stop the batch.
+	 *
+	 * @return void
+	 */
+	public function test_batch_continues_after_topic_specific_error() {
+		$post_generator = $this->make_scripted_generator(array(
+			41 => new WP_Error('aips_generation_missing_required_content', 'Failed.', array('cause_code' => 'empty_content')),
+			42 => 5042,
+			43 => 5043,
+		));
+
+		$author = (object) array('id' => 15, 'name' => 'Batch Author', 'scheduled_post_generation_quantity' => 3);
+		$result = $post_generator->generate_posts_for_author($author, null, 'scheduled', false);
+
+		$this->assertSame(array(5042, 5043), $result);
+		$this->assertSame(array(41, 42, 43), $post_generator->attempted);
+	}
+
+	/**
+	 * Cause resolution prefers cause_code from the error data.
+	 *
+	 * @return void
+	 */
+	public function test_systemic_error_detection() {
+		$this->assertTrue(AIPS_Author_Post_Generator::is_systemic_generation_error(new WP_Error('circuit_breaker_open', 'Open.')));
+		$this->assertTrue(AIPS_Author_Post_Generator::is_systemic_generation_error(new WP_Error('wrapped', 'x', array('cause_code' => 'rate_limit_exceeded'))));
+		$this->assertFalse(AIPS_Author_Post_Generator::is_systemic_generation_error(new WP_Error('generation_failed', 'x')));
+		$this->assertSame('rate_limit_exceeded', AIPS_Author_Post_Generator::get_generation_error_cause(new WP_Error('wrapped', 'x', array('cause_code' => 'rate_limit_exceeded'))));
+	}
+
+	/**
 	 * The legacy single-post API should continue returning a single post ID.
 	 *
 	 * @return void
