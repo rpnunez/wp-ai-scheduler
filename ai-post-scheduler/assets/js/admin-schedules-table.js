@@ -231,7 +231,8 @@
 			}).join('');
 
 			if (buttons) {
-				html += '<div class="aips-sched-health-actions">' + buttons + '</div>';
+				// Buttons were rendered (escaped) above; renderRaw only wraps them.
+				html += AIPS.Templates.renderRaw('aips-tmpl-sched-health-actions', { buttons: buttons });
 			}
 
 			return html;

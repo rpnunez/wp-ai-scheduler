@@ -3038,15 +3038,15 @@
                         action: function() {
                             $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
-                            $.post(ajaxurl, {
+                            $.post(aipsAjax.ajaxUrl, {
                                 action: 'aips_reset_schedule_circuit',
-                                nonce: aipsData.nonce,
+                                nonce: aipsAjax.nonce,
                                 id: id,
                                 type: type
                             })
                             .done(function(response) {
-                                if (response.success) {
-                                    AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
+                                if (response && response.success) {
+                                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Circuit breaker reset successfully.', 'success');
 
                                     // The button may live in the row's ⋯ menu or in its details row,
                                     // so resolve the schedule row by key rather than by DOM ancestry.
@@ -3058,12 +3058,12 @@
                                     // Re-fetch the details row so Health reflects the reset.
                                     $(document).trigger('aips:schedule-changed', [type, id]);
                                 } else {
-                                    AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
+                                    AIPS.Utilities.showToast((response && response.data && response.data.message) || 'Failed to reset circuit breaker.', 'error');
                                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                                 }
                             })
                             .fail(function() {
-                                AIPS.showNotice('An error occurred while resetting the circuit breaker.', 'error');
+                                AIPS.Utilities.showToast('An error occurred while resetting the circuit breaker.', 'error');
                                 $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                             });
                         }
@@ -3095,27 +3095,30 @@
                         action: function() {
                             $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
-                            $.post(ajaxurl, {
+                            $.post(aipsAjax.ajaxUrl, {
                                 action: 'aips_resume_schedule_batch',
-                                nonce: aipsData.nonce,
+                                nonce: aipsAjax.nonce,
                                 id: id,
                                 type: type
                             })
                             .done(function(response) {
-                                if (response.success) {
-                                    AIPS.showNotice(response.data.message || 'Batch resumed successfully.', 'success');
+                                if (response && response.success) {
+                                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Batch resumed successfully.', 'success');
 
-                                    // Optionally reload the page or update the UI
-                                    setTimeout(function() {
-                                        window.location.reload();
-                                    }, 1500);
+                                    // Update the row in place (no page reload): drop the resume
+                                    // triggers and re-fetch the details row.
+                                    var $row = $('tr.aips-unified-row[data-row-key="' + type + ':' + id + '"]');
+                                    $row.attr('data-has-incomplete-batch', '0');
+                                    $row.find('.aips-resume-batch').remove();
+                                    $btn.remove();
+                                    $(document).trigger('aips:schedule-changed', [type, id]);
                                 } else {
-                                    AIPS.showNotice(response.data || 'Failed to resume batch.', 'error');
+                                    AIPS.Utilities.showToast((response && response.data && response.data.message) || 'Failed to resume batch.', 'error');
                                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                                 }
                             })
                             .fail(function() {
-                                AIPS.showNotice('An error occurred while resuming the batch.', 'error');
+                                AIPS.Utilities.showToast('An error occurred while resuming the batch.', 'error');
                                 $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                             });
                         }
@@ -5473,7 +5476,9 @@
                 // Lets page modules lazily fill the details row (e.g. AIPS.SchedulesTable).
                 $detailsRow.trigger('aips:row-expanded');
             }
-            $btn.closest('tr').toggleClass('is-expanded', !isExpanded);
+            // Plugin-specific class: WordPress core reserves `tr.is-expanded` for its
+            // responsive column toggle (.toggle-row), so it must not be reused here.
+            $btn.closest('tr').toggleClass('aips-row-open', !isExpanded);
         },
 
         /**
@@ -5522,6 +5527,16 @@
                         if (saved) {
                             var parsed = JSON.parse(saved);
                             if (parsed && typeof parsed === 'object') {
+                                // Older saves could contain the bulk-action select; it is a
+                                // one-off command, not a filter, so never restore it and
+                                // rewrite the entry without it.
+                                if (parsed.hasOwnProperty('action') || parsed.hasOwnProperty('action2')) {
+                                    delete parsed.action;
+                                    delete parsed.action2;
+                                    try {
+                                        localStorage.setItem(storageKey, JSON.stringify(parsed));
+                                    } catch (err) {}
+                                }
                                 var needsRedirect = false;
                                 var newParams = new URLSearchParams(window.location.search);
                                 for (var param in parsed) {

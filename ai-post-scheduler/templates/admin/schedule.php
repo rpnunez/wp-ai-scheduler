@@ -75,6 +75,9 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 		<p>{{message}}</p>
 	</div>
 </script>
+<script type="text/html" id="aips-tmpl-sched-health-actions">
+	<div class="aips-sched-health-actions">{{buttons}}</div>
+</script>
 <script type="text/html" id="aips-tmpl-sched-health-action">
 	<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary {{class_name}}" data-id="{{id}}" data-type="{{type}}"><span class="dashicons {{icon}}" aria-hidden="true"></span> {{label}}</button>
 </script>

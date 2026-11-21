@@ -667,6 +667,8 @@ class AIPS_Unified_Schedule_Service {
 			$state   = 'healthy';
 			$label   = __('Healthy', 'ai-post-scheduler');
 			$message = __('No problems with recent runs.', 'ai-post-scheduler');
+			// An old, already-recovered error would contradict "Healthy"; History still has it.
+			$last_error = null;
 		}
 
 		if (!empty($row['has_incomplete_batch'])) {

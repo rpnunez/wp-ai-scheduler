@@ -277,6 +277,17 @@ class Test_AIPS_Schedule_Details extends WP_UnitTestCase {
 		$this->assertSame('Provider timed out', $details['health']['last_error']['message']);
 	}
 
+	public function test_get_details_hides_old_error_when_schedule_is_healthy() {
+		$fixture = $this->create_template_schedule();
+		$this->insert_log($fixture['history_id'], 'schedule_failed', time() - (90 * DAY_IN_SECONDS), array('message' => 'Old failure'), AIPS_History_Type::ERROR);
+
+		$service = new AIPS_Unified_Schedule_Service();
+		$details = $service->get_details($fixture['schedule_id'], AIPS_Unified_Schedule_Service::TYPE_TEMPLATE);
+
+		$this->assertSame('healthy', $details['health']['state']);
+		$this->assertNull($details['health']['last_error']);
+	}
+
 	public function test_get_details_for_blueprint_merges_topics_and_posts() {
 		$author_id = $this->create_blueprint_author();
 		$now       = time();

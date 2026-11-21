@@ -196,6 +196,28 @@ class Test_AIPS_Schedules_List_Table extends WP_UnitTestCase {
 		$this->assertSame('in under a minute', $this->call('format_relative_short', array(time() + 20)));
 	}
 
+	public function test_views_run_through_core_views_filter() {
+		$screen   = WP_Screen::get('toplevel_page_aips-automations');
+		$property = new ReflectionProperty($this->table, 'screen');
+		$property->setAccessible(true);
+		$property->setValue($this->table, $screen);
+
+		$callback = function($views) {
+			$views['custom'] = '<a href="#" class="aips-schedules-view">Custom view</a>';
+			return $views;
+		};
+		add_filter('views_' . $screen->id, $callback);
+
+		ob_start();
+		$this->table->views();
+		$html = ob_get_clean();
+
+		remove_filter('views_' . $screen->id, $callback);
+
+		$this->assertStringContainsString('Custom view', $html);
+		$this->assertStringContainsString('All Schedules', $html);
+	}
+
 	public function test_table_is_not_striped() {
 		$classes = $this->call('get_table_classes');
 

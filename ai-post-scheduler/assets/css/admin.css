@@ -9668,7 +9668,7 @@ tr.aips-row-details > td {
 }
 
 .aips-schedules-table-wrap .wp-list-table tbody tr.aips-unified-row:hover,
-.aips-schedules-table-wrap .wp-list-table tbody tr.aips-unified-row.is-expanded {
+.aips-schedules-table-wrap .wp-list-table tbody tr.aips-unified-row.aips-row-open {
 	background: var(--aips-sched-row-hover);
 }
 

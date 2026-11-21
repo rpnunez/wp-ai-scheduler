@@ -173,6 +173,10 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 	 */
 	public function views() {
 		$views = $this->get_views();
+		if ($this->screen) {
+			/** This filter is documented in wp-admin/includes/class-wp-list-table.php */
+			$views = apply_filters("views_{$this->screen->id}", $views); // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores -- Core hook name.
+		}
 		if (empty($views)) {
 			return;
 		}
