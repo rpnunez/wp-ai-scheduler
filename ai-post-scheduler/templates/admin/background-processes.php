@@ -52,33 +52,33 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 				<tbody>
 					<?php foreach ($bg_processes as $snapshot) : ?>
 						<tr data-aips-bg-key="<?php echo esc_attr($snapshot['key']); ?>" data-aips-bg-status="<?php echo esc_attr($snapshot['status']); ?>" class="<?php echo !empty($snapshot['is_active']) ? 'aips-bg-active' : ''; ?>">
-							<td>
+							<td data-label="<?php esc_attr_e('Process', 'ai-post-scheduler'); ?>">
 								<strong><?php echo esc_html($snapshot['label']); ?></strong>
 								<?php if (!empty($snapshot['uses_ai'])) : ?>
 									<span class="aips-badge aips-badge-info"><?php esc_html_e('Uses AI', 'ai-post-scheduler'); ?></span>
 								<?php endif; ?>
 								<span class="aips-bg-message"><?php echo esc_html($snapshot['description']); ?></span>
 							</td>
-							<td>
+							<td data-label="<?php esc_attr_e('Status', 'ai-post-scheduler'); ?>">
 								<span class="aips-bg-chip" data-aips-bg-field="status_label"><?php echo esc_html($snapshot['status_label']); ?></span>
 								<span class="aips-bg-message" data-aips-bg-field="next_run"></span>
 								<span class="aips-bg-message" data-aips-bg-field="message"><?php echo esc_html($snapshot['message']); ?></span>
 							</td>
-							<td class="aips-bg-progress">
+							<td class="aips-bg-progress" data-label="<?php esc_attr_e('Progress', 'ai-post-scheduler'); ?>">
 								<span data-aips-bg-field="processed"><?php echo esc_html(number_format_i18n($snapshot['processed'])); ?></span>
 								/
 								<span data-aips-bg-field="total"><?php echo esc_html(number_format_i18n($snapshot['total'])); ?></span>
 								(<span data-aips-bg-field="percent"><?php echo esc_html((string) $snapshot['percent']); ?>%</span>)
 								<div class="aips-bg-progress-bar"><span data-aips-bg-bar style="width:<?php echo esc_attr((string) $snapshot['percent']); ?>%"></span></div>
 							</td>
-							<td>
+							<td data-label="<?php esc_attr_e('AI calls', 'ai-post-scheduler'); ?>">
 								<?php if (!empty($snapshot['uses_ai'])) : ?>
 									<span data-aips-bg-field="ai_calls_used"><?php echo esc_html(number_format_i18n($snapshot['ai_calls_used'])); ?></span>
 								<?php else : ?>
 									&mdash;
 								<?php endif; ?>
 							</td>
-							<td>
+							<td data-label="<?php esc_attr_e('Actions', 'ai-post-scheduler'); ?>">
 								<div class="aips-bg-actions">
 									<?php $is_recompute = AIPS_Relationships_Recompute_Process::KEY === $snapshot['key']; ?>
 									<button type="button" class="aips-btn aips-btn-primary aips-btn-sm" data-aips-bg-action="start" <?php echo empty($snapshot['can_start']) ? 'hidden' : ''; ?>>
@@ -139,13 +139,13 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 							}
 							?>
 							<tr>
-								<td><?php echo esc_html($run_label); ?></td>
-								<td><?php echo esc_html($run->started_at ? wp_date('Y-m-d H:i', $run->started_at) : '—'); ?></td>
-								<td><?php echo esc_html(isset($bg_status_labels[$run->status]) ? $bg_status_labels[$run->status] : $run->status); ?></td>
-								<td><?php echo esc_html(number_format_i18n($run->processed)); ?> / <?php echo esc_html(number_format_i18n($run->total)); ?></td>
-								<td><?php echo esc_html(number_format_i18n($run->failed)); ?></td>
-								<td><?php echo esc_html(number_format_i18n($run->ai_calls_used)); ?></td>
-								<td><?php echo esc_html((string) $run->message); ?></td>
+								<td data-label="<?php esc_attr_e('Process', 'ai-post-scheduler'); ?>"><?php echo esc_html($run_label); ?></td>
+								<td data-label="<?php esc_attr_e('Started', 'ai-post-scheduler'); ?>"><?php echo esc_html($run->started_at ? wp_date('Y-m-d H:i', $run->started_at) : '—'); ?></td>
+								<td data-label="<?php esc_attr_e('Status', 'ai-post-scheduler'); ?>"><?php echo esc_html(isset($bg_status_labels[$run->status]) ? $bg_status_labels[$run->status] : $run->status); ?></td>
+								<td data-label="<?php esc_attr_e('Processed', 'ai-post-scheduler'); ?>"><?php echo esc_html(number_format_i18n($run->processed)); ?> / <?php echo esc_html(number_format_i18n($run->total)); ?></td>
+								<td data-label="<?php esc_attr_e('Failed', 'ai-post-scheduler'); ?>"><?php echo esc_html(number_format_i18n($run->failed)); ?></td>
+								<td data-label="<?php esc_attr_e('AI calls', 'ai-post-scheduler'); ?>"><?php echo esc_html(number_format_i18n($run->ai_calls_used)); ?></td>
+								<td data-label="<?php esc_attr_e('Note', 'ai-post-scheduler'); ?>"><?php echo esc_html((string) $run->message); ?></td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>

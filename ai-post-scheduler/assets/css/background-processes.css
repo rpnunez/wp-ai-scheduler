@@ -131,6 +131,56 @@
 	gap: 6px;
 }
 
+/* Stack process details and recent runs within the phone viewport. */
+@media screen and (max-width: 782px) {
+	.aips-background-processes-page .aips-table,
+	.aips-background-processes-page .aips-table tbody,
+	.aips-background-processes-page .aips-table tbody tr,
+	.aips-background-processes-page .aips-table tbody td {
+		display: block;
+		box-sizing: border-box;
+		width: 100%;
+		min-width: 0;
+	}
+
+	/* Keep column headings available to assistive technology. */
+	.aips-background-processes-page .aips-table thead {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.aips-background-processes-page .aips-table tbody tr {
+		padding: 12px 0;
+		border-bottom: 1px solid var(--aips-gray-200);
+	}
+
+	.aips-background-processes-page .aips-table tbody td {
+		padding: 8px 16px;
+		border-bottom: 0;
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+
+	.aips-background-processes-page .aips-table tbody td::before {
+		content: attr(data-label);
+		display: block;
+		margin-bottom: 4px;
+		font-weight: 600;
+		color: var(--aips-gray-600);
+	}
+
+	.aips-background-processes-page .aips-bg-actions .aips-btn {
+		min-height: 44px;
+		max-width: 100%;
+		white-space: normal;
+	}
+}
+
 /* -------------------------------------------------------
    Admin bar
 ------------------------------------------------------- */
