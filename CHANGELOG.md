@@ -18,7 +18,8 @@
   - Introduced `AIPS_Settings_Form_Renderer`: reusable, accessible (ARIA-compliant) component renderer for toggles, text, number, select, multiselect, secret/password with reveal toggle, textarea, and range sliders with coupled indicators.
   - Introduced `AIPS_Settings_Manager`: orchestrates WordPress Settings API (`register_setting`, `add_settings_section`, `add_settings_field`) via a generic dispatcher callback calling `AIPS_Settings_Form_Renderer`. Bound `AIPS_Settings_Manager::class` in `AIPS_Container`.
   - Streamlined `AIPS_Settings` (`class-aips-settings.php`) by delegating `register_settings()`, `register_setting_schema()`, and `get_registered_settings_args()` to the registry and manager, reducing procedural boilerplate by ~2,000 lines while preserving 100% backward compatibility.
-  - Updated `templates/admin/settings.php` to derive rail navigation tabs directly from `AIPS_Settings_Registry`.
+  - Updated `templates/admin/settings.php` to derive rail navigation tabs directly from `AIPS_Settings_Registry` and dynamically render tab sections and fields, replacing ~340 lines of redundant markup.
+  - Pruned over 120 repetitive inline HTML field callbacks from `AIPS_Settings_UI`, retaining bespoke callbacks for niche settings (AI connectors priority list, Google Search Console credentials, quota meters, digest actions, composite autolink controls) and delegating legacy callbacks dynamically via magic `__call()` to `AIPS_Settings_Form_Renderer` for backward compatibility.
   - Updated `AIPS_Settings_AJAX` to validate option keys and data types dynamically via the registry without hardcoded option lists.
   - Added comprehensive unit tests in `Test_AIPS_Setting_Definition.php`, `Test_AIPS_Settings_Registry.php`, `Test_AIPS_Settings_Form_Renderer.php`, and `Test_AIPS_Settings_Manager.php`.
 - **Conversational & Combined Metadata Modes Optimization & Conversation Persistence:**
