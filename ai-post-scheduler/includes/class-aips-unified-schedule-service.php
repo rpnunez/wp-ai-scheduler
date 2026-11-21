@@ -495,6 +495,445 @@ class AIPS_Unified_Schedule_Service {
 		}
 	}
 
+	/**
+	 * Build the expandable-row details for one schedule: activity, health and
+	 * the most recent generated output.
+	 *
+	 * All strings are returned unescaped; the admin UI renders them through
+	 * AIPS.Templates.render(), which escapes every value.
+	 *
+	 * @param int    $id           Numeric ID (schedule ID, or author ID for author/blueprint rows).
+	 * @param string $type         One of the TYPE_* constants.
+	 * @param int    $recent_limit Number of recent output items to return.
+	 * @return array|WP_Error {activity, health, recent, recent_limit} or WP_Error.
+	 */
+	public function get_details($id, $type, $recent_limit = 10) {
+		$id           = absint($id);
+		$recent_limit = max(1, min(50, absint($recent_limit)));
+
+		if (!in_array($type, array(self::TYPE_TEMPLATE, self::TYPE_AUTHOR_TOPIC, self::TYPE_AUTHOR_POST, self::TYPE_BLUEPRINT), true)) {
+			return new WP_Error('invalid_type', __('Invalid schedule type.', 'ai-post-scheduler'));
+		}
+
+		$row = $this->find_row($id, $type);
+		if (!$row) {
+			return new WP_Error('not_found', __('Schedule not found.', 'ai-post-scheduler'));
+		}
+
+		return array(
+			'activity'     => $this->build_activity($row),
+			'health'       => $this->build_health($row),
+			'recent'       => $this->get_recent_output($row, $recent_limit),
+			'recent_limit' => $recent_limit,
+		);
+	}
+
+	/**
+	 * Find one normalised schedule row.
+	 *
+	 * @param int    $id   Numeric ID.
+	 * @param string $type One of the TYPE_* constants.
+	 * @return array|null
+	 */
+	private function find_row($id, $type) {
+		$rows = (self::TYPE_BLUEPRINT === $type)
+			? $this->get_all_grouped(self::TYPE_BLUEPRINT)
+			: $this->get_all($type);
+
+		foreach ($rows as $row) {
+			if ((int) $row['id'] === (int) $id && $row['type'] === $type) {
+				return $row;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Activity panel: headline counts plus, for blueprints, a per-stage breakdown.
+	 *
+	 * @param array $row Normalised schedule row.
+	 * @return array{stats: array, stages: array}
+	 */
+	private function build_activity(array $row) {
+		$stats  = array();
+		$stages = array();
+
+		if (self::TYPE_BLUEPRINT === $row['type']) {
+			$topics_count = 0;
+			foreach ((array) ($row['stages'] ?? array()) as $stage) {
+				if (self::TYPE_AUTHOR_TOPIC === $stage['type']) {
+					$topics_count = (int) $stage['stats_count'];
+				}
+
+				$stages[] = array(
+					'label'     => $stage['label'],
+					'frequency' => $this->frequency_label($stage['frequency']),
+					'output'    => $this->count_label((int) $stage['stats_count'], self::TYPE_AUTHOR_TOPIC === $stage['type'] ? 'topic' : 'post'),
+					'last_run'  => !empty($stage['last_run']) ? AIPS_DateTime::formatRelativeOrAbsolute((int) $stage['last_run']) : __('Never', 'ai-post-scheduler'),
+					'is_active' => !empty($stage['is_active']),
+				);
+			}
+
+			$stats[] = array('value' => number_format_i18n((int) $row['stats_count']), 'label' => __('Posts generated', 'ai-post-scheduler'));
+			$stats[] = array('value' => number_format_i18n($topics_count), 'label' => __('Topics generated', 'ai-post-scheduler'));
+		} elseif (self::TYPE_AUTHOR_TOPIC === $row['type']) {
+			$stats[] = array('value' => number_format_i18n((int) $row['stats_count']), 'label' => __('Topics generated', 'ai-post-scheduler'));
+		} else {
+			$stats[] = array('value' => number_format_i18n((int) $row['stats_count']), 'label' => __('Posts generated', 'ai-post-scheduler'));
+		}
+
+		$stats[] = array(
+			'value' => !empty($row['last_run']) ? AIPS_DateTime::formatRelativeOrAbsolute($row['last_run']) : __('Never', 'ai-post-scheduler'),
+			'label' => __('Last run', 'ai-post-scheduler'),
+		);
+
+		$batch = isset($row['batch_progress']) && is_array($row['batch_progress']) ? $row['batch_progress'] : null;
+		if (!empty($row['has_incomplete_batch']) && $batch) {
+			$stats[] = array(
+				/* translators: 1: completed posts, 2: total posts */
+				'value' => sprintf(__('%1$s / %2$s', 'ai-post-scheduler'), number_format_i18n((int) $batch['completed']), number_format_i18n((int) $batch['total'])),
+				'label' => __('Batch progress', 'ai-post-scheduler'),
+			);
+		}
+
+		return array(
+			'stats'  => $stats,
+			'stages' => $stages,
+		);
+	}
+
+	/**
+	 * Health panel: overall state, explanation, recovery actions and the last error.
+	 *
+	 * @param array $row Normalised schedule row.
+	 * @return array{state: string, label: string, message: string, actions: array, last_error: array|null}
+	 */
+	private function build_health(array $row) {
+		$circuit_state = isset($row['circuit_state']) ? $row['circuit_state'] : 'closed';
+		$actions       = array();
+		$last_error    = null;
+		$latest_failed = false;
+
+		if (self::TYPE_TEMPLATE === $row['type']) {
+			if (!empty($row['history_id'])) {
+				$logs = $this->history_repository->get_logs_by_history_id((int) $row['history_id'], array(AIPS_History_Type::ERROR), 1);
+				if (!empty($logs)) {
+					$last_error = $this->format_error_log($logs[0]);
+				}
+			}
+			$latest_failed = (isset($row['status']) && 'failed' === $row['status']);
+		} else {
+			$author_id   = !empty($row['author_id']) ? (int) $row['author_id'] : (int) $row['id'];
+			$event_types = array();
+			if (self::TYPE_AUTHOR_TOPIC === $row['type'] || self::TYPE_BLUEPRINT === $row['type']) {
+				$event_types[] = 'author_topic_generation';
+			}
+			if (self::TYPE_AUTHOR_POST === $row['type'] || self::TYPE_BLUEPRINT === $row['type']) {
+				$event_types[] = AIPS_History_Event_Type::AUTHOR_POST_GENERATION;
+			}
+
+			$logs = $this->history_repository->get_author_schedule_logs_by_event_types($author_id, $event_types, 20);
+			foreach ($logs as $index => $log) {
+				if (!$this->is_failed_log($log)) {
+					continue;
+				}
+				if (0 === $index) {
+					$latest_failed = true;
+				}
+				$last_error = $this->format_error_log($log);
+				break;
+			}
+		}
+
+		if ('open' === $circuit_state) {
+			$state   = 'error';
+			$label   = __('Circuit breaker tripped', 'ai-post-scheduler');
+			$message = __('Runs are blocked after repeated failures. Reset the circuit to try again.', 'ai-post-scheduler');
+			$actions[] = 'reset_circuit';
+		} elseif ('half_open' === $circuit_state) {
+			$state   = 'warning';
+			$label   = __('Recovering', 'ai-post-scheduler');
+			$message = __('The next run is a trial after recent failures. It closes the circuit if it succeeds.', 'ai-post-scheduler');
+		} elseif ($latest_failed) {
+			$state   = 'error';
+			$label   = __('Last run failed', 'ai-post-scheduler');
+			$message = __('The most recent run did not finish. See the error below, or open History for the full log.', 'ai-post-scheduler');
+		} elseif (!empty($row['has_incomplete_batch'])) {
+			$state   = 'warning';
+			$label   = __('Batch incomplete', 'ai-post-scheduler');
+			$message = __('A multi-post run stopped before every post was generated.', 'ai-post-scheduler');
+		} else {
+			$state   = 'healthy';
+			$label   = __('Healthy', 'ai-post-scheduler');
+			$message = __('No problems with recent runs.', 'ai-post-scheduler');
+			// An old, already-recovered error would contradict "Healthy"; History still has it.
+			$last_error = null;
+		}
+
+		if (!empty($row['has_incomplete_batch'])) {
+			$actions[] = 'resume_batch';
+		}
+
+		return array(
+			'state'      => $state,
+			'label'      => $label,
+			'message'    => $message,
+			'actions'    => $actions,
+			'last_error' => $last_error,
+		);
+	}
+
+	/**
+	 * Most recent generated output (posts and/or topics), newest first.
+	 *
+	 * @param array $row   Normalised schedule row.
+	 * @param int   $limit Maximum items.
+	 * @return array<int, array> Items: kind, title, url, status, status_label, timestamp, time_display, time_full, time_iso.
+	 */
+	private function get_recent_output(array $row, $limit) {
+		$items = array();
+
+		if (self::TYPE_TEMPLATE === $row['type']) {
+			if (empty($row['history_id'])) {
+				return array();
+			}
+
+			// One run can log several post events (draft + completion) for the same post,
+			// so over-fetch and de-duplicate by post ID.
+			$logs     = $this->history_repository->get_recent_schedule_post_logs((int) $row['history_id'], $limit * 3);
+			$post_ids = array();
+			foreach ($logs as $log) {
+				foreach ($this->extract_log_post_ids($log) as $post_id) {
+					if (!isset($post_ids[$post_id])) {
+						$post_ids[$post_id] = isset($log->timestamp) ? (int) $log->timestamp : 0;
+					}
+				}
+			}
+
+			if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+				_prime_post_caches(array_keys($post_ids), false, false);
+			}
+
+			foreach ($post_ids as $post_id => $timestamp) {
+				$item = $this->build_post_item($post_id, $timestamp);
+				if ($item) {
+					$items[] = $item;
+				}
+				if (count($items) >= $limit) {
+					break;
+				}
+			}
+
+			return $items;
+		}
+
+		$author_id = !empty($row['author_id']) ? (int) $row['author_id'] : (int) $row['id'];
+
+		if (self::TYPE_AUTHOR_POST === $row['type'] || self::TYPE_BLUEPRINT === $row['type']) {
+			$post_rows = $this->author_topic_logs_repository->get_recent_generated_posts_by_author($author_id, $limit);
+			$ids       = array_map('absint', wp_list_pluck($post_rows, 'post_id'));
+			if (!empty($ids) && function_exists('_prime_post_caches')) {
+				_prime_post_caches($ids, false, false);
+			}
+			foreach ($post_rows as $post_row) {
+				$item = $this->build_post_item((int) $post_row->post_id, (int) $post_row->created_at);
+				if ($item) {
+					$items[] = $item;
+				}
+			}
+		}
+
+		if (self::TYPE_AUTHOR_TOPIC === $row['type'] || self::TYPE_BLUEPRINT === $row['type']) {
+			$topics = $this->author_topics_repository->get_latest_by_author($author_id, $limit);
+			foreach ((array) $topics as $topic) {
+				$items[] = $this->build_topic_item($topic, $author_id);
+			}
+		}
+
+		usort($items, function ($a, $b) {
+			return $b['timestamp'] <=> $a['timestamp'];
+		});
+
+		return array_slice($items, 0, $limit);
+	}
+
+	/**
+	 * Display item for a generated post, or null if the post no longer exists.
+	 *
+	 * @param int $post_id   Post ID.
+	 * @param int $timestamp When it was generated (Unix).
+	 * @return array|null
+	 */
+	private function build_post_item($post_id, $timestamp) {
+		$post = get_post($post_id);
+		if (!$post) {
+			return null;
+		}
+
+		$status_object = get_post_status_object($post->post_status);
+		$title         = trim((string) $post->post_title);
+
+		return array_merge(
+			array(
+				'kind'         => 'post',
+				'title'        => '' !== $title ? $title : __('(no title)', 'ai-post-scheduler'),
+				'url'          => esc_url_raw((string) get_edit_post_link($post_id, 'raw')),
+				'status'       => sanitize_html_class($post->post_status),
+				'status_label' => ($status_object && !empty($status_object->label)) ? $status_object->label : ucfirst($post->post_status),
+			),
+			$this->time_fields($timestamp > 0 ? $timestamp : (int) get_post_time('U', true, $post))
+		);
+	}
+
+	/**
+	 * Display item for a generated author topic.
+	 *
+	 * @param object $topic     Topic row.
+	 * @param int    $author_id Author ID.
+	 * @return array
+	 */
+	private function build_topic_item($topic, $author_id) {
+		$status_labels = array(
+			'pending'  => __('Pending review', 'ai-post-scheduler'),
+			'approved' => __('Approved', 'ai-post-scheduler'),
+			'rejected' => __('Rejected', 'ai-post-scheduler'),
+		);
+		$status = isset($topic->status) ? (string) $topic->status : 'pending';
+
+		$url = add_query_arg(array(
+			'page'      => 'aips-automations',
+			'tab'       => 'author-topics',
+			'author_id' => absint($author_id),
+		), admin_url('admin.php'));
+
+		return array_merge(
+			array(
+				'kind'         => 'topic',
+				'title'        => isset($topic->topic_title) ? (string) $topic->topic_title : '',
+				'url'          => esc_url_raw($url),
+				'status'       => sanitize_html_class($status),
+				'status_label' => isset($status_labels[$status]) ? $status_labels[$status] : ucfirst($status),
+			),
+			$this->time_fields(!empty($topic->generated_at) ? (int) $topic->generated_at : 0)
+		);
+	}
+
+	/**
+	 * Common time fields for a recent-output item.
+	 *
+	 * @param int $timestamp Unix timestamp (0 = unknown).
+	 * @return array
+	 */
+	private function time_fields($timestamp) {
+		if ($timestamp <= 0) {
+			return array('timestamp' => 0, 'time_display' => '', 'time_full' => '', 'time_iso' => '');
+		}
+
+		$date_time = AIPS_DateTime::fromTimestamp($timestamp);
+
+		return array(
+			'timestamp'    => $timestamp,
+			'time_display' => AIPS_DateTime::formatRelativeOrAbsolute($timestamp),
+			'time_full'    => $date_time->toDisplay(),
+			'time_iso'     => $date_time->toIso8601(),
+		);
+	}
+
+	/**
+	 * Post IDs referenced by a history log row (details.context.post_id or details.output.post_id).
+	 *
+	 * @param object $log Raw log row.
+	 * @return int[]
+	 */
+	private function extract_log_post_ids($log) {
+		$details = !empty($log->details) ? json_decode($log->details, true) : array();
+		if (!is_array($details)) {
+			return array();
+		}
+
+		$source = null;
+		if (!empty($details['context']['post_id'])) {
+			$source = $details['context']['post_id'];
+		} elseif (!empty($details['output']['post_id'])) {
+			$source = $details['output']['post_id'];
+		}
+
+		if (empty($source)) {
+			return array();
+		}
+
+		return array_values(array_filter(array_map('absint', (array) $source)));
+	}
+
+	/**
+	 * Whether a history log row records a failure.
+	 *
+	 * @param object $log Raw log row.
+	 * @return bool
+	 */
+	private function is_failed_log($log) {
+		if (isset($log->history_type_id) && (int) $log->history_type_id === AIPS_History_Type::ERROR) {
+			return true;
+		}
+
+		$status = isset($log->event_status) ? (string) $log->event_status : '';
+
+		return '' !== $status && AIPS_History_Event_Status::FAILED === AIPS_History_Event_Status::canonicalize($status);
+	}
+
+	/**
+	 * Unescaped message + time fields for an error log row.
+	 *
+	 * @param object $log Raw log row.
+	 * @return array{message: string, time_display: string, time_full: string, time_iso: string, timestamp: int}
+	 */
+	private function format_error_log($log) {
+		$details = !empty($log->details) ? json_decode($log->details, true) : array();
+		$message = (is_array($details) && !empty($details['message'])) ? (string) $details['message'] : '';
+		if ('' === $message) {
+			$message = __('The run failed without an error message.', 'ai-post-scheduler');
+		}
+
+		return array_merge(
+			array('message' => wp_strip_all_tags($message)),
+			$this->time_fields(isset($log->timestamp) ? (int) $log->timestamp : 0)
+		);
+	}
+
+	/**
+	 * Human label for a cron recurrence key.
+	 *
+	 * @param string $frequency Recurrence key.
+	 * @return string
+	 */
+	private function frequency_label($frequency) {
+		if (empty($frequency)) {
+			return '—';
+		}
+		$schedules = wp_get_schedules();
+		if (isset($schedules[$frequency]['display'])) {
+			return $schedules[$frequency]['display'];
+		}
+		return ucfirst(str_replace('_', ' ', $frequency));
+	}
+
+	/**
+	 * "37 posts" / "66 topics".
+	 *
+	 * @param int    $count Count.
+	 * @param string $noun  'post' or 'topic'.
+	 * @return string
+	 */
+	private function count_label($count, $noun) {
+		if ('topic' === $noun) {
+			/* translators: %s: number of topics */
+			return sprintf(_n('%s topic', '%s topics', $count, 'ai-post-scheduler'), number_format_i18n($count));
+		}
+		/* translators: %s: number of posts */
+		return sprintf(_n('%s post', '%s posts', $count, 'ai-post-scheduler'), number_format_i18n($count));
+	}
+
 	// -------------------------------------------------------------------------
 	// Private helpers
 	// -------------------------------------------------------------------------
