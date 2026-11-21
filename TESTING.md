@@ -214,6 +214,23 @@ make sql-batch-unpack ZIP=~/Downloads/sql-batch-20261013-142200-dbname.zip
 
 and point the agent at `.artifacts/sql-results/<run>/REPORT.md`. Unit tests: `make test ARGS="tests/Test_AIPS_Sql_Batch.php"`.
 
+## AI payload capture (`ai-payload-capture`)
+
+`ai-post-scheduler/bin/ai-payload-capture.php` runs the real generation pipeline (`AIPS_Generator` + the real prompt builders + `AIPS_AI_Service` + the AI provider configured for this install) across a fixed set of scenarios — a plain template, a template with a voice override and an article structure, an author/topic post, conversational generation with the combined metadata turn, and a post with in-body content images — and records, verbatim, every prompt and option sent to `AIPS_AI_Service`, the canonical parameters handed to the provider, and (unless `--offline`) the exact HTTP request/response exchanged with the connector. It is the way to answer "what are we actually sending the model right now" and to catch a prompt builder, generator, or AI service change that silently breaks another part of generation: run it before and after the change and diff the two `REPORT.md`s.
+
+Each scenario creates one draft post (plus, for one scenario, a temporary article structure) and deletes everything it created at the end of the run (`--keep-posts` to skip that). It never touches a real template/voice/author row or production data, and it only ever runs against this dev stack's own database.
+
+```bash
+make ai-payload-capture                                    # live text/JSON against the connector .env configures; images simulated
+make ai-payload-capture ARGS="--offline"                    # fully simulated — no network, no API key needed
+make ai-payload-capture ARGS="--scenario=template_basic"    # one scenario only (repeatable)
+make ai-payload-capture ARGS="--live-images"                 # also generate real images (uses real quota)
+make ai-payload-capture ARGS="--list"                        # list scenarios with descriptions
+make ai-payload-capture ARGS="--help"                        # full option reference
+```
+
+The dev stack's `web` container already has `GOOGLE_API_KEY` from `.env` wired into the WordPress AI Client connector (`docker-entrypoint.sh`); the script also reads `.env` itself and configures any connector that needs it, so it works even if that provisioning step has not run. Reports land in `ai-post-scheduler/.artifacts/ai-payload-capture/<run-id>/` — read `REPORT.md` first; `<scenario>.json` holds the same data as structured JSON. API keys and other secrets are redacted everywhere in the output.
+
 ## Notes
 
 - The test database is disposable. Use `--fresh` to reset it.
