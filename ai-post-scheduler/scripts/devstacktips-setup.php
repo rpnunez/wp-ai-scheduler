@@ -34,6 +34,11 @@ class AIPS_DevStackTips_Config_Setup {
 	 */
 	const V2_AUTHOR_MIN_SCORE = 85;
 
+	/**
+	 * Profile tag stamped into backup files (guards rollback against other sites/tools).
+	 */
+	const BACKUP_PROFILE = 'devstacktips-id-driven';
+
 	/** @var string 'plan' (more modes added in later slices). */
 	private $mode = 'plan';
 
@@ -52,6 +57,21 @@ class AIPS_DevStackTips_Config_Setup {
 	/** @var string[] Warnings collected during planning. */
 	private $warnings = array();
 
+	/** @var string[] Errors collected during apply. */
+	private $errors = array();
+
+	/** @var int Fields/objects written during apply. */
+	private $applied = 0;
+
+	/** @var string Directory backups are written to (apply mode). */
+	private $backup_dir = '';
+
+	/** @var string Backup file written by this apply run. */
+	private $backup_file = '';
+
+	/** @var array Backup payload. */
+	private $backup = array();
+
 	/**
 	 * @param array $args Positional WP-CLI arguments.
 	 */
@@ -60,7 +80,16 @@ class AIPS_DevStackTips_Config_Setup {
 			$arg = (string) $arg;
 			if (in_array($arg, array('plan', 'apply', 'rollback'), true)) {
 				$this->mode = $arg;
+			} elseif (0 === strpos($arg, 'backup-dir=')) {
+				$this->backup_dir = substr($arg, strlen('backup-dir='));
 			}
+		}
+
+		if ('' === $this->backup_dir) {
+			$home = getenv('HOME');
+			$this->backup_dir = ($home && is_dir($home) && is_writable($home))
+				? rtrim($home, '/\\') . DIRECTORY_SEPARATOR . 'aips-backups'
+				: sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'aips-backups';
 		}
 
 		$this->reader  = new AIPS_Config_Reader();
@@ -73,14 +102,119 @@ class AIPS_DevStackTips_Config_Setup {
 	 * @return bool
 	 */
 	public function run() {
-		if ('plan' !== $this->mode) {
-			$this->line("Mode '{$this->mode}' is not implemented yet in this build.");
+		if ('plan' === $this->mode) {
+			$this->print_plan($this->plan());
+			return true;
+		}
+
+		if ('apply' === $this->mode) {
+			return $this->apply();
+		}
+
+		$this->line("Mode '{$this->mode}' is not implemented yet in this build.");
+		return false;
+	}
+
+	/**
+	 * Apply the plan: update managed objects by ID through the repositories,
+	 * writing a JSON backup before the first change. Nothing is created here
+	 * (seeding lands in a later slice); 'absent' definitions are reported.
+	 *
+	 * @return bool True when the run finished without errors.
+	 */
+	public function apply() {
+		$this->line('=========================================');
+		$this->line('DevStackTips setup (ID-driven) — APPLY');
+		$this->line('=========================================');
+
+		if (!$this->start_backup()) {
 			return false;
 		}
 
-		$this->print_plan($this->plan());
+		// Persist the stable-key bindings so this and later runs resolve by the
+		// registry rather than by name.
+		$sync = $this->binding->sync();
+		if (!empty($sync['collisions'])) {
+			foreach ($sync['collisions'] as $key => $ids) {
+				$this->warn(sprintf('Ambiguous key %s maps to IDs %s; left unbound.', $key, implode(', ', $ids)));
+			}
+		}
 
-		return true;
+		$plan = $this->plan();
+
+		foreach ($plan as $entry) {
+			if ('absent' === $entry['action']) {
+				$this->warn(sprintf('%s %s: %s (not changed)', $entry['entity'], $entry['name'], implode('; ', $entry['warnings'])));
+				continue;
+			}
+
+			foreach ($entry['warnings'] as $warning) {
+				$this->warn(sprintf('%s %s: %s', $entry['entity'], $entry['name'], $warning));
+			}
+
+			if ('update' !== $entry['action']) {
+				continue;
+			}
+
+			$this->apply_entry($entry);
+		}
+
+		$this->write_backup();
+		$this->print_apply_summary();
+
+		return empty($this->errors);
+	}
+
+	/**
+	 * Write one plan entry's changes, backing up the old values first.
+	 *
+	 * @param array $entry
+	 * @return void
+	 */
+	private function apply_entry(array $entry) {
+		if ('setting' === $entry['entity']) {
+			$name = $entry['key'];
+			$this->backup_option($name);
+			$this->write_backup();
+			update_option($name, $entry['changes'][$name]['new']);
+			$this->applied++;
+			$this->line(sprintf('[SET] %s', $name));
+			return;
+		}
+
+		$fields = array();
+		foreach ($entry['changes'] as $field => $change) {
+			$this->backup_field($entry['entity'], (int) $entry['id'], $field, $change['old']);
+			$fields[$field] = $change['new'];
+		}
+		$this->write_backup();
+
+		if (false === $this->repository_update($entry['entity'], (int) $entry['id'], $fields)) {
+			$this->error(sprintf('Failed to update %s %s (#%d)', $entry['entity'], $entry['name'], (int) $entry['id']));
+			return;
+		}
+
+		$this->applied++;
+		$this->line(sprintf('[SET] %s %s (#%d): %s', $entry['entity'], $entry['name'], (int) $entry['id'], implode(', ', array_keys($fields))));
+	}
+
+	/**
+	 * Update a managed row through its repository.
+	 *
+	 * @param string $entity 'template' or 'author'.
+	 * @param int    $id
+	 * @param array  $fields
+	 * @return mixed False on failure.
+	 */
+	private function repository_update($entity, $id, array $fields) {
+		switch ($entity) {
+			case 'template':
+				return (new AIPS_Template_Repository())->update($id, $fields);
+			case 'author':
+				return (new AIPS_Authors_Repository())->update($id, $fields);
+		}
+
+		return false;
 	}
 
 	/**
@@ -458,6 +592,152 @@ class AIPS_DevStackTips_Config_Setup {
 	 */
 	private function line($text = '') {
 		echo $text . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output.
+	}
+
+	/**
+	 * Record an error.
+	 *
+	 * @param string $message
+	 * @return void
+	 */
+	private function error($message) {
+		$this->errors[] = $message;
+		$this->line('[ERR] ' . $message);
+	}
+
+	/**
+	 * Record a warning.
+	 *
+	 * @param string $message
+	 * @return void
+	 */
+	private function warn($message) {
+		$this->warnings[] = $message;
+		$this->line('[WARN] ' . $message);
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Backup (apply mode)                                                 */
+	/* ------------------------------------------------------------------ */
+
+	/**
+	 * Create the backup file before the first write.
+	 *
+	 * @return bool
+	 */
+	private function start_backup() {
+		if (!wp_mkdir_p($this->backup_dir) || !is_writable($this->backup_dir)) {
+			$this->error('Backup directory is not writable: ' . $this->backup_dir . ' (pass backup-dir=/path).');
+			return false;
+		}
+
+		if ($this->is_inside_wordpress($this->backup_dir)) {
+			$this->error('Refusing to write backups inside the WordPress directory: ' . $this->backup_dir . ' (pass backup-dir=/path outside it).');
+			return false;
+		}
+
+		$this->backup = array(
+			'profile'     => self::BACKUP_PROFILE,
+			'site_url'    => home_url(),
+			'created_utc' => gmdate('c'),
+			'rows'        => array(),
+			'options'     => array(),
+		);
+
+		$this->backup_file = rtrim($this->backup_dir, '/\\') . DIRECTORY_SEPARATOR . 'devstacktips-id-backup-' . gmdate('Ymd-His') . '.json';
+
+		if (!$this->write_backup()) {
+			$this->error('Could not write backup file: ' . $this->backup_file);
+			return false;
+		}
+
+		$this->line('Backup file: ' . $this->backup_file);
+
+		return true;
+	}
+
+	/**
+	 * Write the backup payload to disk.
+	 *
+	 * @return bool
+	 */
+	private function write_backup() {
+		if ('' === $this->backup_file) {
+			return false;
+		}
+
+		$json = wp_json_encode($this->backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+		return false !== $json && false !== file_put_contents($this->backup_file, $json . "\n");
+	}
+
+	/**
+	 * Remember a field's value before the first change.
+	 *
+	 * @param string $entity
+	 * @param int    $id
+	 * @param string $field
+	 * @param mixed  $old
+	 * @return void
+	 */
+	private function backup_field($entity, $id, $field, $old) {
+		$key = (string) (int) $id;
+		if (!isset($this->backup['rows'][$entity][$key]) || !array_key_exists($field, $this->backup['rows'][$entity][$key])) {
+			$this->backup['rows'][$entity][$key][$field] = $old;
+		}
+	}
+
+	/**
+	 * Remember an option's value before the first change.
+	 *
+	 * @param string $name
+	 * @return void
+	 */
+	private function backup_option($name) {
+		if (isset($this->backup['options'][$name])) {
+			return;
+		}
+
+		$missing = new stdClass();
+		$value   = get_option($name, $missing);
+
+		$this->backup['options'][$name] = array(
+			'existed' => ($value !== $missing),
+			'value'   => ($value !== $missing) ? $value : null,
+		);
+	}
+
+	/**
+	 * Whether a directory is inside the WordPress install.
+	 *
+	 * @param string $dir
+	 * @return bool
+	 */
+	private function is_inside_wordpress($dir) {
+		$real_dir  = realpath($dir);
+		$real_root = realpath(ABSPATH);
+
+		if (!$real_dir || !$real_root) {
+			return false;
+		}
+
+		$real_dir  = rtrim(str_replace('\\', '/', $real_dir), '/') . '/';
+		$real_root = rtrim(str_replace('\\', '/', $real_root), '/') . '/';
+
+		return 0 === strpos($real_dir, $real_root);
+	}
+
+	/**
+	 * Print the apply summary.
+	 *
+	 * @return void
+	 */
+	private function print_apply_summary() {
+		$this->line('');
+		$this->line('=========================================');
+		$this->line(sprintf('APPLIED: %d change(s), %d warning(s), %d error(s).', $this->applied, count($this->warnings), count($this->errors)));
+		$this->line('Backup: ' . $this->backup_file);
+		$this->line('=========================================');
 	}
 }
 
