@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- **Background Processes mobile layout:** Stack Processes and Recent runs table cells with translated field labels at widths up to 782px, allowing long text to wrap and keeping action buttons accessible on phones.
 - **Post Components Parity & Conversational Integration:**
   - Resolved `post_slug` status tracking in `AIPS_Generator::generate_post_from_context()`, ensuring slug failures record properly in component statuses while preventing optional slug failures from inappropriately marking posts as incomplete or forcing draft status.
   - Eliminated `post_images` key pollution in posts without configured content images by checking `$context->has_content_images()` before status initialization.
