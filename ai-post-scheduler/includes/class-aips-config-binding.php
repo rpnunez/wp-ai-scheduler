@@ -203,6 +203,26 @@ class AIPS_Config_Binding {
 	}
 
 	/**
+	 * Effective bindings without persisting anything: the stored map, plus any
+	 * not-yet-bound keys discovered by name this moment. For read-only planning
+	 * on a site whose registry has not been written yet.
+	 *
+	 * @return array{bindings:array<string,int>,collisions:array<string,int[]>}
+	 */
+	public function preview() {
+		$effective  = $this->load();
+		$discovered = $this->discover();
+
+		foreach ($discovered['bindings'] as $key => $id) {
+			if (!isset($effective[$key])) {
+				$effective[$key] = $id;
+			}
+		}
+
+		return array('bindings' => $effective, 'collisions' => $discovered['collisions']);
+	}
+
+	/**
 	 * Resolve a stable key to its live object ID.
 	 *
 	 * @param string $key
