@@ -63,3 +63,48 @@ require WP_TESTS_DIR . '/includes/bootstrap.php';
 
 add_filter('wp_doing_ajax', '__return_true');
 add_filter('wp_die_ajax_handler', '_aips_use_full_wp_ajax_die_handler');
+
+/**
+ * Clear AIPS configuration tables (and source-group terms) for a clean slate.
+ *
+ * wp_tests can carry committed rows between runs (a test that commits, or one
+ * killed mid-transaction), which breaks tests that resolve configuration by
+ * name. DELETE is transactional, so calling this in setUp() rolls back with the
+ * test. Does not touch the WordPress default category.
+ *
+ * @return void
+ */
+function aips_test_clear_config_tables() {
+	global $wpdb;
+
+	$suffixes = array(
+		'aips_templates',
+		'aips_authors',
+		'aips_voices',
+		'aips_article_structures',
+		'aips_prompt_sections',
+		'aips_post_slices',
+		'aips_sources',
+		'aips_source_group_terms',
+		'aips_campaigns',
+		'aips_schedule',
+		'aips_post_images',
+	);
+
+	foreach ($suffixes as $suffix) {
+		$table = $wpdb->prefix . $suffix;
+		// phpcs:ignore WordPress.DB -- test helper, fixed table names, no user input.
+		if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) === $table) {
+			$wpdb->query("DELETE FROM `{$table}`"); // phpcs:ignore WordPress.DB
+		}
+	}
+
+	if (taxonomy_exists('aips_source_group')) {
+		$terms = get_terms(array('taxonomy' => 'aips_source_group', 'hide_empty' => false));
+		if (is_array($terms)) {
+			foreach ($terms as $term) {
+				wp_delete_term($term->term_id, 'aips_source_group');
+			}
+		}
+	}
+}

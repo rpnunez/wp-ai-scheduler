@@ -20,6 +20,13 @@ class Test_AIPS_DevStackTips_Config_Setup_Plan extends WP_UnitTestCase {
 		if (!taxonomy_exists('aips_source_group')) {
 			register_taxonomy('aips_source_group', array(), array('public' => false));
 		}
+
+		// Start from a clean config slate. wp_tests can carry committed rows from
+		// a prior run (e.g. the legacy setup script's apply tests), and this plan
+		// resolves definitions by name — a leftover same-named object would be
+		// resolved instead of the one a test creates. DELETE is transactional, so
+		// this rolls back with the rest of the test.
+		aips_test_clear_config_tables();
 	}
 
 	/**

@@ -13,6 +13,7 @@ class Test_AIPS_Config_Binding extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		delete_option(AIPS_Config_Binding::OPTION);
+		aips_test_clear_config_tables();
 		$this->binding = new AIPS_Config_Binding(new AIPS_Config_Reader($GLOBALS['wpdb']));
 	}
 
