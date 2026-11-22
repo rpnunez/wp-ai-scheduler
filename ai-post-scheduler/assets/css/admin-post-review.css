@@ -433,8 +433,8 @@
 }
 
 .aips-post-card.is-processing {
-	opacity: 0.6;
 	pointer-events: none;
+	overflow: hidden;
 }
 
 /* Card Banner / Image */

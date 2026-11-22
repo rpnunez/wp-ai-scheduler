@@ -1326,6 +1326,9 @@
 			AIPS.Utilities.confirm(msg, 'Notice', [
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					var $rows = $('.aips-history-cb:checked').closest('tr');
+					AIPS.Utilities.setItemProcessing($rows, true, { label: aipsHistoryL10n.deleting || 'Deleting\u2026' });
+
 					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
@@ -1337,8 +1340,11 @@
 						success: function (response) {
 							if (response.success) {
 								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
-								self.reload();
+								AIPS.Utilities.finishItemProcessing($rows, true, null, function () {
+									self.reload();
+								});
 							} else {
+								AIPS.Utilities.setItemProcessing($rows, false);
 								AIPS.Utilities.showToast(
 									response.data && response.data.message
 										? response.data.message
@@ -1348,6 +1354,7 @@
 							}
 						},
 						error: function () {
+							AIPS.Utilities.setItemProcessing($rows, false);
 							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
 						}
 					});
@@ -1377,6 +1384,11 @@
 			AIPS.Utilities.confirm(msg, 'Close Stalled Runs', [
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, close stalled runs', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					var $rows = $('#aips-history-tbody tr').filter(function () {
+						return $(this).find('.aips-status-badge--processing, .aips-badge-processing, [data-status="processing"]').length > 0;
+					});
+					AIPS.Utilities.setItemProcessing($rows, true, { label: aipsHistoryL10n.clearing || 'Clearing\u2026' });
+
 					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
@@ -1395,8 +1407,11 @@
 								if (!response.data || !response.data.stats || (parseInt(response.data.stats.processing || 0, 10) + parseInt(response.data.stats.stalled || 0, 10)) === 0) {
 									$('#aips-clear-processing-btn').hide();
 								}
-								self.reload();
+								AIPS.Utilities.finishItemProcessing($rows, true, null, function () {
+									self.reload();
+								});
 							} else {
+								AIPS.Utilities.setItemProcessing($rows, false);
 								AIPS.Utilities.showToast(
 									response.data && response.data.message
 										? response.data.message
@@ -1406,6 +1421,7 @@
 							}
 						},
 						error: function () {
+							AIPS.Utilities.setItemProcessing($rows, false);
 							AIPS.Utilities.showToast(aipsHistoryL10n.errorClearing || 'Error clearing history.', 'error');
 						}
 					});
@@ -1440,6 +1456,9 @@
 			AIPS.Utilities.confirm(msg, 'Notice', [
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					var $row = $singleBtn.closest('tr');
+					AIPS.Utilities.setItemProcessing($row, true, { label: aipsHistoryL10n.deleting || 'Deleting\u2026' });
+
 					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
@@ -1451,8 +1470,11 @@
 						success: function (response) {
 							if (response.success) {
 								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
-								self.reload();
+								AIPS.Utilities.finishItemProcessing($row, true, null, function () {
+									self.reload();
+								});
 							} else {
+								AIPS.Utilities.setItemProcessing($row, false);
 								AIPS.Utilities.showToast(
 									response.data && response.data.message
 										? response.data.message
@@ -1462,6 +1484,7 @@
 							}
 						},
 						error: function () {
+							AIPS.Utilities.setItemProcessing($row, false);
 							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting item.', 'error');
 						}
 					});
@@ -1489,6 +1512,9 @@
 			var self     = this;
 			var $btn     = $(e.currentTarget);
 			var id       = $btn.data('id');
+			var $row     = $btn.closest('tr');
+
+			AIPS.Utilities.setItemProcessing($row, true, { label: aipsHistoryL10n.retrying || 'Retrying\u2026' });
 
 			var req = $.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -1501,12 +1527,16 @@
 				success: function (response) {
 					if (response.success) {
 						AIPS.Utilities.showToast(response.data.message, 'success');
-						self.reload();
+						AIPS.Utilities.finishItemProcessing($row, true, null, function () {
+							self.reload();
+						});
 					} else {
+						AIPS.Utilities.setItemProcessing($row, false);
 						AIPS.Utilities.showToast(response.data.message, 'error');
 					}
 				},
 				error: function () {
+					AIPS.Utilities.setItemProcessing($row, false);
 					AIPS.Utilities.showToast(aipsHistoryL10n.errorRetrying || 'An error occurred. Please try again.', 'error');
 				}
 			});
