@@ -97,13 +97,16 @@ class AIPS_Config_Binding {
 	/**
 	 * Discover key => ID bindings from the live installation.
 	 *
-	 * @return array{bindings:array<string,int>,collisions:array<string,int[]>}
+	 * @return array{bindings:array<string,int>,collisions:array<string,int[]>,ids_by_type:array<string,int[]>}
 	 *   bindings: first ID seen per key; collisions: every ID for keys that
-	 *   more than one live object maps to (ambiguous, left for a human).
+	 *   more than one live object maps to (ambiguous, left for a human);
+	 *   ids_by_type: every live ID per entity type (IDs are unique only within
+	 *   a type, so staleness must be judged per type).
 	 */
 	public function discover() {
-		$bindings   = array();
-		$collisions = array();
+		$bindings    = array();
+		$collisions  = array();
+		$ids_by_type = array();
 
 		foreach (self::BINDABLE as $type => $def) {
 			$rows = ('table' === $def['source'])
@@ -112,12 +115,17 @@ class AIPS_Config_Binding {
 
 			foreach ($rows as $row) {
 				$row = (array) $row;
-				$key = $this->key_for($type, $row);
-				if (null === $key || !isset($row[$def['id']])) {
+				if (!isset($row[$def['id']])) {
 					continue;
 				}
 
-				$id = (int) $row[$def['id']];
+				$id                   = (int) $row[$def['id']];
+				$ids_by_type[$type][] = $id;
+
+				$key = $this->key_for($type, $row);
+				if (null === $key) {
+					continue;
+				}
 
 				if (isset($bindings[$key])) {
 					if (!isset($collisions[$key])) {
@@ -131,7 +139,19 @@ class AIPS_Config_Binding {
 			}
 		}
 
-		return array('bindings' => $bindings, 'collisions' => $collisions);
+		return array('bindings' => $bindings, 'collisions' => $collisions, 'ids_by_type' => $ids_by_type);
+	}
+
+	/**
+	 * Entity type encoded in a stable key ("templates:foo" => "templates").
+	 *
+	 * @param string $key
+	 * @return string
+	 */
+	private function type_of($key) {
+		$pos = strpos($key, ':');
+
+		return false === $pos ? '' : substr($key, 0, $pos);
 	}
 
 	/**
@@ -184,10 +204,15 @@ class AIPS_Config_Binding {
 			}
 		}
 
-		$live_ids = array_flip(array_values($discovered['bindings']));
-		$stale    = array();
+		// Staleness is per entity type: IDs are unique only within a type, so a
+		// deleted voice's ID must be checked against live voice IDs, not every
+		// live ID (a term could share the number).
+		$ids_by_type = $discovered['ids_by_type'];
+		$stale       = array();
 		foreach ($stored as $key => $id) {
-			if (!isset($live_ids[$id])) {
+			$type     = $this->type_of($key);
+			$live_ids = isset($ids_by_type[$type]) ? $ids_by_type[$type] : array();
+			if (!in_array($id, $live_ids, true)) {
 				$stale[] = $key;
 			}
 		}
