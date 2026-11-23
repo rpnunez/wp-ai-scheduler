@@ -131,14 +131,14 @@ $active_display_name = !empty($log_files[0]['display_name']) ? $log_files[0]['di
 								<span class="dashicons dashicons-trash"></span>
 								<span class="dashicons dashicons-arrow-down-alt2"></span>
 							</button>
-							<div class="aips-dropdown-menu aips-dropdown-menu-right" id="aips-logs-manage-menu" role="menu">
+							<div class="aips-dropdown-menu aips-dropdown-menu-right aips-is-hidden" id="aips-logs-manage-menu" role="menu">
 								<button type="button" class="aips-dropdown-item" id="aips-logs-empty-file-btn" role="menuitem">
 									<span class="dashicons dashicons-editor-removeformatting"></span>
-									<?php esc_html_e('Empty File (0 bytes)', 'ai-post-scheduler'); ?>
+									<span><?php esc_html_e('Empty File (0 bytes)', 'ai-post-scheduler'); ?></span>
 								</button>
 								<button type="button" class="aips-dropdown-item aips-dropdown-item-danger" id="aips-logs-delete-file-btn" role="menuitem">
 									<span class="dashicons dashicons-trash"></span>
-									<?php esc_html_e('Delete File from Disk', 'ai-post-scheduler'); ?>
+									<span><?php esc_html_e('Delete File from Disk', 'ai-post-scheduler'); ?></span>
 								</button>
 							</div>
 						</div>
@@ -162,7 +162,7 @@ $active_display_name = !empty($log_files[0]['display_name']) ? $log_files[0]['di
 						<div class="aips-logs-search-wrap">
 							<span class="dashicons dashicons-search aips-search-icon"></span>
 							<input type="text" id="aips-logs-search-input" class="aips-form-input aips-form-input-sm" placeholder="<?php esc_attr_e('Filter log entries…', 'ai-post-scheduler'); ?>" />
-							<button type="button" class="aips-logs-search-clear" id="aips-logs-search-clear" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" style="display:none;">
+							<button type="button" class="aips-logs-search-clear aips-is-hidden" id="aips-logs-search-clear" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>">
 								<span class="dashicons dashicons-dismiss"></span>
 							</button>
 						</div>
@@ -195,7 +195,7 @@ $active_display_name = !empty($log_files[0]['display_name']) ? $log_files[0]['di
 			</div><!-- /.aips-logs-toolbar -->
 
 			<!-- Truncation / Large File Notice -->
-			<div class="aips-alert aips-alert-info aips-logs-truncation-notice" id="aips-logs-truncation-notice" style="display:none;">
+			<div class="aips-alert aips-alert-info aips-logs-truncation-notice aips-is-hidden" id="aips-logs-truncation-notice">
 				<span class="dashicons dashicons-info"></span>
 				<div class="aips-alert-content">
 					<p><?php esc_html_e('Displaying tail preview (truncated for performance). Use the Download button to obtain the complete raw file.', 'ai-post-scheduler'); ?></p>
@@ -213,7 +213,7 @@ $active_display_name = !empty($log_files[0]['display_name']) ? $log_files[0]['di
 				</div>
 
 				<!-- Raw Text View Container -->
-				<div class="aips-logs-raw-wrap" id="aips-logs-raw-wrap" style="display:none;">
+				<div class="aips-logs-raw-wrap aips-is-hidden" id="aips-logs-raw-wrap">
 					<pre class="aips-logs-raw-code" id="aips-logs-raw-code"></pre>
 				</div>
 			</div>
@@ -262,13 +262,13 @@ $active_display_name = !empty($log_files[0]['display_name']) ? $log_files[0]['di
 				<?php esc_html_e('Show Context', 'ai-post-scheduler'); ?>
 			</button>
 		</div>
-		<div class="aips-logs-entry-context-wrap" style="display:none;">
+		<div class="aips-logs-entry-context-wrap">
 			<pre class="aips-logs-entry-context"><code>{{context}}</code></pre>
 		</div>
 	</script>
 
 	<script type="text/html" id="aips-tmpl-logs-empty-view">
-		<div class="aips-logs-empty-view">
+		<div class="aips-logs-empty-view {{errorClass}}">
 			<span class="dashicons {{iconClass}}"></span>
 			<p>{{message}}</p>
 		</div>

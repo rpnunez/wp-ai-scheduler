@@ -358,4 +358,29 @@ class Test_AIPS_Diagnostics_Logs extends WP_UnitTestCase {
 		clearstatcache();
 		$this->assertFileDoesNotExist( $path );
 	}
+
+	/**
+	 * Test that the logs tab template contains no inline styles.
+	 */
+	public function test_logs_tab_template_has_no_inline_styles() {
+		$log_files = array(
+			array(
+				'name'         => 'aips-2026-11-23-test.log',
+				'display_name' => 'Today — Nov 23, 2026',
+				'size'         => '12 KB',
+				'modified'     => '2026-11-23 05:00',
+				'timestamp'    => time(),
+				'is_active'    => true,
+			),
+		);
+
+		ob_start();
+		include AIPS_PLUGIN_DIR . 'templates/admin/tab-logs.php';
+		$html = ob_get_clean();
+
+		$this->assertNotEmpty( $html );
+		$this->assertStringNotContainsString( 'style=', $html );
+		$this->assertStringContainsString( 'aips-is-hidden', $html );
+		$this->assertStringContainsString( 'aips-tmpl-logs-entry', $html );
+	}
 }
