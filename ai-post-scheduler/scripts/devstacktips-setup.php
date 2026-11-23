@@ -11,12 +11,15 @@
  * This is the successor to scripts/setup-devstacktips-content.php and is being
  * built in slices. Implemented so far:
  *   plan   Dry run: print the changes that apply would make (default; writes nothing).
+ *   apply  Write changes strictly by ID through repositories, with JSON backup.
+ *          Seeds missing v3 source groups and sources, stamping their bindings.
  *
- * Planned next: apply (write by ID, with backup), seed (create missing), rollback.
+ * Planned next: rollback, topic re-check, and bare install seed parity.
  *
  * Usage (CLI only):
  *   wp eval-file wp-content/plugins/ai-post-scheduler/scripts/devstacktips-setup.php
  *   wp eval-file wp-content/plugins/ai-post-scheduler/scripts/devstacktips-setup.php plan
+ *   wp eval-file wp-content/plugins/ai-post-scheduler/scripts/devstacktips-setup.php apply
  *
  * @package AI_Post_Scheduler
  */
@@ -39,7 +42,7 @@ class AIPS_DevStackTips_Config_Setup {
 	 */
 	const BACKUP_PROFILE = 'devstacktips-id-driven';
 
-	/** @var string 'plan' (more modes added in later slices). */
+	/** @var string 'plan' or 'apply'. */
 	private $mode = 'plan';
 
 	/** @var AIPS_Config_Reader */
@@ -116,9 +119,9 @@ class AIPS_DevStackTips_Config_Setup {
 	}
 
 	/**
-	 * Apply the plan: update managed objects by ID through the repositories,
-	 * writing a JSON backup before the first change. Nothing is created here
-	 * (seeding lands in a later slice); 'absent' definitions are reported.
+	 * Apply the plan: seed missing v3 objects, stamp bindings, update managed
+	 * objects by ID through the repositories, and write a JSON backup before
+	 * each write. Absent definitions with no seed logic are reported.
 	 *
 	 * @return bool True when the run finished without errors.
 	 */
@@ -139,6 +142,9 @@ class AIPS_DevStackTips_Config_Setup {
 				$this->warn(sprintf('Ambiguous key %s maps to IDs %s; left unbound.', $key, implode(', ', $ids)));
 			}
 		}
+
+		// Seed v3 source groups and sources when missing, stamping their bindings.
+		$this->seed_v3_objects();
 
 		$plan = $this->plan();
 
@@ -163,6 +169,100 @@ class AIPS_DevStackTips_Config_Setup {
 		$this->print_apply_summary();
 
 		return empty($this->errors);
+	}
+
+	/**
+	 * Seed v3 source groups and sources when missing, stamping their bindings.
+	 *
+	 * @return void
+	 */
+	private function seed_v3_objects() {
+		if (!taxonomy_exists('aips_source_group')) {
+			register_taxonomy('aips_source_group', array(), array('public' => false));
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::source_groups() as $group) {
+			$key = AIPS_Config_Binding::make_key('source_groups', $group['slug']);
+			$id  = $this->binding->resolve($key);
+
+			if (null === $id) {
+				$term = get_term_by('slug', $group['slug'], 'aips_source_group');
+				if ($term && !is_wp_error($term)) {
+					$id = (int) $term->term_id;
+					$this->binding->stamp($key, $id);
+				}
+			}
+
+			if (null === $id) {
+				$result = wp_insert_term($group['name'], 'aips_source_group', array(
+					'slug'        => $group['slug'],
+					'description' => $group['description'],
+				));
+
+				if (is_wp_error($result)) {
+					$existing_term_id = $result->get_error_data();
+					if ($existing_term_id) {
+						$id = (int) $existing_term_id;
+						$this->binding->stamp($key, $id);
+					} else {
+						$this->error('Failed to create source group ' . $group['name'] . ': ' . $result->get_error_message());
+						continue;
+					}
+				} else {
+					$id = (int) $result['term_id'];
+					$this->binding->stamp($key, $id);
+					$this->record_created('source_group', $id, $key, $group['name']);
+					$this->applied++;
+					$this->line(sprintf('[CREATE] source_group %s (#%d)', $group['name'], $id));
+				}
+			}
+		}
+
+		$sources_repo = new AIPS_Sources_Repository();
+
+		foreach (AIPS_DevStackTips_Definitions::sources() as $source) {
+			$key = AIPS_Config_Binding::make_key('sources', $source['name']);
+			$id  = $this->binding->resolve($key);
+
+			if (null === $id && $sources_repo->url_exists($source['url'])) {
+				foreach ($sources_repo->get_all() as $row) {
+					if (strtolower($row->url) === strtolower($source['url'])) {
+						$id = (int) $row->id;
+						$this->binding->stamp($key, $id);
+						break;
+					}
+				}
+			}
+
+			if (null === $id) {
+				$group_key = AIPS_Config_Binding::make_key('source_groups', $source['group_slug']);
+				$group_id  = $this->binding->resolve($group_key);
+
+				if (null === $group_id) {
+					$this->warn(sprintf('Skipped source %s: source group %s is missing.', $source['name'], $source['group_slug']));
+					continue;
+				}
+
+				$new_id = $sources_repo->create(array(
+					'url'       => $source['url'],
+					'label'     => $source['name'],
+					'is_active' => $source['is_active'],
+				));
+
+				if (!$new_id) {
+					$this->error('Failed to create source: ' . $source['name']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$sources_repo->set_source_terms($id, array((int) $group_id));
+				$sources_repo->set_fetch_schedule($id, 'daily');
+				$this->binding->stamp($key, $id);
+				$this->record_created('source', $id, $key, $source['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] source %s (#%d)', $source['name'], $id));
+			}
+		}
 	}
 
 	/**
@@ -238,6 +338,14 @@ class AIPS_DevStackTips_Config_Setup {
 	public function build_plan() {
 		$entries = array();
 
+		foreach (AIPS_DevStackTips_Definitions::source_groups() as $group) {
+			$entries[] = $this->plan_source_group($group);
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::sources() as $source) {
+			$entries[] = $this->plan_source($source);
+		}
+
 		foreach (AIPS_DevStackTips_Definitions::templates() as $key => $def) {
 			$entries[] = $this->plan_template($key, $def);
 		}
@@ -251,6 +359,98 @@ class AIPS_DevStackTips_Config_Setup {
 		}
 
 		return $entries;
+	}
+
+	/**
+	 * Plan one source group.
+	 *
+	 * @param array $group ['name', 'slug', 'description']
+	 * @return array Plan entry.
+	 */
+	private function plan_source_group(array $group) {
+		$key = AIPS_Config_Binding::make_key('source_groups', $group['slug']);
+		$id  = $this->resolve($key);
+
+		if (null === $id && taxonomy_exists('aips_source_group')) {
+			$term = get_term_by('slug', $group['slug'], 'aips_source_group');
+			if ($term && !is_wp_error($term)) {
+				$id = (int) $term->term_id;
+			}
+		}
+
+		if (null !== $id) {
+			return array(
+				'entity'   => 'source_group',
+				'key'      => $key,
+				'name'     => $group['name'],
+				'id'       => $id,
+				'action'   => 'noop',
+				'changes'  => array(),
+				'warnings' => array(),
+			);
+		}
+
+		return array(
+			'entity'   => 'source_group',
+			'key'      => $key,
+			'name'     => $group['name'],
+			'id'       => null,
+			'action'   => 'create',
+			'changes'  => array(
+				'slug'        => array('old' => null, 'new' => $group['slug']),
+				'description' => array('old' => null, 'new' => $group['description']),
+			),
+			'warnings' => array(),
+		);
+	}
+
+	/**
+	 * Plan one source.
+	 *
+	 * @param array $source ['name', 'url', 'group_slug', 'is_active']
+	 * @return array Plan entry.
+	 */
+	private function plan_source(array $source) {
+		$key = AIPS_Config_Binding::make_key('sources', $source['name']);
+		$id  = $this->resolve($key);
+
+		if (null === $id) {
+			$repo = new AIPS_Sources_Repository();
+			if ($repo->url_exists($source['url'])) {
+				foreach ($repo->get_all() as $row) {
+					if (strtolower($row->url) === strtolower($source['url'])) {
+						$id = (int) $row->id;
+						break;
+					}
+				}
+			}
+		}
+
+		if (null !== $id) {
+			return array(
+				'entity'   => 'source',
+				'key'      => $key,
+				'name'     => $source['name'],
+				'id'       => $id,
+				'action'   => 'noop',
+				'changes'  => array(),
+				'warnings' => array(),
+			);
+		}
+
+		return array(
+			'entity'   => 'source',
+			'key'      => $key,
+			'name'     => $source['name'],
+			'id'       => null,
+			'action'   => 'create',
+			'changes'  => array(
+				'url'        => array('old' => null, 'new' => $source['url']),
+				'group_slug' => array('old' => null, 'new' => $source['group_slug']),
+				'is_active'  => array('old' => null, 'new' => $source['is_active']),
+			),
+			'warnings' => array(),
+		);
 	}
 
 	/**
@@ -469,7 +669,7 @@ class AIPS_DevStackTips_Config_Setup {
 		$this->line('DevStackTips setup (ID-driven) — PLAN (dry run, nothing written)');
 		$this->line('=========================================');
 
-		$counts = array('update' => 0, 'noop' => 0, 'absent' => 0);
+		$counts = array('update' => 0, 'noop' => 0, 'absent' => 0, 'create' => 0);
 
 		foreach ($plan as $entry) {
 			$counts[$entry['action']] = isset($counts[$entry['action']]) ? $counts[$entry['action']] + 1 : 1;
@@ -481,6 +681,14 @@ class AIPS_DevStackTips_Config_Setup {
 
 			if ('absent' === $entry['action']) {
 				$this->line(sprintf('[ABSENT] %s %s: %s', $entry['entity'], $entry['name'], implode('; ', $entry['warnings'])));
+				continue;
+			}
+
+			if ('create' === $entry['action']) {
+				$this->line(sprintf('[CREATE] %s %s:', $entry['entity'], $entry['name']));
+				foreach ($entry['changes'] as $field => $change) {
+					$this->line(sprintf('           %s: %s', $field, $this->short($change['new'])));
+				}
 				continue;
 			}
 
@@ -502,9 +710,9 @@ class AIPS_DevStackTips_Config_Setup {
 		}
 
 		$this->line('');
-		$this->line(sprintf('Summary: %d to update, %d already correct, %d absent, %d ambiguous key(s).',
-			$counts['update'], $counts['noop'], $counts['absent'], count($this->collisions)));
-		$this->line('Nothing was written. Apply mode lands in a later slice.');
+		$this->line(sprintf('Summary: %d to create, %d to update, %d already correct, %d absent, %d ambiguous key(s).',
+			$counts['create'], $counts['update'], $counts['noop'], $counts['absent'], count($this->collisions)));
+		$this->line('Nothing was written. Run with apply to execute changes.');
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -642,6 +850,7 @@ class AIPS_DevStackTips_Config_Setup {
 			'created_utc' => gmdate('c'),
 			'rows'        => array(),
 			'options'     => array(),
+			'created'     => array(),
 		);
 
 		$this->backup_file = rtrim($this->backup_dir, '/\\') . DIRECTORY_SEPARATOR . 'devstacktips-id-backup-' . gmdate('Ymd-His') . '.json';
@@ -669,6 +878,30 @@ class AIPS_DevStackTips_Config_Setup {
 		$json = wp_json_encode($this->backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 		return false !== $json && false !== file_put_contents($this->backup_file, $json . "\n");
+	}
+
+	/**
+	 * Record a newly created object in the backup payload.
+	 *
+	 * @param string $entity Entity type ('source_group', 'source').
+	 * @param int    $id     Object ID.
+	 * @param string $key    Stable key.
+	 * @param string $name   Object name/label.
+	 * @return void
+	 */
+	private function record_created($entity, $id, $key, $name) {
+		if (!isset($this->backup['created'])) {
+			$this->backup['created'] = array();
+		}
+
+		$this->backup['created'][] = array(
+			'entity' => $entity,
+			'id'     => (int) $id,
+			'key'    => $key,
+			'name'   => $name,
+		);
+
+		$this->write_backup();
 	}
 
 	/**
