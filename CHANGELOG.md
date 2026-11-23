@@ -16,6 +16,20 @@
 - **Slug Prompt Context Cap:** Stateless slug prompts (`AIPS_Prompt_Builder_Post_Slug`) now condense the article to 3,000 characters by default (`AIPS_Prompt_Builder_Post_Slug::CONTEXT_MAX_CHARS`) instead of inheriting the 12,000 character `AIPS_Content_Digest` default, matching the title prompt's cap. A slug is three to six keywords and the title is already in the prompt, so the extra article text only inflated the request. The `aips_slug_context_max_chars` filter still overrides the cap; sites that filtered it are unaffected, and sites that relied on the old default now send at most 3,000 characters of context. Conversational runs are unchanged (issue #2405).
 
 ### Added
+- **Post Generation Limiter & Safety Ceilings:**
+  - Added internal control ceiling system in `AIPS_Post_Generation_Limiter` to protect sites against runaway post generation loops.
+  - Added new "Post Generation Limits & Ceilings" container card in Settings > Resilience & Limits tab with:
+    - "Disable Generation Limiter System" toggle (default: active/unchecked).
+    - "Bypass Limits for Manual Generation" toggle (default: enabled/checked to allow admin "Generate Now" triggers).
+    - "Counted Post Types" multi-checkbox for selectable public post types (Posts, Pages, CPTs) with interactive "Select / Deselect All" toggle.
+    - "Counted Post Statuses" multi-checkbox with interactive "Select / Deselect All" toggle.
+    - Hourly (50), Daily (200), Weekly (1,000), and Monthly (3,500) generous default safety net thresholds (0 = unlimited).
+    - Two-tier rate limit evaluation enforcing both post-type specific limits (when filtered or configured) and global aggregate ceilings.
+    - Post counting integrity guarantee: `WP_Query` queries post types and post statuses as an SQL `AND` conjunction on single rows, ensuring zero duplicate counting across post types and post statuses.
+    - Live usage indicator badge displaying real-time post counts against each ceiling.
+  - Integrated `aips_pre_generate_post` filter in `AIPS_Generator` before generation initiates.
+  - Dispatches warning log and throttled admin notifications (maximum once per 4 hours and once per user session) when ceilings are hit.
+  - Automated transient count cache invalidation on post generation hook `aips_post_generated`.
 - **Conversational & Combined Metadata Modes Optimization & Conversation Persistence:**
   - Registered `AIPS_History_Type::AI_CONVERSATION` and mapped `conversation_transcript` in `AIPS_History_Container` to store serialized multi-turn transcripts in `wp_aips_history_log`.
   - Persisted the generation transcript in `AIPS_Generator::generate_post_from_context()` before closing the conversational session.
