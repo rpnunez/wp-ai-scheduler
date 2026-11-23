@@ -295,11 +295,20 @@ class AIPS_Generator {
     /**
      * Whether the remaining components should be requested in one structured turn.
      *
+     * Conversational generation implies the combined metadata turn by default,
+     * collapsing title, excerpt, slug, and image prompt into a single structured
+     * response. A filter is provided for programmatic control or testing.
+     *
      * @return bool
      */
     private function use_metadata_turn() {
-        return $this->conversation !== null
-            && (bool) AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn');
+        if ($this->conversation === null) {
+            return false;
+        }
+
+        $enabled = (bool) AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn', true);
+
+        return (bool) apply_filters('aips_conversational_metadata_turn', $enabled, $this);
     }
 
     /**
@@ -1313,6 +1322,7 @@ class AIPS_Generator {
 		$resolved_content_image_prompts = isset($metadata_result['resolved_content_image_prompts']) ? $metadata_result['resolved_content_image_prompts'] : array();
 
 		$component_statuses['post_title']   = $metadata_result['title_success'];
+		$component_statuses['post_slug']    = $metadata_result['slug_success'];
 		$component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
 		if (array_key_exists('slug_success', $metadata_result)) {
 			$component_statuses['post_slug'] = (bool) $metadata_result['slug_success'];
@@ -2237,9 +2247,11 @@ class AIPS_Generator {
 			$this->logger
 		);
 
-		$content = $content_run['result'];
+		$content       = $content_run['result'];
+		$content_error = null;
 
 		if (is_wp_error($content)) {
+			$content_error = $content;
 			$this->current_history->record_error($content->get_error_message(), array(
 				'component' => 'content',
 				'prompt'    => $content_prompt,
@@ -2248,13 +2260,26 @@ class AIPS_Generator {
 		}
 
 		if ($content === '') {
-			$error_message = __('Post generation failed before a usable Post Content could be created.', 'ai-post-scheduler');
+			// Keep the provider's reason (rate limit, timeout, quota...) on the run, so
+			// History and the returned error say why instead of only that it failed.
+			$cause_code    = $content_error ? (string) $content_error->get_error_code() : 'empty_content';
+			$cause_message = $content_error
+				? (string) $content_error->get_error_message()
+				: __('The AI returned no usable content.', 'ai-post-scheduler');
+
+			$error_message = sprintf(
+				/* translators: %s: underlying reason the content request failed */
+				__('Post generation failed before a usable Post Content could be created. Cause: %s', 'ai-post-scheduler'),
+				$cause_message
+			);
 
 			$error = new WP_Error(
 				'aips_generation_missing_required_content',
 				$error_message,
 				array(
 					'component_statuses' => $component_statuses,
+					'cause_code'         => $cause_code,
+					'cause_message'      => $cause_message,
 				)
 			);
 
@@ -2262,6 +2287,8 @@ class AIPS_Generator {
 				'component'          => 'post_content',
 				'component_statuses' => $component_statuses,
 				'content_length'     => mb_strlen($content),
+				'cause_code'         => $cause_code,
+				'cause_message'      => $cause_message,
 			));
 
 			$this->current_history->record(

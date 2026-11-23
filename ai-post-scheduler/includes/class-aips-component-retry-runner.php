@@ -38,6 +38,7 @@ class AIPS_Component_Retry_Runner {
 		'rate_limit_exceeded',
 		'generation_limit_exceeded',
 		'circuit_breaker_open',
+		'no_connector',
 	);
 
 	/**
