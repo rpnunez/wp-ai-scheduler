@@ -1375,7 +1375,23 @@ class AIPS_Admin_Assets {
                 'systemStatus'                   => __('System status', 'ai-post-scheduler'),
                 'notifications'                  => __('Notifications', 'ai-post-scheduler'),
                 'telemetry'                      => __('Telemetry', 'ai-post-scheduler'),
+                // Schedules table details row (assets/js/admin-schedules-table.js)
+                'detailsLoadFailed'              => __('Could not load schedule details.', 'ai-post-scheduler'),
+                /* translators: %d: number of recent items shown */
+                'recentOutputTitle'              => __('Last %d generated', 'ai-post-scheduler'),
+                'recentKindPost'                 => __('Post', 'ai-post-scheduler'),
+                'recentKindTopic'                => __('Topic', 'ai-post-scheduler'),
+                'resetCircuit'                   => __('Reset circuit & retry', 'ai-post-scheduler'),
+                'resumeBatch'                    => __('Resume batch', 'ai-post-scheduler'),
             ));
+
+            wp_enqueue_script(
+                'aips-admin-schedules-table',
+                AIPS_PLUGIN_URL . 'assets/js/admin-schedules-table.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
     }
 
     /**
