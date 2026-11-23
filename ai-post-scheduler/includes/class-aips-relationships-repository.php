@@ -272,7 +272,7 @@ class AIPS_Relationships_Repository {
 			'entity_type' => $source_type,
 			'is_center'   => true,
 			'raw_id'      => $source_id,
-			'url'         => 'post' === $source_type ? get_edit_post_link($source_id, '') : admin_url('admin.php?page=aips-authors'),
+			'url'         => 'post' === $source_type ? get_edit_post_link($source_id, '') : AIPS_Admin_Menu_Helper::get_page_url('authors'),
 		);
 
 		$neighbor_ids = array();
@@ -295,7 +295,7 @@ class AIPS_Relationships_Repository {
 				'is_center'   => false,
 				'raw_id'      => $n_id,
 				'similarity'  => (float) $n->similarity,
-				'url'         => 'post' === $n_type ? get_edit_post_link($n_id, '') : admin_url('admin.php?page=aips-authors'),
+				'url'         => 'post' === $n_type ? get_edit_post_link($n_id, '') : AIPS_Admin_Menu_Helper::get_page_url('authors'),
 				'view_url'    => 'post' === $n_type ? get_permalink($n_id) : '',
 			);
 

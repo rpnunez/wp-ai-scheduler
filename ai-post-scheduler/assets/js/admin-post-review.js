@@ -923,7 +923,7 @@
 							} else {
 								$('#aips-empty-title').text(aipsPostReviewL10n.noDraftPosts || 'No Draft Posts');
 								$('#aips-empty-desc').text(aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review. All generated posts have been published or deleted.');
-								$('#aips-empty-actions').html('<a href="admin.php?page=aips-schedules" class="aips-btn aips-btn-secondary"><span class="dashicons dashicons-calendar-alt"></span> Manage Schedules</a>');
+								$('#aips-empty-actions').html('<a href="admin.php?page=aips-automations&tab=schedules" class="aips-btn aips-btn-secondary"><span class="dashicons dashicons-calendar-alt"></span> Manage Schedules</a>');
 							}
 						}
 						self.syncSelection();

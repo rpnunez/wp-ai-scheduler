@@ -332,7 +332,7 @@ class AIPS_AI_Error_Classifier {
 				return array(
 					'root_cause'  => __('The combined prompt and expected output exceeded the model\'s maximum token context limit.', 'ai-post-scheduler'),
 					'action'      => __('Trim lengthy instructions in your template, reduce target word count, or switch the template to a larger-context model (e.g. gpt-4o or claude-3-5-sonnet).', 'ai-post-scheduler'),
-					'action_link' => admin_url('admin.php?page=aips-templates'),
+					'action_link' => AIPS_Admin_Menu_Helper::get_page_url('templates'),
 					'link_label'  => __('Edit Templates ↗', 'ai-post-scheduler'),
 				);
 
@@ -364,7 +364,7 @@ class AIPS_AI_Error_Classifier {
 				return array(
 					'root_cause'  => __('The model returned unstructured or truncated output that could not be parsed as valid JSON.', 'ai-post-scheduler'),
 					'action'      => __('Ensure the template prompt explicitly requires strict JSON output and provides a schema example, or enable JSON mode in provider options.', 'ai-post-scheduler'),
-					'action_link' => admin_url('admin.php?page=aips-templates'),
+					'action_link' => AIPS_Admin_Menu_Helper::get_page_url('templates'),
 					'link_label'  => __('Edit Template Prompt ↗', 'ai-post-scheduler'),
 				);
 

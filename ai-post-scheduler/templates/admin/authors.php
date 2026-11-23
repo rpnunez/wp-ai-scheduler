@@ -367,7 +367,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <?php else: ?>
                         <p class="description">
                             <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
-                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
                         </p>
                     <?php endif; ?>
                 </div>

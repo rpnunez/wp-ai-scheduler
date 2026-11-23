@@ -38,6 +38,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			'admin_menu hook should be registered'
 		);
 		$this->assertNotFalse(
+			has_action('admin_init', array($this->admin_menu, 'maybe_redirect_legacy_pages')),
+			'admin_init hook should be registered'
+		);
+		$this->assertNotFalse(
 			has_filter('parent_file', array($this->admin_menu, 'fix_author_topics_parent_file')),
 			'parent_file hook should be registered'
 		);
@@ -63,13 +67,13 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
 		$this->assertEquals('ai-post-scheduler', $result);
 
-		$_GET['page'] = 'aips-templates';
+		$_GET['page'] = 'aips-source-data';
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
 		$this->assertEquals('ai-post-scheduler', $result);
 
-		$_GET['page'] = 'aips-voices';
+		$_GET['page'] = 'aips-templates';
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
-		$this->assertEquals('ai-post-scheduler', $result);
+		$this->assertEquals('some-other-file', $result);
 
 		$_GET['page'] = 'some-other-page';
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
@@ -86,41 +90,21 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
 		$this->assertEquals('aips-automations', $result);
 
-		$_GET['page'] = 'aips-campaign-detail';
+		$_GET['page'] = 'aips-source-data';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
 		$this->assertEquals('aips-automations', $result);
+
+		$_GET['page'] = 'aips-campaign-detail';
+		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
+		$this->assertEquals('aips-campaigns', $result);
 
 		$_GET['page'] = AIPS_Campaigns_Controller::PAGE_SLUG;
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-automations', $result);
+		$this->assertEquals('aips-campaigns', $result);
 
 		$_GET['page'] = 'aips-templates';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-studio', $result);
-
-		$_GET['page'] = 'aips-voices';
-		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-studio', $result);
-
-		$_GET['page'] = 'aips-structures';
-		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-studio', $result);
-
-		$_GET['page'] = 'aips-post-slices';
-		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-studio', $result);
-
-		$_GET['page'] = 'aips-operations-insights';
-		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-diagnostics', $result);
-
-		$_GET['page'] = 'aips-status';
-		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-diagnostics', $result);
-
-		$_GET['page'] = 'aips-telemetry';
-		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-diagnostics', $result);
+		$this->assertEquals('some-other-file', $result);
 
 		$_GET['page'] = 'some-other-page';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
@@ -130,9 +114,9 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Regression test: hidden Author Topics page must remain URL-accessible.
+	 * Retired standalone pages are no longer registered; live hidden pages remain.
 	 */
-	public function test_author_topics_is_registered_as_hidden_page() {
+	public function test_legacy_redirect_shims_are_not_registered() {
 		global $submenu, $_registered_pages;
 
 		$submenu           = array();
@@ -140,19 +124,24 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		$this->admin_menu->add_menu_pages();
 
-		$this->assertArrayHasKey(
-			'admin_page_aips-author-topics',
-			$_registered_pages,
-			'Author Topics page should be registered for direct admin.php?page= access.'
-		);
+		foreach (array('aips-status', 'aips-cannibalization', 'aips-content-intelligence') as $retired_page) {
+			$this->assertArrayNotHasKey(
+				'admin_page_' . $retired_page,
+				$_registered_pages,
+				$retired_page . ' should not be registered as a hidden submenu page.'
+			);
+		}
 
+		$this->assertArrayHasKey('admin_page_aips-author-topics', $_registered_pages);
 		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
-
-		$this->assertNotContains(
-			'aips-author-topics',
-			$submenu_pages,
-			'Author Topics page should remain hidden from the visible submenu.'
-		);
+		$this->assertNotContains('aips-author-topics', $submenu_pages);
+		$author_topics_url = AIPS_Admin_Menu_Helper::get_page_url('author_topics', array('author_id' => 42));
+		$this->assertStringContainsString('page=aips-author-topics', $author_topics_url);
+		$this->assertStringContainsString('author_id=42', $author_topics_url);
+		$this->assertStringNotContainsString('page=aips-automations', $author_topics_url);
+		$this->assertArrayHasKey('admin_page_aips-campaign-wizard', $_registered_pages);
+		$this->assertArrayHasKey('admin_page_aips-campaign-detail', $_registered_pages);
+		$this->assertArrayHasKey('admin_page_aips-source-data', $_registered_pages);
 	}
 
 	/**
@@ -180,10 +169,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 				$submenu_pages,
 				$hidden_page . ' should be hidden from the primary submenu.'
 			);
-			$this->assertArrayHasKey(
+			$this->assertArrayNotHasKey(
 				'admin_page_' . $hidden_page,
 				$_registered_pages,
-				$hidden_page . ' should remain registered for direct admin.php?page= access.'
+				$hidden_page . ' should not be registered as a hidden submenu page.'
 			);
 		}
 	}
@@ -243,9 +232,9 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Cache Monitor becomes reachable once explicitly enabled.
+	 * Cache Monitor remains a Diagnostics tab even when explicitly enabled.
 	 */
-	public function test_cache_monitor_page_is_registered_when_enabled() {
+	public function test_cache_monitor_page_is_not_registered_when_enabled() {
 		global $submenu, $_registered_pages;
 
 		$submenu           = array();
@@ -256,10 +245,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		$this->admin_menu->add_menu_pages();
 
-		$this->assertArrayHasKey(
+		$this->assertArrayNotHasKey(
 			'admin_page_aips-cache-monitor',
 			$_registered_pages,
-			'Cache Monitor should be registered for direct admin.php?page= access when enabled.'
+			'Cache Monitor should stay on the Diagnostics hub rather than register a hidden page.'
 		);
 
 		update_option('aips_cache_monitor_enabled', false);
@@ -279,6 +268,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		$expected_core_pages = array(
 			'ai-post-scheduler',
+			'aips-campaigns',
 			'aips-automations',
 			'aips-studio',
 			'aips-research',
@@ -288,7 +278,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			'aips-diagnostics',
 		);
 
-		$this->assertEquals($expected_core_pages, $submenu_pages, 'Primary submenu should contain exactly the 8 core hubs.');
+		$this->assertEquals($expected_core_pages, $submenu_pages, 'Primary submenu should contain the 8 hubs plus Campaigns.');
 	}
 
 	/**
@@ -367,10 +357,101 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			method_exists($this->admin_menu, 'render_prompt_sections_page'),
 			'render_prompt_sections_page method must not exist on AIPS_Admin_Menu.'
 		);
+		$this->assertFalse(
+			method_exists($this->admin_menu, 'render_voices_page'),
+			'redirect-only render_voices_page must not exist on AIPS_Admin_Menu.'
+		);
 		$this->assertFileDoesNotExist(
 			AIPS_PLUGIN_DIR . 'templates/admin/sections.php',
 			'sections.php template must not exist.'
 		);
+	}
+
+	/**
+	 * Legacy bookmarks redirect to hub tabs before headers are sent.
+	 *
+	 * @dataProvider legacy_redirect_provider
+	 */
+	public function test_legacy_pages_redirect_to_canonical_hub_tabs($legacy_page, $expected_page, $expected_tab) {
+		$user_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($user_id);
+
+		$_GET['s']             = 'seo keywords';
+		$_GET['paged']         = '3';
+		$_GET['filter_status'] = 'active';
+		$_GET['page']          = $legacy_page;
+
+		$redirect_target = '';
+		$filter_callback = function($location) use (&$redirect_target) {
+			$redirect_target = $location;
+			throw new Exception('Redirect intercepted: ' . $location);
+		};
+
+		add_filter('wp_redirect', $filter_callback);
+
+		try {
+			$this->admin_menu->maybe_redirect_legacy_pages();
+		} catch (Exception $e) {
+			// Expected exception to prevent exit.
+		} finally {
+			remove_filter('wp_redirect', $filter_callback);
+			unset($_GET['s'], $_GET['paged'], $_GET['filter_status'], $_GET['page']);
+			wp_set_current_user(0);
+		}
+
+		$this->assertNotEmpty($redirect_target, 'Redirect target URL should not be empty.');
+		$this->assertStringContainsString('page=' . $expected_page, $redirect_target);
+		$this->assertStringContainsString('tab=' . $expected_tab, $redirect_target);
+		$this->assertStringContainsString('s=seo+keywords', $redirect_target);
+		$this->assertStringContainsString('paged=3', $redirect_target);
+		$this->assertStringContainsString('filter_status=active', $redirect_target);
+	}
+
+	/**
+	 * @return array<string, array{0:string,1:string,2:string}>
+	 */
+	public function legacy_redirect_provider() {
+		return array(
+			'voices'               => array('aips-voices', 'aips-studio', 'voices'),
+			'status'               => array('aips-status', 'aips-diagnostics', 'health'),
+			'cannibalization'      => array('aips-cannibalization', 'aips-generated-posts', 'aips-content-cannibalization'),
+			'content_intelligence' => array('aips-content-intelligence', 'aips-generated-posts', 'aips-content-indexer'),
+			'affiliate_links'      => array('aips-affiliate-links', 'aips-automations', 'monetization'),
+		);
+	}
+
+	public function test_legacy_redirect_skips_live_hidden_pages_and_ajax() {
+		$user_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($user_id);
+
+		$redirected = false;
+		$filter_callback = function($location) use (&$redirected) {
+			$redirected = true;
+			return $location;
+		};
+		add_filter('wp_redirect', $filter_callback);
+
+		$_GET['page'] = 'aips-author-topics';
+		$this->admin_menu->maybe_redirect_legacy_pages();
+		$this->assertFalse($redirected, 'Author Topics should keep rendering.');
+
+		$_GET['page'] = 'aips-source-data';
+		$this->admin_menu->maybe_redirect_legacy_pages();
+		$this->assertFalse($redirected, 'Source Data should keep rendering.');
+
+		$_GET['page'] = AIPS_Campaigns_Controller::PAGE_SLUG;
+		$this->admin_menu->maybe_redirect_legacy_pages();
+		$this->assertFalse($redirected, 'Campaign wizard should keep rendering.');
+
+		$_GET['page'] = 'aips-voices';
+		add_filter('wp_doing_ajax', '__return_true');
+		$this->admin_menu->maybe_redirect_legacy_pages();
+		remove_filter('wp_doing_ajax', '__return_true');
+		$this->assertFalse($redirected, 'AJAX requests should not redirect.');
+
+		remove_filter('wp_redirect', $filter_callback);
+		unset($_GET['page']);
+		wp_set_current_user(0);
 	}
 
 }

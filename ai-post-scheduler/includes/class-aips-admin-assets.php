@@ -30,13 +30,7 @@ class AIPS_Admin_Assets {
 	/**
 	 * Admin page slugs.
 	 */
-	private const PAGE_AUTHORS = 'aips-authors';
 	private const PAGE_AUTHOR_TOPICS = 'aips-author-topics';
-	private const PAGE_POST_SLICES = 'aips-post-slices';
-	private const PAGE_TEMPLATES = 'aips-templates';
-	private const PAGE_VOICES = 'aips-voices';
-	private const PAGE_STRUCTURES = 'aips-structures';
-	private const PAGE_SCHEDULE = 'aips-schedule';
 	private const PAGE_CAMPAIGNS = 'aips-campaigns';
 	private const PAGE_CAMPAIGN_WIZARD = 'aips-campaign-wizard';
 	private const PAGE_STUDIO = 'aips-studio';
@@ -46,20 +40,8 @@ class AIPS_Admin_Assets {
 	private const PAGE_ONBOARDING = 'aips-onboarding';
 	private const PAGE_DIAGNOSTICS = 'aips-diagnostics';
 	private const PAGE_AUTOMATIONS = 'aips-automations';
-	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
-	private const PAGE_STATUS = 'aips-status';
-	private const PAGE_TAXONOMY = 'aips-taxonomy';
-	private const PAGE_SOURCES = 'aips-sources';
 	private const PAGE_SOURCE_DATA = 'aips-source-data';
 	private const PAGE_SETTINGS = 'aips-settings';
-	private const PAGE_TELEMETRY = 'aips-telemetry';
-	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
-	private const PAGE_CONTENT_INTELLIGENCE = 'aips-content-intelligence';
-	private const PAGE_POST_CLUSTERS = 'aips-post-clusters';
-	private const PAGE_CANNIBALIZATION = 'aips-cannibalization';
-	private const PAGE_CONTENT_INDEXER = 'aips-content-indexer';
-	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
-	private const PAGE_STRESS_TEST    = 'aips-stress-test';
 
     /**
      * Initialize the class.
@@ -147,7 +129,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dashboard_assets();
 		}
 
-        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS)) {
+        if (self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS)) {
 			wp_enqueue_media();
 			$this->enqueue_authors_assets($hook);
 		}
@@ -155,7 +137,6 @@ class AIPS_Admin_Assets {
         if (
             self::PAGE_STUDIO === $page
             || $this->hook_contains($hook, self::PAGE_STUDIO)
-            || in_array($page, array(self::PAGE_TEMPLATES, self::PAGE_VOICES, self::PAGE_STRUCTURES, self::PAGE_POST_SLICES), true)
         ) {
 			wp_enqueue_media();
 			$this->enqueue_templates_assets();
@@ -164,7 +145,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_post_slices_assets();
 		}
 
-        if (self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) {
+        if ($this->is_automations_tab($page, 'schedules')) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
@@ -204,7 +185,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_onboarding_assets();
 		}
 
-		if ((self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS) || $this->is_diagnostics_tab($page, 'dev-tools')) && AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
+		if ($this->is_diagnostics_tab($page, 'dev-tools') && AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
 			$this->enqueue_dev_tools_assets();
 		}
 
@@ -212,16 +193,16 @@ class AIPS_Admin_Assets {
 			AIPS_Background_Process_Assets::enqueue();
 		}
 
-		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status') || $this->is_diagnostics_tab($page, 'system-info') || $this->is_diagnostics_tab($page, 'health') || $this->is_diagnostics_tab($page, 'operations')) {
+		if ($this->is_diagnostics_tab($page, 'status') || $this->is_diagnostics_tab($page, 'system-info') || $this->is_diagnostics_tab($page, 'health') || $this->is_diagnostics_tab($page, 'operations')) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
 
-        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY) || $this->is_automations_tab($page, 'taxonomy')) {
+        if ($this->is_automations_tab($page, 'taxonomy')) {
 			$this->enqueue_taxonomy_assets();
 		}
 
-        if (self::PAGE_SOURCES === $page || self::PAGE_SOURCE_DATA === $page || $this->hook_contains($hook, self::PAGE_SOURCES) || $this->hook_contains($hook, self::PAGE_SOURCE_DATA) || $this->is_automations_tab($page, 'sources')) {
+        if (self::PAGE_SOURCE_DATA === $page || $this->hook_contains($hook, self::PAGE_SOURCE_DATA) || $this->is_automations_tab($page, 'sources')) {
 			$this->enqueue_sources_assets();
 		}
 
@@ -229,35 +210,20 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-		if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) {
+		if ($this->is_diagnostics_tab($page, 'telemetry')) {
 			$this->enqueue_telemetry_assets();
 		}
 
-        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links')) {
+        if ($this->is_automations_tab($page, 'internal-links')) {
 			AIPS_Background_Process_Assets::enqueue();
 			$this->enqueue_internal_links_assets();
 		}
 
-		if (
-			self::PAGE_CONTENT_INTELLIGENCE === $page
-			|| self::PAGE_POST_CLUSTERS === $page
-			|| self::PAGE_CANNIBALIZATION === $page
-			|| self::PAGE_CONTENT_INDEXER === $page
-			|| $this->hook_contains($hook, self::PAGE_CONTENT_INTELLIGENCE)
-			|| $this->hook_contains($hook, self::PAGE_POST_CLUSTERS)
-			|| $this->hook_contains($hook, self::PAGE_CANNIBALIZATION)
-			|| $this->hook_contains($hook, self::PAGE_CONTENT_INDEXER)
-			|| $this->is_automations_tab($page, 'content-indexer')
-		) {
-			$this->enqueue_content_indexer_assets();
-			$this->enqueue_consolidation_assets();
-		}
-
-        if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
+        if ($this->is_diagnostics_tab($page, 'cache-monitor')) {
 			$this->enqueue_cache_monitor_assets();
 		}
 
-		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test')) {
+		if ($this->is_diagnostics_tab($page, 'stress-test')) {
 			$this->enqueue_stress_test_assets();
 		}
 
@@ -829,8 +795,7 @@ class AIPS_Admin_Assets {
 		  $current_tab  = $this->get_current_tab_key();
 		  $is_author_topics_context = self::PAGE_AUTHOR_TOPICS === $current_page
 			  || (self::PAGE_AUTOMATIONS === $current_page && AIPS_Automations_Controller::TAB_AUTHOR_TOPICS === $current_tab);
-		  $is_authors_listing_context = self::PAGE_AUTHORS === $current_page
-			  || (self::PAGE_AUTOMATIONS === $current_page && 'authors' === $current_tab);
+		  $is_authors_listing_context = (self::PAGE_AUTOMATIONS === $current_page && 'authors' === $current_tab);
 
           wp_enqueue_style(
             'aips-authors-style',
