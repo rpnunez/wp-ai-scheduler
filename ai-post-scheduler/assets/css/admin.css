@@ -8210,6 +8210,25 @@ tr.aips-row-details > td {
 	gap: var(--aips-space-3);
 }
 
+/* Secret Field Container */
+.aips-secret-field-container {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+/* Slider Controls */
+.aips-slider-container {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-3);
+}
+
+.aips-slider-value {
+	font-weight: var(--aips-font-semibold);
+	min-width: 3em;
+}
+
 /* Meow Environment Discovery */
 .aips-env-input-wrap {
 	display: flex;
