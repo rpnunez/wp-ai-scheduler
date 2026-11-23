@@ -82,6 +82,43 @@ class Test_AIPS_Deduplication_Service extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A persisted topic must not be flagged as a duplicate of its own stored
+	 * embedding when re-evaluated (regression: recheck self-match).
+	 */
+	public function test_evaluate_topics_excludes_own_stored_entry() {
+		// The topic's own embedding is stored (as during a prior run).
+		$this->embeddings_repo->upsert( 'topic', 500, array( 1.0, 0.0 ), 'model', 2, '', 'topic' );
+
+		$topics = array(
+			array( 'id' => 500, 'topic_title' => 'duplicate headline', 'metadata' => '{}' ),
+		);
+
+		$result = $this->dedup_service->evaluate_topics_for_duplicates( $topics, 1 );
+		$meta   = json_decode( $result[0]['metadata'], true );
+
+		// Its own stored entry is excluded, so nothing else matches: not a duplicate.
+		$this->assertFalse( $meta['potential_duplicate'] );
+	}
+
+	/**
+	 * A persisted topic is still flagged when it matches a DIFFERENT stored topic.
+	 */
+	public function test_evaluate_topics_flags_other_stored_topic() {
+		$this->embeddings_repo->upsert( 'topic', 500, array( 1.0, 0.0 ), 'model', 2, '', 'topic' );
+		$this->embeddings_repo->upsert( 'topic', 501, array( 1.0, 0.0 ), 'model', 2, '', 'topic' );
+
+		$topics = array(
+			array( 'id' => 500, 'topic_title' => 'duplicate headline', 'metadata' => '{}' ),
+		);
+
+		$result = $this->dedup_service->evaluate_topics_for_duplicates( $topics, 1 );
+		$meta   = json_decode( $result[0]['metadata'], true );
+
+		$this->assertTrue( $meta['potential_duplicate'] );
+		$this->assertSame( 501, (int) $meta['duplicate_id'] );
+	}
+
+	/**
 	 * Test get_cannibalization_audit_results clusters highly similar pairs.
 	 */
 	public function test_get_cannibalization_audit_results() {
