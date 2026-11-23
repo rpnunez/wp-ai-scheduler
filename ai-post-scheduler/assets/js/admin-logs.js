@@ -11,7 +11,13 @@
 (function ($) {
 	'use strict';
 
-	var AipsLogs = {
+	window.AIPS = window.AIPS || {};
+	var AIPS = window.AIPS;
+
+	/**
+	 * @namespace AIPS.DiagnosticsLogs
+	 */
+	AIPS.DiagnosticsLogs = {
 		selectedFile: '',
 		selectedDisplayName: '',
 		lines: 100,
@@ -28,215 +34,303 @@
 		 * Initialize controller.
 		 */
 		init: function () {
-			var self = this;
-
 			// Determine initial selected file from active sidebar item
 			var $activeItem = $('.aips-logs-file-item.is-selected');
 			if ($activeItem.length) {
-				self.selectedFile = $activeItem.data('file');
-				self.selectedDisplayName = $activeItem.data('display-name') || self.selectedFile;
+				this.selectedFile = $activeItem.data('file');
+				this.selectedDisplayName = $activeItem.data('display-name') || this.selectedFile;
 			} else {
 				var $firstItem = $('.aips-logs-file-item').first();
 				if ($firstItem.length) {
 					$firstItem.addClass('is-selected').attr('aria-selected', 'true');
-					self.selectedFile = $firstItem.data('file');
-					self.selectedDisplayName = $firstItem.data('display-name') || self.selectedFile;
+					this.selectedFile = $firstItem.data('file');
+					this.selectedDisplayName = $firstItem.data('display-name') || this.selectedFile;
 				}
 			}
 
-			self.bindEvents();
+			this.bindEvents();
 
-			if (self.selectedFile) {
-				$('#aips-logs-current-display-name').text(self.selectedDisplayName);
-				$('#aips-logs-current-filename').text(self.selectedFile);
-				self.loadContent();
+			if (this.selectedFile) {
+				$('#aips-logs-current-display-name').text(this.selectedDisplayName);
+				$('#aips-logs-current-filename').text(this.selectedFile);
+				this.loadContent();
 			} else {
-				self.renderEmptyState(aipsLogsL10n.noLogsFound);
+				this.renderEmptyState(aipsLogsL10n.noLogsFound, false);
 			}
 		},
 
 		/**
 		 * Bind DOM and user interaction events.
+		 * Delegates cleanly to named handler methods.
 		 */
 		bindEvents: function () {
-			var self = this;
+			$(document).on('click', '.aips-logs-file-item', this.handleFileSelect.bind(this));
+			$(document).on('click', '#aips-logs-refresh-files-btn', this.handleRefreshFilesClick.bind(this));
+			$(document).on('click', '.aips-logs-level-filters .aips-filter-pill', this.handleLevelFilterClick.bind(this));
+			$(document).on('input', '#aips-logs-search-input', this.handleSearchInput.bind(this));
+			$(document).on('click', '#aips-logs-search-clear', this.handleSearchClear.bind(this));
+			$(document).on('change', '#aips-logs-lines-select', this.handleLinesChange.bind(this));
+			$(document).on('click', '#aips-logs-view-formatted-btn', this.handleViewFormattedClick.bind(this));
+			$(document).on('click', '#aips-logs-view-raw-btn', this.handleViewRawClick.bind(this));
+			$(document).on('click', '#aips-logs-autorefresh-toggle', this.handleAutoRefreshToggle.bind(this));
+			$(document).on('change', '#aips-logs-autorefresh-interval', this.handleIntervalChange.bind(this));
+			$(document).on('click', '#aips-logs-copy-btn', this.handleCopyClick.bind(this));
+			$(document).on('click', '#aips-logs-download-btn', this.handleDownloadClick.bind(this));
+			$(document).on('click', '#aips-logs-manage-menu-btn', this.handleManageMenuToggle.bind(this));
+			$(document).on('click', this.handleDocumentClick.bind(this));
+			$(document).on('click', '#aips-logs-empty-file-btn', this.handleEmptyFileClick.bind(this));
+			$(document).on('click', '#aips-logs-delete-file-btn', this.handleDeleteFileClick.bind(this));
+			$(document).on('click', '.aips-logs-entry-toggle-context', this.handleToggleContext.bind(this));
+		},
 
-			// File selection in sidebar
-			$(document).on('click', '.aips-logs-file-item', function (e) {
-				e.preventDefault();
-				var file = $(this).data('file');
-				var displayName = $(this).data('display-name') || file;
+		/**
+		 * Handle click on a log file item in the sidebar.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleFileSelect: function (e) {
+			e.preventDefault();
+			var $target = $(e.currentTarget);
+			var file = $target.data('file');
+			var displayName = $target.data('display-name') || file;
 
-				if (file && file !== self.selectedFile) {
-					$('.aips-logs-file-item').removeClass('is-selected').attr('aria-selected', 'false');
-					$(this).addClass('is-selected').attr('aria-selected', 'true');
-					self.selectedFile = file;
-					self.selectedDisplayName = displayName;
+			if (file && file !== this.selectedFile) {
+				$('.aips-logs-file-item').removeClass('is-selected').attr('aria-selected', 'false');
+				$target.addClass('is-selected').attr('aria-selected', 'true');
+				this.selectedFile = file;
+				this.selectedDisplayName = displayName;
 
-					$('#aips-logs-current-display-name').text(displayName);
-					$('#aips-logs-current-filename').text(file);
-					self.loadContent();
-				}
-			});
+				$('#aips-logs-current-display-name').text(displayName);
+				$('#aips-logs-current-filename').text(file);
+				this.loadContent();
+			}
+		},
 
-			// Refresh files list button
-			$('#aips-logs-refresh-files-btn').on('click', function (e) {
-				e.preventDefault();
-				self.refreshFileList();
-			});
+		/**
+		 * Handle refresh files list button click.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleRefreshFilesClick: function (e) {
+			e.preventDefault();
+			this.refreshFileList();
+		},
 
-			// Multi-level filter pills
-			$(document).on('click', '.aips-logs-level-filters .aips-filter-pill', function (e) {
-				e.preventDefault();
-				var clickedLevel = $(this).data('level');
+		/**
+		 * Handle multi-level filter pill click.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleLevelFilterClick: function (e) {
+			e.preventDefault();
+			var $target = $(e.currentTarget);
+			var clickedLevel = $target.data('level');
 
-				if (clickedLevel === 'all') {
+			if (clickedLevel === 'all') {
+				$('.aips-logs-level-filters .aips-filter-pill').removeClass('is-active');
+				$target.addClass('is-active');
+				this.selectedLevels = ['all'];
+			} else {
+				// Deselect 'all' when toggling an individual level
+				$('.aips-logs-level-filters .aips-filter-pill[data-level="all"]').removeClass('is-active');
+				$target.toggleClass('is-active');
+
+				var activeLevels = [];
+				$('.aips-logs-level-filters .aips-filter-pill:not([data-level="all"]).is-active').each(function () {
+					activeLevels.push($(this).data('level'));
+				});
+
+				// If none or all 4 individual levels selected, reset to 'all'
+				if (activeLevels.length === 0 || activeLevels.length === 4) {
 					$('.aips-logs-level-filters .aips-filter-pill').removeClass('is-active');
-					$(this).addClass('is-active');
-					self.selectedLevels = ['all'];
+					$('.aips-logs-level-filters .aips-filter-pill[data-level="all"]').addClass('is-active');
+					this.selectedLevels = ['all'];
 				} else {
-					// Deselect 'all' when toggling an individual level
-					$('.aips-logs-level-filters .aips-filter-pill[data-level="all"]').removeClass('is-active');
-					$(this).toggleClass('is-active');
-
-					var activeLevels = [];
-					$('.aips-logs-level-filters .aips-filter-pill:not([data-level="all"]).is-active').each(function () {
-						activeLevels.push($(this).data('level'));
-					});
-
-					// If none or all 4 individual levels selected, reset to 'all'
-					if (activeLevels.length === 0 || activeLevels.length === 4) {
-						$('.aips-logs-level-filters .aips-filter-pill').removeClass('is-active');
-						$('.aips-logs-level-filters .aips-filter-pill[data-level="all"]').addClass('is-active');
-						self.selectedLevels = ['all'];
-					} else {
-						self.selectedLevels = activeLevels;
-					}
+					this.selectedLevels = activeLevels;
 				}
+			}
 
+			this.loadContent();
+		},
+
+		/**
+		 * Handle search input with debouncing.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleSearchInput: function (e) {
+			var val = $(e.currentTarget).val();
+			if (val.length > 0) {
+				$('#aips-logs-search-clear').show();
+			} else {
+				$('#aips-logs-search-clear').hide();
+			}
+
+			clearTimeout(this.searchTimeout);
+			var self = this;
+			this.searchTimeout = setTimeout(function () {
+				self.search = val;
 				self.loadContent();
-			});
+			}, 350);
+		},
 
-			// Search input with debounce
-			$('#aips-logs-search-input').on('input', function () {
-				var val = $(this).val();
-				if (val.length > 0) {
-					$('#aips-logs-search-clear').show();
-				} else {
-					$('#aips-logs-search-clear').hide();
-				}
+		/**
+		 * Handle search clear button click.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleSearchClear: function (e) {
+			e.preventDefault();
+			$('#aips-logs-search-input').val('');
+			$('#aips-logs-search-clear').hide();
+			this.search = '';
+			this.loadContent();
+		},
 
-				clearTimeout(self.searchTimeout);
-				self.searchTimeout = setTimeout(function () {
-					self.search = val;
-					self.loadContent();
-				}, 350);
-			});
+		/**
+		 * Handle change of lines limit dropdown.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleLinesChange: function (e) {
+			this.lines = parseInt($(e.currentTarget).val(), 10) || 100;
+			this.loadContent();
+		},
 
-			// Clear search button
-			$('#aips-logs-search-clear').on('click', function (e) {
-				e.preventDefault();
-				$('#aips-logs-search-input').val('');
-				$(this).hide();
-				self.search = '';
-				self.loadContent();
-			});
+		/**
+		 * Handle switch to Formatted view mode.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleViewFormattedClick: function (e) {
+			e.preventDefault();
+			this.setViewMode('formatted');
+		},
 
-			// Lines dropdown selector
-			$('#aips-logs-lines-select').on('change', function () {
-				self.lines = parseInt($(this).val(), 10) || 100;
-				self.loadContent();
-			});
+		/**
+		 * Handle switch to Raw view mode.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleViewRawClick: function (e) {
+			e.preventDefault();
+			this.setViewMode('raw');
+		},
 
-			// Segmented View Mode Toggle (Formatted vs Raw)
-			$('#aips-logs-view-formatted-btn').on('click', function (e) {
-				e.preventDefault();
-				self.setViewMode('formatted');
-			});
+		/**
+		 * Handle toggle of auto-refresh.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleAutoRefreshToggle: function (e) {
+			e.preventDefault();
+			this.toggleAutoRefresh();
+		},
 
-			$('#aips-logs-view-raw-btn').on('click', function (e) {
-				e.preventDefault();
-				self.setViewMode('raw');
-			});
+		/**
+		 * Handle change of auto-refresh interval.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleIntervalChange: function (e) {
+			this.refreshInterval = parseInt($(e.currentTarget).val(), 10) || 5000;
+			if (this.isAutoRefreshing) {
+				this.stopAutoRefresh();
+				this.startAutoRefresh();
+			}
+		},
 
-			// Auto-Refresh Toggle
-			$('#aips-logs-autorefresh-toggle').on('click', function (e) {
-				e.preventDefault();
-				self.toggleAutoRefresh();
-			});
+		/**
+		 * Handle copy to clipboard button click.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleCopyClick: function (e) {
+			e.preventDefault();
+			this.copyToClipboard();
+		},
 
-			$('#aips-logs-autorefresh-interval').on('change', function () {
-				self.refreshInterval = parseInt($(this).val(), 10) || 5000;
-				if (self.isAutoRefreshing) {
-					self.stopAutoRefresh();
-					self.startAutoRefresh();
-				}
-			});
+		/**
+		 * Handle download file button click.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleDownloadClick: function (e) {
+			e.preventDefault();
+			this.downloadFile();
+		},
 
-			// Copy to Clipboard
-			$('#aips-logs-copy-btn').on('click', function (e) {
-				e.preventDefault();
-				self.copyToClipboard();
-			});
-
-			// Download Log File
-			$('#aips-logs-download-btn').on('click', function (e) {
-				e.preventDefault();
-				self.downloadFile();
-			});
-
-			// Manage Dropdown Toggle
-			$('#aips-logs-manage-menu-btn').on('click', function (e) {
-				e.preventDefault();
-				e.stopPropagation();
-				var $menu = $('#aips-logs-manage-menu');
-				var isOpen = $menu.is(':visible');
-				$('.aips-dropdown-menu').hide();
-				if (!isOpen) {
-					$menu.show();
-					$(this).attr('aria-expanded', 'true');
-				} else {
-					$(this).attr('aria-expanded', 'false');
-				}
-			});
-
-			$(document).on('click', function () {
-				$('#aips-logs-manage-menu').hide();
+		/**
+		 * Handle manage dropdown menu toggle.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleManageMenuToggle: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			var $menu = $('#aips-logs-manage-menu');
+			var isOpen = $menu.is(':visible');
+			$('.aips-dropdown-menu').hide();
+			if (!isOpen) {
+				$menu.show();
+				$('#aips-logs-manage-menu-btn').attr('aria-expanded', 'true');
+			} else {
 				$('#aips-logs-manage-menu-btn').attr('aria-expanded', 'false');
-			});
+			}
+		},
 
-			// Empty File Action
-			$('#aips-logs-empty-file-btn').on('click', function (e) {
-				e.preventDefault();
-				$('#aips-logs-manage-menu').hide();
-				if (!confirm(aipsLogsL10n.confirmEmpty)) {
-					return;
-				}
-				self.clearFile('empty');
-			});
+		/**
+		 * Handle click outside dropdown to close it.
+		 */
+		handleDocumentClick: function () {
+			$('#aips-logs-manage-menu').hide();
+			$('#aips-logs-manage-menu-btn').attr('aria-expanded', 'false');
+		},
 
-			// Delete File Action
-			$('#aips-logs-delete-file-btn').on('click', function (e) {
-				e.preventDefault();
-				$('#aips-logs-manage-menu').hide();
-				if (!confirm(aipsLogsL10n.confirmDelete)) {
-					return;
-				}
-				self.clearFile('delete');
-			});
+		/**
+		 * Handle empty file action click.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleEmptyFileClick: function (e) {
+			e.preventDefault();
+			$('#aips-logs-manage-menu').hide();
+			if (!confirm(aipsLogsL10n.confirmEmpty)) {
+				return;
+			}
+			this.clearFile('empty');
+		},
 
-			// Expand / Collapse context in entry
-			$(document).on('click', '.aips-logs-entry-toggle-context', function (e) {
-				e.preventDefault();
-				var $wrapper = $(this).closest('.aips-logs-entry').find('.aips-logs-entry-context-wrap');
-				if ($wrapper.is(':visible')) {
-					$wrapper.slideUp(150);
-					$(this).text($(this).data('label-expand') || 'Show Context');
-				} else {
-					$wrapper.slideDown(150);
-					$(this).text($(this).data('label-collapse') || 'Hide Context');
-				}
-			});
+		/**
+		 * Handle delete file action click.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleDeleteFileClick: function (e) {
+			e.preventDefault();
+			$('#aips-logs-manage-menu').hide();
+			if (!confirm(aipsLogsL10n.confirmDelete)) {
+				return;
+			}
+			this.clearFile('delete');
+		},
+
+		/**
+		 * Handle toggle of context block in an entry.
+		 *
+		 * @param {jQuery.Event} e
+		 */
+		handleToggleContext: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var $wrapper = $btn.closest('.aips-logs-entry').find('.aips-logs-entry-context-wrap');
+			if ($wrapper.is(':visible')) {
+				$wrapper.slideUp(150);
+				$btn.text($btn.data('label-expand') || 'Show Context');
+			} else {
+				$wrapper.slideDown(150);
+				$btn.text($btn.data('label-collapse') || 'Hide Context');
+			}
 		},
 
 		/**
@@ -251,12 +345,11 @@
 			}
 
 			if (!silent) {
-				$('#aips-logs-stream').html(
-					'<div class="aips-logs-loading">' +
-					'<span class="dashicons dashicons-update aips-spin"></span>' +
-					'<p>' + self.escapeHtml(aipsLogsL10n.loadingLogs) + '</p>' +
-					'</div>'
-				);
+				if (window.AIPS && AIPS.Templates && AIPS.Templates.has('aips-tmpl-logs-loading')) {
+					$('#aips-logs-stream').html(AIPS.Templates.render('aips-tmpl-logs-loading', {
+						message: aipsLogsL10n.loadingLogs
+					}));
+				}
 			}
 
 			var levelsParam = self.selectedLevels.join(',');
@@ -302,16 +395,15 @@
 		},
 
 		/**
-		 * Render parsed log entries in formatted view.
+		 * Render parsed log entries in formatted view using AIPS.Templates.
 		 *
 		 * @param {Array} entries
 		 */
 		renderEntries: function (entries) {
-			var self = this;
 			var $stream = $('#aips-logs-stream');
 
 			if (!entries || entries.length === 0) {
-				self.renderEmptyState(aipsLogsL10n.noLogsFound);
+				this.renderEmptyState(aipsLogsL10n.noLogsFound, false);
 				return;
 			}
 
@@ -329,34 +421,36 @@
 					badgeClass = 'aips-badge-purple';
 				}
 
-				html += '<article class="aips-logs-entry aips-logs-entry-' + self.escapeHtml(level.toLowerCase()) + '">';
-				html += '<div class="aips-logs-entry-header">';
-				html += '<span class="aips-badge ' + badgeClass + ' aips-logs-entry-level">' + self.escapeHtml(level) + '</span>';
-				if (item.timestamp) {
-					html += '<time class="aips-logs-entry-time">' + self.escapeHtml(item.timestamp) + '</time>';
-				}
-				html += '</div>';
-
-				html += '<div class="aips-logs-entry-message">' + self.escapeHtml(item.message) + '</div>';
-
-				if (item.context && item.context.trim().length > 0) {
-					html += '<div class="aips-logs-entry-context-toolbar">';
-					html += '<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-logs-entry-toggle-context" data-label-expand="Show Context" data-label-collapse="Hide Context">';
-					html += 'Show Context';
-					html += '</button>';
-					html += '</div>';
-					html += '<div class="aips-logs-entry-context-wrap" style="display:none;">';
-					html += '<pre class="aips-logs-entry-context"><code>' + self.escapeHtml(item.context) + '</code></pre>';
-					html += '</div>';
+				var timeHtml = '';
+				if (item.timestamp && window.AIPS && AIPS.Templates && AIPS.Templates.has('aips-tmpl-logs-entry-time')) {
+					timeHtml = AIPS.Templates.render('aips-tmpl-logs-entry-time', {
+						timestamp: item.timestamp
+					});
 				}
 
-				html += '</article>';
+				var contextHtml = '';
+				if (item.context && item.context.trim().length > 0 && window.AIPS && AIPS.Templates && AIPS.Templates.has('aips-tmpl-logs-entry-context')) {
+					contextHtml = AIPS.Templates.render('aips-tmpl-logs-entry-context', {
+						context: item.context
+					});
+				}
+
+				if (window.AIPS && AIPS.Templates && AIPS.Templates.has('aips-tmpl-logs-entry')) {
+					html += AIPS.Templates.renderRaw('aips-tmpl-logs-entry', {
+						levelClass: 'aips-logs-entry-' + AIPS.Templates.escape(level.toLowerCase()),
+						badgeClass: AIPS.Templates.escape(badgeClass),
+						level: AIPS.Templates.escape(level),
+						timeHtml: timeHtml,
+						message: AIPS.Templates.escape(item.message),
+						contextHtml: contextHtml
+					});
+				}
 			}
 
 			$stream.html(html);
 
 			// If auto-refreshing, smoothly scroll to bottom
-			if (self.isAutoRefreshing) {
+			if (this.isAutoRefreshing) {
 				var bodyElem = document.getElementById('aips-logs-body');
 				if (bodyElem) {
 					bodyElem.scrollTop = bodyElem.scrollHeight;
@@ -365,19 +459,19 @@
 		},
 
 		/**
-		 * Render empty or error message in viewer.
+		 * Render empty or error message in viewer using AIPS.Templates.
 		 *
 		 * @param {string} message
 		 * @param {boolean} isError
 		 */
 		renderEmptyState: function (message, isError) {
-			var icon = isError ? 'dashicons-warning' : 'dashicons-info';
-			var iconColor = isError ? 'style="color:#d63638;"' : '';
-			var html = '<div class="aips-logs-empty-view">' +
-				'<span class="dashicons ' + icon + '" ' + iconColor + '></span>' +
-				'<p>' + this.escapeHtml(message) + '</p>' +
-				'</div>';
-			$('#aips-logs-stream').html(html);
+			var iconClass = isError ? 'dashicons-warning' : 'dashicons-info';
+			if (window.AIPS && AIPS.Templates && AIPS.Templates.has('aips-tmpl-logs-empty-view')) {
+				$('#aips-logs-stream').html(AIPS.Templates.render('aips-tmpl-logs-empty-view', {
+					iconClass: iconClass,
+					message: message
+				}));
+			}
 			$('#aips-logs-raw-code').text('');
 			$('#aips-logs-current-linecount').text('0 entries');
 		},
@@ -413,6 +507,9 @@
 			}
 		},
 
+		/**
+		 * Start live tail polling.
+		 */
 		startAutoRefresh: function () {
 			var self = this;
 			self.isAutoRefreshing = true;
@@ -425,6 +522,9 @@
 			}, self.refreshInterval);
 		},
 
+		/**
+		 * Stop live tail polling.
+		 */
 		stopAutoRefresh: function () {
 			this.isAutoRefreshing = false;
 			if (this.timerId) {
@@ -445,19 +545,35 @@
 				return;
 			}
 
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(text).then(function () {
+			var onCopied = function () {
+				if (window.AIPS && AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
+					AIPS.Utilities.showToast(aipsLogsL10n.copiedToClipboard, 'success');
+				} else {
 					alert(aipsLogsL10n.copiedToClipboard);
-				}).catch(function () {
+				}
+			};
+
+			var onFailed = function () {
+				if (window.AIPS && AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
+					AIPS.Utilities.showToast(aipsLogsL10n.copyFailed, 'error');
+				} else {
 					alert(aipsLogsL10n.copyFailed);
-				});
+				}
+			};
+
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(text).then(onCopied).catch(onFailed);
 			} else {
-				var $temp = $('<textarea>');
-				$('body').append($temp);
-				$temp.val(text).select();
-				document.execCommand('copy');
-				$temp.remove();
-				alert(aipsLogsL10n.copiedToClipboard);
+				try {
+					var $temp = $('<textarea>');
+					$('body').append($temp);
+					$temp.val(text).select();
+					document.execCommand('copy');
+					$temp.remove();
+					onCopied();
+				} catch (err) {
+					onFailed();
+				}
 			}
 		},
 
@@ -503,17 +619,25 @@
 						}
 					} else {
 						var msg = (res && res.data && res.data.message) ? res.data.message : 'Action failed.';
-						alert(msg);
+						if (window.AIPS && AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
+							AIPS.Utilities.showToast(msg, 'error');
+						} else {
+							alert(msg);
+						}
 					}
 				},
 				error: function () {
-					alert('Request failed.');
+					if (window.AIPS && AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
+						AIPS.Utilities.showToast('Request failed.', 'error');
+					} else {
+						alert('Request failed.');
+					}
 				}
 			});
 		},
 
 		/**
-		 * Fetch updated list of log files for the sidebar.
+		 * Fetch updated list of log files for the sidebar using AIPS.Templates.
 		 */
 		refreshFileList: function () {
 			var self = this;
@@ -531,15 +655,14 @@
 						$('#aips-logs-file-count').text(files.length);
 
 						if (files.length === 0) {
-							$('#aips-logs-file-list').html(
-								'<div class="aips-logs-empty-files">' +
-								'<span class="dashicons dashicons-info"></span>' +
-								'<p>' + self.escapeHtml(aipsLogsL10n.noLogsFound) + '</p>' +
-								'</div>'
-							);
+							if (window.AIPS && AIPS.Templates && AIPS.Templates.has('aips-tmpl-logs-empty-files')) {
+								$('#aips-logs-file-list').html(AIPS.Templates.render('aips-tmpl-logs-empty-files', {
+									message: aipsLogsL10n.noLogsFound
+								}));
+							}
 							self.selectedFile = '';
 							self.selectedDisplayName = '';
-							self.renderEmptyState(aipsLogsL10n.noLogsFound);
+							self.renderEmptyState(aipsLogsL10n.noLogsFound, false);
 							return;
 						}
 
@@ -554,20 +677,23 @@
 							}
 
 							var displayName = file.display_name || file.name;
-
-							html += '<button type="button" class="aips-logs-file-item ' + (isSelected ? 'is-selected' : '') + '" data-file="' + self.escapeHtml(file.name) + '" data-display-name="' + self.escapeHtml(displayName) + '" role="option" aria-selected="' + (isSelected ? 'true' : 'false') + '">';
-							html += '<div class="aips-logs-file-item-header">';
-							html += '<span class="aips-logs-file-title">' + self.escapeHtml(displayName) + '</span>';
-							if (file.is_active) {
-								html += '<span class="aips-badge aips-badge-success aips-logs-active-badge">Active</span>';
+							var activeBadge = '';
+							if (file.is_active && window.AIPS && AIPS.Templates && AIPS.Templates.has('aips-tmpl-logs-active-badge')) {
+								activeBadge = AIPS.Templates.render('aips-tmpl-logs-active-badge', {});
 							}
-							html += '</div>';
-							html += '<div class="aips-logs-file-name" title="' + self.escapeHtml(file.name) + '">' + self.escapeHtml(file.name) + '</div>';
-							html += '<div class="aips-logs-file-meta">';
-							html += '<span class="aips-logs-file-date"><span class="dashicons dashicons-clock"></span> ' + self.escapeHtml(file.modified) + '</span>';
-							html += '<span class="aips-logs-file-size">' + self.escapeHtml(file.size) + '</span>';
-							html += '</div>';
-							html += '</button>';
+
+							if (window.AIPS && AIPS.Templates && AIPS.Templates.has('aips-tmpl-logs-file-item')) {
+								html += AIPS.Templates.renderRaw('aips-tmpl-logs-file-item', {
+									selectedClass: isSelected ? 'is-selected' : '',
+									name: AIPS.Templates.escape(file.name),
+									displayName: AIPS.Templates.escape(displayName),
+									isActive: file.is_active ? '1' : '0',
+									ariaSelected: isSelected ? 'true' : 'false',
+									activeBadge: activeBadge,
+									modified: AIPS.Templates.escape(file.modified),
+									size: AIPS.Templates.escape(file.size)
+								});
+							}
 						}
 
 						$('#aips-logs-file-list').html(html);
@@ -599,30 +725,12 @@
 			var sizes = ['B', 'KB', 'MB', 'GB'];
 			var i = Math.floor(Math.log(bytes) / Math.log(k));
 			return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-		},
-
-		/**
-		 * HTML escape helper.
-		 *
-		 * @param {string} str
-		 * @return {string}
-		 */
-		escapeHtml: function (str) {
-			if (str === null || str === undefined) {
-				return '';
-			}
-			return String(str)
-				.replace(/&/g, '&amp;')
-				.replace(/</g, '&lt;')
-				.replace(/>/g, '&gt;')
-				.replace(/"/g, '&quot;')
-				.replace(/'/g, '&#039;');
 		}
 	};
 
 	$(document).ready(function () {
 		if ($('#aips-tab-logs-pane').length) {
-			AipsLogs.init();
+			AIPS.DiagnosticsLogs.init();
 		}
 	});
 

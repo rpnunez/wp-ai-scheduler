@@ -219,4 +219,72 @@ $active_display_name = !empty($log_files[0]['display_name']) ? $log_files[0]['di
 			</div>
 		</section>
 	</div><!-- /.aips-logs-master-detail -->
+
+	<!-- Templates for Client-Side Rendering -->
+	<script type="text/html" id="aips-tmpl-logs-file-item">
+		<button type="button" class="aips-logs-file-item {{selectedClass}}" data-file="{{name}}" data-display-name="{{displayName}}" data-is-active="{{isActive}}" role="option" aria-selected="{{ariaSelected}}">
+			<div class="aips-logs-file-item-header">
+				<span class="aips-logs-file-title">{{displayName}}</span>
+				{{activeBadge}}
+			</div>
+			<div class="aips-logs-file-name" title="{{name}}">{{name}}</div>
+			<div class="aips-logs-file-meta">
+				<span class="aips-logs-file-date">
+					<span class="dashicons dashicons-clock"></span> {{modified}}
+				</span>
+				<span class="aips-logs-file-size">{{size}}</span>
+			</div>
+		</button>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-logs-active-badge">
+		<span class="aips-badge aips-badge-success aips-logs-active-badge"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-logs-entry">
+		<article class="aips-logs-entry {{levelClass}}">
+			<div class="aips-logs-entry-header">
+				<span class="aips-badge {{badgeClass}} aips-logs-entry-level">{{level}}</span>
+				{{timeHtml}}
+			</div>
+			<div class="aips-logs-entry-message">{{message}}</div>
+			{{contextHtml}}
+		</article>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-logs-entry-time">
+		<time class="aips-logs-entry-time">{{timestamp}}</time>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-logs-entry-context">
+		<div class="aips-logs-entry-context-toolbar">
+			<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-logs-entry-toggle-context" data-label-expand="<?php esc_attr_e('Show Context', 'ai-post-scheduler'); ?>" data-label-collapse="<?php esc_attr_e('Hide Context', 'ai-post-scheduler'); ?>">
+				<?php esc_html_e('Show Context', 'ai-post-scheduler'); ?>
+			</button>
+		</div>
+		<div class="aips-logs-entry-context-wrap" style="display:none;">
+			<pre class="aips-logs-entry-context"><code>{{context}}</code></pre>
+		</div>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-logs-empty-view">
+		<div class="aips-logs-empty-view">
+			<span class="dashicons {{iconClass}}"></span>
+			<p>{{message}}</p>
+		</div>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-logs-loading">
+		<div class="aips-logs-loading">
+			<span class="dashicons dashicons-update aips-spin"></span>
+			<p>{{message}}</p>
+		</div>
+	</script>
+
+	<script type="text/html" id="aips-tmpl-logs-empty-files">
+		<div class="aips-logs-empty-files">
+			<span class="dashicons dashicons-info"></span>
+			<p>{{message}}</p>
+		</div>
+	</script>
 </div>

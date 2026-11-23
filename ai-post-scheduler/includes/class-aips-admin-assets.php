@@ -387,7 +387,7 @@ class AIPS_Admin_Assets {
 		wp_enqueue_script(
 			'aips-admin-logs',
 			AIPS_PLUGIN_URL . 'assets/js/admin-logs.js',
-			array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+			array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);
