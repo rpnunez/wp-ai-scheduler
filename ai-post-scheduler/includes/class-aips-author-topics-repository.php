@@ -311,6 +311,62 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
+	 * Get an author's oldest pending topics, for re-running auto-approval.
+	 *
+	 * Uncached on purpose: the caller changes these rows straight away.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $limit Maximum rows to return.
+	 * @return array Array of topic objects (oldest first).
+	 */
+	public function get_pending_for_approval_recheck($author_id, $limit) {
+		return (array) $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT id, author_id, topic_title, topic_prompt, status, score, metadata
+			 FROM {$this->table_name}
+			 WHERE author_id = %d
+			   AND status = 'pending'
+			   AND (
+				metadata IS NULL
+				OR metadata = ''
+				OR JSON_VALID(metadata) = 0
+				OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(CASE WHEN JSON_VALID(metadata) THEN metadata ELSE '{}' END, '$.auto_approval_rule')), '')) IN ('', 'null', 'false', '0')
+				OR JSON_UNQUOTE(JSON_EXTRACT(CASE WHEN JSON_VALID(metadata) THEN metadata ELSE '{}' END, '$.auto_approval_reason')) = 'relevance_unavailable'
+			   )
+			 ORDER BY id ASC
+			 LIMIT %d",
+			absint($author_id),
+			max(1, (int) $limit)
+		));
+	}
+
+	/**
+	 * Update a topic only while it is still pending.
+	 *
+	 * Used by automated decisions so a human review made in the meantime is
+	 * never overwritten.
+	 *
+	 * @param int      $id        Topic ID.
+	 * @param array    $data      Columns to update.
+	 * @param int|null $author_id Optional known author ID; skips a lookup during cache invalidation.
+	 * @return int|false Rows updated (0 when the topic is no longer pending), or false on error.
+	 */
+	public function update_if_pending($id, $data, $author_id = null) {
+		$result = $this->wpdb->update(
+			$this->table_name,
+			$data,
+			array('id' => absint($id), 'status' => 'pending'),
+			null,
+			array('%d', '%s')
+		);
+
+		if ($result) {
+			$this->invalidate_author_topic_cache_by_id($id, 'author_topic_updated', $author_id);
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Update a topic.
 	 *
 	 * @param int $id Topic ID.
@@ -696,22 +752,6 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
-	 * Get topic counts by status for an author.
-	 *
-	 * Returns counts for each status bucket:
-	 * - pending:         topics awaiting review
-	 * - approved:        approved topics that have not yet produced a post
-	 * - rejected:        rejected topics
-	 * - posts_generated: approved topics that have at least one generated post
-	 *
-	 * The four buckets are mutually exclusive and exhaustive, so
-	 * pending + approved + rejected + posts_generated == total topics for
-	 * the author.
-	 *
-	 * @param int $author_id Author ID.
-	 * @return array Associative array of bucket => count.
-	 */
-	/**
 	 * Get topic counts by status grouped by author for a list of author IDs.
 	 *
 	 * Batches the status count queries for multiple authors into a single SQL statement
@@ -776,6 +816,20 @@ class AIPS_Author_Topics_Repository {
 		);
 	}
 
+	/**
+	 * Returns counts for each status bucket:
+	 * - pending:         topics awaiting review
+	 * - approved:        approved topics that have not yet produced a post
+	 * - rejected:        rejected topics
+	 * - posts_generated: approved topics that have at least one generated post
+	 *
+	 * The four buckets are mutually exclusive and exhaustive, so
+	 * pending + approved + rejected + posts_generated == total topics for
+	 * the author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return array Associative array of bucket => count.
+	 */
 	public function get_status_counts($author_id) {
 		return $this->cache_read(
 			'author_topics.get_status_counts',

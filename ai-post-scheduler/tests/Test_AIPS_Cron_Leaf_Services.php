@@ -147,6 +147,11 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 			)
 		);
 
+		// The service only schedules AIPS-generated posts that are in the link
+		// index scope; mark the fixture generated and force qualification.
+		update_post_meta( $post_id, AIPS_Post_Manager::META_GENERATED_POST, 1 );
+		add_filter( 'aips_publish_linking_qualifies', '__return_true' );
+
 		update_option( 'aips_publish_linking_mode', 'review' );
 		$service = new AIPS_Publish_Linking_Service( null, $this->cron_manager );
 

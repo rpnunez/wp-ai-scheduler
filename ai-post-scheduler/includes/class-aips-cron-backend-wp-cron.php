@@ -35,7 +35,9 @@ class AIPS_Cron_Backend_WP_Cron implements AIPS_Cron_Backend_Interface {
 			return true;
 		}
 
-		$result = $this->cron_manager->schedule_single( $timestamp, $hook, $args );
+		// AIPS_Cron_Manager::schedule_single() is hook-first ($hook, $timestamp);
+		// the backend interface is timestamp-first — reorder when delegating.
+		$result = $this->cron_manager->schedule_single( $hook, $timestamp, $args );
 		return false !== $result;
 	}
 
@@ -44,7 +46,9 @@ class AIPS_Cron_Backend_WP_Cron implements AIPS_Cron_Backend_Interface {
 	 */
 	public function schedule_recurring( $timestamp, $interval, $hook, array $args = array(), $group = '' ) {
 		$recurrence = is_numeric( $interval ) ? $this->interval_to_recurrence( (int) $interval ) : (string) $interval;
-		$result     = $this->cron_manager->schedule_recurring( $timestamp, $recurrence, $hook, $args );
+		// AIPS_Cron_Manager::schedule_recurring() is ($hook, $recurrence, $timestamp, $args);
+		// the backend interface is timestamp-first — reorder when delegating.
+		$result     = $this->cron_manager->schedule_recurring( $hook, $recurrence, $timestamp, $args );
 		return false !== $result;
 	}
 

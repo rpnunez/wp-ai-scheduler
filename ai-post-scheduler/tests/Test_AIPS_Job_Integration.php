@@ -44,13 +44,13 @@ class Test_AIPS_Job_Integration extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}aips_jobs" );
 		wp_unschedule_hook( AIPS_Job_Registry::DEFAULT_TICK_HOOK );
-		remove_all_filters( 'aips_job_definitions' );
+		remove_all_filters( 'aips_registered_jobs' );
 	}
 
 	public function test_end_to_end_multislice_job_lifecycle() {
 		$call_count = 0;
 		add_filter(
-			'aips_job_definitions',
+			'aips_registered_jobs',
 			function ( $defs ) use ( &$call_count ) {
 				$defs['multislice_integration_test'] = array(
 					'label'             => 'Multislice Test',
@@ -59,7 +59,7 @@ class Test_AIPS_Job_Integration extends WP_UnitTestCase {
 					'max_retries'       => 3,
 					'retry_backoff_sec' => 60,
 					'batch_size'        => 5,
-					'handler'           => function ( $context, $payload, $record ) use ( &$call_count ) {
+					'handler'           => function ( $context ) use ( &$call_count ) {
 						$call_count++;
 						$cursor = (int) $context->get_cursor_id();
 						if ( $call_count === 1 ) {
@@ -108,7 +108,7 @@ class Test_AIPS_Job_Integration extends WP_UnitTestCase {
 
 	public function test_sync_execution_completes_in_single_invocation() {
 		add_filter(
-			'aips_job_definitions',
+			'aips_registered_jobs',
 			function ( $defs ) {
 				$defs['sync_integration_test'] = array(
 					'label'             => 'Sync Test',
@@ -117,7 +117,7 @@ class Test_AIPS_Job_Integration extends WP_UnitTestCase {
 					'max_retries'       => 2,
 					'retry_backoff_sec' => 30,
 					'batch_size'        => 10,
-					'handler'           => function ( $context, $payload ) {
+					'handler'           => function ( $context ) {
 						return new AIPS_Job_Slice_Result( 3, 0, 3, true, array( 'source' => 'sync' ) );
 					},
 				);
@@ -145,7 +145,7 @@ class Test_AIPS_Job_Integration extends WP_UnitTestCase {
 	public function test_error_retry_and_eventual_completion() {
 		$attempts = 0;
 		add_filter(
-			'aips_job_definitions',
+			'aips_registered_jobs',
 			function ( $defs ) use ( &$attempts ) {
 				$defs['retry_integration_test'] = array(
 					'label'             => 'Retry Test',

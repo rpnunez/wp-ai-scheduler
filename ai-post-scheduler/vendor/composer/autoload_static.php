@@ -14,11 +14,11 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $prefixLengthsPsr4 = array (
-        'P' =>
+        'P' => 
         array (
             'PhpParser\\' => 10,
         ),
-        'D' =>
+        'D' => 
         array (
             'Doctrine\\Instantiator\\' => 22,
             'DeepCopy\\' => 9,
@@ -26,15 +26,15 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $prefixDirsPsr4 = array (
-        'PhpParser\\' =>
+        'PhpParser\\' => 
         array (
             0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
         ),
-        'Doctrine\\Instantiator\\' =>
+        'Doctrine\\Instantiator\\' => 
         array (
             0 => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator',
         ),
-        'DeepCopy\\' =>
+        'DeepCopy\\' => 
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
@@ -324,8 +324,12 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Seeder_Admin' => __DIR__ . '/../..' . '/includes/class-aips-seeder-admin.php',
         'AIPS_Seeder_Service' => __DIR__ . '/../..' . '/includes/class-aips-seeder-service.php',
         'AIPS_Session_To_JSON' => __DIR__ . '/../..' . '/includes/class-aips-session-to-json.php',
+        'AIPS_Setting_Definition' => __DIR__ . '/../..' . '/includes/class-aips-setting-definition.php',
         'AIPS_Settings' => __DIR__ . '/../..' . '/includes/class-aips-settings.php',
         'AIPS_Settings_AJAX' => __DIR__ . '/../..' . '/includes/class-aips-settings-ajax.php',
+        'AIPS_Settings_Form_Renderer' => __DIR__ . '/../..' . '/includes/class-aips-settings-form-renderer.php',
+        'AIPS_Settings_Manager' => __DIR__ . '/../..' . '/includes/class-aips-settings-manager.php',
+        'AIPS_Settings_Registry' => __DIR__ . '/../..' . '/includes/class-aips-settings-registry.php',
         'AIPS_Settings_UI' => __DIR__ . '/../..' . '/includes/class-aips-settings-ui.php',
         'AIPS_Silo_Service' => __DIR__ . '/../..' . '/includes/class-aips-silo-service.php',
         'AIPS_Silos_Controller' => __DIR__ . '/../..' . '/includes/class-aips-silos-controller.php',
@@ -417,8 +421,10 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Test_Stub_Logger_For_Suggestions' => __DIR__ . '/../..' . '/tests/Test_Author_Suggestions_Service.php',
         'AIPS_Test_Stub_Manager_Integration' => __DIR__ . '/../..' . '/tests/Test_AIPS_Integration_Manager.php',
         'AIPS_Test_Templates_Clone_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Clone.php',
+        'AIPS_Test_Templates_Get_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Get.php',
         'AIPS_Test_Templates_Save_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Save.php',
         'AIPS_Test_Unavailable_Integration' => __DIR__ . '/../..' . '/tests/Test_AIPS_Integration_Registry.php',
+        'AIPS_Test_Voices_Get_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Get.php',
         'AIPS_Test_WP_AI_Client_Builder' => __DIR__ . '/../..' . '/tests/Test_AIPS_WP_AI_Client_Provider.php',
         'AIPS_Test_WP_AI_Client_Builder_Erroring_Chain' => __DIR__ . '/../..' . '/tests/Test_AIPS_WP_AI_Client_Provider.php',
         'AIPS_Test_WP_AI_Client_Builder_Without_JSON' => __DIR__ . '/../..' . '/tests/Test_AIPS_WP_AI_Client_Provider.php',
@@ -1540,16 +1546,21 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Scheduler_Resilience' => __DIR__ . '/../..' . '/tests/Test_AIPS_Scheduler_Resilience.php',
         'Test_AIPS_Scheduler_Save' => __DIR__ . '/../..' . '/tests/Test_AIPS_Scheduler_Save.php',
         'Test_AIPS_Secret_Encryption' => __DIR__ . '/../..' . '/tests/Test_AIPS_Secret_Encryption.php',
+        'Test_AIPS_Setting_Definition' => __DIR__ . '/../..' . '/tests/Test_AIPS_Setting_Definition.php',
         'Test_AIPS_Settings_Ajax' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_Ajax.php',
         'Test_AIPS_Settings_Ajax_Fake_AI_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_Ajax.php',
         'Test_AIPS_Settings_Ajax_Fake_History_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_Ajax.php',
         'Test_AIPS_Settings_Ajax_Fake_History_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_Ajax.php',
+        'Test_AIPS_Settings_Form_Renderer' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_Form_Renderer.php',
         'Test_AIPS_Settings_Global_AI_Disable' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_Global_AI_Disable.php',
+        'Test_AIPS_Settings_Manager' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_Manager.php',
+        'Test_AIPS_Settings_Registry' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_Registry.php',
         'Test_AIPS_Settings_UI_Cache_Driver' => __DIR__ . '/../..' . '/tests/Test_AIPS_Settings_UI_Cache_Driver.php',
         'Test_AIPS_Similarity_Evaluator_Clusters' => __DIR__ . '/../..' . '/tests/Test_AIPS_Similarity_Evaluator_Clusters.php',
         'Test_AIPS_Similarity_Evaluator_Topics' => __DIR__ . '/../..' . '/tests/Test_AIPS_Similarity_Evaluator_Topics.php',
         'Test_AIPS_Singleton_Instances' => __DIR__ . '/../..' . '/tests/Test_AIPS_Singleton_Instances.php',
         'Test_AIPS_Site_Context' => __DIR__ . '/../..' . '/tests/Test_AIPS_Site_Context.php',
+        'Test_AIPS_Snapshot_Exporter' => __DIR__ . '/../..' . '/tests/Test_AIPS_Snapshot_Exporter.php',
         'Test_AIPS_Sources' => __DIR__ . '/../..' . '/tests/Test_AIPS_Sources.php',
         'Test_AIPS_Sources_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Sources_Controller.php',
         'Test_AIPS_Sources_Cron' => __DIR__ . '/../..' . '/tests/Test_AIPS_Sources_Cron.php',
@@ -1574,6 +1585,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Template_Processor' => __DIR__ . '/../..' . '/tests/Test_AIPS_Template_Processor.php',
         'Test_AIPS_Template_Repository_Post_Type' => __DIR__ . '/../..' . '/tests/Test_AIPS_Template_Repository_Post_Type.php',
         'Test_AIPS_Templates_Controller_Clone' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Clone.php',
+        'Test_AIPS_Templates_Controller_Get' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Get.php',
         'Test_AIPS_Templates_Controller_Preview' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Preview.php',
         'Test_AIPS_Templates_Controller_Save' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Save.php',
         'Test_AIPS_Templates_Interval' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Interval.php',
@@ -1592,6 +1604,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_Bug_Hunter_Filesystem_Errors' => __DIR__ . '/../..' . '/tests/Test_Bug_Hunter_Filesystem_Errors.php',
         'Test_Bulk_Schedule' => __DIR__ . '/../..' . '/tests/Test_Bulk_Schedule.php',
         'Test_Component_Regeneration_Service' => __DIR__ . '/../..' . '/tests/Test_Component_Regeneration_Service.php',
+        'Test_DevStackTips_Setup_V3' => __DIR__ . '/../..' . '/tests/Test_DevStackTips_Setup_V3.php',
         'Test_Generated_Posts_Controller' => __DIR__ . '/../..' . '/tests/Test_Generated_Posts_Controller.php',
         'Test_Generation_Queue' => __DIR__ . '/../..' . '/tests/Test_Generation_Queue.php',
         'Test_History_Template' => __DIR__ . '/../..' . '/tests/Test_History_Template.php',
