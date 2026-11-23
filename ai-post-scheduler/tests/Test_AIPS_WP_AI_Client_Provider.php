@@ -217,10 +217,18 @@ class Test_AIPS_WP_AI_Client_Provider extends WP_UnitTestCase {
 
         parent::setUp();
         $aips_wp_ai_client_test_configured = true;
-		$aips_wp_ai_client_test_connectors = null;
+		$aips_wp_ai_client_test_connectors = $this->get_routing_test_connectors();
         add_filter('aips_wp_ai_client_has_configured_connector', 'aips_test_wp_ai_client_connector_configured');
 		add_filter('aips_wp_ai_client_connectors', 'aips_test_wp_ai_client_connectors');
 		add_filter('aips_wp_ai_client_prompt_builder', 'aips_test_wp_ai_client_prompt_builder', 10, 2);
+        delete_option('aips_ai_provider');
+		$config = AIPS_Config::get_instance();
+		$config->set_option('aips_wp_ai_connector_mode', 'all');
+		$config->set_option('aips_wp_ai_connector_ids', array());
+		$config->set_option('aips_wp_ai_connector_failover', true);
+		foreach (array('google', 'openai', 'anthropic') as $connector_id) {
+			delete_transient('aips_wp_ai_health_' . md5($connector_id));
+		}
         AIPS_AI_Provider_Factory::reset_cache();
     }
 

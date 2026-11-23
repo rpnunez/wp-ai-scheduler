@@ -12,32 +12,57 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  */
 class AIPS_Settings_UI {
-
-	/** Retention is disabled at zero; never convert a negative value into deletion. */
-	public function sanitize_source_archive_retention_days( $value ) {
-		return max( 0, min( 3650, (int) $value ) );
-	}
-
-	public function source_archive_retention_field_callback() {
-		$days = $this->sanitize_source_archive_retention_days( AIPS_Config::get_instance()->get_option( 'aips_source_archive_retention_days' ) );
-		echo '<input type="number" min="0" max="3650" step="1" id="aips_source_archive_retention_days" name="aips_source_archive_retention_days" value="' . esc_attr( (string) $days ) . '" class="small-text">';
-		echo '<p class="description">' . esc_html__( 'Days to retain source snapshots. 0 disables deletion. Daily cleanup removes up to 100 expired snapshots per batch and always keeps the newest usable snapshot for each current source URL. Generation history keeps its metadata, but full archived content becomes unavailable after deletion.', 'ai-post-scheduler' ) . '</p>';
-		// The review is submitted through the existing settings form; no new AJAX action.
-		$review_days = isset( $_GET['aips_retention_review_days'] ) ? $this->sanitize_source_archive_retention_days( wp_unslash( $_GET['aips_retention_review_days'] ) ) : $days;
-		echo '<label for="aips-retention-review-days">' . esc_html__( 'Review cutoff (days):', 'ai-post-scheduler' ) . '</label> ';
-		echo '<input type="number" id="aips-retention-review-days" min="1" max="3650" value="' . esc_attr( (string) max( 1, $review_days ) ) . '" class="small-text" oninput="this.nextElementSibling.href=this.nextElementSibling.dataset.base+encodeURIComponent(this.value)"> ';
-		$base = admin_url( 'admin.php?page=aips-settings&tab=settings-general&aips_retention_review_days=' );
-		echo '<a class="button" data-base="' . esc_url( $base ) . '" href="' . esc_url( $base . max( 1, $review_days ) ) . '">' . esc_html__( 'Review eligible snapshots', 'ai-post-scheduler' ) . '</a>';
-		if ( $review_days > 0 ) {
-			try {
-				$count = ( new AIPS_Sources_Data_Repository() )->count_prunable_archive( AIPS_DateTime::now()->timestamp() - $review_days * DAY_IN_SECONDS );
-			} catch ( Throwable $error ) {
-				echo '<p class="description">' . esc_html__( 'The eligible snapshot count is unavailable. Check the database before enabling retention.', 'ai-post-scheduler' ) . '</p>';
+	/**
+	 * Magic fallback for retired field and section callbacks.
+	 *
+	 * Delegates to AIPS_Settings_Form_Renderer or AIPS_Settings_Manager
+	 * ensuring backward compatibility for third-party or test callers.
+	 *
+	 * @param string $name Method name.
+	 * @param array  $arguments Method arguments.
+	 * @return void
+	 */
+	public function __call( $name, $arguments ) {
+		if ( str_ends_with( $name, '_field_callback' ) ) {
+			$raw_key  = substr( $name, 0, -strlen( '_field_callback' ) );
+			$registry = AIPS_Settings_Registry::instance();
+			$key      = $raw_key;
+			if ( ! $registry->has_definition( $key ) && $registry->has_definition( 'aips_' . $key ) ) {
+				$key = 'aips_' . $key;
+			}
+			$def = $registry->get_definition( $key );
+			if ( $def ) {
+				$renderer = new AIPS_Settings_Form_Renderer();
+				$renderer->render_field( $def );
 				return;
 			}
-			/* translators: 1: snapshot count, 2: retention days. */
-			echo '<p class="description">' . esc_html( sprintf( __( '%1$d snapshots are eligible for deletion with a %2$d-day cutoff. Review this count before saving a nonzero retention period.', 'ai-post-scheduler' ), $count, $review_days ) ) . '</p>';
 		}
+
+		if ( str_ends_with( $name, '_section_callback' ) ) {
+			return;
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			trigger_error( "Call to undefined method AIPS_Settings_UI::{$name}()", E_USER_WARNING );
+		}
+	}
+
+
+	/**
+	 * Magic fallback for retired field callbacks.
+	 *
+	 * Delegates to AIPS_Settings_Form_Renderer or AIPS_Settings_Manager
+	 * ensuring backward compatibility for third-party or test callers.
+	 *
+	 * @param string $name Method name.
+	 * @param array  $arguments Method arguments.
+	 * @return void
+	 */
+
+	/** Retention is disabled at zero; never convert a negative value into deletion. */
+
+	public function sanitize_source_archive_retention_days( $value ) {
+		return max( 0, min( 3650, (int) $value ) );
 	}
 
     /**
@@ -45,126 +70,90 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function general_section_callback() {
-        echo '<p>' . esc_html__('Configure default settings for AI-generated posts.', 'ai-post-scheduler') . '</p>';
-    }
 
     /**
      * Render the description for the AI settings section.
      *
      * @return void
      */
-    public function ai_section_callback() {
-        echo '<p>' . esc_html__('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler') . '</p>';
-    }
 
 	/**
 	 * Render the description for Card 1: Content Generation AI Provider.
 	 *
 	 * @return void
 	 */
-	public function ai_provider_section_callback() {
-	}
 
 	/**
 	 * Render the description for Card 2: Token Budgets & Prompt Optimization.
 	 *
 	 * @return void
 	 */
-	public function ai_tokens_section_callback() {
-	}
 
 	/**
 	 * Render the description for Card 3: Vector Embeddings Engine & Model.
 	 *
 	 * @return void
 	 */
-	public function ai_embeddings_section_callback() {
-	}
 
 	/**
 	 * Render the description for Card 4: Indexing Scope, Continuous Sync & Rate Limits.
 	 *
 	 * @return void
 	 */
-	public function ai_scope_section_callback() {
-	}
 
 	/**
 	 * Render the description for Card 7: Internal Link Automation.
 	 *
 	 * @return void
 	 */
-	public function ai_autolink_section_callback() {
-	}
 
 	/**
 	 * Render the description for the Link Index card (Internal Linking tab).
 	 *
 	 * @return void
 	 */
-	public function link_index_section_callback() {
-	}
 
 	/**
 	 * Render the description for the Keyword Link Rules card (Internal Linking tab).
 	 *
 	 * @return void
 	 */
-	public function link_rules_section_callback() {
-	}
 
 	/**
 	 * Render the description for Card 5: Frontend Related Posts Engine.
 	 *
 	 * @return void
 	 */
-	public function ai_related_posts_section_callback() {
-	}
 
 	/**
 	 * Render the description for Card 6: Semantic Duplicate Detection & Gatekeeper Guard.
 	 *
 	 * @return void
 	 */
-	public function ai_deduplication_section_callback() {
-	}
 
 	/**
 	 * Render the description for the Authors settings section.
 	 *
 	 * @return void
 	 */
-	public function authors_section_callback() {
-		echo '<p>' . esc_html__('Configure default auto-approval policies and dual-boundary semantic gates for author topics.', 'ai-post-scheduler') . '</p>';
-	}
 
 	/**
 	 * Render the description for the feedback settings section.
 	 *
 	 * @return void
 	 */
-	public function feedback_section_callback() {
-		echo '<p>' . esc_html__('Configure how the plugin evaluates and deduplicates generated topic suggestions.', 'ai-post-scheduler') . '</p>';
-	}
 
     /**
      * Render the description for the API keys settings section.
      *
      * @return void
      */
-    public function api_keys_section_callback() {
-        echo '<p>' . esc_html__('Enter API keys for third-party services used by the plugin.', 'ai-post-scheduler') . '</p>';
-    }
 
     /**
      * Render the description for the developer settings section.
      *
      * @return void
      */
-    public function developers_section_callback() {
-        echo '<p>' . esc_html__('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler') . '</p>';
-    }
 
     /**
      * Render the default post status setting field.
@@ -173,6 +162,7 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
+
     public function post_status_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_default_post_status');
         ?>
@@ -192,6 +182,7 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
+
     public function category_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_default_category');
         wp_dropdown_categories(array(
@@ -207,15 +198,6 @@ class AIPS_Settings_UI {
     /**
      * Render the bulk-publish background threshold field.
      */
-    public function bulk_publish_async_threshold_field_callback() {
-        $value = (int) AIPS_Config::get_instance()->get_option('aips_bulk_publish_async_threshold');
-        ?>
-        <input type="number" name="aips_bulk_publish_async_threshold" value="<?php echo esc_attr($value); ?>" min="2" max="500" step="1" class="small-text">
-        <p class="description">
-            <?php esc_html_e('On the Content → Pending Review screen, when you bulk-publish this many drafts or more, they are published in the background (via WP-Cron) so the page responds instantly instead of waiting for every post. You can watch progress under Diagnostics → Background Processes. Smaller selections publish immediately. Raise this to keep more selections publishing instantly; lower it to offload medium-sized batches to the background sooner. Default: 30.', 'ai-post-scheduler'); ?>
-        </p>
-        <?php
-    }
 
     /**
      * Sanitize the bulk-publish background threshold: a whole number, clamped to
@@ -224,6 +206,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw submitted value.
      * @return int
      */
+
     public function sanitize_bulk_publish_async_threshold($value) {
         $value = absint($value);
         if ($value < 2) {
@@ -242,44 +225,13 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function ai_provider_field_callback() {
-        $value     = (string) AIPS_Config::get_instance()->get_option('aips_ai_provider');
-        $available = AIPS_AI_Provider_Factory::available_providers();
-        $reasons   = AIPS_AI_Provider_Factory::unavailable_reasons();
-        // Show every known provider so an unavailable one can still be selected,
-        // while clearly marking whether it is locally configured for use.
-        $all = AIPS_AI_Provider_Factory::all_providers();
-        ?>
-        <select name="aips_ai_provider" id="aips_ai_provider">
-            <option value="" <?php selected($value, ''); ?>><?php esc_html_e('Auto-detect (recommended)', 'ai-post-scheduler'); ?></option>
-            <?php foreach ($all as $id => $label) : ?>
-                <?php $is_available = isset($available[$id]); ?>
-                <option value="<?php echo esc_attr($id); ?>" <?php selected($value, $id); ?>>
-                    <?php
-                    echo esc_html($label);
-                    if (!$is_available) {
-                        echo ' ' . esc_html__('(currently unavailable)', 'ai-post-scheduler');
-                    }
-                    ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        <p class="description"><?php esc_html_e('Which AI backend to use. Auto-detect prefers Meow Apps AI Engine, then a locally configured WordPress AI Client connector. Live connector and model capability is verified when a generation request runs. The Model and Environment ID fields below are interpreted per provider (Meow uses the Environment ID; the WordPress AI Client uses the Model as a model preference, with credentials managed under WordPress core Settings > AI Connectors).', 'ai-post-scheduler'); ?></p>
-        <?php if (!empty($reasons)) : ?>
-            <ul class="description aips-provider-readiness">
-                <?php foreach ($reasons as $id => $reason) : ?>
-                    <li><strong><?php echo esc_html(isset($all[$id]) ? $all[$id] : $id); ?>:</strong> <?php echo esc_html($reason); ?></li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
-        <?php
-    }
 
 	/**
 	 * Render WordPress AI Client connector routing controls.
 	 *
 	 * @return void
 	 */
+
 	public function wp_ai_connectors_field_callback() {
 		$config          = AIPS_Config::get_instance();
 		$mode            = (string) $config->get_option('aips_wp_ai_connector_mode');
@@ -354,13 +306,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function ai_model_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_ai_model');
-        ?>
-        <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI model to use (leave empty for the provider default). For the WordPress AI Client you may enter a comma-separated model preference list, e.g. "claude-sonnet-4-5, gemini-3-pro-preview".', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the AI environment ID setting field.
@@ -369,27 +314,12 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function ai_env_id_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_ai_env_id');
-        ?>
-        <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('Meow AI Engine only: environment ID to use (leave empty for the AI Engine default). Ignored by the WordPress AI Client, which manages connectors and credentials under WordPress core settings.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
 	/**
 	 * Render the AI generation prevention setting field.
 	 *
 	 * @return void
 	 */
-	public function prevent_scheduled_ai_generation_field_callback() {
-		$value = AIPS_Config::get_instance()->is_scheduled_ai_generation_prevented();
-		?>
-		<input type="hidden" name="aips_prevent_scheduled_ai_generation" value="0">
-		<input type="checkbox" name="aips_prevent_scheduled_ai_generation" value="1" <?php checked(1, $value); ?>>
-		<p class="description"><?php esc_html_e('Stop schedule runs before they begin AI generation. This applies to cron-started runs and to manual "Run Now" executions. Schedules remain active and record an early-termination history entry instead of generating content while this setting is enabled. A large batch stopped part-way through resumes from where it left off once you turn this back off.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
     /**
      * Render the max tokens limit setting field.
@@ -400,13 +330,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function max_tokens_limit_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_limit');
-        ?>
-        <input type="number" name="aips_max_tokens_limit" value="<?php echo esc_attr($value); ?>" min="100" class="small-text">
-        <p class="description"><?php esc_html_e('Hard maximum number of tokens that can be requested in a single AI call. The plugin calculates tokens dynamically per request type (title, excerpt, content) and will never exceed this limit. Default: 16000.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the max tokens for post titles setting field.
@@ -415,13 +338,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function max_tokens_title_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_title');
-        ?>
-        <input type="number" name="aips_max_tokens_title" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected visible-output budget for post title generation (~10–20 words). Short-form requests reserve at least 1200 provider tokens so reasoning-capable models can finish the response. Default: 150.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the max tokens for post excerpts setting field.
@@ -430,13 +346,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function max_tokens_excerpt_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_excerpt');
-        ?>
-        <input type="number" name="aips_max_tokens_excerpt" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected visible-output budget for post excerpt generation (~2–3 sentence summary). Short-form requests reserve at least 1200 provider tokens so reasoning-capable models can finish the response. Default: 300.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the max tokens for post content setting field.
@@ -445,13 +354,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function max_tokens_content_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_content');
-        ?>
-        <input type="number" name="aips_max_tokens_content" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected output token budget for full post content generation (approximately 2,000–3,000 words, depending on the model and content). Default: 4000. Actual output is also capped by the Max Tokens Limit setting.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render Unsplash access key field.
@@ -460,55 +362,18 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function unsplash_access_key_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_unsplash_access_key');
-        ?>
-        <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
-        <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render Post Images section description.
      */
-    public function post_images_section_callback() {
-        echo '<p class="description">' . esc_html__('Configure global limits and available sources for Post Content Images generation across Templates and Authors.', 'ai-post-scheduler') . '</p>';
-    }
 
     /**
      * Render Max Post Images Limit field.
      */
-    public function max_post_images_limit_field_callback() {
-        $value = AIPS_Config::get_instance()->get_max_post_images_limit();
-        ?>
-        <input type="number" name="aips_max_post_images_limit" id="aips_max_post_images_limit" value="<?php echo esc_attr($value); ?>" min="0" max="20" class="small-text">
-        <p class="description"><?php esc_html_e('Maximum number of post images that can be added and generated for a single post (0 to 20). Defaults to 5.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render Allowed Image Sources field.
      */
-    public function allowed_image_sources_field_callback() {
-        $allowed = AIPS_Config::get_instance()->get_allowed_image_sources();
-        $sources = array(
-            'ai_prompt'     => __('AI Prompt Generation', 'ai-post-scheduler'),
-            'unsplash'      => __('Unsplash (keyword search)', 'ai-post-scheduler'),
-            'media_library' => __('WordPress Media Library', 'ai-post-scheduler'),
-        );
-        ?>
-        <fieldset>
-            <legend class="screen-reader-text"><?php esc_html_e('Allowed Image Sources', 'ai-post-scheduler'); ?></legend>
-            <?php foreach ($sources as $key => $label): ?>
-                <label style="display: block; margin-bottom: 6px;">
-                    <input type="checkbox" name="aips_allowed_image_sources[]" value="<?php echo esc_attr($key); ?>" <?php checked(in_array($key, $allowed, true)); ?>>
-                    <?php echo esc_html($label); ?>
-                </label>
-            <?php endforeach; ?>
-            <p class="description"><?php esc_html_e('Controls which image sources are available when configuring Featured Image and Post Images on Templates and Authors.', 'ai-post-scheduler'); ?></p>
-        </fieldset>
-        <?php
-    }
 
     /**
      * Render the Google Search Console connection (API Keys tab).
@@ -518,6 +383,7 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
+
     public function gsc_field_callback() {
         $config     = AIPS_Config::get_instance();
         $service    = AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class);
@@ -603,133 +469,50 @@ class AIPS_Settings_UI {
     /**
      * Render the resilience section description.
      */
-    public function resilience_section_callback() {
-        echo '<p>' . esc_html__('Configure advanced resilience options to protect the application from failing and being blocked when external services return errors.', 'ai-post-scheduler') . '</p>';
-    }
 
     /**
      * Render the enable retry setting field.
      */
-    public function enable_retry_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_retry');
-        ?>
-        <input type="hidden" name="aips_enable_retry" value="0">
-        <input type="checkbox" name="aips_enable_retry" value="1" <?php checked(1, $value); ?>>
-        <p class="description"><?php esc_html_e('Enable exponential backoff and retry logic for failed AI requests.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the max retries setting field.
      */
-    public function max_retries_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_retry_max_attempts');
-        ?>
-        <input type="number" name="aips_retry_max_attempts" value="<?php echo esc_attr($value); ?>" min="0" max="10" class="small-text">
-        <p class="description"><?php esc_html_e('Number of retry attempts if generation fails.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the retry initial delay setting field.
      */
-    public function retry_initial_delay_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_retry_initial_delay');
-        ?>
-        <input type="number" name="aips_retry_initial_delay" value="<?php echo esc_attr($value); ?>" min="1" max="60" class="small-text">
-        <p class="description"><?php esc_html_e('Initial delay (in seconds) before the first retry attempt.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the enable rate limiting setting field.
      */
-    public function enable_rate_limiting_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_rate_limiting');
-        ?>
-        <input type="hidden" name="aips_enable_rate_limiting" value="0">
-        <input type="checkbox" name="aips_enable_rate_limiting" value="1" <?php checked(1, $value); ?>>
-        <p class="description"><?php esc_html_e('Limit the number of AI requests per time period.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the rate limit requests setting field.
      */
-    public function rate_limit_requests_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_rate_limit_requests');
-        ?>
-        <input type="number" name="aips_rate_limit_requests" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Maximum number of allowed requests within the defined period.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the rate limit period setting field.
      */
-    public function rate_limit_period_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_rate_limit_period');
-        ?>
-        <input type="number" name="aips_rate_limit_period" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Period (in seconds) for rate limiting (e.g., 60 = 1 minute).', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the generation pacing delay setting field.
      */
-    public function generation_delay_seconds_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_generation_delay_seconds');
-        ?>
-        <input type="number" name="aips_generation_delay_seconds" value="<?php echo esc_attr($value); ?>" min="0" max="30" class="small-text">
-        <p class="description"><?php esc_html_e('Pause between posts in scheduled batch runs to smooth server load and stay under provider rate limits. Manual runs are not delayed. 0 disables the pause.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the batch resume cooldown setting field.
      */
-    public function batch_resume_cooldown_minutes_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_batch_resume_cooldown_minutes');
-        ?>
-        <input type="number" name="aips_batch_resume_cooldown_minutes" value="<?php echo esc_attr($value); ?>" min="1" max="1440" class="small-text">
-        <p class="description"><?php esc_html_e('When a scheduled batch stops early to avoid a PHP timeout, wait this many minutes before generating its remaining posts.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the enable circuit breaker setting field.
      */
-    public function enable_circuit_breaker_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_circuit_breaker');
-        ?>
-        <input type="hidden" name="aips_enable_circuit_breaker" value="0">
-        <input type="checkbox" name="aips_enable_circuit_breaker" value="1" <?php checked(1, $value); ?>>
-        <p class="description"><?php esc_html_e('Enable circuit breaker to temporarily halt requests after a number of consecutive failures.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the circuit breaker threshold setting field.
      */
-    public function circuit_breaker_threshold_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_circuit_breaker_threshold');
-        ?>
-        <input type="number" name="aips_circuit_breaker_threshold" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Number of consecutive failures required to open the circuit.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the circuit breaker timeout setting field.
      */
-    public function circuit_breaker_timeout_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_circuit_breaker_timeout');
-        ?>
-        <input type="number" name="aips_circuit_breaker_timeout" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Time (in seconds) to keep the circuit open before attempting to recover.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the logging enable setting field.
@@ -738,16 +521,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function logging_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_logging');
-        ?>
-        <input type="hidden" name="aips_enable_logging" value="0">
-        <label>
-            <input type="checkbox" name="aips_enable_logging" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
-        </label>
-        <?php
-    }
 
 	/**
 	 * Render the table filter persistence setting field.
@@ -756,19 +529,6 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function persist_table_filters_field_callback() {
-		$value = AIPS_Config::get_instance()->get_option('aips_persist_table_filters');
-		?>
-		<input type="hidden" name="aips_persist_table_filters" value="0">
-		<label>
-			<input type="checkbox" name="aips_persist_table_filters" value="1" <?php checked($value, 1); ?>>
-			<?php esc_html_e('Persist table filter and search selections across sessions', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description">
-			<?php esc_html_e('When enabled, your active search terms, status views, and filter dropdowns are automatically remembered in your browser for each table.', 'ai-post-scheduler'); ?>
-		</p>
-		<?php
-	}
 
     /**
      * Render the conversational generation setting field.
@@ -781,25 +541,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function conversational_generation_field_callback() {
-        $value     = AIPS_Config::get_instance()->get_option('aips_conversational_generation');
-        $supported = AIPS_AI_Provider_Factory::create()->supports_conversation();
-        ?>
-        <input type="hidden" name="aips_conversational_generation" value="0">
-        <label>
-            <input type="checkbox" name="aips_conversational_generation" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Generate post components conversationally with a combined metadata turn', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description">
-            <?php esc_html_e('The model keeps the article in context and generates the title, excerpt, slug, and image prompt in a single combined turn, cutting API calls in half and saving tokens. If structured metadata parsing fails, generation automatically falls back to individual conversational turns.', 'ai-post-scheduler'); ?>
-        </p>
-        <?php if (!$supported) : ?>
-            <p class="description">
-                <strong><?php esc_html_e('The active AI provider does not support conversation history. This setting has no effect until you switch to one that does.', 'ai-post-scheduler'); ?></strong>
-            </p>
-        <?php endif; ?>
-        <?php
-    }
 
     /**
      * Render the combined metadata turn setting field.
@@ -807,25 +548,6 @@ class AIPS_Settings_UI {
      * @deprecated 3.7.25 Kept for backward compatibility; conversational generation now implies the combined metadata turn.
      * @return void
      */
-    public function conversational_metadata_turn_field_callback() {
-        $value  = AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn');
-        $parent = AIPS_Config::get_instance()->get_option('aips_conversational_generation');
-        ?>
-        <input type="hidden" name="aips_conversational_metadata_turn" value="0">
-        <label>
-            <input type="checkbox" name="aips_conversational_metadata_turn" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Request the title, excerpt, and image prompt in a single structured response', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description">
-            <?php esc_html_e('Collapses up to four follow-up requests into one, roughly halving the number of AI calls per post. Falls back to separate requests if the response cannot be parsed.', 'ai-post-scheduler'); ?>
-        </p>
-        <?php if (!$parent) : ?>
-            <p class="description">
-                <strong><?php esc_html_e('Requires Conversational Generation to be enabled.', 'ai-post-scheduler'); ?></strong>
-            </p>
-        <?php endif; ?>
-        <?php
-    }
 
     /**
      * Render the developer mode setting field.
@@ -834,16 +556,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function developer_mode_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_developer_mode');
-        ?>
-        <input type="hidden" name="aips_developer_mode" value="0">
-        <label>
-            <input type="checkbox" name="aips_developer_mode" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable developer tools and features', 'ai-post-scheduler'); ?>
-        </label>
-        <?php
-    }
 
     /**
      * Render the enable telemetry setting field.
@@ -853,17 +565,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function enable_telemetry_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
-        ?>
-        <input type="hidden" name="aips_enable_telemetry" value="0">
-        <label>
-            <input type="checkbox" name="aips_enable_telemetry" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable request-level telemetry (staging/dev only)', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('Logs query counts, memory usage, elapsed time, and events for each request to the aips_telemetry table. Not recommended for production.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the cache monitor setting field.
@@ -873,17 +574,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function cache_monitor_enabled_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled');
-        ?>
-        <input type="hidden" name="aips_cache_monitor_enabled" value="0">
-        <label>
-            <input type="checkbox" name="aips_cache_monitor_enabled" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Enable Cache Monitor (internal cache introspection tool)', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('Exposes an admin page and AJAX endpoints for inspecting and flushing internal cache entries. Not recommended for production.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the review notifications email setting field.
@@ -892,22 +582,12 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function review_notifications_email_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_review_notifications_email') ?: get_option('admin_email');
-        ?>
-        <input type="text" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
-        <p class="description"><?php esc_html_e('Comma-separated email addresses used for system notification emails.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the notifications section description.
      *
      * @return void
      */
-    public function notifications_section_callback() {
-        echo '<p>' . esc_html__('Configure the notification email address and delivery channels for all plugin notifications. Email is sent to the notification email addresses configured below.', 'ai-post-scheduler') . '</p>';
-    }
 
     /**
      * Render a notification channel preference select field.
@@ -915,48 +595,19 @@ class AIPS_Settings_UI {
      * @param array $args Field configuration.
      * @return void
      */
-    public function notification_preference_field_callback($args) {
-        $type = isset($args['type']) ? sanitize_key($args['type']) : '';
-        $preferences_stored = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
-        $preferences = is_array($preferences_stored) ? $preferences_stored : array();
-        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
-        $defaults = is_array($defaults) ? $defaults : array();
-        $registry = AIPS_Notifications::get_notification_type_registry();
-        $registry_default = isset($registry[$type]['default_mode']) ? $registry[$type]['default_mode'] : AIPS_Notifications::MODE_BOTH;
-        $value = isset($preferences[$type]) ? $preferences[$type] : (isset($defaults[$type]) ? $defaults[$type] : $registry_default);
-        ?>
-        <select name="aips_notification_preferences[<?php echo esc_attr($type); ?>]">
-            <?php foreach (AIPS_Notifications::get_channel_mode_options() as $mode => $label) : ?>
-                <option value="<?php echo esc_attr($mode); ?>" <?php selected($value, $mode); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <?php if (!empty($args['description'])) : ?>
-            <p class="description"><?php echo esc_html($args['description']); ?></p>
-        <?php endif; ?>
-        <?php
-    }
 
 	/**
 	 * Render the summarized digest enabled toggle field callback.
 	 *
 	 * @return void
 	 */
-	public function notif_digest_enabled_field_callback() {
-		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_notif_digest_enabled');
-		?>
-		<label for="aips_notif_digest_enabled">
-			<input type="checkbox" id="aips_notif_digest_enabled" name="aips_notif_digest_enabled" value="1" <?php checked($enabled, true); ?>>
-			<?php esc_html_e('Enable summarized activity digest', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description"><?php esc_html_e('Batch frequent generation and review email notifications into a single digest instead of sending separate emails for each post.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the summarized digest threshold number field callback.
 	 *
 	 * @return void
 	 */
+
 	public function notif_digest_threshold_field_callback() {
 		$threshold = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_threshold', 5));
 		if ($threshold < 2) {
@@ -973,30 +624,13 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function notif_digest_max_delay_field_callback() {
-		$selected = absint(AIPS_Config::get_instance()->get_option('aips_notif_digest_max_delay', 3600));
-		$options = array(
-			900   => __('15 minutes', 'ai-post-scheduler'),
-			1800  => __('30 minutes', 'ai-post-scheduler'),
-			3600  => __('1 hour (default)', 'ai-post-scheduler'),
-			7200  => __('2 hours', 'ai-post-scheduler'),
-			21600 => __('6 hours', 'ai-post-scheduler'),
-		);
-		?>
-		<select id="aips_notif_digest_max_delay" name="aips_notif_digest_max_delay">
-			<?php foreach ($options as $seconds => $label) : ?>
-				<option value="<?php echo esc_attr($seconds); ?>" <?php selected($selected, $seconds); ?>><?php echo esc_html($label); ?></option>
-			<?php endforeach; ?>
-		</select>
-		<p class="description"><?php esc_html_e('Maximum wait time before dispatching queued notifications, even if the count threshold has not been reached.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the summarized digest eligible notification types multi-checkbox callback.
 	 *
 	 * @return void
 	 */
+
 	public function notif_digest_types_field_callback() {
 		$selected_types = (array) AIPS_Config::get_instance()->get_option('aips_notif_digest_types', array('post_generated', 'post_ready_for_review'));
 		$eligible_types = AIPS_Notification_Registry::get_digest_eligible_types();
@@ -1020,6 +654,7 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
+
 	public function notif_digest_actions_field_callback() {
 		$queue_count = AIPS_Notifications::instance()->get_digest_queue_count();
 		?>
@@ -1046,6 +681,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw option value.
      * @return string
      */
+
     public function sanitize_notification_emails($value) {
         $emails = preg_split('/\s*,\s*/', (string) $value);
         $emails = is_array($emails) ? $emails : array();
@@ -1069,6 +705,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw option value.
      * @return array
      */
+
     public function sanitize_notification_preferences($value) {
         $preferences = is_array($value) ? $value : array();
         $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences');
@@ -1095,6 +732,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Raw input.
 	 * @return int Clamped integer between 2 and 50.
 	 */
+
 	public function sanitize_digest_threshold($value) {
 		if (!is_numeric($value)) {
 			return 5;
@@ -1114,6 +752,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Raw input in seconds.
 	 * @return int Valid delay in seconds (default 3600).
 	 */
+
 	public function sanitize_digest_max_delay($value) {
 		$val = absint($value);
 		$allowed = array(900, 1800, 3600, 7200, 21600);
@@ -1126,6 +765,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Raw input array of type keys.
 	 * @return array Sanitized list of eligible notification type keys.
 	 */
+
 	public function sanitize_digest_types($value) {
 		if (!is_array($value)) {
 			return array();
@@ -1149,6 +789,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw input value.
      * @return float Sanitized threshold float.
      */
+
     public function sanitize_similarity_threshold($value) {
         if (!is_numeric($value)) {
             return 0.8;
@@ -1163,6 +804,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return float
      */
+
     public function sanitize_autolink_threshold($value) {
         if (!is_numeric($value)) {
             return 0.85;
@@ -1176,6 +818,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return int
      */
+
     public function sanitize_autolink_limit($value) {
         return min(100, max(1, absint($value)));
     }
@@ -1186,6 +829,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return int
      */
+
     public function sanitize_link_index_batch_size($value) {
         return min(500, max(10, absint($value)));
     }
@@ -1196,6 +840,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return int
      */
+
     public function sanitize_link_index_batch_delay($value) {
         return min(600, absint($value));
     }
@@ -1206,6 +851,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return int
      */
+
     public function sanitize_link_rules_max_per_post($value) {
         return min(20, max(1, absint($value)));
     }
@@ -1216,6 +862,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return string off|review|apply
      */
+
     public function sanitize_publish_linking_mode($value) {
         $value = sanitize_key((string) $value);
         return in_array($value, array('off', 'review', 'apply'), true) ? $value : 'review';
@@ -1227,6 +874,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return int
      */
+
     public function sanitize_link_click_retention_days($value) {
         return min(730, max(30, absint($value)));
     }
@@ -1237,6 +885,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return string 'end' or 'after_first_paragraph'.
      */
+
     public function sanitize_silo_guide_position($value) {
         return $value === 'after_first_paragraph' ? 'after_first_paragraph' : 'end';
     }
@@ -1247,6 +896,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return int 1-50.
      */
+
     public function sanitize_silo_guide_max($value) {
         return min(50, max(1, absint($value)));
     }
@@ -1257,6 +907,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return string 'aips' or 'theme'.
      */
+
     public function sanitize_silo_guide_style($value) {
         return $value === 'theme' ? 'theme' : 'aips';
     }
@@ -1267,6 +918,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw value.
      * @return string One of '', 'nofollow', 'sponsored', 'ugc'.
      */
+
     public function sanitize_autolink_rel($value) {
         $value = sanitize_key((string) $value);
         return in_array($value, array('nofollow', 'sponsored', 'ugc'), true) ? $value : '';
@@ -1282,6 +934,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw input value.
      * @return int Sanitized token budget (minimum 1).
      */
+
     public function sanitize_token_budget($value) {
         $int = absint($value);
         return max(1, $int);
@@ -1294,86 +947,6 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function topic_similarity_threshold_field_callback() {
-        $raw = AIPS_Config::get_instance()->get_option('aips_topic_similarity_threshold');
-        // Normalize on read so the UI always reflects the effective runtime value.
-        $value = is_numeric($raw) ? min(1.0, max(0.1, (float) $raw)) : 0.8;
-        ?>
-        <input
-            type="number"
-            name="aips_topic_similarity_threshold"
-            value="<?php echo esc_attr($value); ?>"
-            min="0.1"
-            max="1.0"
-            step="0.01"
-            class="small-text"
-        >
-        <p class="description">
-            <?php esc_html_e('Minimum similarity score (0.1–1.0) used to flag new topics as potential duplicates during generation. A higher value requires topics to be more similar before being flagged. Default: 0.8.', 'ai-post-scheduler'); ?>
-        </p>
-        <?php
-    }
-
-    // -------------------------------------------------------------------------
-    // Site Content Strategy field callbacks
-    // -------------------------------------------------------------------------
-
-	public function ai_assistance_section_callback() {
-		echo '<p>' . esc_html__( 'Configure consistent, admin-only AI suggestions. Current field values and declared sibling fields are sent to your AI provider to produce a suggestion.', 'ai-post-scheduler' ) . '</p>';
-	}
-
-	public function ai_assistance_enabled_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_enabled' );
-		?>
-		<label>
-			<input type="checkbox" name="aips_ai_assistance_enabled" value="1" <?php checked( $value ); ?>>
-			<?php esc_html_e( 'Enable AI Assistance site-wide', 'ai-post-scheduler' ); ?>
-		</label>
-		<?php
-	}
-
-	public function ai_assistance_contexts_field_callback() {
-		$enabled = AIPS_Settings::get_enabled_ai_assistance_contexts();
-		$labels  = array(
-			'authors'          => __( 'Authors', 'ai-post-scheduler' ),
-			'templates'        => __( 'Templates', 'ai-post-scheduler' ),
-			'sources'          => __( 'Sources', 'ai-post-scheduler' ),
-			'content_strategy' => __( 'Site Content Strategy', 'ai-post-scheduler' ),
-		);
-		?>
-		<input type="hidden" name="aips_ai_assistance_contexts[]" value="">
-		<?php foreach ( $labels as $context => $label ) : ?>
-			<label style="display:block">
-				<input type="checkbox" name="aips_ai_assistance_contexts[]" value="<?php echo esc_attr( $context ); ?>" <?php checked( in_array( $context, $enabled, true ) ); ?>>
-				<?php echo esc_html( $label ); ?>
-			</label>
-		<?php endforeach; ?>
-		<?php
-	}
-
-	public function ai_assistance_response_length_field_callback() {
-		$value   = AIPS_Settings::sanitize_ai_assistance_response_length( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_response_length' ) );
-		$options = array(
-			'concise'  => __( 'Concise', 'ai-post-scheduler' ),
-			'standard' => __( 'Standard', 'ai-post-scheduler' ),
-			'detailed' => __( 'Detailed', 'ai-post-scheduler' ),
-		);
-		?>
-		<select name="aips_ai_assistance_response_length">
-			<?php foreach ( $options as $key => $label ) : ?>
-				<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $value, $key ); ?>><?php echo esc_html( $label ); ?></option>
-			<?php endforeach; ?>
-		</select>
-		<?php
-	}
-
-	public function ai_assistance_guidance_field_callback() {
-		$value = AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_guidance' );
-		?>
-		<textarea class="large-text" rows="3" name="aips_ai_assistance_guidance"><?php echo esc_textarea( $value ); ?></textarea>
-		<p class="description"><?php esc_html_e( 'Optional instructions that supplement the Site Content Strategy.', 'ai-post-scheduler' ); ?></p>
-		<?php
-	}
 
 	public function ai_assistance_overwrite_mode_field_callback() {
 		$value = AIPS_Settings::sanitize_ai_assistance_overwrite_mode( AIPS_Config::get_instance()->get_option( 'aips_ai_assistance_overwrite_mode' ) );
@@ -1390,202 +963,72 @@ class AIPS_Settings_UI {
 		<?php
 	}
 
-	public function ai_assistance_retention_days_field_callback() {
-		$value   = AIPS_Settings::get_ai_assistance_retention_days();
-		$options = array(
-			0   => __( 'Do not retain', 'ai-post-scheduler' ),
-			7   => __( '7 days', 'ai-post-scheduler' ),
-			30  => __( '30 days', 'ai-post-scheduler' ),
-			90  => __( '90 days', 'ai-post-scheduler' ),
-			365 => __( '1 year', 'ai-post-scheduler' ),
-		);
-		?>
-		<select name="aips_ai_assistance_retention_days">
-			<?php foreach ( $options as $days => $label ) : ?>
-				<option value="<?php echo esc_attr( $days ); ?>" <?php selected( $value, $days ); ?>><?php echo esc_html( $label ); ?></option>
-			<?php endforeach; ?>
-		</select>
-		<?php
-	}
-
     /**
      * Render the description for the site content strategy settings section.
      *
      * @return void
      */
-    public function content_strategy_section_callback() {
-        echo '<p>' . esc_html__('Define the overall content identity of your website. These settings are shared across Author Suggestions, topic generation, and post generation to ensure consistent, on-brand output.', 'ai-post-scheduler') . '</p>';
-    }
 
     /**
      * Render the Site Niche / Primary Topic field.
      *
      * @return void
      */
-    public function site_niche_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_site_niche');
-        ?>
-        <input type="text" id="aips_site_niche" name="aips_site_niche" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Personal Finance, WordPress Development, Fitness', 'ai-post-scheduler'); ?>">
-        <p class="description"><?php esc_html_e('The main topic or industry your website covers. Used as context for Author Suggestions and AI generation.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the Target Audience field.
      *
      * @return void
      */
-    public function site_target_audience_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_site_target_audience');
-        ?>
-        <input type="text" id="aips_site_target_audience" name="aips_site_target_audience" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners, Parents', 'ai-post-scheduler'); ?>">
-        <p class="description"><?php esc_html_e('Who your content is written for. Helps the AI tailor the language and depth of generated topics and posts.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the Content Goals field.
      *
      * @return void
      */
-    public function site_content_goals_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_site_content_goals');
-        ?>
-        <textarea id="aips_site_content_goals" name="aips_site_content_goals" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive product sign-ups, Build a community, Rank on search engines', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
-        <p class="description"><?php esc_html_e('What you want your content to achieve. Informs the angle and call-to-action emphasis in generated content.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the Default Article Structure field.
      *
      * @return void
      */
-    public function site_default_article_structure_field_callback() {
-        $value = absint(AIPS_Config::get_instance()->get_option('aips_default_article_structure_id'));
-        $repository = new AIPS_Article_Structure_Repository();
-        $structures = $repository->get_all(false);
-        ?>
-        <select name="aips_default_article_structure_id">
-            <option value="0"><?php esc_html_e('Select an article structure', 'ai-post-scheduler'); ?></option>
-            <?php foreach ($structures as $structure) : ?>
-                <?php
-                $structure_id = isset($structure->id) ? absint($structure->id) : 0;
-                $is_active    = true;
-
-                if (isset($structure->is_active)) {
-                    $is_active = (bool) $structure->is_active;
-                }
-
-                $label = $structure->name;
-                if (!$is_active) {
-                    $label .= ' ' . __('(Inactive)', 'ai-post-scheduler');
-                }
-
-                $disabled = (!$is_active && $value !== $structure_id) ? ' disabled="disabled"' : '';
-                ?>
-                <option value="<?php echo esc_attr($structure_id); ?>" <?php selected($value, $structure_id); ?><?php echo $disabled; ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <p class="description"><?php esc_html_e('Used as the fallback structure whenever a schedule or generation flow does not specify one explicitly.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the Brand Voice / Tone field.
      *
      * @return void
      */
-    public function site_brand_voice_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_site_brand_voice');
-        ?>
-        <input type="text" id="aips_site_brand_voice" name="aips_site_brand_voice" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Friendly and approachable, Authoritative, Conversational', 'ai-post-scheduler'); ?>">
-        <p class="description"><?php esc_html_e('The overall voice and tone of your brand. Applied as a default across all authors unless overridden per-author.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the Content Language field.
      *
      * @return void
      */
-    public function site_content_language_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_site_content_language');
-        $languages = array(
-            'en'    => __('English', 'ai-post-scheduler'),
-            'es'    => __('Spanish', 'ai-post-scheduler'),
-            'fr'    => __('French', 'ai-post-scheduler'),
-            'de'    => __('German', 'ai-post-scheduler'),
-            'it'    => __('Italian', 'ai-post-scheduler'),
-            'pt'    => __('Portuguese', 'ai-post-scheduler'),
-            'nl'    => __('Dutch', 'ai-post-scheduler'),
-            'pl'    => __('Polish', 'ai-post-scheduler'),
-            'ru'    => __('Russian', 'ai-post-scheduler'),
-            'ja'    => __('Japanese', 'ai-post-scheduler'),
-            'ko'    => __('Korean', 'ai-post-scheduler'),
-            'zh'    => __('Chinese (Simplified)', 'ai-post-scheduler'),
-            'ar'    => __('Arabic', 'ai-post-scheduler'),
-            'hi'    => __('Hindi', 'ai-post-scheduler'),
-            'tr'    => __('Turkish', 'ai-post-scheduler'),
-            'sv'    => __('Swedish', 'ai-post-scheduler'),
-            'da'    => __('Danish', 'ai-post-scheduler'),
-            'fi'    => __('Finnish', 'ai-post-scheduler'),
-            'nb'    => __('Norwegian', 'ai-post-scheduler'),
-        );
-        ?>
-        <select name="aips_site_content_language">
-            <?php foreach ($languages as $code => $label) : ?>
-                <option value="<?php echo esc_attr($code); ?>" <?php selected($value, $code); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <p class="description"><?php esc_html_e('The primary language for all AI-generated content. Individual authors can override this.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the Content Guidelines field.
      *
      * @return void
      */
-    public function site_content_guidelines_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_site_content_guidelines');
-        ?>
-        <textarea id="aips_site_content_guidelines" name="aips_site_content_guidelines" class="large-text" rows="4" placeholder="<?php esc_attr_e('e.g., Always include at least one actionable tip per post. Avoid profanity. Cite sources where possible.', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
-        <p class="description"><?php esc_html_e('General rules and guidelines for all generated content. Included in every generation prompt as hard constraints.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
 
     /**
      * Render the Excluded Topics (site-wide) field.
      *
      * @return void
      */
-    public function site_excluded_topics_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_site_excluded_topics');
-        ?>
-        <textarea id="aips_site_excluded_topics" name="aips_site_excluded_topics" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., competitor brand names, controversial political topics, adult content', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
-        <p class="description"><?php esc_html_e('Topics or subjects that should never appear in any generated post or topic suggestion. Applied globally.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
-
-    // -----------------------------------------------------------------------
-    // Cache Settings fields
-    // -----------------------------------------------------------------------
 
     /**
      * Render the description for the Cache settings section.
      *
      * @return void
      */
-    public function cache_section_callback() {
-        echo '<p>' . esc_html__('Configure the caching layer used by the plugin. Choose between Array, WP Object Cache, or Database.', 'ai-post-scheduler') . '</p>';
-    }
 
     /**
      * Render the Enable Cache System radio field.
      *
      * @return void
      */
+
     public function enable_cache_system_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_enable_cache_system');
         // Normalise: treat anything except a stored '0' or 0 as enabled.
@@ -1616,6 +1059,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw input value.
      * @return string '1' when enabled, '0' when disabled.
      */
+
     public function sanitize_enable_cache_system( $value ) {
         return ($value === '1' || $value === 1 || $value === true) ? '1' : '0';
     }
@@ -1625,54 +1069,18 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
-    public function cache_driver_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_driver');
-        $drivers = array(
-            'array'           => __('Array (in-memory, request-scoped) (default)', 'ai-post-scheduler'),
-            'wp_object_cache' => __('WP Object Cache (uses wp_cache_* functions)', 'ai-post-scheduler'),
-            'db'              => __('Database (persistent, uses plugin DB table)', 'ai-post-scheduler'),
-        );
-        ?>
-        <div class="aips-cache-system-fields">
-            <select name="aips_cache_driver" id="aips_cache_driver">
-                <?php foreach ($drivers as $key => $label) : ?>
-                    <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. WP Object Cache is recommended when your site has a persistent object cache backend. Database provides persistent plugin-managed storage.', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
 
     /**
      * Render the Default TTL field.
      *
      * @return void
      */
-    public function cache_default_ttl_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_default_ttl');
-        ?>
-        <div class="aips-cache-system-fields">
-            <input type="number" name="aips_cache_default_ttl" value="<?php echo esc_attr($value); ?>" min="0" class="small-text">
-            <p class="description"><?php esc_html_e('Default time-to-live in seconds for cached values. 0 = no expiration. Default: 3600 (1 hour).', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
 
     /**
      * Render the DB Cache Key Prefix field.
      *
      * @return void
      */
-    public function cache_db_prefix_field_callback() {
-        $value = AIPS_Config::get_instance()->get_option('aips_cache_db_prefix');
-        ?>
-        <div class="aips-cache-db-fields">
-            <input type="text" name="aips_cache_db_prefix" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('Optional — e.g. mysite', 'ai-post-scheduler'); ?>">
-            <p class="description"><?php esc_html_e('Optional prefix applied to every cache key in the database table. Useful when multiple environments share the same DB.', 'ai-post-scheduler'); ?></p>
-        </div>
-        <?php
-    }
 
     /**
      * Sanitize and validate the selected cache driver value.
@@ -1680,6 +1088,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw input value.
      * @return string Sanitized driver name, or 'array' as safe fallback.
      */
+
     public function sanitize_cache_driver( $value ) {
         $allowed = array('array', 'db', 'wp_object_cache');
         $legacy  = array('session', 'redis');
@@ -1701,6 +1110,7 @@ class AIPS_Settings_UI {
      * @param mixed $value Raw submitted value.
      * @return string
      */
+
     public function sanitize_ai_provider( $value ) {
         $value = sanitize_text_field( (string) $value );
 
@@ -1719,6 +1129,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Raw submitted value.
 	 * @return string
 	 */
+
 	public function sanitize_wp_ai_connector_mode($value) {
 		$value = sanitize_key((string) $value);
 
@@ -1734,6 +1145,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Raw submitted value.
 	 * @return array<int,string>
 	 */
+
 	public function sanitize_wp_ai_connector_ids($value) {
 		if (!is_array($value)) {
 			return array();
@@ -1761,6 +1173,7 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
+
 	public function embeddings_header_callback() {
 		echo '<p class="description">' . esc_html__('Configure vector embeddings, semantic search models, indexing scope, and rate-limiting safeguards to prevent unexpected AI API costs.', 'ai-post-scheduler') . '</p>';
 	}
@@ -1770,52 +1183,25 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function embeddings_enabled_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true);
-		?>
-		<label for="aips_embeddings_enabled">
-			<input type="checkbox" name="aips_embeddings_enabled" id="aips_embeddings_enabled" value="1" <?php checked($value); ?>>
-			<strong><?php esc_html_e('Enable the Vector Embeddings Engine', 'ai-post-scheduler'); ?></strong>
-		</label>
-		<p class="description"><?php esc_html_e('Master switch to enable or disable all vector embedding generation, automated continuous indexing, topic embeddings cron workers, and semantic duplicate detection.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the embeddings provider selection field (Card 3).
 	 *
 	 * @return void
 	 */
-	public function embeddings_provider_field_callback() {
-		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_provider', '');
-		?>
-		<select name="aips_embeddings_provider" id="aips_embeddings_provider" class="regular-text">
-			<option value="" <?php selected($value, ''); ?>><?php esc_html_e('Auto-detect (Meow Apps AI Engine preferred)', 'ai-post-scheduler'); ?></option>
-			<option value="meow" <?php selected($value, 'meow'); ?>><?php esc_html_e('Meow Apps AI Engine', 'ai-post-scheduler'); ?></option>
-			<option value="wp_ai_client" <?php selected($value, 'wp_ai_client'); ?>><?php esc_html_e('WordPress AI Client (WP AI API)', 'ai-post-scheduler'); ?></option>
-		</select>
-		<p class="description"><?php esc_html_e('Select which AI subsystem produces vector embeddings. Decoupled from the primary post generation provider.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the embeddings model field (Card 3).
 	 *
 	 * @return void
 	 */
-	public function embeddings_model_field_callback() {
-		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_model', 'text-embedding-3-small');
-		?>
-		<input type="text" name="aips_embeddings_model" id="aips_embeddings_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="text-embedding-3-small">
-		<p class="description"><?php esc_html_e('Model identifier (e.g. text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002, all-minilm).', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the embeddings environment ID field with discovery button (Card 3).
 	 *
 	 * @return void
 	 */
+
 	public function embeddings_env_id_field_callback() {
 		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_env_id', '');
 		?>
@@ -1840,37 +1226,19 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function embeddings_dimensions_field_callback() {
-		$value = (int) AIPS_Config::get_instance()->get_option('aips_embeddings_dimensions', 1536);
-		?>
-		<input type="number" min="1" max="8192" step="1" name="aips_embeddings_dimensions" id="aips_embeddings_dimensions" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-		<p class="description"><?php esc_html_e('Number of vector dimensions produced by the model (e.g. 1536 for OpenAI, 768 for Percona / Sentence-Transformers, 384 for all-MiniLM).', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render persistent vector caching toggle (Card 3).
 	 *
 	 * @return void
 	 */
-	public function embeddings_persistent_cache_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option('aips_embeddings_persistent_cache_enabled', true);
-		?>
-		<label for="aips_embeddings_persistent_cache_enabled">
-			<input type="checkbox" name="aips_embeddings_persistent_cache_enabled" id="aips_embeddings_persistent_cache_enabled" value="1" <?php checked($value); ?>>
-			<?php esc_html_e('Cache raw text vectors persistently in WordPress transients / object cache (7-day TTL)', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description">
-			<?php esc_html_e('Prevents duplicate AI API calls when the same text prompt or post content is vectorized multiple times across background scans, topic checks, and internal link generation.', 'ai-post-scheduler'); ?>
-		</p>
-		<?php
-	}
 
 	/**
 	 * Render live quota meters and active scope badge (Card 4).
 	 *
 	 * @return void
 	 */
+
 	public function embeddings_quota_meters_field_callback() {
 		$config      = AIPS_Config::get_instance();
 		$scope_val   = (string) $config->get_option('aips_embeddings_scope', 'aips_only');
@@ -1956,6 +1324,7 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
+
 	public function embeddings_scope_field_callback() {
 		$config     = AIPS_Config::get_instance();
 		$scope      = (string) $config->get_option('aips_embeddings_scope', 'aips_only');
@@ -2002,43 +1371,19 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function indexer_post_types_field_callback() {
-		$selected_pts  = (array) AIPS_Config::get_instance()->get_option('aips_indexer_post_types', array('post'));
-		$available_pts = get_post_types(array('public' => true), 'objects');
-		unset($available_pts['attachment']);
-		?>
-		<fieldset>
-			<?php foreach ($available_pts as $pt_slug => $pt_obj) : ?>
-				<label class="aips-checkbox-label-block">
-					<input type="checkbox" name="aips_indexer_post_types[]" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $selected_pts, true)); ?>>
-					<strong><?php echo esc_html($pt_obj->labels->name); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
-				</label>
-			<?php endforeach; ?>
-			<p class="description"><?php esc_html_e('Select which post types to generate embeddings for and include in Related Posts.', 'ai-post-scheduler'); ?></p>
-		</fieldset>
-		<?php
-	}
 
 	/**
 	 * Render auto-index on publish toggle (Card 4).
 	 *
 	 * @return void
 	 */
-	public function auto_index_on_publish_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option('aips_auto_index_on_publish', true);
-		?>
-		<label for="aips_auto_index_on_publish">
-			<input type="checkbox" name="aips_auto_index_on_publish" id="aips_auto_index_on_publish" value="1" <?php checked($value); ?>>
-			<?php esc_html_e('Automatically compute vector embeddings whenever a new post is published or updated', 'ai-post-scheduler'); ?>
-		</label>
-		<?php
-	}
 
 	/**
 	 * Render verbose activity logging toggle (Card 4).
 	 *
 	 * @return void
 	 */
+
 	public function indexer_verbose_history_field_callback() {
 		$value = (bool) AIPS_Config::get_instance()->get_option('aips_indexer_verbose_history', false);
 		?>
@@ -2055,243 +1400,49 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function embeddings_rate_limits_field_callback() {
-		$config        = AIPS_Config::get_instance();
-		$enabled       = (bool) $config->get_option('aips_embeddings_rate_limits_enabled', true);
-		$daily_limit   = (int) $config->get_option('aips_embeddings_daily_limit', 50);
-		$weekly_limit  = (int) $config->get_option('aips_embeddings_weekly_limit', 200);
-		$monthly_limit = (int) $config->get_option('aips_embeddings_monthly_limit', 500);
-		?>
-		<fieldset class="aips-embeddings-rate-limits">
-			<label for="aips_embeddings_rate_limits_enabled">
-				<input type="checkbox" name="aips_embeddings_rate_limits_enabled" id="aips_embeddings_rate_limits_enabled" value="1" <?php checked($enabled); ?>>
-				<strong><?php esc_html_e('Block further vector embedding API calls when spending limits are reached', 'ai-post-scheduler'); ?></strong>
-			</label>
-			<p class="description">
-				<?php esc_html_e('Protects your AI API budget by capping total embedding calls across rolling 24-hour, 7-day, and 30-day windows.', 'ai-post-scheduler'); ?>
-			</p>
-			<div class="aips-rate-limits-grid">
-				<div class="aips-rate-limit-field">
-					<label for="aips_embeddings_daily_limit"><?php esc_html_e('24-Hour Limit:', 'ai-post-scheduler'); ?></label>
-					<input type="number" min="0" step="1" name="aips_embeddings_daily_limit" id="aips_embeddings_daily_limit" value="<?php echo esc_attr((string) $daily_limit); ?>" class="small-text">
-					<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
-				</div>
-				<div class="aips-rate-limit-field">
-					<label for="aips_embeddings_weekly_limit"><?php esc_html_e('7-Day Limit:', 'ai-post-scheduler'); ?></label>
-					<input type="number" min="0" step="1" name="aips_embeddings_weekly_limit" id="aips_embeddings_weekly_limit" value="<?php echo esc_attr((string) $weekly_limit); ?>" class="small-text">
-					<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
-				</div>
-				<div class="aips-rate-limit-field">
-					<label for="aips_embeddings_monthly_limit"><?php esc_html_e('30-Day Limit:', 'ai-post-scheduler'); ?></label>
-					<input type="number" min="0" step="1" name="aips_embeddings_monthly_limit" id="aips_embeddings_monthly_limit" value="<?php echo esc_attr((string) $monthly_limit); ?>" class="small-text">
-					<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
-				</div>
-			</div>
-		</fieldset>
-		<?php
-	}
 
 	/**
 	 * Render the link index toggle and post types (Internal Linking tab).
 	 *
 	 * @return void
 	 */
-	public function link_index_field_callback() {
-		$config        = AIPS_Config::get_instance();
-		$enabled       = (bool) $config->get_option('aips_link_index_enabled', true);
-		$selected_pts  = (array) $config->get_option('aips_link_index_post_types', array('post', 'page'));
-		$available_pts = get_post_types(array('public' => true), 'objects');
-		unset($available_pts['attachment']);
-		?>
-		<fieldset>
-			<label for="aips_link_index_enabled">
-				<input type="checkbox" name="aips_link_index_enabled" id="aips_link_index_enabled" value="1" <?php checked($enabled); ?>>
-				<strong><?php esc_html_e('Keep a link index of published content (powers the Link Report and orphan detection)', 'ai-post-scheduler'); ?></strong>
-			</label>
-			<p class="description"><?php esc_html_e('Links are re-read whenever a post is saved. No AI calls are made.', 'ai-post-scheduler'); ?></p>
-			<?php foreach ($available_pts as $pt_slug => $pt_obj) : ?>
-				<label class="aips-checkbox-label-block">
-					<input type="checkbox" name="aips_link_index_post_types[]" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $selected_pts, true)); ?>>
-					<strong><?php echo esc_html($pt_obj->labels->name); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
-				</label>
-			<?php endforeach; ?>
-		</fieldset>
-		<?php
-	}
 
 	/**
 	 * Render the keyword link rules toggle and per-post cap (Internal Linking tab).
 	 *
 	 * @return void
 	 */
-	public function link_rules_field_callback() {
-		$config  = AIPS_Config::get_instance();
-		$enabled = (bool) $config->get_option('aips_link_rules_enabled', true);
-		$max     = (int) $config->get_option('aips_link_rules_max_per_post', 3);
-		?>
-		<fieldset>
-			<label for="aips_link_rules_enabled">
-				<input type="checkbox" name="aips_link_rules_enabled" id="aips_link_rules_enabled" value="1" <?php checked($enabled); ?>>
-				<strong><?php esc_html_e('Apply keyword link rules to published posts', 'ai-post-scheduler'); ?></strong>
-			</label>
-			<p>
-				<label for="aips_link_rules_max_per_post"><?php esc_html_e('Maximum rule links per post:', 'ai-post-scheduler'); ?></label>
-				<input type="number" min="1" max="20" step="1" name="aips_link_rules_max_per_post" id="aips_link_rules_max_per_post" value="<?php echo esc_attr((string) $max); ?>" class="small-text">
-			</p>
-			<p class="description">
-				<?php
-				printf(
-					/* translators: %s: link to the Link Rules page */
-					esc_html__('Rules are added when a post is displayed, so post content is never changed. Manage rules under %s.', 'ai-post-scheduler'),
-					'<a href="' . esc_url(admin_url('admin.php?page=aips-generated-posts&tab=link-rules')) . '">' . esc_html__('Content → Link Rules', 'ai-post-scheduler') . '</a>'
-				);
-				?>
-			</p>
-		</fieldset>
-		<?php
-	}
 
 	/**
 	 * Render the generation-time linking mode (Internal Linking tab).
 	 *
 	 * @return void
 	 */
-	public function publish_linking_field_callback() {
-		$config   = AIPS_Config::get_instance();
-		$mode     = (string) $config->get_option('aips_publish_linking_mode', 'review');
-		$outbound = (bool) $config->get_option('aips_publish_linking_outbound', true);
-		$modes    = array(
-			'off'    => __('Off', 'ai-post-scheduler'),
-			'review' => __('Find links and queue them for review (no content changes)', 'ai-post-scheduler'),
-			'apply'  => __('Insert confident links automatically, queue the rest for review', 'ai-post-scheduler'),
-		);
-		?>
-		<fieldset>
-			<?php foreach ($modes as $value => $label) : ?>
-				<label class="aips-checkbox-label-block">
-					<input type="radio" name="aips_publish_linking_mode" value="<?php echo esc_attr($value); ?>" <?php checked($mode, $value); ?>>
-					<?php echo esc_html($label); ?>
-				</label>
-			<?php endforeach; ?>
-			<label for="aips_publish_linking_outbound" class="aips-checkbox-label-block">
-				<input type="checkbox" name="aips_publish_linking_outbound" id="aips_publish_linking_outbound" value="1" <?php checked($outbound); ?>>
-				<?php esc_html_e('Also suggest links from the new post to related posts (Internal Links page)', 'ai-post-scheduler'); ?>
-			</label>
-			<p class="description"><?php esc_html_e('When a post generated by AI Post Scheduler is published, older related posts get links to it, about two minutes later in the background. "Insert automatically" uses the auto-apply threshold and caps above. Each publish appears in the Link Report run history, where its links can be undone at once.', 'ai-post-scheduler'); ?></p>
-		</fieldset>
-		<?php
-	}
 
 	/**
 	 * Render the link click tracking toggle and retention (Internal Linking tab).
 	 *
 	 * @return void
 	 */
-	public function link_click_tracking_field_callback() {
-		$config    = AIPS_Config::get_instance();
-		$enabled   = (bool) $config->get_option('aips_link_click_tracking_enabled', false);
-		$retention = (int) $config->get_option('aips_link_click_retention_days', 365);
-		?>
-		<fieldset>
-			<label for="aips_link_click_tracking_enabled">
-				<input type="checkbox" name="aips_link_click_tracking_enabled" id="aips_link_click_tracking_enabled" value="1" <?php checked($enabled); ?>>
-				<strong><?php esc_html_e('Count clicks on internal links in post content', 'ai-post-scheduler'); ?></strong>
-			</label>
-			<p>
-				<label for="aips_link_click_retention_days"><?php esc_html_e('Keep click counts for (days):', 'ai-post-scheduler'); ?></label>
-				<input type="number" min="30" max="730" step="1" name="aips_link_click_retention_days" id="aips_link_click_retention_days" value="<?php echo esc_attr((string) $retention); ?>" class="small-text">
-			</p>
-			<p class="description"><?php esc_html_e('Adds a small script to single posts that reports which internal link was clicked. Only a daily count per link is stored: no IP addresses, cookies or visitor IDs. Clicks by logged-in editors and known bots are ignored. Results appear in Content → Link Report.', 'ai-post-scheduler'); ?></p>
-		</fieldset>
-		<?php
-	}
 
 	/**
 	 * Render the silo "In this guide" list settings (Internal Linking tab).
 	 *
 	 * @return void
 	 */
-	public function silo_guide_field_callback() {
-		$config   = AIPS_Config::get_instance();
-		$enabled  = (bool) $config->get_option('aips_silo_guide_enabled', true);
-		$position = (string) $config->get_option('aips_silo_guide_position', 'end');
-		$max      = (int) $config->get_option('aips_silo_guide_max', 10);
-		$style    = (string) $config->get_option('aips_silo_guide_style', 'aips');
-		$heading  = (string) $config->get_option('aips_silo_guide_heading', '');
-		?>
-		<fieldset>
-			<label for="aips_silo_guide_enabled">
-				<input type="checkbox" name="aips_silo_guide_enabled" id="aips_silo_guide_enabled" value="1" <?php checked($enabled); ?>>
-				<strong><?php esc_html_e('Show an "In this guide" list of its articles on each silo pillar', 'ai-post-scheduler'); ?></strong>
-			</label>
-			<p>
-				<label for="aips_silo_guide_heading"><?php esc_html_e('Heading:', 'ai-post-scheduler'); ?></label>
-				<input type="text" name="aips_silo_guide_heading" id="aips_silo_guide_heading" value="<?php echo esc_attr($heading); ?>" placeholder="<?php esc_attr_e('In this guide', 'ai-post-scheduler'); ?>" class="regular-text">
-			</p>
-			<p>
-				<label for="aips_silo_guide_position"><?php esc_html_e('Place it:', 'ai-post-scheduler'); ?></label>
-				<select name="aips_silo_guide_position" id="aips_silo_guide_position">
-					<option value="end" <?php selected($position, 'end'); ?>><?php esc_html_e('At the end of the post', 'ai-post-scheduler'); ?></option>
-					<option value="after_first_paragraph" <?php selected($position, 'after_first_paragraph'); ?>><?php esc_html_e('After the first paragraph', 'ai-post-scheduler'); ?></option>
-				</select>
-			</p>
-			<p>
-				<label for="aips_silo_guide_max"><?php esc_html_e('List up to', 'ai-post-scheduler'); ?></label>
-				<input type="number" min="1" max="50" step="1" name="aips_silo_guide_max" id="aips_silo_guide_max" value="<?php echo esc_attr((string) $max); ?>" class="small-text">
-				<?php esc_html_e('articles, closest to the pillar first', 'ai-post-scheduler'); ?>
-			</p>
-			<p>
-				<label for="aips_silo_guide_style"><?php esc_html_e('Style:', 'ai-post-scheduler'); ?></label>
-				<select name="aips_silo_guide_style" id="aips_silo_guide_style">
-					<option value="aips" <?php selected($style, 'aips'); ?>><?php esc_html_e('AI Post Scheduler box (a light bordered box in your theme\'s colours)', 'ai-post-scheduler'); ?></option>
-					<option value="theme" <?php selected($style, 'theme'); ?>><?php esc_html_e('Plain HTML (your theme styles the heading and list)', 'ai-post-scheduler'); ?></option>
-				</select>
-			</p>
-			<p class="description">
-				<?php
-				printf(
-					/* translators: %s: shortcode */
-					esc_html__('The list is added when the pillar is displayed; the pillar\'s content is never edited, and the list updates itself as articles join or leave the silo. Articles the pillar already links to in its text are left out. To place it yourself, put %s in the pillar. Silos are managed in Content → Silos.', 'ai-post-scheduler'),
-					'<code>[aips_silo_guide]</code>'
-				);
-				?>
-			</p>
-		</fieldset>
-		<?php
-	}
 
 	/**
 	 * Render the link index rebuild throttle (Internal Linking tab).
 	 *
 	 * @return void
 	 */
-	public function link_index_throttle_field_callback() {
-		$config     = AIPS_Config::get_instance();
-		$batch_size = (int) $config->get_option('aips_link_index_batch_size', 50);
-		$delay      = (int) $config->get_option('aips_link_index_batch_delay', 20);
-		?>
-		<fieldset class="aips-link-index-throttle">
-			<div class="aips-rate-limits-grid">
-				<div class="aips-rate-limit-field">
-					<label for="aips_link_index_batch_size"><?php esc_html_e('Posts per batch:', 'ai-post-scheduler'); ?></label>
-					<input type="number" min="10" max="500" step="10" name="aips_link_index_batch_size" id="aips_link_index_batch_size" value="<?php echo esc_attr((string) $batch_size); ?>" class="small-text">
-				</div>
-				<div class="aips-rate-limit-field">
-					<label for="aips_link_index_batch_delay"><?php esc_html_e('Pause between batches:', 'ai-post-scheduler'); ?></label>
-					<input type="number" min="0" max="600" step="5" name="aips_link_index_batch_delay" id="aips_link_index_batch_delay" value="<?php echo esc_attr((string) $delay); ?>" class="small-text">
-					<span class="description"><?php esc_html_e('seconds', 'ai-post-scheduler'); ?></span>
-				</div>
-			</div>
-			<p class="description"><?php esc_html_e('A full rebuild runs in the background as WP-Cron batches. Each batch only parses post HTML (no AI calls); lower the batch size or raise the pause on slow or shared hosting.', 'ai-post-scheduler'); ?></p>
-		</fieldset>
-		<?php
-	}
 
 	/**
 	 * Render the bulk auto-linking toggle (Internal Linking tab).
 	 *
 	 * @return void
 	 */
+
 	public function autolink_enabled_field_callback() {
 		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_autolink_enabled', false);
 		?>
@@ -2310,6 +1461,7 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
+
 	public function autolink_thresholds_field_callback() {
 		$config = AIPS_Config::get_instance();
 		$auto   = (float) $config->get_option('aips_autolink_auto_apply_threshold', 0.85);
@@ -2336,6 +1488,7 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
+
 	public function autolink_limits_field_callback() {
 		$config = AIPS_Config::get_instance();
 		$fields = array(
@@ -2363,6 +1516,7 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
+
 	public function autolink_placement_field_callback() {
 		$config     = AIPS_Config::get_instance();
 		$skip_first = (bool) $config->get_option('aips_autolink_skip_first_paragraph', true);
@@ -2403,19 +1557,13 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function indexer_similarity_threshold_field_callback() {
-		$value = (float) AIPS_Config::get_instance()->get_option('aips_indexer_similarity_threshold', 0.65);
-		?>
-		<input type="number" step="0.05" min="0.40" max="0.95" name="aips_indexer_similarity_threshold" id="aips_indexer_similarity_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-		<p class="description"><?php esc_html_e('Minimum cosine similarity (0.40 - 0.95) for two posts to be considered related. Default: 0.65', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render publish indexing execution timing mode (Card 4).
 	 *
 	 * @return void
 	 */
+
 	public function indexer_publish_execution_timing_field_callback() {
 		$value = (string) AIPS_Config::get_instance()->get_option('aips_indexer_publish_execution_timing', 'queued');
 		?>
@@ -2444,328 +1592,103 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function indexer_batch_config_field_callback() {
-		$config        = AIPS_Config::get_instance();
-		$batch_size    = (int) $config->get_option('aips_indexer_batch_size', 10);
-		$debounce_sec  = (int) $config->get_option('aips_indexer_queue_debounce_seconds', 15);
-		$quota_pause   = (bool) $config->get_option('aips_indexer_quota_pause_enabled', true);
-		$notifications = (bool) $config->get_option('aips_indexer_queue_notifications_enabled', true);
-		?>
-		<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px;">
-			<div>
-				<label for="aips_indexer_batch_size"><strong><?php esc_html_e('Batch Size:', 'ai-post-scheduler'); ?></strong></label><br>
-				<input type="number" min="1" max="50" step="1" name="aips_indexer_batch_size" id="aips_indexer_batch_size" value="<?php echo esc_attr((string) $batch_size); ?>" class="small-text">
-				<p class="description"><?php esc_html_e('Posts per chunk (1-50).', 'ai-post-scheduler'); ?></p>
-			</div>
-			<div>
-				<label for="aips_indexer_queue_debounce_seconds"><strong><?php esc_html_e('Debounce Delay:', 'ai-post-scheduler'); ?></strong></label><br>
-				<input type="number" min="5" max="300" step="5" name="aips_indexer_queue_debounce_seconds" id="aips_indexer_queue_debounce_seconds" value="<?php echo esc_attr((string) $debounce_sec); ?>" class="small-text">
-				<p class="description"><?php esc_html_e('Seconds before processing queue.', 'ai-post-scheduler'); ?></p>
-			</div>
-		</div>
-		<div>
-			<label for="aips_indexer_quota_pause_enabled" style="display:block;margin-bottom:6px;">
-				<input type="checkbox" name="aips_indexer_quota_pause_enabled" id="aips_indexer_quota_pause_enabled" value="1" <?php checked($quota_pause); ?>>
-				<?php esc_html_e('Auto-Pause indexing queue when approaching rate limits or remote quota', 'ai-post-scheduler'); ?>
-			</label>
-			<label for="aips_indexer_queue_notifications_enabled" style="display:block;">
-				<input type="checkbox" name="aips_indexer_queue_notifications_enabled" id="aips_indexer_queue_notifications_enabled" value="1" <?php checked($notifications); ?>>
-				<?php esc_html_e('Notify admin via email when background indexing queue is paused or exhausts quota', 'ai-post-scheduler'); ?>
-			</label>
-		</div>
-		<?php
-	}
 
 	/**
 	 * Render Rate Limit Error Pattern Auto-Cooldown fields (Card 4).
 	 *
 	 * @return void
 	 */
-	public function indexer_error_cooldown_field_callback() {
-		$config    = AIPS_Config::get_instance();
-		$duration  = (int) $config->get_option('aips_indexer_error_pause_duration', 30);
-		$unit      = (string) $config->get_option('aips_indexer_error_pause_unit', 'minutes');
-		$threshold = (int) $config->get_option('aips_indexer_consecutive_error_threshold', 2);
-		?>
-		<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
-			<div>
-				<label for="aips_indexer_error_pause_duration"><strong><?php esc_html_e('Cooldown Duration:', 'ai-post-scheduler'); ?></strong></label><br>
-				<input type="number" min="1" max="100" step="1" name="aips_indexer_error_pause_duration" id="aips_indexer_error_pause_duration" value="<?php echo esc_attr((string) $duration); ?>" class="small-text">
-				<select name="aips_indexer_error_pause_unit" id="aips_indexer_error_pause_unit">
-					<option value="minutes" <?php selected($unit, 'minutes'); ?>><?php esc_html_e('Minutes', 'ai-post-scheduler'); ?></option>
-					<option value="hours" <?php selected($unit, 'hours'); ?>><?php esc_html_e('Hours', 'ai-post-scheduler'); ?></option>
-					<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
-				</select>
-			</div>
-			<div>
-				<label for="aips_indexer_consecutive_error_threshold"><strong><?php esc_html_e('Consecutive Errors to Trigger:', 'ai-post-scheduler'); ?></strong></label><br>
-				<input type="number" min="1" max="10" step="1" name="aips_indexer_consecutive_error_threshold" id="aips_indexer_consecutive_error_threshold" value="<?php echo esc_attr((string) $threshold); ?>" class="small-text">
-				<span class="description"><?php esc_html_e('failures', 'ai-post-scheduler'); ?></span>
-			</div>
-		</div>
-		<p class="description" style="margin-top:8px;">
-			<?php esc_html_e('When remote provider returns HTTP 429 ("Resource exhausted" / "Quota exceeded"), indexing halts automatically for the configured duration.', 'ai-post-scheduler'); ?>
-		</p>
-		<?php
-	}
 
 	/**
 	 * Render Post Cluster similarity threshold setting (Card 4).
 	 *
 	 * @return void
 	 */
-	public function indexer_post_cluster_threshold_field_callback() {
-		$value = (float) AIPS_Config::get_instance()->get_option('aips_indexer_post_cluster_threshold', 0.65);
-		?>
-		<input type="number" step="0.05" min="0.30" max="0.95" name="aips_indexer_post_cluster_threshold" id="aips_indexer_post_cluster_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-		<p class="description"><?php esc_html_e('Minimum similarity threshold for grouping connected posts into a thematic cluster. Default: 0.65', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the cluster detection safety limits (Card 4).
 	 *
 	 * @return void
 	 */
-	public function cluster_detection_limits_field_callback() {
-		$config    = AIPS_Config::get_instance();
-		$max_posts = (int) $config->get_option('aips_cluster_detection_max_posts', 250);
-		$budget    = (int) $config->get_option('aips_cluster_detection_time_budget', 8);
-		?>
-		<label for="aips_cluster_detection_max_posts">
-			<?php esc_html_e('Max posts per scan:', 'ai-post-scheduler'); ?>
-			<input type="number" step="50" min="50" max="5000" name="aips_cluster_detection_max_posts" id="aips_cluster_detection_max_posts" value="<?php echo esc_attr((string) $max_posts); ?>" class="small-text">
-		</label>
-		&nbsp;
-		<label for="aips_cluster_detection_time_budget">
-			<?php esc_html_e('Time budget (seconds):', 'ai-post-scheduler'); ?>
-			<input type="number" step="1" min="2" max="25" name="aips_cluster_detection_time_budget" id="aips_cluster_detection_time_budget" value="<?php echo esc_attr((string) $budget); ?>" class="small-text">
-		</label>
-		<p class="description"><?php esc_html_e('Topic Clusters compares every post with every other post, so the work grows with the square of the post count. Only the newest posts up to the cap are scanned, and a scan stops once the time budget is spent. Raise the cap on fast hosting; lower it if the scan times out. Defaults: 250 posts, 8 seconds.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render Topic Cluster defaults (Card 4).
 	 *
 	 * @return void
 	 */
-	public function cluster_defaults_field_callback() {
-		$config    = AIPS_Config::get_instance();
-		$min_size  = (int) $config->get_option('aips_cluster_default_min_size', 3);
-		$tightness = (string) $config->get_option('aips_cluster_tightness', 'balanced');
-		$spoke     = (float) $config->get_option('aips_pillar_spoke_similarity', 0.75);
-		$levels    = array(
-			'loose'    => __('Loose (any single link joins posts; few, large clusters)', 'ai-post-scheduler'),
-			'balanced' => __('Balanced (a post must be close to about half the cluster)', 'ai-post-scheduler'),
-			'strict'   => __('Strict (a post must be close to every post in the cluster)', 'ai-post-scheduler'),
-		);
-		?>
-		<p>
-			<label for="aips_cluster_tightness">
-				<?php esc_html_e('Cluster tightness:', 'ai-post-scheduler'); ?>
-				<select name="aips_cluster_tightness" id="aips_cluster_tightness">
-					<?php foreach ($levels as $key => $label) : ?>
-						<option value="<?php echo esc_attr($key); ?>" <?php selected($tightness, $key); ?>><?php echo esc_html($label); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</label>
-		</p>
-		<p>
-			<label for="aips_cluster_default_min_size">
-				<?php esc_html_e('Default minimum cluster size:', 'ai-post-scheduler'); ?>
-				<input type="number" step="1" min="2" max="50" name="aips_cluster_default_min_size" id="aips_cluster_default_min_size" value="<?php echo esc_attr((string) $min_size); ?>" class="small-text">
-			</label>
-			&nbsp;
-			<label for="aips_pillar_spoke_similarity">
-				<?php esc_html_e('Pillar link weight:', 'ai-post-scheduler'); ?>
-				<input type="number" step="0.05" min="0.30" max="1" name="aips_pillar_spoke_similarity" id="aips_pillar_spoke_similarity" value="<?php echo esc_attr((string) $spoke); ?>" class="small-text">
-			</label>
-		</p>
-		<p class="description"><?php esc_html_e('Tightness controls how easily posts chain into one cluster. Loose reproduces one giant cluster on a site where everything is related; Balanced is recommended. The minimum size pre-selects the Min Size box on Topic Clusters, and the pillar link weight is the similarity recorded for pillar-to-post links. Defaults: Balanced, 3 posts, 0.75.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render Enable Post Insights UI setting (Card 4).
 	 *
 	 * @return void
 	 */
-	public function enable_post_insights_ui_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option('aips_enable_post_insights_ui', true);
-		?>
-		<label for="aips_enable_post_insights_ui">
-			<input type="checkbox" name="aips_enable_post_insights_ui" id="aips_enable_post_insights_ui" value="1" <?php checked($value, true); ?>>
-			<?php esc_html_e('Inject AI Insights column, duplication risk badges, and editor panels on native WordPress Posts and Editor screens.', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description"><?php esc_html_e('When enabled, adds the AI Insights column and filters to the Posts table, a Document Setting Panel to the Block Editor, and a Meta Box to the Classic Editor.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render Run Embeddings when Topics are Generated setting.
 	 *
 	 * @return void
 	 */
-	public function indexer_topics_continuous_sync_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option('aips_indexer_topics_continuous_sync', true);
-		?>
-		<label for="aips_indexer_topics_continuous_sync">
-			<input type="checkbox" name="aips_indexer_topics_continuous_sync" id="aips_indexer_topics_continuous_sync" value="1" <?php checked($value, true); ?>>
-			<?php esc_html_e('Automatically generate and persist vector embeddings immediately when Author Topics are created or generated.', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description"><?php esc_html_e('Enables real-time duplicate idea detection and cross-referencing between Author Topics and published WordPress articles.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render Global Author Topic Auto-Approval Mode.
 	 *
 	 * @return void
 	 */
-	public function author_topic_auto_approval_mode_field_callback() {
-		$value = AIPS_Author_Topic_Approval_Policy::normalize_mode(AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_mode', 'manual'));
-		?>
-		<select name="aips_author_topic_auto_approval_mode" id="aips_author_topic_auto_approval_mode">
-			<option value="manual" <?php selected($value, 'manual'); ?>><?php esc_html_e('Manual Review (Hold in Pending)', 'ai-post-scheduler'); ?></option>
-			<option value="all" <?php selected($value, 'all'); ?>><?php esc_html_e('Auto-Approve All (Unfiltered)', 'ai-post-scheduler'); ?></option>
-			<option value="score" <?php selected($value, 'score'); ?>><?php esc_html_e('Quality Score Threshold', 'ai-post-scheduler'); ?></option>
-			<option value="similarity" <?php selected($value, 'similarity'); ?>><?php esc_html_e('Dual-Boundary Semantic Gate (Vector Similarity)', 'ai-post-scheduler'); ?></option>
-		</select>
-		<p class="description"><?php esc_html_e('Applies only to authors whose Topic Auto-Approval Policy is set to "Use Global Settings". Changing this affects every one of those authors. Authors with their own policy are not affected.', 'ai-post-scheduler'); ?></p>
-		<?php
-		$embeddings = AIPS_Container::get_instance()->has(AIPS_Embeddings_Service::class)
-			? AIPS_Container::get_instance()->make(AIPS_Embeddings_Service::class)
-			: null;
-		if (!$embeddings || !$embeddings->is_enabled()) :
-			?>
-			<p class="description aips-embeddings-warning" id="aips-auto-approval-embeddings-warning" style="color: #b32d2e;">
-				<?php esc_html_e('Embeddings are currently disabled. The semantic gate cannot measure niche relevance until embeddings are enabled.', 'ai-post-scheduler'); ?>
-			</p>
-			<?php
-		endif;
-	}
 
 	/**
 	 * Render Global Author Topic Minimum Quality Score.
 	 *
 	 * @return void
 	 */
-	public function author_topic_auto_approval_min_score_field_callback() {
-		$value = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_min_score', 70);
-		?>
-		<input type="number" min="1" max="100" step="1" name="aips_author_topic_auto_approval_min_score" id="aips_author_topic_auto_approval_min_score" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-		<p class="description"><?php esc_html_e('Quality Score Threshold mode: topics whose AI quality score is at least this value (1-100) are auto-approved.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render Global Author Topic Minimum Niche Relevance %.
 	 *
 	 * @return void
 	 */
-	public function author_topic_auto_approval_min_relevance_field_callback() {
-		$value = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_min_relevance', 65);
-		?>
-		<input type="number" min="1" max="100" step="1" name="aips_author_topic_auto_approval_min_relevance" id="aips_author_topic_auto_approval_min_relevance" value="<?php echo esc_attr((string) $value); ?>" class="small-text"> %
-		<p class="description"><?php esc_html_e('Semantic Gate mode: minimum cosine relevance percentage against the author persona and focus niche. Topics below this threshold fail approval.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render Global Author Topic Maximum Duplicate Ceiling.
 	 *
 	 * @return void
 	 */
-	public function author_topic_auto_approval_max_similarity_field_callback() {
-		$value = (float) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_max_similarity', 0.85);
-		?>
-		<input type="number" min="0.50" max="0.99" step="0.01" name="aips_author_topic_auto_approval_max_similarity" id="aips_author_topic_auto_approval_max_similarity" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-		<p class="description"><?php esc_html_e('Semantic Gate mode: maximum cosine similarity allowed against existing topics and published articles. Topics at or above this score are flagged as duplicates.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render Global Author Topic Sub-Threshold Fallback Handling.
 	 *
 	 * @return void
 	 */
-	public function author_topic_auto_approval_fallback_field_callback() {
-		$value = AIPS_Author_Topic_Approval_Policy::normalize_fallback(AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_fallback', 'smart_split'));
-		?>
-		<select name="aips_author_topic_auto_approval_fallback" id="aips_author_topic_auto_approval_fallback">
-			<option value="smart_split" <?php selected($value, 'smart_split'); ?>><?php esc_html_e('Smart Split (Reject duplicates, hold the rest in Pending)', 'ai-post-scheduler'); ?></option>
-			<option value="pending" <?php selected($value, 'pending'); ?>><?php esc_html_e('Leave All in Pending (Queue for Review)', 'ai-post-scheduler'); ?></option>
-			<option value="rejected" <?php selected($value, 'rejected'); ?>><?php esc_html_e('Immediate Rejection (Move to Rejected tab)', 'ai-post-scheduler'); ?></option>
-		</select>
-		<p class="description"><?php esc_html_e('Determines what happens to topics that do not qualify for auto-approval.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render related posts enable toggle (Card 5).
 	 *
 	 * @return void
 	 */
-	public function related_posts_enabled_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option('aips_related_posts_enabled', true);
-		?>
-		<label for="aips_related_posts_enabled">
-			<input type="checkbox" name="aips_related_posts_enabled" id="aips_related_posts_enabled" value="1" <?php checked($value); ?>>
-			<?php esc_html_e('Enable semantic recommendations via vector similarity', 'ai-post-scheduler'); ?>
-		</label>
-		<?php
-	}
 
 	/**
 	 * Render related posts auto-append toggle (Card 5).
 	 *
 	 * @return void
 	 */
-	public function related_posts_auto_append_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option('aips_related_posts_auto_append', false);
-		?>
-		<label for="aips_related_posts_auto_append">
-			<input type="checkbox" name="aips_related_posts_auto_append" id="aips_related_posts_auto_append" value="1" <?php checked($value); ?>>
-			<?php esc_html_e('Automatically render related articles below single post content', 'ai-post-scheduler'); ?>
-		</label>
-		<?php
-	}
 
 	/**
 	 * Render related posts heading title (Card 5).
 	 *
 	 * @return void
 	 */
-	public function related_posts_heading_field_callback() {
-		$value = (string) AIPS_Config::get_instance()->get_option('aips_related_posts_heading', 'Related Articles');
-		?>
-		<input type="text" name="aips_related_posts_heading" id="aips_related_posts_heading" value="<?php echo esc_attr($value); ?>" class="regular-text">
-		<?php
-	}
 
 	/**
 	 * Render related posts count and layout options (Card 5).
 	 *
 	 * @return void
 	 */
-	public function related_posts_count_layout_field_callback() {
-		$count  = (int) AIPS_Config::get_instance()->get_option('aips_related_posts_count', 4);
-		$layout = (string) AIPS_Config::get_instance()->get_option('aips_related_posts_layout', 'grid');
-		?>
-		<input type="number" min="1" max="12" name="aips_related_posts_count" id="aips_related_posts_count" value="<?php echo esc_attr((string) $count); ?>" class="small-text"> <?php esc_html_e('articles', 'ai-post-scheduler'); ?>
-		<select name="aips_related_posts_layout" id="aips_related_posts_layout" class="aips-select-inline-gap">
-			<option value="grid" <?php selected($layout, 'grid'); ?>><?php esc_html_e('Card Grid', 'ai-post-scheduler'); ?></option>
-			<option value="list" <?php selected($layout, 'list'); ?>><?php esc_html_e('List Layout', 'ai-post-scheduler'); ?></option>
-		</select>
-		<?php
-	}
 
 	/**
 	 * Render related posts shortcode and block integration helper with copy button (Card 5).
 	 *
 	 * @return void
 	 */
+
 	public function related_posts_shortcode_field_callback() {
 		?>
 		<div class="aips-shortcode-preview-card">
@@ -2792,215 +1715,60 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function deduplication_mode_field_callback() {
-		$value = (string) AIPS_Config::get_instance()->get_option('aips_deduplication_mode', 'warn');
-		?>
-		<select name="aips_deduplication_mode" id="aips_deduplication_mode">
-			<option value="warn" <?php selected($value, 'warn'); ?>><?php esc_html_e('Warn & Flag (Lowers Score & shows Duplicate Badge)', 'ai-post-scheduler'); ?></option>
-			<option value="block" <?php selected($value, 'block'); ?>><?php esc_html_e('Strict Block (Skip automated generation if duplicate exists)', 'ai-post-scheduler'); ?></option>
-		</select>
-		<?php
-	}
 
 	/**
 	 * Render deduplication similarity threshold number input (Card 6).
 	 *
 	 * @return void
 	 */
-	public function deduplication_threshold_field_callback() {
-		$value = (float) AIPS_Config::get_instance()->get_option('aips_deduplication_threshold', 0.85);
-		?>
-		<input type="number" step="0.05" min="0.70" max="0.99" name="aips_deduplication_threshold" id="aips_deduplication_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-		<p class="description"><?php esc_html_e('Cosine similarity threshold to classify a topic or post as a duplicate candidate. Default: 0.85', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the duplicate review similarity threshold (Card 6).
 	 *
 	 * @return void
 	 */
-	public function duplicate_review_threshold_field_callback() {
-		$value = (float) AIPS_Config::get_instance()->get_option('aips_duplicate_review_threshold', 0.88);
-		?>
-		<input type="number" step="0.01" min="0.70" max="0.99" name="aips_duplicate_review_threshold" id="aips_duplicate_review_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-		<p class="description"><?php esc_html_e('Posts in a Duplicate Review group must be at least this similar to every other post in the group. Higher means fewer, more certain duplicates. Default: 0.88', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the duplicate group size and pair limits (Card 6).
 	 *
 	 * @return void
 	 */
-	public function duplicate_review_limits_field_callback() {
-		$config    = AIPS_Config::get_instance();
-		$group     = (int) $config->get_option('aips_duplicate_review_max_group_size', 5);
-		$max_pairs = (int) $config->get_option('aips_duplicate_review_max_pairs', 1000);
-		$audit_rows = (int) $config->get_option('aips_audit_result_limit', 50);
-		?>
-		<label for="aips_duplicate_review_max_group_size">
-			<?php esc_html_e('Max posts per group:', 'ai-post-scheduler'); ?>
-			<input type="number" step="1" min="2" max="10" name="aips_duplicate_review_max_group_size" id="aips_duplicate_review_max_group_size" value="<?php echo esc_attr((string) $group); ?>" class="small-text">
-		</label>
-		&nbsp;
-		<label for="aips_duplicate_review_max_pairs">
-			<?php esc_html_e('Max similar pairs to review:', 'ai-post-scheduler'); ?>
-			<input type="number" step="100" min="100" max="5000" name="aips_duplicate_review_max_pairs" id="aips_duplicate_review_max_pairs" value="<?php echo esc_attr((string) $max_pairs); ?>" class="small-text">
-		</label>
-		&nbsp;
-		<label for="aips_audit_result_limit">
-			<?php esc_html_e('Overlap audit rows:', 'ai-post-scheduler'); ?>
-			<input type="number" step="10" min="10" max="500" name="aips_audit_result_limit" id="aips_audit_result_limit" value="<?php echo esc_attr((string) $audit_rows); ?>" class="small-text">
-		</label>
-		<p class="description"><?php esc_html_e('Keeps each review group small enough to decide at a glance, bounds how many similar pairs are loaded, and sets how many rows the overlap audit lists (it uses the Duplicate Similarity Threshold above). Defaults: 5 posts, 1000 pairs, 50 rows.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the keep-post recommendation strategy (Card 6).
 	 *
 	 * @return void
 	 */
-	public function duplicate_keep_strategy_field_callback() {
-		$value   = (string) AIPS_Config::get_instance()->get_option('aips_duplicate_keep_strategy', 'balanced');
-		$choices = AIPS_Duplicate_Group_Service::get_keep_strategies();
-		?>
-		<select name="aips_duplicate_keep_strategy" id="aips_duplicate_keep_strategy">
-			<?php foreach ($choices as $key => $label) : ?>
-				<option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
-			<?php endforeach; ?>
-		</select>
-		<p class="description"><?php esc_html_e('How Duplicate Review picks the post to recommend keeping. Balanced weighs inbound links, length and age together. You always make the final choice.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the inbound-link protection threshold (Card 6).
 	 *
 	 * @return void
 	 */
-	public function duplicate_protection_field_callback() {
-		$value = (int) AIPS_Config::get_instance()->get_option('aips_duplicate_protect_inbound_links', 10);
-		?>
-		<label for="aips_duplicate_protect_inbound_links">
-			<?php esc_html_e('Protect posts with at least', 'ai-post-scheduler'); ?>
-			<input type="number" step="1" min="0" max="1000" name="aips_duplicate_protect_inbound_links" id="aips_duplicate_protect_inbound_links" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
-			<?php esc_html_e('inbound internal links', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description"><?php esc_html_e('A protected post is always the recommended keeper and cannot be offered for retirement from a Duplicate Review group, so a heavily linked article is never merged away by accident. Set to 0 to turn protection off. Default: 10', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the duplicate review exclusions (Card 6).
 	 *
 	 * @return void
 	 */
-	public function duplicate_exclusions_field_callback() {
-		$config     = AIPS_Config::get_instance();
-		$types      = array_map('strval', (array) $config->get_option('aips_duplicate_excluded_post_types', array()));
-		$categories = array_map('intval', (array) $config->get_option('aips_duplicate_excluded_categories', array()));
-		$ids        = (string) $config->get_option('aips_duplicate_excluded_post_ids', '');
-		$pillars    = (bool) $config->get_option('aips_duplicate_exclude_pillars', true);
-		$post_types = get_post_types(array('public' => true), 'objects');
-		$terms      = get_categories(array('hide_empty' => false, 'number' => 200));
-		?>
-		<fieldset>
-			<p><strong><?php esc_html_e('Post types', 'ai-post-scheduler'); ?></strong></p>
-			<p>
-				<?php foreach ($post_types as $slug => $object) : ?>
-					<label class="aips-inline-check">
-						<input type="checkbox" name="aips_duplicate_excluded_post_types[]" value="<?php echo esc_attr($slug); ?>" <?php checked(in_array($slug, $types, true)); ?>>
-						<?php echo esc_html($object->labels->singular_name); ?>
-					</label>&nbsp;
-				<?php endforeach; ?>
-			</p>
-			<?php if (!empty($terms) && !is_wp_error($terms)) : ?>
-				<p><label for="aips_duplicate_excluded_categories"><strong><?php esc_html_e('Categories (Ctrl/Cmd-click to select several)', 'ai-post-scheduler'); ?></strong></label></p>
-				<select name="aips_duplicate_excluded_categories[]" id="aips_duplicate_excluded_categories" multiple size="5">
-					<?php foreach ($terms as $term) : ?>
-						<option value="<?php echo esc_attr((string) $term->term_id); ?>" <?php selected(in_array((int) $term->term_id, $categories, true)); ?>><?php echo esc_html($term->name); ?></option>
-					<?php endforeach; ?>
-				</select>
-			<?php endif; ?>
-			<p><label for="aips_duplicate_excluded_post_ids"><strong><?php esc_html_e('Specific post IDs (comma-separated)', 'ai-post-scheduler'); ?></strong></label></p>
-			<input type="text" name="aips_duplicate_excluded_post_ids" id="aips_duplicate_excluded_post_ids" value="<?php echo esc_attr($ids); ?>" class="regular-text" placeholder="12, 48, 301">
-			<p>
-				<label for="aips_duplicate_exclude_pillars">
-					<input type="checkbox" name="aips_duplicate_exclude_pillars" id="aips_duplicate_exclude_pillars" value="1" <?php checked($pillars, true); ?>>
-					<?php esc_html_e('Never review pillar posts you confirmed on Topic Clusters or Silos', 'ai-post-scheduler'); ?>
-				</label>
-			</p>
-		</fieldset>
-		<p class="description"><?php esc_html_e('Posts matching any of these are left out of Duplicate Review entirely. Useful for deliberate series, product pages and cornerstone content.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the default merge handling select (Card 6).
 	 *
 	 * @return void
 	 */
-	public function duplicate_default_merge_field_callback() {
-		$value   = (string) AIPS_Config::get_instance()->get_option('aips_duplicate_default_merge_mode', 'revision');
-		$choices = array(
-			'none'     => __('Do not change the kept post (redirect and retire only)', 'ai-post-scheduler'),
-			'revision' => __('Save the AI-merged draft as a revision of the kept post', 'ai-post-scheduler'),
-			'rewrite'  => __('Rewrite the kept post with the AI-merged draft', 'ai-post-scheduler'),
-		);
-		?>
-		<select name="aips_duplicate_default_merge_mode" id="aips_duplicate_default_merge_mode">
-			<?php foreach ($choices as $key => $label) : ?>
-				<option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
-			<?php endforeach; ?>
-		</select>
-		<p class="description"><?php esc_html_e('What the Consolidate dialog pre-selects once a merged draft has been generated. You can change it per consolidation, and consolidating can always be undone.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the scheduled duplicate scan select (Card 6).
 	 *
 	 * @return void
 	 */
-	public function duplicate_scan_schedule_field_callback() {
-		$value   = (string) AIPS_Config::get_instance()->get_option('aips_duplicate_scan_schedule', 'off');
-		$choices = array(
-			'off'    => __('Off (review manually)', 'ai-post-scheduler'),
-			'daily'  => __('Daily', 'ai-post-scheduler'),
-			'weekly' => __('Weekly', 'ai-post-scheduler'),
-		);
-		?>
-		<select name="aips_duplicate_scan_schedule" id="aips_duplicate_scan_schedule">
-			<?php foreach ($choices as $key => $label) : ?>
-				<option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
-			<?php endforeach; ?>
-		</select>
-		<p class="description"><?php esc_html_e('Re-scan for duplicates on a schedule and send a "Duplicate Posts Found" notification when new groups appear. Choose its channels under Settings → Notifications.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
-
-	/**
-	 * Clamp a submitted integer into a range.
-	 *
-	 * @param mixed $value   Submitted value.
-	 * @param int   $min     Lowest allowed value.
-	 * @param int   $max     Highest allowed value.
-	 * @param int   $default Value used when the input is empty.
-	 * @return int
-	 */
-	private function clamp_int($value, int $min, int $max, int $default): int {
-		if ($value === '' || $value === null) {
-			return $default;
-		}
-		return max($min, min($max, (int) $value));
-	}
 
 	/**
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
+
 	public function sanitize_cluster_detection_max_posts($value) {
 		return $this->clamp_int($value, 50, 5000, 250);
 	}
@@ -3009,6 +1777,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
+
 	public function sanitize_cluster_detection_time_budget($value) {
 		return $this->clamp_int($value, 2, 25, 8);
 	}
@@ -3017,6 +1786,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return float
 	 */
+
 	public function sanitize_duplicate_review_threshold($value) {
 		$value = ($value === '' || $value === null) ? 0.88 : (float) $value;
 		return max(0.70, min(0.99, $value));
@@ -3026,6 +1796,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
+
 	public function sanitize_duplicate_review_max_group_size($value) {
 		return $this->clamp_int($value, 2, 10, 5);
 	}
@@ -3034,6 +1805,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
+
 	public function sanitize_duplicate_review_max_pairs($value) {
 		return $this->clamp_int($value, 100, 5000, 1000);
 	}
@@ -3042,6 +1814,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string[]
 	 */
+
 	public function sanitize_duplicate_excluded_post_types($value) {
 		$valid = array_keys(get_post_types(array('public' => true)));
 		return array_values(array_intersect(array_map('sanitize_key', (array) $value), $valid));
@@ -3051,6 +1824,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return int[]
 	 */
+
 	public function sanitize_duplicate_excluded_categories($value) {
 		return array_values(array_unique(array_filter(array_map('absint', (array) $value))));
 	}
@@ -3061,6 +1835,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string
 	 */
+
 	public function sanitize_duplicate_excluded_post_ids($value) {
 		$ids = array_unique(array_filter(array_map('absint', preg_split('/[^0-9]+/', (string) $value))));
 		return implode(', ', $ids);
@@ -3070,6 +1845,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
+
 	public function sanitize_duplicate_protect_inbound_links($value) {
 		return $this->clamp_int($value, 0, 1000, 10);
 	}
@@ -3078,6 +1854,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string
 	 */
+
 	public function sanitize_duplicate_default_merge_mode($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('none', 'revision', 'rewrite'), true) ? $value : 'revision';
@@ -3087,6 +1864,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string
 	 */
+
 	public function sanitize_duplicate_scan_schedule($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('off', 'daily', 'weekly'), true) ? $value : 'off';
@@ -3096,6 +1874,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
+
 	public function sanitize_cluster_default_min_size($value) {
 		return $this->clamp_int($value, 2, 50, 3);
 	}
@@ -3104,6 +1883,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string
 	 */
+
 	public function sanitize_cluster_tightness($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('loose', 'balanced', 'strict'), true) ? $value : 'balanced';
@@ -3113,6 +1893,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return float
 	 */
+
 	public function sanitize_pillar_spoke_similarity($value) {
 		$value = ($value === '' || $value === null) ? 0.75 : (float) $value;
 		return max(0.30, min(1.0, $value));
@@ -3122,6 +1903,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
+
 	public function sanitize_audit_result_limit($value) {
 		return $this->clamp_int($value, 10, 500, 50);
 	}
@@ -3130,6 +1912,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string
 	 */
+
 	public function sanitize_duplicate_keep_strategy($value) {
 		$value = sanitize_key((string) $value);
 		return array_key_exists($value, AIPS_Duplicate_Group_Service::get_keep_strategies()) ? $value : 'balanced';
@@ -3141,6 +1924,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string Sanitized scope ('aips_only', 'date_range', 'all').
 	 */
+
 	public function sanitize_embeddings_scope($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('aips_only', 'date_range', 'all'), true) ? $value : 'aips_only';
@@ -3152,6 +1936,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string ('grid', 'list').
 	 */
+
 	public function sanitize_related_posts_layout($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('grid', 'list'), true) ? $value : 'grid';
@@ -3163,6 +1948,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string ('warn', 'block').
 	 */
+
 	public function sanitize_deduplication_mode($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('warn', 'block'), true) ? $value : 'warn';
@@ -3174,6 +1960,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return array<string>
 	 */
+
 	public function sanitize_post_types($value) {
 		if (!is_array($value)) {
 			return array('post');
@@ -3196,6 +1983,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string ('queued', 'immediate', 'disabled').
 	 */
+
 	public function sanitize_publish_execution_timing($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('queued', 'immediate', 'disabled'), true) ? $value : 'queued';
@@ -3207,6 +1995,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string ('minutes', 'hours', 'days').
 	 */
+
 	public function sanitize_error_pause_unit($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('minutes', 'hours', 'days'), true) ? $value : 'minutes';
@@ -3218,6 +2007,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string ('manual', 'all', 'score', 'similarity').
 	 */
+
 	public function sanitize_author_topic_auto_approval_mode($value) {
 		return AIPS_Author_Topic_Approval_Policy::normalize_mode($value);
 	}
@@ -3228,6 +2018,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return string ('pending', 'rejected', 'smart_split').
 	 */
+
 	public function sanitize_author_topic_auto_approval_fallback($value) {
 		return AIPS_Author_Topic_Approval_Policy::normalize_fallback($value);
 	}
@@ -3238,6 +2029,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return int
 	 */
+
 	public function sanitize_author_topic_auto_approval_percent($value) {
 		return max(1, min(100, absint($value)));
 	}
@@ -3248,6 +2040,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Submitted value.
 	 * @return float
 	 */
+
 	public function sanitize_author_topic_auto_approval_max_similarity($value) {
 		return max(0.50, min(0.99, (float) $value));
 	}
@@ -3257,132 +2050,42 @@ class AIPS_Settings_UI {
 	 *
 	 * @return void
 	 */
-	public function database_retention_section_callback() {
-		echo '<p>' . esc_html__('Configure automatic database pruning policies to keep high-growth tables (telemetry, execution logs, orphaned embeddings) lean and performant.', 'ai-post-scheduler') . '</p>';
-	}
 
 	/**
 	 * Render the automated pruning master toggle.
 	 *
 	 * @return void
 	 */
-	public function auto_prune_enabled_field_callback() {
-		$value = (bool) AIPS_Config::get_instance()->get_option('aips_auto_prune_enabled');
-		?>
-		<input type="hidden" name="aips_auto_prune_enabled" value="0">
-		<label>
-			<input type="checkbox" name="aips_auto_prune_enabled" value="1" <?php checked($value, true); ?>>
-			<?php esc_html_e('Enable scheduled automatic database pruning', 'ai-post-scheduler'); ?>
-		</label>
-		<p class="description"><?php esc_html_e('When enabled, background cleanups run via WP-Cron according to the schedule configured below.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the telemetry retention period field (number + unit).
 	 *
 	 * @return void
 	 */
-	public function telemetry_retention_field_callback() {
-		$config = AIPS_Config::get_instance();
-		$value  = (int) $config->get_option('aips_telemetry_retention_value', 30);
-		$unit   = (string) $config->get_option('aips_telemetry_retention_unit', 'days');
-		?>
-		<div style="display: flex; align-items: center; gap: 8px;">
-			<input type="number" name="aips_telemetry_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="365" style="width: 80px;">
-			<select name="aips_telemetry_retention_unit">
-				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
-				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
-				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
-			</select>
-		</div>
-		<p class="description"><?php esc_html_e('Telemetry records older than this period will be pruned during scheduled and manual cleanups.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the prune frequency selector.
 	 *
 	 * @return void
 	 */
-	public function prune_interval_field_callback() {
-		$interval = (string) AIPS_Config::get_instance()->get_option('aips_telemetry_prune_interval', 'daily');
-		?>
-		<select name="aips_telemetry_prune_interval">
-			<option value="daily" <?php selected($interval, 'daily'); ?>><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
-			<option value="twicedaily" <?php selected($interval, 'twicedaily'); ?>><?php esc_html_e('Twice Daily', 'ai-post-scheduler'); ?></option>
-			<option value="weekly" <?php selected($interval, 'weekly'); ?>><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
-		</select>
-		<p class="description"><?php esc_html_e('How often the background cleanup cron job should run when automatic pruning is enabled.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render the history log retention field (number + unit).
 	 *
 	 * @return void
 	 */
-	public function history_log_retention_field_callback() {
-		$config = AIPS_Config::get_instance();
-		$value  = (int) $config->get_option('aips_history_log_retention_value', 60);
-		$unit   = (string) $config->get_option('aips_history_log_retention_unit', 'days');
-		?>
-		<div class="aips-retention-input-row">
-			<input type="number" name="aips_history_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
-			<select name="aips_history_log_retention_unit" class="aips-form-select">
-				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
-				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
-				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
-			</select>
-		</div>
-		<p class="description"><?php esc_html_e('Detailed generation execution events in aips_history_log older than this threshold will be pruned.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render inputs for AI Error Log retention threshold.
 	 *
 	 * @return void
 	 */
-	public function ai_error_log_retention_field_callback() {
-		$config = AIPS_Config::get_instance();
-		$value  = (int) $config->get_option('aips_ai_error_log_retention_value', 30);
-		$unit   = (string) $config->get_option('aips_ai_error_log_retention_unit', 'days');
-		?>
-		<div class="aips-retention-input-row">
-			<input type="number" name="aips_ai_error_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" class="aips-form-input aips-retention-input-val">
-			<select name="aips_ai_error_log_retention_unit" class="aips-form-select">
-				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
-				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
-				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
-			</select>
-		</div>
-		<p class="description"><?php esc_html_e('AI Error logs in aips_history_log older than this threshold will be pruned during maintenance tasks.', 'ai-post-scheduler'); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render checkboxes for cleaning orphaned embeddings and expired topics.
 	 *
 	 * @return void
 	 */
-	public function clean_orphaned_data_field_callback() {
-		$config           = AIPS_Config::get_instance();
-		$clean_embeddings = (bool) $config->get_option('aips_clean_orphaned_embeddings', true);
-		$clean_topics     = (bool) $config->get_option('aips_clean_expired_topics', true);
-		?>
-		<input type="hidden" name="aips_clean_orphaned_embeddings" value="0">
-		<input type="hidden" name="aips_clean_expired_topics" value="0">
-		<label style="display: block; margin-bottom: 6px;">
-			<input type="checkbox" name="aips_clean_orphaned_embeddings" value="1" <?php checked($clean_embeddings, true); ?>>
-			<?php esc_html_e('Purge orphaned embeddings (vectors for posts deleted from WordPress)', 'ai-post-scheduler'); ?>
-		</label>
-		<label style="display: block;">
-			<input type="checkbox" name="aips_clean_expired_topics" value="1" <?php checked($clean_topics, true); ?>>
-			<?php esc_html_e('Purge rejected and expired author topics older than 30 days', 'ai-post-scheduler'); ?>
-		</label>
-		<?php
-	}
 
 	/**
 	 * Sanitize retention unit selection.
@@ -3390,6 +2093,7 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Raw input value.
 	 * @return string
 	 */
+
 	public function sanitize_retention_unit($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('days', 'weeks', 'months'), true) ? $value : 'days';
@@ -3401,10 +2105,10 @@ class AIPS_Settings_UI {
 	 * @param mixed $value Raw input value.
 	 * @return string
 	 */
+
 	public function sanitize_prune_interval($value) {
 		$value = sanitize_key((string) $value);
 		return in_array($value, array('daily', 'twicedaily', 'weekly'), true) ? $value : 'daily';
 	}
 
 }
-
