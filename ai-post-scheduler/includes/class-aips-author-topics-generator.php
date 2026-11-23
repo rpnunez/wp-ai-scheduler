@@ -388,6 +388,13 @@ class AIPS_Author_Topics_Generator {
 			return $counts;
 		}
 
+		// Refresh duplicate flags before deciding. Topics created during an
+		// embeddings outage can lack duplicate_similarity/potential_duplicate;
+		// without this, similarity approval would treat the missing duplicate
+		// score as zero and could approve a duplicate once embeddings recover.
+		// apply_fuzzy_duplicate_flags() excludes each topic's own stored entry.
+		$candidates = $this->apply_fuzzy_duplicate_flags($author, $candidates);
+
 		try {
 			$decided = $this->apply_auto_approval_rules($author, $candidates);
 		} catch (\Throwable $e) {

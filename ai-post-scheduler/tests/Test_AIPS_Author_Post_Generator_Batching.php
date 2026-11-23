@@ -150,8 +150,25 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 			}
 		};
 
+		// The batch loop acquires a post-generation lock on the author before
+		// running. Without a lock-capable author repository, the real
+		// acquire_post_generation_lock() hits a non-existent author row and
+		// returns author_run_locked before the batch loop is ever reached.
+		$authors_repository = new class {
+			public function update_post_generation_schedule($author_id, $next_run) {
+				// No-op: avoid DB writes in unit tests.
+			}
+			public function acquire_post_generation_lock(int $author_id, int $lock_ttl = 900): bool {
+				return true;
+			}
+			public function release_post_generation_lock(int $author_id): bool {
+				return true;
+			}
+		};
+
 		$post_generator->results = $results;
 		$this->inject_property($post_generator, 'topics_repository', $topics_repository);
+		$this->inject_property($post_generator, 'authors_repository', $authors_repository);
 
 		return $post_generator;
 	}

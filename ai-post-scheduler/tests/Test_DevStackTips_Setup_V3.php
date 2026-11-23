@@ -62,6 +62,18 @@ class Test_DevStackTips_Setup_V3 extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Two apply runs must not share a backup file, even within the same second.
+	 */
+	public function test_separate_applies_use_distinct_backup_files() {
+		$this->apply();
+		$this->apply();
+
+		$files = glob($this->backup_dir . '/devstacktips-v3-backup-*.json');
+		$this->assertGreaterThanOrEqual(2, count($files));
+		$this->assertSame(count($files), count(array_unique($files)));
+	}
+
+	/**
 	 * @param string $name
 	 * @return object|null
 	 */
