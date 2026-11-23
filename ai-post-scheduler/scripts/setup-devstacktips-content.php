@@ -425,7 +425,11 @@ class AIPS_DevStackTips_Setup {
 			'created'     => array(),
 		);
 
-		$this->backup_file = rtrim($this->backup_dir, '/\\') . DIRECTORY_SEPARATOR . 'devstacktips-v3-backup-' . gmdate('Ymd-His') . '.json';
+		// Include a random suffix so two runs started in the same second do not
+		// share a file (the second run would otherwise overwrite the first run's
+		// backup with an empty payload, losing the data needed to undo it).
+		$this->backup_file = rtrim($this->backup_dir, '/\\') . DIRECTORY_SEPARATOR
+			. 'devstacktips-v3-backup-' . gmdate('Ymd-His') . '-' . wp_generate_password(6, false, false) . '.json';
 
 		if (!$this->write_backup()) {
 			$this->error('Could not write backup file: ' . $this->backup_file);
@@ -448,8 +452,27 @@ class AIPS_DevStackTips_Setup {
 		}
 
 		$json = wp_json_encode($this->backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		if (false === $json) {
+			return false;
+		}
 
-		return false !== $json && false !== file_put_contents($this->backup_file, $json . "\n");
+		$payload = $json . "\n";
+
+		// Write atomically: a partial write (e.g. disk full) must never replace
+		// the last good backup. Write to a temp file, verify the full byte count,
+		// then rename over the target.
+		$tmp = $this->backup_file . '.tmp';
+		if (strlen($payload) !== (int) file_put_contents($tmp, $payload)) {
+			@unlink($tmp);
+			return false;
+		}
+
+		if (!rename($tmp, $this->backup_file)) {
+			@unlink($tmp);
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
