@@ -34,6 +34,33 @@ class Test_AIPS_Generator_Required_Content extends WP_UnitTestCase {
 		$this->assertArrayNotHasKey('failed_components', $history_service->container->failure_data);
 		$this->assertFalse($history_service->container->failure_data['component_statuses']['post_content']);
 		$this->assertFalse($history_service->container->failure_data['component_statuses']['post_title']);
+
+		// The provider's reason is kept on the error and the History run.
+		$this->assertSame('content_failed', $result->get_error_data()['cause_code']);
+		$this->assertStringContainsString('Content generation failed.', $result->get_error_message());
+		$this->assertSame('content_failed', $history_service->container->failure_data['cause_code']);
+		$this->assertStringContainsString('Content generation failed.', $history_service->container->failure_message);
+	}
+
+	public function test_empty_content_failure_reports_empty_content_cause() {
+		$ai_service      = new AIPS_Test_Generator_Required_Content_AI_Service(array(''));
+		$history_service = new AIPS_Test_Generator_Required_Content_History_Service();
+
+		$generator = new AIPS_Generator(
+			null,
+			$ai_service,
+			null,
+			null,
+			null,
+			new AIPS_Test_Generator_Required_Content_Post_Manager(),
+			$history_service
+		);
+
+		$result = $generator->generate_post($this->make_context());
+
+		$this->assertWPError($result);
+		$this->assertSame('aips_generation_missing_required_content', $result->get_error_code());
+		$this->assertSame('empty_content', $result->get_error_data()['cause_code']);
 	}
 
 	public function test_title_generation_failure_saves_content_as_partial_generation() {
@@ -253,7 +280,10 @@ class AIPS_Test_Generator_Required_Content_History_Container {
 		return true;
 	}
 
+	public $failure_message = '';
+
 	public function complete_failure($error_message, $error_data = array()) {
+		$this->failure_message = $error_message;
 		$this->failure_data = $error_data;
 		return true;
 	}
