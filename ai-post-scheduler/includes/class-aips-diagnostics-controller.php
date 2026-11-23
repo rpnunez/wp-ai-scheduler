@@ -868,8 +868,19 @@ class AIPS_Diagnostics_Controller {
 
 		$file   = isset( $_POST['file'] ) ? sanitize_text_field( wp_unslash( $_POST['file'] ) ) : '';
 		$lines  = isset( $_POST['lines'] ) ? min( 2000, max( 1, absint( $_POST['lines'] ) ) ) : 100;
-		$level  = isset( $_POST['level'] ) ? sanitize_key( wp_unslash( $_POST['level'] ) ) : 'all';
 		$search = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
+
+		$levels = 'all';
+		if ( isset( $_POST['levels'] ) ) {
+			if ( is_array( $_POST['levels'] ) ) {
+				$levels = array_map( 'sanitize_key', wp_unslash( $_POST['levels'] ) );
+			} else {
+				$raw_levels = sanitize_text_field( wp_unslash( $_POST['levels'] ) );
+				$levels     = array_filter( array_map( 'sanitize_key', explode( ',', $raw_levels ) ) );
+			}
+		} elseif ( isset( $_POST['level'] ) ) {
+			$levels = sanitize_key( wp_unslash( $_POST['level'] ) );
+		}
 
 		$logger = AIPS_Container::get_instance()->has( AIPS_Logger::class )
 			? AIPS_Container::get_instance()->make( AIPS_Logger::class )
@@ -882,7 +893,7 @@ class AIPS_Diagnostics_Controller {
 			}
 		}
 
-		$result = $logger->get_log_file_content( $file, $lines, $level, $search );
+		$result = $logger->get_log_file_content( $file, $lines, $levels, $search );
 		if ( null === $result ) {
 			AIPS_Ajax_Response::error( __( 'Log file not found or invalid.', 'ai-post-scheduler' ) );
 		}

@@ -150,6 +150,11 @@ class Test_AIPS_Diagnostics_Logs extends WP_UnitTestCase {
 		$this->assertContains( 'aips-2026-11-19-file1.log', $names );
 		$this->assertContains( 'aips-2026-11-20-file2.log', $names );
 
+		// Verify human-friendly display_name and modified without seconds
+		$this->assertArrayHasKey( 'display_name', $files[0] );
+		$this->assertNotEmpty( $files[0]['display_name'] );
+		$this->assertMatchesRegularExpression( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $files[0]['modified'] );
+
 		// Newest should be sorted before older
 		$pos_f1 = array_search( 'aips-2026-11-19-file1.log', $names, true );
 		$pos_f2 = array_search( 'aips-2026-11-20-file2.log', $names, true );
@@ -157,13 +162,14 @@ class Test_AIPS_Diagnostics_Logs extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test reading and parsing log content with levels, search, and context.
+	 * Test reading and parsing log content with multi-level filtering, search, and context.
 	 */
 	public function test_get_log_file_content_parsing_and_filters() {
 		$content  = "[2026-11-20 10:00:00] [INFO] System booted successfully\n";
 		$content .= "[2026-11-20 10:05:00] [WARNING] Transient cache missed\n";
 		$content .= "[2026-11-20 10:10:00] [ERROR] Failed to query OpenAI API\n";
 		$content .= "Context: " . json_encode( array( 'http_code' => 500, 'error' => 'server_error' ) ) . "\n";
+		$content .= "[2026-11-20 10:12:00] [DEBUG] Repository cache read\n";
 		$content .= "[2026-11-20 10:15:00] [INFO] Generation completed\n";
 
 		$filename = 'aips-2026-11-20-contenttest.log';
@@ -172,8 +178,8 @@ class Test_AIPS_Diagnostics_Logs extends WP_UnitTestCase {
 		// 1. Read all entries
 		$result = $this->logger->get_log_file_content( $filename, 100, 'all', '' );
 		$this->assertNotNull( $result );
-		$this->assertSame( 4, $result['total_lines'] );
-		$this->assertCount( 4, $result['entries'] );
+		$this->assertSame( 5, $result['total_lines'] );
+		$this->assertCount( 5, $result['entries'] );
 
 		// 2. Read only ERROR level
 		$error_result = $this->logger->get_log_file_content( $filename, 100, 'error', '' );
@@ -183,13 +189,29 @@ class Test_AIPS_Diagnostics_Logs extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Failed to query OpenAI API', $error_result['entries'][0]['message'] );
 		$this->assertStringContainsString( '500', $error_result['entries'][0]['context'] );
 
-		// 3. Keyword search
+		// 3. Multi-level filter: error AND debug
+		$multi_result = $this->logger->get_log_file_content( $filename, 100, array( 'error', 'debug' ), '' );
+		$this->assertNotNull( $multi_result );
+		$this->assertSame( 2, $multi_result['total_lines'] );
+		$levels_found = array_column( $multi_result['entries'], 'level' );
+		$this->assertContains( 'ERROR', $levels_found );
+		$this->assertContains( 'DEBUG', $levels_found );
+
+		// 4. Multi-level filter via comma string
+		$comma_result = $this->logger->get_log_file_content( $filename, 100, 'warning,debug', '' );
+		$this->assertNotNull( $comma_result );
+		$this->assertSame( 2, $comma_result['total_lines'] );
+		$comma_levels = array_column( $comma_result['entries'], 'level' );
+		$this->assertContains( 'WARNING', $comma_levels );
+		$this->assertContains( 'DEBUG', $comma_levels );
+
+		// 5. Keyword search
 		$search_result = $this->logger->get_log_file_content( $filename, 100, 'all', 'Transient' );
 		$this->assertNotNull( $search_result );
 		$this->assertSame( 1, $search_result['total_lines'] );
 		$this->assertSame( 'WARNING', $search_result['entries'][0]['level'] );
 
-		// 4. Lines limitation
+		// 6. Lines limitation
 		$limit_result = $this->logger->get_log_file_content( $filename, 2, 'all', '' );
 		$this->assertNotNull( $limit_result );
 		$this->assertCount( 2, $limit_result['entries'] );
@@ -270,6 +292,22 @@ class Test_AIPS_Diagnostics_Logs extends WP_UnitTestCase {
 		$this->assertTrue( $response['success'] );
 		$this->assertSame( $filename, $response['data']['file'] );
 		$this->assertSame( 1, $response['data']['total_lines'] );
+
+		// Test with multi-level levels parameter
+		$_POST['levels'] = 'info,debug';
+		$_REQUEST        = $_POST;
+
+		try {
+			ob_start();
+			$this->controller->ajax_get_log_content();
+		} catch ( \WPDieException $e ) {
+			// Expected JSON die
+		}
+		$response_json2 = ob_get_clean();
+		$response2      = json_decode( $response_json2, true );
+
+		$this->assertTrue( $response2['success'] );
+		$this->assertSame( 1, $response2['data']['total_lines'] );
 	}
 
 	/**

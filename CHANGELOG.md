@@ -3,10 +3,11 @@
 ### Added
 - **Diagnostics Logs Viewer:**
   - Added dedicated **Logs** rail tab to the Diagnostics Hub (`admin.php?page=aips-diagnostics&tab=logs`) and registered an administrative redirect shortcut (`admin.php?page=aips-logs`).
-  - Implemented a master-detail layout displaying available `aips-*.log` files with file sizes, modified timestamps, and active status in the sidebar.
-  - Implemented log viewer features: log level filtering (All, Error, Warning, Info), live text search, line limit selection (100–2,000 entries), live tail auto-refresh polling (3s, 5s, 10s intervals), formatted stream with expandable JSON context blocks, raw code view toggle, clipboard copying, and full file direct download streaming.
+  - Implemented a master-detail layout with human-friendly date titles, file sizes, timestamps without seconds, and active status in the sidebar.
+  - Implemented multi-level filtering (All, Error, Warning, Info, Debug) allowing multiple log levels to be viewed simultaneously.
+  - Redesigned toolbar with unified Auto-Refresh button group, compact line limits (100–2,000 entries), native segmented Formatted/Raw switch, live keyword search, clipboard copying, and direct full file download streaming.
   - Added log management actions with confirmation dialogs supporting both emptying (truncating to 0 bytes) and deleting log files from disk.
-  - Added path traversal guards, strict regex validation, capability checks, and unit tests in `Test_AIPS_Diagnostics_Logs.php`.
+  - Added path traversal guards, strict regex validation, capability checks, and comprehensive unit tests in `Test_AIPS_Diagnostics_Logs.php`.
 
 ### Fixed
 - **Post Components Parity & Conversational Integration:**

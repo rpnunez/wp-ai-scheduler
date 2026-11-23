@@ -1,8 +1,8 @@
 /**
  * Admin Logs Viewer Management
  *
- * Coordinates file selection, live tail polling, formatted/raw views,
- * search/level filtering, clipboard copying, downloads, and clearing.
+ * Coordinates file selection, live tail polling, multi-level filtering,
+ * formatted/raw segmented toggle, search, clipboard copying, and file operations.
  *
  * @package AI_Post_Scheduler
  * @since   3.7.25
@@ -13,8 +13,9 @@
 
 	var AipsLogs = {
 		selectedFile: '',
+		selectedDisplayName: '',
 		lines: 100,
-		level: 'all',
+		selectedLevels: ['all'],
 		search: '',
 		viewMode: 'formatted',
 		isAutoRefreshing: false,
@@ -33,17 +34,21 @@
 			var $activeItem = $('.aips-logs-file-item.is-selected');
 			if ($activeItem.length) {
 				self.selectedFile = $activeItem.data('file');
+				self.selectedDisplayName = $activeItem.data('display-name') || self.selectedFile;
 			} else {
 				var $firstItem = $('.aips-logs-file-item').first();
 				if ($firstItem.length) {
-					$firstItem.addClass('is-selected');
+					$firstItem.addClass('is-selected').attr('aria-selected', 'true');
 					self.selectedFile = $firstItem.data('file');
+					self.selectedDisplayName = $firstItem.data('display-name') || self.selectedFile;
 				}
 			}
 
 			self.bindEvents();
 
 			if (self.selectedFile) {
+				$('#aips-logs-current-display-name').text(self.selectedDisplayName);
+				$('#aips-logs-current-filename').text(self.selectedFile);
 				self.loadContent();
 			} else {
 				self.renderEmptyState(aipsLogsL10n.noLogsFound);
@@ -60,10 +65,15 @@
 			$(document).on('click', '.aips-logs-file-item', function (e) {
 				e.preventDefault();
 				var file = $(this).data('file');
+				var displayName = $(this).data('display-name') || file;
+
 				if (file && file !== self.selectedFile) {
 					$('.aips-logs-file-item').removeClass('is-selected').attr('aria-selected', 'false');
 					$(this).addClass('is-selected').attr('aria-selected', 'true');
 					self.selectedFile = file;
+					self.selectedDisplayName = displayName;
+
+					$('#aips-logs-current-display-name').text(displayName);
 					$('#aips-logs-current-filename').text(file);
 					self.loadContent();
 				}
@@ -75,12 +85,35 @@
 				self.refreshFileList();
 			});
 
-			// Level filter pills
+			// Multi-level filter pills
 			$(document).on('click', '.aips-logs-level-filters .aips-filter-pill', function (e) {
 				e.preventDefault();
-				$('.aips-logs-level-filters .aips-filter-pill').removeClass('is-active');
-				$(this).addClass('is-active');
-				self.level = $(this).data('level') || 'all';
+				var clickedLevel = $(this).data('level');
+
+				if (clickedLevel === 'all') {
+					$('.aips-logs-level-filters .aips-filter-pill').removeClass('is-active');
+					$(this).addClass('is-active');
+					self.selectedLevels = ['all'];
+				} else {
+					// Deselect 'all' when toggling an individual level
+					$('.aips-logs-level-filters .aips-filter-pill[data-level="all"]').removeClass('is-active');
+					$(this).toggleClass('is-active');
+
+					var activeLevels = [];
+					$('.aips-logs-level-filters .aips-filter-pill:not([data-level="all"]).is-active').each(function () {
+						activeLevels.push($(this).data('level'));
+					});
+
+					// If none or all 4 individual levels selected, reset to 'all'
+					if (activeLevels.length === 0 || activeLevels.length === 4) {
+						$('.aips-logs-level-filters .aips-filter-pill').removeClass('is-active');
+						$('.aips-logs-level-filters .aips-filter-pill[data-level="all"]').addClass('is-active');
+						self.selectedLevels = ['all'];
+					} else {
+						self.selectedLevels = activeLevels;
+					}
+				}
+
 				self.loadContent();
 			});
 
@@ -115,7 +148,7 @@
 				self.loadContent();
 			});
 
-			// View Mode Toggle (Formatted vs Raw)
+			// Segmented View Mode Toggle (Formatted vs Raw)
 			$('#aips-logs-view-formatted-btn').on('click', function (e) {
 				e.preventDefault();
 				self.setViewMode('formatted');
@@ -226,6 +259,8 @@
 				);
 			}
 
+			var levelsParam = self.selectedLevels.join(',');
+
 			$.ajax({
 				url: aipsLogsL10n.ajaxUrl,
 				type: 'POST',
@@ -235,7 +270,7 @@
 					nonce: aipsLogsL10n.nonce,
 					file: self.selectedFile,
 					lines: self.lines,
-					level: self.level,
+					levels: levelsParam,
 					search: self.search
 				},
 				success: function (res) {
@@ -285,10 +320,13 @@
 				var item = entries[i];
 				var level = (item.level || 'INFO').toUpperCase();
 				var badgeClass = 'aips-badge-info';
+
 				if (level === 'ERROR' || level === 'FATAL') {
 					badgeClass = 'aips-badge-danger';
 				} else if (level === 'WARNING' || level === 'WARN') {
 					badgeClass = 'aips-badge-warning';
+				} else if (level === 'DEBUG') {
+					badgeClass = 'aips-badge-purple';
 				}
 
 				html += '<article class="aips-logs-entry aips-logs-entry-' + self.escapeHtml(level.toLowerCase()) + '">';
@@ -352,13 +390,13 @@
 		setViewMode: function (mode) {
 			this.viewMode = mode;
 			if (mode === 'raw') {
-				$('#aips-logs-view-raw-btn').addClass('is-active');
-				$('#aips-logs-view-formatted-btn').removeClass('is-active');
+				$('#aips-logs-view-raw-btn').addClass('is-active').attr('aria-selected', 'true');
+				$('#aips-logs-view-formatted-btn').removeClass('is-active').attr('aria-selected', 'false');
 				$('#aips-logs-stream').hide();
 				$('#aips-logs-raw-wrap').show();
 			} else {
-				$('#aips-logs-view-formatted-btn').addClass('is-active');
-				$('#aips-logs-view-raw-btn').removeClass('is-active');
+				$('#aips-logs-view-formatted-btn').addClass('is-active').attr('aria-selected', 'true');
+				$('#aips-logs-view-raw-btn').removeClass('is-active').attr('aria-selected', 'false');
 				$('#aips-logs-raw-wrap').hide();
 				$('#aips-logs-stream').show();
 			}
@@ -500,6 +538,7 @@
 								'</div>'
 							);
 							self.selectedFile = '';
+							self.selectedDisplayName = '';
 							self.renderEmptyState(aipsLogsL10n.noLogsFound);
 							return;
 						}
@@ -514,16 +553,19 @@
 								fileStillExists = true;
 							}
 
-							html += '<button type="button" class="aips-logs-file-item ' + (isSelected ? 'is-selected' : '') + '" data-file="' + self.escapeHtml(file.name) + '" role="option" aria-selected="' + (isSelected ? 'true' : 'false') + '">';
+							var displayName = file.display_name || file.name;
+
+							html += '<button type="button" class="aips-logs-file-item ' + (isSelected ? 'is-selected' : '') + '" data-file="' + self.escapeHtml(file.name) + '" data-display-name="' + self.escapeHtml(displayName) + '" role="option" aria-selected="' + (isSelected ? 'true' : 'false') + '">';
 							html += '<div class="aips-logs-file-item-header">';
-							html += '<span class="aips-logs-file-name" title="' + self.escapeHtml(file.name) + '">' + self.escapeHtml(file.name) + '</span>';
+							html += '<span class="aips-logs-file-title">' + self.escapeHtml(displayName) + '</span>';
 							if (file.is_active) {
 								html += '<span class="aips-badge aips-badge-success aips-logs-active-badge">Active</span>';
 							}
 							html += '</div>';
+							html += '<div class="aips-logs-file-name" title="' + self.escapeHtml(file.name) + '">' + self.escapeHtml(file.name) + '</div>';
 							html += '<div class="aips-logs-file-meta">';
+							html += '<span class="aips-logs-file-date"><span class="dashicons dashicons-clock"></span> ' + self.escapeHtml(file.modified) + '</span>';
 							html += '<span class="aips-logs-file-size">' + self.escapeHtml(file.size) + '</span>';
-							html += '<span class="aips-logs-file-date">' + self.escapeHtml(file.modified) + '</span>';
 							html += '</div>';
 							html += '</button>';
 						}
@@ -532,7 +574,10 @@
 
 						if (!fileStillExists && files.length > 0) {
 							self.selectedFile = files[0].name;
+							self.selectedDisplayName = files[0].display_name || files[0].name;
 							$('.aips-logs-file-item').first().addClass('is-selected').attr('aria-selected', 'true');
+							$('#aips-logs-current-display-name').text(self.selectedDisplayName);
+							$('#aips-logs-current-filename').text(self.selectedFile);
 							self.loadContent();
 						}
 					}

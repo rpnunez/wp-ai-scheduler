@@ -258,13 +258,31 @@ class AIPS_Logger implements AIPS_Logger_Interface {
             $file_mtime = filemtime($file);
             $base_name = basename($file);
 
+            // Generate human-friendly display name from filename date
+            $display_name = $base_name;
+            if (preg_match('/^aips-(\d{4}-\d{2}-\d{2})/', $base_name, $m)) {
+                $date_str = $m[1];
+                $today_str = AIPS_DateTime::now()->toDisplay('Y-m-d');
+                $yesterday_str = date('Y-m-d', strtotime('-1 day', strtotime($today_str)));
+                $timestamp = strtotime($date_str);
+
+                if ($date_str === $today_str) {
+                    $display_name = sprintf(__('Today &mdash; %s', 'ai-post-scheduler'), date('M j, Y', $timestamp));
+                } elseif ($date_str === $yesterday_str) {
+                    $display_name = sprintf(__('Yesterday &mdash; %s', 'ai-post-scheduler'), date('M j, Y', $timestamp));
+                } else {
+                    $display_name = date('M j, Y', $timestamp);
+                }
+            }
+
             $log_files[] = array(
-                'name'      => $base_name,
-                'bytes'     => $file_size !== false ? (int) $file_size : 0,
-                'size'      => $file_size !== false ? size_format($file_size) : size_format(0),
-                'modified'  => $file_mtime !== false ? date('Y-m-d H:i:s', $file_mtime) : 'Unknown',
-                'timestamp' => $file_mtime !== false ? (int) $file_mtime : 0,
-                'is_active' => ($base_name === $active_basename),
+                'name'         => $base_name,
+                'display_name' => $display_name,
+                'bytes'        => $file_size !== false ? (int) $file_size : 0,
+                'size'         => $file_size !== false ? size_format($file_size) : size_format(0),
+                'modified'     => $file_mtime !== false ? date('Y-m-d H:i', $file_mtime) : 'Unknown',
+                'timestamp'    => $file_mtime !== false ? (int) $file_mtime : 0,
+                'is_active'    => ($base_name === $active_basename),
             );
         }
 
@@ -318,21 +336,31 @@ class AIPS_Logger implements AIPS_Logger_Interface {
      * Retrieves parsed and filtered content from a specific log file.
      * Reads up to 2MB from the tail using fseek.
      *
-     * @param string $filename Log filename.
-     * @param int    $lines    Number of entries to return (default 100, max 2000).
-     * @param string $level    Level filter ('all', 'error', 'warning', 'info').
-     * @param string $search   Keyword filter.
+     * @param string       $filename Log filename.
+     * @param int          $lines    Number of entries to return (default 100, max 2000).
+     * @param string|array $levels   Level filter ('all', or array/comma-string of 'error', 'warning', 'info', 'debug').
+     * @param string       $search   Keyword filter.
      * @return array|null Array of log data or null if file is invalid.
      */
-    public function get_log_file_content($filename, $lines = 100, $level = 'all', $search = '') {
+    public function get_log_file_content($filename, $lines = 100, $levels = 'all', $search = '') {
         $target_path = $this->validate_log_filename($filename);
         if (!$target_path || !is_readable($target_path)) {
             return null;
         }
 
         $lines = min(2000, max(1, (int) $lines));
-        $level = strtolower(trim((string) $level));
         $search = trim((string) $search);
+
+        // Normalize levels to array of lowercase strings
+        $filter_levels = array();
+        if (is_array($levels)) {
+            $filter_levels = array_filter(array_map('strtolower', array_map('trim', $levels)));
+        } elseif (is_string($levels) && '' !== trim($levels)) {
+            $parts = explode(',', $levels);
+            $filter_levels = array_filter(array_map('strtolower', array_map('trim', $parts)));
+        }
+
+        $apply_level_filter = !empty($filter_levels) && !in_array('all', $filter_levels, true);
 
         $fp = fopen($target_path, 'r');
         if ($fp === false) {
@@ -421,8 +449,8 @@ class AIPS_Logger implements AIPS_Logger_Interface {
         // Apply level and search filters
         $filtered = array();
         foreach ($parsed_entries as $entry) {
-            if ('all' !== $level && !empty($level)) {
-                if (strtolower($entry['level']) !== $level) {
+            if ($apply_level_filter) {
+                if (!in_array(strtolower($entry['level']), $filter_levels, true)) {
                     continue;
                 }
             }

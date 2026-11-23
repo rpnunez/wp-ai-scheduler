@@ -3,7 +3,7 @@
  * Admin Template: Diagnostics > Logs Tab
  *
  * Master-detail log viewer for AIPS plugin log files with search,
- * level filters, auto-refresh tailing, raw/formatted toggle, and file actions.
+ * multi-level filters, auto-refresh tailing, raw/formatted toggle, and file actions.
  *
  * @package AI_Post_Scheduler
  * @since   3.7.25
@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
 
 /** @var array<int, array<string, mixed>> $log_files */
 $active_file_name = !empty($log_files[0]['name']) ? $log_files[0]['name'] : '';
+$active_display_name = !empty($log_files[0]['display_name']) ? $log_files[0]['display_name'] : $active_file_name;
 ?>
 
 <div class="aips-tab-pane aips-tab-logs" id="aips-tab-logs-pane">
@@ -54,20 +55,26 @@ $active_file_name = !empty($log_files[0]['name']) ? $log_files[0]['name'] : '';
 						<button type="button"
 							class="aips-logs-file-item <?php echo $is_selected ? 'is-selected' : ''; ?>"
 							data-file="<?php echo esc_attr($file['name']); ?>"
+							data-display-name="<?php echo esc_attr(!empty($file['display_name']) ? $file['display_name'] : $file['name']); ?>"
 							data-is-active="<?php echo !empty($file['is_active']) ? '1' : '0'; ?>"
 							role="option"
 							aria-selected="<?php echo $is_selected ? 'true' : 'false'; ?>">
 							<div class="aips-logs-file-item-header">
-								<span class="aips-logs-file-name" title="<?php echo esc_attr($file['name']); ?>">
-									<?php echo esc_html($file['name']); ?>
+								<span class="aips-logs-file-title">
+									<?php echo esc_html(!empty($file['display_name']) ? $file['display_name'] : $file['name']); ?>
 								</span>
 								<?php if (!empty($file['is_active'])) : ?>
 									<span class="aips-badge aips-badge-success aips-logs-active-badge"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
 								<?php endif; ?>
 							</div>
+							<div class="aips-logs-file-name" title="<?php echo esc_attr($file['name']); ?>">
+								<?php echo esc_html($file['name']); ?>
+							</div>
 							<div class="aips-logs-file-meta">
+								<span class="aips-logs-file-date">
+									<span class="dashicons dashicons-clock"></span> <?php echo esc_html($file['modified']); ?>
+								</span>
 								<span class="aips-logs-file-size"><?php echo esc_html($file['size']); ?></span>
-								<span class="aips-logs-file-date"><?php echo esc_html($file['modified']); ?></span>
 							</div>
 						</button>
 					<?php endforeach; ?>
@@ -79,24 +86,27 @@ $active_file_name = !empty($log_files[0]['name']) ? $log_files[0]['name'] : '';
 		<section class="aips-logs-main" aria-label="<?php esc_attr_e('Log Viewer Pane', 'ai-post-scheduler'); ?>">
 			<!-- Toolbar Controls Header -->
 			<div class="aips-logs-toolbar">
-				<!-- Top Row: File Title & Actions -->
+				<!-- Top Row: File Details & Primary Actions -->
 				<div class="aips-logs-toolbar-top">
 					<div class="aips-logs-active-file-info">
-						<span class="aips-logs-active-filename" id="aips-logs-current-filename">
-							<?php echo esc_html($active_file_name ?: __('No file selected', 'ai-post-scheduler')); ?>
+						<span class="aips-logs-active-display-name" id="aips-logs-current-display-name">
+							<?php echo esc_html($active_display_name ?: __('No file selected', 'ai-post-scheduler')); ?>
+						</span>
+						<span class="aips-logs-active-raw-name" id="aips-logs-current-filename">
+							<?php echo esc_html($active_file_name); ?>
 						</span>
 						<span class="aips-badge aips-badge-neutral" id="aips-logs-current-filesize">&mdash;</span>
 						<span class="aips-badge aips-badge-info" id="aips-logs-current-linecount">&mdash;</span>
 					</div>
 
 					<div class="aips-logs-actions">
-						<!-- Auto-Refresh Toggle -->
-						<div class="aips-logs-autorefresh-wrap">
-							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-logs-autorefresh-toggle" title="<?php esc_attr_e('Toggle auto-refresh / live polling', 'ai-post-scheduler'); ?>">
+						<!-- Auto-Refresh Button & Interval Dropdown Group -->
+						<div class="aips-logs-refresh-group">
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-logs-refresh-btn" id="aips-logs-autorefresh-toggle" title="<?php esc_attr_e('Toggle live tail auto-refresh', 'ai-post-scheduler'); ?>">
 								<span class="dashicons dashicons-controls-play" id="aips-logs-autorefresh-icon"></span>
 								<span id="aips-logs-autorefresh-label"><?php esc_html_e('Auto-Refresh', 'ai-post-scheduler'); ?></span>
 							</button>
-							<select id="aips-logs-autorefresh-interval" class="aips-form-select aips-form-select-sm" title="<?php esc_attr_e('Refresh Interval', 'ai-post-scheduler'); ?>">
+							<select id="aips-logs-autorefresh-interval" class="aips-form-select aips-form-select-sm aips-logs-interval-select" title="<?php esc_attr_e('Refresh interval', 'ai-post-scheduler'); ?>">
 								<option value="3000">3s</option>
 								<option value="5000" selected>5s</option>
 								<option value="10000">10s</option>
@@ -104,7 +114,7 @@ $active_file_name = !empty($log_files[0]['name']) ? $log_files[0]['name'] : '';
 						</div>
 
 						<!-- Copy to Clipboard -->
-						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-logs-copy-btn" title="<?php esc_attr_e('Copy current view to clipboard', 'ai-post-scheduler'); ?>">
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-logs-copy-btn" title="<?php esc_attr_e('Copy current log view to clipboard', 'ai-post-scheduler'); ?>">
 							<span class="dashicons dashicons-clipboard"></span>
 							<span><?php esc_html_e('Copy', 'ai-post-scheduler'); ?></span>
 						</button>
@@ -117,7 +127,7 @@ $active_file_name = !empty($log_files[0]['name']) ? $log_files[0]['name'] : '';
 
 						<!-- Clear / Delete Action Dropdown -->
 						<div class="aips-dropdown aips-logs-manage-dropdown">
-							<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger-hover" id="aips-logs-manage-menu-btn" aria-haspopup="true" aria-expanded="false" title="<?php esc_attr_e('Manage Log File', 'ai-post-scheduler'); ?>">
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger-hover aips-logs-manage-trigger" id="aips-logs-manage-menu-btn" aria-haspopup="true" aria-expanded="false" title="<?php esc_attr_e('Manage Log File', 'ai-post-scheduler'); ?>">
 								<span class="dashicons dashicons-trash"></span>
 								<span class="dashicons dashicons-arrow-down-alt2"></span>
 							</button>
@@ -135,47 +145,51 @@ $active_file_name = !empty($log_files[0]['name']) ? $log_files[0]['name'] : '';
 					</div>
 				</div>
 
-				<!-- Bottom Row: Filters, Search, Lines & View Mode -->
+				<!-- Bottom Row: Filters, Search, Lines & Segmented View Switcher -->
 				<div class="aips-logs-toolbar-bottom">
-					<!-- Level Filter Pills -->
+					<!-- Multi-Level Filter Pills -->
 					<div class="aips-logs-level-filters" role="group" aria-label="<?php esc_attr_e('Filter logs by level', 'ai-post-scheduler'); ?>">
 						<button type="button" class="aips-filter-pill is-active" data-level="all"><?php esc_html_e('All', 'ai-post-scheduler'); ?></button>
 						<button type="button" class="aips-filter-pill aips-pill-error" data-level="error"><?php esc_html_e('Error', 'ai-post-scheduler'); ?></button>
 						<button type="button" class="aips-filter-pill aips-pill-warning" data-level="warning"><?php esc_html_e('Warning', 'ai-post-scheduler'); ?></button>
 						<button type="button" class="aips-filter-pill aips-pill-info" data-level="info"><?php esc_html_e('Info', 'ai-post-scheduler'); ?></button>
+						<button type="button" class="aips-filter-pill aips-pill-debug" data-level="debug"><?php esc_html_e('Debug', 'ai-post-scheduler'); ?></button>
 					</div>
 
-					<!-- Search Box -->
-					<div class="aips-logs-search-wrap">
-						<span class="dashicons dashicons-search aips-search-icon"></span>
-						<input type="text" id="aips-logs-search-input" class="aips-form-input aips-form-input-sm" placeholder="<?php esc_attr_e('Filter log entries…', 'ai-post-scheduler'); ?>" />
-						<button type="button" class="aips-logs-search-clear" id="aips-logs-search-clear" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" style="display:none;">
-							<span class="dashicons dashicons-dismiss"></span>
-						</button>
-					</div>
+					<!-- Right Controls: Search, Lines & Segmented Control -->
+					<div class="aips-logs-controls-right">
+						<!-- Search Box -->
+						<div class="aips-logs-search-wrap">
+							<span class="dashicons dashicons-search aips-search-icon"></span>
+							<input type="text" id="aips-logs-search-input" class="aips-form-input aips-form-input-sm" placeholder="<?php esc_attr_e('Filter log entries…', 'ai-post-scheduler'); ?>" />
+							<button type="button" class="aips-logs-search-clear" id="aips-logs-search-clear" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" style="display:none;">
+								<span class="dashicons dashicons-dismiss"></span>
+							</button>
+						</div>
 
-					<!-- Lines Selector -->
-					<div class="aips-logs-lines-wrap">
-						<label for="aips-logs-lines-select"><?php esc_html_e('Lines:', 'ai-post-scheduler'); ?></label>
-						<select id="aips-logs-lines-select" class="aips-form-select aips-form-select-sm">
-							<option value="100" selected>100</option>
-							<option value="250">250</option>
-							<option value="500">500</option>
-							<option value="1000">1,000</option>
-							<option value="2000">2,000 (Max Preview)</option>
-						</select>
-					</div>
+						<!-- Compact Lines Selector -->
+						<div class="aips-logs-lines-wrap">
+							<label for="aips-logs-lines-select"><?php esc_html_e('Lines:', 'ai-post-scheduler'); ?></label>
+							<select id="aips-logs-lines-select" class="aips-form-select aips-form-select-sm aips-logs-lines-select">
+								<option value="100" selected>100</option>
+								<option value="250">250</option>
+								<option value="500">500</option>
+								<option value="1000">1,000</option>
+								<option value="2000">2,000</option>
+							</select>
+						</div>
 
-					<!-- View Mode Switcher -->
-					<div class="aips-logs-view-toggle">
-						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary is-active" id="aips-logs-view-formatted-btn">
-							<span class="dashicons dashicons-list-view"></span>
-							<span><?php esc_html_e('Formatted', 'ai-post-scheduler'); ?></span>
-						</button>
-						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-logs-view-raw-btn">
-							<span class="dashicons dashicons-editor-code"></span>
-							<span><?php esc_html_e('Raw', 'ai-post-scheduler'); ?></span>
-						</button>
+						<!-- Segmented View Mode Switcher -->
+						<div class="aips-segmented-control" role="tablist" aria-label="<?php esc_attr_e('View Mode', 'ai-post-scheduler'); ?>">
+							<button type="button" class="aips-segmented-btn is-active" id="aips-logs-view-formatted-btn" role="tab" aria-selected="true">
+								<span class="dashicons dashicons-list-view"></span>
+								<span><?php esc_html_e('Formatted', 'ai-post-scheduler'); ?></span>
+							</button>
+							<button type="button" class="aips-segmented-btn" id="aips-logs-view-raw-btn" role="tab" aria-selected="false">
+								<span class="dashicons dashicons-editor-code"></span>
+								<span><?php esc_html_e('Raw', 'ai-post-scheduler'); ?></span>
+							</button>
+						</div>
 					</div>
 				</div>
 			</div><!-- /.aips-logs-toolbar -->
