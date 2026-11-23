@@ -2474,6 +2474,23 @@ button.aips-btn-secondary:active {
     word-break: break-word;
 }
 
+.aips-schedule-history-loading {
+    text-align: center;
+    padding: var(--aips-space-5);
+}
+
+.aips-schedule-history-empty {
+    display: none;
+    padding: 40px var(--aips-space-5);
+}
+
+.aips-schedule-history-list {
+    display: none;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
 .aips-content-preview-box .aips-modal-content-body {
     white-space: pre-wrap;
     line-height: 1.8;
@@ -6688,6 +6705,11 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 	display: block;
 }
 
+.aips-builder-description {
+	margin-top: 0;
+	margin-bottom: 12px;
+}
+
 /* Cadence Segmented Tabs */
 .aips-cadence-tabs {
 	display: flex;
@@ -6735,6 +6757,39 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 	color: #64748b;
 	margin-bottom: 6px;
 	display: block;
+}
+
+.aips-cadence-pane {
+	display: none;
+}
+
+.aips-cadence-pane.active {
+	display: block;
+}
+
+.aips-cadence-pane-desc {
+	margin: 0;
+}
+
+.aips-cadence-date-input {
+	max-width: 220px;
+}
+
+.aips-cadence-interval-val {
+	width: 65px;
+}
+
+.aips-cadence-interval-unit {
+	max-width: 130px;
+}
+
+.aips-builder-time-label {
+	margin: 0;
+}
+
+.aips-builder-time-hint {
+	margin-top: 4px;
+	display: none;
 }
 
 /* Contextual button groups (Weekdays, Hourly steps, Monthly days) */
@@ -9900,9 +9955,9 @@ tr.aips-row-details > td {
 	display: inline-flex;
 	align-items: stretch;
 	gap: 0;
-	border: 1px solid var(--aips-gray-300, #dcdcde);
+	border: 1px solid var(--aips-gray-100, #dcdcde);
 	border-radius: var(--aips-radius-md, 6px);
-	background: #fff;
+	background: var(--aips-white, #ffffff);
 }
 
 .aips-schedules-table-wrap .aips-sched-actions-group .aips-btn {
@@ -9910,7 +9965,7 @@ tr.aips-row-details > td {
 	border-radius: 0;
 	box-shadow: none;
 	margin: 0;
-	background: #fff;
+	background: var(--aips-white, #ffffff);
 	color: var(--aips-gray-700, #3c434a);
 }
 
@@ -9934,7 +9989,7 @@ tr.aips-row-details > td {
 
 .aips-schedules-table-wrap .aips-sched-actions-group .aips-row-action-overflow-toggle {
 	border-radius: 0 5px 5px 0;
-	border-left: 1px solid var(--aips-gray-300, #dcdcde);
+	border-left: 1px solid var(--aips-gray-100, #dcdcde);
 	padding: 0 8px;
 	height: 30px;
 	line-height: 28px;
@@ -9946,7 +10001,7 @@ tr.aips-row-details > td {
 
 .aips-schedules-table-wrap .aips-sched-actions-group .aips-btn:hover,
 .aips-schedules-table-wrap .aips-sched-actions-group .aips-btn:focus-visible {
-	background: var(--aips-gray-50, #f6f7f7);
+	background: var(--aips-gray-tint, #f6f7f7);
 	color: var(--aips-gray-900, #1d2327);
 	position: relative;
 	z-index: 1;
@@ -9957,9 +10012,9 @@ tr.aips-row-details > td {
 	top: calc(100% + 4px);
 	right: 0;
 	min-width: 170px;
-	background: #fff;
-	border: 1px solid var(--aips-gray-300, #dcdcde);
-	border-radius: 6px;
+	background: var(--aips-white, #ffffff);
+	border: 1px solid var(--aips-gray-100, #dcdcde);
+	border-radius: var(--aips-radius-md, 6px);
 	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 	padding: 4px 0;
 	z-index: 100;
