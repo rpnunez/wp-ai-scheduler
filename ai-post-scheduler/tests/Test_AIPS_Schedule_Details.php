@@ -242,8 +242,8 @@ class Test_AIPS_Schedule_Details extends WP_UnitTestCase {
 		$details = $service->get_details($fixture['schedule_id'], AIPS_Unified_Schedule_Service::TYPE_TEMPLATE);
 
 		$this->assertIsArray($details);
-		$this->assertSame(10, $details['recent_limit']);
-		$this->assertCount(10, $details['recent']);
+		$this->assertSame(5, $details['recent_limit']);
+		$this->assertCount(5, $details['recent']);
 
 		$ids = array();
 		foreach ($details['recent'] as $item) {
@@ -251,10 +251,14 @@ class Test_AIPS_Schedule_Details extends WP_UnitTestCase {
 			$ids[] = $item['title'];
 		}
 		$this->assertSame('Generated 11', $details['recent'][0]['title']);
-		$this->assertSame('Generated 2', $details['recent'][9]['title']);
-		$this->assertCount(10, array_unique($ids));
+		$this->assertSame('Generated 7', $details['recent'][4]['title']);
+		$this->assertCount(5, array_unique($ids));
 		$this->assertSame('draft', $details['recent'][0]['status']);
 		$this->assertNotEmpty($details['recent'][0]['time_display']);
+
+		$this->assertArrayHasKey('template', $details);
+		$this->assertSame($fixture['template_id'], $details['template']['id']);
+		$this->assertNotEmpty($details['template']['name']);
 
 		$this->assertSame('healthy', $details['health']['state']);
 		$this->assertNull($details['health']['last_error']);

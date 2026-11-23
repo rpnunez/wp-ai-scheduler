@@ -152,16 +152,26 @@
 		renderDetails: function(data, id, type) {
 			var l10n     = window.aipsScheduleL10n || {};
 			var activity = data.activity || {};
-			var limit    = data.recent_limit || 10;
+			var limit    = data.recent_limit || 5;
 
 			var recentTitle = (l10n.recentOutputTitle || 'Last %d generated').replace('%d', limit);
 
 			return AIPS.Templates.renderRaw('aips-tmpl-sched-details', {
+				template_card: this.renderTemplate(data.template || {}),
 				stats: this.renderStats(activity.stats || []),
 				stages: this.renderStages(activity.stages || []),
 				health: this.renderHealth(data.health || {}, id, type),
 				recent_title: AIPS.Templates.escape(recentTitle),
 				recent: this.renderRecent(data.recent || [])
+			});
+		},
+
+		renderTemplate: function(template) {
+			if (!template || !template.name) {
+				return '';
+			}
+			return AIPS.Templates.render('aips-tmpl-sched-template', {
+				name: template.name
 			});
 		},
 

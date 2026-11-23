@@ -507,7 +507,7 @@ class AIPS_Unified_Schedule_Service {
 	 * @param int    $recent_limit Number of recent output items to return.
 	 * @return array|WP_Error {activity, health, recent, recent_limit} or WP_Error.
 	 */
-	public function get_details($id, $type, $recent_limit = 10) {
+	public function get_details($id, $type, $recent_limit = 5) {
 		$id           = absint($id);
 		$recent_limit = max(1, min(50, absint($recent_limit)));
 
@@ -520,9 +520,20 @@ class AIPS_Unified_Schedule_Service {
 			return new WP_Error('not_found', __('Schedule not found.', 'ai-post-scheduler'));
 		}
 
+		$template_name = '';
+		if (self::TYPE_TEMPLATE === $row['type']) {
+			$template_name = !empty($row['template_name']) ? $row['template_name'] : (!empty($row['subtitle']) ? $row['subtitle'] : __('Unknown Template', 'ai-post-scheduler'));
+		} elseif (!empty($row['template_name'])) {
+			$template_name = $row['template_name'];
+		}
+
 		return array(
 			'activity'     => $this->build_activity($row),
 			'health'       => $this->build_health($row),
+			'template'     => array(
+				'name' => $template_name,
+				'id'   => !empty($row['template_id']) ? (int) $row['template_id'] : 0,
+			),
 			'recent'       => $this->get_recent_output($row, $recent_limit),
 			'recent_limit' => $recent_limit,
 		);
@@ -1001,6 +1012,7 @@ class AIPS_Unified_Schedule_Service {
 				'can_delete'           => empty($schedule->campaign_id),
 				'history_id'           => $schedule_history_id ? $schedule_history_id : null,
 				'template_id'          => (int) $schedule->template_id,
+				'template_name'        => $schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler'),
 				'circuit_state'        => isset($schedule->circuit_state) ? $schedule->circuit_state : 'closed',
 				'batch_progress'       => $batch_progress_data,
 				'has_incomplete_batch' => $has_incomplete_batch,

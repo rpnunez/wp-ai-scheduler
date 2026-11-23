@@ -33,20 +33,31 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 <!-- ============================================================ -->
 <script type="text/html" id="aips-tmpl-sched-details">
 	<div class="aips-sched-details-grid">
-		<section class="aips-sched-panel aips-sched-panel-activity">
-			<h4 class="aips-sched-panel-title"><?php esc_html_e('Activity', 'ai-post-scheduler'); ?></h4>
-			<div class="aips-sched-stats">{{stats}}</div>
-			{{stages}}
-		</section>
-		<section class="aips-sched-panel aips-sched-panel-health">
-			<h4 class="aips-sched-panel-title"><?php esc_html_e('Health', 'ai-post-scheduler'); ?></h4>
-			{{health}}
-		</section>
 		<section class="aips-sched-panel aips-sched-panel-recent">
 			<h4 class="aips-sched-panel-title">{{recent_title}}</h4>
 			{{recent}}
 		</section>
+		<div class="aips-sched-details-right">
+			{{template_card}}
+			<section class="aips-sched-panel aips-sched-panel-health">
+				<h4 class="aips-sched-panel-title"><?php esc_html_e('Health', 'ai-post-scheduler'); ?></h4>
+				{{health}}
+			</section>
+			<section class="aips-sched-panel aips-sched-panel-activity">
+				<h4 class="aips-sched-panel-title"><?php esc_html_e('Activity', 'ai-post-scheduler'); ?></h4>
+				<div class="aips-sched-stats">{{stats}}</div>
+				{{stages}}
+			</section>
+		</div>
 	</div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-template">
+	<section class="aips-sched-panel aips-sched-panel-template">
+		<h4 class="aips-sched-panel-title"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></h4>
+		<div class="aips-sched-template-card">
+			<span class="aips-sched-template-name">{{name}}</span>
+		</div>
+	</section>
 </script>
 <script type="text/html" id="aips-tmpl-sched-stat">
 	<div class="aips-sched-stat"><span class="aips-sched-stat-value">{{value}}</span><span class="aips-sched-stat-label">{{label}}</span></div>

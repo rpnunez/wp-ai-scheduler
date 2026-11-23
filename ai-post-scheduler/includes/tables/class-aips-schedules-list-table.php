@@ -443,8 +443,6 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 
 		$html .= '<div class="aips-sched-meta">';
 		$html .= $this->render_type_chip($item['type']);
-		$html .= '<span class="aips-sched-meta-sep" aria-hidden="true">·</span>';
-		$html .= '<span class="aips-sched-count">' . esc_html($this->get_output_count_label($item)) . '</span>';
 
 		if (!empty($item['campaign_id']) && isset($this->campaign_map[(int) $item['campaign_id']])) {
 			$campaign     = $this->campaign_map[(int) $item['campaign_id']];
@@ -453,10 +451,6 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 			$html .= '<a class="aips-sched-campaign" href="' . esc_url($campaign_url) . '">' . esc_html($campaign->name) . '</a>';
 		}
 		$html .= '</div>';
-
-		if (!empty($item['subtitle'])) {
-			$html .= '<div class="aips-sched-subtitle" title="' . esc_attr($item['subtitle']) . '">' . esc_html($item['subtitle']) . '</div>';
-		}
 
 		// WordPress native row actions (revealed on hover).
 		$actions = array();
@@ -584,9 +578,8 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 		$menu_id              = 'aips-schedule-actions-' . sanitize_key($item['type'] . '-' . $item['id']);
 
 		$html  = '<div class="cell-actions aips-sched-actions">';
+		$html .= '<div class="aips-row-action-group aips-sched-actions-group">';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-unified-run-now" data-id="' . $id . '" data-type="' . $type . '"><span class="dashicons dashicons-controls-play" aria-hidden="true"></span> ' . esc_html__('Run Now', 'ai-post-scheduler') . '</button>';
-
-		$html .= '<div class="aips-row-action-group">';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="' . esc_attr($menu_id) . '" title="' . esc_attr__('More actions', 'ai-post-scheduler') . '"><span class="dashicons dashicons-ellipsis" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__('More actions', 'ai-post-scheduler') . '</span></button>';
 		$html .= '<div id="' . esc_attr($menu_id) . '" class="aips-row-action-menu" hidden>';
 

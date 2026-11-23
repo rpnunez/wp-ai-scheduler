@@ -9630,9 +9630,13 @@ tr.aips-row-details > td {
 .aips-schedules-table-wrap .wp-list-table thead th,
 .aips-schedules-table-wrap .wp-list-table thead td,
 .aips-schedules-table-wrap .wp-list-table tfoot th,
-.aips-schedules-table-wrap .wp-list-table tfoot td {
+.aips-schedules-table-wrap .wp-list-table tfoot td,
+.aips-schedules-table-wrap .wp-list-table thead th.check-column,
+.aips-schedules-table-wrap .wp-list-table thead th.column-cb,
+.aips-schedules-table-wrap .wp-list-table thead td.check-column,
+.aips-schedules-table-wrap .wp-list-table thead td.column-cb {
 	padding: 10px var(--aips-space-4);
-	border-bottom: 1px solid var(--aips-gray-100);
+	border-bottom: 1px solid var(--aips-gray-100) !important;
 }
 
 .aips-schedules-table-wrap .wp-list-table thead th.sortable a,
@@ -9642,10 +9646,20 @@ tr.aips-row-details > td {
 }
 
 .aips-schedules-table-wrap .wp-list-table .column-cb,
-.aips-schedules-table-wrap .wp-list-table .check-column {
-	width: 44px;
-	padding-left: var(--aips-space-4);
-	padding-right: 0;
+.aips-schedules-table-wrap .wp-list-table .check-column,
+.aips-schedules-table-wrap .wp-list-table thead th.check-column,
+.aips-schedules-table-wrap .wp-list-table thead th.column-cb {
+	width: 32px !important;
+	max-width: 32px;
+	padding: 10px 0 10px 12px;
+	text-align: center;
+	box-sizing: border-box;
+}
+
+.aips-schedules-table-wrap .wp-list-table thead th.check-column input[type="checkbox"],
+.aips-schedules-table-wrap .wp-list-table tbody th.check-column input[type="checkbox"] {
+	margin: 0;
+	vertical-align: middle;
 }
 
 .aips-schedules-table-wrap .wp-list-table .column-timing {
@@ -9680,7 +9694,11 @@ tr.aips-row-details > td {
 }
 
 .aips-schedules-table-wrap .wp-list-table tbody tr.aips-unified-row > th.check-column {
-	padding-right: 0;
+	width: 32px !important;
+	max-width: 32px;
+	padding: 14px 0 14px 12px;
+	text-align: center;
+	box-sizing: border-box;
 }
 
 .aips-schedules-table-wrap .wp-list-table tbody tr.aips-unified-row:first-child > * {
@@ -9875,7 +9893,76 @@ tr.aips-row-details > td {
 .aips-sched-actions {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+}
+
+.aips-schedules-table-wrap .aips-sched-actions-group {
+	position: relative;
+	display: inline-flex;
+	align-items: stretch;
+	gap: 0;
+	border: 1px solid var(--aips-gray-300, #dcdcde);
+	border-radius: var(--aips-radius-md, 6px);
+	background: #fff;
+}
+
+.aips-schedules-table-wrap .aips-sched-actions-group .aips-btn {
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+	margin: 0;
+	background: #fff;
+	color: var(--aips-gray-700, #3c434a);
+}
+
+.aips-schedules-table-wrap .aips-sched-actions-group .aips-unified-run-now {
+	border-radius: 5px 0 0 5px;
+	padding: 0 10px;
+	height: 30px;
+	line-height: 28px;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	cursor: pointer;
+}
+
+.aips-schedules-table-wrap .aips-sched-actions-group .aips-unified-run-now .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	line-height: 14px;
+}
+
+.aips-schedules-table-wrap .aips-sched-actions-group .aips-row-action-overflow-toggle {
+	border-radius: 0 5px 5px 0;
+	border-left: 1px solid var(--aips-gray-300, #dcdcde);
+	padding: 0 8px;
+	height: 30px;
+	line-height: 28px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+
+.aips-schedules-table-wrap .aips-sched-actions-group .aips-btn:hover,
+.aips-schedules-table-wrap .aips-sched-actions-group .aips-btn:focus-visible {
+	background: var(--aips-gray-50, #f6f7f7);
+	color: var(--aips-gray-900, #1d2327);
+	position: relative;
+	z-index: 1;
+}
+
+.aips-schedules-table-wrap .aips-sched-actions-group .aips-row-action-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	min-width: 170px;
+	background: #fff;
+	border: 1px solid var(--aips-gray-300, #dcdcde);
+	border-radius: 6px;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+	padding: 4px 0;
+	z-index: 100;
 }
 
 /* --- Enabled / Paused switch --------------------------------------------- */
@@ -9990,8 +10077,8 @@ tr.aips-row-details > td {
 }
 
 .aips-schedules-table-wrap tr.aips-schedule-details-row .aips-row-details-content {
-	margin: 0 var(--aips-space-4) var(--aips-space-4) 74px;
-	padding: var(--aips-space-4) var(--aips-space-5);
+	margin: 0 var(--aips-space-4) 10px 48px;
+	padding: 14px 18px;
 	border: 1px solid var(--aips-gray-100);
 	border-left: 3px solid var(--aips-primary);
 	box-shadow: none;
@@ -10019,8 +10106,27 @@ tr.aips-row-details > td {
 
 .aips-sched-details-grid {
 	display: grid;
-	grid-template-columns: minmax(200px, 1fr) minmax(200px, 1fr) minmax(320px, 1.6fr);
+	grid-template-columns: 1fr 1fr;
 	gap: var(--aips-space-6);
+	align-items: start;
+}
+
+.aips-sched-details-right {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-3);
+	min-width: 0;
+}
+
+.aips-sched-template-card {
+	display: flex;
+	align-items: center;
+	padding: 8px 10px;
+	border-radius: var(--aips-radius-md);
+	background: var(--aips-gray-50);
+	color: var(--aips-gray-900);
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-medium);
 }
 
 .aips-sched-panel {
@@ -10243,13 +10349,10 @@ a.aips-sched-recent-title:focus {
 	color: var(--aips-sched-rose-fg);
 }
 
-@media screen and (max-width: 1280px) {
+@media screen and (max-width: 900px) {
 	.aips-sched-details-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
-	.aips-sched-panel-recent {
-		grid-column: 1 / -1;
+		grid-template-columns: 1fr;
+		gap: var(--aips-space-4);
 	}
 }
 

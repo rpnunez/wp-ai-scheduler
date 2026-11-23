@@ -1261,7 +1261,7 @@ class AIPS_Schedule_Controller {
         }
 
         $service = new AIPS_Unified_Schedule_Service();
-        $details = $service->get_details($id, $type, 10);
+        $details = $service->get_details($id, $type, 5);
 
         if (is_wp_error($details)) {
             AIPS_Ajax_Response::error($details->get_error_message(), $details->get_error_code());

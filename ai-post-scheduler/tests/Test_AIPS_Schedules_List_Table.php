@@ -139,15 +139,17 @@ class Test_AIPS_Schedules_List_Table extends WP_UnitTestCase {
 		$this->assertStringContainsString('Stage 2 · Posts: Once Daily', $html);
 	}
 
-	public function test_title_shows_type_chip_and_output_count() {
+	public function test_title_shows_type_chip_without_output_count_or_subtitle() {
 		$html = $this->call('column_title', array($this->make_item(array(
 			'type'       => AIPS_Unified_Schedule_Service::TYPE_BLUEPRINT,
+			'subtitle'   => 'Persona Niche',
 			'can_delete' => false,
 		))));
 
 		$this->assertStringContainsString('aips-sched-type--blueprint', $html);
 		$this->assertStringContainsString('Blueprint', $html);
-		$this->assertStringContainsString('37 posts', $html);
+		$this->assertStringNotContainsString('37 posts', $html);
+		$this->assertStringNotContainsString('Persona Niche', $html);
 		$this->assertStringContainsString('aips-row-expand-toggle', $html);
 		// Hover row actions are kept.
 		$this->assertStringContainsString('row-actions', $html);
@@ -155,13 +157,13 @@ class Test_AIPS_Schedules_List_Table extends WP_UnitTestCase {
 		$this->assertStringNotContainsString('aips-sched-alert', $html);
 	}
 
-	public function test_title_counts_topics_for_topic_schedules() {
-		$html = $this->call('column_title', array($this->make_item(array(
-			'type'        => AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC,
-			'stats_count' => 1,
-		))));
+	public function test_column_actions_renders_flush_button_group() {
+		$html = $this->call('column_actions', array($this->make_item()));
 
-		$this->assertStringContainsString('1 topic', $html);
+		$this->assertStringContainsString('aips-sched-actions-group', $html);
+		$this->assertStringContainsString('aips-unified-run-now', $html);
+		$this->assertStringContainsString('aips-row-action-overflow-toggle', $html);
+		$this->assertStringContainsString('aips-row-action-menu', $html);
 	}
 
 	public function test_title_flags_schedules_that_need_attention() {
