@@ -2357,6 +2357,15 @@ button.aips-btn-secondary:active {
     display: none !important;
 }
 
+.aips-modal[style*="display: block"] {
+    display: flex !important;
+}
+
+.aips-modal.is-active,
+.aips-modal.open {
+    display: flex !important;
+}
+
 .aips-modal-content {
     background: #fff;
     border-radius: 8px;

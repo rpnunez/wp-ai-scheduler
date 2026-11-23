@@ -125,7 +125,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 <!-- ============================================================ -->
 <!-- Add / Edit Template Schedule Modal                           -->
 <!-- ============================================================ -->
-<div id="aips-schedule-modal" class="aips-modal"
+<div id="aips-schedule-modal" class="aips-modal" style="display:none;"
 	data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>"
 	data-preselect-structure="<?php echo esc_attr($preselect_structure_id); ?>">
 	<div class="aips-modal-content">
@@ -309,7 +309,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 <!-- ============================================================ -->
 <!-- Schedule History Modal                                       -->
 <!-- ============================================================ -->
-<div id="aips-schedule-history-modal" class="aips-modal"
+<div id="aips-schedule-history-modal" class="aips-modal" style="display:none;"
 	role="dialog" aria-modal="true">
 	<div class="aips-modal-content aips-modal-large">
 		<div class="aips-modal-header">
