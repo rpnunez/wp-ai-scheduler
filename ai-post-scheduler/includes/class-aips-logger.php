@@ -230,7 +230,7 @@ class AIPS_Logger implements AIPS_Logger_Interface {
     /**
      * Gets a list of available log files.
      *
-     * @return array List of log files with size and modified dates.
+     * @return array List of log files with size, bytes, modified dates, and active status.
      */
     public function get_log_files() {
         $upload_dir = wp_upload_dir();
@@ -247,6 +247,7 @@ class AIPS_Logger implements AIPS_Logger_Interface {
         }
 
         $log_files = array();
+        $active_basename = basename($this->log_file);
         
         foreach ($files as $file) {
             if (!is_readable($file)) {
@@ -255,14 +256,269 @@ class AIPS_Logger implements AIPS_Logger_Interface {
 
             $file_size = filesize($file);
             $file_mtime = filemtime($file);
+            $base_name = basename($file);
+
+            // Generate human-friendly display name from filename date
+            $display_name = $base_name;
+            if (preg_match('/^aips-(\d{4}-\d{2}-\d{2})/', $base_name, $m)) {
+                $date_str = $m[1];
+                $today_str = AIPS_DateTime::now()->toDisplay('Y-m-d');
+                $yesterday_str = date('Y-m-d', strtotime('-1 day', strtotime($today_str)));
+                $timestamp = strtotime($date_str);
+
+                if ($date_str === $today_str) {
+                    $display_name = sprintf(__('Today &mdash; %s', 'ai-post-scheduler'), date('M j, Y', $timestamp));
+                } elseif ($date_str === $yesterday_str) {
+                    $display_name = sprintf(__('Yesterday &mdash; %s', 'ai-post-scheduler'), date('M j, Y', $timestamp));
+                } else {
+                    $display_name = date('M j, Y', $timestamp);
+                }
+            }
 
             $log_files[] = array(
-                'name' => basename($file),
-                'size' => $file_size !== false ? size_format($file_size) : size_format(0),
-                'modified' => $file_mtime !== false ? date('Y-m-d H:i:s', $file_mtime) : 'Unknown',
+                'name'         => $base_name,
+                'display_name' => $display_name,
+                'bytes'        => $file_size !== false ? (int) $file_size : 0,
+                'size'         => $file_size !== false ? size_format($file_size) : size_format(0),
+                'modified'     => $file_mtime !== false ? date('Y-m-d H:i', $file_mtime) : 'Unknown',
+                'timestamp'    => $file_mtime !== false ? (int) $file_mtime : 0,
+                'is_active'    => ($base_name === $active_basename),
             );
         }
+
+        usort($log_files, function ($a, $b) {
+            return $b['timestamp'] - $a['timestamp'];
+        });
         
         return $log_files;
+    }
+
+    /**
+     * Validates and resolves a log filename securely within the aips-logs directory.
+     * Prevents directory traversal attacks.
+     *
+     * @param string $filename Base filename to validate.
+     * @return string|null Absolute path if valid, null otherwise.
+     */
+    public function validate_log_filename($filename) {
+        if (!is_string($filename) || empty($filename)) {
+            return null;
+        }
+
+        $clean_name = basename(sanitize_file_name($filename));
+        if (!preg_match('/^aips-[a-zA-Z0-9\._-]+\.log$/', $clean_name)) {
+            return null;
+        }
+
+        $upload_dir = wp_upload_dir();
+        $log_dir = wp_normalize_path($upload_dir['basedir'] . '/aips-logs');
+        $target_path = wp_normalize_path($log_dir . '/' . $clean_name);
+
+        if (!file_exists($target_path)) {
+            return null;
+        }
+
+        $real_target = wp_normalize_path((string) realpath($target_path));
+        $real_dir    = wp_normalize_path((string) realpath($log_dir));
+
+        if (empty($real_target) || empty($real_dir)) {
+            return null;
+        }
+
+        if (strpos($real_target, $real_dir . '/') !== 0 && $real_target !== $real_dir) {
+            return null;
+        }
+
+        return $real_target;
+    }
+
+    /**
+     * Retrieves parsed and filtered content from a specific log file.
+     * Reads up to 2MB from the tail using fseek.
+     *
+     * @param string       $filename Log filename.
+     * @param int          $lines    Number of entries to return (default 100, max 2000).
+     * @param string|array $levels   Level filter ('all', or array/comma-string of 'error', 'warning', 'info', 'debug').
+     * @param string       $search   Keyword filter.
+     * @return array|null Array of log data or null if file is invalid.
+     */
+    public function get_log_file_content($filename, $lines = 100, $levels = 'all', $search = '') {
+        $target_path = $this->validate_log_filename($filename);
+        if (!$target_path || !is_readable($target_path)) {
+            return null;
+        }
+
+        $lines = min(2000, max(1, (int) $lines));
+        $search = trim((string) $search);
+
+        // Normalize levels to array of lowercase strings
+        $filter_levels = array();
+        if (is_array($levels)) {
+            $filter_levels = array_filter(array_map('strtolower', array_map('trim', $levels)));
+        } elseif (is_string($levels) && '' !== trim($levels)) {
+            $parts = explode(',', $levels);
+            $filter_levels = array_filter(array_map('strtolower', array_map('trim', $parts)));
+        }
+
+        $apply_level_filter = !empty($filter_levels) && !in_array('all', $filter_levels, true);
+
+        $fp = fopen($target_path, 'r');
+        if ($fp === false) {
+            return null;
+        }
+
+        $filesize = filesize($target_path);
+        if ($filesize === false || $filesize <= 0) {
+            fclose($fp);
+            return array(
+                'file'         => basename($target_path),
+                'total_bytes'  => 0,
+                'total_lines'  => 0,
+                'is_truncated' => false,
+                'entries'      => array(),
+                'raw_content'  => '',
+            );
+        }
+
+        $chunk_size = min($filesize, 2 * 1024 * 1024); // Up to 2MB from end
+        $seek_offset = max(0, $filesize - $chunk_size);
+
+        if (fseek($fp, $seek_offset) === -1) {
+            fclose($fp);
+            return null;
+        }
+
+        $content = fread($fp, $chunk_size);
+        fclose($fp);
+
+        if ($content === false) {
+            return null;
+        }
+
+        $raw_lines = explode("\n", $content);
+        if ($seek_offset > 0 && count($raw_lines) > 0) {
+            array_shift($raw_lines); // Discard incomplete leading line
+        }
+
+        // Group into logical log entries
+        $parsed_entries = array();
+        $current_entry  = null;
+
+        foreach ($raw_lines as $raw_line) {
+            $trimmed = rtrim($raw_line, "\r");
+            if ('' === trim($trimmed)) {
+                continue;
+            }
+
+            // Standard AIPS log pattern: [YYYY-MM-DD HH:MM:SS] [LEVEL] Message
+            if (preg_match('/^\[(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})\]\s*\[([A-Z]+)\]\s*(.*)$/', $trimmed, $matches)) {
+                if ($current_entry !== null) {
+                    $parsed_entries[] = $current_entry;
+                }
+                $current_entry = array(
+                    'timestamp' => $matches[1],
+                    'level'     => strtoupper($matches[2]),
+                    'message'   => $matches[3],
+                    'context'   => '',
+                    'raw'       => $trimmed,
+                );
+            } elseif ($current_entry !== null) {
+                // Continuation line (e.g. Context: {...} or multiline trace)
+                if (strpos(trim($trimmed), 'Context:') === 0) {
+                    $current_entry['context'] .= substr(trim($trimmed), 8);
+                } else {
+                    $current_entry['context'] .= ($current_entry['context'] !== '' ? "\n" : '') . $trimmed;
+                }
+                $current_entry['raw'] .= "\n" . $trimmed;
+            } else {
+                // Unformatted / separator line before any matched header
+                $parsed_entries[] = array(
+                    'timestamp' => '',
+                    'level'     => 'INFO',
+                    'message'   => $trimmed,
+                    'context'   => '',
+                    'raw'       => $trimmed,
+                );
+            }
+        }
+
+        if ($current_entry !== null) {
+            $parsed_entries[] = $current_entry;
+        }
+
+        // Apply level and search filters
+        $filtered = array();
+        foreach ($parsed_entries as $entry) {
+            if ($apply_level_filter) {
+                if (!in_array(strtolower($entry['level']), $filter_levels, true)) {
+                    continue;
+                }
+            }
+
+            if ('' !== $search) {
+                $haystack = $entry['message'] . ' ' . $entry['context'] . ' ' . $entry['level'] . ' ' . $entry['timestamp'];
+                if (stripos($haystack, $search) === false) {
+                    continue;
+                }
+            }
+
+            $filtered[] = $entry;
+        }
+
+        $is_truncated = ($seek_offset > 0) || (count($filtered) > $lines);
+        if (count($filtered) > $lines) {
+            $filtered = array_slice($filtered, -$lines);
+        }
+
+        // Reconstruct raw preview for the raw toggle view
+        $raw_preview = '';
+        foreach ($filtered as $f_entry) {
+            $raw_preview .= $f_entry['raw'] . "\n";
+        }
+
+        return array(
+            'file'         => basename($target_path),
+            'total_bytes'  => (int) $filesize,
+            'total_lines'  => count($filtered),
+            'is_truncated' => $is_truncated,
+            'entries'      => array_values($filtered),
+            'raw_content'  => rtrim($raw_preview, "\n"),
+        );
+    }
+
+    /**
+     * Empties/truncates a specific log file to 0 bytes.
+     *
+     * @param string $filename Log filename.
+     * @return bool True on success, false on failure.
+     */
+    public function empty_log_file($filename) {
+        $target_path = $this->validate_log_filename($filename);
+        if (!$target_path) {
+            return false;
+        }
+
+        $fp = fopen($target_path, 'w');
+        if ($fp === false) {
+            return false;
+        }
+        fclose($fp);
+
+        return true;
+    }
+
+    /**
+     * Deletes a specific log file.
+     *
+     * @param string $filename Log filename.
+     * @return bool True on success, false on failure.
+     */
+    public function delete_log_file($filename) {
+        $target_path = $this->validate_log_filename($filename);
+        if (!$target_path) {
+            return false;
+        }
+
+        return @unlink($target_path);
     }
 }

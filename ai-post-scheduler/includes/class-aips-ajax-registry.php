@@ -265,6 +265,10 @@ class AIPS_Ajax_Registry {
 		'aips_get_ai_error_details'       => 'AIPS_Diagnostics_Controller',
 		'aips_get_ai_error_summary'       => 'AIPS_Diagnostics_Controller',
 		'aips_export_ai_errors'           => 'AIPS_Diagnostics_Controller',
+		'aips_get_log_files'              => 'AIPS_Diagnostics_Controller',
+		'aips_get_log_content'            => 'AIPS_Diagnostics_Controller',
+		'aips_clear_log'                  => 'AIPS_Diagnostics_Controller',
+		'aips_download_log'               => 'AIPS_Diagnostics_Controller',
 
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',

@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Added
+- **Diagnostics Logs Viewer:**
+  - Added dedicated **Logs** rail tab to the Diagnostics Hub (`admin.php?page=aips-diagnostics&tab=logs`) and registered an administrative redirect shortcut (`admin.php?page=aips-logs`).
+  - Implemented a master-detail layout with human-friendly date titles, file sizes, timestamps without seconds, and active status in the sidebar.
+  - Implemented multi-level filtering (All, Error, Warning, Info, Debug) allowing multiple log levels to be viewed simultaneously.
+  - Redesigned toolbar with unified Auto-Refresh button group, compact line limits (100–2,000 entries), native segmented Formatted/Raw switch, live keyword search, clipboard copying, and direct full file download streaming.
+  - Added log management actions with confirmation dialogs supporting both emptying (truncating to 0 bytes) and deleting log files from disk.
+  - Added path traversal guards, strict regex validation, capability checks, and comprehensive unit tests in `Test_AIPS_Diagnostics_Logs.php`.
+
 ### Fixed
 - **Template voice lost on edit:** the template wizard did not restore the saved voice, so opening a template and saving it reset `voice_id` to "No Voice". The voice is now selected when the template loads, and stays selected when the voice list arrives later or a voice search filters it out.
 - **Failed content runs hide the cause:** when the post content request fails, the History run and the returned `WP_Error` now carry the provider's reason (`cause_code`, `cause_message`, e.g. `rate_limit_exceeded`) instead of only "Post generation failed before a usable Post Content could be created."
