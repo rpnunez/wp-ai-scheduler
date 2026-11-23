@@ -2125,6 +2125,53 @@ class AIPS_Settings_Registry {
 				'sanitize_callback' => 'sanitize_text_field',
 			),
 			array(
+				'key'          => 'aips_notif_test_email_actions',
+				'type'         => AIPS_Setting_Definition::TYPE_STRING,
+				'default'      => '',
+				'tab'          => 'settings-notifications',
+				'section'      => 'aips_notifications_delivery_section',
+				'label'        => __( 'Send Test Email', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_ACTION,
+				'control_options' => array(
+					'id'           => 'aips-send-test-email-btn',
+					'button_label' => __( 'Send Test Email', 'ai-post-scheduler' ),
+					'parent_key'   => '_action_virtual',
+					// A type picker sits beside the button so each notification
+					// layout can be checked in a real mail client.
+					'before_html'  => static function() {
+						if ( ! class_exists( 'AIPS_Email_Preview' ) ) {
+							return '';
+						}
+
+						$types = AIPS_Email_Preview::selectable_types();
+						$html  = '<select id="aips-test-email-type" class="aips-select">';
+
+						foreach ( $types as $type => $label ) {
+							$html .= sprintf(
+								'<option value="%1$s">%2$s</option>',
+								esc_attr( $type ),
+								esc_html( $label )
+							);
+						}
+
+						$html .= '</select> ';
+
+						return $html;
+					},
+					'extra_html'   => static function() {
+						$recipient = function_exists( 'wp_get_current_user' ) ? wp_get_current_user()->user_email : '';
+
+						return sprintf(
+							' <span class="description">' .
+							/* translators: %s: recipient email address */
+							esc_html__( 'Sends a sample of the selected notification to %s.', 'ai-post-scheduler' ) .
+							'</span>',
+							'<strong>' . esc_html( $recipient ) . '</strong>'
+						);
+					},
+				),
+			),
+			array(
 				'key'          => 'aips_notification_preferences',
 				'type'         => AIPS_Setting_Definition::TYPE_ARRAY,
 				'default'      => array(

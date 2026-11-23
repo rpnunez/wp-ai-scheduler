@@ -350,14 +350,19 @@ class AIPS_Settings_Form_Renderer {
 		$id    = ! empty( $opts['id'] ) ? $opts['id'] : esc_attr( $key );
 		$extra = ! empty( $opts['extra_html'] ) ? ( is_callable( $opts['extra_html'] ) ? call_user_func( $opts['extra_html'] ) : (string) $opts['extra_html'] ) : '';
 
+		// Optional markup rendered ahead of the button, for actions that need an
+		// input of their own (e.g. a type picker beside "Send Test Email").
+		$before = ! empty( $opts['before_html'] ) ? ( is_callable( $opts['before_html'] ) ? call_user_func( $opts['before_html'] ) : (string) $opts['before_html'] ) : '';
+
 		return sprintf(
 			'<div class="aips-settings-action-row">' .
-			'<button type="button" name="%1$s" id="%2$s" class="%3$s">%4$s</button>%5$s' .
+			'%5$s<button type="button" name="%1$s" id="%2$s" class="%3$s">%4$s</button>%6$s' .
 			'</div>',
 			esc_attr( $key ),
 			esc_attr( $id ),
 			esc_attr( $class ),
 			esc_html( $label ),
+			$before,
 			$extra
 		);
 	}

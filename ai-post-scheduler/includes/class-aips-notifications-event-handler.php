@@ -658,6 +658,34 @@ class AIPS_Notifications_Event_Handler {
 
 		$review_ready = isset($counts['post_ready_for_review']) ? (int) $counts['post_ready_for_review'] : 0;
 
+		// Digest and summary emails list what was generated, with timestamps, so
+		// the rollup carries the rows as well as the totals.
+		$recent = $this->repository->get_recent_for_window(
+			$window_seconds,
+			array('template_generated', 'manual_generation_completed'),
+			5
+		);
+
+		$items = array();
+
+		foreach ($recent as $row) {
+			$row_title = isset($row->title) ? (string) $row->title : '';
+
+			if ('' === $row_title && isset($row->message)) {
+				$row_title = (string) $row->message;
+			}
+
+			if ('' === $row_title) {
+				continue;
+			}
+
+			$items[] = array(
+				'title'      => $row_title,
+				'url'        => isset($row->url) ? (string) $row->url : '',
+				'created_at' => isset($row->created_at) ? (int) $row->created_at : 0,
+			);
+		}
+
 		return array(
 			'generated'    => $generated,
 			'review_ready' => $review_ready,
@@ -665,6 +693,7 @@ class AIPS_Notifications_Event_Handler {
 			'window'       => $window_seconds,
 			'dedupe_key'   => sanitize_key($dedupe_key),
 			'types'        => $counts,
+			'items'        => $items,
 		);
 	}
 

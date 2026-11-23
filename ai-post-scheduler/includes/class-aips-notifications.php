@@ -108,6 +108,30 @@ class AIPS_Notifications {
 	 */
 	private $senders;
 
+	/**
+	 * Builds the structured view model behind the redesigned emails.
+	 *
+	 * @var AIPS_Email_View_Factory
+	 */
+	private $email_view_factory;
+
+	/**
+	 * Renders a view model into an HTML email document.
+	 *
+	 * @var AIPS_Email_Renderer
+	 */
+	private $email_renderer;
+
+	/**
+	 * Plain-text alternative for the email currently being handed to wp_mail().
+	 *
+	 * Held on the instance so the `phpmailer_init` callback can reach it; wp_mail()
+	 * offers no other way to set a multipart alternative body.
+	 *
+	 * @var string
+	 */
+	private $pending_alt_body = '';
+
 	// -----------------------------------------------------------------------
 	// Constructor
 	// -----------------------------------------------------------------------
@@ -133,6 +157,9 @@ class AIPS_Notifications {
 		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
 
 		$this->event_handler = new AIPS_Notifications_Event_Handler($this, $this->repository);
+
+		$this->email_view_factory = new AIPS_Email_View_Factory();
+		$this->email_renderer     = new AIPS_Email_Renderer();
 
 		$this->senders = new AIPS_Notification_Senders(
 			array( $this, 'dispatch_notification' ),
@@ -500,15 +527,36 @@ class AIPS_Notifications {
 	 * @param array                      $vars     Token-replacement map.
 	 * @return bool True when wp_mail reports success.
 	 */
-	private function send_email_notification($to_email, AIPS_Notification_Template $template, array $vars) {
+	private function send_email_notification($to_email, AIPS_Notification_Template $template, array $vars, ?AIPS_Email_View $view = null) {
+		// The subject keeps coming from the template so per-type subject patterns
+		// (and any inbox rule matching them) are unchanged by the redesign.
 		$subject = $template->render_subject($vars);
-		$body    = $template->render_body($vars);
+
+		$body     = '';
+		$alt_body = '';
+
+		if ($view instanceof AIPS_Email_View) {
+			$body = $this->email_renderer->render($view);
+
+			if ('' !== $body) {
+				$alt_body = $this->email_renderer->render_text($view);
+			}
+		}
+
+		if ('' === $body) {
+			// Fallback: the legacy token-replacement body. Reached when no view was
+			// composed (a third-party template registered through the
+			// `aips_notification_templates` hook) or when the layout file is
+			// unavailable.
+			$body = $template->render_body($vars);
+		}
+
 		$headers = array(
 			'Content-Type: text/html; charset=UTF-8',
 			'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
 		);
 
-		$sent = wp_mail($to_email, $subject, $body, $headers);
+		$sent = $this->mail_with_alternative($to_email, $subject, $body, $headers, $alt_body);
 
 		if ($sent) {
 			$history = $this->history_service->create('notification_sent', array());
@@ -549,6 +597,78 @@ class AIPS_Notifications {
 		$history->complete_failure(sprintf(__('Notification email failed for %s', 'ai-post-scheduler'), $to_email));
 
 		return false;
+	}
+
+	/**
+	 * Compose the structured email view for a notification.
+	 *
+	 * Returns null when the factory cannot produce a view, in which case the email
+	 * falls back to the legacy token-replacement body.
+	 *
+	 * @param string $type    Notification type slug.
+	 * @param array  $context Dispatch context: title, message, url, level, meta, vars.
+	 * @return AIPS_Email_View|null
+	 */
+	public function build_email_view($type, array $context = array()) {
+		if (!class_exists('AIPS_Email_View_Factory')) {
+			return null;
+		}
+
+		$view = $this->email_view_factory->build($type, $context);
+
+		return ($view instanceof AIPS_Email_View) ? $view : null;
+	}
+
+	/**
+	 * Render a notification view to HTML.
+	 *
+	 * Exposed so the Settings screen can send a test email (and so tests can
+	 * assert on real rendered output) without duplicating the render pipeline.
+	 *
+	 * @param AIPS_Email_View $view View to render.
+	 * @return string
+	 */
+	public function render_email_view(AIPS_Email_View $view) {
+		return $this->email_renderer->render($view);
+	}
+
+	/**
+	 * Send an HTML email with a plain-text alternative part.
+	 *
+	 * wp_mail() has no parameter for a multipart alternative body, so the text part
+	 * is attached through `phpmailer_init`.  The hook is registered only for the
+	 * duration of this call so nothing else in the request inherits it.
+	 *
+	 * @param string $to_email Recipient address.
+	 * @param string $subject  Subject line.
+	 * @param string $body     HTML body.
+	 * @param array  $headers  Mail headers.
+	 * @param string $alt_body Plain-text alternative, or '' to send HTML only.
+	 * @return bool True when wp_mail() reports success.
+	 */
+	private function mail_with_alternative($to_email, $subject, $body, array $headers, $alt_body = '') {
+		if ('' === (string) $alt_body) {
+			return wp_mail($to_email, $subject, $body, $headers);
+		}
+
+		$this->pending_alt_body = (string) $alt_body;
+
+		$attach_alt_body = function ($phpmailer) {
+			if ('' !== $this->pending_alt_body) {
+				$phpmailer->AltBody = $this->pending_alt_body; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.NotSnakeCaseMemberVar -- PHPMailer property.
+			}
+		};
+
+		add_action('phpmailer_init', $attach_alt_body);
+
+		try {
+			$sent = wp_mail($to_email, $subject, $body, $headers);
+		} finally {
+			remove_action('phpmailer_init', $attach_alt_body);
+			$this->pending_alt_body = '';
+		}
+
+		return $sent;
 	}
 
 	/**
@@ -610,9 +730,19 @@ class AIPS_Notifications {
 				$recipients = $this->parse_notification_emails(isset($options['to_email']) ? $options['to_email'] : '');
 
 				if ($template && !empty($recipients)) {
+					// Compose the structured view once for all recipients.
+					$view = $this->build_email_view($type, array(
+						'title'   => $title,
+						'message' => $message,
+						'url'     => $url,
+						'level'   => $level,
+						'meta'    => is_array($meta) ? $meta : array(),
+						'vars'    => $vars,
+					));
+
 					$email_sent = false;
 					foreach ($recipients as $recipient) {
-						if ($this->send_email_notification($recipient, $template, $vars)) {
+						if ($this->send_email_notification($recipient, $template, $vars, $view)) {
 							$email_sent = true;
 						}
 					}

@@ -105,6 +105,7 @@
 			// --- 4. Connectors & Cache System Controls ---
 			$(document).on('click.aipsConnectorMove', '[data-aips-connector-move]', this.onConnectorMove.bind(this));
 			$(document).on('click.aipsFlushDigest', '#aips-flush-digest-btn', this.onFlushNotificationDigest.bind(this));
+			$(document).on('click.aipsSendTestEmail', '#aips-send-test-email-btn', this.onSendTestNotificationEmail.bind(this));
 			if (typeof AIPS.testConnection === 'function') {
 				$(document).on('click.aipsTestConn', '#aips-test-connection', AIPS.testConnection);
 			}
@@ -650,6 +651,56 @@
 				error: function() {
 					$btn.prop('disabled', false).html(originalHtml);
 					AIPS.Utilities.showToast('Network error while flushing digest.', 'error');
+				}
+			});
+		},
+
+		/**
+		 * Send a sample of the selected notification email to the current user.
+		 *
+		 * Lets the redesigned email layouts be checked in a real mail client
+		 * without waiting for a live event to fire.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onSendTestNotificationEmail: function(e) {
+			e.preventDefault();
+
+			var $btn = $(e.currentTarget);
+			var originalHtml = $btn.html();
+			var type = $('#aips-test-email-type').val();
+
+			if (!type) {
+				AIPS.Utilities.showToast('Choose a notification type first.', 'error');
+				return;
+			}
+
+			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> ' + 'Sending...');
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_send_test_notification_email',
+					nonce: aipsAjax.nonce,
+					notification_type: type
+				},
+				success: function(response) {
+					$btn.prop('disabled', false).html(originalHtml);
+
+					if (response && response.success) {
+						var msg = (response.data && response.data.message) ? response.data.message : 'Test email sent.';
+						AIPS.Utilities.showToast(msg, 'success');
+					} else {
+						var errMsg = (response && response.data && response.data.message) ? response.data.message : 'Failed to send the test email.';
+						AIPS.Utilities.showToast(errMsg, 'error');
+					}
+				},
+				error: function() {
+					$btn.prop('disabled', false).html(originalHtml);
+					AIPS.Utilities.showToast('Network error while sending the test email.', 'error');
 				}
 			});
 		},

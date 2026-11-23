@@ -79,4 +79,17 @@ interface AIPS_Notifications_Repository_Interface {
 	 * @return array
 	 */
 	public function get_type_counts_for_window($seconds, array $types = array());
+
+	/**
+	 * Get the most recent notification rows for a time window.
+	 *
+	 * Used to build the itemised list shown in digest and summary emails, which
+	 * need titles and timestamps rather than just per-type counts.
+	 *
+	 * @param int   $seconds Window in seconds.
+	 * @param array $types   Optional type filters.
+	 * @param int   $limit   Maximum rows to return.
+	 * @return array<int, object> Rows with type, title, url, and created_at.
+	 */
+	public function get_recent_for_window($seconds, array $types = array(), $limit = 10);
 }

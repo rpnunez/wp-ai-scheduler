@@ -14,11 +14,11 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $prefixLengthsPsr4 = array (
-        'P' =>
+        'P' => 
         array (
             'PhpParser\\' => 10,
         ),
-        'D' =>
+        'D' => 
         array (
             'Doctrine\\Instantiator\\' => 22,
             'DeepCopy\\' => 9,
@@ -26,15 +26,15 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $prefixDirsPsr4 = array (
-        'PhpParser\\' =>
+        'PhpParser\\' => 
         array (
             0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
         ),
-        'Doctrine\\Instantiator\\' =>
+        'Doctrine\\Instantiator\\' => 
         array (
             0 => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator',
         ),
-        'DeepCopy\\' =>
+        'DeepCopy\\' => 
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
@@ -170,6 +170,11 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Editor_Controller' => __DIR__ . '/../..' . '/includes/class-aips-editor-controller.php',
         'AIPS_Editor_Directive_Service' => __DIR__ . '/../..' . '/includes/class-aips-editor-directive-service.php',
         'AIPS_Editor_Link_Weave_Service' => __DIR__ . '/../..' . '/includes/class-aips-editor-link-weave-service.php',
+        'AIPS_Email_Preview' => __DIR__ . '/../..' . '/includes/class-aips-email-preview.php',
+        'AIPS_Email_Renderer' => __DIR__ . '/../..' . '/includes/class-aips-email-renderer.php',
+        'AIPS_Email_Theme' => __DIR__ . '/../..' . '/includes/class-aips-email-theme.php',
+        'AIPS_Email_View' => __DIR__ . '/../..' . '/includes/class-aips-email-view.php',
+        'AIPS_Email_View_Factory' => __DIR__ . '/../..' . '/includes/class-aips-email-view-factory.php',
         'AIPS_Embeddings_Background_Process' => __DIR__ . '/../..' . '/includes/class-aips-embeddings-background-process.php',
         'AIPS_Embeddings_Cron' => __DIR__ . '/../..' . '/includes/class-aips-embeddings-cron.php',
         'AIPS_Embeddings_Rate_Limiter' => __DIR__ . '/../..' . '/includes/class-aips-embeddings-rate-limiter.php',
@@ -224,10 +229,17 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Internal_Links_Service' => __DIR__ . '/../..' . '/includes/class-aips-internal-links-service.php',
         'AIPS_Interval_Calculator' => __DIR__ . '/../..' . '/includes/class-aips-interval-calculator.php',
         'AIPS_JSON_Extractor' => __DIR__ . '/../..' . '/includes/class-aips-json-extractor.php',
+        'AIPS_Job_Context' => __DIR__ . '/../..' . '/includes/job/class-aips-job-context.php',
         'AIPS_Job_Definition' => __DIR__ . '/../..' . '/includes/job/class-aips-job-definition.php',
         'AIPS_Job_Dispatcher' => __DIR__ . '/../..' . '/includes/job/class-aips-job-dispatcher.php',
+        'AIPS_Job_Manager' => __DIR__ . '/../..' . '/includes/job/class-aips-job-manager.php',
         'AIPS_Job_Progress_Tracker' => __DIR__ . '/../..' . '/includes/job/class-aips-job-progress-tracker.php',
+        'AIPS_Job_Record' => __DIR__ . '/../..' . '/includes/job/class-aips-job-record.php',
+        'AIPS_Job_Registry' => __DIR__ . '/../..' . '/includes/job/class-aips-job-registry.php',
+        'AIPS_Job_Repository' => __DIR__ . '/../..' . '/includes/job/class-aips-job-repository.php',
         'AIPS_Job_Scheduler' => __DIR__ . '/../..' . '/includes/job/class-aips-job-scheduler.php',
+        'AIPS_Job_Slice_Result' => __DIR__ . '/../..' . '/includes/job/class-aips-job-slice-result.php',
+        'AIPS_Job_Type' => __DIR__ . '/../..' . '/includes/job/class-aips-job-type.php',
         'AIPS_Link_Click_Tracking_Service' => __DIR__ . '/../..' . '/includes/class-aips-link-click-tracking-service.php',
         'AIPS_Link_Clicks_Repository' => __DIR__ . '/../..' . '/includes/class-aips-link-clicks-repository.php',
         'AIPS_Link_Extractor' => __DIR__ . '/../..' . '/includes/class-aips-link-extractor.php',
@@ -425,8 +437,10 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Test_Stub_Logger_For_Suggestions' => __DIR__ . '/../..' . '/tests/Test_Author_Suggestions_Service.php',
         'AIPS_Test_Stub_Manager_Integration' => __DIR__ . '/../..' . '/tests/Test_AIPS_Integration_Manager.php',
         'AIPS_Test_Templates_Clone_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Clone.php',
+        'AIPS_Test_Templates_Get_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Get.php',
         'AIPS_Test_Templates_Save_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Save.php',
         'AIPS_Test_Unavailable_Integration' => __DIR__ . '/../..' . '/tests/Test_AIPS_Integration_Registry.php',
+        'AIPS_Test_Voices_Get_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Get.php',
         'AIPS_Test_WP_AI_Client_Builder' => __DIR__ . '/../..' . '/tests/Test_AIPS_WP_AI_Client_Provider.php',
         'AIPS_Test_WP_AI_Client_Builder_Erroring_Chain' => __DIR__ . '/../..' . '/tests/Test_AIPS_WP_AI_Client_Provider.php',
         'AIPS_Test_WP_AI_Client_Builder_Without_JSON' => __DIR__ . '/../..' . '/tests/Test_AIPS_WP_AI_Client_Provider.php',
@@ -1487,6 +1501,10 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Interval_Calculator' => __DIR__ . '/../..' . '/tests/Test_AIPS_Interval_Calculator.php',
         'Test_AIPS_JSON_Extractor' => __DIR__ . '/../..' . '/tests/Test_AIPS_JSON_Extractor.php',
         'Test_AIPS_Job_Dispatcher' => __DIR__ . '/../..' . '/tests/Test_AIPS_Job_Dispatcher.php',
+        'Test_AIPS_Job_Integration' => __DIR__ . '/../..' . '/tests/Test_AIPS_Job_Integration.php',
+        'Test_AIPS_Job_Manager' => __DIR__ . '/../..' . '/tests/Test_AIPS_Job_Manager.php',
+        'Test_AIPS_Job_Registry' => __DIR__ . '/../..' . '/tests/Test_AIPS_Job_Registry.php',
+        'Test_AIPS_Job_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Job_Repository.php',
         'Test_AIPS_Job_Scheduler' => __DIR__ . '/../..' . '/tests/Test_AIPS_Job_Scheduler.php',
         'Test_AIPS_Link_Click_Tracking_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Link_Click_Tracking_Service.php',
         'Test_AIPS_Link_Extractor' => __DIR__ . '/../..' . '/tests/Test_AIPS_Link_Extractor.php',
@@ -1561,6 +1579,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Similarity_Evaluator_Topics' => __DIR__ . '/../..' . '/tests/Test_AIPS_Similarity_Evaluator_Topics.php',
         'Test_AIPS_Singleton_Instances' => __DIR__ . '/../..' . '/tests/Test_AIPS_Singleton_Instances.php',
         'Test_AIPS_Site_Context' => __DIR__ . '/../..' . '/tests/Test_AIPS_Site_Context.php',
+        'Test_AIPS_Snapshot_Exporter' => __DIR__ . '/../..' . '/tests/Test_AIPS_Snapshot_Exporter.php',
         'Test_AIPS_Sources' => __DIR__ . '/../..' . '/tests/Test_AIPS_Sources.php',
         'Test_AIPS_Sources_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Sources_Controller.php',
         'Test_AIPS_Sources_Cron' => __DIR__ . '/../..' . '/tests/Test_AIPS_Sources_Cron.php',
@@ -1585,6 +1604,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Template_Processor' => __DIR__ . '/../..' . '/tests/Test_AIPS_Template_Processor.php',
         'Test_AIPS_Template_Repository_Post_Type' => __DIR__ . '/../..' . '/tests/Test_AIPS_Template_Repository_Post_Type.php',
         'Test_AIPS_Templates_Controller_Clone' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Clone.php',
+        'Test_AIPS_Templates_Controller_Get' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Get.php',
         'Test_AIPS_Templates_Controller_Preview' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Preview.php',
         'Test_AIPS_Templates_Controller_Save' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Controller_Save.php',
         'Test_AIPS_Templates_Interval' => __DIR__ . '/../..' . '/tests/Test_AIPS_Templates_Interval.php',
@@ -1603,6 +1623,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_Bug_Hunter_Filesystem_Errors' => __DIR__ . '/../..' . '/tests/Test_Bug_Hunter_Filesystem_Errors.php',
         'Test_Bulk_Schedule' => __DIR__ . '/../..' . '/tests/Test_Bulk_Schedule.php',
         'Test_Component_Regeneration_Service' => __DIR__ . '/../..' . '/tests/Test_Component_Regeneration_Service.php',
+        'Test_DevStackTips_Setup_V3' => __DIR__ . '/../..' . '/tests/Test_DevStackTips_Setup_V3.php',
         'Test_Generated_Posts_Controller' => __DIR__ . '/../..' . '/tests/Test_Generated_Posts_Controller.php',
         'Test_Generation_Queue' => __DIR__ . '/../..' . '/tests/Test_Generation_Queue.php',
         'Test_History_Template' => __DIR__ . '/../..' . '/tests/Test_History_Template.php',
