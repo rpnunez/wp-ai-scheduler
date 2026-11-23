@@ -43,7 +43,7 @@ The new architecture eliminates this redundancy by establishing **`AIPS_Settings
 ```
 
 ### 2.1 `AIPS_Setting_Definition`
-Located at `ai-post-scheduler/includes/settings/class-aips-setting-definition.php`.
+Located at `ai-post-scheduler/includes/class-aips-setting-definition.php`.
 Represents an immutable value object defining a single setting's metadata:
 - `key`: Option name in `wp_options` (or array key if `parent_key` is set).
 - `type`: Data type (`string`, `boolean`, `integer`, `float`, `array`, `null`).
@@ -62,15 +62,15 @@ Represents an immutable value object defining a single setting's metadata:
 - `priority`: Ordering weight within the section.
 
 ### 2.2 `AIPS_Settings_Registry`
-Located at `ai-post-scheduler/includes/settings/class-aips-settings-registry.php`.
+Located at `ai-post-scheduler/includes/class-aips-settings-registry.php`.
 Singleton registry providing:
 - Tab definitions (`register_tab()`, `get_tabs()`)
 - Section definitions (`register_section()`, `get_sections()`, `get_sections_by_tab()`)
 - Setting definitions (`register_setting()`, `get_setting()`, `get_settings()`, `get_settings_by_section()`)
-- Option defaults derivation: `get_default_options()` dynamically derives default arrays for `AIPS_Config`.
+- Option defaults derivation: `get_defaults()` dynamically derives default arrays for `AIPS_Config`.
 
 ### 2.3 `AIPS_Settings_Form_Renderer`
-Located at `ai-post-scheduler/includes/settings/class-aips-settings-form-renderer.php`.
+Located at `ai-post-scheduler/includes/class-aips-settings-form-renderer.php`.
 Central UI rendering engine. It handles all HTML markup generation with accessibility best practices:
 - **Toggles / Switches**: Semantic checkboxes with `role="switch"` and `aria-checked`.
 - **Text & Number**: Styled inputs with min, max, step, and placeholders.
@@ -81,7 +81,7 @@ Central UI rendering engine. It handles all HTML markup generation with accessib
 - **Zero Inline JS & CSS**: All event handling is delegated in `admin-settings.js`, styles are tokenized in `admin.css`.
 
 ### 2.4 `AIPS_Settings_Manager`
-Located at `ai-post-scheduler/includes/settings/class-aips-settings-manager.php`.
+Located at `ai-post-scheduler/includes/class-aips-settings-manager.php`.
 Orchestrates WordPress Settings API interactions:
 - Calls `register_setting()` with sanitized schema arguments.
 - Calls `add_settings_section()`.
