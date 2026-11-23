@@ -43,6 +43,10 @@ class AIPS_Diagnostics_Controller {
 		add_action( 'wp_ajax_aips_get_ai_error_details', array( $this, 'ajax_get_ai_error_details' ) );
 		add_action( 'wp_ajax_aips_get_ai_error_summary', array( $this, 'ajax_get_ai_error_summary' ) );
 		add_action( 'wp_ajax_aips_export_ai_errors', array( $this, 'ajax_export_ai_errors' ) );
+		add_action( 'wp_ajax_aips_get_log_files', array( $this, 'ajax_get_log_files' ) );
+		add_action( 'wp_ajax_aips_get_log_content', array( $this, 'ajax_get_log_content' ) );
+		add_action( 'wp_ajax_aips_clear_log', array( $this, 'ajax_clear_log' ) );
+		add_action( 'wp_ajax_aips_download_log', array( $this, 'ajax_download_log' ) );
 	}
 
 	/**
@@ -90,6 +94,20 @@ class AIPS_Diagnostics_Controller {
 			} elseif ('ai-errors' === $active_tab) {
 				$summary_items = array(
 					array('label' => __('Scope', 'ai-post-scheduler'), 'value' => __('AI Failures', 'ai-post-scheduler'), 'type' => 'warning', 'icon' => 'dashicons-warning'),
+				);
+			} elseif ('logs' === $active_tab) {
+				$logger = AIPS_Container::get_instance()->has(AIPS_Logger::class) ? AIPS_Container::get_instance()->make(AIPS_Logger::class) : new AIPS_Logger();
+				$files = $logger->get_log_files();
+				$active_size = __('0 B', 'ai-post-scheduler');
+				foreach ($files as $f) {
+					if (!empty($f['is_active'])) {
+						$active_size = $f['size'];
+						break;
+					}
+				}
+				$summary_items = array(
+					array('label' => __('Log Files', 'ai-post-scheduler'), 'value' => count($files), 'type' => 'neutral', 'icon' => 'dashicons-media-text'),
+					array('label' => __('Active Log Size', 'ai-post-scheduler'), 'value' => $active_size, 'type' => 'info', 'icon' => 'dashicons-media-document'),
 				);
 			}
 		} catch (\Throwable $e) {
@@ -169,6 +187,12 @@ class AIPS_Diagnostics_Controller {
 			'description' => __('Generation analytics & trends', 'ai-post-scheduler'),
 		);
 
+		$tabs['logs'] = array(
+			'label'       => __('Logs', 'ai-post-scheduler'),
+			'icon'        => 'dashicons-media-text',
+			'description' => __('View, search, tail, and manage plugin log files', 'ai-post-scheduler'),
+		);
+
 		// The Seeder UI has been moved into the Dev Tools tab. Dev Tools is still
 		// gated by developer mode.
 		if (self::is_tab_available('dev-tools')) {
@@ -216,7 +240,7 @@ class AIPS_Diagnostics_Controller {
 
 		// Keep in step with get_tabs(): a tab listed there but missing here is
 		// rejected by get_active_tab_key() and silently falls back to the default.
-		if (in_array($tab, array('system-info', 'health', 'operations', 'status', 'insights', 'stress-test', 'background-processes', 'ai-errors'), true)) {
+		if (in_array($tab, array('system-info', 'health', 'operations', 'status', 'insights', 'stress-test', 'background-processes', 'ai-errors', 'logs'), true)) {
 			return true;
 		}
 
@@ -319,6 +343,11 @@ class AIPS_Diagnostics_Controller {
 				AIPS_Admin_Menu_Helper::safe_render(function() {
 					$this->render_dev_tools_tab();
 				}, __('Dev Tools', 'ai-post-scheduler'), true);
+				break;
+			case 'logs':
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_logs_tab();
+				}, __('Logs', 'ai-post-scheduler'), true);
 				break;
 			case 'status':
 			default:
@@ -784,5 +813,188 @@ class AIPS_Diagnostics_Controller {
 		}
 
 		AIPS_Ajax_Response::success( $error_details );
+	}
+
+	/**
+	 * Render the Logs tab.
+	 *
+	 * @return void
+	 */
+	public function render_logs_tab() {
+		$logger = AIPS_Container::get_instance()->has( AIPS_Logger::class )
+			? AIPS_Container::get_instance()->make( AIPS_Logger::class )
+			: new AIPS_Logger();
+
+		$log_files = $logger->get_log_files();
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/tab-logs.php';
+	}
+
+	/**
+	 * AJAX endpoint to retrieve all available log files.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_log_files() {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
+			AIPS_Ajax_Response::error( __( 'Invalid nonce.', 'ai-post-scheduler' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$logger = AIPS_Container::get_instance()->has( AIPS_Logger::class )
+			? AIPS_Container::get_instance()->make( AIPS_Logger::class )
+			: new AIPS_Logger();
+
+		$files = $logger->get_log_files();
+		AIPS_Ajax_Response::success( array( 'files' => $files ) );
+	}
+
+	/**
+	 * AJAX endpoint to retrieve parsed log content from a specific log file.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_log_content() {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
+			AIPS_Ajax_Response::error( __( 'Invalid nonce.', 'ai-post-scheduler' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$file   = isset( $_POST['file'] ) ? sanitize_text_field( wp_unslash( $_POST['file'] ) ) : '';
+		$lines  = isset( $_POST['lines'] ) ? min( 2000, max( 1, absint( $_POST['lines'] ) ) ) : 100;
+		$search = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
+
+		$levels = 'all';
+		if ( isset( $_POST['levels'] ) ) {
+			if ( is_array( $_POST['levels'] ) ) {
+				$levels = array_map( 'sanitize_key', wp_unslash( $_POST['levels'] ) );
+			} else {
+				$raw_levels = sanitize_text_field( wp_unslash( $_POST['levels'] ) );
+				$levels     = array_filter( array_map( 'sanitize_key', explode( ',', $raw_levels ) ) );
+			}
+		} elseif ( isset( $_POST['level'] ) ) {
+			$levels = sanitize_key( wp_unslash( $_POST['level'] ) );
+		}
+
+		$logger = AIPS_Container::get_instance()->has( AIPS_Logger::class )
+			? AIPS_Container::get_instance()->make( AIPS_Logger::class )
+			: new AIPS_Logger();
+
+		if ( empty( $file ) ) {
+			$files = $logger->get_log_files();
+			if ( ! empty( $files ) ) {
+				$file = $files[0]['name'];
+			}
+		}
+
+		$result = $logger->get_log_file_content( $file, $lines, $levels, $search );
+		if ( null === $result ) {
+			AIPS_Ajax_Response::error( __( 'Log file not found or invalid.', 'ai-post-scheduler' ) );
+		}
+
+		AIPS_Ajax_Response::success( $result );
+	}
+
+	/**
+	 * AJAX endpoint to empty (truncate) or delete a log file.
+	 *
+	 * @return void
+	 */
+	public function ajax_clear_log() {
+		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
+			AIPS_Ajax_Response::error( __( 'Invalid nonce.', 'ai-post-scheduler' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$file = isset( $_POST['file'] ) ? sanitize_text_field( wp_unslash( $_POST['file'] ) ) : '';
+		$mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : 'empty';
+
+		if ( empty( $file ) ) {
+			AIPS_Ajax_Response::error( __( 'Filename required.', 'ai-post-scheduler' ) );
+		}
+
+		$logger = AIPS_Container::get_instance()->has( AIPS_Logger::class )
+			? AIPS_Container::get_instance()->make( AIPS_Logger::class )
+			: new AIPS_Logger();
+
+		if ( 'delete' === $mode ) {
+			$success = $logger->delete_log_file( $file );
+			if ( ! $success ) {
+				AIPS_Ajax_Response::error( __( 'Failed to delete log file.', 'ai-post-scheduler' ) );
+			}
+			AIPS_Ajax_Response::success( array(
+				'message' => __( 'Log file deleted successfully.', 'ai-post-scheduler' ),
+				'mode'    => 'delete',
+				'file'    => $file,
+			) );
+		} else {
+			$success = $logger->empty_log_file( $file );
+			if ( ! $success ) {
+				AIPS_Ajax_Response::error( __( 'Failed to empty log file.', 'ai-post-scheduler' ) );
+			}
+			AIPS_Ajax_Response::success( array(
+				'message' => __( 'Log file emptied successfully.', 'ai-post-scheduler' ),
+				'mode'    => 'empty',
+				'file'    => $file,
+			) );
+		}
+	}
+
+	/**
+	 * Direct download endpoint for a log file.
+	 *
+	 * @return void
+	 */
+	public function ajax_download_log() {
+		$nonce = isset( $_REQUEST['nonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'aips_ajax_nonce' ) ) {
+			wp_die( esc_html__( 'Invalid security token.', 'ai-post-scheduler' ), 403 );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'ai-post-scheduler' ), 403 );
+		}
+
+		$file = isset( $_REQUEST['file'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['file'] ) ) : '';
+		if ( empty( $file ) ) {
+			wp_die( esc_html__( 'Filename required.', 'ai-post-scheduler' ), 400 );
+		}
+
+		$logger = AIPS_Container::get_instance()->has( AIPS_Logger::class )
+			? AIPS_Container::get_instance()->make( AIPS_Logger::class )
+			: new AIPS_Logger();
+
+		$path = $logger->validate_log_filename( $file );
+		if ( ! $path || ! file_exists( $path ) ) {
+			wp_die( esc_html__( 'Log file not found or invalid.', 'ai-post-scheduler' ), 404 );
+		}
+
+		$filesize = filesize( $path );
+		$filename = basename( $path );
+
+		nocache_headers();
+		header( 'Content-Description: File Transfer' );
+		header( 'Content-Type: text/plain; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . esc_attr( $filename ) . '"' );
+		if ( false !== $filesize ) {
+			header( 'Content-Length: ' . (int) $filesize );
+		}
+		header( 'X-Content-Type-Options: nosniff' );
+
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+
+		readfile( $path );
+		exit;
 	}
 }

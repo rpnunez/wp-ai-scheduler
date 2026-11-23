@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Added
+- **Diagnostics Logs Viewer:**
+  - Added dedicated **Logs** rail tab to the Diagnostics Hub (`admin.php?page=aips-diagnostics&tab=logs`) and registered an administrative redirect shortcut (`admin.php?page=aips-logs`).
+  - Implemented a master-detail layout with human-friendly date titles, file sizes, timestamps without seconds, and active status in the sidebar.
+  - Implemented multi-level filtering (All, Error, Warning, Info, Debug) allowing multiple log levels to be viewed simultaneously.
+  - Redesigned toolbar with unified Auto-Refresh button group, compact line limits (100–2,000 entries), native segmented Formatted/Raw switch, live keyword search, clipboard copying, and direct full file download streaming.
+  - Added log management actions with confirmation dialogs supporting both emptying (truncating to 0 bytes) and deleting log files from disk.
+  - Added path traversal guards, strict regex validation, capability checks, and comprehensive unit tests in `Test_AIPS_Diagnostics_Logs.php`.
+
 ### Fixed
 - **Template voice lost on edit:** the template wizard did not restore the saved voice, so opening a template and saving it reset `voice_id` to "No Voice". The voice is now selected when the template loads, and stays selected when the voice list arrives later or a voice search filters it out.
 - **Failed content runs hide the cause:** when the post content request fails, the History run and the returned `WP_Error` now carry the provider's reason (`cause_code`, `cause_message`, e.g. `rate_limit_exceeded`) instead of only "Post generation failed before a usable Post Content could be created."
@@ -17,9 +26,19 @@
 
 ### Added
 - **Configurable Post Component Inline Retries at Generation Time (#2404):**
-  - Added `aips_component_generation_retries` option in `AIPS_Config` with clamped (0–5) per-component defaults (`post_content: 2`, `post_title: 2`, `post_excerpt: 1`, `post_slug: 0`, `post_featured_image: 2`, `post_images: 3`, `post_meta: 1`) and Settings UI controls under Settings → Resilience → Retry & Backoff Policy.
+  - Added `aips_component_generation_retries` option in `AIPS_Settings_Registry` / `AIPS_Config` with clamped (0–5) per-component defaults (`post_content: 2`, `post_title: 2`, `post_excerpt: 1`, `post_slug: 0`, `post_featured_image: 2`, `post_images: 3`, `post_meta: 1`) and Settings UI controls under Settings → Resilience → Retry & Backoff Policy.
   - Introduced `AIPS_Component_Retry_Runner` with exponential jitter backoff (500–1500ms, filterable via `aips_component_retry_delay_ms`), non-retryable error short-circuiting (`ai_unavailable`, `ai_engine_missing`, etc.), iterative multi-image prompt deficit recovery, and structured `AIPS_History_Container` retry telemetry.
   - Integrated inline component retries across `AIPS_Generator` for content, title, excerpt (with truncated body fallback on exhaustion), slug, featured image, combined metadata turn, and content images.
+- **Settings Subsystem Architecture Refactoring (`AIPS_Settings_Registry`, `AIPS_Setting_Definition`, `AIPS_Settings_Form_Renderer`, `AIPS_Settings_Manager`) (issue #2392):**
+  - Introduced `AIPS_Setting_Definition`: strongly typed metadata value object defining option keys, types, defaults, tabs, sections, labels, descriptions, control types, control options, sanitization callbacks, and dependencies.
+  - Introduced `AIPS_Settings_Registry`: single source of truth for all plugin options, tabs, sections, and default values. `AIPS_Config::get_default_options()` now derives directly from the registry without duplicated default arrays. Bound `AIPS_Settings_Registry::class` in `AIPS_Container`.
+  - Introduced `AIPS_Settings_Form_Renderer`: reusable, accessible (ARIA-compliant) component renderer for toggles, text, number, select, multiselect, secret/password with reveal toggle, textarea, and range sliders with coupled indicators.
+  - Introduced `AIPS_Settings_Manager`: orchestrates WordPress Settings API (`register_setting`, `add_settings_section`, `add_settings_field`) via a generic dispatcher callback calling `AIPS_Settings_Form_Renderer`. Bound `AIPS_Settings_Manager::class` in `AIPS_Container`.
+  - Streamlined `AIPS_Settings` (`class-aips-settings.php`) by delegating `register_settings()`, `register_setting_schema()`, and `get_registered_settings_args()` to the registry and manager, reducing procedural boilerplate by ~2,000 lines while preserving 100% backward compatibility.
+  - Updated `templates/admin/settings.php` to derive rail navigation tabs directly from `AIPS_Settings_Registry` and dynamically render tab sections and fields, replacing ~340 lines of redundant markup.
+  - Pruned over 120 repetitive inline HTML field callbacks from `AIPS_Settings_UI`, retaining bespoke callbacks for niche settings (AI connectors priority list, Google Search Console credentials, quota meters, digest actions, composite autolink controls) and delegating legacy callbacks dynamically via magic `__call()` to `AIPS_Settings_Form_Renderer` for backward compatibility.
+  - Updated `AIPS_Settings_AJAX` to validate option keys and data types dynamically via the registry without hardcoded option lists.
+  - Added comprehensive unit tests in `Test_AIPS_Setting_Definition.php`, `Test_AIPS_Settings_Registry.php`, `Test_AIPS_Settings_Form_Renderer.php`, and `Test_AIPS_Settings_Manager.php`.
 - **Conversational & Combined Metadata Modes Optimization & Conversation Persistence:**
   - Registered `AIPS_History_Type::AI_CONVERSATION` and mapped `conversation_transcript` in `AIPS_History_Container` to store serialized multi-turn transcripts in `wp_aips_history_log`.
   - Persisted the generation transcript in `AIPS_Generator::generate_post_from_context()` before closing the conversational session.
