@@ -1511,6 +1511,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Date_Time_DB_Repair' => __DIR__ . '/../..' . '/tests/Test_AIPS_Date_Time_DB_Repair.php',
         'Test_AIPS_Deduplication_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Deduplication_Service.php',
         'Test_AIPS_Diagnostics_Embedded_Templates' => __DIR__ . '/../..' . '/tests/Test_AIPS_Diagnostics_Embedded_Templates.php',
+        'Test_AIPS_Diagnostics_Logs' => __DIR__ . '/../..' . '/tests/Test_AIPS_Diagnostics_Logs.php',
         'Test_AIPS_Duplicate_Group_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Duplicate_Group_Service.php',
         'Test_AIPS_Editor_Assets' => __DIR__ . '/../..' . '/tests/Test_AIPS_Editor_Assets.php',
         'Test_AIPS_Editor_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Editor_Controller.php',

@@ -1476,6 +1476,7 @@ return array(
     'Test_AIPS_Date_Time_DB_Repair' => $baseDir . '/tests/Test_AIPS_Date_Time_DB_Repair.php',
     'Test_AIPS_Deduplication_Service' => $baseDir . '/tests/Test_AIPS_Deduplication_Service.php',
     'Test_AIPS_Diagnostics_Embedded_Templates' => $baseDir . '/tests/Test_AIPS_Diagnostics_Embedded_Templates.php',
+    'Test_AIPS_Diagnostics_Logs' => $baseDir . '/tests/Test_AIPS_Diagnostics_Logs.php',
     'Test_AIPS_Duplicate_Group_Service' => $baseDir . '/tests/Test_AIPS_Duplicate_Group_Service.php',
     'Test_AIPS_Editor_Assets' => $baseDir . '/tests/Test_AIPS_Editor_Assets.php',
     'Test_AIPS_Editor_Controller' => $baseDir . '/tests/Test_AIPS_Editor_Controller.php',
