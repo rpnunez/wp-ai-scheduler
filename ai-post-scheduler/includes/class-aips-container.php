@@ -275,4 +275,49 @@ class AIPS_Container {
 
 		return $registered;
 	}
+
+	/**
+	 * Lazily resolve the shared AIPS_Job_Manager instance.
+	 *
+	 * Registers a singleton binding on first access so callers can resolve the
+	 * unified job orchestrator without wiring it in every request context.
+	 *
+	 * @return AIPS_Job_Manager
+	 */
+	public function get_job_manager() {
+		if ( ! $this->has( AIPS_Job_Manager::class ) ) {
+			$this->singleton( AIPS_Job_Manager::class, static function () {
+				return new AIPS_Job_Manager();
+			} );
+		}
+		return $this->make( AIPS_Job_Manager::class );
+	}
+
+	/**
+	 * Lazily resolve the shared AIPS_Job_Repository instance.
+	 *
+	 * @return AIPS_Job_Repository
+	 */
+	public function get_job_repository() {
+		if ( ! $this->has( AIPS_Job_Repository::class ) ) {
+			$this->singleton( AIPS_Job_Repository::class, static function () {
+				return new AIPS_Job_Repository();
+			} );
+		}
+		return $this->make( AIPS_Job_Repository::class );
+	}
+
+	/**
+	 * Lazily resolve the shared AIPS_Job_Registry instance.
+	 *
+	 * @return AIPS_Job_Registry
+	 */
+	public function get_job_registry() {
+		if ( ! $this->has( AIPS_Job_Registry::class ) ) {
+			$this->singleton( AIPS_Job_Registry::class, static function () {
+				return new AIPS_Job_Registry();
+			} );
+		}
+		return $this->make( AIPS_Job_Registry::class );
+	}
 }
