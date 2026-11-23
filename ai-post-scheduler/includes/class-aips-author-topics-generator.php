@@ -162,6 +162,59 @@ class AIPS_Author_Topics_Generator {
 	}
 
 	/**
+	 * Whether a pending topic should get another auto-approval pass.
+	 *
+	 * True when no auto rule has judged it yet, or when its niche relevance
+	 * could not be measured (embeddings outage). Topics already judged by a
+	 * rule (e.g. score below threshold) are left for human review.
+	 *
+	 * @param string|array|null $metadata Topic metadata (JSON string or decoded array).
+	 * @return bool
+	 */
+	public static function is_approval_recheck_candidate($metadata): bool {
+		$meta = is_string($metadata) && '' !== $metadata ? json_decode($metadata, true) : $metadata;
+		$meta = is_array($meta) ? $meta : array();
+
+		if (empty($meta['auto_approval_rule'])) {
+			return true;
+		}
+
+		return isset($meta['auto_approval_reason']) && 'relevance_unavailable' === $meta['auto_approval_reason'];
+	}
+
+	/**
+	 * Re-run auto-approval on an author's pending topics that never got a decision.
+	 *
+	 * Auto-approval normally runs once, when topics are created. Topics skipped
+	 * then (embeddings cooldown or quota, relevance not measurable, or created
+	 * while the policy was manual) would stay pending forever. This picks up to
+	 * $limit of them, oldest first, and applies the author's current policy.
+	 * Topics already judged by an auto rule (e.g. score below threshold) are left
+	 * for human review.
+	 *
+	 * @param object   $author Author object.
+	 * @param int|null $limit  Maximum topics to decide; null uses the filtered default (20).
+	 * @return array{checked:int,approved:int,rejected:int} Counts.
+	 */
+	public function recheck_pending_auto_approval($author, $limit = null): array {
+		return $this->strategy->recheck_pending_auto_approval($author, $limit);
+	}
+
+	/**
+	 * Flag semantically similar generated topics as potential duplicates.
+	 *
+	 * Uses AIPS_Deduplication_Service to check candidates against both existing
+	 * topics and existing published WordPress articles.
+	 *
+	 * @param object $author Author object.
+	 * @param array  $topics Generated topic arrays.
+	 * @return array Topics with updated metadata and score adjustments.
+	 */
+	public function apply_fuzzy_duplicate_flags($author, $topics) {
+		return $this->strategy->apply_fuzzy_duplicate_flags($author, $topics);
+	}
+
+	/**
 	 * Compute or retrieve cached composite reference embedding vector for an Author.
 	 *
 	 * @param object $author Author object.

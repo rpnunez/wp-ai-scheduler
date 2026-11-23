@@ -454,6 +454,12 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 			if ($embedding_component instanceof AIPS_Topic_Embedding_Component) {
 				$embedding_component->apply($saved_topics, null);
 			}
+
+			// Give earlier topics that missed auto-approval (embeddings outage, or
+			// created before an auto policy was set) another pass.
+			if ($apply_auto_approval) {
+				$this->recheck_pending_auto_approval($author);
+			}
 		} else {
 			$error            = new WP_Error('db_insert_error', __('Failed to save generated topics to database', 'ai-post-scheduler'));
 			$this->last_error = $error;
@@ -803,5 +809,153 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 		}
 
 		return $topics;
+	}
+
+	/**
+	 * Flag semantically similar generated topics as potential duplicates.
+	 *
+	 * @param object $author Author object.
+	 * @param array  $topics Generated topic arrays.
+	 * @return array Topics with updated metadata and score adjustments.
+	 */
+	public function apply_fuzzy_duplicate_flags($author, array $topics): array {
+		$author_id = is_object($author) && isset($author->id) ? (int) $author->id : (int) $author;
+		return $this->deduplication_service->evaluate_topics_for_duplicates($topics, $author_id);
+	}
+
+	/**
+	 * Re-run auto-approval on an author's pending topics that never got a decision.
+	 *
+	 * Auto-approval normally runs once, when topics are created. Topics skipped
+	 * then (embeddings cooldown or quota, relevance not measurable, or created
+	 * while the policy was manual) would stay pending forever. This picks up to
+	 * $limit of them, oldest first, and applies the author's current policy.
+	 * Topics already judged by an auto rule (e.g. score below threshold) are left
+	 * for human review.
+	 *
+	 * @param object   $author Author object.
+	 * @param int|null $limit  Maximum topics to decide; null uses the filtered default (20).
+	 * @return array{checked:int,approved:int,rejected:int} Counts.
+	 */
+	public function recheck_pending_auto_approval($author, $limit = null): array {
+		$counts = array('checked' => 0, 'approved' => 0, 'rejected' => 0);
+
+		if (!$author || empty($author->id)) {
+			return $counts;
+		}
+
+		$policy = AIPS_Author_Topic_Approval_Policy::resolve($author);
+		if ('manual' === $policy['mode']) {
+			return $counts;
+		}
+
+		if (null === $limit) {
+			/**
+			 * Filters how many pending topics one author run may re-check for auto-approval.
+			 *
+			 * @since 3.7.25
+			 *
+			 * @param int    $limit  Default 20.
+			 * @param object $author Author object.
+			 */
+			$limit = (int) apply_filters('aips_author_topic_approval_recheck_limit', 20, $author);
+		}
+
+		$limit = (int) $limit;
+		if ($limit < 1) {
+			return $counts;
+		}
+
+		$candidates        = array();
+		$original_metadata = array();
+		$rows              = $this->topics_repository->get_pending_for_approval_recheck((int) $author->id, $limit);
+
+		foreach ($rows as $row) {
+			if (AIPS_Author_Topics_Generator::is_approval_recheck_candidate($row->metadata)) {
+				$candidates[]                      = (array) $row;
+				$original_metadata[(int) $row->id] = (string) $row->metadata;
+			}
+		}
+
+		if (empty($candidates)) {
+			return $counts;
+		}
+
+		// Refresh duplicate flags before deciding.
+		$candidates = $this->apply_fuzzy_duplicate_flags($author, $candidates);
+
+		try {
+			$decided = $this->apply_auto_approval_rules($author, $candidates);
+		} catch (\Throwable $e) {
+			$this->logger->log("Pending topic re-check failed for author {$author->id}: " . $e->getMessage(), 'warning');
+			return $counts;
+		}
+
+		foreach ($decided as $topic) {
+			if (empty($topic['id'])) {
+				continue;
+			}
+
+			// apply_auto_approval_rules() returns the topic untouched (no metadata
+			// rewrite) when it skipped evaluation, e.g. embeddings in cooldown.
+			$topic_id  = (int) $topic['id'];
+			$status    = isset($topic['status']) ? (string) $topic['status'] : 'pending';
+			$unchanged = isset($original_metadata[$topic_id])
+				&& $original_metadata[$topic_id] === (string) $topic['metadata']
+				&& 'pending' === $status;
+
+			$meta = isset($topic['metadata']) && is_string($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
+			if ($unchanged || !is_array($meta) || empty($meta['auto_approval_rule'])) {
+				continue;
+			}
+
+			$update = array('metadata' => $topic['metadata']);
+
+			if (in_array($status, array('approved', 'rejected'), true)) {
+				$update['status']      = $status;
+				$update['reviewed_at'] = isset($topic['reviewed_at']) ? (int) $topic['reviewed_at'] : AIPS_DateTime::now()->timestamp();
+				$update['reviewed_by'] = 0;
+			}
+
+			// Only while still pending: never overwrite a review made since the read.
+			if (!$this->topics_repository->update_if_pending($topic_id, $update, (int) $author->id)) {
+				continue;
+			}
+
+			$counts['checked']++;
+
+			if (!isset($update['status'])) {
+				continue;
+			}
+
+			$counts[$status]++;
+
+			$this->logs_repository->create(array(
+				'author_topic_id' => (int) $topic['id'],
+				'action'          => $status,
+				'user_id'         => null,
+				'notes'           => isset($meta['auto_approval_note']) ? $meta['auto_approval_note'] : '',
+				'metadata'        => wp_json_encode(array(
+					'source' => 'auto_rule_recheck',
+					'rule'   => $meta['auto_approval_rule'],
+					'reason' => isset($meta['auto_approval_reason']) ? $meta['auto_approval_reason'] : '',
+				)),
+			));
+		}
+
+		if ($counts['approved'] || $counts['rejected']) {
+			$this->logger->log(
+				sprintf(
+					'Re-checked %d pending topic(s) for author %d: %d approved, %d rejected.',
+					$counts['checked'],
+					(int) $author->id,
+					$counts['approved'],
+					$counts['rejected']
+				),
+				'info'
+			);
+		}
+
+		return $counts;
 	}
 }
