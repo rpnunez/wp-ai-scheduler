@@ -59,8 +59,7 @@ class Test_AIPS_Cron_Deactivation_And_Diagnostics extends WP_UnitTestCase {
 		wp_schedule_single_event( time() + 100, 'aips_process_pending_indexer_queue' );
 		$this->assertNotFalse( wp_next_scheduled( 'aips_process_pending_indexer_queue' ) );
 
-		$plugin = new AI_Post_Scheduler();
-		$plugin->deactivate();
+		AI_Post_Scheduler::get_instance()->deactivate();
 
 		$this->assertFalse( wp_next_scheduled( 'aips_process_pending_indexer_queue' ) );
 	}
@@ -124,7 +123,7 @@ class Test_AIPS_Cron_Deactivation_And_Diagnostics extends WP_UnitTestCase {
 		$this->assertNotFalse( $this->cron_manager->next_scheduled( 'aips_send_review_notifications' ) );
 
 		$service = new AIPS_System_Diagnostics_Service();
-		$result  = $service->repair_legacy_review_notifications();
+		$result  = $service->notifications_hygiene();
 
 		$this->assertIsArray( $result );
 		$this->assertTrue( $result['success'] );
@@ -136,10 +135,12 @@ class Test_AIPS_Cron_Deactivation_And_Diagnostics extends WP_UnitTestCase {
 		wp_schedule_event( time() + 3600, 'daily', 'aips_notification_rollups' );
 
 		$provider = new AIPS_System_Diagnostics_Logs_Provider();
-		$data     = $provider->get_data();
+		$data     = $provider->get_diagnostics();
 
 		$this->assertIsArray( $data );
-		$this->assertArrayHasKey( 'new_cron', $data );
-		$this->assertIsInt( $data['new_cron'] );
+		$this->assertArrayHasKey( 'notifications', $data );
+		$this->assertArrayHasKey( 'rollup_cron', $data['notifications'] );
+		$this->assertSame( 'ok', $data['notifications']['rollup_cron']['status'] );
+		$this->assertNotEmpty( $data['notifications']['rollup_cron']['value'] );
 	}
 }

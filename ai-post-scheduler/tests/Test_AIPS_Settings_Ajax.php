@@ -36,6 +36,14 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		AI_Post_Scheduler::get_instance()->register_container_bindings();
 		$_POST = array();
 		$_REQUEST = array();
+		delete_option('aips_wp_ai_connector_mode');
+		delete_option('aips_wp_ai_connector_ids');
+		delete_option('aips_wp_ai_connector_failover');
+		delete_option('aips_ai_assistance_contexts');
+		delete_option('aips_topic_similarity_threshold');
+		AIPS_Config::get_instance()->set_option('aips_wp_ai_connector_mode', 'all');
+		AIPS_Config::get_instance()->set_option('aips_wp_ai_connector_ids', array());
+		AIPS_Config::get_instance()->set_option('aips_wp_ai_connector_failover', true);
 
 		parent::tearDown();
 	}
