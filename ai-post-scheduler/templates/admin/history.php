@@ -374,9 +374,8 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 	<table class="aips-table aips-history-logs-table" style="width:100%;">
 		<thead>
 			<tr>
-				<th style="width:150px;">{{colTimestamp}}</th>
-				<th style="width:130px;">{{colType}}</th>
-				<th style="width:150px;">{{colLogType}}</th>
+				<th style="width:180px;">{{colTimestamp}}</th>
+				<th style="width:140px;">{{colType}}</th>
 				<th>{{colDetails}}</th>
 			</tr>
 		</thead>
@@ -389,7 +388,6 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 	<tr data-type-ids="{{typeIds}}">
 		<td style="white-space:nowrap;font-size:12px;">{{timestamp}}</td>
 		<td><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
-		<td style="font-size:12px;font-family:monospace;">{{logType}}</td>
 		<td>{{detailsHtml}}</td>
 	</tr>
 </script>

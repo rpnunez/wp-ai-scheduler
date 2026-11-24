@@ -692,14 +692,16 @@ class AIPS_History {
      * @return array<string,mixed>
      */
     private function finalize_history_modal_container($container, $analysis) {
+        $raw_status = isset($container['status']) ? (string) $container['status'] : '';
         return array(
             'id' => isset($container['id']) ? (int) $container['id'] : 0,
             'header_title' => $this->build_history_modal_header_title($container),
-            'status' => isset($container['status']) ? (string) $container['status'] : '',
+            'status' => $raw_status,
+            'status_label' => $raw_status !== '' ? ucfirst($raw_status) : '',
             'status_class' => isset($container['status_class']) ? (string) $container['status_class'] : '',
             'header_actions' => $this->build_history_modal_header_actions($container),
             'trigger_info' => isset($container['trigger_info']) ? $container['trigger_info'] : array(),
-            'summary_lines' => $this->build_history_summary_lines($analysis),
+            'summary_lines' => $this->build_history_summary_lines($analysis, $container),
             'summary_meta' => $this->build_history_summary_meta($container),
             'detail_cards' => $this->build_history_detail_cards($container),
             'root_issue' => !empty($container['error_message']) ? (string) $container['error_message'] : '',
@@ -963,34 +965,35 @@ class AIPS_History {
      * Build top-of-modal action links.
      *
      * @param array<string,mixed> $container Base container metadata.
-     * @return array<int,array<string,string>>
+     * @return array<int,array<string,mixed>>
      */
     private function build_history_modal_header_actions($container) {
         $actions = array();
+
+        if (!empty($container['post_url'])) {
+            $actions[] = array(
+                'label' => __('View Post', 'ai-post-scheduler'),
+                'url'   => (string) $container['post_url'],
+                'icon'  => 'dashicons-external',
+            );
+        }
 
         if (!empty($container['post_id'])) {
             $actions[] = array(
                 'label'      => __('AI Edit', 'ai-post-scheduler'),
                 'class'      => 'aips-ai-edit-btn aips-history-header-ai-edit',
+                'icon'       => 'dashicons-update',
                 'post_id'    => (int) $container['post_id'],
                 'history_id' => !empty($container['history_id']) ? (int) $container['history_id'] : (!empty($container['id']) ? (int) $container['id'] : 0),
                 'title'      => __('AI Edit — Regenerate post components (title, excerpt, content, image) with AI', 'ai-post-scheduler'),
             );
         }
 
-        if (!empty($container['post_url'])) {
-            $actions[] = array(
-                'label' => !empty($container['post_id'])
-                    ? sprintf(__('View Post (ID: %d)', 'ai-post-scheduler'), (int) $container['post_id'])
-                    : __('View Post', 'ai-post-scheduler'),
-                'url' => (string) $container['post_url'],
-            );
-        }
-
         if (!empty($container['post_edit_url'])) {
             $actions[] = array(
                 'label' => __('Edit', 'ai-post-scheduler'),
-                'url' => (string) $container['post_edit_url'],
+                'url'   => (string) $container['post_edit_url'],
+                'icon'  => 'dashicons-edit',
             );
         }
 
@@ -1000,10 +1003,11 @@ class AIPS_History {
     /**
      * Build the combined Summary section lines.
      *
-     * @param array<string,mixed> $analysis Derived analysis payload.
+     * @param array<string,mixed> $analysis  Derived analysis payload.
+     * @param array<string,mixed> $container Base container metadata.
      * @return array<int,array<string,string>>
      */
-    private function build_history_summary_lines($analysis) {
+    private function build_history_summary_lines($analysis, $container = array()) {
         $lines = array();
 
         if (!empty($analysis['outcome_label'])) {
@@ -1046,6 +1050,13 @@ class AIPS_History {
             );
         }
 
+        if (!empty($container['completed_at'])) {
+            $items[] = array(
+                'label' => __('Completed', 'ai-post-scheduler'),
+                'value' => (string) $container['completed_at'],
+            );
+        }
+
         if (!empty($container['duration_label'])) {
             $items[] = array(
                 'label' => __('Duration', 'ai-post-scheduler'),
@@ -1069,7 +1080,7 @@ class AIPS_History {
             $cards[] = array(
                 'label' => __('Triggered By', 'ai-post-scheduler'),
                 'value' => (string) $container['trigger_info']['source_message'],
-                'class' => '',
+                'class' => 'aips-history-summary-item-wide',
             );
         }
 
@@ -1100,15 +1111,14 @@ class AIPS_History {
         foreach (array(
             'actor_type' => __('Actor', 'ai-post-scheduler'),
             'topic_id' => __('Topic ID', 'ai-post-scheduler'),
-            'completed_at' => __('Completed', 'ai-post-scheduler'),
-            'correlation_id' => __('Correlation ID', 'ai-post-scheduler'),
             'id' => __('Container ID', 'ai-post-scheduler'),
+            'correlation_id' => __('Correlation ID', 'ai-post-scheduler'),
         ) as $key => $label) {
             if (!empty($container[$key])) {
                 $cards[] = array(
                     'label' => $label,
                     'value' => (string) $container[$key],
-                    'class' => '',
+                    'class' => $key === 'correlation_id' ? 'aips-history-summary-item-mono' : '',
                 );
             }
         }

@@ -59,14 +59,18 @@
 					return;
 				}
 
+				var iconHtml = '';
+				if (action.icon) {
+					iconHtml = '<span class="dashicons ' + $('<div>').text(String(action.icon)).html() + '" aria-hidden="true"></span>';
+				}
+
 				if (action.class && action.class.indexOf('aips-ai-edit-btn') !== -1) {
-					actionsHtml += '<button type="button" class="' + $('<div>').text(String(action.class)).html() + '"'
+					actionsHtml += '<button type="button" class="aips-history-modal-header-link ' + $('<div>').text(String(action.class)).html() + '"'
 						+ ' data-post-id="' + (action.post_id ? $('<div>').text(String(action.post_id)).html() : '') + '"'
 						+ ' data-history-id="' + (action.history_id ? $('<div>').text(String(action.history_id)).html() : '') + '"'
-						+ ' title="' + (action.title ? $('<div>').text(String(action.title)).html() : '') + '"'
-						+ ' style="background:none;border:none;padding:0;color:#2271b1;text-decoration:underline;cursor:pointer;font-size:inherit;display:inline-flex;align-items:center;gap:4px;">'
-						+ '<span class="dashicons dashicons-update" style="font-size:14px;width:14px;height:14px;"></span> '
-						+ $('<div>').text(String(action.label)).html()
+						+ ' title="' + (action.title ? $('<div>').text(String(action.title)).html() : '') + '">'
+						+ (iconHtml || '<span class="dashicons dashicons-update" aria-hidden="true"></span>')
+						+ '<span>' + $('<div>').text(String(action.label)).html() + '</span>'
 						+ '</button>';
 					return;
 				}
@@ -75,16 +79,20 @@
 					return;
 				}
 
-				actionsHtml += '<a href="' + $('<div>').text(String(action.url)).html() + '" target="_blank" rel="noopener noreferrer">'
-					+ $('<div>').text(String(action.label)).html()
+				actionsHtml += '<a href="' + $('<div>').text(String(action.url)).html() + '" class="aips-history-modal-header-link" target="_blank" rel="noopener noreferrer">'
+					+ iconHtml
+					+ '<span>' + $('<div>').text(String(action.label)).html() + '</span>'
 					+ '</a>';
 			});
 
 			if (container && container.status && container.status_class) {
+				var statusText = container.status_label
+					? String(container.status_label)
+					: (String(container.status).charAt(0).toUpperCase() + String(container.status).slice(1));
 				statusHtml = '<span class="aips-badge '
 					+ $('<div>').text(String(container.status_class)).html()
 					+ '">'
-					+ $('<div>').text(String(container.status)).html()
+					+ $('<div>').text(statusText).html()
 					+ '</span>';
 			}
 

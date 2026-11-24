@@ -285,4 +285,79 @@ class Test_History_Template extends WP_UnitTestCase {
             update_option('timezone_string', $original_timezone);
         }
     }
+
+    public function test_history_modal_header_actions_and_status_label_format() {
+        $admin_user_id = $this->factory->user->create(array('role' => 'administrator'));
+        wp_set_current_user($admin_user_id);
+
+        $post_id = $this->factory->post->create(array(
+            'post_title'  => 'Test Modal Post',
+            'post_status' => 'publish',
+        ));
+
+        $history_item = (object) array(
+            'id'              => 5983,
+            'post_id'         => $post_id,
+            'status'          => 'completed',
+            'generated_title' => 'Test Modal Post',
+            'creation_method' => 'scheduled',
+            'actor_type'      => 'system',
+            'created_at'      => '2026-11-24 11:11:00',
+            'completed_at'    => '2026-11-24 11:12:37',
+            'correlation_id'  => '5cea4672-f547-459f-b3dd-10ed6f91a6a7',
+            'log'             => array(
+                (object) array(
+                    'id'              => 1,
+                    'history_type_id' => 8,
+                    'timestamp'       => '2026-11-24 11:11:00',
+                    'details'         => wp_json_encode(array(
+                        'log_subtype' => 'trigger_method',
+                        'message'     => 'Triggered automatically by a scheduled run',
+                    )),
+                ),
+            ),
+        );
+
+        $method = new ReflectionMethod(AIPS_History::class, 'prepare_history_modal_view_data');
+        $method->setAccessible(true);
+        $modal_view = $method->invoke($this->history_instance, $history_item, true);
+
+        $container = $modal_view['container'];
+        $this->assertSame('completed', $container['status']);
+        $this->assertSame('Completed', $container['status_label']);
+
+        // Header actions must be ordered: View Post (no post ID suffix), AI Edit, Edit, each with a dashicon.
+        $actions = $container['header_actions'];
+        $this->assertCount(3, $actions);
+        $this->assertSame('View Post', $actions[0]['label']);
+        $this->assertSame('dashicons-external', $actions[0]['icon']);
+        $this->assertSame('AI Edit', $actions[1]['label']);
+        $this->assertSame('dashicons-update', $actions[1]['icon']);
+        $this->assertSame('Edit', $actions[2]['label']);
+        $this->assertSame('dashicons-edit', $actions[2]['icon']);
+
+        // Completed timestamp should be grouped into summary_meta alongside Created and Duration.
+        $meta_labels = array_column($container['summary_meta'], 'label');
+        $this->assertContains('Created', $meta_labels);
+        $this->assertContains('Completed', $meta_labels);
+        $this->assertContains('Duration', $meta_labels);
+
+        $card_labels = array_column($container['detail_cards'], 'label');
+        $this->assertNotContains('Completed', $card_labels);
+
+        // Render modal content partial and verify Technical tab badge & table headers.
+        $display_logs  = $modal_view['display_logs'];
+        $filter_counts = $modal_view['filter_counts'];
+        $timeline_data = $modal_view['timeline_data'];
+
+        ob_start();
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-modal-content.php';
+        $html = (string) ob_get_clean();
+
+        $this->assertStringContainsString('<span class="aips-history-tab-badge">1</span>', $html);
+        $this->assertStringContainsString('<th class="aips-history-col-timestamp">Date &amp; Time</th>', $html);
+        $this->assertStringNotContainsString('aips-history-advanced-details-heading', $html);
+        $this->assertStringNotContainsString('aips-history-col-logtype', $html);
+        $this->assertStringNotContainsString('aips-history-log-type-code', $html);
+    }
 }
