@@ -463,6 +463,8 @@ class AIPS_Job_Manager {
 						'finished_at'   => AIPS_DateTime::now()->timestamp(),
 					)
 				);
+				// Terminal failure: ensure no stale tick remains scheduled for this job.
+				$this->cron_backend->unschedule( $type_spec->get_hook(), array( $job_id ) );
 				$context->log( 'Failed: ' . $message, 'error' );
 				return;
 			}
@@ -481,6 +483,8 @@ class AIPS_Job_Manager {
 						'finished_at' => AIPS_DateTime::now()->timestamp(),
 					)
 				);
+				// Terminal completion: clear any lingering scheduled tick for this job.
+				$this->cron_backend->unschedule( $type_spec->get_hook(), array( $job_id ) );
 				$context->log( 'Completed successfully.' );
 				return;
 			}

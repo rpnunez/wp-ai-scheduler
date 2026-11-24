@@ -2099,11 +2099,12 @@ class AIPS_DB_Migrations {
 			return false;
 		}
 
-		// Drop the legacy tables
-		$wpdb->query( "DROP TABLE IF EXISTS `{$legacy_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		$bg_table = $wpdb->prefix . 'aips_background_processes';
-		$wpdb->query( "DROP TABLE IF EXISTS `{$bg_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// NOTE: The legacy tables (`aips_bulk_batch_jobs`, `aips_background_processes`)
+		// are intentionally retained in 3.8.0. Data is copied forward into `aips_jobs`
+		// above, but the source tables are NOT dropped here so that the new unified job
+		// path can be proven in production before the historical data is discarded.
+		// A dedicated follow-up migration will drop them once the new path is validated.
+		// See the deferred-table-drop decision for #2391.
 
 		return true;
 	}

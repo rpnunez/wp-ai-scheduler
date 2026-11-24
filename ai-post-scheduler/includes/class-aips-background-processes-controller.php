@@ -1093,7 +1093,7 @@ class AIPS_Background_Processes_Controller {
 
 		foreach ( $jobs as $job ) {
 			$runs[] = (object) array(
-				'id'            => $job->get_id(),
+				'id'            => $job->get_job_id(),
 				'process_key'   => $job->get_job_type(),
 				'status'        => $job->get_status(),
 				'started_at'    => $job->get_created_at(),
