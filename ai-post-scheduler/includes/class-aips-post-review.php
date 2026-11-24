@@ -296,12 +296,12 @@ class AIPS_Post_Review {
 		$post_ids = array();
 		
 		if (isset($_POST['post_ids']) && is_array($_POST['post_ids'])) {
-			$post_ids = array_filter(
+			$post_ids = array_values(array_filter(
 				array_map('absint', $_POST['post_ids']),
 				function( $post_id ) {
 					return $post_id > 0;
 				}
-			);
+			));
 		}
 		
 		if (empty($post_ids)) {

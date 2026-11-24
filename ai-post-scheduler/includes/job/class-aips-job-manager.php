@@ -171,6 +171,8 @@ class AIPS_Job_Manager {
 		$type_spec = $this->registry->get( $job_type );
 		$batch_size = isset( $options['batch_size'] ) ? max( 1, (int) $options['batch_size'] ) : ( $type_spec ? $type_spec->get_batch_size() : 10 );
 
+		// Re-index so a sparse/filtered caller array cannot leave a gap at cursor 0.
+		$items            = array_values( $items );
 		$options['total'] = count( $items );
 		$payload          = array_merge(
 			$options,

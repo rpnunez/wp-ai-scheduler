@@ -838,6 +838,9 @@ class AIPS_Bulk_Generator_Service {
 			update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_ID, absint( $item['id'] ) );
 			update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_TEXT, sanitize_text_field( (string) $item['topic'] ) );
 
+			// Mark the trending topic generated so the async path matches the synchronous one.
+			( new AIPS_Trending_Topics_Repository() )->update_status_bulk( array( absint( $item['id'] ) ), 'generated' );
+
 			return $post_id;
 		}
 

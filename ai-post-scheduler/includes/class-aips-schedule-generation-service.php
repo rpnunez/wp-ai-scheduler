@@ -228,6 +228,14 @@ class AIPS_Schedule_Generation_Service {
 		}
 
 		if ( is_wp_error( $result ) ) {
+			// A yielded (timeout) or cleanly-terminated (AI generation disabled) run is not a
+			// failure: mark the slice successful so the job is not flagged failed in wp_aips_jobs.
+			$error_code = $result->get_error_code();
+			if ( in_array( $error_code, array( 'batch_interrupted_timeout', 'ai_calls_disabled' ), true ) ) {
+				$data = (array) $result->get_error_data();
+				$flag = ( 'batch_interrupted_timeout' === $error_code ) ? 'yielded' : 'terminated';
+				return AIPS_Job_Slice_Result::success( isset( $data['completed'] ) ? (int) $data['completed'] : 0, array( $flag => true ) );
+			}
 			return AIPS_Job_Slice_Result::failure( array( $result->get_error_message() ) );
 		}
 
@@ -613,7 +621,9 @@ class AIPS_Schedule_Generation_Service {
 	public function process_due_schedules(): void {
 		$this->logger->log( 'Starting scheduled post generation', 'info' );
 
-		$due_limit = $this->get_batch_queue_service()->get_large_batch_threshold();
+		// The fetch limit must not be tied to the large-batch threshold (5), or a backlog of
+		// due schedules would drain only a handful per tick and starve slower frequencies.
+		$due_limit = max( 1, (int) apply_filters( 'aips_due_schedule_fetch_limit', 25 ) );
 		$due_schedules = $this->repository->get_due_schedules( AIPS_DateTime::now()->timestamp(), $due_limit );
 
 		if ( empty( $due_schedules ) ) {
@@ -625,23 +635,38 @@ class AIPS_Schedule_Generation_Service {
 		$stagger_seconds = max( 0, (int) apply_filters( 'aips_due_schedule_stagger_seconds', 30 ) );
 
 		if ( ! empty( $due_schedules ) ) {
-			$due_items = array();
-			foreach ( $due_schedules as $sched ) {
-				$due_items[] = array(
-					'schedule_id' => (int) $sched->schedule_id,
-				);
-			}
-
 			try {
 				$job_manager = AIPS_Container::get_instance()->get_job_manager();
-				$job_manager->dispatch_staggered(
-					AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION,
-					$due_items,
-					array(
-						'interval_seconds' => $stagger_seconds,
-						'start_delay'      => $stagger_seconds,
-					)
-				);
+
+				// Skip schedules that already have an open generation job queued, so
+				// overlapping cron ticks do not dispatch duplicate slices for the same schedule.
+				$open_ids = array();
+				foreach ( AIPS_Container::get_instance()->get_job_repository()->get_open_jobs( AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION ) as $open_job ) {
+					$p = $open_job->get_payload();
+					if ( ! empty( $p['schedule_id'] ) ) {
+						$open_ids[ (int) $p['schedule_id'] ] = true;
+					}
+				}
+
+				$due_items = array();
+				foreach ( $due_schedules as $sched ) {
+					if ( empty( $open_ids[ (int) $sched->schedule_id ] ) ) {
+						$due_items[] = array(
+							'schedule_id' => (int) $sched->schedule_id,
+						);
+					}
+				}
+
+				if ( ! empty( $due_items ) ) {
+					$job_manager->dispatch_staggered(
+						AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION,
+						$due_items,
+						array(
+							'interval_seconds' => $stagger_seconds,
+							'start_delay'      => $stagger_seconds,
+						)
+					);
+				}
 			} catch ( Throwable $e ) {
 				$this->logger->log( 'Failed to dispatch staggered schedules: ' . $e->getMessage(), 'error' );
 			}
@@ -723,9 +748,12 @@ class AIPS_Schedule_Generation_Service {
 
 		if ( $advance_schedule && 'once' !== $schedule->frequency ) {
 			$base_run = ! empty( $schedule->next_run ) ? (int) $schedule->next_run : AIPS_DateTime::now()->timestamp();
-			$next_run = $this->interval_calculator->calculate_next_run(
+			// Always advance strictly past "now" (and past the base), so running a healthy
+			// future schedule does not leave next_run unchanged.
+			$next_run = $this->interval_calculator->calculate_next_occurrence_after(
 				$schedule->frequency,
-				$base_run
+				$base_run,
+				max( AIPS_DateTime::now()->timestamp(), $base_run ) + 1
 			);
 			$this->repository->update( $schedule->id, array( 'next_run' => $next_run ) );
 		}

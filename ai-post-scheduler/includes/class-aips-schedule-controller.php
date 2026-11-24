@@ -462,6 +462,18 @@ class AIPS_Schedule_Controller {
             $result = $this->scheduler->run_schedule_now($schedule_id);
             if (is_wp_error($result)) {
                 AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+            } elseif (is_array($result) && isset($result['num_batches'])) {
+                // Large-batch path returns a dispatch summary, not post IDs.
+                AIPS_Ajax_Response::success(array(
+                    'message'       => sprintf(
+                        /* translators: %d: number of background slices */
+                        __('Large batch queued across %d background slices.', 'ai-post-scheduler'),
+                        (int) $result['num_batches']
+                    ),
+                    'batch_queued'  => true,
+                    'batch_summary' => $result,
+                    'post_ids'      => array(),
+                ));
             } else {
                 $post_ids = is_array($result) ? $result : array($result);
                 $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
@@ -876,6 +888,21 @@ class AIPS_Schedule_Controller {
 
         if (is_wp_error($result)) {
             AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+        }
+
+        // Large-batch path returns a dispatch summary, not post IDs.
+        if (is_array($result) && isset($result['num_batches'])) {
+            AIPS_Ajax_Response::success(array(
+                'message'       => sprintf(
+                    /* translators: %d: number of background slices */
+                    __('Large batch queued across %d background slices.', 'ai-post-scheduler'),
+                    (int) $result['num_batches']
+                ),
+                'batch_queued'  => true,
+                'batch_summary' => $result,
+                'post_ids'      => array(),
+            ));
+            return;
         }
 
         // Format the success message based on type.
