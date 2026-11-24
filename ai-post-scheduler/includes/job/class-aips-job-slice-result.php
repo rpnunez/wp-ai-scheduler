@@ -64,6 +64,15 @@ class AIPS_Job_Slice_Result {
 		return $this->is_complete;
 	}
 
+	/**
+	 * Alias used by domain tests and older call sites.
+	 *
+	 * @return bool
+	 */
+	public function is_completed(): bool {
+		return $this->is_complete;
+	}
+
 	public function get_result_data(): array {
 		return $this->result_data;
 	}

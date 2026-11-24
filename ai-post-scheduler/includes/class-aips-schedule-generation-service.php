@@ -1126,17 +1126,20 @@ class AIPS_Schedule_Generation_Service {
 		$batch_finished         = false;
 		$generated_ids          = array();
 
-		$current_progress = $this->repository->get_batch_progress( $schedule->schedule_id );
-		$is_resuming      = false;
+		$schedule_id      = isset( $schedule->schedule_id ) ? (int) $schedule->schedule_id : (int) $schedule->id;
+		$current_progress = $this->repository->get_batch_progress( $schedule_id );
 		$start_index      = 0;
 		$previous_posts   = 0;
+		$previous_ids     = array();
 
 		if ( ! $is_manual && $current_progress && isset( $current_progress['last_index'] ) ) {
 			$last_index = (int) $current_progress['last_index'];
 			if ( $last_index >= 0 && $last_index < ( $post_quantity - 1 ) ) {
 				$start_index    = $last_index + 1;
-				$is_resuming    = true;
-				$previous_posts = $start_index;
+				$previous_posts = isset( $current_progress['completed'] ) ? (int) $current_progress['completed'] : $start_index;
+				$previous_ids   = isset( $current_progress['post_ids'] ) && is_array( $current_progress['post_ids'] )
+					? $current_progress['post_ids']
+					: array();
 			}
 		}
 
@@ -1158,15 +1161,13 @@ class AIPS_Schedule_Generation_Service {
 			}
 
 			if ( ! $is_manual ) {
-				$progress_data = array(
-					'last_index' => $i,
-					'total'      => $post_quantity,
-					'updated_at' => AIPS_DateTime::now()->toIso8601(),
+				$this->repository->update_batch_progress(
+					$schedule_id,
+					$previous_posts + count( $generated_ids ),
+					$post_quantity,
+					$i,
+					array_merge( $previous_ids, $generated_ids )
 				);
-				if ( is_wp_error( $result ) ) {
-					$progress_data['last_error'] = $result->get_error_message();
-				}
-				$this->repository->update_batch_progress( $schedule->schedule_id, $progress_data );
 			}
 
 			if ( ( $i + 1 ) < $post_quantity && $this->is_time_exhausted() ) {
@@ -1190,7 +1191,7 @@ class AIPS_Schedule_Generation_Service {
 		if ( ! $interrupted_by_timeout ) {
 			$batch_finished = true;
 			if ( ! $is_manual ) {
-				$this->repository->clear_batch_progress( $schedule->schedule_id );
+				$this->repository->clear_batch_progress( $schedule_id );
 			}
 		}
 

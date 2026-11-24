@@ -465,11 +465,11 @@ class Test_AIPS_Bulk_Generator_Service extends WP_UnitTestCase {
 			) ),
 		) );
 
-		$context = new AIPS_Job_Context( $record, 10, time() + 30 );
+		$context = new AIPS_Job_Context( $record );
 		$result  = $this->service->handle_job_slice( $context );
 
-		$this->assertSame( 3, $result->processed_count );
-		$this->assertCount( 0, $result->errors );
+		$this->assertSame( 3, $result->get_processed_count() );
+		$this->assertSame( 0, $result->get_failed_count() );
 		$this->assertSame( array( 10, 20, 30 ), $called_items );
 
 		AIPS_Bulk_Generator_Service::reset_strategies();

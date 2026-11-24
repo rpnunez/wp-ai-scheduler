@@ -24,7 +24,10 @@ class AIPS_System_Diagnostics_Service {
 	private $history_repository;
 
 	/**
-	 * @var AIPS_Bulk_Batch_Job_Store|null
+	 * Optional leftover store from callers that still inject a cleanup helper.
+	 * Unified jobs are cleaned via AIPS_Job_Manager::cleanup_finished_jobs().
+	 *
+	 * @var object|null
 	 */
 	private $bulk_batch_job_store;
 

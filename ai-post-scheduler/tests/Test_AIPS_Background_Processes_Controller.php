@@ -109,8 +109,7 @@ class Test_AIPS_Background_Processes_Controller extends WP_UnitTestCase {
 		$job_id = $this->job_manager->dispatch_batch(
 			'bulk_post_generation',
 			array( 1, 2, 3, 4 ),
-			2,
-			60
+			array( 'batch_size' => 2 )
 		);
 
 		$snap = $this->controller->get_snapshot( 'bulk_generation' );

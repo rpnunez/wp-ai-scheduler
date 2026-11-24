@@ -35,7 +35,7 @@ class Test_AIPS_Relationship_Builder extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
-		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_background_processes' );
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_jobs' );
 		parent::tearDown();
 	}
 
@@ -202,7 +202,7 @@ class Test_AIPS_Relationship_Builder extends WP_UnitTestCase {
 			'job_type' => AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE,
 			'payload'  => array( 'mode' => 'missing' ),
 		) );
-		$context = new AIPS_Job_Context( $record, 10, 30.0 );
+		$context = new AIPS_Job_Context( $record );
 		$result  = $service->handle_job_slice( $context );
 
 		$this->assertArrayHasKey( $b, $this->related_of( $a ) );

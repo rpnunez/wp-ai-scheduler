@@ -106,6 +106,14 @@ interface AIPS_Schedule_Repository_Interface {
 	public function set_active($id, $is_active);
 
 	/**
+	 * Load decoded batch-progress JSON for a schedule.
+	 *
+	 * @param int $id Schedule ID.
+	 * @return array|null
+	 */
+	public function get_batch_progress($id);
+
+	/**
 	 * Update batch progress state.
 	 *
 	 * @param int   $id Schedule ID.

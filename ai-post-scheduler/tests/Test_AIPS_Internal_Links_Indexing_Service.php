@@ -29,7 +29,7 @@ class Test_AIPS_Internal_Links_Indexing_Service extends WP_UnitTestCase {
 			'job_id'   => 'job-index-1',
 			'job_type' => AIPS_Job_Registry::TYPE_INTERNAL_LINKS_INDEXING,
 		) );
-		$context = new AIPS_Job_Context( $record, 10, 30.0 );
+		$context = new AIPS_Job_Context( $record );
 
 		$result = $service->handle_job_slice( $context );
 		$this->assertInstanceOf( AIPS_Job_Slice_Result::class, $result );

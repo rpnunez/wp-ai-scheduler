@@ -111,7 +111,7 @@ class Test_AIPS_Author_Embeddings_Service extends WP_UnitTestCase {
 			'job_type' => AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS,
 			'payload'  => array( 'author_id' => 1 ),
 		) );
-		$context = new AIPS_Job_Context( $record, 10, 30.0 );
+		$context = new AIPS_Job_Context( $record );
 
 		$result = $service->handle_job_slice( $context );
 

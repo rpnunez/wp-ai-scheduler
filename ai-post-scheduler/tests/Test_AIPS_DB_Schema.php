@@ -450,21 +450,23 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 	}
 
 	/**
-	 * aips_background_processes exists with the columns and indexes the process repository relies on.
+	 * aips_jobs exists with the columns and indexes the unified job repository relies on.
 	 */
-	public function test_background_processes_table_columns_and_indexes() {
+	public function test_jobs_table_columns_and_indexes() {
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'aips_background_processes';
+		$table_name = $wpdb->prefix . 'aips_jobs';
 
-		$this->assertContains( 'aips_background_processes', AIPS_DB_Manager::get_table_names() );
+		$this->assertContains( 'aips_jobs', AIPS_DB_Manager::get_table_names() );
+		$this->assertNotContains( 'aips_background_processes', AIPS_DB_Manager::get_table_names() );
+		$this->assertNotContains( 'aips_bulk_batch_jobs', AIPS_DB_Manager::get_table_names() );
 
 		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table_name}" );
-		foreach ( array( 'process_key', 'status', 'total', 'processed', 'failed', 'cursor_id', 'ai_calls_used', 'ai_calls_budget', 'options_json', 'message', 'next_run_at', 'last_tick_at', 'started_by', 'started_at', 'finished_at', 'updated_at' ) as $column ) {
+		foreach ( array( 'job_id', 'job_type', 'group_name', 'status', 'total', 'processed', 'failed', 'cursor_id', 'payload_json', 'result_json', 'error_message', 'attempts', 'max_retries', 'next_run_at', 'last_tick_at', 'started_at', 'finished_at', 'created_at', 'updated_at' ) as $column ) {
 			$this->assertContains( $column, $columns, "Column {$column} should exist" );
 		}
 
 		$index_names = array_unique( wp_list_pluck( $wpdb->get_results( "SHOW INDEX FROM {$table_name}" ), 'Key_name' ) );
-		foreach ( array( 'process_status', 'status_updated' ) as $index ) {
+		foreach ( array( 'PRIMARY', 'type_status', 'group_status', 'status_next_run', 'updated_at' ) as $index ) {
 			$this->assertContains( $index, $index_names, "Index {$index} should exist" );
 		}
 	}
