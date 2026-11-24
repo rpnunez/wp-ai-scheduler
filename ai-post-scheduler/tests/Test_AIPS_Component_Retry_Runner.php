@@ -49,6 +49,26 @@ class Test_AIPS_Component_Retry_Runner extends WP_UnitTestCase {
 		$this->assertSame(0, $config->get_component_retry_limit('unknown_component'));
 	}
 
+	public function test_settings_registry_exposes_persisted_definition_and_defaults() {
+		$registry = AIPS_Settings_Registry::instance();
+		$this->assertTrue($registry->has_definition('aips_component_generation_retries'));
+
+		$def = $registry->get_definition('aips_component_generation_retries');
+		$this->assertInstanceOf('AIPS_Setting_Definition', $def);
+		$this->assertFalse($def->is_action(), 'aips_component_generation_retries must be a persisted setting, not a virtual action.');
+		$this->assertSame(AIPS_Setting_Definition::TYPE_ARRAY, $def->get_type());
+
+		$defaults = $registry->get_defaults();
+		$this->assertArrayHasKey('aips_component_generation_retries', $defaults);
+		$this->assertSame(3, $defaults['aips_component_generation_retries']['post_images']);
+		$this->assertSame(0, $defaults['aips_component_generation_retries']['post_slug']);
+
+		$renderer = new AIPS_Settings_Form_Renderer();
+		$html = $renderer->get_field_html($def);
+		$this->assertStringContainsString('aips-component-retries-grid', $html);
+		$this->assertStringContainsString('aips_component_generation_retries[post_images]', $html);
+	}
+
 	public function test_settings_ui_sanitizer_clamps_and_strips_unknown_keys() {
 		$ui = new AIPS_Settings_UI();
 		$sanitized = $ui->sanitize_component_generation_retries(array(

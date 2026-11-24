@@ -2719,7 +2719,7 @@ class AIPS_Settings_Registry {
 				'tab'               => 'settings-resilience',
 				'section'           => 'aips_resilience_retry_section',
 				'label'             => __( 'Per-Component Inline Retries', 'ai-post-scheduler' ),
-				'control_type'      => AIPS_Setting_Definition::CONTROL_ACTION,
+				'control_type'      => AIPS_Setting_Definition::CONTROL_MULTISELECT,
 				'render_callback'   => static function () {
 					ob_start();
 					( new AIPS_Settings_UI() )->component_generation_retries_field_callback();

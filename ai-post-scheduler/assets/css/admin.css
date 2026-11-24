@@ -8255,38 +8255,12 @@ tr.aips-row-details > td {
 }
 
 /* Settings Form Field Helpers */
-.aips-connector-select {
-	min-width: 24em;
-}
-
-.aips-flex-row-wrap {
-	display: flex;
-	gap: var(--aips-space-5);
-	flex-wrap: wrap;
-	align-items: center;
-}
-
-.aips-flex-row-wrap-start {
-	display: flex;
-	gap: var(--aips-space-6);
-	flex-wrap: wrap;
-	align-items: flex-start;
-}
-
-.aips-space-bottom-md {
-	margin-bottom: var(--aips-space-3);
-}
-
 .aips-description-spaced {
 	margin-top: var(--aips-space-2);
 }
 
 .aips-embeddings-warning {
 	color: var(--aips-error-dark);
-}
-
-.aips-input-retention {
-	width: 80px;
 }
 
 /* Secret Field Container */
