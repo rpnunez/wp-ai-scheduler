@@ -263,17 +263,6 @@ class AIPS_Admin_Menu {
             array($this, 'render_operations_insights_page')
         );
 
-        if (AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
-            add_submenu_page(
-                null,
-                __('Telemetry', 'ai-post-scheduler'),
-                __('Telemetry', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-telemetry',
-                array($this, 'render_telemetry_page')
-            );
-        }
-
         add_submenu_page(
             null,
             __('Stress Test', 'ai-post-scheduler'),
@@ -283,17 +272,6 @@ class AIPS_Admin_Menu {
             array($this, 'render_stress_test_page')
         );
 
-        if (AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled')) {
-            add_submenu_page(
-                null,
-                __('Cache Monitor', 'ai-post-scheduler'),
-                __('Cache Monitor', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-cache-monitor',
-                array($this, 'render_cache_monitor_page')
-            );
-        }
-      
         if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
                 null,
@@ -800,15 +778,6 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the Telemetry page.
-     *
-     * @return void
-     */
-    public function render_telemetry_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'telemetry');
-    }
-
-    /**
      * Render the Sources page.
      *
      * Loads all sources from the repository and includes the sources template.
@@ -853,15 +822,6 @@ class AIPS_Admin_Menu {
         AIPS_Admin_Menu_Helper::safe_render(function() {
             include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
         }, __('Settings', 'ai-post-scheduler'));
-    }
-
-    /**
-     * Render the Cache Monitor page.
-     *
-     * @return void
-     */
-    public function render_cache_monitor_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'cache-monitor');
     }
 
     /**

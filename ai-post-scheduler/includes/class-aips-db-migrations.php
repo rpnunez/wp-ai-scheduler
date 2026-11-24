@@ -314,6 +314,17 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
+		// migrate_to_3_7_26() removes the Telemetry and Cache Monitor subsystems:
+		// it drops their tables (also removed from get_schema() so the Layer-1
+		// apply above no longer recreates them), renames the prune-interval option
+		// that still drives the remaining retention cron, deletes the orphaned
+		// settings, and clears the Cache Monitor maintenance cron. Every step is an
+		// idempotent IF EXISTS / delete_option / wp_clear_scheduled_hook no-op once
+		// applied, so it runs unconditionally below the version gate.
+		if ( version_compare( $from_version, '3.7.26', '<' ) ) {
+			$this->migrate_to_3_7_26();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1988,6 +1999,82 @@ class AIPS_DB_Migrations {
 		$this->logger->log( 'Migration 3.7.24: Added author featured-image columns and confirmed post-image tables.', 'info' );
 
 		return true;
+	}
+
+	/**
+	 * Migration for version 3.7.26.
+	 *
+	 * Removes the Telemetry and Cache Monitor subsystems:
+	 *   1. Drops the subsystem tables (aips_telemetry, aips_cache_index,
+	 *      aips_cache_events). They are also removed from get_schema() so the
+	 *      Layer-1 dbDelta apply no longer recreates them.
+	 *   2. Renames aips_telemetry_prune_interval to aips_db_prune_interval. That
+	 *      option drives the recurrence for aips_database_prune_cleanup (history
+	 *      logs, orphans — not telemetry alone), so its value is preserved to keep
+	 *      the remaining retention cron on the operator's chosen schedule, then the
+	 *      prune schedule is resynced so the running event picks up the new option.
+	 *   3. Deletes the orphaned Telemetry / Cache Monitor settings.
+	 *   4. Clears the aips_cache_monitor_maintenance cron hook.
+	 *
+	 * Every step is an idempotent IF EXISTS / delete_option / wp_clear_scheduled_hook
+	 * no-op once applied and on fresh installs.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_26() {
+		global $wpdb;
+
+		// 1. Drop the subsystem tables.
+		foreach ( array( 'aips_telemetry', 'aips_cache_index', 'aips_cache_events' ) as $table ) {
+			$full_table = $wpdb->prefix . $table;
+			// Table name cannot be parameterised; it is built from the trusted
+			// prefix and a hard-coded literal, so interpolation is safe here.
+			$wpdb->query( "DROP TABLE IF EXISTS `{$full_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+		}
+
+		// 2. Preserve the prune-interval value under its new option name. The old
+		// option only needs copying when it was explicitly stored; a missing option
+		// leaves aips_db_prune_interval on its 'daily' default.
+		$sentinel          = '__aips_missing__';
+		$legacy_interval   = get_option( 'aips_telemetry_prune_interval', $sentinel );
+		$interval_migrated = false;
+		if ( $sentinel !== $legacy_interval ) {
+			if ( false === get_option( 'aips_db_prune_interval', false ) ) {
+				update_option( 'aips_db_prune_interval', $legacy_interval );
+				$interval_migrated = true;
+			}
+			delete_option( 'aips_telemetry_prune_interval' );
+		}
+
+		// 3. Delete the orphaned Telemetry / Cache Monitor settings.
+		$removed_options = array(
+			'aips_enable_telemetry',
+			'aips_telemetry_retention_value',
+			'aips_telemetry_retention_unit',
+			'aips_cache_monitor_enabled',
+			'aips_cache_monitor_index_enabled',
+			'aips_cache_monitor_metrics_enabled',
+			'aips_cache_monitor_event_retention_days',
+			'aips_cache_monitor_max_index_entries',
+			'aips_cache_monitor_preview_length',
+			'aips_cache_monitor_full_value_debug_only',
+			'aips_cache_monitor_live_refresh_enabled',
+			'aips_cache_monitor_live_refresh_interval',
+		);
+		foreach ( $removed_options as $option ) {
+			delete_option( $option );
+		}
+
+		// 4. Clear the Cache Monitor maintenance cron hook.
+		wp_clear_scheduled_hook( 'aips_cache_monitor_maintenance' );
+
+		// Resync the remaining database-prune cron so a running event adopts the
+		// renamed option. Guarded in case Settings is not loaded in this context.
+		if ( $interval_migrated && class_exists( 'AIPS_Settings' ) ) {
+			AIPS_Settings::sync_prune_cron_schedule();
+		}
+
+		$this->logger->log( 'Migration 3.7.26: Removed Telemetry and Cache Monitor subsystems (tables, options, cron) and renamed the prune-interval option.', 'info' );
 	}
 
 	/**

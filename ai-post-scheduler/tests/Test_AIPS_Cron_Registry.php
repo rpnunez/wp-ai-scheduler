@@ -19,7 +19,7 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 	public function tearDown(): void {
 		delete_option( 'aips_auto_prune_enabled' );
 		delete_option( 'aips_notif_digest_enabled' );
-		delete_option( 'aips_telemetry_prune_interval' );
+		delete_option( 'aips_db_prune_interval' );
 		parent::tearDown();
 	}
 
@@ -38,7 +38,6 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 			'aips_notification_rollups',
 			'aips_cleanup_export_files',
 			'aips_cleanup_bulk_batch_jobs',
-			'aips_cache_monitor_maintenance',
 			'aips_database_prune_cleanup',
 			'aips_notif_digest_cron',
 		) as $expected ) {
@@ -73,7 +72,7 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 
 	public function test_active_recurring_events_include_enabled_conditional_hooks() {
 		update_option( 'aips_auto_prune_enabled', 1 );
-		update_option( 'aips_telemetry_prune_interval', 'weekly' );
+		update_option( 'aips_db_prune_interval', 'weekly' );
 		update_option( 'aips_notif_digest_enabled', 1 );
 
 		$active = $this->registry->get_active_recurring_events();
@@ -86,7 +85,7 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 
 	public function test_prune_recurrence_falls_back_to_daily_for_invalid_interval() {
 		update_option( 'aips_auto_prune_enabled', 1 );
-		update_option( 'aips_telemetry_prune_interval', 'nonsense-interval' );
+		update_option( 'aips_db_prune_interval', 'nonsense-interval' );
 
 		$active = $this->registry->get_active_recurring_events();
 

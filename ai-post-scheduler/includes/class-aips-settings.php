@@ -70,8 +70,8 @@ class AIPS_Settings {
 		};
 		add_action('update_option_aips_auto_prune_enabled', $sync_prune_cron);
 		add_action('add_option_aips_auto_prune_enabled', $sync_prune_cron);
-		add_action('update_option_aips_telemetry_prune_interval', $sync_prune_cron);
-		add_action('add_option_aips_telemetry_prune_interval', $sync_prune_cron);
+		add_action('update_option_aips_db_prune_interval', $sync_prune_cron);
+		add_action('add_option_aips_db_prune_interval', $sync_prune_cron);
 
 		$sync_digest_cron = function() {
 			self::sync_digest_cron_schedule();
@@ -94,7 +94,7 @@ class AIPS_Settings {
 
 		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_auto_prune_enabled');
 		if ($enabled) {
-			$interval = sanitize_key((string) AIPS_Config::get_instance()->get_option('aips_telemetry_prune_interval', 'daily'));
+			$interval = sanitize_key((string) AIPS_Config::get_instance()->get_option('aips_db_prune_interval', 'daily'));
 			if (!in_array($interval, array('daily', 'twicedaily', 'weekly'), true)) {
 				$interval = 'daily';
 			}
@@ -184,14 +184,6 @@ class AIPS_Settings {
 			'aips_persist_table_filters' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_persist_table_filters'],
-			),
-			'aips_enable_telemetry' => array(
-				'sanitize_callback' => 'absint',
-				'default'           => $defaults['aips_enable_telemetry'],
-			),
-			'aips_cache_monitor_enabled' => array(
-				'sanitize_callback' => 'absint',
-				'default'           => $defaults['aips_cache_monitor_enabled'],
 			),
 			'aips_enable_retry' => array(
 				'sanitize_callback' => 'absint',
@@ -718,17 +710,9 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_auto_prune_enabled'],
 			),
-			'aips_telemetry_retention_value' => array(
-				'sanitize_callback' => 'absint',
-				'default'           => $defaults['aips_telemetry_retention_value'],
-			),
-			'aips_telemetry_retention_unit' => array(
-				'sanitize_callback' => array($ui, 'sanitize_retention_unit'),
-				'default'           => $defaults['aips_telemetry_retention_unit'],
-			),
-			'aips_telemetry_prune_interval' => array(
+			'aips_db_prune_interval' => array(
 				'sanitize_callback' => array($ui, 'sanitize_prune_interval'),
-				'default'           => $defaults['aips_telemetry_prune_interval'],
+				'default'           => $defaults['aips_db_prune_interval'],
 			),
 			'aips_history_log_retention_value' => array(
 				'sanitize_callback' => 'absint',
@@ -1739,22 +1723,6 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
-        add_settings_field(
-            'aips_enable_telemetry',
-            __('Enable Telemetry', 'ai-post-scheduler'),
-            array($this->ui, 'enable_telemetry_field_callback'),
-            'aips-settings',
-            'aips_developers_section'
-        );
-
-        add_settings_field(
-            'aips_cache_monitor_enabled',
-            __('Enable Cache Monitor', 'ai-post-scheduler'),
-            array($this->ui, 'cache_monitor_enabled_field_callback'),
-            'aips-settings',
-            'aips_developers_section'
-        );
-
         // -----------------------------------------------------------------------
         // Resilience sections: Retry, Rate Limiting, Batch Pacing, Circuit Breaker
         // -----------------------------------------------------------------------
@@ -2013,17 +1981,9 @@ class AIPS_Settings {
         );
 
         add_settings_field(
-            'aips_telemetry_retention',
-            __('Telemetry Data Retention', 'ai-post-scheduler'),
-            array($this->ui, 'telemetry_retention_field_callback'),
-            'aips-settings',
-            'aips_database_retention_section'
-        );
-
-        add_settings_field(
-            'aips_telemetry_prune_interval',
+            'aips_db_prune_interval',
             __('Prune Schedule Frequency', 'ai-post-scheduler'),
-            array($this->ui, 'prune_interval_field_callback'),
+            array($this->ui, 'db_prune_interval_field_callback'),
             'aips-settings',
             'aips_database_retention_section'
         );

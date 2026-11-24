@@ -817,11 +817,11 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 			$html .= '</div>';
 		}
 
-		// Health & Telemetry
+		// Health & Status
 		$circuit_state = isset($item['circuit_state']) ? $item['circuit_state'] : 'closed';
 		$consec_fails  = isset($item['consecutive_failures']) ? (int) $item['consecutive_failures'] : 0;
 		$html .= '<div class="aips-drawer-col">';
-		$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Health & Telemetry', 'ai-post-scheduler') . '</div>';
+		$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Health & Status', 'ai-post-scheduler') . '</div>';
 		$html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">';
 		if ('open' === $circuit_state) {
 			$html .= '<span class="aips-badge aips-badge-danger">' . esc_html__('Circuit Breaker Tripped', 'ai-post-scheduler') . '</span>';

@@ -34,11 +34,6 @@ class AIPS_System_Diagnostics_Service {
 	private $resilience_service;
 
 	/**
-	 * @var AIPS_Cache_Monitor_Service|null
-	 */
-	private $cache_monitor_service;
-
-	/**
 	 * @var AIPS_Notifications_Repository
 	 */
 	private $notifications_repository;
@@ -62,7 +57,6 @@ class AIPS_System_Diagnostics_Service {
 		$history_repository = null,
 		$bulk_batch_job_store = null,
 		$resilience_service = null,
-		$cache_monitor_service = null,
 		$notifications_repository = null,
 		$date_time_db_repair = null,
 		$db_prune_service = null,
@@ -81,14 +75,6 @@ class AIPS_System_Diagnostics_Service {
 		$this->resilience_service = $resilience_service ?: ($container->has(AIPS_Resilience_Service::class)
 			? $container->make(AIPS_Resilience_Service::class)
 			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null));
-
-		if ($cache_monitor_service) {
-			$this->cache_monitor_service = $cache_monitor_service;
-		} elseif (class_exists('AIPS_Cache_Monitor_Service') && class_exists('AIPS_Cache_Monitor_Repository') && class_exists('AIPS_Cache_Index')) {
-			$this->cache_monitor_service = new AIPS_Cache_Monitor_Service(new AIPS_Cache_Monitor_Repository(), new AIPS_Cache_Index());
-		} else {
-			$this->cache_monitor_service = null;
-		}
 
 		$this->notifications_repository = $notifications_repository ?: ($container->has(AIPS_Notifications_Repository::class)
 			? $container->make(AIPS_Notifications_Repository::class)
@@ -137,13 +123,6 @@ class AIPS_System_Diagnostics_Service {
 	 */
 	private function get_refresh_task_definitions() {
 		return array(
-			'cache_maintenance' => $this->build_refresh_task_definition(
-				__('Prune object cache', 'ai-post-scheduler'),
-				__('Prune Object Cache', 'ai-post-scheduler'),
-				'cleanup_repair',
-				'aips_status_cache_maintenance',
-				array($this, 'run_cache_maintenance')
-			),
 			'cleanup_notifications' => $this->build_refresh_task_definition(
 				__('Purge old notifications', 'ai-post-scheduler'),
 				__('Purge Old Notifications', 'ai-post-scheduler'),
@@ -214,14 +193,6 @@ class AIPS_System_Diagnostics_Service {
 				'aips_rebuild_caches',
 				array($this, 'rebuild_caches')
 			),
-			'prune_telemetry' => $this->build_refresh_task_definition(
-				__('Telemetry prune', 'ai-post-scheduler'),
-				__('Prune Old Telemetry', 'ai-post-scheduler'),
-				'cleanup_repair',
-				'aips_status_prune_telemetry',
-				array($this, 'prune_telemetry'),
-				true
-			),
 			'prune_history_logs' => $this->build_refresh_task_definition(
 				__('History log prune', 'ai-post-scheduler'),
 				__('Prune History Logs', 'ai-post-scheduler'),
@@ -285,11 +256,9 @@ class AIPS_System_Diagnostics_Service {
 			'cleanup_repair' => array(
 				'label' => __('System Maintenance', 'ai-post-scheduler'),
 				'steps' => array(
-					'prune_telemetry',
 					'prune_history_logs',
 					'prune_ai_errors',
 					'clean_orphaned_embeddings',
-					'cache_maintenance',
 					'clear_embeddings_cache',
 					'cleanup_notifications',
 					'notifications_hygiene',
@@ -558,33 +527,6 @@ class AIPS_System_Diagnostics_Service {
 	}
 
 	/**
-	 * Prune expired cache entries, orphaned index rows, and old cache events.
-	 *
-	 * @return array
-	 */
-	public function run_cache_maintenance() {
-		if (!$this->cache_monitor_service) {
-			return array(
-				'success' => false,
-				'message' => __('Cache monitor service is unavailable.', 'ai-post-scheduler'),
-			);
-		}
-
-		$result = $this->cache_monitor_service->run_maintenance();
-
-		return array(
-			'success' => true,
-			'message' => sprintf(
-				__('Cache maintenance complete: %1$d expired entries, %2$d orphaned index rows, %3$d old events pruned.', 'ai-post-scheduler'),
-				isset($result['pruned_index']) ? (int) $result['pruned_index'] : 0,
-				isset($result['pruned_orphans']) ? (int) $result['pruned_orphans'] : 0,
-				isset($result['pruned_events']) ? (int) $result['pruned_events'] : 0
-			),
-			'pruned'  => $result,
-		);
-	}
-
-	/**
 	 * Clear the embeddings vector cache.
 	 *
 	 * @return array
@@ -802,38 +744,6 @@ class AIPS_System_Diagnostics_Service {
 				count($sequence)
 			),
 		);
-	}
-
-	/**
-	 * Prune old telemetry records based on configured retention.
-	 *
-	 * @return array<string, mixed>
-	 */
-	public function prune_telemetry() {
-		$result    = $this->db_prune_service->prune_telemetry();
-		$deleted   = isset($result['deleted']) ? (int) $result['deleted'] : 0;
-		$optimized = !empty($result['optimized']);
-
-		return array(
-			'success'   => true,
-			'message'   => sprintf(
-				__('Telemetry prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
-				$deleted,
-				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
-			),
-			'deleted'   => $deleted,
-			'optimized' => $optimized,
-			'tables'    => array_filter(array($this->db_prune_service->get_table_status('aips_telemetry'))),
-		);
-	}
-
-	/**
-	 * Purge all telemetry records and truncate the table.
-	 *
-	 * @return array<string, mixed>
-	 */
-	public function purge_all_telemetry() {
-		return $this->db_prune_service->purge_all_telemetry();
 	}
 
 	/**

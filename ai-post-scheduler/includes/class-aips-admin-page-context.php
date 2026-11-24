@@ -386,7 +386,7 @@ class AIPS_Admin_Page_Context {
 				'slug'        => 'aips-diagnostics',
 				'label'       => __('Diagnostics', 'ai-post-scheduler'),
 				'icon'        => 'dashicons-admin-tools',
-				'description' => __('Review system health, generation operations, telemetry, seeding utilities, and developer tools from one place.', 'ai-post-scheduler'),
+				'description' => __('Review system health, generation operations, seeding utilities, and developer tools from one place.', 'ai-post-scheduler'),
 				'default_tab' => 'system-info',
 				'sections'    => array(
 					'system-info' => array(
@@ -409,16 +409,6 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-chart-area',
 						'description' => __('Detailed cron job and scheduler execution trends', 'ai-post-scheduler'),
 					),
-					'telemetry' => array(
-						'label'       => __('Telemetry', 'ai-post-scheduler'),
-						'icon'        => 'dashicons-performance',
-						'description' => __('Performance metrics & queries', 'ai-post-scheduler'),
-					),
-					'cache-monitor' => array(
-						'label'       => __('Cache Monitor', 'ai-post-scheduler'),
-						'icon'        => 'dashicons-database',
-						'description' => __('Object cache & transient stats', 'ai-post-scheduler'),
-					),
 					'dev-tools' => array(
 						'label'       => __('Dev Tools', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-hammer',
@@ -438,8 +428,6 @@ class AIPS_Admin_Page_Context {
 				'child_pages' => array(
 					'aips-operations-insights' => 'insights',
 					'aips-status'              => 'health',
-					'aips-telemetry'           => 'telemetry',
-					'aips-cache-monitor'       => 'cache-monitor',
 					'aips-dev-tools'           => 'dev-tools',
 					'aips-stress-test'         => 'stress-test',
 				),

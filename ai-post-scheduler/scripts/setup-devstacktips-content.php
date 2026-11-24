@@ -16,7 +16,7 @@
  *
  * Plugin Settings Configured:
  * - Default Article Structure, Research Niches, Notifications
- * - Telemetry, Cache System, Topic Similarity Threshold
+ * - Cache System, Topic Similarity Threshold
  * - Log Retention, Default Post Settings, Unsplash Key (placeholder)
  *
  * Note: After running, manually configure:
@@ -1312,15 +1312,6 @@ DevStackTips Content Setup
 						'option_name' => 'aips_unsplash_access_key',
 						'value' => '',
 						'warning_message' => 'Please add Unsplash Access Key in Settings if using Unsplash images',
-					),
-				),
-			),
-			'performance_monitoring' => array(
-				'title' => 'Performance Monitoring',
-				'options' => array(
-					array(
-						'option_name' => 'aips_enable_telemetry',
-						'value' => true,
 					),
 				),
 			),
@@ -2881,7 +2872,7 @@ Tone:
 		$default_post_status = isset($configured_settings['aips_default_post_status']) ? $configured_settings['aips_default_post_status'] : 'draft';
 		echo "  7. Start with post status " . $default_post_status . " to review content quality before auto-publishing
 ";
-		echo "  8. Monitor History page, Operations Insights, and Telemetry for generation metrics
+		echo "  8. Monitor History page and Operations Insights for generation metrics
 ";
 		echo "  9. Review and approve Author Topics before they generate posts
 ";
