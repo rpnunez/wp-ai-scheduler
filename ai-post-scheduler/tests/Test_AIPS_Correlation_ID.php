@@ -44,6 +44,7 @@ class AIPS_Test_Stub_History_Repository_For_Correlation implements AIPS_History_
 	public function delete_by_post_id($post_id) { return 0; }
 	public function count_completed_for_schedule($schedule) { return 0; }
 	public function invalidate_schedule_completed_count_cache($schedule_id) {}
+	public function get_conversation_transcript_for_post($post_id) { return null; }
 }
 
 class Test_AIPS_Correlation_ID extends WP_UnitTestCase {

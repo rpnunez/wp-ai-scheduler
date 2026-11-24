@@ -154,6 +154,9 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		}
 		public function invalidate_schedule_completed_count_cache($schedule_id) {
 		}
+		public function get_conversation_transcript_for_post($post_id) {
+			return null;
+		}
 		public function add_log_entry($history_id, $details, $history_type_id = null) {
 			return false;
 		}
