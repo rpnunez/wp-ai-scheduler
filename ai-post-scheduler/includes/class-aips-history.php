@@ -701,7 +701,7 @@ class AIPS_History {
             'status_class' => isset($container['status_class']) ? (string) $container['status_class'] : '',
             'header_actions' => $this->build_history_modal_header_actions($container),
             'trigger_info' => isset($container['trigger_info']) ? $container['trigger_info'] : array(),
-            'summary_lines' => $this->build_history_summary_lines($analysis, $container),
+            'summary_lines' => $this->build_history_summary_lines($analysis),
             'summary_meta' => $this->build_history_summary_meta($container),
             'detail_cards' => $this->build_history_detail_cards($container),
             'root_issue' => !empty($container['error_message']) ? (string) $container['error_message'] : '',
@@ -1003,11 +1003,10 @@ class AIPS_History {
     /**
      * Build the combined Summary section lines.
      *
-     * @param array<string,mixed> $analysis  Derived analysis payload.
-     * @param array<string,mixed> $container Base container metadata.
+     * @param array<string,mixed> $analysis Derived analysis payload.
      * @return array<int,array<string,string>>
      */
-    private function build_history_summary_lines($analysis, $container = array()) {
+    private function build_history_summary_lines($analysis) {
         $lines = array();
 
         if (!empty($analysis['outcome_label'])) {
