@@ -126,6 +126,7 @@ class AIPS_Author_Embeddings_Service {
 		$failed     = 0;
 		$new_cursor = $cursor;
 		$stalled    = false;
+		$handled    = 0;
 
 		foreach ( $ids as $topic_id ) {
 			if ( $context->should_yield() && ( $success + $failed ) > 0 ) {
@@ -160,9 +161,12 @@ class AIPS_Author_Embeddings_Service {
 			}
 
 			$new_cursor = max( $new_cursor, (int) $topic_id );
+			$handled++;
 		}
 
-		$is_complete = ! $stalled && ( count( $ids ) < $limit );
+		// Only complete when every fetched id was processed (no early yield/break) AND the
+		// page was short — otherwise a yielded final slice would abandon unembedded topics.
+		$is_complete = ! $stalled && ( $handled === count( $ids ) ) && ( count( $ids ) < $limit );
 
 		return new AIPS_Job_Slice_Result(
 			$success,

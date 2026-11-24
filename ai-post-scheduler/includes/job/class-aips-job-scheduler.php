@@ -310,6 +310,11 @@ class AIPS_Job_Scheduler {
 		);
 
 		for ($slice = 0; $slice < $slice_config->get_num_slices(); $slice++) {
+			// Guard against trailing slices whose start index already exhausts the item set
+			// (e.g. Q=35 -> 10 slices x 4 items leaves slice 9 with start_index 36, size -1).
+			if (($slice * $slice_config->get_items_per_slice()) >= $item_count) {
+				break;
+			}
 			$job = $this->create_batch_job($hook, $item_count, $slice, $parsed_options, $slice_config);
 			$count_key = $this->dispatcher->dispatch($job, $parsed_options['retry_options']) ? 'scheduled' : 'failed';
 			$dispatch_counts[$count_key]++;

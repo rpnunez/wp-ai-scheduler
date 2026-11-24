@@ -1229,40 +1229,84 @@ class AIPS_Schedule_Generation_Service {
 		$overall_result         = null;
 		$batch_finished         = false;
 		$generated_ids          = array();
+		$errors                 = array();
 
-		$schedule_id      = isset( $schedule->schedule_id ) ? (int) $schedule->schedule_id : (int) $schedule->id;
-		$current_progress = $this->repository->get_batch_progress( $schedule_id );
-		$start_index      = 0;
-		$previous_posts   = 0;
-		$previous_ids     = array();
+		$schedule_id    = isset( $schedule->schedule_id ) ? (int) $schedule->schedule_id : (int) $schedule->id;
+		$start_index    = 0;
+		$previous_posts = 0;
+		$previous_ids   = array();
 
-		if ( ! $is_manual && $current_progress && isset( $current_progress['last_index'] ) ) {
-			$last_index = (int) $current_progress['last_index'];
-			if ( $last_index >= 0 && $last_index < ( $post_quantity - 1 ) ) {
-				$start_index    = $last_index + 1;
-				$previous_posts = isset( $current_progress['completed'] ) ? (int) $current_progress['completed'] : $start_index;
-				$previous_ids   = isset( $current_progress['post_ids'] ) && is_array( $current_progress['post_ids'] )
-					? $current_progress['post_ids']
-					: array();
+		if ( $is_manual ) {
+			// A manual run always starts fresh; never inherit a stale scheduled cursor.
+			$this->repository->clear_batch_progress( $schedule_id );
+		} else {
+			$current_progress = $this->repository->get_batch_progress( $schedule_id );
+			if ( $current_progress && isset( $current_progress['last_index'], $current_progress['total'] ) && (int) $current_progress['total'] === $post_quantity ) {
+				$last_index = (int) $current_progress['last_index'];
+				if ( $last_index >= 0 && $last_index < ( $post_quantity - 1 ) ) {
+					$previous_ids   = isset( $current_progress['post_ids'] ) && is_array( $current_progress['post_ids'] )
+						? array_map( 'absint', $current_progress['post_ids'] )
+						: array();
+					$start_index    = ! empty( $previous_ids ) ? count( $previous_ids ) : ( $last_index + 1 );
+					$previous_posts = ! empty( $previous_ids ) ? count( $previous_ids ) : ( isset( $current_progress['completed'] ) ? (int) $current_progress['completed'] : $start_index );
+				}
+			} elseif ( $current_progress ) {
+				// Quantity changed since the cursor was written: discard the stale progress.
+				$this->repository->clear_batch_progress( $schedule_id );
 			}
 		}
 
+		$all_post_ids    = $previous_ids;
+		$delay           = $is_manual ? 0 : $delay_seconds;
+		$loop_started_at = microtime( true );
+
 		for ( $i = $start_index; $i < $post_quantity; $i++ ) {
-			if ( $i > $start_index && $delay_seconds > 0 ) {
-				sleep( $delay_seconds );
+			if ( $i > $start_index ) {
+				AIPS_Cache::reset_request_cache();
+				$done_this_run  = $i - $start_index;
+				$avg_seconds    = ( microtime( true ) - $loop_started_at ) / max( 1, $done_this_run );
+				$needed_seconds = max( self::MIN_TIME_BUDGET_MARGIN, (int) ceil( $avg_seconds * 1.5 ) + $delay );
+				if ( $this->is_time_exhausted( $needed_seconds ) ) {
+					$interrupted_by_timeout = true;
+					$overall_result         = new WP_Error(
+						'batch_interrupted_timeout',
+						sprintf(
+							__( 'Execution interrupted to prevent script timeout. Completed %1$d of %2$d posts.', 'ai-post-scheduler' ),
+							$previous_posts + count( $generated_ids ),
+							$post_quantity
+						),
+						array(
+							'completed' => $previous_posts + count( $generated_ids ),
+							'total'     => $post_quantity,
+						)
+					);
+					break;
+				}
+				if ( $delay > 0 ) {
+					sleep( $delay );
+				}
 			}
 
 			$result = $this->generator->generate_post( $context );
 
-			if ( ! is_wp_error( $result ) ) {
-				$generated_ids[] = $result;
+			if ( is_wp_error( $result ) ) {
+				$errors[] = $result;
+				if ( ! $is_manual ) {
+					$completed_so_far = $previous_posts + count( $generated_ids );
+					$this->repository->update_run_state( $schedule_id, array(
+						'status'        => $completed_so_far > 0 ? 'partial' : 'failed',
+						'error_code'    => $result->get_error_code(),
+						'error_message' => $result->get_error_message(),
+						'completed'     => $completed_so_far,
+						'total'         => $post_quantity,
+						'timestamp'     => AIPS_DateTime::now()->toIso8601(),
+					) );
+				}
+				break;
 			}
 
-			if ( is_wp_error( $result ) && null === $overall_result ) {
-				$overall_result = $result;
-			} elseif ( ! is_wp_error( $result ) ) {
-				$overall_result = $result;
-			}
+			$generated_ids[] = $result;
+			$all_post_ids[]  = $result;
 
 			if ( ! $is_manual ) {
 				$this->repository->update_batch_progress(
@@ -1270,37 +1314,36 @@ class AIPS_Schedule_Generation_Service {
 					$previous_posts + count( $generated_ids ),
 					$post_quantity,
 					$i,
-					array_merge( $previous_ids, $generated_ids )
+					$all_post_ids
 				);
-			}
-
-			if ( ( $i + 1 ) < $post_quantity && $this->is_time_exhausted() ) {
-				$interrupted_by_timeout = true;
-				$overall_result         = new WP_Error(
-					'batch_interrupted_timeout',
-					sprintf(
-						__( 'Execution interrupted to prevent script timeout. Completed %1$d of %2$d posts.', 'ai-post-scheduler' ),
-						$previous_posts + count( $generated_ids ),
-						$post_quantity
-					),
-					array(
-						'completed' => $previous_posts + count( $generated_ids ),
-						'total'     => $post_quantity,
-					)
-				);
-				break;
 			}
 		}
 
-		if ( ! $interrupted_by_timeout ) {
+		if ( empty( $errors ) && ! $interrupted_by_timeout ) {
 			$batch_finished = true;
 			if ( ! $is_manual ) {
 				$this->repository->clear_batch_progress( $schedule_id );
+				$this->repository->update_run_state( $schedule_id, array(
+					'status'    => 'success',
+					'completed' => $previous_posts + count( $generated_ids ),
+					'total'     => $post_quantity,
+					'timestamp' => AIPS_DateTime::now()->toIso8601(),
+				) );
 			}
-		}
-
-		if ( count( $generated_ids ) > 1 ) {
-			$overall_result = $generated_ids;
+			$overall_result = count( $all_post_ids ) > 1 ? $all_post_ids : ( $all_post_ids[0] ?? null );
+		} elseif ( ! empty( $errors ) ) {
+			$overall_result = ! empty( $all_post_ids )
+				? new WP_Error(
+					'batch_partially_failed',
+					sprintf(
+						/* translators: 1: completed count, 2: total, 3: error message */
+						__( '%1$d of %2$d posts generated before error: %3$s', 'ai-post-scheduler' ),
+						$previous_posts + count( $generated_ids ),
+						$post_quantity,
+						$errors[0]->get_error_message()
+					)
+				)
+				: $errors[0];
 		}
 
 		return array( $overall_result, $batch_finished );
