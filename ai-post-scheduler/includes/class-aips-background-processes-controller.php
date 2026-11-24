@@ -791,7 +791,14 @@ class AIPS_Background_Processes_Controller {
 				return is_wp_error( $res ) ? $res : true;
 
 			case 'content_indexer_queue':
-				return $this->get_content_indexer_service()->resume_queue();
+				$indexer = $this->get_content_indexer_service();
+				$queue   = $indexer->get_queue_status();
+				if ( (int) $queue['pending_count'] <= 0 ) {
+					return new WP_Error( 'aips_bg_nothing_to_do', __( 'There is nothing left to process.', 'ai-post-scheduler' ) );
+				}
+				$indexer->set_queue_paused( false );
+				$indexer->schedule_queue_worker( AIPS_DateTime::now()->timestamp() + 1 );
+				return true;
 
 			case 'bulk_generation':
 				return new WP_Error(
@@ -825,7 +832,13 @@ class AIPS_Background_Processes_Controller {
 				return $this->get_link_index_service()->pause_backfill();
 
 			case 'content_indexer_queue':
-				return $this->get_content_indexer_service()->pause_queue();
+				$indexer = $this->get_content_indexer_service();
+				$queue   = $indexer->get_queue_status();
+				if ( $indexer->is_queue_paused() || (int) $queue['pending_count'] <= 0 ) {
+					return false;
+				}
+				$indexer->set_queue_paused( true );
+				return true;
 
 			case 'bulk_generation':
 				$records = $this->job_repo->query( array(), 100 );
@@ -866,7 +879,13 @@ class AIPS_Background_Processes_Controller {
 				return $this->get_link_index_service()->resume_backfill();
 
 			case 'content_indexer_queue':
-				return $this->get_content_indexer_service()->resume_queue();
+				$indexer = $this->get_content_indexer_service();
+				if ( ! $indexer->is_queue_paused() ) {
+					return false;
+				}
+				$indexer->set_queue_paused( false );
+				$indexer->schedule_queue_worker( AIPS_DateTime::now()->timestamp() + 1 );
+				return true;
 
 			case 'bulk_generation':
 				$records = $this->job_repo->query( array(), 100 );
@@ -904,10 +923,16 @@ class AIPS_Background_Processes_Controller {
 				return $this->cancel_open_job_of_type( AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE );
 
 			case 'link_index_scan':
-				return $this->get_link_index_service()->stop_backfill();
+				return $this->get_link_index_service()->cancel_backfill();
 
 			case 'content_indexer_queue':
-				return $this->get_content_indexer_service()->clear_queue();
+				$indexer = $this->get_content_indexer_service();
+				$queue   = $indexer->get_queue_status();
+				if ( (int) $queue['pending_count'] <= 0 && ! $indexer->is_queue_paused() ) {
+					return false;
+				}
+				$indexer->clear_queue();
+				return true;
 
 			case 'bulk_generation':
 				$records   = $this->job_repo->query( array(), 100 );

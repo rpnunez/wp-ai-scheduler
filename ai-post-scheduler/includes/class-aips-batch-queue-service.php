@@ -226,6 +226,53 @@ class AIPS_Batch_Queue_Service {
 	}
 
 	/**
+	 * Check whether any batch slice cron events or AS actions are still pending for a schedule.
+	 *
+	 * @param int $schedule_id Schedule ID.
+	 * @return bool
+	 */
+	public function has_pending_slices( int $schedule_id ): bool {
+		$cron = _get_cron_array();
+		if ( is_array( $cron ) ) {
+			foreach ( $cron as $hooks ) {
+				if ( empty( $hooks[ self::HOOK ] ) || ! is_array( $hooks[ self::HOOK ] ) ) {
+					continue;
+				}
+				foreach ( $hooks[ self::HOOK ] as $event ) {
+					$args = isset( $event['args'] ) && is_array( $event['args'] ) ? $event['args'] : array();
+					if ( ! empty( $args ) && (int) $args[0] === $schedule_id ) {
+						return true;
+					}
+				}
+			}
+		}
+
+		if ( function_exists( 'as_get_scheduled_actions' ) ) {
+			$as_actions = as_get_scheduled_actions( array(
+				'hook'     => self::HOOK,
+				'status'   => 'pending',
+				'per_page' => 100,
+			) );
+			if ( is_array( $as_actions ) ) {
+				foreach ( $as_actions as $action ) {
+					if ( ! is_object( $action ) || ! method_exists( $action, 'get_args' ) ) {
+						continue;
+					}
+					$args = (array) $action->get_args();
+					if ( count( $args ) === 1 && isset( $args[0] ) && is_array( $args[0] ) ) {
+						$args = $args[0];
+					}
+					if ( ! empty( $args ) && (int) $args[0] === $schedule_id ) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Cancel every queued batch slice belonging to one schedule.
 	 *
 	 * A terminated batch leaves its remaining slices sitting in the cron table.

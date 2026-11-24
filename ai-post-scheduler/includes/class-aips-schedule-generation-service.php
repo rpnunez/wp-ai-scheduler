@@ -334,14 +334,54 @@ class AIPS_Schedule_Generation_Service {
 		$config        = AIPS_Config::get_instance();
 		$history       = $this->result_handler->get_or_create_schedule_history( $schedule_id );
 		$delay_seconds = $config->get_generation_delay_seconds();
+		$dispatched_at = isset( $current_run_state['dispatched_at'] ) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp();
+		$corr_id       = isset( $current_run_state['correlation_id'] ) && '' !== $current_run_state['correlation_id']
+			? (string) $current_run_state['correlation_id']
+			: (string) AIPS_Correlation_ID::get();
+
+		// Prevent AI Generation turned on before this slice ran: terminate and mark resumable.
+		if ( $config->is_scheduled_ai_generation_prevented() ) {
+			$setting_label = $config->get_scheduled_ai_generation_prevention_label();
+			$this->result_handler->handle_execution_terminated_by_setting(
+				$schedule_obj,
+				$history,
+				false,
+				$setting_label,
+				array(
+					'message_override' => sprintf(
+						/* translators: 1: starting post index, 2: total posts, 3: setting label */
+						__( 'Batch slice starting at post %1$d of %2$d was terminated early due to %3$s being enabled.', 'ai-post-scheduler' ),
+						$start_index + 1,
+						$total_quantity,
+						$setting_label
+					),
+					'event_type' => AIPS_History_Event_Type::BATCH_SLICE_TERMINATED,
+					'total'      => $total_quantity,
+					'completed'  => max( 0, $start_index ),
+					'run_state'  => array(
+						'completed'      => max( 0, $start_index ),
+						'total'          => $total_quantity,
+						'dispatched_at'  => $dispatched_at,
+						'correlation_id' => $corr_id,
+						'resumable'      => true,
+						'resume_index'   => max( 0, $start_index ),
+					),
+				)
+			);
+			return;
+		}
 
 		$this->repository->update_run_state( $schedule_id, array(
 			'status'         => 'batch_processing',
 			'completed'      => $start_index,
 			'total'          => $total_quantity,
-			'correlation_id' => (string) AIPS_Correlation_ID::get(),
+			'dispatched_at'  => $dispatched_at,
+			'correlation_id' => $corr_id,
 			'timestamp'      => AIPS_DateTime::now()->toIso8601(),
 		) );
+
+		$successful_post_ids = array();
+		$errors              = array();
 
 		for ( $i = 0; $i < $batch_size; $i++ ) {
 			$post_index = $start_index + $i;
@@ -350,13 +390,50 @@ class AIPS_Schedule_Generation_Service {
 				break;
 			}
 
-			if ( $i > 0 && $delay_seconds > 0 ) {
-				sleep( $delay_seconds );
+			// Prevent AI Generation turned on mid-slice: stop and persist a resumable cursor.
+			if ( $i > 0 && $config->is_scheduled_ai_generation_prevented() ) {
+				$setting_label = $config->get_scheduled_ai_generation_prevention_label();
+				$resume_index  = $start_index + count( $successful_post_ids );
+				$this->result_handler->handle_execution_terminated_by_setting(
+					$schedule_obj,
+					$history,
+					false,
+					$setting_label,
+					array(
+						'message_override' => sprintf(
+							/* translators: 1: post index, 2: total posts, 3: setting label */
+							__( 'Batch slice terminated at post %1$d of %2$d due to %3$s being enabled.', 'ai-post-scheduler' ),
+							$resume_index + 1,
+							$total_quantity,
+							$setting_label
+						),
+						'event_type' => AIPS_History_Event_Type::BATCH_SLICE_TERMINATED,
+						'total'      => $total_quantity,
+						'completed'  => $resume_index,
+						'run_state'  => array(
+							'completed'      => $resume_index,
+							'total'          => $total_quantity,
+							'dispatched_at'  => $dispatched_at,
+							'correlation_id' => $corr_id,
+							'resumable'      => true,
+							'resume_index'   => $resume_index,
+						),
+					)
+				);
+				return;
+			}
+
+			if ( $i > 0 ) {
+				AIPS_Cache::reset_request_cache();
+				if ( $delay_seconds > 0 && ! $this->is_time_exhausted( $delay_seconds + self::MIN_TIME_BUDGET_MARGIN ) ) {
+					sleep( $delay_seconds );
+				}
 			}
 
 			$post_id = $this->generator->generate_post( $context );
 
 			if ( is_wp_error( $post_id ) ) {
+				$errors[] = $post_id;
 				$this->logger->log(
 					sprintf(
 						'Batch slice: post %d of %d failed for schedule %d: %s',
@@ -367,7 +444,9 @@ class AIPS_Schedule_Generation_Service {
 					),
 					'error'
 				);
+				break;
 			} else {
+				$successful_post_ids[] = $post_id;
 				$this->logger->log(
 					sprintf(
 						'Batch slice: post %d of %d generated (post ID %d) for schedule %d',
@@ -380,27 +459,48 @@ class AIPS_Schedule_Generation_Service {
 				);
 			}
 
-			$completed_so_far = $post_index + 1;
+			$completed_so_far = $start_index + count( $successful_post_ids );
+			$this->repository->update_batch_progress( $schedule_id, $completed_so_far, $total_quantity, $completed_so_far - 1, $successful_post_ids );
 			$this->repository->update_run_state( $schedule_id, array(
-				'status'         => ( $completed_so_far >= $total_quantity ) ? 'completed' : 'batch_processing',
+				'status'         => ( $completed_so_far >= $total_quantity ) ? 'success' : 'batch_processing',
 				'completed'      => $completed_so_far,
 				'total'          => $total_quantity,
-				'correlation_id' => (string) AIPS_Correlation_ID::get(),
+				'dispatched_at'  => $dispatched_at,
+				'correlation_id' => $corr_id,
 				'timestamp'      => AIPS_DateTime::now()->toIso8601(),
 			) );
 		}
 
-		if ( $start_index + $batch_size >= $total_quantity ) {
+		$total_completed = $start_index + count( $successful_post_ids );
+
+		if ( ! empty( $errors ) ) {
+			$this->repository->update_run_state( $schedule_id, array(
+				'status'         => $total_completed > 0 ? 'partial' : 'failed',
+				'error_code'     => $errors[0]->get_error_code(),
+				'error_message'  => $errors[0]->get_error_message(),
+				'completed'      => $total_completed,
+				'total'          => $total_quantity,
+				'dispatched_at'  => $dispatched_at,
+				'correlation_id' => $corr_id,
+				'timestamp'      => AIPS_DateTime::now()->toIso8601(),
+			) );
+			$this->result_handler->handle_post_execution_cleanup( $schedule_obj, $errors[0] );
+			return;
+		}
+
+		if ( $total_completed >= $total_quantity ) {
 			$this->logger->log(
 				sprintf( 'Batch queue finished all %d posts for schedule %d', $total_quantity, $schedule_id ),
 				'info'
 			);
 
+			$this->repository->clear_batch_progress( $schedule_id );
 			$this->repository->update_run_state( $schedule_id, array(
-				'status'         => 'completed',
+				'status'         => 'success',
 				'completed'      => $total_quantity,
 				'total'          => $total_quantity,
-				'correlation_id' => (string) AIPS_Correlation_ID::get(),
+				'dispatched_at'  => $dispatched_at,
+				'correlation_id' => $corr_id,
 				'timestamp'      => AIPS_DateTime::now()->toIso8601(),
 			) );
 
@@ -426,6 +526,7 @@ class AIPS_Schedule_Generation_Service {
 			}
 
 			$this->result_handler->handle_post_execution_cleanup( $schedule_obj, 1 );
+			do_action( 'aips_schedule_execution_completed', $schedule_id, $successful_post_ids, $schedule_obj );
 		}
 	}
 
@@ -441,12 +542,18 @@ class AIPS_Schedule_Generation_Service {
 		$status    = isset( $run_state['status'] ) ? (string) $run_state['status'] : '';
 
 		if ( 'batch_queued' === $status || 'batch_processing' === $status ) {
-			$has_pending = $batch_service->has_pending_slices( (int) $schedule->schedule_id );
+			$schedule_id = isset( $schedule->schedule_id ) ? (int) $schedule->schedule_id : (int) $schedule->id;
+			$has_pending = $batch_service->has_pending_slices( $schedule_id );
+			if ( ! $has_pending && isset( $run_state['dispatched_at'] ) ) {
+				$window      = $batch_service->get_window_seconds();
+				$age         = AIPS_DateTime::now()->timestamp() - (int) $run_state['dispatched_at'];
+				$has_pending = ( $age < ( $window + AIPS_Batch_Queue_Service::REDISPATCH_GRACE_SECONDS ) );
+			}
 			if ( $has_pending ) {
 				$this->logger->log(
 					sprintf(
 						'Schedule %d already has an active batch queue (status: %s); skipping duplicate dispatch.',
-						(int) $schedule->schedule_id,
+						$schedule_id,
 						$status
 					),
 					'info'
@@ -484,7 +591,7 @@ class AIPS_Schedule_Generation_Service {
 	 */
 	private function should_skip_batch_slice( int $schedule_id, array $run_state ): bool {
 		$status = isset( $run_state['status'] ) ? (string) $run_state['status'] : '';
-		if ( 'terminated' === $status || 'cancelled' === $status ) {
+		if ( in_array( $status, array( 'partial', 'failed', 'success', 'completed', 'cancelled', AIPS_History_Event_Status::TERMINATED ), true ) ) {
 			$this->logger->log(
 				sprintf(
 					'Batch slice: schedule %d is marked as %s — skipping slice.',
@@ -1059,6 +1166,7 @@ class AIPS_Schedule_Generation_Service {
 			'status'         => 'batch_queued',
 			'completed'      => 0,
 			'total'          => $post_quantity,
+			'dispatched_at'  => $now,
 			'correlation_id' => $correlation_id,
 			'timestamp'      => AIPS_DateTime::now()->toIso8601(),
 		) );
