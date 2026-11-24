@@ -57,6 +57,7 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_bulk_run_now', array($this, 'ajax_unified_bulk_run_now'));
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
+        add_action('wp_ajax_aips_get_schedule_details', array($this, 'ajax_get_schedule_details'));
         add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
         add_action('wp_ajax_aips_reset_schedule_circuit', array($this, 'ajax_reset_schedule_circuit'));
         add_action('wp_ajax_aips_resume_schedule_batch', array($this, 'ajax_resume_schedule_batch'));
@@ -1238,6 +1239,38 @@ class AIPS_Schedule_Controller {
         $entries = $service->get_history($id, $type, $limit);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
+    }
+
+    /**
+     * AJAX: Details for a schedule row's expandable section
+     * (activity, health and the 10 most recent generated items).
+     *
+     * Expects POST: id (int), type (string).
+     */
+    public function ajax_get_schedule_details() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+
+        if (!$id || empty($type)) {
+            AIPS_Ajax_Response::invalid_request(__('Invalid parameters.', 'ai-post-scheduler'));
+        }
+
+        $service = new AIPS_Unified_Schedule_Service();
+        $details = $service->get_details($id, $type, 5);
+
+        if (is_wp_error($details)) {
+            AIPS_Ajax_Response::error($details->get_error_message(), $details->get_error_code());
+        }
+
+        AIPS_Ajax_Response::success($details);
     }
 
     /**
