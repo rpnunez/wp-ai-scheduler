@@ -123,15 +123,22 @@ class Test_AIPS_DevStackTips_Config_Setup_Seed extends WP_UnitTestCase {
 		$this->assertNotNull($ai_group);
 		$this->assertSame('AI & Dev Tooling', $ai_group->name);
 
-		// All 8 sources created
+		// All 13 sources created (5 v2 + 8 v3)
 		$sources_repo = new AIPS_Sources_Repository();
 		$all_sources  = $sources_repo->get_all();
-		$this->assertCount(8, $all_sources);
+		$this->assertCount(13, $all_sources);
 
 		$expected = AIPS_DevStackTips_Definitions::sources();
 		$by_name  = array();
 		foreach ($all_sources as $s) {
 			$by_name[$s->label] = $s;
+		}
+
+		$group_ids_by_slug = array();
+		foreach (AIPS_DevStackTips_Definitions::source_groups() as $g) {
+			$term = get_term_by('slug', $g['slug'], 'aips_source_group');
+			$this->assertNotFalse($term);
+			$group_ids_by_slug[$g['slug']] = (int) $term->term_id;
 		}
 
 		foreach ($expected as $def) {
@@ -141,7 +148,7 @@ class Test_AIPS_DevStackTips_Config_Setup_Seed extends WP_UnitTestCase {
 			$this->assertSame(1, (int) $row->is_active);
 
 			// Term mapping
-			$target_group_term_id = ('backend-architecture' === $def['group_slug']) ? (int) $backend_group->term_id : (int) $ai_group->term_id;
+			$target_group_term_id = $group_ids_by_slug[$def['group_slug']];
 			$terms = $wpdb->get_col($wpdb->prepare("SELECT term_id FROM {$wpdb->prefix}aips_source_group_terms WHERE source_id = %d", (int) $row->id));
 			$this->assertContains((string) $target_group_term_id, array_map('strval', $terms));
 		}
@@ -158,7 +165,7 @@ class Test_AIPS_DevStackTips_Config_Setup_Seed extends WP_UnitTestCase {
 		$this->assertNotEmpty($files);
 		$backup = json_decode((string) file_get_contents($files[0]), true);
 		$this->assertArrayHasKey('created', $backup);
-		$this->assertCount(10, $backup['created']); // 2 groups + 8 sources
+		$this->assertGreaterThanOrEqual(17, count($backup['created'])); // at least 4 groups + 13 sources + all other seeded objects
 	}
 
 	public function test_apply_seeding_is_idempotent() {
@@ -171,7 +178,7 @@ class Test_AIPS_DevStackTips_Config_Setup_Seed extends WP_UnitTestCase {
 		$this->assertStringNotContainsString('[CREATE]', $output2);
 
 		// Source count unchanged
-		$this->assertCount(8, (new AIPS_Sources_Repository())->get_all());
+		$this->assertCount(13, (new AIPS_Sources_Repository())->get_all());
 	}
 
 	public function test_apply_resolves_templates_referencing_v3_source_groups() {

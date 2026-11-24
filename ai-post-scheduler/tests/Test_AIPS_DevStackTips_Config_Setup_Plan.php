@@ -41,13 +41,18 @@ class Test_AIPS_DevStackTips_Config_Setup_Plan extends WP_UnitTestCase {
 		return null;
 	}
 
-	public function test_absent_template_is_reported_not_updated() {
+	public function test_absent_template_is_planned_for_creation_and_site_author_is_absent() {
 		$plan = (new AIPS_DevStackTips_Config_Setup(array()))->plan();
 
 		$entry = $this->entry($plan, 'templates:security-guide');
 		$this->assertNotNull($entry);
-		$this->assertSame('absent', $entry['action']);
+		$this->assertSame('create', $entry['action']);
 		$this->assertNull($entry['id']);
+
+		$author_entry = $this->entry($plan, 'authors:marcus-vance');
+		$this->assertNotNull($author_entry);
+		$this->assertSame('absent', $author_entry['action']);
+		$this->assertNull($author_entry['id']);
 	}
 
 	public function test_existing_template_plans_managed_field_updates() {

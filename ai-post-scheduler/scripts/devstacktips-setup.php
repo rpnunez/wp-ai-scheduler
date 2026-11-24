@@ -136,15 +136,16 @@ class AIPS_DevStackTips_Config_Setup {
 
 		// Persist the stable-key bindings so this and later runs resolve by the
 		// registry rather than by name.
-		$sync = $this->binding->sync();
-		if (!empty($sync['collisions'])) {
-			foreach ($sync['collisions'] as $key => $ids) {
+		$sync             = $this->binding->sync();
+		$this->collisions = isset($sync['collisions']) ? $sync['collisions'] : array();
+		if (!empty($this->collisions)) {
+			foreach ($this->collisions as $key => $ids) {
 				$this->warn(sprintf('Ambiguous key %s maps to IDs %s; left unbound.', $key, implode(', ', $ids)));
 			}
 		}
 
-		// Seed v3 source groups and sources when missing, stamping their bindings.
-		$this->seed_v3_objects();
+		// Seed missing objects in dependency order, stamping their stable keys.
+		$this->seed_objects();
 
 		$plan = $this->plan();
 
@@ -172,11 +173,256 @@ class AIPS_DevStackTips_Config_Setup {
 	}
 
 	/**
-	 * Seed v3 source groups and sources when missing, stamping their bindings.
+	 * Seed missing objects in dependency order, stamping their stable keys.
+	 *
+	 * Order: categories -> voices -> sections -> structures -> post_slices
+	 *   -> source_groups -> sources -> campaigns -> templates -> authors
+	 *   -> schedules -> settings.
 	 *
 	 * @return void
 	 */
-	private function seed_v3_objects() {
+	private function seed_objects() {
+		$this->seed_categories();
+		$this->seed_voices();
+		$this->seed_sections();
+		$this->seed_structures();
+		$this->seed_post_slices();
+		$this->seed_source_groups_and_sources();
+		$this->seed_campaigns();
+		$this->seed_templates();
+		$this->seed_authors();
+		$this->seed_schedules();
+		$this->seed_settings_if_missing();
+	}
+
+	/**
+	 * Seed missing WordPress categories.
+	 *
+	 * @return void
+	 */
+	private function seed_categories() {
+		foreach (AIPS_DevStackTips_Definitions::categories() as $cat) {
+			$key = AIPS_Config_Binding::make_key('categories', $cat['slug']);
+			$id  = $this->binding->resolve($key);
+
+			if (null === $id) {
+				$term = get_term_by('slug', $cat['slug'], 'category');
+				if ($term && !is_wp_error($term)) {
+					$id = (int) $term->term_id;
+					$this->binding->stamp($key, $id);
+				}
+			}
+
+			if (null === $id) {
+				$result = wp_insert_term($cat['name'], 'category', array(
+					'slug'        => $cat['slug'],
+					'description' => $cat['description'],
+				));
+
+				if (is_wp_error($result)) {
+					$existing_term_id = $result->get_error_data();
+					if ($existing_term_id) {
+						$id = (int) $existing_term_id;
+						$this->binding->stamp($key, $id);
+					} else {
+						$this->error('Failed to create category ' . $cat['name'] . ': ' . $result->get_error_message());
+					}
+					continue;
+				}
+
+				$id = (int) $result['term_id'];
+				$this->binding->stamp($key, $id);
+				$this->record_created('category', $id, $key, $cat['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] category %s (#%d)', $cat['name'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed missing writing voices.
+	 *
+	 * @return void
+	 */
+	private function seed_voices() {
+		$repo     = new AIPS_Voices_Repository();
+		$existing = array();
+		foreach ($repo->get_all() as $row) {
+			$existing[(string) $row->name] = (int) $row->id;
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::voices() as $voice) {
+			$key = AIPS_Config_Binding::make_key('voices', $voice['name']);
+			$id  = $this->binding->resolve($key);
+
+			if (null === $id && isset($this->collisions[$key])) {
+				continue;
+			}
+
+			if (null === $id && isset($existing[$voice['name']])) {
+				$id = $existing[$voice['name']];
+				$this->binding->stamp($key, $id);
+			}
+
+			if (null === $id) {
+				$new_id = $repo->create($voice);
+				if (!$new_id) {
+					$this->error('Failed to create voice: ' . $voice['name']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$this->binding->stamp($key, $id);
+				$this->record_created('voice', $id, $key, $voice['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] voice %s (#%d)', $voice['name'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed missing prompt sections.
+	 *
+	 * @return void
+	 */
+	private function seed_sections() {
+		$repo = new AIPS_Prompt_Section_Repository();
+
+		foreach (AIPS_DevStackTips_Definitions::sections() as $section) {
+			$key = AIPS_Config_Binding::make_key('prompt_sections', $section['section_key']);
+			$id  = $this->binding->resolve($key);
+
+			if (null === $id) {
+				$existing = $repo->get_by_key($section['section_key']);
+				if ($existing) {
+					$id = (int) $existing->id;
+					$this->binding->stamp($key, $id);
+				}
+			}
+
+			if (null === $id) {
+				$new_id = $repo->create($section);
+				if (!$new_id) {
+					$this->error('Failed to create prompt section: ' . $section['name']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$this->binding->stamp($key, $id);
+				$this->record_created('prompt_section', $id, $key, $section['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] prompt_section %s (#%d)', $section['name'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed missing article structures.
+	 *
+	 * @return void
+	 */
+	private function seed_structures() {
+		$repo     = new AIPS_Article_Structure_Repository();
+		$existing = array();
+		foreach ($repo->get_all() as $row) {
+			$existing[(string) $row->name] = (int) $row->id;
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::structures() as $structure) {
+			$key = AIPS_Config_Binding::make_key('structures', $structure['name']);
+			$id  = $this->binding->resolve($key);
+
+			if (null === $id && isset($this->collisions[$key])) {
+				continue;
+			}
+
+			if (null === $id && isset($existing[$structure['name']])) {
+				$id = $existing[$structure['name']];
+				$this->binding->stamp($key, $id);
+			}
+
+			if (null === $id) {
+				$new_id = $repo->create(array(
+					'name'           => $structure['name'],
+					'description'    => $structure['description'],
+					'structure_data' => wp_json_encode(array(
+						'sections'        => $structure['sections'],
+						'prompt_template' => '',
+					)),
+					'is_active'      => 1,
+				));
+
+				if (!$new_id) {
+					$this->error('Failed to create article structure: ' . $structure['name']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$this->binding->stamp($key, $id);
+				$this->record_created('structure', $id, $key, $structure['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] structure %s (#%d)', $structure['name'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed missing post slices.
+	 *
+	 * @return void
+	 */
+	private function seed_post_slices() {
+		$repo     = new AIPS_Post_Slices_Repository();
+		$existing = array();
+		foreach ($repo->get_all(false) as $row) {
+			$existing[(string) $row->name] = (int) $row->id;
+		}
+
+		$now = AIPS_DateTime::now()->timestamp();
+
+		foreach (AIPS_DevStackTips_Definitions::post_slices() as $slice) {
+			$key = AIPS_Config_Binding::make_key('post_slices', $slice['name']);
+			$id  = $this->binding->resolve($key);
+
+			if (null === $id && isset($this->collisions[$key])) {
+				continue;
+			}
+
+			if (null === $id && isset($existing[$slice['name']])) {
+				$id = $existing[$slice['name']];
+				$this->binding->stamp($key, $id);
+			}
+
+			if (null === $id) {
+				$new_id = $repo->create(array(
+					'name'        => $slice['name'],
+					'description' => $slice['description'],
+					'sort_order'  => $slice['sort_order'],
+					'is_active'   => $slice['is_active'],
+					'created_at'  => $now,
+					'updated_at'  => $now,
+				));
+
+				if (!$new_id) {
+					$this->error('Failed to create post slice: ' . $slice['name']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$this->binding->stamp($key, $id);
+				$this->record_created('post_slice', $id, $key, $slice['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] post_slice %s (#%d)', $slice['name'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed missing source groups and sources, stamping their bindings.
+	 *
+	 * @return void
+	 */
+	private function seed_source_groups_and_sources() {
 		if (!taxonomy_exists('aips_source_group')) {
 			register_taxonomy('aips_source_group', array(), array('public' => false));
 		}
@@ -266,6 +512,425 @@ class AIPS_DevStackTips_Config_Setup {
 	}
 
 	/**
+	 * Seed missing campaigns.
+	 *
+	 * @return void
+	 */
+	private function seed_campaigns() {
+		$repo     = new AIPS_Campaigns_Repository();
+		$existing = array();
+		foreach ($repo->get_all() as $row) {
+			$existing[(string) $row->name] = (int) $row->id;
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::campaigns() as $campaign) {
+			$key = AIPS_Config_Binding::make_key('campaigns', $campaign['name']);
+			$id  = $this->binding->resolve($key);
+
+			if (null === $id && isset($this->collisions[$key])) {
+				continue;
+			}
+
+			if (null === $id && isset($existing[$campaign['name']])) {
+				$id = $existing[$campaign['name']];
+				$this->binding->stamp($key, $id);
+			}
+
+			if (null === $id) {
+				$new_id = $repo->create_campaign(array(
+					'name'          => $campaign['name'],
+					'content_goal'  => $campaign['content_goal'],
+					'campaign_mode' => 'template',
+					'is_active'     => 1,
+					'is_archived'   => 0,
+				));
+
+				if (!$new_id || is_wp_error($new_id)) {
+					$this->error('Failed to create campaign: ' . $campaign['name']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$this->binding->stamp($key, $id);
+				$this->record_created('campaign', $id, $key, $campaign['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] campaign %s (#%d)', $campaign['name'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed missing templates.
+	 *
+	 * @return void
+	 */
+	private function seed_templates() {
+		$repo        = new AIPS_Template_Repository();
+		$post_author = $this->resolve_post_author();
+		$existing    = array();
+		foreach ($repo->get_all() as $row) {
+			$existing[(string) $row->name] = (int) $row->id;
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::templates() as $key => $def) {
+			$id = $this->binding->resolve($key);
+
+			if (null === $id && isset($this->collisions[$key])) {
+				continue;
+			}
+
+			if (null === $id && isset($existing[$def['name']])) {
+				$id = $existing[$def['name']];
+				$this->binding->stamp($key, $id);
+			}
+
+			if (null === $id) {
+				$campaign_id = $this->binding->resolve($def['campaign_key']);
+				if (!$campaign_id) {
+					$this->error(sprintf('Campaign not found for template %s (%s)', $def['name'], $def['campaign_key']));
+					continue;
+				}
+
+				$voice_id      = $this->binding->resolve($def['voice_key']);
+				$post_category = 0;
+				if (!empty($def['category_keys'][0])) {
+					$cat_id = $this->binding->resolve($def['category_keys'][0]);
+					if ($cat_id) {
+						$post_category = (int) $cat_id;
+					}
+				}
+
+				$group_ids = array();
+				if (!empty($def['source_group_key'])) {
+					$group_id = $this->binding->resolve($def['source_group_key']);
+					if ($group_id) {
+						$group_ids[] = (int) $group_id;
+					}
+				}
+
+				$include_sources = (!empty($def['include_sources']) && !empty($group_ids)) ? 1 : 0;
+
+				$new_id = $repo->create(array(
+					'name'                    => $def['name'],
+					'prompt_template'         => $def['prompt_template'],
+					'title_prompt'            => $def['title_prompt'],
+					'voice_id'                => $voice_id,
+					'post_quantity'           => $def['post_quantity'],
+					'post_status'             => $def['post_status'],
+					'post_type'               => 'post',
+					'post_category'           => $post_category,
+					'post_tags'               => $def['post_tags'],
+					'post_author'             => $post_author,
+					'generate_featured_image' => $def['generate_featured_image'],
+					'featured_image_source'   => $def['featured_image_source'],
+					'image_prompt'            => AIPS_DevStackTips_Definitions::featured_image_prompt($def['image_subject']),
+					'generate_slug'           => 1,
+					'slug_prompt'             => AIPS_DevStackTips_Definitions::slug_prompt($def['slug_type']),
+					'include_sources'         => $include_sources,
+					'source_group_ids'        => wp_json_encode($group_ids),
+					'campaign_id'             => $campaign_id,
+					'is_active'               => 1,
+				));
+
+				if (!$new_id) {
+					$this->error('Failed to create template: ' . $def['name']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$this->binding->stamp($key, $id);
+				$this->record_created('template', $id, $key, $def['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] template %s (#%d)', $def['name'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed missing v2 authors.
+	 *
+	 * @return void
+	 */
+	private function seed_authors() {
+		$repo        = new AIPS_Authors_Repository();
+		$interval    = AIPS_Interval_Calculator::instance();
+		$now         = AIPS_DateTime::now()->timestamp();
+		$post_author = $this->resolve_post_author();
+		$existing    = array();
+		foreach ($repo->get_all() as $row) {
+			$existing[(string) $row->name] = (int) $row->id;
+		}
+
+		$index = 0;
+		foreach (AIPS_DevStackTips_Definitions::authors() as $key => $def) {
+			if (empty($def['v2_author'])) {
+				continue;
+			}
+
+			$index++;
+			$id = $this->binding->resolve($key);
+
+			if (null === $id && isset($this->collisions[$key])) {
+				continue;
+			}
+
+			if (null === $id && isset($existing[$def['name']])) {
+				$id = $existing[$def['name']];
+				$this->binding->stamp($key, $id);
+			}
+
+			if (null === $id) {
+				$group_ids = array();
+				if (!empty($def['source_group_key'])) {
+					$group_id = $this->binding->resolve($def['source_group_key']);
+					if ($group_id) {
+						$group_ids[] = (int) $group_id;
+					}
+				}
+
+				$stagger = $index * 600;
+				$new_id  = $repo->create(array(
+					'name'                               => $def['name'],
+					'field_niche'                        => $def['field_niche'],
+					'keywords'                           => $def['keywords'],
+					'description'                        => $def['description'],
+					'details'                            => $def['details'],
+					'article_structure_id'               => $this->binding->resolve($def['structure_key']),
+					'voice_tone'                         => $def['voice_tone'],
+					'writing_style'                      => $def['writing_style'],
+					'target_audience'                    => $def['target_audience'],
+					'expertise_level'                    => $def['expertise_level'],
+					'content_goals'                      => $def['content_goals'],
+					'excluded_topics'                    => $def['excluded_topics'],
+					'preferred_content_length'           => $def['preferred_content_length'],
+					'language'                           => 'en',
+					'post_status'                        => 'draft',
+					'post_category'                      => $this->binding->resolve($def['category_key']),
+					'post_author'                        => $post_author,
+					'generate_slug'                      => 1,
+					'slug_prompt'                        => AIPS_DevStackTips_Definitions::slug_prompt($def['slug_type']),
+					'generate_featured_image'            => 1,
+					'featured_image_source'              => 'ai_prompt',
+					'image_prompt'                       => AIPS_DevStackTips_Definitions::featured_image_prompt($def['image_subject']),
+					'topic_auto_approval_mode'           => 'score',
+					'topic_auto_approval_min_score'      => self::V2_AUTHOR_MIN_SCORE,
+					'topic_auto_approval_fallback'       => 'pending',
+					'topic_generation_frequency'         => $def['topic_generation_frequency'],
+					'topic_generation_quantity'          => $def['topic_generation_quantity'],
+					'topic_generation_next_run'          => $interval->calculate_next_run($def['topic_generation_frequency'], $now + $stagger),
+					'topic_generation_last_run'          => 0,
+					'topic_generation_is_active'         => 1,
+					'post_generation_frequency'          => $def['post_generation_frequency'],
+					'post_generation_next_run'           => $interval->calculate_next_run($def['post_generation_frequency'], $now + $stagger + 300),
+					'post_generation_last_run'           => 0,
+					'post_generation_is_active'          => 1,
+					'max_posts_per_topic'                => $def['max_posts_per_topic'],
+					'manual_post_generation_quantity'    => $def['manual_post_generation_quantity'],
+					'scheduled_post_generation_quantity' => $def['scheduled_post_generation_quantity'],
+					'include_sources'                    => !empty($group_ids) ? 1 : 0,
+					'source_group_ids'                   => wp_json_encode($group_ids),
+					'is_active'                          => $def['is_active'],
+					'created_at'                         => $now,
+					'updated_at'                         => $now,
+				));
+
+				if (!$new_id) {
+					$this->error('Failed to create author: ' . $def['name']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$this->binding->stamp($key, $id);
+				$this->record_created('author', $id, $key, $def['name']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] author %s (#%d)', $def['name'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed missing schedules.
+	 *
+	 * @return void
+	 */
+	private function seed_schedules() {
+		$repo     = new AIPS_Schedule_Repository();
+		$existing = array();
+		foreach ($repo->get_all(false) as $row) {
+			$existing[(string) $row->title] = (int) $row->id;
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::schedules() as $key => $def) {
+			$id = $this->binding->resolve($key);
+
+			if (null === $id && isset($this->collisions[$key])) {
+				continue;
+			}
+
+			if (null === $id && isset($existing[$def['title']])) {
+				$id = $existing[$def['title']];
+				$this->binding->stamp($key, $id);
+			}
+
+			if (null === $id) {
+				$template_id = $this->binding->resolve($def['template_key']);
+				if (!$template_id) {
+					$this->error(sprintf('Template not found for schedule %s (%s)', $def['title'], $def['template_key']));
+					continue;
+				}
+
+				$structure_id = !empty($def['structure_key']) ? $this->binding->resolve($def['structure_key']) : null;
+				$next_run     = (null !== $def['weekday'])
+					? $this->next_weekday_timestamp((int) $def['weekday'], $def['start_time'])
+					: $this->next_daily_timestamp($def['start_time']);
+
+				$new_id = $repo->create(array(
+					'template_id'          => $template_id,
+					'article_structure_id' => $structure_id,
+					'title'                => $def['title'],
+					'frequency'            => $def['frequency'],
+					'next_run'             => $next_run,
+					'last_run'             => 0,
+					'is_active'            => $def['is_active'],
+					'status'               => !empty($def['is_active']) ? 'active' : 'inactive',
+					'schedule_type'        => 'post_generation',
+				));
+
+				if (!$new_id) {
+					$this->error('Failed to create schedule: ' . $def['title']);
+					continue;
+				}
+
+				$id = (int) $new_id;
+				$this->binding->stamp($key, $id);
+				$this->record_created('schedule', $id, $key, $def['title']);
+				$this->applied++;
+				$this->line(sprintf('[CREATE] schedule %s (#%d)', $def['title'], $id));
+			}
+		}
+	}
+
+	/**
+	 * Seed settings that are not stored yet (create-missing only).
+	 *
+	 * @return void
+	 */
+	private function seed_settings_if_missing() {
+		$missing = new stdClass();
+
+		foreach (AIPS_DevStackTips_Definitions::seed_settings() as $entry) {
+			$name = $entry['option_name'];
+			if (get_option($name, $missing) !== $missing) {
+				continue;
+			}
+
+			$value = $this->resolve_seed_setting_value($entry);
+			if (null === $value) {
+				continue;
+			}
+
+			$this->backup_option($name);
+			$this->write_backup();
+			update_option($name, $value);
+			$this->applied++;
+			$this->line(sprintf('[CREATE] setting %s', $name));
+		}
+	}
+
+	/**
+	 * Resolve a seed setting value (static, structure key, or category key).
+	 *
+	 * @param array $entry
+	 * @return mixed|null
+	 */
+	private function resolve_seed_setting_value(array $entry) {
+		if (array_key_exists('value', $entry)) {
+			return $entry['value'];
+		}
+		if (isset($entry['structure_key'])) {
+			return $this->binding->resolve($entry['structure_key']);
+		}
+		if (isset($entry['category_key'])) {
+			return $this->binding->resolve($entry['category_key']);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Resolve a seed setting value during read-only planning.
+	 *
+	 * @param array $entry
+	 * @return mixed|null
+	 */
+	private function resolve_seed_setting_preview(array $entry) {
+		if (array_key_exists('value', $entry)) {
+			return $entry['value'];
+		}
+		if (isset($entry['structure_key'])) {
+			return $this->resolve($entry['structure_key']);
+		}
+		if (isset($entry['category_key'])) {
+			return $this->resolve($entry['category_key']);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Resolve the default WordPress post author ID.
+	 *
+	 * @return int
+	 */
+	private function resolve_post_author() {
+		$user_id = (int) get_current_user_id();
+
+		return $user_id > 0 ? $user_id : (int) AIPS_Config::get_instance()->get_option('aips_default_post_author');
+	}
+
+	/**
+	 * Next occurrence of a weekday and time in the site timezone.
+	 *
+	 * @param int    $iso_weekday 1 (Monday) to 7 (Sunday).
+	 * @param string $time_hhmm   "HH:MM".
+	 * @return int Unix timestamp.
+	 */
+	public function next_weekday_timestamp($iso_weekday, $time_hhmm) {
+		$timezone              = wp_timezone();
+		$now                   = new DateTimeImmutable('now', $timezone);
+		list($hour, $minute)   = array_map('intval', explode(':', $time_hhmm));
+		$candidate             = $now->setTime($hour, $minute);
+		$days                  = ($iso_weekday - (int) $now->format('N') + 7) % 7;
+		$candidate             = $candidate->modify('+' . $days . ' days');
+
+		if ($candidate <= $now) {
+			$candidate = $candidate->modify('+7 days');
+		}
+
+		return $candidate->getTimestamp();
+	}
+
+	/**
+	 * Next occurrence of a daily time (site timezone).
+	 *
+	 * @param string $time_hhmm      "HH:MM".
+	 * @param int    $offset_minutes Minutes added to the slot.
+	 * @return int Unix timestamp.
+	 */
+	public function next_daily_timestamp($time_hhmm, $offset_minutes = 0) {
+		$timezone              = wp_timezone();
+		$now                   = new DateTimeImmutable('now', $timezone);
+		list($hour, $minute)   = array_map('intval', explode(':', $time_hhmm));
+		$candidate             = $now->setTime($hour, $minute)->modify('+' . (int) $offset_minutes . ' minutes');
+
+		if ($candidate <= $now) {
+			$candidate = $candidate->modify('+1 day');
+		}
+
+		return $candidate->getTimestamp();
+	}
+
+	/**
 	 * Write one plan entry's changes, backing up the old values first.
 	 *
 	 * @param array $entry
@@ -301,7 +966,7 @@ class AIPS_DevStackTips_Config_Setup {
 	/**
 	 * Update a managed row through its repository.
 	 *
-	 * @param string $entity 'template' or 'author'.
+	 * @param string $entity 'template', 'author', or 'schedule'.
 	 * @param int    $id
 	 * @param array  $fields
 	 * @return mixed False on failure.
@@ -312,6 +977,8 @@ class AIPS_DevStackTips_Config_Setup {
 				return (new AIPS_Template_Repository())->update($id, $fields);
 			case 'author':
 				return (new AIPS_Authors_Repository())->update($id, $fields);
+			case 'schedule':
+				return (new AIPS_Schedule_Repository())->update($id, $fields);
 		}
 
 		return false;
@@ -338,12 +1005,36 @@ class AIPS_DevStackTips_Config_Setup {
 	public function build_plan() {
 		$entries = array();
 
+		foreach (AIPS_DevStackTips_Definitions::categories() as $cat) {
+			$entries[] = $this->plan_category($cat);
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::voices() as $voice) {
+			$entries[] = $this->plan_voice($voice);
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::sections() as $section) {
+			$entries[] = $this->plan_section($section);
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::structures() as $structure) {
+			$entries[] = $this->plan_structure($structure);
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::post_slices() as $slice) {
+			$entries[] = $this->plan_post_slice($slice);
+		}
+
 		foreach (AIPS_DevStackTips_Definitions::source_groups() as $group) {
 			$entries[] = $this->plan_source_group($group);
 		}
 
 		foreach (AIPS_DevStackTips_Definitions::sources() as $source) {
 			$entries[] = $this->plan_source($source);
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::campaigns() as $campaign) {
+			$entries[] = $this->plan_campaign($campaign);
 		}
 
 		foreach (AIPS_DevStackTips_Definitions::templates() as $key => $def) {
@@ -354,11 +1045,241 @@ class AIPS_DevStackTips_Config_Setup {
 			$entries[] = $this->plan_author($key, $def);
 		}
 
+		foreach (AIPS_DevStackTips_Definitions::schedules() as $key => $def) {
+			$entries[] = $this->plan_schedule($key, $def);
+		}
+
+		foreach (AIPS_DevStackTips_Definitions::seed_settings() as $entry) {
+			$entries[] = $this->plan_seed_setting($entry);
+		}
+
 		foreach (AIPS_DevStackTips_Definitions::settings() as $name => $value) {
 			$entries[] = $this->plan_setting($name, $value);
 		}
 
 		return $entries;
+	}
+
+	/**
+	 * Plan one category.
+	 *
+	 * @param array $cat ['name', 'slug', 'description']
+	 * @return array Plan entry.
+	 */
+	private function plan_category(array $cat) {
+		$key = AIPS_Config_Binding::make_key('categories', $cat['slug']);
+		$id  = $this->resolve($key);
+
+		if (null === $id) {
+			$term = get_term_by('slug', $cat['slug'], 'category');
+			if ($term && !is_wp_error($term)) {
+				$id = (int) $term->term_id;
+			}
+		}
+
+		if (null !== $id) {
+			return $this->noop_entry('category', $key, $cat['name'], $id);
+		}
+
+		if (isset($this->collisions[$key])) {
+			return $this->absent_entry('category', $key, $cat['name']);
+		}
+
+		return array(
+			'entity'   => 'category',
+			'key'      => $key,
+			'name'     => $cat['name'],
+			'id'       => null,
+			'action'   => 'create',
+			'changes'  => array(
+				'slug'        => array('old' => null, 'new' => $cat['slug']),
+				'description' => array('old' => null, 'new' => $cat['description']),
+			),
+			'warnings' => array(),
+		);
+	}
+
+	/**
+	 * Plan one voice.
+	 *
+	 * @param array $voice
+	 * @return array Plan entry.
+	 */
+	private function plan_voice(array $voice) {
+		$key = AIPS_Config_Binding::make_key('voices', $voice['name']);
+		$id  = $this->resolve($key);
+
+		if (null !== $id) {
+			return $this->noop_entry('voice', $key, $voice['name'], $id);
+		}
+
+		if (isset($this->collisions[$key])) {
+			return $this->absent_entry('voice', $key, $voice['name']);
+		}
+
+		return array(
+			'entity'   => 'voice',
+			'key'      => $key,
+			'name'     => $voice['name'],
+			'id'       => null,
+			'action'   => 'create',
+			'changes'  => array(
+				'title_prompt' => array('old' => null, 'new' => $voice['title_prompt']),
+			),
+			'warnings' => array(),
+		);
+	}
+
+	/**
+	 * Plan one prompt section.
+	 *
+	 * @param array $section
+	 * @return array Plan entry.
+	 */
+	private function plan_section(array $section) {
+		$key = AIPS_Config_Binding::make_key('prompt_sections', $section['section_key']);
+		$id  = $this->resolve($key);
+
+		if (null === $id) {
+			$existing = (new AIPS_Prompt_Section_Repository())->get_by_key($section['section_key']);
+			if ($existing) {
+				$id = (int) $existing->id;
+			}
+		}
+
+		if (null !== $id) {
+			return $this->noop_entry('prompt_section', $key, $section['name'], $id);
+		}
+
+		if (isset($this->collisions[$key])) {
+			return $this->absent_entry('prompt_section', $key, $section['name']);
+		}
+
+		return array(
+			'entity'   => 'prompt_section',
+			'key'      => $key,
+			'name'     => $section['name'],
+			'id'       => null,
+			'action'   => 'create',
+			'changes'  => array(
+				'section_key' => array('old' => null, 'new' => $section['section_key']),
+			),
+			'warnings' => array(),
+		);
+	}
+
+	/**
+	 * Plan one article structure.
+	 *
+	 * @param array $structure
+	 * @return array Plan entry.
+	 */
+	private function plan_structure(array $structure) {
+		$key = AIPS_Config_Binding::make_key('structures', $structure['name']);
+		$id  = $this->resolve($key);
+
+		if (null !== $id) {
+			return $this->noop_entry('structure', $key, $structure['name'], $id);
+		}
+
+		if (isset($this->collisions[$key])) {
+			return $this->absent_entry('structure', $key, $structure['name']);
+		}
+
+		return array(
+			'entity'   => 'structure',
+			'key'      => $key,
+			'name'     => $structure['name'],
+			'id'       => null,
+			'action'   => 'create',
+			'changes'  => array(
+				'sections' => array('old' => null, 'new' => $structure['sections']),
+			),
+			'warnings' => array(),
+		);
+	}
+
+	/**
+	 * Plan one post slice.
+	 *
+	 * @param array $slice
+	 * @return array Plan entry.
+	 */
+	private function plan_post_slice(array $slice) {
+		$key = AIPS_Config_Binding::make_key('post_slices', $slice['name']);
+		$id  = $this->resolve($key);
+
+		if (null !== $id) {
+			return $this->noop_entry('post_slice', $key, $slice['name'], $id);
+		}
+
+		if (isset($this->collisions[$key])) {
+			return $this->absent_entry('post_slice', $key, $slice['name']);
+		}
+
+		return array(
+			'entity'   => 'post_slice',
+			'key'      => $key,
+			'name'     => $slice['name'],
+			'id'       => null,
+			'action'   => 'create',
+			'changes'  => array(
+				'sort_order' => array('old' => null, 'new' => $slice['sort_order']),
+			),
+			'warnings' => array(),
+		);
+	}
+
+	/**
+	 * Plan one campaign.
+	 *
+	 * @param array $campaign
+	 * @return array Plan entry.
+	 */
+	private function plan_campaign(array $campaign) {
+		$key = AIPS_Config_Binding::make_key('campaigns', $campaign['name']);
+		$id  = $this->resolve($key);
+
+		if (null !== $id) {
+			return $this->noop_entry('campaign', $key, $campaign['name'], $id);
+		}
+
+		if (isset($this->collisions[$key])) {
+			return $this->absent_entry('campaign', $key, $campaign['name']);
+		}
+
+		return array(
+			'entity'   => 'campaign',
+			'key'      => $key,
+			'name'     => $campaign['name'],
+			'id'       => null,
+			'action'   => 'create',
+			'changes'  => array(
+				'content_goal' => array('old' => null, 'new' => $campaign['content_goal']),
+			),
+			'warnings' => array(),
+		);
+	}
+
+	/**
+	 * Build a noop plan entry.
+	 *
+	 * @param string $entity
+	 * @param string $key
+	 * @param string $name
+	 * @param int    $id
+	 * @return array
+	 */
+	private function noop_entry($entity, $key, $name, $id) {
+		return array(
+			'entity'   => $entity,
+			'key'      => $key,
+			'name'     => $name,
+			'id'       => (int) $id,
+			'action'   => 'noop',
+			'changes'  => array(),
+			'warnings' => array(),
+		);
 	}
 
 	/**
@@ -463,7 +1384,27 @@ class AIPS_DevStackTips_Config_Setup {
 	private function plan_template($key, array $def) {
 		$id = $this->resolve($key);
 		if (null === $id) {
-			return $this->absent_entry('template', $key, $def['name']);
+			if (isset($this->collisions[$key])) {
+				return $this->absent_entry('template', $key, $def['name']);
+			}
+
+			return array(
+				'entity'   => 'template',
+				'key'      => $key,
+				'name'     => $def['name'],
+				'id'       => null,
+				'action'   => 'create',
+				'changes'  => array(
+					'campaign_key'            => array('old' => null, 'new' => $def['campaign_key']),
+					'voice_key'               => array('old' => null, 'new' => $def['voice_key']),
+					'structure_key'           => array('old' => null, 'new' => $def['structure_key']),
+					'post_quantity'           => array('old' => null, 'new' => $def['post_quantity']),
+					'post_status'             => array('old' => null, 'new' => $def['post_status']),
+					'generate_featured_image' => array('old' => null, 'new' => $def['generate_featured_image']),
+					'include_sources'         => array('old' => null, 'new' => $def['include_sources']),
+				),
+				'warnings' => array(),
+			);
 		}
 
 		$live = (new AIPS_Template_Repository())->get_by_id($id);
@@ -515,7 +1456,24 @@ class AIPS_DevStackTips_Config_Setup {
 	private function plan_author($key, array $def) {
 		$id = $this->resolve($key);
 		if (null === $id) {
-			return $this->absent_entry('author', $key, $def['name']);
+			if (empty($def['v2_author']) || isset($this->collisions[$key])) {
+				return $this->absent_entry('author', $key, $def['name']);
+			}
+
+			return array(
+				'entity'   => 'author',
+				'key'      => $key,
+				'name'     => $def['name'],
+				'id'       => null,
+				'action'   => 'create',
+				'changes'  => array(
+					'field_niche'               => array('old' => null, 'new' => $def['field_niche']),
+					'structure_key'             => array('old' => null, 'new' => $def['structure_key']),
+					'category_key'              => array('old' => null, 'new' => $def['category_key']),
+					'post_generation_frequency' => array('old' => null, 'new' => $def['post_generation_frequency']),
+				),
+				'warnings' => array(),
+			);
 		}
 
 		$live = (new AIPS_Authors_Repository())->get_by_id($id);
@@ -562,6 +1520,84 @@ class AIPS_DevStackTips_Config_Setup {
 		}
 
 		return $this->diff_entry('author', $key, $def['name'], $id, $live, $desired, $warnings);
+	}
+
+	/**
+	 * Plan one schedule.
+	 *
+	 * @param string $key Stable key.
+	 * @param array  $def Definition.
+	 * @return array Plan entry.
+	 */
+	private function plan_schedule($key, array $def) {
+		$id = $this->resolve($key);
+		if (null === $id) {
+			if (isset($this->collisions[$key])) {
+				return $this->absent_entry('schedule', $key, $def['title']);
+			}
+
+			return array(
+				'entity'   => 'schedule',
+				'key'      => $key,
+				'name'     => $def['title'],
+				'id'       => null,
+				'action'   => 'create',
+				'changes'  => array(
+					'template_key' => array('old' => null, 'new' => $def['template_key']),
+					'frequency'    => array('old' => null, 'new' => $def['frequency']),
+					'start_time'   => array('old' => null, 'new' => $def['start_time']),
+					'weekday'      => array('old' => null, 'new' => $def['weekday']),
+					'is_active'    => array('old' => null, 'new' => $def['is_active']),
+				),
+				'warnings' => array(),
+			);
+		}
+
+		$live = (new AIPS_Schedule_Repository())->get_by_id($id);
+		if (!$live) {
+			return $this->absent_entry('schedule', $key, $def['title'], true);
+		}
+
+		$warnings = array();
+		$desired  = array();
+		if (!empty($def['structure_key'])) {
+			$structure_id = $this->resolve($def['structure_key']);
+			if (null !== $structure_id) {
+				$desired['article_structure_id'] = $structure_id;
+			} else {
+				$warnings[] = "structure not found ({$def['structure_key']})";
+			}
+		}
+
+		return $this->diff_entry('schedule', $key, $def['title'], $id, $live, $desired, $warnings);
+	}
+
+	/**
+	 * Plan one create-missing seed setting.
+	 *
+	 * @param array $entry
+	 * @return array Plan entry.
+	 */
+	private function plan_seed_setting(array $entry) {
+		$name    = $entry['option_name'];
+		$missing = new stdClass();
+		$current = get_option($name, $missing);
+
+		if ($current !== $missing) {
+			return $this->noop_entry('setting', $name, $name, 0);
+		}
+
+		$value = $this->resolve_seed_setting_preview($entry);
+
+		return array(
+			'entity'   => 'setting',
+			'key'      => $name,
+			'name'     => $name,
+			'id'       => 0,
+			'action'   => 'create',
+			'changes'  => array($name => array('old' => null, 'new' => $value)),
+			'warnings' => array(),
+		);
 	}
 
 	/**
