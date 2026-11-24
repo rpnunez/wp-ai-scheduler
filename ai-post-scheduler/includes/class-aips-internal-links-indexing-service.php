@@ -113,7 +113,14 @@ class AIPS_Internal_Links_Indexing_Service {
 		$failed     = isset( $result['failed'] ) ? (int) $result['failed'] : 0;
 		$new_cursor = isset( $result['last_post_id'] ) ? (int) $result['last_post_id'] : $cursor;
 
-		$is_complete = ( $new_cursor === $cursor && 0 === $success ) || ( isset( $result['remaining'] ) && 0 === (int) $result['remaining'] );
+		if ( ! empty( $result['cooldown'] ) ) {
+			$paused_until = isset( $result['paused_until'] ) ? (int) $result['paused_until'] : 0;
+			$now          = AIPS_DateTime::now()->timestamp();
+			$delay        = $paused_until > $now ? ( $paused_until - $now ) : 60;
+			return ( new AIPS_Job_Slice_Result( $success, $failed, $new_cursor, false ) )->with_retry_delay( $delay );
+		}
+
+		$is_complete = ! empty( $result['done'] );
 
 		return new AIPS_Job_Slice_Result(
 			$success,

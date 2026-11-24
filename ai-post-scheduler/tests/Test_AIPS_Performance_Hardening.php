@@ -22,10 +22,12 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 		$this->group = 'perf-' . uniqid();
 		AIPS_Cache::reset_request_cache();
 		wp_unschedule_hook( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK );
+		wp_unschedule_hook( 'aips_job_tick' );
 	}
 
 	public function tearDown(): void {
 		wp_unschedule_hook( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK );
+		wp_unschedule_hook( 'aips_job_tick' );
 		delete_option( 'aips_batch_resume_cooldown_minutes' );
 		delete_option( 'aips_generation_delay_seconds' );
 		AIPS_Config::get_instance()->flush_option_cache();
@@ -509,9 +511,8 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 			null
 		);
 
-		$event = wp_next_scheduled( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK, array( 12 ) );
-		$this->assertNotFalse( $event );
-		$this->assertLessThanOrEqual( 2, abs( $event - ( $now + 10 * MINUTE_IN_SECONDS ) ) );
+		$this->assertFalse( wp_next_scheduled( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK, array( 12 ) ) );
+		$this->assertScheduleYieldJobScheduled( 12, $now + 10 * MINUTE_IN_SECONDS );
 	}
 
 	public function test_yield_leaves_next_run_alone_when_the_next_occurrence_is_sooner_than_the_cooldown() {
@@ -579,14 +580,39 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 			null
 		);
 
-		$event = wp_next_scheduled( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK, array( 14 ) );
-		$this->assertNotFalse( $event );
-		$this->assertLessThanOrEqual( 2, abs( $event - ( $now + 10 * MINUTE_IN_SECONDS ) ) );
+		$this->assertFalse( wp_next_scheduled( AIPS_Schedule_Generation_Service::QUEUED_DUE_SCHEDULE_HOOK, array( 14 ) ) );
+		$this->assertScheduleYieldJobScheduled( 14, $now + 10 * MINUTE_IN_SECONDS );
 	}
 
 	// -----------------------------------------------------------------------
 	// Settings
 	// -----------------------------------------------------------------------
+
+	/**
+	 * A yielded schedule is resumed by one schedule_post_generation job.
+	 *
+	 * @param int $schedule_id
+	 * @param int $expected_timestamp
+	 * @return void
+	 */
+	private function assertScheduleYieldJobScheduled( $schedule_id, $expected_timestamp ) {
+		AIPS_DB_Manager::install_tables();
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_jobs';
+		$rows  = $wpdb->get_results( "SELECT job_id, payload_json, next_run_at FROM {$table} WHERE job_type = 'schedule_post_generation' ORDER BY created_at DESC" );
+		$match = null;
+		foreach ( (array) $rows as $row ) {
+			$payload = json_decode( $row->payload_json, true );
+			if ( is_array( $payload ) && isset( $payload['schedule_id'] ) && (int) $payload['schedule_id'] === (int) $schedule_id ) {
+				$match = $row;
+				break;
+			}
+		}
+
+		$this->assertNotNull( $match, 'Yielded schedule must be queued as a schedule_post_generation job.' );
+		$this->assertLessThanOrEqual( 2, abs( (int) $match->next_run_at - (int) $expected_timestamp ) );
+		$this->assertNotFalse( wp_next_scheduled( 'aips_job_tick', array( $match->job_id ) ) );
+	}
 
 	public function test_pacing_settings_are_registered_and_clamped() {
 		$settings = AIPS_Settings::get_registered_settings_args( new AIPS_Settings_UI() );

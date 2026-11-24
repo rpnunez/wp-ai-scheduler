@@ -881,10 +881,6 @@ class AIPS_Schedule_Generation_Service {
 			$this->repository->update_run_state( $schedule_id, $run_state );
 			$this->repository->update( $schedule_id, array( 'next_run' => $resume_at ) );
 
-			if ( ! $this->cron_manager->next_scheduled( self::QUEUED_DUE_SCHEDULE_HOOK, array( $schedule_id ) ) ) {
-				$this->cron_manager->schedule_single( self::QUEUED_DUE_SCHEDULE_HOOK, $resume_at, array( $schedule_id ), false );
-			}
-
 			try {
 				$job_manager = AIPS_Container::get_instance()->get_job_manager();
 				$job_manager->dispatch(

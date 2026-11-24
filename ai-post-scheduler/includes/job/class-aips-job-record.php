@@ -148,6 +148,15 @@ class AIPS_Job_Record {
 		return $this->cursor_id;
 	}
 
+	/**
+	 * Alias of get_cursor_id() used by domain slice handlers.
+	 *
+	 * @return int
+	 */
+	public function get_cursor(): int {
+		return $this->get_cursor_id();
+	}
+
 	public function get_payload(): array {
 		return $this->payload;
 	}
@@ -250,6 +259,13 @@ class AIPS_Job_Record {
 				return $this->job_id;
 			case 'job_type':
 				return $this->job_type;
+			case 'cursor':
+			case 'cursor_id':
+				return $this->cursor_id;
+			case 'payload':
+				return $this->payload;
+			case 'error_message':
+				return $this->error_message;
 			case 'items':
 				return isset( $this->payload['items'] ) && is_array( $this->payload['items'] ) ? $this->payload['items'] : array();
 			case 'options':

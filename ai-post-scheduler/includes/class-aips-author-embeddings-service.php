@@ -112,7 +112,8 @@ class AIPS_Author_Embeddings_Service {
 		$cooldown = $limiter->get_cooldown_status();
 
 		if ( ! empty( $cooldown['is_paused'] ) ) {
-			return new AIPS_Job_Slice_Result( 0, 0, $cursor, false );
+			$delay = max( 5, (int) $cooldown['remaining_seconds'] );
+			return ( new AIPS_Job_Slice_Result( 0, 0, $cursor, false ) )->with_retry_delay( $delay );
 		}
 
 		$ids = $this->embeddings_repo->get_unindexed_topic_ids( $limit, $cursor, $author_id );
@@ -127,8 +128,15 @@ class AIPS_Author_Embeddings_Service {
 		$stalled    = false;
 
 		foreach ( $ids as $topic_id ) {
-			if ( $context->should_yield() ) {
+			if ( $context->should_yield() && ( $success + $failed ) > 0 ) {
 				break;
+			}
+
+			if ( $limiter->get_remaining_allowance( self::QUOTA_RESERVE_RATIO ) <= 0 ) {
+				$next  = $limiter->get_next_allowance_timestamp( self::QUOTA_RESERVE_RATIO );
+				$now   = AIPS_DateTime::now()->timestamp();
+				$delay = $next > $now ? ( $next - $now ) : 60;
+				return ( new AIPS_Job_Slice_Result( $success, $failed, $new_cursor, false ) )->with_retry_delay( $delay );
 			}
 
 			$result = $this->embeddings_service->compute_topic_embedding( (int) $topic_id );

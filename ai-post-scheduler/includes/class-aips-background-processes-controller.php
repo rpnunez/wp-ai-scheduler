@@ -734,7 +734,7 @@ class AIPS_Background_Processes_Controller {
 					return $can;
 				}
 				$author_id = isset( $options['author_id'] ) ? absint( $options['author_id'] ) : 0;
-				$active    = $this->job_repo->get_active_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
+				$active    = $this->job_repo->get_open_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
 				if ( ! empty( $active ) ) {
 					return new WP_Error( 'aips_bg_already_open', __( 'Topic embeddings are already running.', 'ai-post-scheduler' ) );
 				}
@@ -754,7 +754,7 @@ class AIPS_Background_Processes_Controller {
 				if ( is_wp_error( $can ) ) {
 					return $can;
 				}
-				$active = $this->job_repo->get_active_jobs( AIPS_Job_Registry::TYPE_INTERNAL_LINKS_INDEXING );
+				$active = $this->job_repo->get_open_jobs( AIPS_Job_Registry::TYPE_INTERNAL_LINKS_INDEXING );
 				if ( ! empty( $active ) ) {
 					return new WP_Error( 'aips_bg_already_open', __( 'Internal links indexing is already running.', 'ai-post-scheduler' ) );
 				}
@@ -771,7 +771,7 @@ class AIPS_Background_Processes_Controller {
 
 			case AIPS_Relationships_Recompute_Service::KEY:
 				$mode   = isset( $options['mode'] ) && in_array( $options['mode'], array( 'missing', 'all' ), true ) ? $options['mode'] : AIPS_Relationships_Recompute_Service::MODE_MISSING;
-				$active = $this->job_repo->get_active_jobs( AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE );
+				$active = $this->job_repo->get_open_jobs( AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE );
 				if ( ! empty( $active ) ) {
 					return new WP_Error( 'aips_bg_already_open', __( 'Relationships recompute is already running.', 'ai-post-scheduler' ) );
 				}

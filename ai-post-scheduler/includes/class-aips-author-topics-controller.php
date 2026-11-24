@@ -943,7 +943,7 @@ class AIPS_Author_Topics_Controller {
 		$job_repo    = AIPS_Container::get_instance()->get_job_repository();
 		$job_manager = AIPS_Container::get_instance()->get_job_manager();
 
-		$active_jobs = $job_repo->get_active_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
+		$active_jobs = $job_repo->get_open_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
 		if ( ! empty( $active_jobs ) ) {
 			$run        = $active_jobs[0];
 			$payload    = $run->get_payload();

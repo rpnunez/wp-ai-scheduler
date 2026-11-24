@@ -107,14 +107,31 @@ class AIPS_Relationships_Recompute_Service {
 			return new AIPS_Job_Slice_Result( 0, 0, $cursor, true );
 		}
 
-		$saved  = $this->builder->compute_for_posts( $ids );
-		$failed = count( $ids ) - count( $saved );
+		$saved_count = 0;
+		$failed      = 0;
+		$handled     = 0;
+		$new_cursor  = $cursor;
 
-		$new_cursor  = max( $ids );
-		$is_complete = count( $ids ) < $limit;
+		foreach ( $ids as $post_id ) {
+			if ( $handled > 0 && $context->should_yield() ) {
+				break;
+			}
+
+			$saved = $this->builder->compute_for_posts( array( $post_id ) );
+			if ( empty( $saved ) ) {
+				$failed++;
+			} else {
+				$saved_count += count( $saved );
+			}
+
+			$new_cursor = (int) $post_id;
+			$handled++;
+		}
+
+		$is_complete = ( $handled === count( $ids ) ) && ( count( $ids ) < $limit );
 
 		return new AIPS_Job_Slice_Result(
-			count( $saved ),
+			$saved_count,
 			$failed,
 			$new_cursor,
 			$is_complete

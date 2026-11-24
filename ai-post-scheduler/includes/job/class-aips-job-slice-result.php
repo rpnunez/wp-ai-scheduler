@@ -27,6 +27,15 @@ class AIPS_Job_Slice_Result {
 	/** @var array */
 	private $result_data;
 
+	/** @var bool */
+	private $update_cursor = true;
+
+	/** @var bool */
+	private $is_failed = false;
+
+	/** @var int */
+	private $retry_delay = 0;
+
 	/**
 	 * @param int   $processed_count Number of items successfully processed in this slice.
 	 * @param int   $failed_count    Number of items that failed in this slice.
@@ -77,8 +86,75 @@ class AIPS_Job_Slice_Result {
 		return $this->result_data;
 	}
 
+	/**
+	 * Whether the runner should persist get_next_cursor().
+	 *
+	 * Terminal complete() and success() results leave the cursor alone so a
+	 * finished job does not have its cursor wiped back to 0.
+	 *
+	 * @return bool
+	 */
+	public function should_update_cursor(): bool {
+		return $this->update_cursor;
+	}
+
+	/**
+	 * Terminal failure. The runner records the error and does not retry.
+	 *
+	 * @return bool
+	 */
+	public function is_failed(): bool {
+		return $this->is_failed;
+	}
+
+	/**
+	 * Seconds to wait before the next slice. 0 means the runner default.
+	 *
+	 * @return int
+	 */
+	public function get_retry_delay(): int {
+		return $this->retry_delay;
+	}
+
+	/**
+	 * @param int $seconds
+	 * @return self
+	 */
+	public function with_retry_delay( int $seconds ): self {
+		$this->retry_delay = max( 0, $seconds );
+		return $this;
+	}
+
 	public static function complete( int $processed = 0, int $failed = 0, array $result = array() ): self {
-		return new self( $processed, $failed, 0, true, $result );
+		$result_obj                = new self( $processed, $failed, 0, true, $result );
+		$result_obj->update_cursor = false;
+		return $result_obj;
+	}
+
+	/**
+	 * One-shot success used by schedule and other single-item handlers.
+	 *
+	 * @param int   $processed Items finished by this slice.
+	 * @param array $result    Optional result payload.
+	 * @return self
+	 */
+	public static function success( int $processed = 1, array $result = array() ): self {
+		return self::complete( $processed, 0, $result );
+	}
+
+	/**
+	 * Terminal failure. $errors are stored on the job and the slice is not retried.
+	 *
+	 * @param array $errors Error messages.
+	 * @param int   $cursor Cursor to keep. Not written unless with a continue result.
+	 * @return self
+	 */
+	public static function failure( array $errors, int $cursor = 0 ): self {
+		$messages                  = array_values( array_map( 'strval', $errors ) );
+		$result_obj                = new self( 0, 0, $cursor, true, array( 'errors' => $messages ) );
+		$result_obj->is_failed     = true;
+		$result_obj->update_cursor = false;
+		return $result_obj;
 	}
 
 	public static function continue( int $processed = 0, int $next_cursor = 0, int $failed = 0, array $result = array() ): self {

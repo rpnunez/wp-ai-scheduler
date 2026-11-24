@@ -2036,6 +2036,14 @@ class AIPS_DB_Migrations {
 				$items   = json_decode( $row->items_json, true );
 				$options = json_decode( $row->options_json, true );
 
+				$job_id = (string) $row->job_id;
+				if ( strlen( $job_id ) > 36 ) {
+					$payload_legacy_id = $job_id;
+					$job_id            = wp_generate_uuid4();
+				} else {
+					$payload_legacy_id = '';
+				}
+
 				$payload = array_merge(
 					is_array( $options ) ? $options : array(),
 					array(
@@ -2044,13 +2052,16 @@ class AIPS_DB_Migrations {
 						'queue_job_type' => $row->job_type,
 					)
 				);
+				if ( '' !== $payload_legacy_id ) {
+					$payload['legacy_job_id'] = $payload_legacy_id;
+				}
 
-				$status = ( 'processing' === $row->status ) ? 'running' : $row->status;
+				$status = ( 'processing' === $row->status || 'running' === $row->status ) ? 'pending' : $row->status;
 
-				$wpdb->replace(
+				$replaced = $wpdb->replace(
 					$jobs_table,
 					array(
-						'job_id'       => $row->job_id,
+						'job_id'       => $job_id,
 						'job_type'     => $job_type,
 						'group_name'   => 'aips-bulk-batch',
 						'status'       => $status,
@@ -2064,12 +2075,28 @@ class AIPS_DB_Migrations {
 						'updated_at'   => (int) $row->updated_at,
 					)
 				);
+
+				if ( false === $replaced ) {
+					$this->logger->log(
+						sprintf( 'migrate_to_3_8_0: failed to copy bulk job %s', (string) $row->job_id ),
+						'error'
+					);
+					return false;
+				}
+
+				if ( 'pending' === $status ) {
+					$this->schedule_migrated_job( $job_id );
+				}
 			}
 
 			$this->logger->log(
 				sprintf( 'migrate_to_3_8_0: migrated %d active rows from %s to %s', count( $active_rows ), $legacy_table, $jobs_table ),
 				'info'
 			);
+		}
+
+		if ( ! $this->migrate_background_processes_to_jobs( $jobs_table ) ) {
+			return false;
 		}
 
 		// Drop the legacy tables
@@ -2079,6 +2106,99 @@ class AIPS_DB_Migrations {
 		$wpdb->query( "DROP TABLE IF EXISTS `{$bg_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		return true;
+	}
+
+	/**
+	 * Copy in-flight background-process rows onto wp_aips_jobs and schedule a tick.
+	 *
+	 * @param string $jobs_table Prefixed jobs table.
+	 * @return bool
+	 */
+	private function migrate_background_processes_to_jobs( string $jobs_table ): bool {
+		global $wpdb;
+
+		$bg_table = $wpdb->prefix . 'aips_background_processes';
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $bg_table ) ) !== $bg_table ) {
+			return true;
+		}
+
+		$known = array(
+			'author_topic_embeddings',
+			'internal_links_indexing',
+			'relationships_recompute',
+			'link_index_scan',
+		);
+
+		$rows = $wpdb->get_results(
+			"SELECT * FROM `{$bg_table}` WHERE `status` IN ('pending', 'running', 'processing', 'paused', 'cooldown', 'waiting_quota')"
+		);
+
+		if ( empty( $rows ) ) {
+			return true;
+		}
+
+		foreach ( $rows as $row ) {
+			$key = isset( $row->process_key ) ? (string) $row->process_key : '';
+			if ( ! in_array( $key, $known, true ) ) {
+				$this->logger->log( sprintf( 'migrate_to_3_8_0: skipping background process %s', $key ), 'info' );
+				continue;
+			}
+
+			$options = array();
+			if ( ! empty( $row->options_json ) ) {
+				$decoded = json_decode( $row->options_json, true );
+				$options = is_array( $decoded ) ? $decoded : array();
+			}
+
+			$status = ( 'paused' === $row->status ) ? 'paused' : 'pending';
+			$job_id = wp_generate_uuid4();
+			$now    = time();
+
+			$replaced = $wpdb->replace(
+				$jobs_table,
+				array(
+					'job_id'       => $job_id,
+					'job_type'     => $key,
+					'group_name'   => 'aips-default',
+					'status'       => $status,
+					'total'        => isset( $row->total ) ? (int) $row->total : 0,
+					'processed'    => isset( $row->processed ) ? (int) $row->processed : 0,
+					'failed'       => isset( $row->failed ) ? (int) $row->failed : 0,
+					'cursor_id'    => isset( $row->cursor_id ) ? (int) $row->cursor_id : 0,
+					'payload_json' => wp_json_encode( $options ),
+					'max_retries'  => 3,
+					'created_at'   => $now,
+					'updated_at'   => $now,
+				)
+			);
+
+			if ( false === $replaced ) {
+				$this->logger->log( sprintf( 'migrate_to_3_8_0: failed to copy background process %s', $key ), 'error' );
+				return false;
+			}
+
+			if ( 'pending' === $status ) {
+				$this->schedule_migrated_job( $job_id );
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Queue a migrated job on the unified tick hook.
+	 *
+	 * @param string $job_id
+	 * @return void
+	 */
+	private function schedule_migrated_job( string $job_id ): void {
+		if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_single_event' ) ) {
+			return;
+		}
+
+		if ( ! wp_next_scheduled( 'aips_job_tick', array( $job_id ) ) ) {
+			wp_schedule_single_event( time(), 'aips_job_tick', array( $job_id ) );
+		}
 	}
 
 	/**

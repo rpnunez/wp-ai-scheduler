@@ -17,7 +17,7 @@ class AIPS_Job_Context {
 	/** @var AIPS_Job_Record */
 	private $job_record;
 
-	/** @var AIPS_Logger */
+	/** @var AIPS_Logger_Interface */
 	private $logger;
 
 	/** @var float */
@@ -30,11 +30,11 @@ class AIPS_Job_Context {
 	private $memory_limit_bytes;
 
 	/**
-	 * @param AIPS_Job_Record $job_record
-	 * @param AIPS_Logger|null $logger
-	 * @param int|null $time_budget_seconds Defaults to 20 seconds or filter.
+	 * @param AIPS_Job_Record           $job_record
+	 * @param AIPS_Logger_Interface|null $logger
+	 * @param int|null                  $time_budget_seconds Defaults to 20 seconds or filter.
 	 */
-	public function __construct( AIPS_Job_Record $job_record, ?AIPS_Logger $logger = null, ?int $time_budget_seconds = null ) {
+	public function __construct( AIPS_Job_Record $job_record, ?AIPS_Logger_Interface $logger = null, ?int $time_budget_seconds = null ) {
 		$this->job_record          = $job_record;
 		$this->logger              = $logger ?: new AIPS_Logger();
 		$this->start_time          = microtime( true );
@@ -46,6 +46,15 @@ class AIPS_Job_Context {
 
 	public function get_job(): AIPS_Job_Record {
 		return $this->job_record;
+	}
+
+	/**
+	 * Alias of get_job() used by domain slice handlers.
+	 *
+	 * @return AIPS_Job_Record
+	 */
+	public function get_record(): AIPS_Job_Record {
+		return $this->get_job();
 	}
 
 	public function get_job_id(): string {
@@ -64,7 +73,29 @@ class AIPS_Job_Context {
 		return $this->job_record->get_cursor_id();
 	}
 
-	public function get_logger(): AIPS_Logger {
+	/**
+	 * Batch size for this slice: payload override, otherwise the registered type default.
+	 *
+	 * @return int
+	 */
+	public function get_batch_size(): int {
+		$payload = $this->get_payload();
+		if ( isset( $payload['batch_size'] ) ) {
+			return max( 1, (int) $payload['batch_size'] );
+		}
+
+		if ( class_exists( 'AIPS_Container' ) ) {
+			$registry = AIPS_Container::get_instance()->get_job_registry();
+			$type     = $registry ? $registry->get( $this->get_job_type() ) : null;
+			if ( $type ) {
+				return max( 1, $type->get_batch_size() );
+			}
+		}
+
+		return 10;
+	}
+
+	public function get_logger(): AIPS_Logger_Interface {
 		return $this->logger;
 	}
 

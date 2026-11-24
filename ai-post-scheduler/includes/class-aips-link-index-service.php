@@ -432,6 +432,54 @@ class AIPS_Link_Index_Service {
 	 * @param string $job_id Scan job ID.
 	 * @return void
 	 */
+	/**
+	 * One Job Manager slice for a link_index_scan job whose payload holds post IDs.
+	 *
+	 * The admin backfill still drives itself with SCAN_TICK_HOOK. This handler
+	 * makes the registered job type runnable when AIPS_Job_Manager dispatches it.
+	 *
+	 * @param AIPS_Job_Context $context
+	 * @return AIPS_Job_Slice_Result
+	 */
+	public function handle_job_slice( AIPS_Job_Context $context ): AIPS_Job_Slice_Result {
+		$record = $context->get_job();
+		$payload = $record->get_payload();
+		$items   = isset( $payload['items'] ) && is_array( $payload['items'] ) ? array_values( $payload['items'] ) : array();
+		$cursor  = $record->get_cursor_id();
+		$total   = count( $items );
+
+		if ( $cursor >= $total ) {
+			return AIPS_Job_Slice_Result::complete();
+		}
+
+		$options    = isset( $payload['options'] ) && is_array( $payload['options'] ) ? $payload['options'] : array();
+		$force      = ( isset( $options['mode'] ) ? $options['mode'] : '' ) === self::MODE_ALL;
+		$batch_size = isset( $payload['batch_size'] ) ? max( 1, (int) $payload['batch_size'] ) : $this->get_batch_size();
+		$slice      = array_slice( $items, $cursor, $batch_size );
+		$done       = 0;
+		$started    = microtime( true );
+
+		foreach ( $slice as $post_id ) {
+			if ( $done > 0 && ( $context->should_yield() || ( microtime( true ) - $started ) > self::TICK_TIME_BUDGET ) ) {
+				break;
+			}
+
+			try {
+				$this->index_post( (int) $post_id, $force );
+			} catch ( Throwable $e ) {
+				( new AIPS_Logger() )->log( sprintf( 'Link index scan: post %d failed: %s', (int) $post_id, $e->getMessage() ), 'warning' );
+			}
+			$done++;
+		}
+
+		$next = $cursor + $done;
+		if ( $next >= $total ) {
+			return AIPS_Job_Slice_Result::complete( $done, 0 );
+		}
+
+		return AIPS_Job_Slice_Result::continue( $done, $next, 0 );
+	}
+
 	public function process_scan_tick($job_id): void {
 		$job_id = (string) $job_id;
 		if ($job_id === '' || $job_id !== (string) $this->config->get_option(self::BACKFILL_JOB_OPTION, '')) {

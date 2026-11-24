@@ -392,8 +392,7 @@ class AIPS_Job_Manager {
 			return;
 		}
 
-		// Abort if paused, cancelled, or already completed
-		if ( $record->is_paused() || $record->is_cancelled() || $record->is_completed() ) {
+		if ( $record->is_paused() || $record->is_cancelled() || $record->is_completed() || $record->is_failed() ) {
 			return;
 		}
 
@@ -410,15 +409,10 @@ class AIPS_Job_Manager {
 			return;
 		}
 
-		$now = AIPS_DateTime::now()->timestamp();
-		$this->repository->update(
-			$job_id,
-			array(
-				'status'       => AIPS_Job_Record::STATUS_RUNNING,
-				'started_at'   => $record->get_started_at() > 0 ? $record->get_started_at() : $now,
-				'last_tick_at' => $now,
-			)
-		);
+		// Claim is the lock. A second overlapping tick updates zero rows and returns.
+		if ( ! $this->repository->claim( $job_id, $this->claim_stale_seconds() ) ) {
+			return;
+		}
 
 		$context = new AIPS_Job_Context( $record, $this->logger );
 
@@ -447,8 +441,36 @@ class AIPS_Job_Manager {
 				$job_id,
 				$slice_result->get_processed_count(),
 				$slice_result->get_failed_count(),
-				$slice_result->get_next_cursor()
+				$slice_result->should_update_cursor() ? $slice_result->get_next_cursor() : null
 			);
+
+			$fresh_record = $this->repository->find( $job_id );
+			if ( $fresh_record && $fresh_record->is_cancelled() ) {
+				return;
+			}
+
+			if ( $slice_result->is_failed() ) {
+				$errors = $slice_result->get_result_data();
+				$message = isset( $errors['errors'] ) && is_array( $errors['errors'] )
+					? implode( '; ', $errors['errors'] )
+					: __( 'Job failed.', 'ai-post-scheduler' );
+				$this->repository->update(
+					$job_id,
+					array(
+						'status'        => AIPS_Job_Record::STATUS_FAILED,
+						'error_message' => $message,
+						'result'        => $slice_result->get_result_data(),
+						'finished_at'   => AIPS_DateTime::now()->timestamp(),
+					)
+				);
+				$context->log( 'Failed: ' . $message, 'error' );
+				return;
+			}
+
+			// A pause during the slice wins over completion and over the next tick.
+			if ( $fresh_record && $fresh_record->is_paused() ) {
+				return;
+			}
 
 			if ( $slice_result->is_complete() ) {
 				$this->repository->update(
@@ -460,35 +482,39 @@ class AIPS_Job_Manager {
 					)
 				);
 				$context->log( 'Completed successfully.' );
-			} else {
-				// Re-read record to check whether it was paused/cancelled while running
-				$fresh_record = $this->repository->find( $job_id );
-				if ( $fresh_record && ! $fresh_record->is_active() ) {
-					return;
-				}
-
-				// Schedule next continuation tick
-				$next_tick = AIPS_DateTime::now()->timestamp() + 5;
-				$this->repository->update(
-					$job_id,
-					array(
-						'status'      => AIPS_Job_Record::STATUS_PENDING,
-						'next_run_at' => $next_tick,
-					)
-				);
-
-				$this->cron_backend->schedule_single(
-					$next_tick,
-					$type_spec->get_hook(),
-					array( $job_id ),
-					$type_spec->get_group()
-				);
-
-				$context->log( sprintf( 'Yielded slice; next tick scheduled at %d', $next_tick ) );
+				return;
 			}
+
+			$delay     = $slice_result->get_retry_delay() > 0 ? $slice_result->get_retry_delay() : 5;
+			$next_tick = AIPS_DateTime::now()->timestamp() + $delay;
+			$this->repository->update(
+				$job_id,
+				array(
+					'status'      => AIPS_Job_Record::STATUS_PENDING,
+					'next_run_at' => $next_tick,
+				)
+			);
+
+			$this->cron_backend->schedule_single(
+				$next_tick,
+				$type_spec->get_hook(),
+				array( $job_id ),
+				$type_spec->get_group()
+			);
+
+			$context->log( sprintf( 'Yielded slice; next tick scheduled at %d', $next_tick ) );
 		} catch ( Throwable $exception ) {
 			$this->handle_tick_failure( $job_id, $record, $type_spec, $exception );
 		}
+	}
+
+	/**
+	 * How long a running tick may stay silent before another runner may reclaim it.
+	 *
+	 * @return int
+	 */
+	private function claim_stale_seconds(): int {
+		return max( 30, (int) apply_filters( 'aips_job_claim_stale_seconds', 180 ) );
 	}
 
 	/**

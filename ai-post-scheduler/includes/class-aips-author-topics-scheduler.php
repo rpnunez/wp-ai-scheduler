@@ -208,6 +208,25 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	 * @param int    $author_id      ID of the author to process.
 	 * @param string $correlation_id Correlation ID for tracing.
 	 */
+	/**
+	 * Job-manager slice for one author. Payload key is author_id.
+	 *
+	 * @param AIPS_Job_Context $context
+	 * @return AIPS_Job_Slice_Result
+	 */
+	public function handle_job_slice( AIPS_Job_Context $context ): AIPS_Job_Slice_Result {
+		$payload   = $context->get_payload();
+		$author_id = isset( $payload['author_id'] ) ? (int) $payload['author_id'] : ( isset( $payload['id'] ) ? (int) $payload['id'] : 0 );
+		if ( $author_id <= 0 ) {
+			return AIPS_Job_Slice_Result::failure( array( 'Author topic slice is missing author_id.' ) );
+		}
+
+		$correlation_id = isset( $payload['correlation_id'] ) ? (string) $payload['correlation_id'] : '';
+		$this->process_author_slice( $author_id, $correlation_id );
+
+		return AIPS_Job_Slice_Result::success( 1 );
+	}
+
 	public function process_author_slice( int $author_id, string $correlation_id = '' ): void {
 		if ( ! empty( $correlation_id ) ) {
 			AIPS_Correlation_ID::set( $correlation_id );

@@ -53,7 +53,7 @@ class AIPS_Job_Registry {
 				'max_retries'       => 3,
 				'retry_backoff_sec' => 120,
 				'batch_size'        => 10,
-				'handler'           => 'AIPS_Author_Topics_Service',
+				'handler'           => 'AIPS_Author_Topics_Scheduler',
 			),
 			self::TYPE_BULK_POST_GENERATION  => array(
 				'label'             => __( 'Bulk Post Generation', 'ai-post-scheduler' ),

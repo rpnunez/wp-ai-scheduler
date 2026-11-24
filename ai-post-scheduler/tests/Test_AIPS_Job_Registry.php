@@ -46,7 +46,7 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$this->assertSame( 3, $job_type->get_max_retries() );
 		$this->assertSame( 120, $job_type->get_retry_backoff_sec() );
 		$this->assertSame( 10, $job_type->get_batch_size() );
-		$this->assertSame( 'AIPS_Author_Topics_Service', $job_type->get_handler() );
+		$this->assertSame( 'AIPS_Author_Topics_Scheduler', $job_type->get_handler() );
 
 		$array_spec = $job_type->to_array();
 		$this->assertSame( 'Author Topic Slice', $array_spec['label'] );
