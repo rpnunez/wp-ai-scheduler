@@ -1,6 +1,13 @@
 ## [Unreleased]
 
 ### Added
+- **Diagnostics Logs Viewer:**
+  - Added dedicated **Logs** rail tab to the Diagnostics Hub (`admin.php?page=aips-diagnostics&tab=logs`) and registered an administrative redirect shortcut (`admin.php?page=aips-logs`).
+  - Implemented a master-detail layout with human-friendly date titles, file sizes, timestamps without seconds, and active status in the sidebar.
+  - Implemented multi-level filtering (All, Error, Warning, Info, Debug) allowing multiple log levels to be viewed simultaneously.
+  - Redesigned toolbar with unified Auto-Refresh button group, compact line limits (100–2,000 entries), native segmented Formatted/Raw switch, live keyword search, clipboard copying, and direct full file download streaming.
+  - Added log management actions with confirmation dialogs supporting both emptying (truncating to 0 bytes) and deleting log files from disk.
+  - Added path traversal guards, strict regex validation, capability checks, and comprehensive unit tests in `Test_AIPS_Diagnostics_Logs.php`.
 - **Redesigned notification emails (`AIPS_Email_Theme`, `AIPS_Email_View`, `AIPS_Email_View_Factory`, `AIPS_Email_Renderer`):** every notification email is now composed as a structured view and rendered through a shared layout with reusable partials, implementing the `Email/Emails.dc.html` design.
   - `AIPS_Email_Theme` holds every colour, tone, font, size, and radius as one filterable token map (`aips_email_theme`); no partial hardcodes a hex value.
   - `AIPS_Email_View` is an immutable value object describing the regions an email contains. It normalises its own input: a metadata cell with no value is dropped so the grid re-flows, only the first action can be primary, and a stat tile value of `0` is preserved. Every field is plain text — post content arrives as typed preview blocks, so generated content cannot inject markup into an email.
