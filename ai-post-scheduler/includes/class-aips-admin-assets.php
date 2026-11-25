@@ -697,7 +697,6 @@ class AIPS_Admin_Assets {
             'hideDetails'         => __('Hide details', 'ai-post-scheduler'),
             'copyDetails'         => __('Copy', 'ai-post-scheduler'),
             'copiedDetails'       => __('Copied!', 'ai-post-scheduler'),
-            'copyDiagnostic'       => __('Copy diagnostic', 'ai-post-scheduler'),
             'invalidHistoryId'    => __('Invalid history ID.', 'ai-post-scheduler'),
             'loadingFailed'       => __('Failed to load history modal.', 'ai-post-scheduler'),
             'loadingError'        => __('Error loading history modal.', 'ai-post-scheduler'),
@@ -734,7 +733,6 @@ class AIPS_Admin_Assets {
                             <div id="aips-history-modal-status"></div>
                             <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
                         </div>
-                        <div class="aips-history-modal-header-diagnostic"></div>
                     </div>
                 </div>
                 <div class="aips-modal-body" id="aips-history-modal-content" style="white-space: normal;"></div>
@@ -1691,7 +1689,6 @@ class AIPS_Admin_Assets {
                 'hideDetails'          => __('Hide details', 'ai-post-scheduler'),
                 'copyDetails'          => __('Copy', 'ai-post-scheduler'),
                 'copiedDetails'        => __('Copied!', 'ai-post-scheduler'),
-                'copyDiagnostic'        => __('Copy diagnostic', 'ai-post-scheduler'),
                 'confirmDelete'        => __('Delete this history container? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmBulkDelete'    => __('Delete the selected history containers? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmDeleteLabel'   => __('Yes, delete', 'ai-post-scheduler'),

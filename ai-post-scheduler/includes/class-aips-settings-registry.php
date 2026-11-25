@@ -2609,7 +2609,7 @@ class AIPS_Settings_Registry {
 			array(
 				'key'          => 'aips_notif_digest_enabled',
 				'type'         => AIPS_Setting_Definition::TYPE_BOOL,
-				'default'      => false,
+				'default'      => true,
 				'tab'          => 'settings-notifications',
 				'section'      => 'aips_notifications_summarized_digest_section',
 				'label'        => __( 'Enable Summarized Notification Digest', 'ai-post-scheduler' ),
