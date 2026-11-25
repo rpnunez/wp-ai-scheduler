@@ -255,6 +255,10 @@ class AIPS_Admin_Assets {
 			$this->enqueue_ai_errors_tab_assets();
 		}
 
+		if ($this->is_diagnostics_tab($page, 'logs')) {
+			$this->enqueue_logs_tab_assets();
+		}
+
 	}
 
 	/**
@@ -361,6 +365,34 @@ class AIPS_Admin_Assets {
 			'pingFailed'          => __('Connection Failed', 'ai-post-scheduler'),
 			'exportFailed'        => __('Failed to export error logs.', 'ai-post-scheduler'),
 			'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+		));
+	}
+
+	/**
+	 * Enqueue assets for the Logs diagnostics tab.
+	 *
+	 * @return void
+	 */
+	private function enqueue_logs_tab_assets() {
+		wp_enqueue_script(
+			'aips-admin-logs',
+			AIPS_PLUGIN_URL . 'assets/js/admin-logs.js',
+			array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-admin-logs', 'aipsLogsL10n', array(
+			'ajaxUrl'             => admin_url('admin-ajax.php'),
+			'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+			'loadingLogs'         => __('Loading log entries…', 'ai-post-scheduler'),
+			'noLogsFound'         => __('No log entries found.', 'ai-post-scheduler'),
+			'errorLoading'        => __('Failed to load log entries.', 'ai-post-scheduler'),
+			'confirmEmpty'        => __('Are you sure you want to empty this log file? All contents will be cleared.', 'ai-post-scheduler'),
+			'confirmDelete'       => __('Are you sure you want to permanently delete this log file? This cannot be undone.', 'ai-post-scheduler'),
+			'copiedToClipboard'   => __('Log copied to clipboard!', 'ai-post-scheduler'),
+			'copyFailed'          => __('Failed to copy to clipboard.', 'ai-post-scheduler'),
+			'activeFileIndicator' => __('(Active)', 'ai-post-scheduler'),
 		));
 	}
 
@@ -1332,7 +1364,23 @@ class AIPS_Admin_Assets {
                 'viewHistory'                    => __('View history', 'ai-post-scheduler'),
                 'systemStatus'                   => __('System status', 'ai-post-scheduler'),
                 'notifications'                  => __('Notifications', 'ai-post-scheduler'),
+                // Schedules table details row (assets/js/admin-schedules-table.js)
+                'detailsLoadFailed'              => __('Could not load schedule details.', 'ai-post-scheduler'),
+                /* translators: %d: number of recent items shown */
+                'recentOutputTitle'              => __('Last %d generated', 'ai-post-scheduler'),
+                'recentKindPost'                 => __('Post', 'ai-post-scheduler'),
+                'recentKindTopic'                => __('Topic', 'ai-post-scheduler'),
+                'resetCircuit'                   => __('Reset circuit & retry', 'ai-post-scheduler'),
+                'resumeBatch'                    => __('Resume batch', 'ai-post-scheduler'),
             ));
+
+            wp_enqueue_script(
+                'aips-admin-schedules-table',
+                AIPS_PLUGIN_URL . 'assets/js/admin-schedules-table.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
     }
 
     /**

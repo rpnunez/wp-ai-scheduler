@@ -282,6 +282,15 @@ class AIPS_Admin_Menu {
                 array($this, 'render_dev_tools_page')
             );
         }
+
+        add_submenu_page(
+            null,
+            __('Logs', 'ai-post-scheduler'),
+            __('Logs', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-logs',
+            array($this, 'render_logs_page')
+        );
     }
 
     /**
@@ -855,6 +864,15 @@ class AIPS_Admin_Menu {
      */
     public function render_dev_tools_page() {
         $this->redirect_to_hub('aips-diagnostics', 'dev-tools');
+    }
+
+    /**
+     * Render the Logs page by redirecting to the Diagnostics hub logs tab.
+     *
+     * @return void
+     */
+    public function render_logs_page() {
+        $this->redirect_to_hub('aips-diagnostics', 'logs');
     }
 
     /**

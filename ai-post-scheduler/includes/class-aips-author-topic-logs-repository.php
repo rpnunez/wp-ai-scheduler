@@ -259,6 +259,39 @@ class AIPS_Author_Topic_Logs_Repository {
 		return $counts;
 	}
 
+	/**
+	 * Get the most recent posts generated for an author, newest first.
+	 *
+	 * Only rows that still reference a post are returned (deleted posts are
+	 * disassociated by disassociate_post_id()).
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $limit     Maximum rows to return.
+	 * @return array<int, object> Rows with post_id, created_at and topic_title.
+	 */
+	public function get_recent_generated_posts_by_author($author_id, $limit = 10) {
+		$author_id = absint($author_id);
+		$limit     = absint($limit);
+		if (!$author_id || $limit < 1) {
+			return array();
+		}
+
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT l.post_id, l.created_at, t.topic_title
+			FROM {$this->table_name} l
+			INNER JOIN {$topics_table} t ON l.author_topic_id = t.id
+			WHERE t.author_id = %d
+			AND l.action = 'post_generated'
+			AND l.post_id IS NOT NULL
+			ORDER BY l.created_at DESC, l.id DESC
+			LIMIT %d",
+			$author_id,
+			$limit
+		));
+	}
+
 	public function count_generated_posts_by_author($author_id) {
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 

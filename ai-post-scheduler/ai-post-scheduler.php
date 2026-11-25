@@ -305,6 +305,19 @@ final class AI_Post_Scheduler {
             return AIPS_Config::get_instance();
         });
 
+        // Register AIPS_Settings_Registry
+        $container->singleton(AIPS_Settings_Registry::class, function( $container ) {
+            return AIPS_Settings_Registry::instance();
+        });
+
+        // Register AIPS_Settings_Manager
+        $container->singleton(AIPS_Settings_Manager::class, function( $container ) {
+            return new AIPS_Settings_Manager(
+                $container->make(AIPS_Settings_Registry::class),
+                new AIPS_Settings_Form_Renderer()
+            );
+        });
+
         // Register AIPS_History_Repository
         $container->singleton(AIPS_History_Repository::class, function( $container ) {
             return AIPS_History_Repository::instance();

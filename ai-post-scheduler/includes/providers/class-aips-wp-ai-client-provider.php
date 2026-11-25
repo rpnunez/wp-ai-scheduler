@@ -494,21 +494,21 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
         }
 
         // offsetExists() must be used instead of isset() because isset() returns
-        // false for null values even when the key exists, causing the unavailable
-        // provider path (stored null) to be re-probed on every call.
+        // false for null values. We store false in WeakMap to represent unavailable/errored
+        // states because WeakMap::offsetExists() in PHP treats null values as unset.
         if ($cache->offsetExists($this)) {
-            return $cache[$this];
+            return false === $cache[$this] ? null : $cache[$this];
         }
 
         if (!function_exists('wp_ai_client_prompt')) {
-            $cache[$this] = null;
+            $cache[$this] = false;
             return null;
         }
 
         $builder = $this->create_client_builder('');
-        $cache[$this] = is_wp_error($builder) ? null : $builder;
+        $cache[$this] = is_wp_error($builder) ? false : $builder;
 
-        return $cache[$this];
+        return false === $cache[$this] ? null : $cache[$this];
     }
 
     /**

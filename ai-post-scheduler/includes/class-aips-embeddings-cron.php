@@ -313,8 +313,9 @@ class AIPS_Embeddings_Cron {
 			'last_processed_id' => $last_processed_id,
 		);
 
-		// Schedule to run in a few seconds via the central cron backend
-		$timestamp = AIPS_DateTime::now()->advance(5)->timestamp();
+		// Schedule to run in a few seconds via the central cron backend.
+		// advance() takes a relative modifier string, not a bare number.
+		$timestamp = AIPS_DateTime::now()->advance('+5 seconds')->timestamp();
 
 		$this->cron_backend->schedule_single(
 			$timestamp,
