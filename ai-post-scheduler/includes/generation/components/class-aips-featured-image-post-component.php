@@ -287,6 +287,13 @@ class AIPS_Featured_Image_Post_Component extends AIPS_Abstract_Post_Component {
 			return false;
 		}
 
+		// Parity with the classic AIPS_AI_Edit_Controller::validate_featured_image_attachment()
+		// guard: only a real image attachment may become the thumbnail.
+		if ('attachment' !== get_post_type($attachment_id)
+			|| 0 !== strpos((string) get_post_mime_type($attachment_id), 'image/')) {
+			return false;
+		}
+
 		return (bool) $this->get_post_manager()->set_featured_image($post_id, $attachment_id);
 	}
 

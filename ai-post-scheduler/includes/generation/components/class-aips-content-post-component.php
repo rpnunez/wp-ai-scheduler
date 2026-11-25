@@ -320,6 +320,26 @@ class AIPS_Content_Post_Component extends AIPS_Abstract_Post_Component {
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
-		return is_string($value) ? wp_kses_post($value) : '';
+		if (!is_string($value)) {
+			return '';
+		}
+
+		// Preserve Gutenberg block delimiters through wp_kses_post() so applying content
+		// via Universal AI Edit does not corrupt block-editor posts — parity with the
+		// classic AIPS_AI_Edit_Controller::sanitize_editor_html() path.
+		$tokens = array();
+		$value  = preg_replace_callback(
+			'/<!--\s*\/?wp:[\s\S]*?-->/',
+			function ($matches) use (&$tokens) {
+				$token          = 'AIPSBLOCK' . count($tokens) . 'PLACEHOLDER';
+				$tokens[$token] = $matches[0];
+				return $token;
+			},
+			$value
+		);
+
+		$value = wp_kses_post($value);
+
+		return empty($tokens) ? $value : strtr($value, $tokens);
 	}
 }

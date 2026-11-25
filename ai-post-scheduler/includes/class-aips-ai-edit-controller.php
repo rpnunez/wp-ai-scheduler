@@ -1484,7 +1484,6 @@ class AIPS_AI_Edit_Controller {
 
 		$result = $coordinator->regenerate($strategy_key, $component_key, $target_id, $context, $directive);
 		if ($result->is_failure()) {
-		if ($result->is_failure()) {
 			$errors = $result->get_errors();
 			$logged = new WP_Error(
 				'regeneration_failed',
@@ -1492,7 +1491,6 @@ class AIPS_AI_Edit_Controller {
 			);
 			$this->log_wp_error($logged, __METHOD__);
 			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'), 'regeneration_failed');
-		}
 		}
 
 		$value   = $result->get_data();
@@ -1507,6 +1505,25 @@ class AIPS_AI_Edit_Controller {
 			}
 
 			$applied = $component->apply($target_id, $value);
+
+			// Collapse onto the classic post-save pipeline: once a post component has been
+			// applied, run the same post-processing ajax_save_post_components() performs so
+			// the two AI-Edit paths stay behaviourally identical (image-row sync, partial-state
+			// reconciliation, and the aips_post_components_updated hook its listeners rely on).
+			if ($applied && $strategy_key === 'posts') {
+				$this->sync_post_images_with_content($target_id);
+
+				if (class_exists('AIPS_Partial_Generation_State_Reconciler')) {
+					new AIPS_Partial_Generation_State_Reconciler();
+				}
+
+				do_action(
+					'aips_post_components_updated',
+					$target_id,
+					array($component->get_key()),
+					array($component->get_key() => $value)
+				);
+			}
 		}
 
 		AIPS_Ajax_Response::success(array(
