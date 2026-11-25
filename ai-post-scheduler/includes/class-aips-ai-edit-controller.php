@@ -966,8 +966,12 @@ class AIPS_AI_Edit_Controller {
 	private function sanitize_editor_html($content) {
 		$content = (string) $content;
 		$tokens  = array();
+		// The span must not cross a raw `<` or `>` so a crafted comment cannot hide
+		// smuggled markup from wp_kses_post() and have it restored verbatim (a browser
+		// closes a comment at `--!>` as well as `-->`). Genuine Gutenberg delimiters
+		// never contain raw angle brackets.
 		$content = preg_replace_callback(
-			'/<!--\s*\/?wp:[\s\S]*?-->/',
+			'/<!--\s*\/?wp:[^<>]*?-->/',
 			function ($matches) use (&$tokens) {
 				$token = 'AIPSBLOCK' . count($tokens) . 'PLACEHOLDER';
 				$tokens[$token] = $matches[0];
@@ -1484,7 +1488,6 @@ class AIPS_AI_Edit_Controller {
 
 		$result = $coordinator->regenerate($strategy_key, $component_key, $target_id, $context, $directive);
 		if ($result->is_failure()) {
-		if ($result->is_failure()) {
 			$errors = $result->get_errors();
 			$logged = new WP_Error(
 				'regeneration_failed',
@@ -1492,7 +1495,6 @@ class AIPS_AI_Edit_Controller {
 			);
 			$this->log_wp_error($logged, __METHOD__);
 			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'), 'regeneration_failed');
-		}
 		}
 
 		$value   = $result->get_data();
@@ -1507,6 +1509,46 @@ class AIPS_AI_Edit_Controller {
 			}
 
 			$applied = $component->apply($target_id, $value);
+
+			// Collapse onto the classic post-save pipeline: once a post component has been
+			// applied, run the same post-processing ajax_save_post_components() performs so
+			// the two AI-Edit paths stay behaviourally identical (image-row sync, partial-state
+			// reconciliation, and the aips_post_components_updated hook its listeners rely on).
+			if ($applied && $strategy_key === 'posts') {
+				$this->sync_post_images_with_content($target_id);
+
+				if (class_exists('AIPS_Partial_Generation_State_Reconciler')) {
+					new AIPS_Partial_Generation_State_Reconciler();
+				}
+
+				// Mirror ajax_save_post_components()'s hook contract: classic component
+				// names and sanitized values (never raw AI output), so existing and
+				// third-party listeners receive one consistent, safe payload.
+				$applied_key  = $component->get_key();
+				$hook_name_map = array(
+					'post_title'     => 'title',
+					'post_slug'      => 'slug',
+					'post_excerpt'   => 'excerpt',
+					'post_content'   => 'content',
+					'featured_image' => 'featured_image_id',
+				);
+				$hook_key = isset($hook_name_map[$applied_key]) ? $hook_name_map[$applied_key] : $applied_key;
+
+				if ('featured_image_id' === $hook_key) {
+					$hook_value = absint((is_array($value) && isset($value['attachment_id'])) ? $value['attachment_id'] : $value);
+				} elseif (method_exists($component, 'sanitize_value')) {
+					$hook_value = $component->sanitize_value($value);
+				} else {
+					$hook_value = $value;
+				}
+
+				do_action(
+					'aips_post_components_updated',
+					$target_id,
+					array($hook_key),
+					array($hook_key => $hook_value)
+				);
+			}
 		}
 
 		AIPS_Ajax_Response::success(array(
