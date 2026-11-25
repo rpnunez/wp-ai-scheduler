@@ -249,7 +249,7 @@ class Test_AIPS_History_Stalled_Status extends WP_UnitTestCase {
 	}
 
 	public function test_review_action_rows_do_not_show_generation_milestones() {
-		$post_id = self::factory()->post->create(array('post_title' => 'Telemetry post', 'post_content' => 'Body'));
+		$post_id = self::factory()->post->create(array('post_title' => 'History post', 'post_content' => 'Body'));
 
 		$this->assertFalse($this->timeline_for('post_review_action', $post_id)['show_milestones']);
 		$this->assertFalse($this->timeline_for('content_indexing', $post_id)['show_milestones'], 'Background jobs must not show generation milestones.');

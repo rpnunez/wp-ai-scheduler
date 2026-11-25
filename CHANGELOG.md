@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Removed
+- **Telemetry and Cache Monitor:** Removed the Telemetry collection/UI/pruning subsystem and the Cache Monitor admin UI, AJAX, cron, and cache-index tables. Upgrades drop `aips_telemetry`, `aips_cache_index`, and `aips_cache_events`; Diagnostics Refresh System no longer lists telemetry prune/purge or cache-monitor maintenance tasks. The remaining database-prune cron now reads `aips_db_prune_interval`.
+
 ### Fixed
 - **Post Components Parity & Conversational Integration:**
   - Resolved `post_slug` status tracking in `AIPS_Generator::generate_post_from_context()`, ensuring slug failures record properly in component statuses while preventing optional slug failures from inappropriately marking posts as incomplete or forcing draft status.

@@ -84,7 +84,6 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 	public function test_ajax_registry_includes_new_maintenance_actions() {
 		$actions = array(
 			'aips_status_refresh_system',
-			'aips_status_cache_maintenance',
 			'aips_status_cleanup_notifications',
 			'aips_status_reset_resilience',
 			'aips_status_repair_datetime',
@@ -131,7 +130,7 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 			->getMock();
 		$diagnostics_service->expects($this->once())
 			->method('refresh_system')
-			->with(array('cache_maintenance', 'repair_datetime'))
+			->with(array('rebuild_caches', 'repair_datetime'))
 			->willReturn(array(
 				'success'   => true,
 				'steps'     => array(),
@@ -144,7 +143,7 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 
 		$_POST = array(
 			'nonce' => wp_create_nonce('aips_status_refresh_system'),
-			'tasks' => array('cache_maintenance', 'repair_datetime'),
+			'tasks' => array('rebuild_caches', 'repair_datetime'),
 		);
 		$_REQUEST = $_POST;
 

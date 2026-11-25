@@ -36,13 +36,6 @@ class AIPS_Cache {
 	private $repository_cache_observer;
 
 	/**
-	 * Context for the next set() call. Consumed after one use.
-	 *
-	 * @var array
-	 */
-	private $pending_context = array();
-
-	/**
 	 * In-memory L1 request-scoped cache storage.
 	 *
 	 * Maps "group:key" to array( 'value' => mixed, 'expires' => int ), where
@@ -112,25 +105,6 @@ class AIPS_Cache {
 		}
 		$this->driver                    = $driver;
 		$this->repository_cache_observer = $repository_cache_observer;
-	}
-
-	// -----------------------------------------------------------------------
-	// Context
-	// -----------------------------------------------------------------------
-
-	/**
-	 * Fluently set metadata context for the next set() call.
-	 *
-	 * The context array is consumed once by the next set() invocation and
-	 * then cleared, so callers should call with_context() immediately before
-	 * set() / remember() in the same execution frame.
-	 *
-	 * @param array $context Metadata: tags, tier, operation_id, repository_class, domain.
-	 * @return static Fluent return.
-	 */
-	public function with_context( array $context ) {
-		$this->pending_context = $context;
-		return $this;
 	}
 
 	// -----------------------------------------------------------------------
@@ -383,8 +357,6 @@ class AIPS_Cache {
 			// Only mirror into L1 once the driver accepted the write, so a
 			// failed write never leaves a value visible to this request only.
 			$this->l1_put( $composite, $value, (int) $ttl );
-
-			$this->pending_context = array();
 		}
 		return $result;
 	}

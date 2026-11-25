@@ -879,4 +879,76 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			add_filter( 'query', array( $this, '_drop_temporary_tables' ) );
 		}
 	}
+
+	/**
+	 * Invoke the private migrate_to_3_7_26() on a fresh instance.
+	 *
+	 * @return void
+	 */
+	private function run_migrate_3_7_26() {
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_26' );
+		$method->setAccessible( true );
+		$method->invoke( $migrations );
+	}
+
+	/**
+	 * migrate_to_3_7_26() must drop the retired Telemetry / Cache Monitor tables,
+	 * copy the prune-interval option, and delete orphaned settings. A second run
+	 * is a no-op.
+	 */
+	public function test_migrate_to_3_7_26_drops_retired_tables_and_options() {
+		global $wpdb;
+
+		$tables = array(
+			$wpdb->prefix . 'aips_telemetry',
+			$wpdb->prefix . 'aips_cache_index',
+			$wpdb->prefix . 'aips_cache_events',
+		);
+
+		foreach ( $tables as $table ) {
+			$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$table}` (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))" );
+			$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must exist before the migration' );
+		}
+
+		update_option( 'aips_telemetry_prune_interval', 'weekly' );
+		delete_option( 'aips_db_prune_interval' );
+		update_option( 'aips_enable_telemetry', '1' );
+		update_option( 'aips_cache_monitor_enabled', '1' );
+
+		$this->run_migrate_3_7_26();
+
+		foreach ( $tables as $table ) {
+			$this->assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must be dropped' );
+		}
+
+		$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ) );
+		$this->assertFalse( get_option( 'aips_telemetry_prune_interval', false ) );
+		$this->assertFalse( get_option( 'aips_enable_telemetry', false ) );
+		$this->assertFalse( get_option( 'aips_cache_monitor_enabled', false ) );
+
+		$this->run_migrate_3_7_26();
+		$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ), 'second run must leave the migrated interval in place' );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.24' );
+		AIPS_DB_Migrations::check_and_run();
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+	}
+
+	/**
+	 * New installs must not recreate the retired Telemetry / Cache Monitor tables.
+	 */
+	public function test_install_tables_does_not_create_retired_telemetry_or_cache_monitor_tables() {
+		global $wpdb;
+
+		AIPS_DB_Manager::install_tables();
+
+		foreach ( array( 'aips_telemetry', 'aips_cache_index', 'aips_cache_events' ) as $table ) {
+			$full_table = $wpdb->prefix . $table;
+			$this->assertNull(
+				$wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $full_table ) ),
+				$full_table . ' must not be created on install'
+			);
+		}
+	}
 }

@@ -44,7 +44,7 @@ Background: each History container (`wp_aips_history`) has a `creation_method` (
 
 ### (c) Missing event types
 
-Config CRUD, Generate Topics Now, scheduled research, Settings changes, AI-assistance usage. The telemetry table records AI calls but not who triggered them.
+Config CRUD, Generate Topics Now, scheduled research, Settings changes, AI-assistance usage. History logs record AI calls but not always who triggered them.
 
 ## Plan
 
