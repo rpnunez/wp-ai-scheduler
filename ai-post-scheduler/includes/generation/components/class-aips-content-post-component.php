@@ -327,9 +327,14 @@ class AIPS_Content_Post_Component extends AIPS_Abstract_Post_Component {
 		// Preserve Gutenberg block delimiters through wp_kses_post() so applying content
 		// via Universal AI Edit does not corrupt block-editor posts — parity with the
 		// classic AIPS_AI_Edit_Controller::sanitize_editor_html() path.
+		// The span must not cross a raw `<` or `>` — a genuine Gutenberg block delimiter
+		// never contains either (the serializer escapes them in attribute JSON). This stops
+		// a crafted span such as `<!-- wp:html --!><script>…</script><!-- -->` from being
+		// hidden from wp_kses_post() and restored verbatim (browsers close a comment at
+		// `--!>`, which would otherwise expose smuggled markup).
 		$tokens = array();
 		$value  = preg_replace_callback(
-			'/<!--\s*\/?wp:[\s\S]*?-->/',
+			'/<!--\s*\/?wp:[^<>]*?-->/',
 			function ($matches) use (&$tokens) {
 				$token          = 'AIPSBLOCK' . count($tokens) . 'PLACEHOLDER';
 				$tokens[$token] = $matches[0];

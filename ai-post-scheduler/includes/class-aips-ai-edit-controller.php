@@ -966,8 +966,12 @@ class AIPS_AI_Edit_Controller {
 	private function sanitize_editor_html($content) {
 		$content = (string) $content;
 		$tokens  = array();
+		// The span must not cross a raw `<` or `>` so a crafted comment cannot hide
+		// smuggled markup from wp_kses_post() and have it restored verbatim (a browser
+		// closes a comment at `--!>` as well as `-->`). Genuine Gutenberg delimiters
+		// never contain raw angle brackets.
 		$content = preg_replace_callback(
-			'/<!--\s*\/?wp:[\s\S]*?-->/',
+			'/<!--\s*\/?wp:[^<>]*?-->/',
 			function ($matches) use (&$tokens) {
 				$token = 'AIPSBLOCK' . count($tokens) . 'PLACEHOLDER';
 				$tokens[$token] = $matches[0];
