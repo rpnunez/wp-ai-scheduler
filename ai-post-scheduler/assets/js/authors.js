@@ -3096,9 +3096,9 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-primary',
 					action: () => {
-						const $rows = $('#aips-queue-table-body tr').filter(function () {
-							var val = $(this).find('.aips-select-topic').val();
-							return topicIds.indexOf(val) !== -1 || topicIds.indexOf(String(val)) !== -1;
+						const selectedIds = topicIds.map(String);
+						const $rows = $('.aips-queue-table .aips-queue-topic-checkbox:checked').closest('tr').filter(function () {
+							return selectedIds.indexOf(String($(this).find('.aips-queue-topic-checkbox').val())) !== -1;
 						});
 						AIPS.Utilities.setItemProcessing($rows, true, { label: aipsAuthorsL10n.generating || 'Generating...' });
 

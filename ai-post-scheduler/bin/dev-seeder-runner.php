@@ -28,6 +28,12 @@ if (!class_exists('AIPS_Authors_Repository')) {
 if (!class_exists('AIPS_Author_Topics_Repository')) {
 	require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
 }
+if (!class_exists('AIPS_Author_Topic_Logs_Repository')) {
+	require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topic-logs-repository.php';
+}
+if (!class_exists('AIPS_Post_Images_Repository')) {
+	require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-images-repository.php';
+}
 
 class AIPS_Dev_Data_Seeder_Runner {
 
@@ -120,6 +126,14 @@ class AIPS_Dev_Data_Seeder_Runner {
 		$deleted_topics  = 0;
 		if (!empty($seeded_author_ids)) {
 			$ids_in = implode(',', array_map('absint', $seeded_author_ids));
+			$topic_ids = $wpdb->get_col("SELECT id FROM {$wpdb->prefix}aips_author_topics WHERE author_id IN ($ids_in)");
+			if (!empty($topic_ids)) {
+				(new AIPS_Author_Topic_Logs_Repository())->delete_by_topic_ids($topic_ids);
+			}
+			$image_repo = new AIPS_Post_Images_Repository();
+			foreach ($seeded_author_ids as $seeded_author_id) {
+				$image_repo->delete_for_entity('author', $seeded_author_id);
+			}
 			$deleted_topics  = (int) $wpdb->query("DELETE FROM {$wpdb->prefix}aips_author_topics WHERE author_id IN ($ids_in)");
 			$deleted_authors = (int) $wpdb->query("DELETE FROM {$wpdb->prefix}aips_authors WHERE id IN ($ids_in)");
 		}
@@ -206,7 +220,7 @@ class AIPS_Dev_Data_Seeder_Runner {
 					? $template_map[$item['template_alias']]
 					: (reset($template_map) ?: null);
 
-				$history_repo->create(array(
+				$history_id = $history_repo->create(array(
 					'template_id'       => $template_id,
 					'creation_method'   => 'dev_seed',
 					'record_kind'       => 'generation',
@@ -218,6 +232,9 @@ class AIPS_Dev_Data_Seeder_Runner {
 					'created_at'        => $now - (rand(60, 7200) + ($idx * 300)),
 					'completed_at'      => $now - rand(10, 50),
 				));
+				if ($history_id) {
+					$history_repo->update($history_id, array('completed_at' => $now - rand(10, 50)));
+				}
 
 				$created++;
 			}
@@ -262,7 +279,7 @@ class AIPS_Dev_Data_Seeder_Runner {
 				? $template_map[$item['template_alias']]
 				: (reset($template_map) ?: null);
 
-			$history_repo->create(array(
+			$history_id = $history_repo->create(array(
 				'template_id'       => $template_id,
 				'creation_method'   => 'dev_seed',
 				'record_kind'       => 'generation',
@@ -274,6 +291,9 @@ class AIPS_Dev_Data_Seeder_Runner {
 				'created_at'        => $now - (86400 + ($idx * 600)),
 				'completed_at'      => $now - 86300,
 			));
+			if ($history_id) {
+				$history_repo->update($history_id, array('completed_at' => $now - 86300));
+			}
 
 			$created++;
 		}
@@ -306,6 +326,8 @@ class AIPS_Dev_Data_Seeder_Runner {
 				'voice_tone'    => sanitize_text_field($author_data['voice_tone']),
 				'writing_style' => sanitize_text_field($author_data['writing_style']),
 				'is_active'     => 1,
+				'topic_generation_is_active' => 0,
+				'post_generation_is_active'  => 0,
 			));
 
 			if (!$author_id) {

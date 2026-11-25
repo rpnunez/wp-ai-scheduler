@@ -47,6 +47,9 @@
         '  </div>' +
         '</div>';
 
+    AIPS.Templates.register('aips-tmpl-processing-row-indicator', '<span class="aips-row-processing-indicator" role="status" aria-live="polite"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> <span class="aips-processing-label">{{label}}</span></span>');
+    AIPS.Templates.register('aips-tmpl-processing-overlay', '<div class="aips-processing-overlay" role="status" aria-live="polite"><span class="dashicons dashicons-update aips-spin aips-processing-spinner" aria-hidden="true"></span><span class="aips-processing-label">{{label}}</span></div>');
+
     window.AIPS.Utilities = {
 
         /**
@@ -1264,21 +1267,14 @@
                         // Table row: inject inline indicator in first content cell if not already present
                         var $targetCell = $el.find('.column-primary, .title, .row-title, td:nth-child(2), td:first-child').first();
                         if ($targetCell.length && !$targetCell.find('.aips-row-processing-indicator').length) {
-                            var $indicator = $('<span class="aips-row-processing-indicator" role="status" aria-live="polite">' +
-                                '<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> ' +
-                                '<span class="aips-processing-label"></span>' +
-                            '</span>');
-                            $indicator.find('.aips-processing-label').text(label);
+                            var $indicator = $(AIPS.Templates.render('aips-tmpl-processing-row-indicator', { label: label }));
                             $targetCell.append($indicator);
                         }
                     } else {
                         // Card or container: mount overlay if not present
                         var $overlay = $el.children('.aips-processing-overlay');
                         if (!$overlay.length) {
-                            $overlay = $('<div class="aips-processing-overlay" role="status" aria-live="polite">' +
-                                '<span class="dashicons dashicons-update aips-spin aips-processing-spinner" aria-hidden="true"></span>' +
-                                '<span class="aips-processing-label"></span>' +
-                            '</div>');
+                            $overlay = $(AIPS.Templates.render('aips-tmpl-processing-overlay', { label: label }));
                             $el.append($overlay);
                         }
                         $overlay.find('.aips-processing-label').text(label);

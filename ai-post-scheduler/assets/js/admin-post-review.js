@@ -502,8 +502,8 @@
 			if ($card.hasClass('is-processing')) {
 				return;
 			}
-			AIPS.Utilities.setItemProcessing($card, true, { label: aipsPostReviewL10n.publishing || 'Publishing...' });
 			AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.publishing || 'Publishing...');
+			AIPS.Utilities.setItemProcessing($card, true, { label: aipsPostReviewL10n.publishing || 'Publishing...' });
 
 			$.ajax({
 				url:  aipsPostReviewL10n.ajaxUrl,
@@ -558,8 +558,8 @@
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
 				{ label: 'No, cancel',  className: 'aips-btn aips-btn-secondary' },
 				{ label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					AIPS.Utilities.setItemProcessing($row, true, { label: aipsPostReviewL10n.deleting || 'Deleting...' });
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.deleting || 'Deleting...');
+					AIPS.Utilities.setItemProcessing($row, true, { label: aipsPostReviewL10n.deleting || 'Deleting...' });
 
 					$.ajax({
 						url:  aipsPostReviewL10n.ajaxUrl,
@@ -608,8 +608,8 @@
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
 				{ label: 'No, cancel',      className: 'aips-btn aips-btn-secondary' },
 				{ label: 'Yes, regenerate', className: 'aips-btn aips-btn-primary', action: function () {
-					AIPS.Utilities.setItemProcessing($row, true, { label: aipsPostReviewL10n.regenerating || 'Regenerating...' });
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.regenerating || 'Regenerating...');
+					AIPS.Utilities.setItemProcessing($row, true, { label: aipsPostReviewL10n.regenerating || 'Regenerating...' });
 
 					$.ajax({
 						url:  aipsPostReviewL10n.ajaxUrl,

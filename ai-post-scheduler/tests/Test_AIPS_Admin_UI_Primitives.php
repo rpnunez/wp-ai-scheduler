@@ -326,10 +326,16 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 		$assets = new AIPS_Admin_Assets();
 		$this->assertInstanceOf('AIPS_Admin_Assets', $assets);
 
-		// Verify translation functions return non-empty strings
-		$this->assertNotEmpty(__('Processing\u2026', 'ai-post-scheduler'));
-		$this->assertNotEmpty(__('Publishing\u2026', 'ai-post-scheduler'));
-		$this->assertNotEmpty(__('Deleting\u2026', 'ai-post-scheduler'));
-		$this->assertNotEmpty(__('Done!', 'ai-post-scheduler'));
+		$assets->enqueue_admin_assets('toplevel_page_ai-post-scheduler');
+		$scripts = wp_scripts();
+		$this->assertArrayHasKey('aips-utilities-script', $scripts->registered);
+		$localized = $scripts->get_data('aips-utilities-script', 'data');
+		$this->assertIsString($localized);
+		$this->assertStringContainsString('aipsUtilitiesL10n', $localized);
+		$this->assertStringContainsString('Processing…', $localized);
+		$this->assertStringContainsString('Publishing…', $localized);
+		$this->assertStringContainsString('Deleting…', $localized);
+		$this->assertStringContainsString('Regenerating…', $localized);
+		$this->assertStringContainsString('Done!', $localized);
 	}
 }

@@ -1385,7 +1385,7 @@
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, close stalled runs', className: 'aips-btn aips-btn-danger-solid', action: function () {
 					var $rows = $('#aips-history-tbody tr').filter(function () {
-						return $(this).find('.aips-status-badge--processing, .aips-badge-processing, [data-status="processing"]').length > 0;
+						return $(this).find('.aips-stalled-badge').length > 0;
 					});
 					AIPS.Utilities.setItemProcessing($rows, true, { label: aipsHistoryL10n.clearing || 'Clearing\u2026' });
 
