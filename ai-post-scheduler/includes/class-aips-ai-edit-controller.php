@@ -1521,11 +1521,32 @@ class AIPS_AI_Edit_Controller {
 					new AIPS_Partial_Generation_State_Reconciler();
 				}
 
+				// Mirror ajax_save_post_components()'s hook contract: classic component
+				// names and sanitized values (never raw AI output), so existing and
+				// third-party listeners receive one consistent, safe payload.
+				$applied_key  = $component->get_key();
+				$hook_name_map = array(
+					'post_title'     => 'title',
+					'post_slug'      => 'slug',
+					'post_excerpt'   => 'excerpt',
+					'post_content'   => 'content',
+					'featured_image' => 'featured_image_id',
+				);
+				$hook_key = isset($hook_name_map[$applied_key]) ? $hook_name_map[$applied_key] : $applied_key;
+
+				if ('featured_image_id' === $hook_key) {
+					$hook_value = absint((is_array($value) && isset($value['attachment_id'])) ? $value['attachment_id'] : $value);
+				} elseif (method_exists($component, 'sanitize_value')) {
+					$hook_value = $component->sanitize_value($value);
+				} else {
+					$hook_value = $value;
+				}
+
 				do_action(
 					'aips_post_components_updated',
 					$target_id,
-					array($component->get_key()),
-					array($component->get_key() => $value)
+					array($hook_key),
+					array($hook_key => $hook_value)
 				);
 			}
 		}
