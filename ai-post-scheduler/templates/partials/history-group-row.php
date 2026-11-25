@@ -29,7 +29,7 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
         </label>
         <input id="cb-group-<?php echo esc_attr($group_id); ?>" type="checkbox" class="aips-history-group-cb" data-group-id="<?php echo esc_attr($group_id); ?>">
     </th>
-    <td class="column-title">
+    <td class="column-title" data-label="<?php esc_attr_e('Run', 'ai-post-scheduler'); ?>">
         <div class="aips-group-title-row">
             <button type="button" class="aips-history-group-toggle" data-group-id="<?php echo esc_attr($group_id); ?>" aria-expanded="false" aria-label="<?php echo esc_attr(sprintf(_n('Expand %1$d %2$s run', 'Expand %1$d %2$s runs', $count, 'ai-post-scheduler'), $count, $label)); ?>">
                 <span class="dashicons dashicons-arrow-right-alt2 aips-group-chevron" aria-hidden="true"></span>
@@ -39,7 +39,7 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
         </div>
         <span class="aips-history-subtitle aips-group-subtitle"><?php esc_html_e('Click to expand', 'ai-post-scheduler'); ?></span>
     </td>
-    <td class="column-post-type">
+    <td class="column-post-type" data-label="<?php esc_attr_e('Type', 'ai-post-scheduler'); ?>">
         <?php if (!empty($post_types)): ?>
             <?php foreach ($post_types as $pt_name): ?>
                 <span class="aips-badge aips-badge-neutral">
@@ -50,7 +50,7 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
             <span class="aips-meta-text">&mdash;</span>
         <?php endif; ?>
     </td>
-    <td class="column-status">
+    <td class="column-status" data-label="<?php esc_attr_e('Result', 'ai-post-scheduler'); ?>">
         <div class="aips-group-status-wrap">
             <?php if ($completed > 0): ?>
                 <span class="aips-badge aips-badge-sm aips-badge-success">
@@ -84,13 +84,13 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
             <?php endif; ?>
         </div>
     </td>
-    <td class="column-type">
+    <td class="column-type" data-label="<?php esc_attr_e('Activity', 'ai-post-scheduler'); ?>">
         <strong><?php echo esc_html($label); ?></strong>
         <span class="aips-history-activity-meta">
             <span><?php echo esc_html(sprintf(_n('%d event', '%d events', $count, 'ai-post-scheduler'), $count)); ?></span>
         </span>
     </td>
-    <td class="column-date">
+    <td class="column-date" data-label="<?php esc_attr_e('Logged', 'ai-post-scheduler'); ?>">
         <span class="aips-meta-text">
             <?php echo esc_html($first_date); ?>
             <?php if ($last_date && $last_date !== $first_date): ?>

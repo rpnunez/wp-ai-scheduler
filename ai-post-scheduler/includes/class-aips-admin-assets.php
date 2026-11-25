@@ -539,6 +539,13 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
         );
 
+        wp_enqueue_style(
+            'aips-admin-responsive',
+            AIPS_PLUGIN_URL . 'assets/css/admin-responsive.css',
+            array('aips-design-tokens', 'aips-admin-style'),
+            AIPS_VERSION
+        );
+
         wp_enqueue_script(
 			'aips-datetime-script',
 			AIPS_PLUGIN_URL . 'assets/js/datetime.js',
