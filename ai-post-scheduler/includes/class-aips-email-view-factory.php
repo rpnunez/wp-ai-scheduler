@@ -540,8 +540,11 @@ class AIPS_Email_View_Factory {
 	 */
 	private function alert_meta_cells($type, array $payload) {
 		if ('quota_alert' === $type) {
+			// `ai_model` is the key the live emitter (AIPS_AI_Service) sends;
+			// `model` is accepted too, since other callers and the preview use it.
 			$map = array(
 				'request_type' => __('Request type', 'ai-post-scheduler'),
+				'ai_model'     => __('AI model', 'ai-post-scheduler'),
 				'model'        => __('AI model', 'ai-post-scheduler'),
 				'error_code'   => __('Error code', 'ai-post-scheduler'),
 				'usage'        => __('Usage', 'ai-post-scheduler'),
@@ -558,11 +561,19 @@ class AIPS_Email_View_Factory {
 		}
 
 		$cells = array();
+		$seen  = array();
 
 		foreach ($map as $key => $label) {
 			if (!isset($payload[$key]) || !is_scalar($payload[$key]) || '' === (string) $payload[$key]) {
 				continue;
 			}
+
+			// Two keys can share one label (e.g. ai_model / model); the first
+			// populated one wins, so the grid never shows the same cell twice.
+			if (isset($seen[$label])) {
+				continue;
+			}
+			$seen[$label] = true;
 
 			$cells[] = array(
 				'label' => $label,
@@ -812,19 +823,24 @@ class AIPS_Email_View_Factory {
 	private function generated_value($post, array $payload) {
 		$method = isset($payload['creation_method']) ? (string) $payload['creation_method'] : '';
 
+		// An unknown method stays unlabelled rather than being reported as
+		// "Scheduled": a manually generated post must never be described as a
+		// scheduled one, and the timestamp alone is still useful.
 		if ('manual' === $method) {
 			$mode = __('Manual', 'ai-post-scheduler');
+		} elseif ('scheduled' === $method) {
+			$mode = __('Scheduled', 'ai-post-scheduler');
 		} elseif ('' !== $method) {
 			$mode = ucfirst(str_replace('_', ' ', $method));
 		} else {
-			$mode = __('Scheduled', 'ai-post-scheduler');
+			$mode = '';
 		}
 
-		if (!$post) {
-			return $mode;
-		}
+		$time = $post ? $this->post_time($post) : '';
 
-		$time = $this->post_time($post);
+		if ('' === $mode) {
+			return $time;
+		}
 
 		if ('' === $time) {
 			return $mode;

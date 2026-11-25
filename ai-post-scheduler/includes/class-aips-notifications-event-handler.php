@@ -369,6 +369,9 @@ class AIPS_Notifications_Event_Handler {
 			'source_label'      => $this->get_source_label($context),
 			'post_status'       => $post_status,
 			'post_status_label' => $this->format_post_status_label($post_status),
+			// The email's "Generated" cell reports how the post was created, so it
+			// needs the method that was already resolved above.
+			'creation_method'   => $creation_method,
 			'dedupe_key'        => 'post_generated_' . $post_id,
 			'dedupe_window'     => 60,
 		));

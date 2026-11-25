@@ -730,15 +730,21 @@ class AIPS_Notifications {
 				$recipients = $this->parse_notification_emails(isset($options['to_email']) ? $options['to_email'] : '');
 
 				if ($template && !empty($recipients)) {
-					// Compose the structured view once for all recipients.
-					$view = $this->build_email_view($type, array(
-						'title'   => $title,
-						'message' => $message,
-						'url'     => $url,
-						'level'   => $level,
-						'meta'    => is_array($meta) ? $meta : array(),
-						'vars'    => $vars,
-					));
+					// Compose the structured view once for all recipients — but only
+					// for the plugin's own, unmodified templates. A type registered or
+					// overridden through `aips_notification_templates` keeps rendering
+					// its own body, so a custom message (and its custom tokens) is not
+					// discarded in favour of the generic designed view.
+					$view = $this->templates->uses_design_system($type)
+						? $this->build_email_view($type, array(
+							'title'   => $title,
+							'message' => $message,
+							'url'     => $url,
+							'level'   => $level,
+							'meta'    => is_array($meta) ? $meta : array(),
+							'vars'    => $vars,
+						))
+						: null;
 
 					$email_sent = false;
 					foreach ($recipients as $recipient) {

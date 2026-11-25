@@ -625,7 +625,7 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var originalHtml = $btn.html();
-			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> ' + 'Sending...');
+			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> ' + (l10n.sending || 'Sending…'));
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -638,19 +638,19 @@
 				success: function(response) {
 					$btn.prop('disabled', false).html(originalHtml);
 					if (response && response.success) {
-						var msg = (response.data && response.data.message) ? response.data.message : 'Digest sent successfully.';
+						var msg = (response.data && response.data.message) ? response.data.message : (l10n.digestSent || 'Digest sent successfully.');
 						AIPS.Utilities.showToast(msg, 'success');
 						if (response.data && typeof response.data.queue_count !== 'undefined') {
 							$('#aips-digest-queue-count').text(response.data.queue_count);
 						}
 					} else {
-						var errMsg = (response && response.data && response.data.message) ? response.data.message : 'Failed to send digest.';
+						var errMsg = (response && response.data && response.data.message) ? response.data.message : (l10n.digestError || 'Failed to send digest.');
 						AIPS.Utilities.showToast(errMsg, 'error');
 					}
 				},
 				error: function() {
 					$btn.prop('disabled', false).html(originalHtml);
-					AIPS.Utilities.showToast('Network error while flushing digest.', 'error');
+					AIPS.Utilities.showToast(l10n.digestNetworkError || 'Network error while flushing digest.', 'error');
 				}
 			});
 		},
@@ -672,11 +672,11 @@
 			var type = $('#aips-test-email-type').val();
 
 			if (!type) {
-				AIPS.Utilities.showToast('Choose a notification type first.', 'error');
+				AIPS.Utilities.showToast(l10n.testEmailChooseType || 'Choose a notification type first.', 'error');
 				return;
 			}
 
-			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> ' + 'Sending...');
+			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> ' + (l10n.sending || 'Sending…'));
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -691,16 +691,16 @@
 					$btn.prop('disabled', false).html(originalHtml);
 
 					if (response && response.success) {
-						var msg = (response.data && response.data.message) ? response.data.message : 'Test email sent.';
+						var msg = (response.data && response.data.message) ? response.data.message : (l10n.testEmailSent || 'Test email sent.');
 						AIPS.Utilities.showToast(msg, 'success');
 					} else {
-						var errMsg = (response && response.data && response.data.message) ? response.data.message : 'Failed to send the test email.';
+						var errMsg = (response && response.data && response.data.message) ? response.data.message : (l10n.testEmailError || 'Failed to send the test email.');
 						AIPS.Utilities.showToast(errMsg, 'error');
 					}
 				},
 				error: function() {
 					$btn.prop('disabled', false).html(originalHtml);
-					AIPS.Utilities.showToast('Network error while sending the test email.', 'error');
+					AIPS.Utilities.showToast(l10n.testEmailNetworkError || 'Network error while sending the test email.', 'error');
 				}
 			});
 		},

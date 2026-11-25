@@ -653,8 +653,24 @@ run. Intended for post-processing such as CSS inlining or tracking parameters.
 
 ---
 
-**Fallback behaviour.** Notification types registered by third-party code through
-`aips_notification_templates` keep using the legacy `{{token}}` body stored on
-`AIPS_Notification_Template`. The renderer is used when a view was composed and
-the layout rendered successfully; otherwise `send_email_notification()` falls back
-to the template's own body, so an existing integration is unaffected.
+### `aips_email_uses_design_system`
+
+Filters whether a notification type renders through the designed layout or through
+its template's own `{{token}}` body. Defaults to true only for the plugin's own,
+unmodified built-in templates. Return true to opt a custom type into the designed
+layout, or false to opt a built-in type back out.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `bool $uses_design_system` Default: true for an untouched built-in template, false otherwise.
+    *   `string $type` Notification type slug.
+
+---
+
+**Fallback behaviour.** A notification type registered by third-party code through
+`aips_notification_templates` — and a built-in type whose template such code has
+*replaced* — keeps rendering the `{{token}}` body stored on its
+`AIPS_Notification_Template`, so a custom message and its custom tokens are never
+discarded in favour of the generic designed view. The designed layout is used only
+for the plugin's own untouched templates; if its rendering fails for any reason,
+`send_email_notification()` still falls back to the template's own body.

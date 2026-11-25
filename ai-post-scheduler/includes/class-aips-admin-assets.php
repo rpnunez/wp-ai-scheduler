@@ -1968,6 +1968,14 @@ class AIPS_Admin_Assets {
 				'saveSuccess'   => __('Settings saved successfully.', 'ai-post-scheduler'),
 				'saveError'     => __('Failed to save settings.', 'ai-post-scheduler'),
 				'payloadError'  => __('No settings were found to save.', 'ai-post-scheduler'),
+				'sending'       => __('Sending…', 'ai-post-scheduler'),
+				'digestSent'    => __('Digest sent successfully.', 'ai-post-scheduler'),
+				'digestError'   => __('Failed to send digest.', 'ai-post-scheduler'),
+				'digestNetworkError' => __('Network error while flushing digest.', 'ai-post-scheduler'),
+				'testEmailChooseType' => __('Choose a notification type first.', 'ai-post-scheduler'),
+				'testEmailSent' => __('Test email sent.', 'ai-post-scheduler'),
+				'testEmailError' => __('Failed to send the test email.', 'ai-post-scheduler'),
+				'testEmailNetworkError' => __('Network error while sending the test email.', 'ai-post-scheduler'),
 			));
             wp_enqueue_script(
                 'aips-admin-gsc',

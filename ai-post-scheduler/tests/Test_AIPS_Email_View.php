@@ -10,6 +10,8 @@ class Test_AIPS_Email_View extends WP_UnitTestCase {
 	public function tear_down() {
 		AIPS_Email_Theme::flush_cache();
 		remove_all_filters('aips_email_theme');
+		remove_all_filters('aips_email_uses_design_system');
+		remove_all_actions('aips_notification_templates');
 		parent::tear_down();
 	}
 
@@ -220,6 +222,78 @@ class Test_AIPS_Email_View extends WP_UnitTestCase {
 		$this->assertCount(1, $groups);
 		$this->assertSame('Post Generated', $groups[0]['label']);
 		$this->assertSame('', $groups[0]['rows'][0]['meta']);
+	}
+
+	// -----------------------------------------------------------------------
+	// Design-system gating (custom template bodies must survive)
+	// -----------------------------------------------------------------------
+
+	public function test_builtin_templates_use_the_designed_layout() {
+		$registry = new AIPS_Notification_Templates();
+
+		$this->assertTrue($registry->uses_design_system('post_generated'));
+		$this->assertTrue($registry->uses_design_system('quota_alert'));
+	}
+
+	public function test_a_third_party_type_keeps_its_own_template_body() {
+		// Regression: dispatch once composed a view for every type, so a custom
+		// type's registered body (and its custom tokens) was replaced by the
+		// generic designed view and the message was silently lost.
+		add_action('aips_notification_templates', function ($registry) {
+			$registry->register(new AIPS_Notification_Template(
+				'my_custom_type',
+				'[{{site_name}}] Custom',
+				'<p>{{my_custom_token}}</p>'
+			));
+		});
+
+		$registry = new AIPS_Notification_Templates();
+
+		$this->assertNotNull($registry->get('my_custom_type'));
+		$this->assertFalse($registry->uses_design_system('my_custom_type'));
+	}
+
+	public function test_overriding_a_builtin_template_opts_it_back_out() {
+		add_action('aips_notification_templates', function ($registry) {
+			$registry->register(new AIPS_Notification_Template(
+				'post_generated',
+				'[{{site_name}}] Mine',
+				'<p>{{my_custom_token}}</p>'
+			));
+		});
+
+		$registry = new AIPS_Notification_Templates();
+
+		$this->assertFalse($registry->uses_design_system('post_generated'));
+	}
+
+	public function test_an_unregistered_type_never_uses_the_designed_layout() {
+		$registry = new AIPS_Notification_Templates();
+
+		$this->assertFalse($registry->uses_design_system('nope_not_a_type'));
+	}
+
+	public function test_the_design_system_filter_can_opt_a_custom_type_in() {
+		add_action('aips_notification_templates', function ($registry) {
+			$registry->register(new AIPS_Notification_Template('opt_in_type', 'S', '<p>B</p>'));
+		});
+		add_filter('aips_email_uses_design_system', function ($uses, $type) {
+			return ('opt_in_type' === $type) ? true : $uses;
+		}, 10, 2);
+
+		$registry = new AIPS_Notification_Templates();
+
+		$this->assertTrue($registry->uses_design_system('opt_in_type'));
+		// Built-ins are unaffected by a filter that only names another type.
+		$this->assertTrue($registry->uses_design_system('post_generated'));
+	}
+
+	public function test_the_design_system_filter_can_opt_a_builtin_out() {
+		add_filter('aips_email_uses_design_system', '__return_false');
+
+		$registry = new AIPS_Notification_Templates();
+
+		$this->assertFalse($registry->uses_design_system('post_generated'));
 	}
 
 	public function test_to_array_exposes_every_schema_field() {

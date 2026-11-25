@@ -182,6 +182,45 @@ class Test_AIPS_Email_View_Factory extends WP_UnitTestCase {
 		$this->assertSame('CI pipeline fuzzing', $cells['Author Topic']);
 	}
 
+	public function test_an_unknown_creation_method_does_not_claim_the_post_was_scheduled() {
+		// Regression: generated_value() used to default to "Scheduled", so a
+		// manually generated post whose payload omitted creation_method was
+		// reported as scheduled. With the method unknown, the cell shows the
+		// timestamp alone rather than asserting something false.
+		$post_id = self::factory()->post->create(array('post_status' => 'draft'));
+
+		$cells = $this->cells_by_label($this->factory->build('post_generated', array(
+			'meta' => array('post_id' => $post_id),
+		)));
+
+		$this->assertArrayHasKey('Generated', $cells);
+		$this->assertStringNotContainsString('Scheduled', $cells['Generated']);
+		$this->assertStringNotContainsString('Manual', $cells['Generated']);
+	}
+
+	public function test_the_quota_model_cell_reads_the_key_the_live_emitter_sends() {
+		// AIPS_AI_Service::emit_quota_alert_notification() sends `ai_model`;
+		// earlier revisions only read `model`, so live quota emails lost the cell.
+		$cells = $this->cells_by_label($this->factory->build('quota_alert', array(
+			'title' => 'Quota alert',
+			'meta'  => array('request_type' => 'text', 'ai_model' => 'gemini-2.5-pro'),
+		)));
+
+		$this->assertSame('gemini-2.5-pro', $cells['AI model']);
+	}
+
+	public function test_the_quota_model_cell_is_not_duplicated_when_both_keys_are_present() {
+		$view = $this->factory->build('quota_alert', array(
+			'title' => 'Quota alert',
+			'meta'  => array('ai_model' => 'gemini-2.5-pro', 'model' => 'other'),
+		));
+
+		$labels = wp_list_pluck($view->meta_cells(), 'label');
+
+		$this->assertSame(array('AI model'), $labels);
+		$this->assertSame('gemini-2.5-pro', $this->cells_by_label($view)['AI model']);
+	}
+
 	public function test_the_generated_cell_distinguishes_manual_from_scheduled() {
 		$post_id = self::factory()->post->create(array('post_status' => 'draft'));
 
@@ -191,7 +230,7 @@ class Test_AIPS_Email_View_Factory extends WP_UnitTestCase {
 		$this->assertStringStartsWith('Manual', $manual['Generated']);
 
 		$scheduled = $this->cells_by_label($this->factory->build('post_generated', array(
-			'meta' => array('post_id' => $post_id),
+			'meta' => array('post_id' => $post_id, 'creation_method' => 'scheduled'),
 		)));
 		$this->assertStringStartsWith('Scheduled', $scheduled['Generated']);
 	}
