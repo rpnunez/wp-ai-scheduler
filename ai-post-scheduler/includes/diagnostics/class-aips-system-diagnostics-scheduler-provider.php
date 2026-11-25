@@ -41,7 +41,8 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 		$status      = array();
 
 		foreach ( $cron_events as $event_hook => $event_config ) {
-			$next_run               = wp_next_scheduled( $event_hook );
+			$timestamps            = $this->get_cron_hook_timestamps( $event_hook );
+			$next_run              = ! empty( $timestamps ) ? $timestamps[0] : false;
 			$status[ $event_hook ] = array(
 				'label'  => isset( $event_config['label'] ) ? $event_config['label'] : $event_hook,
 				'value'  => $next_run ? wp_date( 'Y-m-d H:i:s', $next_run ) : __( 'Not Scheduled', 'ai-post-scheduler' ),
@@ -60,6 +61,20 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 	 */
 	private function check_scheduler_health() {
 		$checks = array();
+
+		// --- Scheduling backend information (issue #2375) ---
+		$backend_label = AIPS_Cron_Backend_Resolver::is_action_scheduler_available()
+			? __( 'ActionScheduler (active) with WP-Cron fallback', 'ai-post-scheduler' )
+			: __( 'WP-Cron (native)', 'ai-post-scheduler' );
+
+		$checks['scheduling_backend'] = array(
+			'label'   => __( 'Scheduling Backend', 'ai-post-scheduler' ),
+			'value'   => $backend_label,
+			'status'  => 'ok',
+			'details' => array(
+				sprintf( __( 'Active adapter: %s', 'ai-post-scheduler' ), AIPS_Cron_Backend_Resolver::resolve()->get_backend_name() ),
+			),
+		);
 
 		// --- Per-hook cron diagnostics ---
 		$cron_events     = AI_Post_Scheduler::get_cron_events();
@@ -246,21 +261,31 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 
 	/**
 	 * Count how many times a given cron hook appears across all scheduled
-	 * timestamps in the WP cron table (including all arg variants).
+	 * timestamps in the WP cron table and ActionScheduler (including all arg variants).
 	 *
 	 * @param string $hook The cron hook name.
 	 * @return int
 	 */
 	private function count_cron_hook_instances( $hook ) {
 		$cron_array = _get_cron_array();
-		if ( ! is_array( $cron_array ) ) {
-			return 0;
+		$count      = 0;
+
+		if ( is_array( $cron_array ) ) {
+			foreach ( $cron_array as $timestamp => $hooks ) {
+				if ( isset( $hooks[ $hook ] ) && is_array( $hooks[ $hook ] ) ) {
+					$count += count( $hooks[ $hook ] );
+				}
+			}
 		}
 
-		$count = 0;
-		foreach ( $cron_array as $timestamp => $hooks ) {
-			if ( isset( $hooks[ $hook ] ) && is_array( $hooks[ $hook ] ) ) {
-				$count += count( $hooks[ $hook ] );
+		if ( function_exists( 'as_get_scheduled_actions' ) ) {
+			$as_actions = as_get_scheduled_actions( array(
+				'hook'     => $hook,
+				'status'   => 'pending',
+				'per_page' => 100,
+			) );
+			if ( is_array( $as_actions ) ) {
+				$count += count( $as_actions );
 			}
 		}
 
@@ -268,23 +293,40 @@ class AIPS_System_Diagnostics_Scheduler_Provider implements AIPS_System_Diagnost
 	}
 
 	/**
-	 * Get all scheduled timestamps for a given cron hook.
+	 * Get all scheduled timestamps for a given cron hook across WP-Cron and ActionScheduler.
 	 *
 	 * @param string $hook The cron hook name.
 	 * @return int[] Array of Unix timestamps.
 	 */
 	private function get_cron_hook_timestamps( $hook ) {
+		$timestamps = array();
 		$cron_array = _get_cron_array();
-		if ( ! is_array( $cron_array ) ) {
-			return array();
+
+		if ( is_array( $cron_array ) ) {
+			foreach ( $cron_array as $timestamp => $hooks ) {
+				if ( isset( $hooks[ $hook ] ) ) {
+					$arg_count = is_array( $hooks[ $hook ] ) ? count( $hooks[ $hook ] ) : 1;
+					for ( $i = 0; $i < $arg_count; $i++ ) {
+						$timestamps[] = (int) $timestamp;
+					}
+				}
+			}
 		}
 
-		$timestamps = array();
-		foreach ( $cron_array as $timestamp => $hooks ) {
-			if ( isset( $hooks[ $hook ] ) ) {
-				$arg_count = is_array( $hooks[ $hook ] ) ? count( $hooks[ $hook ] ) : 1;
-				for ( $i = 0; $i < $arg_count; $i++ ) {
-					$timestamps[] = (int) $timestamp;
+		if ( function_exists( 'as_get_scheduled_actions' ) ) {
+			$as_actions = as_get_scheduled_actions( array(
+				'hook'     => $hook,
+				'status'   => 'pending',
+				'per_page' => 100,
+			) );
+			if ( is_array( $as_actions ) ) {
+				foreach ( $as_actions as $action ) {
+					if ( is_object( $action ) && method_exists( $action, 'get_schedule' ) ) {
+						$schedule = $action->get_schedule();
+						if ( $schedule && method_exists( $schedule, 'get_date' ) && $schedule->get_date() ) {
+							$timestamps[] = $schedule->get_date()->getTimestamp();
+						}
+					}
 				}
 			}
 		}

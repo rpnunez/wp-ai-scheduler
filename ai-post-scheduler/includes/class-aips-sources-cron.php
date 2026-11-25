@@ -74,16 +74,25 @@ class AIPS_Sources_Cron {
 	private $lease;
 
 	/**
+	 * @var AIPS_Cron_Manager
+	 */
+	private $cron_manager;
+
+	/**
 	 * @param AIPS_Sources_Repository|null $sources_repo Optional (injectable for tests).
 	 * @param AIPS_Sources_Fetcher|null    $fetcher      Optional (injectable for tests).
 	 * @param AIPS_Logger|null             $logger       Optional (injectable for tests).
+	 * @param AIPS_Sources_Fetch_Lease|null $lease       Optional (injectable for tests).
+	 * @param AIPS_Cron_Manager|null       $cron_manager Optional (injectable for tests).
 	 */
-	public function __construct( $sources_repo = null, $fetcher = null, $logger = null, $lease = null ) {
+	public function __construct( $sources_repo = null, $fetcher = null, $logger = null, $lease = null, ?AIPS_Cron_Manager $cron_manager = null ) {
+		$container          = AIPS_Container::get_instance();
 		$this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
 		$this->fetcher      = $fetcher      ?: new AIPS_Sources_Fetcher();
 		$this->logger       = $logger       ?: new AIPS_Logger();
 
-		$this->lease = $lease ?: new AIPS_Sources_Fetch_Lease();
+		$this->lease        = $lease ?: new AIPS_Sources_Fetch_Lease();
+		$this->cron_manager = $cron_manager ?: ( $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager() );
 		add_action( self::HOOK, array( $this, 'run' ) );
 		add_action( self::CONTINUATION_HOOK, array( $this, 'run' ) );
 
@@ -117,27 +126,27 @@ class AIPS_Sources_Cron {
 		$next = $this->sources_repo->get_next_fetch_at();
 		$now = AIPS_DateTime::now()->timestamp();
 		if ( null === $next ) {
-			wp_clear_scheduled_hook( self::HOOK );
-			wp_clear_scheduled_hook( self::CONTINUATION_HOOK );
+			$this->cron_manager->clear_hook( self::HOOK );
+			$this->cron_manager->clear_hook( self::CONTINUATION_HOOK );
 			return;
 		}
-		if ( $next <= $now && ( $after_run || wp_next_scheduled( self::CONTINUATION_HOOK ) ) ) {
-			wp_clear_scheduled_hook( self::HOOK );
+		if ( $next <= $now && ( $after_run || $this->cron_manager->next_scheduled( self::CONTINUATION_HOOK ) ) ) {
+			$this->cron_manager->clear_hook( self::HOOK );
 			$this->schedule_continuation();
 			return;
 		}
-		wp_clear_scheduled_hook( self::CONTINUATION_HOOK );
+		$this->cron_manager->clear_hook( self::CONTINUATION_HOOK );
 		$target = max( $now, $next );
 		$event = wp_get_scheduled_event( self::HOOK );
 		if ( $event && false === $event->schedule && (int) $event->timestamp === $target ) { return; }
 		// This also removes the legacy recurring dispatcher on existing sites.
-		wp_clear_scheduled_hook( self::HOOK );
-		wp_schedule_single_event( $target, self::HOOK );
+		$this->cron_manager->clear_hook( self::HOOK );
+		$this->cron_manager->schedule_single( self::HOOK, $target, array(), false );
 	}
 
 	private function schedule_continuation(): void {
-		if ( ! wp_next_scheduled( self::CONTINUATION_HOOK ) ) {
-			wp_schedule_single_event( AIPS_DateTime::now()->timestamp() + 60, self::CONTINUATION_HOOK );
+		if ( ! $this->cron_manager->next_scheduled( self::CONTINUATION_HOOK ) ) {
+			$this->cron_manager->schedule_single( self::CONTINUATION_HOOK, AIPS_DateTime::now()->timestamp() + 60, array(), false );
 		}
 	}
 
