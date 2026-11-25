@@ -10,6 +10,9 @@
   - Added path traversal guards, strict regex validation, capability checks, and comprehensive unit tests in `Test_AIPS_Diagnostics_Logs.php`.
 
 ### Fixed
+- **Summarized Notification Digest Batching & Settings Persistence:**
+  - Enabled the summarized digest by default in the settings registry and DevStackTips setup script, batching frequent transactional emails.
+  - Added post ID deduplication and automatic post_generated to post_ready_for_review upgrades for draft posts in AIPS_Notifications::enqueue_digest_notification().
 - **Template voice lost on edit:** the template wizard did not restore the saved voice, so opening a template and saving it reset `voice_id` to "No Voice". The voice is now selected when the template loads, and stays selected when the voice list arrives later or a voice search filters it out.
 - **Failed content runs hide the cause:** when the post content request fails, the History run and the returned `WP_Error` now carry the provider's reason (`cause_code`, `cause_message`, e.g. `rate_limit_exceeded`) instead of only "Post generation failed before a usable Post Content could be created."
 - **Author batches after a system-wide error:** an author post batch stops after `rate_limit_exceeded`, `circuit_breaker_open`, `ai_unavailable` or `no_connector` instead of failing every remaining topic. The remaining topics stay approved for the next run (filter: `aips_author_batch_stop_error_codes`).
