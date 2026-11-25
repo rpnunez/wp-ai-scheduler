@@ -75,7 +75,7 @@ Central UI rendering engine. It handles all HTML markup generation with accessib
 - **Toggles / Switches**: Semantic checkboxes with `role="switch"` and `aria-checked`.
 - **Text & Number**: Styled inputs with min, max, step, and placeholders.
 - **Select & Multiselect**: Standard dropdowns, callable dynamic option providers, and WordPress native selectors (`wp_dropdown_categories`, `wp_dropdown_users`).
-- **Secrets**: Password inputs with toggleable reveal buttons (Dashicons eye toggle).
+- **Secrets**: Password inputs with toggleable reveal buttons (Dashicons eye toggle). Set `control_options => array( 'mask_stored_value' => true )` for write-only secrets: the stored value is never printed into the page, and the setting's sanitize callback must keep the stored value when the field is submitted blank (see `AIPS_Cloudflare_AI_Gateway_Config::sanitize_api_token()`).
 - **Sliders**: Range inputs with real-time value indicators.
 - **Actions**: Trigger buttons (e.g., Flush Notification Digest).
 - **Zero Inline JS & CSS**: All event handling is delegated in `admin-settings.js`, styles are tokenized in `admin.css`.

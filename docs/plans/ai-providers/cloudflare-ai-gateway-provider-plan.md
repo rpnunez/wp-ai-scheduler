@@ -165,6 +165,13 @@ fields, which `json_schema` form each provider accepts, the embedding and image 
 the not-found/bad-input error bodies, and whether there is a `cf-aig-log-id` header.
 
 ### Slice 1: Settings and secret storage
+**Status: done.** Payload logging defaults to **off**. The text model has no default, so the
+provider stays unavailable until one is entered. The settings live in their own
+"Cloudflare AI Gateway" section on the Engine tab, and each field carries a
+`data-aips-depends-on="aips_ai_provider"` attribute. The JS that acts on that attribute lands in
+Slice 6. A blank token field keeps the saved token. Removing a saved token is left for Slice 6
+(a "Remove token" button).
+
 - Register the settings above, with defaults in `AIPS_Config`.
 - Token sanitize callback: encrypt, keep the stored value when blank, mask on render.
 - A small `AIPS_Cloudflare_AI_Gateway_Config` value object that reads and decrypts settings, so the
