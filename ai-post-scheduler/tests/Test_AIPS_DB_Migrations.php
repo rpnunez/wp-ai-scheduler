@@ -883,13 +883,13 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	/**
 	 * Invoke the private migrate_to_3_7_26() on a fresh instance.
 	 *
-	 * @return void
+	 * @return bool
 	 */
 	private function run_migrate_3_7_26() {
 		$migrations = new AIPS_DB_Migrations();
 		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_26' );
 		$method->setAccessible( true );
-		$method->invoke( $migrations );
+		return (bool) $method->invoke( $migrations );
 	}
 
 	/**
@@ -916,7 +916,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		update_option( 'aips_enable_telemetry', '1' );
 		update_option( 'aips_cache_monitor_enabled', '1' );
 
-		$this->run_migrate_3_7_26();
+		$this->assertTrue( $this->run_migrate_3_7_26() );
 
 		foreach ( $tables as $table ) {
 			$this->assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must be dropped' );
@@ -927,12 +927,41 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertFalse( get_option( 'aips_enable_telemetry', false ) );
 		$this->assertFalse( get_option( 'aips_cache_monitor_enabled', false ) );
 
-		$this->run_migrate_3_7_26();
+		$this->assertTrue( $this->run_migrate_3_7_26() );
 		$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ), 'second run must leave the migrated interval in place' );
 
 		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.24' );
 		AIPS_DB_Migrations::check_and_run();
 		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+	}
+
+	/**
+	 * A failed DROP TABLE must not stamp aips_db_version, so the next request retries.
+	 */
+	public function test_migrate_to_3_7_26_failed_drop_leaves_version_unstamped() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_telemetry';
+		$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$table}` (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))" );
+		$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) );
+
+		$block_drop = static function ( $query ) {
+			if ( is_string( $query ) && false !== stripos( $query, 'DROP TABLE' ) && false !== stripos( $query, 'aips_telemetry' ) ) {
+				return 'SELECT 1 WHERE 0';
+			}
+			return $query;
+		};
+		add_filter( 'query', $block_drop );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.24' );
+		AIPS_DB_Migrations::check_and_run();
+
+		remove_filter( 'query', $block_drop );
+
+		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ), 'failed DROP must leave the stored version unchanged' );
+		$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), 'blocked DROP must leave the table in place' );
+
+		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
 	}
 
 	/**

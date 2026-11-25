@@ -321,8 +321,10 @@ class AIPS_DB_Migrations {
 		// settings, and clears the Cache Monitor maintenance cron. Every step is an
 		// idempotent IF EXISTS / delete_option / wp_clear_scheduled_hook no-op once
 		// applied, so it runs unconditionally below the version gate.
-		if ( version_compare( $from_version, '3.7.26', '<' ) ) {
-			$this->migrate_to_3_7_26();
+		if ( version_compare( $from_version, '3.7.26', '<' ) && ! $this->migrate_to_3_7_26() ) {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
+			$this->logger->log( 'Telemetry and Cache Monitor removal failed; database upgrade will retry.', 'error' );
+			return;
 		}
 
 		// Use AIPS_Config::set_option() so the per-request option cache is
@@ -2017,9 +2019,10 @@ class AIPS_DB_Migrations {
 	 *   4. Clears the aips_cache_monitor_maintenance cron hook.
 	 *
 	 * Every step is an idempotent IF EXISTS / delete_option / wp_clear_scheduled_hook
-	 * no-op once applied and on fresh installs.
+	 * no-op once applied and on fresh installs. Returns false if a DROP TABLE
+	 * fails so run_upgrade() can leave the stored version unchanged and retry.
 	 *
-	 * @return void
+	 * @return bool True when every retired table is gone.
 	 */
 	private function migrate_to_3_7_26() {
 		global $wpdb;
@@ -2029,7 +2032,17 @@ class AIPS_DB_Migrations {
 			$full_table = $wpdb->prefix . $table;
 			// Table name cannot be parameterised; it is built from the trusted
 			// prefix and a hard-coded literal, so interpolation is safe here.
-			$wpdb->query( "DROP TABLE IF EXISTS `{$full_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+			$result = $wpdb->query( "DROP TABLE IF EXISTS `{$full_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+			if ( false === $result ) {
+				$this->logger->log( 'Migration 3.7.26: Failed to drop ' . $full_table . ': ' . $wpdb->last_error, 'error' );
+				return false;
+			}
+
+			$still_present = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $full_table ) );
+			if ( $full_table === $still_present ) {
+				$this->logger->log( 'Migration 3.7.26: ' . $full_table . ' still exists after DROP TABLE.', 'error' );
+				return false;
+			}
 		}
 
 		// 2. Preserve the prune-interval value under its new option name. The old
@@ -2075,6 +2088,8 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.26: Removed Telemetry and Cache Monitor subsystems (tables, options, cron) and renamed the prune-interval option.', 'info' );
+
+		return true;
 	}
 
 	/**

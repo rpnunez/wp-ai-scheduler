@@ -137,6 +137,7 @@ class Test_AIPS_Cache extends WP_UnitTestCase {
 			public function set( $key, $value, $ttl = 0, $group = 'default' ) { return $this->b->set( $key, $value, $ttl, $group ); }
 			public function delete( $key, $group = 'default' ) { return $this->b->delete( $key, $group ); }
 			public function flush() { return $this->b->flush(); }
+			public function delete_group( $group ) { return $this->b->delete_group( $group ); }
 			public function has( $key, $group = 'default' ) { return $this->b->has( $key, $group ); }
 		};
 		$cache = new AIPS_Cache( $wrapper );
