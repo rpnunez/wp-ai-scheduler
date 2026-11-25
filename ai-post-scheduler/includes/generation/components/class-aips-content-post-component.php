@@ -145,6 +145,9 @@ class AIPS_Content_Post_Component extends AIPS_Abstract_Post_Component {
 
 		if (empty($options['skip_normalization'])) {
 			$raw = $generator->normalize_generated_content_for_wordpress($raw);
+			// Parity with the full generator content path (normalize + strip): drop a leading
+			// <h1>/title block the model repeats, or a content regenerate leaves a duplicate title.
+			$raw = $generator->strip_leading_title_block_from_content($raw);
 		}
 
 		return $raw;

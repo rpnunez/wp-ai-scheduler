@@ -232,6 +232,9 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 		$content = $this->generator->run_content_stage($context, $component_statuses, $generation_start);
 		if (is_wp_error($content)) {
 			$this->last_error = $content;
+			// Close the conversational session opened above before bailing, or it leaks
+			// (every other exit path — success, create-post failure, preview — closes it).
+			$this->generator->close_conversation_session();
 			return AIPS_Generation_Result::from_wp_error(
 				$content,
 				microtime(true) - $generation_start,
