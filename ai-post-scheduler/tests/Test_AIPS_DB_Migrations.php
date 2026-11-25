@@ -893,6 +893,28 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	}
 
 	/**
+	 * WordPress PHPUnit rewrites CREATE/DROP TABLE to TEMPORARY variants.
+	 * SHOW TABLES does not list those, and DROP TEMPORARY cannot remove a
+	 * real table. 3.7.26 assertions need the unfiltered statements.
+	 *
+	 * @return void
+	 */
+	private function disable_wp_table_rewrites() {
+		remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+	}
+
+	/**
+	 * Restore the suite's CREATE/DROP TABLE rewrites.
+	 *
+	 * @return void
+	 */
+	private function enable_wp_table_rewrites() {
+		add_filter( 'query', array( $this, '_create_temporary_tables' ) );
+		add_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+	}
+
+	/**
 	 * migrate_to_3_7_26() must drop the retired Telemetry / Cache Monitor tables,
 	 * copy the prune-interval option, and delete orphaned settings. A second run
 	 * is a no-op.
@@ -906,33 +928,56 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			$wpdb->prefix . 'aips_cache_events',
 		);
 
-		foreach ( $tables as $table ) {
-			$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$table}` (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))" );
-			$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must exist before the migration' );
+		$this->disable_wp_table_rewrites();
+		try {
+			foreach ( $tables as $table ) {
+				$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$table}` (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))" );
+				$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must exist before the migration' );
+			}
+
+			update_option( 'aips_telemetry_prune_interval', 'weekly' );
+			delete_option( 'aips_db_prune_interval' );
+			update_option( 'aips_enable_telemetry', '1' );
+			update_option( 'aips_cache_monitor_enabled', '1' );
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'aips_cache_monitor_maintenance' );
+
+			$this->assertTrue( $this->run_migrate_3_7_26() );
+
+			foreach ( $tables as $table ) {
+				$this->assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must be dropped' );
+			}
+
+			$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ) );
+			$this->assertFalse( get_option( 'aips_telemetry_prune_interval', false ) );
+			$this->assertFalse( get_option( 'aips_enable_telemetry', false ) );
+			$this->assertFalse( get_option( 'aips_cache_monitor_enabled', false ) );
+			$this->assertFalse( wp_next_scheduled( 'aips_cache_monitor_maintenance' ) );
+
+			$this->assertTrue( $this->run_migrate_3_7_26() );
+			$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ), 'second run must leave the migrated interval in place' );
+		} finally {
+			foreach ( $tables as $table ) {
+				$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+			}
+			$this->enable_wp_table_rewrites();
 		}
-
-		update_option( 'aips_telemetry_prune_interval', 'weekly' );
-		delete_option( 'aips_db_prune_interval' );
-		update_option( 'aips_enable_telemetry', '1' );
-		update_option( 'aips_cache_monitor_enabled', '1' );
-
-		$this->assertTrue( $this->run_migrate_3_7_26() );
-
-		foreach ( $tables as $table ) {
-			$this->assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must be dropped' );
-		}
-
-		$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ) );
-		$this->assertFalse( get_option( 'aips_telemetry_prune_interval', false ) );
-		$this->assertFalse( get_option( 'aips_enable_telemetry', false ) );
-		$this->assertFalse( get_option( 'aips_cache_monitor_enabled', false ) );
-
-		$this->assertTrue( $this->run_migrate_3_7_26() );
-		$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ), 'second run must leave the migrated interval in place' );
 
 		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.24' );
 		AIPS_DB_Migrations::check_and_run();
 		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+	}
+
+	/**
+	 * When aips_db_prune_interval is already stored, the legacy telemetry
+	 * interval must not overwrite it.
+	 */
+	public function test_migrate_to_3_7_26_keeps_existing_db_prune_interval() {
+		update_option( 'aips_db_prune_interval', 'daily' );
+		update_option( 'aips_telemetry_prune_interval', 'weekly' );
+
+		$this->assertTrue( $this->run_migrate_3_7_26() );
+		$this->assertSame( 'daily', get_option( 'aips_db_prune_interval' ) );
+		$this->assertFalse( get_option( 'aips_telemetry_prune_interval', false ) );
 	}
 
 	/**
@@ -942,8 +987,13 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'aips_telemetry';
-		$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$table}` (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))" );
-		$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) );
+		$this->disable_wp_table_rewrites();
+		try {
+			$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$table}` (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))" );
+			$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) );
+		} finally {
+			$this->enable_wp_table_rewrites();
+		}
 
 		$block_drop = static function ( $query ) {
 			if ( is_string( $query ) && false !== stripos( $query, 'DROP TABLE' ) && false !== stripos( $query, 'aips_telemetry' ) ) {
@@ -961,7 +1011,9 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ), 'failed DROP must leave the stored version unchanged' );
 		$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), 'blocked DROP must leave the table in place' );
 
+		$this->disable_wp_table_rewrites();
 		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+		$this->enable_wp_table_rewrites();
 	}
 
 	/**
