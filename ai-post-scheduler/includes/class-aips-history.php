@@ -392,11 +392,11 @@ class AIPS_History {
         $container = $this->build_history_modal_container($history_item, $format_dates);
         $container['trigger_info'] = $this->extract_history_trigger_info($logs, $history_item, $container);
         $analysis = $this->analyze_history_modal_summary($container, $logs);
-        $container = $this->finalize_history_modal_container($container, $analysis);
         $container_id = isset($container['id']) ? (int) $container['id'] : 0;
         $detail_id_prefix = 'aips-log-detail-' . $container_id . '-' . (int) (microtime(true) * 1000000) . '-' . mt_rand(1000, 9999);
         $display_logs = $this->build_history_display_logs($logs, $detail_id_prefix);
         $filter_counts = $this->build_history_filter_counts($display_logs);
+        $container = $this->finalize_history_modal_container($container, $analysis, $logs, $display_logs);
         $timeline_data = $this->build_history_timeline_data($container, $history_item, $display_logs);
 
         return array(
@@ -687,12 +687,15 @@ class AIPS_History {
     /**
      * Convert the base container + derived analysis into the final modal payload.
      *
-     * @param array<string,mixed> $container Base container metadata.
-     * @param array<string,mixed> $analysis  Derived summary analysis.
+     * @param array<string,mixed>            $container    Base container metadata.
+     * @param array<string,mixed>            $analysis     Derived summary analysis.
+     * @param array<int,array<string,mixed>> $logs         Normalized raw logs.
+     * @param array<int,array<string,mixed>> $display_logs Paired display logs.
      * @return array<string,mixed>
      */
-    private function finalize_history_modal_container($container, $analysis) {
+    private function finalize_history_modal_container($container, $analysis, $logs = array(), $display_logs = array()) {
         $raw_status = isset($container['status']) ? (string) $container['status'] : '';
+        $run_metrics = $this->build_history_run_metrics($logs, $display_logs);
         return array(
             'id' => isset($container['id']) ? (int) $container['id'] : 0,
             'header_title' => $this->build_history_modal_header_title($container),
@@ -704,9 +707,45 @@ class AIPS_History {
             'summary_lines' => $this->build_history_summary_lines($analysis),
             'summary_meta' => $this->build_history_summary_meta($container),
             'detail_cards' => $this->build_history_detail_cards($container),
+            'run_metrics' => $run_metrics,
+            'ai_request_count' => $run_metrics['ai_requests'],
             'root_issue' => !empty($container['error_message']) ? (string) $container['error_message'] : '',
             'suggested_action' => $this->build_history_suggested_action($container),
-            'diagnostic_text' => $this->build_history_diagnostic_text($container, $analysis),
+        );
+    }
+
+    /**
+     * Compute run telemetry metrics from normalized logs.
+     *
+     * @param array<int,array<string,mixed>> $logs         Normalized raw logs.
+     * @param array<int,array<string,mixed>> $display_logs Paired display logs.
+     * @return array<string,int>
+     */
+    private function build_history_run_metrics($logs, $display_logs) {
+        $ai_requests  = 0;
+        $ai_responses = 0;
+        $warnings     = 0;
+        $errors       = 0;
+
+        foreach ($logs as $log) {
+            $type_id = isset($log['history_type_id']) ? (int) $log['history_type_id'] : 0;
+            if ($type_id === AIPS_History_Type::AI_REQUEST) {
+                $ai_requests++;
+            } elseif ($type_id === AIPS_History_Type::AI_RESPONSE) {
+                $ai_responses++;
+            } elseif ($type_id === AIPS_History_Type::WARNING) {
+                $warnings++;
+            } elseif ($type_id === AIPS_History_Type::ERROR) {
+                $errors++;
+            }
+        }
+
+        return array(
+            'ai_requests'  => $ai_requests,
+            'ai_responses' => $ai_responses,
+            'log_entries'  => count($display_logs),
+            'warnings'     => $warnings,
+            'errors'       => $errors,
         );
     }
 
@@ -1154,28 +1193,6 @@ class AIPS_History {
             return __('Allow the run to finish; reload History if it remains in progress unexpectedly.', 'ai-post-scheduler');
         }
         return '';
-    }
-
-    private function build_history_diagnostic_text($container, $analysis) {
-        $lines = array(
-            sprintf(__('History #%d', 'ai-post-scheduler'), (int) $container['id']),
-            sprintf(__('Status: %s', 'ai-post-scheduler'), (string) $container['status']),
-            sprintf(__('What happened: %s', 'ai-post-scheduler'), (string) $analysis['what_happened']),
-            sprintf(__('What changed: %s', 'ai-post-scheduler'), (string) $analysis['what_changed']),
-        );
-        if (!empty($container['trigger_info']['source_message'])) {
-            $lines[] = sprintf(__('Triggered by: %s', 'ai-post-scheduler'), (string) $container['trigger_info']['source_message']);
-        }
-        if (!empty($container['trigger_info']['method_label'])) {
-            $lines[] = sprintf(__('Trigger type: %s', 'ai-post-scheduler'), (string) $container['trigger_info']['method_label']);
-        }
-        if (!empty($container['error_message'])) {
-            $lines[] = sprintf(__('Error: %s', 'ai-post-scheduler'), (string) $container['error_message']);
-        }
-        if (!empty($container['correlation_id'])) {
-            $lines[] = sprintf(__('Correlation ID: %s', 'ai-post-scheduler'), (string) $container['correlation_id']);
-        }
-        return implode("\n", $lines);
     }
 
     /**

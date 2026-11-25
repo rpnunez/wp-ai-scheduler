@@ -315,6 +315,26 @@ class Test_History_Template extends WP_UnitTestCase {
                         'message'     => 'Triggered automatically by a scheduled run',
                     )),
                 ),
+                (object) array(
+                    'id'              => 2,
+                    'history_type_id' => AIPS_History_Type::AI_REQUEST,
+                    'timestamp'       => '2026-11-24 11:11:10',
+                    'details'         => wp_json_encode(array(
+                        'log_subtype' => 'ai_request',
+                        'message'     => 'Requesting AI generation for content',
+                        'context'     => array('component' => 'post_content'),
+                    )),
+                ),
+                (object) array(
+                    'id'              => 3,
+                    'history_type_id' => AIPS_History_Type::AI_RESPONSE,
+                    'timestamp'       => '2026-11-24 11:12:00',
+                    'details'         => wp_json_encode(array(
+                        'log_subtype' => 'ai_response',
+                        'message'     => 'Post title generated successfully',
+                        'context'     => array('component' => 'post_title'),
+                    )),
+                ),
             ),
         );
 
@@ -325,6 +345,10 @@ class Test_History_Template extends WP_UnitTestCase {
         $container = $modal_view['container'];
         $this->assertSame('completed', $container['status']);
         $this->assertSame('Completed', $container['status_label']);
+        $this->assertArrayNotHasKey('diagnostic_text', $container);
+        $this->assertSame(1, $container['ai_request_count']);
+        $this->assertSame(1, $container['run_metrics']['ai_requests']);
+        $this->assertSame(1, $container['run_metrics']['ai_responses']);
 
         // Header actions must be ordered: View Post (no post ID suffix), AI Edit, Edit, each with a dashicon.
         $actions = $container['header_actions'];
@@ -345,7 +369,7 @@ class Test_History_Template extends WP_UnitTestCase {
         $card_labels = array_column($container['detail_cards'], 'label');
         $this->assertNotContains('Completed', $card_labels);
 
-        // Render modal content partial and verify Technical tab badge & table headers.
+        // Render modal content partial and verify Technical tab badge, AI Calls badge/collapsed cards, & table headers.
         $display_logs  = $modal_view['display_logs'];
         $filter_counts = $modal_view['filter_counts'];
         $timeline_data = $modal_view['timeline_data'];
@@ -354,7 +378,14 @@ class Test_History_Template extends WP_UnitTestCase {
         include AIPS_PLUGIN_DIR . 'templates/partials/history-modal-content.php';
         $html = (string) ob_get_clean();
 
+        // AI Calls tab shows 1 actual AI Request sent, and Technical tab shows 3 display logs.
         $this->assertStringContainsString('<span class="aips-history-tab-badge">1</span>', $html);
+        $this->assertStringContainsString('<span class="aips-history-tab-badge">3</span>', $html);
+        $this->assertStringContainsString('1 AI Request Sent', $html);
+        $this->assertStringContainsString('aips-history-overview-metrics', $html);
+        $this->assertStringContainsString('aips-overview-milestones', $html);
+        $this->assertStringContainsString('aips-history-log-type-cell', $html);
+        $this->assertStringNotContainsString('<details open>', $html);
         $this->assertStringContainsString('<th class="aips-history-col-timestamp">Date &amp; Time</th>', $html);
         $this->assertStringNotContainsString('aips-history-advanced-details-heading', $html);
         $this->assertStringNotContainsString('aips-history-col-logtype', $html);

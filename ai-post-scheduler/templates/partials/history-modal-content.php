@@ -23,6 +23,8 @@ $timeline_data = !empty($timeline_data) && is_array($timeline_data) ? $timeline_
 $ai_logs = array_values(array_filter($display_logs, static function($log) {
 	return in_array('5', $log['type_ids'], true) || in_array('6', $log['type_ids'], true) || in_array('11', $log['type_ids'], true);
 }));
+$run_metrics = !empty($container['run_metrics']) && is_array($container['run_metrics']) ? $container['run_metrics'] : array();
+$ai_request_count = isset($container['ai_request_count']) ? (int) $container['ai_request_count'] : (isset($run_metrics['ai_requests']) ? (int) $run_metrics['ai_requests'] : 0);
 
 $type_labels = array(
 	2 => AIPS_History_Type::get_label(2),
@@ -41,7 +43,10 @@ $type_labels = array(
 	<nav class="aips-history-detail-tabs" role="tablist" aria-label="<?php esc_attr_e('History detail sections', 'ai-post-scheduler'); ?>">
 		<button type="button" class="aips-history-detail-tab is-active" role="tab" aria-selected="true" data-tab="overview"><?php esc_html_e('Overview', 'ai-post-scheduler'); ?></button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="timeline"><?php esc_html_e('Timeline', 'ai-post-scheduler'); ?></button>
-		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="ai-calls"><?php esc_html_e('AI Calls', 'ai-post-scheduler'); ?></button>
+		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="ai-calls">
+			<?php esc_html_e('AI Calls', 'ai-post-scheduler'); ?>
+			<span class="aips-history-tab-badge"><?php echo esc_html($ai_request_count); ?></span>
+		</button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="technical">
 			<?php esc_html_e('Technical', 'ai-post-scheduler'); ?>
 			<span class="aips-history-tab-badge"><?php echo esc_html(count($display_logs)); ?></span>
@@ -49,6 +54,27 @@ $type_labels = array(
 	</nav>
 
 	<section class="aips-history-detail-panel is-active" data-panel="overview" role="tabpanel">
+		<?php if (!empty($run_metrics)): ?>
+			<div class="aips-history-overview-metrics">
+				<div class="aips-history-overview-metric">
+					<span class="aips-history-overview-metric-label"><?php esc_html_e('AI Requests Sent', 'ai-post-scheduler'); ?></span>
+					<span class="aips-history-overview-metric-value"><?php echo esc_html((int) ($run_metrics['ai_requests'] ?? 0)); ?></span>
+				</div>
+				<div class="aips-history-overview-metric">
+					<span class="aips-history-overview-metric-label"><?php esc_html_e('Log Entries', 'ai-post-scheduler'); ?></span>
+					<span class="aips-history-overview-metric-value"><?php echo esc_html((int) ($run_metrics['log_entries'] ?? count($display_logs))); ?></span>
+				</div>
+				<div class="aips-history-overview-metric">
+					<span class="aips-history-overview-metric-label"><?php esc_html_e('Warnings', 'ai-post-scheduler'); ?></span>
+					<span class="aips-history-overview-metric-value<?php echo !empty($run_metrics['warnings']) ? ' is-warning' : ''; ?>"><?php echo esc_html((int) ($run_metrics['warnings'] ?? 0)); ?></span>
+				</div>
+				<div class="aips-history-overview-metric">
+					<span class="aips-history-overview-metric-label"><?php esc_html_e('Errors', 'ai-post-scheduler'); ?></span>
+					<span class="aips-history-overview-metric-value<?php echo !empty($run_metrics['errors']) ? ' is-error' : ''; ?>"><?php echo esc_html((int) ($run_metrics['errors'] ?? 0)); ?></span>
+				</div>
+			</div>
+		<?php endif; ?>
+
 		<div class="aips-history-modal-summary">
 			<div class="aips-history-summary-panel">
 				<div class="aips-history-summary-main">
@@ -79,6 +105,102 @@ $type_labels = array(
 				<?php endforeach; ?>
 			</div>
 		<?php endif; ?>
+
+		<?php if (!empty($timeline_data['show_milestones']) || !empty($timeline_data['error_text']) || !empty($timeline_data['warning_text'])): ?>
+			<div class="aips-timeline-milestones aips-overview-milestones">
+				<?php if (!empty($timeline_data['show_milestones'])): ?>
+				<div class="aips-timeline-milestone-item">
+					<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+					<span><?php echo esc_html(!empty($timeline_data['attempt_text']) ? $timeline_data['attempt_text'] : __('Attempting post creation', 'ai-post-scheduler')); ?></span>
+				</div>
+				<?php if (!empty($timeline_data['post_title'])): ?>
+				<div class="aips-timeline-milestone-item">
+					<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+					<strong><?php esc_html_e('Post Title:', 'ai-post-scheduler'); ?></strong>
+					<span><?php echo esc_html($timeline_data['post_title']); ?></span>
+				</div>
+				<?php endif; ?>
+				<?php if (!empty($timeline_data['post_slug'])): ?>
+				<div class="aips-timeline-milestone-item">
+					<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+					<strong><?php esc_html_e('Post Slug:', 'ai-post-scheduler'); ?></strong>
+					<span><?php echo esc_html($timeline_data['post_slug']); ?></span>
+				</div>
+				<?php endif; ?>
+				<?php if (!empty($timeline_data['post_excerpt'])): ?>
+				<div class="aips-timeline-milestone-item">
+					<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+					<strong><?php esc_html_e('Post Excerpt:', 'ai-post-scheduler'); ?></strong>
+					<span><?php echo esc_html($timeline_data['post_excerpt']); ?></span>
+				</div>
+				<?php endif; ?>
+				<div class="aips-timeline-milestone-item">
+					<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+					<strong><?php esc_html_e('Featured Image:', 'ai-post-scheduler'); ?></strong>
+					<?php if (!empty($timeline_data['has_image']) && !empty($timeline_data['image_url'])): ?>
+						<?php if (!empty($timeline_data['image_edit_url'])): ?>
+							<a href="<?php echo esc_url($timeline_data['image_edit_url']); ?>" target="_blank" rel="noopener noreferrer" title="<?php esc_attr_e('Open Media Editor', 'ai-post-scheduler'); ?>">
+								<img src="<?php echo esc_url($timeline_data['image_url']); ?>" alt="" class="aips-timeline-thumb" />
+							</a>
+						<?php else: ?>
+							<img src="<?php echo esc_url($timeline_data['image_url']); ?>" alt="" class="aips-timeline-thumb" />
+						<?php endif; ?>
+					<?php elseif (($timeline_data['image_status'] ?? 'none') === 'failed'): ?>
+						<span class="dashicons dashicons-dismiss aips-timeline-milestone-icon error" title="<?php esc_attr_e('Featured image generation failed', 'ai-post-scheduler'); ?>"></span>
+					<?php else: ?>
+						<span class="aips-meta-text" title="<?php esc_attr_e('No featured image was generated or requested', 'ai-post-scheduler'); ?>">&mdash;</span>
+					<?php endif; ?>
+				</div>
+				<?php if (!empty($timeline_data['post_images_count'])): ?>
+				<div class="aips-timeline-milestone-item">
+					<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+					<strong><?php esc_html_e('Post Images:', 'ai-post-scheduler'); ?></strong>
+					<span><?php echo esc_html(sprintf(
+						_n('%d content image', '%d content images', (int) $timeline_data['post_images_count'], 'ai-post-scheduler'),
+						(int) $timeline_data['post_images_count']
+					)); ?></span>
+				</div>
+				<?php endif; ?>
+				<div class="aips-timeline-milestone-item">
+					<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+					<strong><?php esc_html_e('Post Content:', 'ai-post-scheduler'); ?></strong>
+					<?php if (!empty($timeline_data['has_content'])): ?>
+						<span class="dashicons dashicons-yes-alt aips-timeline-milestone-icon success" title="<?php esc_attr_e('Content generated', 'ai-post-scheduler'); ?>"></span>
+					<?php else: ?>
+						<span class="dashicons dashicons-dismiss aips-timeline-milestone-icon error" title="<?php esc_attr_e('No content generated', 'ai-post-scheduler'); ?>"></span>
+					<?php endif; ?>
+				</div>
+				<?php if (!empty($timeline_data['custom_fields'])): ?>
+					<?php foreach ($timeline_data['custom_fields'] as $cf): ?>
+					<div class="aips-timeline-milestone-item">
+						<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
+						<strong><?php echo esc_html(sprintf(__('Custom Field %s Generated:', 'ai-post-scheduler'), $cf['label'])); ?></strong>
+						<?php if (!empty($cf['success'])): ?>
+							<span class="dashicons dashicons-yes-alt aips-timeline-milestone-icon success"></span>
+						<?php else: ?>
+							<span class="dashicons dashicons-dismiss aips-timeline-milestone-icon error"></span>
+						<?php endif; ?>
+					</div>
+					<?php endforeach; ?>
+				<?php endif; ?>
+				<?php endif; // show_milestones ?>
+				<?php if (!empty($timeline_data['error_text'])): ?>
+				<div class="aips-timeline-milestone-item aips-timeline-milestone-error">
+					<span class="dashicons dashicons-warning aips-timeline-milestone-icon error"></span>
+					<strong><?php esc_html_e('Error:', 'ai-post-scheduler'); ?></strong>
+					<span class="aips-timeline-error-text"><?php echo esc_html($timeline_data['error_text']); ?></span>
+				</div>
+				<?php endif; ?>
+				<?php if (!empty($timeline_data['warning_text'])): ?>
+				<div class="aips-timeline-milestone-item aips-timeline-milestone-warning">
+					<span class="dashicons dashicons-info aips-timeline-milestone-icon warning"></span>
+					<strong><?php esc_html_e('Warning:', 'ai-post-scheduler'); ?></strong>
+					<span class="aips-timeline-warning-text"><?php echo esc_html($timeline_data['warning_text']); ?></span>
+				</div>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+
 		<?php if (!empty($container['root_issue'])): ?>
 			<div class="aips-history-diagnostic-callout aips-history-diagnostic-error"><strong><?php esc_html_e('Root issue', 'ai-post-scheduler'); ?></strong><p><?php echo esc_html($container['root_issue']); ?></p></div>
 		<?php endif; ?>
@@ -88,100 +210,7 @@ $type_labels = array(
 	</section>
 
 	<section class="aips-history-detail-panel" data-panel="timeline" role="tabpanel" hidden>
-		<div class="aips-timeline-milestones">
-			<?php if (!empty($timeline_data['show_milestones'])): ?>
-			<div class="aips-timeline-milestone-item">
-				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
-				<span><?php echo esc_html(!empty($timeline_data['attempt_text']) ? $timeline_data['attempt_text'] : __('Attempting post creation', 'ai-post-scheduler')); ?></span>
-			</div>
-			<?php if (!empty($timeline_data['post_title'])): ?>
-			<div class="aips-timeline-milestone-item">
-				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
-				<strong><?php esc_html_e('Post Title:', 'ai-post-scheduler'); ?></strong>
-				<span><?php echo esc_html($timeline_data['post_title']); ?></span>
-			</div>
-			<?php endif; ?>
-			<?php if (!empty($timeline_data['post_slug'])): ?>
-			<div class="aips-timeline-milestone-item">
-				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
-				<strong><?php esc_html_e('Post Slug:', 'ai-post-scheduler'); ?></strong>
-				<span><?php echo esc_html($timeline_data['post_slug']); ?></span>
-			</div>
-			<?php endif; ?>
-			<?php if (!empty($timeline_data['post_excerpt'])): ?>
-			<div class="aips-timeline-milestone-item">
-				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
-				<strong><?php esc_html_e('Post Excerpt:', 'ai-post-scheduler'); ?></strong>
-				<span><?php echo esc_html($timeline_data['post_excerpt']); ?></span>
-			</div>
-			<?php endif; ?>
-			<div class="aips-timeline-milestone-item">
-				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
-				<strong><?php esc_html_e('Featured Image:', 'ai-post-scheduler'); ?></strong>
-				<?php if (!empty($timeline_data['has_image']) && !empty($timeline_data['image_url'])): ?>
-					<?php if (!empty($timeline_data['image_edit_url'])): ?>
-						<a href="<?php echo esc_url($timeline_data['image_edit_url']); ?>" target="_blank" rel="noopener noreferrer" title="<?php esc_attr_e('Open Media Editor', 'ai-post-scheduler'); ?>">
-							<img src="<?php echo esc_url($timeline_data['image_url']); ?>" alt="" class="aips-timeline-thumb" />
-						</a>
-					<?php else: ?>
-						<img src="<?php echo esc_url($timeline_data['image_url']); ?>" alt="" class="aips-timeline-thumb" />
-					<?php endif; ?>
-				<?php elseif (($timeline_data['image_status'] ?? 'none') === 'failed'): ?>
-					<span class="dashicons dashicons-dismiss aips-timeline-milestone-icon error" title="<?php esc_attr_e('Featured image generation failed', 'ai-post-scheduler'); ?>"></span>
-				<?php else: ?>
-					<span class="aips-meta-text" title="<?php esc_attr_e('No featured image was generated or requested', 'ai-post-scheduler'); ?>">&mdash;</span>
-				<?php endif; ?>
-			</div>
-			<?php if (!empty($timeline_data['post_images_count'])): ?>
-			<div class="aips-timeline-milestone-item">
-				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
-				<strong><?php esc_html_e('Post Images:', 'ai-post-scheduler'); ?></strong>
-				<span><?php echo esc_html(sprintf(
-					_n('%d content image', '%d content images', (int) $timeline_data['post_images_count'], 'ai-post-scheduler'),
-					(int) $timeline_data['post_images_count']
-				)); ?></span>
-			</div>
-			<?php endif; ?>
-			<div class="aips-timeline-milestone-item">
-				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
-				<strong><?php esc_html_e('Post Content:', 'ai-post-scheduler'); ?></strong>
-				<?php if (!empty($timeline_data['has_content'])): ?>
-					<span class="dashicons dashicons-yes-alt aips-timeline-milestone-icon success" title="<?php esc_attr_e('Content generated', 'ai-post-scheduler'); ?>"></span>
-				<?php else: ?>
-					<span class="dashicons dashicons-dismiss aips-timeline-milestone-icon error" title="<?php esc_attr_e('No content generated', 'ai-post-scheduler'); ?>"></span>
-				<?php endif; ?>
-			</div>
-			<?php if (!empty($timeline_data['custom_fields'])): ?>
-				<?php foreach ($timeline_data['custom_fields'] as $cf): ?>
-				<div class="aips-timeline-milestone-item">
-					<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
-					<strong><?php echo esc_html(sprintf(__('Custom Field %s Generated:', 'ai-post-scheduler'), $cf['label'])); ?></strong>
-					<?php if (!empty($cf['success'])): ?>
-						<span class="dashicons dashicons-yes-alt aips-timeline-milestone-icon success"></span>
-					<?php else: ?>
-						<span class="dashicons dashicons-dismiss aips-timeline-milestone-icon error"></span>
-					<?php endif; ?>
-				</div>
-				<?php endforeach; ?>
-			<?php endif; ?>
-			<?php endif; // show_milestones ?>
-			<?php if (!empty($timeline_data['error_text'])): ?>
-			<div class="aips-timeline-milestone-item aips-timeline-milestone-error">
-				<span class="dashicons dashicons-warning aips-timeline-milestone-icon error"></span>
-				<strong><?php esc_html_e('Error:', 'ai-post-scheduler'); ?></strong>
-				<span class="aips-timeline-error-text"><?php echo esc_html($timeline_data['error_text']); ?></span>
-			</div>
-			<?php endif; ?>
-			<?php if (!empty($timeline_data['warning_text'])): ?>
-			<div class="aips-timeline-milestone-item aips-timeline-milestone-warning">
-				<span class="dashicons dashicons-info aips-timeline-milestone-icon warning"></span>
-				<strong><?php esc_html_e('Warning:', 'ai-post-scheduler'); ?></strong>
-				<span class="aips-timeline-warning-text"><?php echo esc_html($timeline_data['warning_text']); ?></span>
-			</div>
-			<?php endif; ?>
-		</div>
-
-		<h4 class="aips-timeline-events-heading"><?php esc_html_e('Chronological Events', 'ai-post-scheduler'); ?></h4>
+		<h4 class="aips-timeline-events-heading" style="margin-top: 4px;"><?php esc_html_e('Chronological Events', 'ai-post-scheduler'); ?></h4>
 		<div class="aips-history-detail-timeline">
 		<?php if (!empty($timeline_data['events'])): ?>
 			<?php foreach ($timeline_data['events'] as $event): ?>
@@ -203,16 +232,27 @@ $type_labels = array(
 	</section>
 
 	<section class="aips-history-detail-panel" data-panel="ai-calls" role="tabpanel" hidden>
-		<label class="aips-history-json-toggle" style="margin-bottom: 12px; display: inline-flex; align-items: center; gap: 6px;">
-			<input type="checkbox" class="aips-json-viewer-toggle" checked>
-			<span><?php esc_html_e('JSON Viewer', 'ai-post-scheduler'); ?></span>
-		</label>
+		<div class="aips-history-ai-calls-toolbar">
+			<label class="aips-history-json-toggle">
+				<input type="checkbox" class="aips-json-viewer-toggle" checked>
+				<span><?php esc_html_e('JSON Viewer', 'ai-post-scheduler'); ?></span>
+			</label>
+			<span class="aips-history-ai-calls-count">
+				<?php
+				echo esc_html(sprintf(
+					/* translators: %d: number of AI requests sent */
+					_n('%d AI Request Sent', '%d AI Requests Sent', $ai_request_count, 'ai-post-scheduler'),
+					$ai_request_count
+				));
+				?>
+			</span>
+		</div>
 		<?php if (empty($ai_logs)): ?><p><?php esc_html_e('No AI calls were recorded for this run.', 'ai-post-scheduler'); ?></p><?php endif; ?>
 		<?php foreach ($ai_logs as $display_log): ?>
 			<article class="aips-history-ai-call-card">
 				<header><strong><?php echo esc_html($display_log['log_type']); ?></strong><span><?php echo esc_html($display_log['timestamp_display']); ?></span></header>
 				<?php foreach ($display_log['sections'] as $section): ?>
-					<details <?php echo count($display_log['sections']) === 1 ? 'open' : ''; ?>><summary><?php echo esc_html($section['label'] ?: $display_log['type_label']); ?></summary>
+					<details><summary><?php echo esc_html($section['label'] ?: $display_log['type_label']); ?></summary>
 					<?php if (!empty($section['message_html'])): ?><p><?php echo $section['message_html']; ?></p><?php endif; ?>
 					<?php if (!empty($section['has_extra'])): ?>
 						<div class="aips-json-tree-mode"><?php echo $section['tree_html']; ?></div>
@@ -267,7 +307,7 @@ $type_labels = array(
 					<?php foreach ($display_logs as $display_log): ?>
 						<tr data-type-ids="<?php echo esc_attr(implode(',', $display_log['type_ids'])); ?>">
 							<td class="aips-history-log-timestamp"><?php echo esc_html($display_log['timestamp_display']); ?></td>
-							<td><span class="aips-badge <?php echo esc_attr($display_log['type_class']); ?>"><?php echo esc_html($display_log['type_label']); ?></span></td>
+							<td class="aips-history-log-type-cell"><span class="aips-badge <?php echo esc_attr($display_log['type_class']); ?>"><?php echo esc_html($display_log['type_label']); ?></span></td>
 							<td>
 								<div class="<?php echo count($display_log['sections']) > 1 ? 'aips-ai-log-pair' : ''; ?>">
 									<?php foreach ($display_log['sections'] as $section): ?>

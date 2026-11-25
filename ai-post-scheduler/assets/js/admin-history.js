@@ -98,24 +98,6 @@
 
 			$actions.html(actionsHtml);
 			$status.html(statusHtml);
-			this.renderDiagnosticButton($modal, container && container.diagnostic_text);
-		},
-
-		/**
-		 * Render (or clear) the "Copy diagnostic" button under the header close button.
-		 *
-		 * @param {jQuery} $modal Modal element.
-		 * @param {string} text   Diagnostic text; empty clears the button.
-		 */
-		renderDiagnosticButton: function ($modal, text) {
-			var $slot = $modal.find('.aips-history-modal-header-diagnostic').empty();
-			if (!text) {
-				return;
-			}
-			$('<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-diagnostic"></button>')
-				.text((window.aipsHistoryL10n && aipsHistoryL10n.copyDiagnostic) || 'Copy diagnostic')
-				.attr('data-diagnostic', text)
-				.appendTo($slot);
 		},
 
 		/**
@@ -141,7 +123,6 @@
 			if (settings.statusSelector) {
 				$modal.find(settings.statusSelector).empty();
 			}
-			this.renderDiagnosticButton($modal, '');
 		},
 
 		/**
@@ -665,7 +646,6 @@
 			// Log type filter tabs inside the modal
 			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
 			$(document).on('change', '.aips-json-viewer-toggle', this.toggleJsonViewerMode.bind(this));
-			$(document).on('click', '.aips-copy-diagnostic', this.copyDiagnostic.bind(this));
 
 			// Close modal via close button or backdrop click.
 			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
@@ -889,16 +869,6 @@
 		onHistoryRowKeydown: function (e) {
 			if (e.key === 'Enter' || e.key === ' ') {
 				this.openLogsModal(e);
-			}
-		},
-
-		copyDiagnostic: function (e) {
-			e.preventDefault();
-			var text = $(e.currentTarget).data('diagnostic') || '';
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(text).then(function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.copiedDetails || 'Copied!', 'success');
-				});
 			}
 		},
 
