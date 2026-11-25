@@ -16,18 +16,14 @@
 		openTimer: null,
 		closeTimer: null,
 		currentHub: null,
+		ignoreTriggerFocus: false,
 
 		init: function() {
-			if (!AIPS.Templates || !Array.isArray(config.hubs) || !config.hubs.length || this.isDisabled()) {
+			if (!AIPS.Templates || !Array.isArray(config.hubs) || !config.hubs.length) {
 				return;
 			}
-			var self = this;
-			$('#toplevel_page_ai-post-scheduler .wp-submenu a').each(function() {
-				if (self.getHubForLink(this)) {
-					$(this).attr({ 'aria-haspopup': 'menu', 'aria-expanded': 'false' });
-				}
-			});
-			this.bindEvents();
+			this.bindViewportWatcher();
+			this.syncMode();
 		},
 
 		isDisabled: function() {
@@ -36,6 +32,50 @@
 				window.matchMedia('(max-width: ' + breakpoint + 'px)').matches ||
 				window.matchMedia('(hover: none) and (pointer: coarse)').matches
 			));
+		},
+
+		isOpen: function() {
+			return !!(this.$panel.length && !this.$panel.prop('hidden'));
+		},
+
+		getDisableQuery: function() {
+			var breakpoint = parseInt(config.breakpoint || 782, 10);
+			return '(max-width: ' + breakpoint + 'px), (hover: none) and (pointer: coarse)';
+		},
+
+		bindViewportWatcher: function() {
+			var self = this;
+			if (!window.matchMedia) {
+				return;
+			}
+			var media = window.matchMedia(this.getDisableQuery());
+			var onChange = function() {
+				self.syncMode();
+			};
+			if (media.addEventListener) {
+				media.addEventListener('change', onChange);
+			} else if (media.addListener) {
+				media.addListener(onChange);
+			}
+		},
+
+		syncMode: function() {
+			this.unbindFlyout();
+			if (this.isDisabled()) {
+				this.ensureFallbackNav();
+				return;
+			}
+			this.bindFlyoutTriggers();
+			this.bindEvents();
+		},
+
+		bindFlyoutTriggers: function() {
+			var self = this;
+			$('#toplevel_page_ai-post-scheduler .wp-submenu a').each(function() {
+				if (self.getHubForLink(this)) {
+					$(this).attr({ 'aria-haspopup': 'menu', 'aria-expanded': 'false' });
+				}
+			});
 		},
 
 		bindEvents: function() {
@@ -54,7 +94,7 @@
 				})
 				.on('focusin.aipsFlyout', selector, function() {
 					var hub = self.getHubForLink(this);
-					if (hub) {
+					if (hub && !self.ignoreTriggerFocus) {
 						self.open($(this), hub);
 					}
 				})
@@ -78,22 +118,29 @@
 					self.handleItemKeydown(event, $(this));
 				})
 				.on('focusin.aipsFlyout', function(event) {
-					if (self.$panel.length && !self.$panel.is(event.target) && !self.$panel.has(event.target).length && !self.$trigger.is(event.target)) {
+					if (self.isOpen() && !self.$panel.is(event.target) && !self.$panel.has(event.target).length && !self.$trigger.is(event.target)) {
 						self.close(false);
 					}
 				})
 				.on('keydown.aipsFlyout', function(event) {
-					if (event.key === 'Escape' && self.$panel.length) {
+					if (event.key === 'Escape' && self.isOpen()) {
 						event.preventDefault();
 						self.close(true);
 					}
 				});
 
 			$(window).on('resize.aipsFlyout scroll.aipsFlyout', function() {
-				if (self.$panel.length && self.$trigger.length) {
+				if (self.isOpen() && self.$trigger.length) {
 					self.position();
 				}
 			});
+		},
+
+		unbindFlyout: function() {
+			this.close(false);
+			$(document).off('.aipsFlyout');
+			$(window).off('.aipsFlyout');
+			$('#toplevel_page_ai-post-scheduler .wp-submenu a').removeAttr('aria-haspopup aria-expanded');
 		},
 
 		getHubForLink: function(link) {
@@ -106,6 +153,62 @@
 			return config.hubs.find(function(hub) {
 				return hub.slug === page;
 			}) || null;
+		},
+
+		getCurrentHub: function() {
+			if (config.currentHub) {
+				return config.hubs.find(function(hub) {
+					return hub.key === config.currentHub;
+				}) || null;
+			}
+			return null;
+		},
+
+		ensureFallbackNav: function() {
+			if ($('.aips-admin-hub-nav').length) {
+				return;
+			}
+			var hub = this.getCurrentHub();
+			if (!hub) {
+				return;
+			}
+			var $host = $('.aips-page-header').first();
+			if (!$host.length) {
+				$host = $('.aips-page-container').first();
+			}
+			if (!$host.length) {
+				return;
+			}
+			var groupsHtml = '';
+			(hub.groups || []).forEach(function(group) {
+				var itemsHtml = '';
+				(group.items || []).forEach(function(item) {
+					var hasBadge = Number.isInteger(item.badge) && item.badge > 0;
+					itemsHtml += AIPS.Templates.render('aips-tmpl-admin-hub-nav-item', {
+						activeClass: item.active ? 'is-active' : '',
+						url: item.url,
+						current: item.active ? 'page' : 'false',
+						icon: item.icon,
+						label: item.label,
+						badgeClass: hasBadge ? '' : 'aips-is-hidden',
+						badgeLabel: hasBadge ? String(item.badge) + ' ' + (config.pendingReviewLabel || 'pending reviews') : '',
+						badgeCount: hasBadge ? item.badge : ''
+					});
+				});
+				groupsHtml += AIPS.Templates.renderRaw('aips-tmpl-admin-hub-nav-group', {
+					label: AIPS.Templates.escape(group.label),
+					items: itemsHtml
+				});
+			});
+			var navHtml = AIPS.Templates.renderRaw('aips-tmpl-admin-hub-nav', {
+				label: AIPS.Templates.escape(hub.label + ' ' + (config.sectionsLabel || 'sections')),
+				groups: groupsHtml
+			});
+			if ($host.hasClass('aips-page-header')) {
+				$host.after(navHtml);
+			} else {
+				$host.prepend(navHtml);
+			}
 		},
 
 		scheduleOpen: function($trigger, hub) {
@@ -238,16 +341,21 @@
 			}
 			this.$trigger.attr('aria-expanded', 'false');
 			if (restoreFocus && this.$trigger.length) {
+				var self = this;
+				this.ignoreTriggerFocus = true;
 				this.$trigger.focus();
+				window.setTimeout(function() {
+					self.ignoreTriggerFocus = false;
+				}, 0);
 			}
 		},
 
 		destroy: function() {
-			this.close(false);
-			$(document).off('.aipsFlyout');
-			$(window).off('.aipsFlyout');
+			this.unbindFlyout();
 			this.$panel.remove();
 			this.$panel = $();
+			this.$trigger = $();
+			this.currentHub = null;
 		}
 	};
 

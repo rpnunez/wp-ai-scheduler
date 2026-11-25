@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$campaigns_url       = admin_url('admin.php?page=aips-campaigns');
+$campaigns_url       = AIPS_Admin_Menu_Helper::get_page_url('campaigns');
 $schedule_url        = add_query_arg(array('page' => 'aips-schedule', 'campaign_id' => absint($campaign->id)), admin_url('admin.php'));
 $generated_posts_url = add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($campaign->id)), admin_url('admin.php'));
 $primary_schedule_id = !empty($campaign->primary_schedule_id) ? absint($campaign->primary_schedule_id) : 0;
@@ -60,6 +60,7 @@ $activity_summary = static function($details) {
 				</div>
 			</div>
 		</div>
+		<?php AIPS_Admin_Flyout_Navigation::render_compact_nav('aips-campaign-detail'); ?>
 
 		<?php if (!empty($detail_notice) && !empty($detail_notice['message'])) : ?>
 			<div class="notice notice-<?php echo 'error' === $detail_notice['type'] ? 'error' : 'success'; ?> is-dismissible"><p><?php echo esc_html($detail_notice['message']); ?></p></div>

@@ -108,3 +108,16 @@ $actions       = isset($args['actions']) && is_array($args['actions']) ? $args['
 		<?php endif; ?>
 	</div>
 </div>
+<?php
+if (class_exists('AIPS_Admin_Flyout_Navigation')) {
+	$page_slug = null;
+	$tab_key   = isset($args['section_key']) ? (string) $args['section_key'] : null;
+	if (!empty($args['hub_key']) && class_exists('AIPS_Admin_Page_Context')) {
+		$hubs = AIPS_Admin_Page_Context::get_canonical_hubs();
+		if (!empty($hubs[$args['hub_key']]['slug'])) {
+			$page_slug = $hubs[$args['hub_key']]['slug'];
+		}
+	}
+	AIPS_Admin_Flyout_Navigation::render_compact_nav($page_slug, $tab_key);
+}
+?>

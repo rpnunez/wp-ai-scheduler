@@ -309,12 +309,29 @@ class AIPS_Admin_Assets {
 			true
 		);
 
+		$context     = AIPS_Admin_Page_Context::resolve();
+		$current_hub = '';
+		foreach (array(
+			AIPS_Admin_Page_Context::HUB_AUTOMATIONS,
+			AIPS_Admin_Page_Context::HUB_STUDIO,
+			AIPS_Admin_Page_Context::HUB_RESEARCH,
+			AIPS_Admin_Page_Context::HUB_CONTENT,
+			AIPS_Admin_Page_Context::HUB_DIAGNOSTICS,
+		) as $hub_key) {
+			if ($context->hub_key === $hub_key) {
+				$current_hub = $hub_key;
+				break;
+			}
+		}
+
 		wp_localize_script('aips-admin-flyout-navigation', 'aipsAdminFlyouts', array(
 			'hubs'               => AIPS_Admin_Flyout_Navigation::get_payload(),
+			'currentHub'         => $current_hub,
 			'openDelay'          => 120,
 			'closeDelay'         => 200,
 			'breakpoint'         => 782,
 			'navigationLabel'    => __('navigation', 'ai-post-scheduler'),
+			'sectionsLabel'      => __('sections', 'ai-post-scheduler'),
 			'pendingReviewLabel' => __('pending reviews', 'ai-post-scheduler'),
 		));
 	}

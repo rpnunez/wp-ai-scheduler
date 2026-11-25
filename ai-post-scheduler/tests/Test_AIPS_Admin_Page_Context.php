@@ -93,8 +93,11 @@ class Test_AIPS_Admin_Page_Context extends WP_UnitTestCase {
 		$this->assertEquals(AIPS_Admin_Page_Context::HUB_STUDIO, $ctx->hub_key);
 		$this->assertEquals('templates', $ctx->section_key);
 		$this->assertEquals('Templates', $ctx->section_label);
-		$this->assertEquals('Templates', $ctx->context_title);
+		$this->assertSame('', $ctx->context_title, 'Default Studio section should not duplicate the hub title.');
 		$this->assertCount(2, $ctx->breadcrumbs);
+
+		$voices = AIPS_Admin_Page_Context::resolve('aips-studio', 'voices');
+		$this->assertEquals('Voices', $voices->context_title);
 	}
 
 	/**
@@ -106,8 +109,28 @@ class Test_AIPS_Admin_Page_Context extends WP_UnitTestCase {
 		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-templates', AIPS_Admin_Page_Context::HUB_STUDIO));
 		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-voices', AIPS_Admin_Page_Context::HUB_STUDIO));
 		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-telemetry', AIPS_Admin_Page_Context::HUB_DIAGNOSTICS));
+		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-content-intelligence', AIPS_Admin_Page_Context::HUB_CONTENT));
+		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-post-clusters', AIPS_Admin_Page_Context::HUB_CONTENT));
 		$this->assertFalse(AIPS_Admin_Page_Context::is_child_page('aips-templates', AIPS_Admin_Page_Context::HUB_AUTOMATIONS));
 		$this->assertFalse(AIPS_Admin_Page_Context::is_child_page('unknown-page', AIPS_Admin_Page_Context::HUB_DIAGNOSTICS));
+	}
+
+	public function test_hidden_author_topics_resolves_as_automations_leaf() {
+		$ctx = AIPS_Admin_Page_Context::resolve('aips-author-topics');
+
+		$this->assertEquals(AIPS_Admin_Page_Context::HUB_AUTOMATIONS, $ctx->hub_key);
+		$this->assertEquals('author-topics', $ctx->section_key);
+		$this->assertEquals('author-topics', $ctx->view_key);
+		$this->assertEquals("Author's Topic Queue", $ctx->context_title);
+	}
+
+	public function test_legacy_status_page_maps_to_system_info() {
+		$hubs = AIPS_Admin_Page_Context::get_canonical_hubs();
+		$this->assertSame('system-info', $hubs[AIPS_Admin_Page_Context::HUB_DIAGNOSTICS]['child_pages']['aips-status']);
+
+		$ctx = AIPS_Admin_Page_Context::resolve('aips-status');
+		$this->assertEquals(AIPS_Admin_Page_Context::HUB_DIAGNOSTICS, $ctx->hub_key);
+		$this->assertEquals('system-info', $ctx->section_key);
 	}
 
 	/**

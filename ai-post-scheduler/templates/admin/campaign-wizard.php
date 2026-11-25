@@ -24,6 +24,7 @@ $authors = get_users(array(
 				</a>
 			</div>
 		</div>
+		<?php AIPS_Admin_Flyout_Navigation::render_compact_nav('aips-campaign-wizard'); ?>
 
 		<div id="aips-campaign-wizard-notice" style="margin:16px 0;"></div>
 		<div id="aips-ai-strategy-preview" class="aips-content-panel" style="display:none; margin:16px 0;">

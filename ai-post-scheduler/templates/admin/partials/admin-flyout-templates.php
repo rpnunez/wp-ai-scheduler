@@ -23,6 +23,24 @@ if (!defined('ABSPATH')) {
 		<div class="aips-admin-flyout-items" role="menu">{{items}}</div>
 	</section>
 </script>
+<script type="text/html" id="aips-tmpl-admin-hub-nav">
+	<nav class="aips-admin-hub-nav" aria-label="{{label}}">{{groups}}</nav>
+</script>
+<script type="text/html" id="aips-tmpl-admin-hub-nav-group">
+	<section class="aips-admin-hub-nav-group">
+		<h2 class="aips-admin-hub-nav-heading">{{label}}</h2>
+		<ul class="aips-admin-hub-nav-items">{{items}}</ul>
+	</section>
+</script>
+<script type="text/html" id="aips-tmpl-admin-hub-nav-item">
+	<li>
+		<a class="aips-admin-hub-nav-item {{activeClass}}" href="{{url}}" aria-current="{{current}}">
+			<span class="dashicons {{icon}}" aria-hidden="true"></span>
+			<span class="aips-admin-hub-nav-label">{{label}}</span>
+			<span class="aips-admin-flyout-badge {{badgeClass}}" aria-label="{{badgeLabel}}">{{badgeCount}}</span>
+		</a>
+	</li>
+</script>
 <script type="text/html" id="aips-tmpl-admin-flyout-item">
 	<a class="aips-admin-flyout-item {{activeClass}}" href="{{url}}" role="menuitem" tabindex="-1" aria-current="{{current}}">
 		<span class="dashicons {{icon}} aips-admin-flyout-icon" aria-hidden="true"></span>

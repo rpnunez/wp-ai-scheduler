@@ -58,6 +58,8 @@ if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embedding
 	$active_tab = 'aips-content-clusters';
 } elseif ('cannibalization' === $active_tab || 'content-cannibalization' === $active_tab) {
 	$active_tab = 'aips-content-cannibalization';
+} elseif ('content-intelligence' === $active_tab) {
+	$active_tab = 'aips-content-indexer';
 } elseif (!in_array($active_tab, $valid_tabs, true)) {
 	$active_tab = 'aips-generated-posts';
 }

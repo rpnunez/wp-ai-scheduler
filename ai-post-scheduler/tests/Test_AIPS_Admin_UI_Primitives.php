@@ -304,4 +304,19 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 		$this->assertStringContainsString('Active Pipelines', $output);
 		$this->assertStringContainsString('7', $output);
 	}
+
+	public function test_page_header_includes_compact_hub_nav_for_flyout_hubs() {
+		$admin_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($admin_id);
+
+		$ctx = AIPS_Admin_Page_Context::resolve('aips-studio', 'voices');
+		ob_start();
+		AIPS_Admin_UI_Primitives::render_page_header($ctx);
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('aips-admin-hub-nav', $output);
+		$this->assertStringContainsString('Voices', $output);
+
+		wp_set_current_user(0);
+	}
 }

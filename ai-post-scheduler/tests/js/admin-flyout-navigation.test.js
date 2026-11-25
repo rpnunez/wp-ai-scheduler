@@ -44,6 +44,9 @@ test('flyout includes hover intent, keyboard, responsive, and cleanup behavior',
 	assert.match(source, /event\.key === 'End'/);
 	assert.match(source, /\(hover: none\) and \(pointer: coarse\)/);
 	assert.match(source, /destroy: function\(\)/);
+	assert.match(source, /ignoreTriggerFocus/);
+	assert.match(source, /ensureFallbackNav/);
+	assert.match(source, /isOpen: function\(\)/);
 });
 
 test('Structure sub-tabs preserve canonical Studio route keys', function() {

@@ -317,7 +317,7 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page) || $this->is_studio_child_page($page)) {
+        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page) || $this->is_studio_child_page($page) || $this->is_content_child_page($page)) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -343,6 +343,9 @@ class AIPS_Admin_Menu {
         }
         if ($this->is_studio_child_page($page)) {
             return 'aips-studio';
+        }
+        if ($this->is_content_child_page($page)) {
+            return 'aips-generated-posts';
         }
         return $submenu_file;
     }
@@ -384,6 +387,16 @@ class AIPS_Admin_Menu {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Determine whether a hidden page belongs under Content.
+     *
+     * @param string $page Current admin page slug.
+     * @return bool
+     */
+    private function is_content_child_page($page) {
+        return class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_CONTENT);
     }
 
     /**
@@ -872,7 +885,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_status_page() {
-        $this->redirect_to_hub('aips-diagnostics', 'status');
+        $this->redirect_to_hub('aips-diagnostics', 'system-info');
     }
 
     /**
@@ -925,18 +938,18 @@ class AIPS_Admin_Menu {
     }
 
     public function render_content_intelligence_page() {
-        $this->redirect_to_hub('aips-content', 'content-indexer');
+        $this->redirect_to_hub('aips-generated-posts', 'aips-content-indexer');
     }
 
     public function render_post_clusters_page() {
-        $this->redirect_to_hub('aips-content', 'clusters');
+        $this->redirect_to_hub('aips-generated-posts', 'aips-content-clusters');
     }
 
     public function render_cannibalization_page() {
-        $this->redirect_to_hub('aips-content', 'cannibalization');
+        $this->redirect_to_hub('aips-generated-posts', 'aips-content-cannibalization');
     }
 
     public function render_content_indexer_page() {
-        $this->redirect_to_hub('aips-content', 'content-indexer');
+        $this->redirect_to_hub('aips-generated-posts', 'aips-content-indexer');
     }
 }

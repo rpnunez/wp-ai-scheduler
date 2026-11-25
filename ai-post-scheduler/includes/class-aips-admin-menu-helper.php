@@ -78,7 +78,7 @@ class AIPS_Admin_Menu_Helper {
 	 * @var array<string, string>
 	 */
 	private static $diagnostics_tabs = array(
-		'system_status'       => 'status',
+		'system_status'       => 'system-info',
 		'seeder'              => 'dev-tools',
 		'operations_insights' => 'operations-insights',
 		'telemetry'           => 'telemetry',
@@ -92,7 +92,7 @@ class AIPS_Admin_Menu_Helper {
 	 * @var array<string, string>
 	 */
 	private static $content_tabs = array(
-		'content_indexer' => 'content-indexer',
+		'content_indexer' => 'aips-content-indexer',
 	);
 
 	/**

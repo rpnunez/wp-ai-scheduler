@@ -367,6 +367,7 @@ class AIPS_Admin_Page_Context {
 				),
 				'child_pages' => array(
 					'aips-content-indexer'         => 'aips-content-indexer',
+					'aips-content-intelligence'    => 'aips-content-indexer',
 					'aips-post-clusters'           => 'aips-content-clusters',
 					'aips-cannibalization'         => 'aips-content-cannibalization',
 				),
@@ -499,7 +500,7 @@ class AIPS_Admin_Page_Context {
 				),
 				'child_pages' => array(
 					'aips-operations-insights' => 'insights',
-					'aips-status'              => 'health',
+					'aips-status'              => 'system-info',
 					'aips-telemetry'           => 'telemetry',
 					'aips-cache-monitor'       => 'cache-monitor',
 					'aips-dev-tools'           => 'dev-tools',
@@ -705,6 +706,8 @@ class AIPS_Admin_Page_Context {
 			'breadcrumbs'   => $this->breadcrumbs,
 			'summary_items' => $this->summary_items,
 			'actions'       => $this->actions,
+			'hub_key'       => $this->hub_key,
+			'section_key'   => $this->section_key,
 		);
 	}
 }

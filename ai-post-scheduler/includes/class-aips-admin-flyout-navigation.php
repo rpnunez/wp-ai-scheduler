@@ -104,6 +104,40 @@ class AIPS_Admin_Flyout_Navigation {
 	}
 
 	/**
+	 * Return the flyout payload for the hub that owns the current (or given) page.
+	 *
+	 * @param string|null $page_slug Optional page slug override.
+	 * @param string|null $tab_key   Optional tab key override.
+	 * @return array<string, mixed>|null
+	 */
+	public static function get_current_hub_payload($page_slug = null, $tab_key = null) {
+		$context = AIPS_Admin_Page_Context::resolve($page_slug, $tab_key);
+		foreach (self::get_payload($page_slug, $tab_key) as $hub) {
+			if ($hub['key'] === $context->hub_key) {
+				return $hub;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Render the compact in-page hub navigator used when flyouts are disabled.
+	 *
+	 * @param string|null $page_slug Optional page slug override.
+	 * @param string|null $tab_key   Optional tab key override.
+	 * @return void
+	 */
+	public static function render_compact_nav($page_slug = null, $tab_key = null) {
+		$hub = self::get_current_hub_payload($page_slug, $tab_key);
+		if (empty($hub) || empty($hub['groups'])) {
+			return;
+		}
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/partials/admin-hub-compact-nav.php';
+	}
+
+	/**
 	 * Resolve the active public flyout item for a hub.
 	 *
 	 * @param string                  $hub_key Hub key.

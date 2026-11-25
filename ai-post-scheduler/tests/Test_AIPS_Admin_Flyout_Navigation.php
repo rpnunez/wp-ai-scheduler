@@ -116,6 +116,31 @@ class Test_AIPS_Admin_Flyout_Navigation extends WP_UnitTestCase {
 		$this->assertNotContains('author-topics', wp_list_pluck($items, 'key'));
 	}
 
+	public function test_compact_nav_renders_for_current_hub_including_hidden_pages() {
+		ob_start();
+		AIPS_Admin_Flyout_Navigation::render_compact_nav('aips-author-topics');
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('aips-admin-hub-nav', $output);
+		$this->assertStringContainsString('Authors', $output);
+		$this->assertStringContainsString('is-active', $output);
+		$this->assertStringNotContainsString("Author's Topics", $output);
+
+		$this->assertNull(AIPS_Admin_Flyout_Navigation::get_current_hub_payload('ai-post-scheduler'));
+		$this->assertNull(AIPS_Admin_Flyout_Navigation::get_current_hub_payload('aips-settings'));
+	}
+
+	public function test_legacy_content_child_pages_highlight_canonical_tabs() {
+		$payload = AIPS_Admin_Flyout_Navigation::get_payload('aips-content-intelligence');
+		$items   = $this->flatten_items($payload[3]);
+		$active  = array_values(array_filter($items, function($item) {
+			return $item['active'];
+		}));
+
+		$this->assertCount(1, $active);
+		$this->assertSame('aips-content-indexer', $active[0]['key']);
+	}
+
 	public function test_non_administrators_receive_no_payload() {
 		$subscriber = self::factory()->user->create(array('role' => 'subscriber'));
 		wp_set_current_user($subscriber);
