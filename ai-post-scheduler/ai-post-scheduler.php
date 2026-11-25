@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.24
+ * Version: 3.7.25
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.24');
+    define('AIPS_VERSION', '3.7.25');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -329,6 +329,19 @@ final class AI_Post_Scheduler {
             return AIPS_Config::get_instance();
         });
 
+        // Register AIPS_Settings_Registry
+        $container->singleton(AIPS_Settings_Registry::class, function( $container ) {
+            return AIPS_Settings_Registry::instance();
+        });
+
+        // Register AIPS_Settings_Manager
+        $container->singleton(AIPS_Settings_Manager::class, function( $container ) {
+            return new AIPS_Settings_Manager(
+                $container->make(AIPS_Settings_Registry::class),
+                new AIPS_Settings_Form_Renderer()
+            );
+        });
+
         // Register AIPS_History_Repository
         $container->singleton(AIPS_History_Repository::class, function( $container ) {
             return AIPS_History_Repository::instance();
@@ -378,13 +391,37 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_AI_Service::class);
         });
 
-        // Cron core layer: declarative registry + WP-Cron manager (issue #2369).
+        // Cron core layer: declarative registry + WP-Cron manager (issue #2369)
+        // and scheduling backend adapter (issue #2375).
         $container->singleton(AIPS_Cron_Registry::class, function( $container ) {
             return AIPS_Cron_Registry::instance();
         });
 
         $container->singleton(AIPS_Cron_Manager::class, function( $container ) {
             return new AIPS_Cron_Manager( $container->make(AIPS_Cron_Registry::class) );
+        });
+
+        $container->singleton(AIPS_Cron_Backend_Interface::class, function( $container ) {
+            return AIPS_Cron_Backend_Resolver::resolve( $container->make(AIPS_Cron_Manager::class) );
+        });
+
+        // Background job infrastructure (issue #2376)
+        $container->singleton(AIPS_Job_Registry::class, function( $container ) {
+            return new AIPS_Job_Registry();
+        });
+
+        $container->singleton(AIPS_Job_Repository::class, function( $container ) {
+            return new AIPS_Job_Repository();
+        });
+
+        $container->singleton(AIPS_Job_Manager::class, function( $container ) {
+            return new AIPS_Job_Manager(
+                $container->make(AIPS_Job_Registry::class),
+                $container->make(AIPS_Job_Repository::class),
+                $container->make(AIPS_Cron_Manager::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_Cron_Backend_Interface::class)
+            );
         });
 
         $container->singleton(AIPS_Schedule_Repository::class, function( $container ) {

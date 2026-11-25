@@ -6,9 +6,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Templates_Controller {
 
     private $templates;
+	private $voices_repository;
 
-    public function __construct($templates = null) {
+	public function __construct($templates = null, $voices_repository = null) {
         $this->templates = $templates ?: new AIPS_Templates();
+		$this->voices_repository = $voices_repository ?: new AIPS_Voices_Repository();
 
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
@@ -150,6 +152,8 @@ class AIPS_Templates_Controller {
             'featured_image_source' => (new AIPS_Post_Images_Service())->normalize_source(isset($_POST['featured_image_source']) ? wp_unslash($_POST['featured_image_source']) : 'ai_prompt'),
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
+            'generate_slug' => isset($_POST['generate_slug']) ? $this->normalize_boolean_flag($_POST['generate_slug']) : 0,
+            'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['slug_prompt'])) : '',
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
@@ -273,6 +277,13 @@ class AIPS_Templates_Controller {
         $template = $this->templates->get($id);
 
         if ($template) {
+			$template->voice_name = '';
+			if (!empty($template->voice_id)) {
+				$voice = $this->voices_repository->get_by_id((int) $template->voice_id);
+				if ($voice) {
+					$template->voice_name = (string) $voice->name;
+				}
+			}
             $post_images_repo = new AIPS_Post_Images_Repository();
             $template->post_images = $post_images_repo->get_content_images_for_entity('template', $id);
             AIPS_Ajax_Response::success(array('template' => $template));
@@ -378,6 +389,8 @@ class AIPS_Templates_Controller {
             'post_quantity' => 1,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
+            'generate_slug' => isset($_POST['generate_slug']) ? $this->normalize_boolean_flag($_POST['generate_slug']) : 0,
+            'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['slug_prompt'])) : '',
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field(wp_unslash($_POST['featured_image_unsplash_keywords'])) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field(wp_unslash($_POST['featured_image_media_ids'])) : '',
@@ -393,6 +406,16 @@ class AIPS_Templates_Controller {
 
         if (mb_strlen($data['name']) > 255) {
             AIPS_Ajax_Response::error(__('Template name cannot exceed 255 characters.', 'ai-post-scheduler'));
+        }
+
+        $raw_post_images = null;
+        if (isset($_POST['post_images'])) {
+            $raw_post_images = is_string($_POST['post_images']) ? json_decode(wp_unslash($_POST['post_images']), true) : $_POST['post_images'];
+        } elseif (isset($_POST['template_post_images'])) {
+            $raw_post_images = is_string($_POST['template_post_images']) ? json_decode(wp_unslash($_POST['template_post_images']), true) : $_POST['template_post_images'];
+        }
+        if (is_array($raw_post_images)) {
+            $data['post_images'] = $raw_post_images;
         }
 
         // Convert to object for context
@@ -450,6 +473,8 @@ class AIPS_Templates_Controller {
             'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post(wp_unslash($_POST['image_prompt'])) : '',
             'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
+            'generate_slug' => isset($_POST['generate_slug']) ? $this->normalize_boolean_flag($_POST['generate_slug']) : 0,
+            'slug_prompt' => isset($_POST['slug_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['slug_prompt'])) : '',
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
             'include_sources' => isset($_POST['include_sources']) && filter_var(wp_unslash($_POST['include_sources']), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
@@ -464,7 +489,7 @@ class AIPS_Templates_Controller {
 
         // Use Prompt Builder to build all prompts
         $prompt_builder = new AIPS_Prompt_Builder();
-        
+
         // Get voice if selected
         $voice = $prompt_builder->get_voice($template_data->voice_id);
 

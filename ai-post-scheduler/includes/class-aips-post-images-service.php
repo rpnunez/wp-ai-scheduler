@@ -23,6 +23,13 @@ class AIPS_Post_Images_Service {
 	 * @return array Sanitized rows numbered from 1 in submitted order.
 	 */
 	public function normalize_submitted_rows($raw_rows) {
+		if (is_string($raw_rows)) {
+			$decoded = json_decode(wp_unslash($raw_rows), true);
+			if (is_array($decoded)) {
+				$raw_rows = $decoded;
+			}
+		}
+
 		if (!is_array($raw_rows)) {
 			return array();
 		}

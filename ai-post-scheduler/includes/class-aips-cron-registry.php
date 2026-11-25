@@ -58,6 +58,35 @@ class AIPS_Cron_Registry {
 	}
 
 	// -------------------------------------------------------------------------
+	// ActionScheduler groups
+	// -------------------------------------------------------------------------
+
+	const GROUP_INDEXER        = 'aips-indexer';
+	const GROUP_INTERNAL_LINKS = 'aips-internal-links';
+	const GROUP_EMBEDDINGS     = 'aips-embeddings';
+	const GROUP_AUTHOR_TOPICS  = 'aips-author-topics';
+	const GROUP_BULK_BATCH     = 'aips-bulk-batch';
+	const GROUP_DEFAULT        = 'aips-default';
+
+	/**
+	 * Every ActionScheduler group registered by the plugin.
+	 *
+	 * Used by deactivation cleanup to clear orphaned actions across all plugin groups.
+	 *
+	 * @return string[]
+	 */
+	public function get_action_scheduler_groups() {
+		return array(
+			self::GROUP_INDEXER,
+			self::GROUP_INTERNAL_LINKS,
+			self::GROUP_EMBEDDINGS,
+			self::GROUP_AUTHOR_TOPICS,
+			self::GROUP_BULK_BATCH,
+			self::GROUP_DEFAULT,
+		);
+	}
+
+	// -------------------------------------------------------------------------
 	// Recurring events (manager-owned)
 	// -------------------------------------------------------------------------
 
@@ -255,6 +284,7 @@ class AIPS_Cron_Registry {
 			AIPS_Autolink_Run_Service::TICK_HOOK              => __( 'Auto-link Run Tick', 'ai-post-scheduler' ),
 			AIPS_Managed_Background_Process::TICK_HOOK        => __( 'Managed Background Process Tick', 'ai-post-scheduler' ),
 			AIPS_Bulk_Batch_Processor::HOOK                   => __( 'Bulk Batch Slice', 'ai-post-scheduler' ),
+			AIPS_Job_Registry::DEFAULT_TICK_HOOK              => __( 'Background Job Tick', 'ai-post-scheduler' ),
 			'aips_index_posts_batch'                          => __( 'Internal Links Index Batch', 'ai-post-scheduler' ),
 			'aips_process_pending_indexer_queue'              => __( 'Pending Indexer Queue', 'ai-post-scheduler' ),
 		);
@@ -357,6 +387,12 @@ class AIPS_Cron_Registry {
 			AIPS_Managed_Background_Process::TICK_HOOK => array(
 				'callback'      => static function ( $process_key ) {
 					AIPS_Container::get_instance()->make( AIPS_Background_Process_Manager::class )->tick( (string) $process_key );
+				},
+				'accepted_args' => 1,
+			),
+			AIPS_Job_Registry::DEFAULT_TICK_HOOK => array(
+				'callback'      => static function ( $job_id ) {
+					AIPS_Container::get_instance()->make( AIPS_Job_Manager::class )->handle_tick( (string) $job_id );
 				},
 				'accepted_args' => 1,
 			),

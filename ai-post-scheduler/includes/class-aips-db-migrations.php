@@ -72,9 +72,19 @@ class AIPS_DB_Migrations {
 	 */
 	public static function critical_tables_exist(): bool {
 		global $wpdb;
-		$required_table = $wpdb->prefix . 'aips_embeddings';
-		$found          = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $required_table ) );
-		return ( $found === $required_table );
+		// A missing critical table forces a reinstall (dbDelta) even when the
+		// stored version already equals AIPS_VERSION — this is what lets a site
+		// that received new schema without a version bump self-heal. aips_jobs
+		// (the unified job store) is included so it is created on sites that
+		// predate it. See #2419.
+		foreach ( array( 'aips_embeddings', 'aips_jobs' ) as $table ) {
+			$required_table = $wpdb->prefix . $table;
+			$found          = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $required_table ) );
+			if ( $found !== $required_table ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**

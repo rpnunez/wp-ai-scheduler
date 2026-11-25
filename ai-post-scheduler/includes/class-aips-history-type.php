@@ -70,6 +70,11 @@ class AIPS_History_Type {
 	 * Structured metric snapshot (generation outcome, duration, image result)
 	 */
 	const METRIC = 10;
+
+	/**
+	 * Conversational transcript snapshot (multi-turn exchanges for regeneration/auditing)
+	 */
+	const AI_CONVERSATION = 11;
 	
 	/**
 	 * Get human-readable label for a history type
@@ -89,6 +94,7 @@ class AIPS_History_Type {
 			self::ACTIVITY => __('Activity', 'ai-post-scheduler'),
 			self::SESSION_METADATA => __('Session Metadata', 'ai-post-scheduler'),
 			self::METRIC => __('Metric', 'ai-post-scheduler'),
+			self::AI_CONVERSATION => __('AI Conversation', 'ai-post-scheduler'),
 		);
 		
 		return isset($labels[$type]) ? $labels[$type] : __('Unknown', 'ai-post-scheduler');
@@ -111,6 +117,7 @@ class AIPS_History_Type {
 			self::ACTIVITY => self::get_label(self::ACTIVITY),
 			self::SESSION_METADATA => self::get_label(self::SESSION_METADATA),
 			self::METRIC => self::get_label(self::METRIC),
+			self::AI_CONVERSATION => self::get_label(self::AI_CONVERSATION),
 		);
 	}
 	

@@ -208,4 +208,40 @@ class Test_AIPS_Templates_Controller_Save extends WP_UnitTestCase {
 		$this->assertSame(0, $this->templates_stub->saved_data['generate_slug']);
 		$this->assertSame('', $this->templates_stub->saved_data['slug_prompt']);
 	}
+
+	public function test_ajax_save_template_syncs_post_images_when_submitted_as_array() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Template with array images';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['template_post_images'] = array(
+			array('source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'Array Image'),
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->run_save();
+		$this->assertTrue($response['success']);
+
+		$repo = new AIPS_Post_Images_Repository();
+		$rows = $repo->get_content_images_for_entity('template', 123);
+		$this->assertCount(1, $rows);
+		$this->assertSame('Array Image', $rows[0]->image_prompt);
+	}
+
+	public function test_ajax_save_template_syncs_post_images_when_submitted_as_json_string() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Template with JSON images';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['template_post_images'] = wp_json_encode(array(
+			array('source' => 'ai_prompt', 'placement' => 'auto', 'image_prompt' => 'JSON Image'),
+		));
+		$_REQUEST = $_POST;
+
+		$response = $this->run_save();
+		$this->assertTrue($response['success']);
+
+		$repo = new AIPS_Post_Images_Repository();
+		$rows = $repo->get_content_images_for_entity('template', 123);
+		$this->assertCount(1, $rows);
+		$this->assertSame('JSON Image', $rows[0]->image_prompt);
+	}
 }

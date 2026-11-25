@@ -76,7 +76,7 @@ class AIPS_Post_Manager {
 
         // Apply a final exact-title dedupe guard before insertion.
         $title = $this->ensure_unique_post_title($title, 'post');
-        
+
         // Support both legacy template and new context approaches
         $context = isset($data['context']) ? $data['context'] : null;
         $template = isset($data['template']) ? $data['template'] : null;
@@ -490,7 +490,13 @@ class AIPS_Post_Manager {
 
         if (is_array($existing_statuses) && array_key_exists('post_images', $existing_statuses)) {
             $generated_images = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
-            $component_statuses['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
+            // If the post was supposed to have content images but has no generated records in the database,
+            // preserve the existing status to avoid falsely flagging legacy posts without content images as failed.
+            if (empty($generated_images)) {
+                $component_statuses['post_images'] = !empty($existing_statuses['post_images']);
+            } else {
+                $component_statuses['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
+            }
         }
 
         $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image', 'post_images', 'post_slug');

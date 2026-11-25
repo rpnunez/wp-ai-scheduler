@@ -1422,6 +1422,44 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $post_id
         ));
     }
+
+    /**
+     * Retrieve the persisted conversation transcript for a given post.
+     *
+     * @param int $post_id Post ID.
+     * @return array|null Array of turns or null if not found.
+     */
+    public function get_conversation_transcript_for_post($post_id) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return null;
+        }
+
+        $history = $this->get_by_post_id($post_id);
+        if (!$history || empty($history->id)) {
+            return null;
+        }
+
+        $row = $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT details FROM {$this->table_name_log}
+             WHERE history_id = %d AND history_type_id = %d
+             ORDER BY timestamp DESC, id DESC LIMIT 1",
+            $history->id,
+            AIPS_History_Type::AI_CONVERSATION
+        ));
+
+        if (!$row || empty($row->details)) {
+            return null;
+        }
+
+        $details = json_decode($row->details, true);
+        if (!is_array($details) || empty($details['output']) || !is_array($details['output'])) {
+            return null;
+        }
+
+        $output = $details['output'];
+        return (!empty($output['transcript']) && is_array($output['transcript'])) ? $output['transcript'] : null;
+    }
     
     /**
      * Add a log entry to a history item.
@@ -1859,6 +1897,49 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         return $counts;
+    }
+
+    /**
+     * Get the most recent post-producing log rows for a schedule history container.
+     *
+     * Uses the same event filter as get_schedule_generated_post_counts(), so the
+     * rows returned here are the ones that make up a schedule's "posts generated"
+     * count. Each row's details JSON carries the post ID(s) under context/output.
+     *
+     * @param int $history_id Schedule history container ID.
+     * @param int $limit      Maximum rows to return.
+     * @return array Raw log rows, newest first.
+     */
+    public function get_recent_schedule_post_logs($history_id, $limit = 10) {
+        $history_id = absint($history_id);
+        $limit      = absint($limit);
+
+        if (!$history_id || $limit < 1) {
+            return array();
+        }
+
+        $event_types = AIPS_History_Event_Type::expand(array(
+            AIPS_History_Event_Type::POST_PUBLISHED,
+            AIPS_History_Event_Type::POST_DRAFT,
+            AIPS_History_Event_Type::MANUAL_SCHEDULE_COMPLETED,
+        ));
+        $event_placeholders = implode(', ', array_fill(0, count($event_types), '%s'));
+
+        $sql = "
+            SELECT *
+            FROM {$this->table_name_log}
+            WHERE history_id = %d
+                AND history_type_id IN (%d, %d)
+                AND event_type IN ({$event_placeholders})
+            ORDER BY timestamp DESC, id DESC
+            LIMIT %d
+        ";
+
+        $args   = array($history_id, AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR);
+        $args   = array_merge($args, $event_types);
+        $args[] = $limit;
+
+        return $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
     }
 
     /**
