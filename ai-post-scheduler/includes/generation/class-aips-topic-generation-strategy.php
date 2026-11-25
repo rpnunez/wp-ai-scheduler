@@ -758,7 +758,7 @@ class AIPS_Topic_Generation_Strategy implements AIPS_Pipeline_Executable_Strateg
 			return array();
 		}
 
-		$max_qty       = isset($author->topic_generation_quantity) ? (int) $author->topic_generation_quantity : 5;
+		$max_qty       = isset($author->topic_generation_quantity) ? max(1, (int) $author->topic_generation_quantity) : 5;
 		$items         = (isset($json_data['topics']) && is_array($json_data['topics'])) ? $json_data['topics'] : $json_data;
 		$title_comp    = $this->registry ? $this->registry->get('topic_title', $this->get_key()) : null;
 		$score_comp    = $this->registry ? $this->registry->get('topic_score', $this->get_key()) : null;

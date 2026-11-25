@@ -746,6 +746,24 @@ class AIPS_Generator {
      * @return string Excerpt string (40-60 words as prompted). Empty string on failure.
      */
     public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array(), $subject = null) {
+        return $this->generate_excerpt_text($title, $content, $voice, $topic, $options, $subject);
+    }
+
+    /**
+     * Non-deprecated excerpt primitive shared by the deprecated generate_excerpt()
+     * wrapper and AIPS_Excerpt_Post_Component, so the component does not depend on a
+     * deprecated method. (The component is the public entry point; this is the shared
+     * internal implementation until the AI-Edit unification moves it.)
+     *
+     * @param string                         $title
+     * @param string                         $content
+     * @param object|null                    $voice
+     * @param string|null                    $topic
+     * @param array                          $options
+     * @param object|AIPS_Generation_Context $subject
+     * @return string Excerpt string, or empty string on failure.
+     */
+    public function generate_excerpt_text($title, $content, $voice = null, $topic = null, $options = array(), $subject = null) {
         // In a conversation the article and title are already turns in the
         // transcript, so neither is pasted back into the prompt.
         if ($this->conversation !== null) {
@@ -1846,7 +1864,7 @@ class AIPS_Generator {
      * @param string $content Generated content.
      * @return string Content without a leading title block.
      */
-    private function strip_leading_title_block_from_content($content) {
+    public function strip_leading_title_block_from_content($content) {
         if (!is_string($content)) {
             return '';
         }

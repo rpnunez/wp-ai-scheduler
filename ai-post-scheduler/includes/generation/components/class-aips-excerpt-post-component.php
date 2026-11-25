@@ -127,7 +127,7 @@ class AIPS_Excerpt_Post_Component extends AIPS_Abstract_Post_Component {
 			$generator->set_conversation($session);
 		}
 
-		$result = $generator->generate_excerpt($title, $content, $voice, $topic, $ai_options, $context);
+		$result = $generator->generate_excerpt_text($title, $content, $voice, $topic, $ai_options, $context);
 
 		if ($session !== null) {
 			$generator->set_conversation(null);
@@ -161,7 +161,7 @@ class AIPS_Excerpt_Post_Component extends AIPS_Abstract_Post_Component {
 		$ai_options = $this->merge_directive_option($this->extract_provider_options($options), $directive);
 
 		$generator->set_conversation($session);
-		$result = $generator->generate_excerpt($title, $content, $voice, $topic_str, $ai_options, $context);
+		$result = $generator->generate_excerpt_text($title, $content, $voice, $topic_str, $ai_options, $context);
 		$generator->set_conversation(null);
 
 		if (is_wp_error($result)) {
