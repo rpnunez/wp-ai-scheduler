@@ -1,0 +1,40 @@
+{
+    "probe": "error-malformed-token",
+    "recorded_at": "2026-11-25T22:49:08+00:00",
+    "duration_ms": 684,
+    "request": {
+        "method": "GET",
+        "path": "/user/tokens/verify",
+        "headers": {
+            "Authorization": "Bearer {api_token}",
+            "Content-Type": "application/json",
+            "cf-aig-gateway-id": "default",
+            "cf-aig-metadata": "{\"aips_probe\":\"slice0\",\"aips_probe_name\":\"auth-verify-user-token\"}"
+        },
+        "body": null
+    },
+    "response": {
+        "status": 400,
+        "headers": {
+            "content-type": "application/json"
+        },
+        "body": {
+            "success": false,
+            "errors": [
+                {
+                    "code": 6003,
+                    "message": "Invalid request headers",
+                    "error_chain": [
+                        {
+                            "code": 6111,
+                            "message": "Invalid format for Authorization header"
+                        }
+                    ]
+                }
+            ],
+            "messages": [],
+            "result": null
+        },
+        "transport_error": ""
+    }
+}
