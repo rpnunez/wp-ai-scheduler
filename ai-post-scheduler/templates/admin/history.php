@@ -295,7 +295,6 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                     <div id="aips-history-logs-modal-status"></div>
                     <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
                 </div>
-                <div class="aips-history-modal-header-diagnostic"></div>
             </div>
         </div>
         <div class="aips-modal-body aips-modal-content-body" style="white-space: normal;">
@@ -374,9 +373,8 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 	<table class="aips-table aips-history-logs-table" style="width:100%;">
 		<thead>
 			<tr>
-				<th style="width:150px;">{{colTimestamp}}</th>
-				<th style="width:130px;">{{colType}}</th>
-				<th style="width:150px;">{{colLogType}}</th>
+				<th style="width:180px;">{{colTimestamp}}</th>
+				<th style="width:140px;">{{colType}}</th>
 				<th>{{colDetails}}</th>
 			</tr>
 		</thead>
@@ -387,9 +385,8 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 <!-- Template: a single log table row; {{detailsHtml}} is raw, all others are pre-escaped -->
 <script type="text/html" id="aips-tmpl-history-log-row">
 	<tr data-type-ids="{{typeIds}}">
-		<td style="white-space:nowrap;font-size:12px;">{{timestamp}}</td>
-		<td><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
-		<td style="font-size:12px;font-family:monospace;">{{logType}}</td>
+		<td class="aips-history-log-timestamp" style="white-space:nowrap;font-size:12px;vertical-align:middle;">{{timestamp}}</td>
+		<td class="aips-history-log-type-cell" style="vertical-align:middle;"><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
 		<td>{{detailsHtml}}</td>
 	</tr>
 </script>

@@ -956,6 +956,7 @@
             AIPS.bindTemplateEvents();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
+            AIPS.setTemplateVoice(0);
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
@@ -977,6 +978,37 @@
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1, $('#aips-template-modal'));
             $('#aips-template-modal').show();
+        },
+
+        /**
+         * Select a voice in the template wizard's `#voice_id` dropdown.
+         *
+         * The voice list is filled over AJAX, so it may arrive after the
+         * template data. The wanted voice is kept on the select until
+         * `searchVoices()` finds it in the list, so saving an edited template
+         * never clears its voice.
+         *
+		 * @param {number|string|null} voiceId Voice ID, or 0/empty for no voice.
+		 * @param {string} voiceName Voice label returned with the template.
+         */
+		setTemplateVoice: function(voiceId, voiceName) {
+            var $select = $('#voice_id');
+            var value = voiceId ? String(voiceId) : '0';
+
+            if (value === '0') {
+                $select.removeData('aipsSelectedVoice').val('0');
+                return;
+            }
+
+            if ($select.find('option[value="' + value + '"]').length) {
+                $select.removeData('aipsSelectedVoice').val(value);
+                return;
+            }
+
+			$select
+				.append($('<option>').val(value).text(voiceName || value))
+				.val(value)
+				.data('aipsSelectedVoice', value);
         },
 
         /**
@@ -1032,6 +1064,7 @@
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
                         $('#post_quantity').val(t.post_quantity || 1);
+						AIPS.setTemplateVoice(t.voice_id, t.voice_name);
                         $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
                         $('#image_prompt').val(t.image_prompt || '');
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
@@ -1629,12 +1662,35 @@
                 success: function(response) {
                     if (response.success) {
                         var $select = $('#voice_id');
-                        var currentVal = $select.val();
-                        $select.html('<option value="0">' + aipsAdminL10n.noVoiceDefault + '</option>');
+                        // A template opened for editing records its voice here, so the
+                        // selection survives even when this list loads after the form.
+                        var pendingVal = $select.data('aipsSelectedVoice');
+                        var currentVal = (pendingVal !== undefined && pendingVal !== null) ? String(pendingVal) : $select.val();
+                        var $current = $select.find('option[value="' + currentVal + '"]');
+                        var currentText = $current.length ? $current.text() : '';
+                        var found = false;
+
+                        $select.empty().append($('<option>').val('0').text(aipsAdminL10n.noVoiceDefault));
                         $.each(response.data.voices, function(i, voice) {
-                            $select.append('<option value="' + voice.id + '">' + voice.name + '</option>');
+                            if (String(voice.id) === String(currentVal)) {
+                                found = true;
+                            }
+                            $select.append($('<option>').val(voice.id).text(voice.name));
                         });
-                        $select.val(currentVal);
+
+                        // Keep the selected voice even when a search filters it out,
+                        // otherwise saving the form would silently clear it.
+                        if (!found && currentVal && currentVal !== '0' && currentText) {
+                            $select.append($('<option>').val(currentVal).text(currentText));
+                            found = true;
+                        }
+
+                        if (found) {
+                            $select.val(currentVal);
+                            $select.removeData('aipsSelectedVoice');
+                        } else {
+                            $select.val('0');
+                        }
                     }
                 }
             });
@@ -3038,36 +3094,32 @@
                         action: function() {
                             $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
-                            $.post(ajaxurl, {
+                            $.post(aipsAjax.ajaxUrl, {
                                 action: 'aips_reset_schedule_circuit',
-                                nonce: aipsData.nonce,
+                                nonce: aipsAjax.nonce,
                                 id: id,
                                 type: type
                             })
                             .done(function(response) {
-                                if (response.success) {
-                                    AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
+                                if (response && response.success) {
+                                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Circuit breaker reset successfully.', 'success');
 
-                                    // Update the row's circuit state
-                                    var $row = $btn.closest('.aips-unified-row');
+                                    // The button may live in the row's ⋯ menu or in its details row,
+                                    // so resolve the schedule row by key rather than by DOM ancestry.
+                                    var $row = $('tr.aips-unified-row[data-row-key="' + type + ':' + id + '"]');
                                     $row.attr('data-circuit-state', 'closed');
-
-                                    // Update health indicator badge
-                                    $row.find('.column-status .aips-schedule-status-wrapper').first().html(
-                                        '<div style="display:flex;align-items:center;gap:8px;">' +
-                                        '<span class="aips-badge aips-badge-success" title="Circuit Breaker Status">' +
-                                        '<span class="dashicons dashicons-yes"></span> Healthy</span></div>'
-                                    );
-
-                                    // Remove the reset button
+                                    $row.find('.aips-reset-circuit, .aips-sched-alert, .aips-sched-alert + .screen-reader-text').remove();
                                     $btn.remove();
+
+                                    // Re-fetch the details row so Health reflects the reset.
+                                    $(document).trigger('aips:schedule-changed', [type, id]);
                                 } else {
-                                    AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
+                                    AIPS.Utilities.showToast((response && response.data && response.data.message) || 'Failed to reset circuit breaker.', 'error');
                                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                                 }
                             })
                             .fail(function() {
-                                AIPS.showNotice('An error occurred while resetting the circuit breaker.', 'error');
+                                AIPS.Utilities.showToast('An error occurred while resetting the circuit breaker.', 'error');
                                 $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                             });
                         }
@@ -3099,27 +3151,30 @@
                         action: function() {
                             $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
-                            $.post(ajaxurl, {
+                            $.post(aipsAjax.ajaxUrl, {
                                 action: 'aips_resume_schedule_batch',
-                                nonce: aipsData.nonce,
+                                nonce: aipsAjax.nonce,
                                 id: id,
                                 type: type
                             })
                             .done(function(response) {
-                                if (response.success) {
-                                    AIPS.showNotice(response.data.message || 'Batch resumed successfully.', 'success');
+                                if (response && response.success) {
+                                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Batch resumed successfully.', 'success');
 
-                                    // Optionally reload the page or update the UI
-                                    setTimeout(function() {
-                                        window.location.reload();
-                                    }, 1500);
+                                    // Update the row in place (no page reload): drop the resume
+                                    // triggers and re-fetch the details row.
+                                    var $row = $('tr.aips-unified-row[data-row-key="' + type + ':' + id + '"]');
+                                    $row.attr('data-has-incomplete-batch', '0');
+                                    $row.find('.aips-resume-batch').remove();
+                                    $btn.remove();
+                                    $(document).trigger('aips:schedule-changed', [type, id]);
                                 } else {
-                                    AIPS.showNotice(response.data || 'Failed to resume batch.', 'error');
+                                    AIPS.Utilities.showToast((response && response.data && response.data.message) || 'Failed to resume batch.', 'error');
                                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                                 }
                             })
                             .fail(function() {
-                                AIPS.showNotice('An error occurred while resuming the batch.', 'error');
+                                AIPS.Utilities.showToast('An error occurred while resuming the batch.', 'error');
                                 $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                             });
                         }
@@ -3516,26 +3571,15 @@
          * @param {number} isActive 1 = active/resumed, 0 = paused.
          */
         updateUnifiedRowStatus: function($row, isActive) {
-            var $toggle  = $row.find('.aips-unified-toggle-schedule');
-            var $wrapper = $row.find('.aips-schedule-status-wrapper');
-            var $badge   = $wrapper.find('.aips-badge').last();
-            var $icon    = $badge.find('.dashicons');
+            isActive = isActive ? 1 : 0;
 
-            $toggle.prop('checked', isActive === 1);
-            $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
-            $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
-            $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
+            // The Enabled / Paused label lives inside the switch and follows :checked via CSS.
+            $row.find('.aips-unified-toggle-schedule').prop('checked', isActive === 1);
+            $row.toggleClass('is-paused', isActive === 0)
+                .attr('data-is-active', String(isActive))
+                .data('is-active', isActive);
 
-            if (isActive) {
-                $badge.addClass('aips-badge-success');
-                $icon.addClass('dashicons-yes-alt');
-                $icon.after(' Active');
-            } else {
-                $badge.addClass('aips-badge-neutral');
-                $icon.addClass('dashicons-minus');
-                $icon.after(' Paused');
-            }
-            $row.data('is-active', isActive);
+            $(document).trigger('aips:schedule-changed', [$row.data('type'), $row.data('id')]);
         },
 
         /**
@@ -3591,6 +3635,8 @@
                             }
                         }
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+                        // New output exists now; refresh the row's details if they were loaded.
+                        $(document).trigger('aips:schedule-changed', [type, id]);
                     } else {
                         AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
                     }
@@ -5483,7 +5529,12 @@
                 $btn.attr('title', (window.aipsAdminL10n && aipsAdminL10n.collapseDetails) || 'Collapse details');
                 $icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
                 $detailsRow.prop('hidden', false).addClass('is-expanded');
+                // Lets page modules lazily fill the details row (e.g. AIPS.SchedulesTable).
+                $detailsRow.trigger('aips:row-expanded');
             }
+            // Plugin-specific class: WordPress core reserves `tr.is-expanded` for its
+            // responsive column toggle (.toggle-row), so it must not be reused here.
+            $btn.closest('tr').toggleClass('aips-row-open', !isExpanded);
         },
 
         /**
@@ -5532,6 +5583,16 @@
                         if (saved) {
                             var parsed = JSON.parse(saved);
                             if (parsed && typeof parsed === 'object') {
+                                // Older saves could contain the bulk-action select; it is a
+                                // one-off command, not a filter, so never restore it and
+                                // rewrite the entry without it.
+                                if (parsed.hasOwnProperty('action') || parsed.hasOwnProperty('action2')) {
+                                    delete parsed.action;
+                                    delete parsed.action2;
+                                    try {
+                                        localStorage.setItem(storageKey, JSON.stringify(parsed));
+                                    } catch (err) {}
+                                }
                                 var needsRedirect = false;
                                 var newParams = new URLSearchParams(window.location.search);
                                 for (var param in parsed) {
@@ -5560,6 +5621,10 @@
                         var $select = $(this);
                         var name = $select.attr('name');
                         var val = $select.val();
+                        // Bulk-action selects are one-off commands, not filters; never persist them.
+                        if (name === 'action' || name === 'action2') {
+                            return;
+                        }
                         if (name && val && val !== '-1' && val !== 'all') {
                             submittedFilters[name] = val;
                         }

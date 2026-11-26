@@ -26,7 +26,7 @@ Project-scoped subagents live in `.claude/agents/` and are auto-delegated by Cla
 | `pr-xray-report-assembler` | Writing PR Xray reports and creating a validated downloadable ZIP |
 
 Skills (step-by-step implementation guides) live in `.claude/skills/`:
-`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-portfolio-triage`, `pr-xray`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`).
+`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-portfolio-triage`, `pr-xray`, `matrix-review`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`).
 
 Saved multi-agent workflows live in `.claude/workflows/`:
 - `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit security compliance.
@@ -34,6 +34,7 @@ Saved multi-agent workflows live in `.claude/workflows/`:
 - `.claude/workflows/generation-pipeline-sweep.md` — sweeps generation contexts, prompt builders, logging, and retry backoff.
 - `.claude/workflows/pr-portfolio-triage.md` — ranks and routes multiple open PRs without claiming deep-review approval.
 - `.claude/workflows/pr-xray.md` — deep single-PR review with routed domain reviewers, adjudication, and report packaging.
+- `.claude/workflows/matrix-review.md` — two-phase scenario-matrix and execution-traced deep code review with unified diff patches.
 
 ## Commands
 
