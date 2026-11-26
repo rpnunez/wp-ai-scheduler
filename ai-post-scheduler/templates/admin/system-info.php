@@ -29,7 +29,7 @@ $markdown_report = $provider->get_markdown_report();
 	<div class="aips-status-grid">
 		<?php foreach ($system_info as $section => $checks) : ?>
 			<?php if (empty($checks)) continue; ?>
-			<?php $section_title = ucwords(str_replace(array('_', '-'), ' ', (string) $section)); ?>
+			<?php $section_title = $provider->get_section_title($section); ?>
 
 			<div class="aips-content-panel aips-status-card">
 				<div class="aips-panel-header">

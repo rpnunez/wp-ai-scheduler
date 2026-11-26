@@ -369,7 +369,7 @@
             $(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle);
             $(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.closeAllRowActionMenus);
             $(document).on('click', function(e) {
-                if (!$(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
+                if (!$(e.target).closest('.aips-row-action-group, .aips-row-action-menu, .aips-card-footer-right').length) {
                     AIPS.closeAllRowActionMenus();
                 }
             });
@@ -397,10 +397,16 @@
             $(document).on('click', '.aips-run-now', this.runNow);
             $(document).on('click', '.aips-quick-preview-post', this.openGeneratedPostPreview);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
+            $(document).on('change', '#generate_slug', this.toggleSlugPrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
+            $(document).on('change', '.aips-image-source-select', function() {
+                AIPS.toggleFeaturedImageSourceFields($(this).closest('.aips-image-settings-group'));
+            });
             $(document).on('change', '#template_post_type', this.toggleTemplatePostTypeFields);
-            $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
-            $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
+            $(document).on('click', '#featured_image_media_select, .aips-media-select-btn', this.openMediaLibrary);
+            $(document).on('click', '#featured_image_media_clear, .aips-media-clear-btn', this.clearMediaSelection);
+            $(document).on('click', '.aips-add-post-image-btn', this.addPostImageRow);
+            $(document).on('click', '.aips-remove-post-image-btn', this.removePostImageRow);
             $(document).on('keyup', '#voice_search', this.searchVoices);
 
             // Toggle source groups panel when Include Sources? checkbox changes.
@@ -732,7 +738,7 @@
                 .removeAttr('hidden')
                 .attr('aria-hidden', 'false');
         },
-        
+
         /**
          * Switch to an AIPS sub-tab identified by the clicked `.aips-tab-link`'s
          * `data-tab` attribute.
@@ -785,6 +791,18 @@
                     $targetTab.show().addClass('active').attr('aria-hidden', 'false');
                     $targetTab.find('.aips-tab-content:not(.active)').hide().attr('aria-hidden', 'true');
                     $targetTab.find('.aips-tab-content.active').show().attr('aria-hidden', 'false');
+                }
+
+                // Scroll page back to top when switching tabs in vertical rail layout or settings
+                try {
+                    var prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+                    window.scrollTo({
+                        top: 0,
+                        left: 0,
+                        behavior: prefersReducedMotion ? 'auto' : 'smooth'
+                    });
+                } catch (scrollErr) {
+                    window.scrollTo(0, 0);
                 }
             } else {
                 var $container = $tabNav.parent();
@@ -938,6 +956,7 @@
             AIPS.bindTemplateEvents();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
+            AIPS.setTemplateVoice(0);
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
@@ -946,6 +965,11 @@
             AIPS.toggleTemplatePostTypeFields();
             AIPS.setMediaSelection([]);
             AIPS.toggleImagePrompt();
+            $('#aips-template-post-images-list .aips-post-image-card').remove();
+            $('#aips-template-post-images-list .aips-post-images-empty-state').show();
+            $('#generate_slug').prop('checked', false);
+            $('#slug_prompt').val('');
+            AIPS.toggleSlugPrompt();
             // Reset AI Variables panel
             AIPS.updateAIVariablesPanel([]);
             // Reset source groups
@@ -954,6 +978,37 @@
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1, $('#aips-template-modal'));
             $('#aips-template-modal').show();
+        },
+
+        /**
+         * Select a voice in the template wizard's `#voice_id` dropdown.
+         *
+         * The voice list is filled over AJAX, so it may arrive after the
+         * template data. The wanted voice is kept on the select until
+         * `searchVoices()` finds it in the list, so saving an edited template
+         * never clears its voice.
+         *
+		 * @param {number|string|null} voiceId Voice ID, or 0/empty for no voice.
+		 * @param {string} voiceName Voice label returned with the template.
+         */
+		setTemplateVoice: function(voiceId, voiceName) {
+            var $select = $('#voice_id');
+            var value = voiceId ? String(voiceId) : '0';
+
+            if (value === '0') {
+                $select.removeData('aipsSelectedVoice').val('0');
+                return;
+            }
+
+            if ($select.find('option[value="' + value + '"]').length) {
+                $select.removeData('aipsSelectedVoice').val(value);
+                return;
+            }
+
+			$select
+				.append($('<option>').val(value).text(voiceName || value))
+				.val(value)
+				.data('aipsSelectedVoice', value);
         },
 
         /**
@@ -969,7 +1024,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
 
             $.ajax({
@@ -1009,6 +1064,7 @@
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
                         $('#post_quantity').val(t.post_quantity || 1);
+						AIPS.setTemplateVoice(t.voice_id, t.voice_name);
                         $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
                         $('#image_prompt').val(t.image_prompt || '');
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
@@ -1022,8 +1078,22 @@
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);
+                        $('#generate_slug').prop('checked', t.generate_slug == 1);
+                        $('#slug_prompt').val(t.slug_prompt || '');
+                        AIPS.toggleSlugPrompt();
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
+
+                        // Populate Post Content Images
+                        $('#aips-template-post-images-list .aips-post-image-card').remove();
+                        if (t.post_images && t.post_images.length && AIPS.PostImages) {
+                            $('#aips-template-post-images-list .aips-post-images-empty-state').hide();
+                            t.post_images.forEach(function(img, idx) {
+                                AIPS.PostImages.renderCard($('#aips-template-post-images-list'), img, idx, 'template_post_images');
+                            });
+                        } else {
+                            $('#aips-template-post-images-list .aips-post-images-empty-state').show();
+                        }
 
                         // Restore affiliate links setting.
                         $('#affiliate_links_enabled').prop('checked', t.affiliate_links_enabled == 1);
@@ -1204,6 +1274,7 @@
                     featured_image_source: $('#featured_image_source').val(),
                     featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
                     featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    template_post_images: (AIPS.PostImages && typeof AIPS.PostImages.collectImages === 'function') ? AIPS.PostImages.collectImages($('#aips-template-post-images-list')) : [],
                     post_type: $('#template_post_type').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
@@ -1250,7 +1321,7 @@
         saveDraftTemplate: function(e) {
             e.preventDefault();
             var $btn = $(this);
-            
+
             // Validate at least name is provided
             var nameRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 1; })[0];
             if (nameRule && !$(nameRule.selector).val().trim()) {
@@ -1278,6 +1349,7 @@
                     featured_image_source: $('#featured_image_source').val(),
                     featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
                     featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    template_post_images: (AIPS.PostImages && typeof AIPS.PostImages.collectImages === 'function') ? AIPS.PostImages.collectImages($('#aips-template-post-images-list')) : [],
                     post_type: $('#template_post_type').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
@@ -1342,7 +1414,7 @@
          */
         testTemplate: function(e) {
             e.preventDefault();
-            
+
             // Cross-step validation: navigate to the first step with an unfilled required field.
             var invalid = AIPS.getFirstInvalidStep($('#aips-template-modal'));
             if (invalid) {
@@ -1366,6 +1438,9 @@
                 voice_id: $('#voice_id').val(),
                 post_quantity: 1, // Force 1 for test
                 generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
+                generate_slug: $('#generate_slug').is(':checked') ? 1 : 0,
+                slug_prompt: $('#slug_prompt').val() || '',
+                template_post_images: (AIPS.PostImages && typeof AIPS.PostImages.collectImages === 'function') ? JSON.stringify(AIPS.PostImages.collectImages($('#aips-template-post-images-list'))) : '[]',
                 image_prompt: $('#image_prompt').val(),
                 featured_image_source: $('#featured_image_source').val(),
                 featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
@@ -1386,8 +1461,14 @@
 
                         // Populate modal
                         $('#aips-test-title').text(result.title || '-');
+                        if (result.slug) {
+                            $('#aips-test-slug-row').show();
+                            $('#aips-test-slug').text(result.slug);
+                        } else {
+                            $('#aips-test-slug-row').hide();
+                        }
                         $('#aips-test-excerpt').text(result.excerpt || '-');
-                        $('#aips-test-result-modal').find('.aips-modal-content-body').text(result.content || '-');
+                        $('#aips-test-result-modal').find('.aips-modal-content-body').html(result.content || '-');
 
                         if (result.image_prompt) {
                             $('#aips-test-image-row').show();
@@ -1581,12 +1662,35 @@
                 success: function(response) {
                     if (response.success) {
                         var $select = $('#voice_id');
-                        var currentVal = $select.val();
-                        $select.html('<option value="0">' + aipsAdminL10n.noVoiceDefault + '</option>');
+                        // A template opened for editing records its voice here, so the
+                        // selection survives even when this list loads after the form.
+                        var pendingVal = $select.data('aipsSelectedVoice');
+                        var currentVal = (pendingVal !== undefined && pendingVal !== null) ? String(pendingVal) : $select.val();
+                        var $current = $select.find('option[value="' + currentVal + '"]');
+                        var currentText = $current.length ? $current.text() : '';
+                        var found = false;
+
+                        $select.empty().append($('<option>').val('0').text(aipsAdminL10n.noVoiceDefault));
                         $.each(response.data.voices, function(i, voice) {
-                            $select.append('<option value="' + voice.id + '">' + voice.name + '</option>');
+                            if (String(voice.id) === String(currentVal)) {
+                                found = true;
+                            }
+                            $select.append($('<option>').val(voice.id).text(voice.name));
                         });
-                        $select.val(currentVal);
+
+                        // Keep the selected voice even when a search filters it out,
+                        // otherwise saving the form would silently clear it.
+                        if (!found && currentVal && currentVal !== '0' && currentText) {
+                            $select.append($('<option>').val(currentVal).text(currentText));
+                            found = true;
+                        }
+
+                        if (found) {
+                            $select.val(currentVal);
+                            $select.removeData('aipsSelectedVoice');
+                        } else {
+                            $select.val('0');
+                        }
                     }
                 }
             });
@@ -2199,7 +2303,7 @@
          */
         saveSchedule: function(e) {
             e.preventDefault();
-            
+
             var $btn = $(this);
             var $form = $('#aips-schedule-form');
 
@@ -2990,36 +3094,32 @@
                         action: function() {
                             $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
-                            $.post(ajaxurl, {
+                            $.post(aipsAjax.ajaxUrl, {
                                 action: 'aips_reset_schedule_circuit',
-                                nonce: aipsData.nonce,
+                                nonce: aipsAjax.nonce,
                                 id: id,
                                 type: type
                             })
                             .done(function(response) {
-                                if (response.success) {
-                                    AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
+                                if (response && response.success) {
+                                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Circuit breaker reset successfully.', 'success');
 
-                                    // Update the row's circuit state
-                                    var $row = $btn.closest('.aips-unified-row');
+                                    // The button may live in the row's ⋯ menu or in its details row,
+                                    // so resolve the schedule row by key rather than by DOM ancestry.
+                                    var $row = $('tr.aips-unified-row[data-row-key="' + type + ':' + id + '"]');
                                     $row.attr('data-circuit-state', 'closed');
-
-                                    // Update health indicator badge
-                                    $row.find('.column-status .aips-schedule-status-wrapper').first().html(
-                                        '<div style="display:flex;align-items:center;gap:8px;">' +
-                                        '<span class="aips-badge aips-badge-success" title="Circuit Breaker Status">' +
-                                        '<span class="dashicons dashicons-yes"></span> Healthy</span></div>'
-                                    );
-
-                                    // Remove the reset button
+                                    $row.find('.aips-reset-circuit, .aips-sched-alert, .aips-sched-alert + .screen-reader-text').remove();
                                     $btn.remove();
+
+                                    // Re-fetch the details row so Health reflects the reset.
+                                    $(document).trigger('aips:schedule-changed', [type, id]);
                                 } else {
-                                    AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
+                                    AIPS.Utilities.showToast((response && response.data && response.data.message) || 'Failed to reset circuit breaker.', 'error');
                                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                                 }
                             })
                             .fail(function() {
-                                AIPS.showNotice('An error occurred while resetting the circuit breaker.', 'error');
+                                AIPS.Utilities.showToast('An error occurred while resetting the circuit breaker.', 'error');
                                 $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                             });
                         }
@@ -3051,27 +3151,30 @@
                         action: function() {
                             $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
-                            $.post(ajaxurl, {
+                            $.post(aipsAjax.ajaxUrl, {
                                 action: 'aips_resume_schedule_batch',
-                                nonce: aipsData.nonce,
+                                nonce: aipsAjax.nonce,
                                 id: id,
                                 type: type
                             })
                             .done(function(response) {
-                                if (response.success) {
-                                    AIPS.showNotice(response.data.message || 'Batch resumed successfully.', 'success');
+                                if (response && response.success) {
+                                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Batch resumed successfully.', 'success');
 
-                                    // Optionally reload the page or update the UI
-                                    setTimeout(function() {
-                                        window.location.reload();
-                                    }, 1500);
+                                    // Update the row in place (no page reload): drop the resume
+                                    // triggers and re-fetch the details row.
+                                    var $row = $('tr.aips-unified-row[data-row-key="' + type + ':' + id + '"]');
+                                    $row.attr('data-has-incomplete-batch', '0');
+                                    $row.find('.aips-resume-batch').remove();
+                                    $btn.remove();
+                                    $(document).trigger('aips:schedule-changed', [type, id]);
                                 } else {
-                                    AIPS.showNotice(response.data || 'Failed to resume batch.', 'error');
+                                    AIPS.Utilities.showToast((response && response.data && response.data.message) || 'Failed to resume batch.', 'error');
                                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                                 }
                             })
                             .fail(function() {
-                                AIPS.showNotice('An error occurred while resuming the batch.', 'error');
+                                AIPS.Utilities.showToast('An error occurred while resuming the batch.', 'error');
                                 $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                             });
                         }
@@ -3468,26 +3571,15 @@
          * @param {number} isActive 1 = active/resumed, 0 = paused.
          */
         updateUnifiedRowStatus: function($row, isActive) {
-            var $toggle  = $row.find('.aips-unified-toggle-schedule');
-            var $wrapper = $row.find('.aips-schedule-status-wrapper');
-            var $badge   = $wrapper.find('.aips-badge').last();
-            var $icon    = $badge.find('.dashicons');
+            isActive = isActive ? 1 : 0;
 
-            $toggle.prop('checked', isActive === 1);
-            $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
-            $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
-            $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
+            // The Enabled / Paused label lives inside the switch and follows :checked via CSS.
+            $row.find('.aips-unified-toggle-schedule').prop('checked', isActive === 1);
+            $row.toggleClass('is-paused', isActive === 0)
+                .attr('data-is-active', String(isActive))
+                .data('is-active', isActive);
 
-            if (isActive) {
-                $badge.addClass('aips-badge-success');
-                $icon.addClass('dashicons-yes-alt');
-                $icon.after(' Active');
-            } else {
-                $badge.addClass('aips-badge-neutral');
-                $icon.addClass('dashicons-minus');
-                $icon.after(' Paused');
-            }
-            $row.data('is-active', isActive);
+            $(document).trigger('aips:schedule-changed', [$row.data('type'), $row.data('id')]);
         },
 
         /**
@@ -3543,6 +3635,8 @@
                             }
                         }
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+                        // New output exists now; refresh the row's details if they were loaded.
+                        $(document).trigger('aips:schedule-changed', [type, id]);
                     } else {
                         AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
                     }
@@ -3759,53 +3853,69 @@
             $('#featured_image_source').prop('disabled', !isChecked);
 
             if (isChecked) {
-                AIPS.toggleFeaturedImageSourceFields();
+                AIPS.toggleFeaturedImageSourceFields($('#aips-template-featured-image-settings'));
             }
         },
 
         /**
-         * Show the correct featured-image source sub-panel based on the current
-         * value of `#featured_image_source`.
+         * Show or hide the slug settings panel based on the state of `#generate_slug`.
          *
-         * Hides all `.aips-image-source` panels, then shows only the one that
-         * matches the selected source (`ai_prompt`, `unsplash`, or
-         * `media_library`).
-         *
-         * Bound to the `change` event on `#featured_image_source`.
+         * @param {Event} [e] - Change event.
          */
-        toggleFeaturedImageSourceFields: function() {
-            var source = $('#featured_image_source').val();
+        toggleSlugPrompt: function(e) {
+            var isChecked = $('#generate_slug').is(':checked');
+            $('.aips-slug-settings').toggle(isChecked);
+        },
 
-            $('.aips-image-source').hide();
-
-            if (source === 'unsplash') {
-                $('.aips-image-source-unsplash').show();
-                var hasKey = (typeof aipsAdminL10n !== 'undefined' && Boolean(aipsAdminL10n.hasUnsplashAccessKey)) ||
-                             (typeof aipsTemplatesL10n !== 'undefined' && Boolean(aipsTemplatesL10n.hasUnsplashAccessKey));
-                if (!hasKey) {
-                    $('.aips-unsplash-missing-key-notice').show();
-                } else {
-                    $('.aips-unsplash-missing-key-notice').hide();
-                }
-            } else if (source === 'media_library') {
-                $('.aips-image-source-media').show();
+        /**
+         * Show the correct image source sub-panel based on the current
+         * value of the image source select within the group.
+         *
+         * @param {jQuery|string} [context] Optional container or group.
+         */
+        toggleFeaturedImageSourceFields: function(context) {
+            var $groups;
+            if (context && $(context).hasClass('aips-image-settings-group')) {
+                $groups = $(context);
+            } else if (context) {
+                $groups = $(context).find('.aips-image-settings-group');
             } else {
-                $('.aips-image-source-ai').show();
+                $groups = $('.aips-image-settings-group');
             }
+
+            if (!$groups.length) {
+                var legacySource = $('#featured_image_source').val();
+                $('.aips-image-source').hide();
+                if (legacySource === 'unsplash') {
+                    $('.aips-image-source-unsplash').show();
+                } else if (legacySource === 'media_library') {
+                    $('.aips-image-source-media').show();
+                } else {
+                    $('.aips-image-source-ai').show();
+                }
+                return;
+            }
+
+            $groups.each(function() {
+                var $group = $(this);
+                var $select = $group.find('.aips-image-source-select');
+                var source = $select.length ? $select.val() : 'ai_prompt';
+
+                $group.find('.aips-image-source-panel-ai').toggle(source === 'ai_prompt');
+                $group.find('.aips-image-source-panel-unsplash').toggle(source === 'unsplash');
+                $group.find('.aips-image-source-panel-media').toggle(source === 'media_library');
+
+                if (source === 'unsplash') {
+                    var hasKey = (typeof aipsAdminL10n !== 'undefined' && Boolean(aipsAdminL10n.hasUnsplashAccessKey)) ||
+                                 (typeof aipsTemplatesL10n !== 'undefined' && Boolean(aipsTemplatesL10n.hasUnsplashAccessKey));
+                    $group.find('.aips-unsplash-missing-key-notice').toggle(!hasKey);
+                }
+            });
         },
 
         /**
          * Show/hide the Categories and Tags rows based on whether the
          * currently-selected template post type supports those taxonomies.
-         *
-         * A custom post type isn't guaranteed to support the built-in
-         * 'category'/'post_tag' taxonomies, and assigning them anyway would
-         * silently create orphaned term relationships. Reads the support
-         * flags from `aipsTemplatesL10n.postTypeTaxonomySupport`, localized
-         * per post type alongside the rest of the Templates page strings.
-         *
-         * Bound to the `change` event on `#template_post_type`, and also
-         * called directly after setting its value in openTemplateModal()/editTemplate().
          */
         toggleTemplatePostTypeFields: function() {
             var postType = $('#template_post_type').val();
@@ -3819,13 +3929,10 @@
          * Store the given media attachment IDs in the hidden field and update
          * the preview text.
          *
-         * Accepts either an array of IDs or a comma-separated string. Filters
-         * out empty values before storing. Updates `#featured_image_media_ids`
-         * and `#featured_image_media_preview`.
-         *
          * @param {Array<number|string>|string} ids - Attachment IDs to select.
+         * @param {jQuery} [$picker] - Scoped picker element, if available.
          */
-        setMediaSelection: function(ids) {
+        setMediaSelection: function(ids, $picker) {
             var parsedIds = [];
 
             if (Array.isArray(ids)) {
@@ -3836,20 +3943,18 @@
                 });
             }
 
-            $('#featured_image_media_ids').val(parsedIds.join(','));
-            $('#featured_image_media_preview').text(parsedIds.length ? parsedIds.join(', ') : 'No images selected.');
+            var count = parsedIds.length;
+            var text = count ? (count === 1 ? '1 image selected' : count + ' images selected') : 'No images selected.';
+
+            if ($picker && $picker.length) {
+                $picker.find('.aips-media-ids-input').val(parsedIds.join(','));
+                $picker.find('.aips-media-preview-container').text(text);
+            } else {
+                $('#featured_image_media_ids').val(parsedIds.join(','));
+                $('#featured_image_media_preview, #featured_image_media_ids ~ .aips-media-preview-container').text(text);
+            }
         },
 
-        /**
-         * Open the WordPress media library frame and update the featured-image
-         * selection when the user confirms their choice.
-         *
-         * Creates the `wp.media` frame lazily on the first call and reuses it
-         * on subsequent calls. On selection, passes the chosen attachment IDs
-         * to `setMediaSelection`.
-         *
-         * @param {Event} e - Click event from `#featured_image_media_select`.
-         */
         openMediaLibrary: function(e) {
             e.preventDefault();
 
@@ -3858,42 +3963,78 @@
                 return;
             }
 
-            if (!AIPS.mediaFrame) {
-                AIPS.mediaFrame = wp.media({
-                    title: 'Select Images',
-                    multiple: true,
-                    library: { type: 'image' },
-                    button: { text: 'Use these images' }
-                });
-
-                AIPS.mediaFrame.on('select', function() {
-                    var selection = AIPS.mediaFrame.state().get('selection');
-                    var ids = [];
-
-                    selection.each(function(attachment) {
-                        ids.push(attachment.id);
-                    });
-
-                    AIPS.setMediaSelection(ids);
-                });
+            var $btn = $(e.currentTarget);
+            var $picker = $btn.closest('.aips-media-library-picker');
+            if (!$picker.length) {
+                $picker = $('#featured_image_media_ids').closest('.aips-media-library-picker');
             }
 
-            AIPS.mediaFrame.open();
+            var mediaFrame = wp.media({
+                title: 'Select Images',
+                multiple: true,
+                library: { type: 'image' },
+                button: { text: 'Use these images' }
+            });
+
+            mediaFrame.on('select', function() {
+                var selection = mediaFrame.state().get('selection');
+                var ids = [];
+
+                selection.each(function(attachment) {
+                    ids.push(attachment.id);
+                });
+
+                AIPS.setMediaSelection(ids, $picker);
+            });
+
+            mediaFrame.open();
         },
 
-        /**
-         * Clear the current featured-image media selection.
-         *
-         * Delegates to `setMediaSelection([])` to empty the hidden field and
-         * reset the preview text.
-         *
-         * @param {Event} [e] - Click event (optional when called programmatically).
-         */
         clearMediaSelection: function(e) {
             if (e) {
                 e.preventDefault();
             }
-            AIPS.setMediaSelection([]);
+            var $btn = e ? $(e.currentTarget) : null;
+            var $picker = $btn ? $btn.closest('.aips-media-library-picker') : null;
+            if ($picker && $picker.length) {
+                AIPS.setMediaSelection([], $picker);
+            } else {
+                AIPS.setMediaSelection([]);
+            }
+        },
+
+        addPostImageRow: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var containerSel = $btn.data('container');
+            var $container = $(containerSel);
+            if (!$container.length) {
+                return;
+            }
+
+            var maxLimit = parseInt($btn.data('max-limit') || 5, 10);
+            var currentCards = $container.find('.aips-post-image-card');
+            if (currentCards.length >= maxLimit) {
+                AIPS.Utilities.showToast('Maximum of ' + maxLimit + ' post images allowed.', 'warning');
+                return;
+            }
+
+            var prefix = $btn.data('prefix') || 'post_images';
+            if (AIPS.PostImages) {
+                AIPS.PostImages.renderCard($container, {}, currentCards.length, prefix);
+                AIPS.PostImages.reindexCards($container, prefix);
+            }
+        },
+
+        removePostImageRow: function(e) {
+            e.preventDefault();
+            var $card = $(this).closest('.aips-post-image-card');
+            var $container = $card.closest('.aips-post-images-list');
+            var prefix = $container.data('context') === 'author' ? 'author_post_images' : 'template_post_images';
+            $card.remove();
+            if (AIPS.PostImages) {
+                AIPS.PostImages.reindexCards($container, prefix);
+            }
         },
 
         /**
@@ -5054,6 +5195,14 @@
             } else {
                 $modal.find('#summary_featured_image').text(aipsTemplatesL10n.featuredImageNo);
             }
+
+            var generateSlug = $('#generate_slug').is(':checked');
+            if (generateSlug) {
+                var slugPrompt = $('#slug_prompt').val();
+                $modal.find('#summary_generate_slug').text(slugPrompt ? (aipsTemplatesL10n.slugYesCustom || 'Yes (Custom Prompt)') : (aipsTemplatesL10n.slugYesStandard || 'Yes (SEO Standard)'));
+            } else {
+                $modal.find('#summary_generate_slug').text(aipsTemplatesL10n.slugNo || 'No');
+            }
         },
 
         /**
@@ -5194,24 +5343,24 @@
          */
         previewPrompts: function(e) {
             e.preventDefault();
-            
+
             var $drawer = $('#aips-preview-drawer');
             var $content = $drawer.find('.aips-preview-drawer-content');
             var $loading = $drawer.find('.aips-preview-loading');
             var $error = $drawer.find('.aips-preview-error');
             var $sections = $drawer.find('.aips-preview-sections');
-            
+
             // Expand drawer if collapsed
             if (!$drawer.hasClass('expanded')) {
                 AIPS.togglePreviewDrawer.call($drawer.find('.aips-preview-drawer-handle'));
             }
-            
+
             // Show loading state
             $content.show();
             $loading.show();
             $error.hide();
             $sections.hide();
-            
+
             // Gather form data
             var formData = {
                 action: 'aips_preview_template_prompts',
@@ -5230,45 +5379,45 @@
                     return ids;
                 }())
             };
-            
+
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: formData,
                 success: function(response) {
                     $loading.hide();
-                    
+
                     if (response.success) {
                         var prompts = response.data.prompts;
                         var metadata = response.data.metadata;
-                        
+
                         // Update metadata section
                         if (metadata.voice) {
                             $('#aips-preview-voice').show().find('.aips-preview-voice-name').text(metadata.voice);
                         } else {
                             $('#aips-preview-voice').hide();
                         }
-                        
+
                         if (metadata.article_structure) {
                             $('#aips-preview-structure').show().find('.aips-preview-structure-name').text(metadata.article_structure);
                         } else {
                             $('#aips-preview-structure').hide();
                         }
-                        
+
                         $('.aips-preview-sample-topic').text(metadata.sample_topic || aipsTemplatesL10n.exampleTopic);
-                        
+
                         // Update prompt sections
                         $('#aips-preview-content-prompt').text(prompts.content || '-');
                         $('#aips-preview-title-prompt').text(prompts.title || '-');
                         $('#aips-preview-excerpt-prompt').text(prompts.excerpt || '-');
-                        
+
                         if (prompts.image) {
                             $('#aips-preview-image-section').show();
                             $('#aips-preview-image-prompt').text(prompts.image);
                         } else {
                             $('#aips-preview-image-section').hide();
                         }
-                        
+
                         $sections.show();
                     } else {
                         var errorMsg = response.data.message || aipsTemplatesL10n.failedToGeneratePreview;
@@ -5295,10 +5444,10 @@
             if (e) {
                 e.preventDefault();
             }
-            
+
             var $drawer = $('#aips-preview-drawer');
             var $content = $drawer.find('.aips-preview-drawer-content');
-            
+
             if ($drawer.hasClass('expanded')) {
                 $drawer.removeClass('expanded');
                 $content.slideUp(300);
@@ -5380,7 +5529,12 @@
                 $btn.attr('title', (window.aipsAdminL10n && aipsAdminL10n.collapseDetails) || 'Collapse details');
                 $icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
                 $detailsRow.prop('hidden', false).addClass('is-expanded');
+                // Lets page modules lazily fill the details row (e.g. AIPS.SchedulesTable).
+                $detailsRow.trigger('aips:row-expanded');
             }
+            // Plugin-specific class: WordPress core reserves `tr.is-expanded` for its
+            // responsive column toggle (.toggle-row), so it must not be reused here.
+            $btn.closest('tr').toggleClass('aips-row-open', !isExpanded);
         },
 
         /**
@@ -5429,6 +5583,16 @@
                         if (saved) {
                             var parsed = JSON.parse(saved);
                             if (parsed && typeof parsed === 'object') {
+                                // Older saves could contain the bulk-action select; it is a
+                                // one-off command, not a filter, so never restore it and
+                                // rewrite the entry without it.
+                                if (parsed.hasOwnProperty('action') || parsed.hasOwnProperty('action2')) {
+                                    delete parsed.action;
+                                    delete parsed.action2;
+                                    try {
+                                        localStorage.setItem(storageKey, JSON.stringify(parsed));
+                                    } catch (err) {}
+                                }
                                 var needsRedirect = false;
                                 var newParams = new URLSearchParams(window.location.search);
                                 for (var param in parsed) {
@@ -5457,6 +5621,10 @@
                         var $select = $(this);
                         var name = $select.attr('name');
                         var val = $select.val();
+                        // Bulk-action selects are one-off commands, not filters; never persist them.
+                        if (name === 'action' || name === 'action2') {
+                            return;
+                        }
                         if (name && val && val !== '-1' && val !== 'all') {
                             submittedFilters[name] = val;
                         }
@@ -5475,6 +5643,104 @@
             });
         }
     });
+
+    AIPS.PostImages = {
+        renderCard: function($container, item, index, prefix) {
+            item = item || {};
+            prefix = prefix || ($container.data('context') === 'author' ? 'author_post_images' : 'template_post_images');
+
+            var placement = item.placement || 'auto';
+            var source = item.source || 'ai_prompt';
+            var mediaIds = item.media_ids || '';
+
+            var mediaCount = 0;
+            if (mediaIds) {
+                mediaCount = String(mediaIds).split(',').filter(function(x) { return x.trim().length > 0; }).length;
+            }
+
+            var html = AIPS.Templates.render('aips-tmpl-post-image-card', {
+                index: index,
+                displayIndex: index + 1,
+                id: item.id || '',
+                prefix: prefix,
+                idPrefix: prefix + '_' + index,
+                prompt: item.image_prompt || '',
+                unsplashKeywords: item.unsplash_keywords || '',
+                mediaIds: mediaIds,
+                mediaPreviewText: mediaCount > 0 ? (mediaCount === 1 ? '1 image selected' : mediaCount + ' images selected') : 'No images selected.',
+                aiDisplay: source === 'ai_prompt' ? '' : 'display: none;',
+                unsplashDisplay: source === 'unsplash' ? '' : 'display: none;',
+                mediaDisplay: source === 'media_library' ? '' : 'display: none;',
+                selectedPlacementAuto: placement === 'auto' ? 'selected' : '',
+                selectedPlacement1: placement === 'after_section_1' ? 'selected' : '',
+                selectedPlacement2: placement === 'after_section_2' ? 'selected' : '',
+                selectedPlacement3: placement === 'after_section_3' ? 'selected' : '',
+                selectedPlacement4: placement === 'after_section_4' ? 'selected' : '',
+                selectedPlacement5: placement === 'after_section_5' ? 'selected' : '',
+                selectedSourceAi: source === 'ai_prompt' ? 'selected' : '',
+                selectedSourceUnsplash: source === 'unsplash' ? 'selected' : '',
+                selectedSourceMedia: source === 'media_library' ? 'selected' : ''
+            });
+
+            if (!html) {
+                return;
+            }
+
+            var $card = $(html);
+            $container.append($card);
+            $container.find('.aips-post-images-empty-state').hide();
+
+            // A source disabled in Settings has no option, so sync panels to what the select shows.
+            AIPS.toggleFeaturedImageSourceFields($card.find('.aips-image-settings-group'));
+        },
+
+        reindexCards: function($container, prefix) {
+            prefix = prefix || ($container.data('context') === 'author' ? 'author_post_images' : 'template_post_images');
+            var $cards = $container.find('.aips-post-image-card');
+            if ($cards.length === 0) {
+                $container.find('.aips-post-images-empty-state').show();
+                return;
+            }
+            $container.find('.aips-post-images-empty-state').hide();
+
+            $cards.each(function(newIndex) {
+                var $card = $(this);
+                var displayIndex = newIndex + 1;
+                var idPrefix = prefix + '_' + newIndex;
+
+                $card.attr('data-index', newIndex);
+                $card.find('.aips-post-image-index-display').text(displayIndex);
+                $card.find('.aips-post-image-order-input').val(displayIndex);
+
+                $card.find('input, select, textarea').each(function() {
+                    var name = $(this).attr('name');
+                    if (name) {
+                        var updatedName = name.replace(new RegExp('^' + prefix + '\\[\\d+\\]'), prefix + '[' + newIndex + ']');
+                        $(this).attr('name', updatedName);
+                    }
+                });
+
+                $card.find('.aips-image-settings-group').attr('data-id-prefix', idPrefix);
+            });
+        },
+
+        collectImages: function($container) {
+            var images = [];
+            $container.find('.aips-post-image-card').each(function(i) {
+                var $card = $(this);
+                images.push({
+                    id: $card.find('.aips-post-image-id-input').val() || 0,
+                    image_order: i + 1,
+                    placement: $card.find('.aips-image-placement-select').val() || 'auto',
+                    source: $card.find('.aips-image-source-select').val() || 'ai_prompt',
+                    image_prompt: $card.find('.aips-image-prompt-textarea').val() || '',
+                    unsplash_keywords: $card.find('.aips-unsplash-keywords-input').val() || '',
+                    media_ids: $card.find('.aips-media-ids-input').val() || ''
+                });
+            });
+            return images;
+        }
+    };
 
     $(document).ready(function() {
         AIPS.init();

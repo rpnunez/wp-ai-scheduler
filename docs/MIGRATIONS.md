@@ -1,10 +1,10 @@
 # AI Post Scheduler - Database Schema Updates
 
-## Active development migration window (3.7.20)
+## Active development migration window (3.7.25)
 
 DevStackTips is the only deployed installation. The supported existing-installation
 baseline is 3.7.15; fresh installations create the current schema directly. Only
-the five migrations 3.7.16 through 3.7.20 remain executable. Older completed data
+recent migrations (3.7.16 through 3.7.24) remain executable. Older completed data
 conversions and structural transformations are retired, including the removed
 post-embeddings table and the old Sources word-count and History log-type columns.
 This does not delete production tables or data during the cleanup.
@@ -16,6 +16,9 @@ This does not delete production tables or data during the cleanup.
 | 3.7.18 | Consolidate current author approval columns and stored options |
 | 3.7.19 | Apply nullable source scheduling and fetch-attempt columns |
 | 3.7.20 | Ensure the History log history_type_ts composite index |
+| 3.7.22 | Index consolidation, stripped metadata embeddings, and orphaned history log purge |
+| 3.7.23 | Post slug settings (`generate_slug` and `slug_prompt`) |
+| 3.7.24 | Author featured-image columns and post-image tables confirmation |
 
 `AIPS_DB_Migrations::check_and_run()` compares the stored version to `AIPS_VERSION`.
 It performs no table-existence discovery on normal requests. When needed, it calls
@@ -33,6 +36,16 @@ without table probes or cached existence flags. Repository operations
 and exports use the declared tables directly. Explicit diagnostics retain actual
 column inspection and table statistics. A manually deleted table no longer triggers
 automatic repair on every ordinary request; use activation or explicit repair.
+
+## Author featured images and post content images (3.7.24)
+
+`aips_authors` gains `image_prompt`, `featured_image_unsplash_keywords`, and `featured_image_media_ids` (all text, nullable). `aips_post_images` stores content-image configuration per template or author. `aips_post_images_generated` stores each generated image per post and history run. Featured-image settings stay on the template and author rows.
+
+`migrate_to_3_7_24()` runs for any stored version below 3.7.24, including sites already stamped 3.7.22 or 3.7.23. It does not reuse `migrate_to_3_7_23()`, which remains the slug-column migration. Each author column is added only after `SHOW COLUMNS` reports it missing, and the post-image tables are confirmed with `SHOW COLUMNS` on the columns generation reads. A failed check restores the previous version gate so the next request retries. `dbDelta` also creates the tables and columns from `AIPS_DB_Manager::get_schema()` during the same upgrade. Fresh installs receive the schema from `dbDelta`; the ALTER is a no-op once the columns exist.
+
+## Post slug settings (3.7.23)
+
+`aips_templates` and `aips_authors` gain `generate_slug` (tinyint, default 0) and `slug_prompt` (text, nullable). The guarded `migrate_to_3_7_23()` ALTERs are idempotent and run for any stored version below 3.7.23, including sites already stamped 3.7.22. 3.7.20 stays the `history_type_ts` index migration and is not reused for these columns. A failed ALTER restores the previous version gate so the next request retries. `dbDelta` also adds the columns from `AIPS_DB_Manager::get_schema()` during the same upgrade.
 
 ## Sources reliability (3.7.19)
 

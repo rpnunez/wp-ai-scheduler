@@ -55,43 +55,49 @@
 			$title.text(title);
 
 			actions.forEach(function (action) {
-				if (!action || !action.url || !action.label) {
+				if (!action || !action.label) {
 					return;
 				}
 
-				actionsHtml += '<a href="' + $('<div>').text(String(action.url)).html() + '" target="_blank" rel="noopener noreferrer">'
-					+ $('<div>').text(String(action.label)).html()
+				var iconHtml = '';
+				if (action.icon) {
+					iconHtml = '<span class="dashicons ' + $('<div>').text(String(action.icon)).html() + '" aria-hidden="true"></span>';
+				}
+
+				if (action.class && action.class.indexOf('aips-ai-edit-btn') !== -1) {
+					actionsHtml += '<button type="button" class="aips-history-modal-header-link ' + $('<div>').text(String(action.class)).html() + '"'
+						+ ' data-post-id="' + (action.post_id ? $('<div>').text(String(action.post_id)).html() : '') + '"'
+						+ ' data-history-id="' + (action.history_id ? $('<div>').text(String(action.history_id)).html() : '') + '"'
+						+ ' title="' + (action.title ? $('<div>').text(String(action.title)).html() : '') + '">'
+						+ (iconHtml || '<span class="dashicons dashicons-update" aria-hidden="true"></span>')
+						+ '<span>' + $('<div>').text(String(action.label)).html() + '</span>'
+						+ '</button>';
+					return;
+				}
+
+				if (!action.url) {
+					return;
+				}
+
+				actionsHtml += '<a href="' + $('<div>').text(String(action.url)).html() + '" class="aips-history-modal-header-link" target="_blank" rel="noopener noreferrer">'
+					+ iconHtml
+					+ '<span>' + $('<div>').text(String(action.label)).html() + '</span>'
 					+ '</a>';
 			});
 
 			if (container && container.status && container.status_class) {
+				var statusText = container.status_label
+					? String(container.status_label)
+					: (String(container.status).charAt(0).toUpperCase() + String(container.status).slice(1));
 				statusHtml = '<span class="aips-badge '
 					+ $('<div>').text(String(container.status_class)).html()
 					+ '">'
-					+ $('<div>').text(String(container.status)).html()
+					+ $('<div>').text(statusText).html()
 					+ '</span>';
 			}
 
 			$actions.html(actionsHtml);
 			$status.html(statusHtml);
-			this.renderDiagnosticButton($modal, container && container.diagnostic_text);
-		},
-
-		/**
-		 * Render (or clear) the "Copy diagnostic" button under the header close button.
-		 *
-		 * @param {jQuery} $modal Modal element.
-		 * @param {string} text   Diagnostic text; empty clears the button.
-		 */
-		renderDiagnosticButton: function ($modal, text) {
-			var $slot = $modal.find('.aips-history-modal-header-diagnostic').empty();
-			if (!text) {
-				return;
-			}
-			$('<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-diagnostic"></button>')
-				.text((window.aipsHistoryL10n && aipsHistoryL10n.copyDiagnostic) || 'Copy diagnostic')
-				.attr('data-diagnostic', text)
-				.appendTo($slot);
 		},
 
 		/**
@@ -117,7 +123,6 @@
 			if (settings.statusSelector) {
 				$modal.find(settings.statusSelector).empty();
 			}
-			this.renderDiagnosticButton($modal, '');
 		},
 
 		/**
@@ -360,6 +365,9 @@
 		 */
 		initStandaloneOpener: function () {
 			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
+			$(document).on('click', '.aips-history-header-ai-edit', function() {
+				$('#aips-history-modal').hide();
+			});
 			// Detail tabs render in both the History page modal and the standalone
 			// modal on native post screens, so bind them wherever this script loads.
 			$(document).on('click', '.aips-history-detail-tab', this.switchDetailTab.bind(this));
@@ -638,7 +646,6 @@
 			// Log type filter tabs inside the modal
 			$(document).on('click', '.aips-log-type-filter-btn', this.filterLogsByType.bind(this));
 			$(document).on('change', '.aips-json-viewer-toggle', this.toggleJsonViewerMode.bind(this));
-			$(document).on('click', '.aips-copy-diagnostic', this.copyDiagnostic.bind(this));
 
 			// Close modal via close button or backdrop click.
 			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
@@ -862,16 +869,6 @@
 		onHistoryRowKeydown: function (e) {
 			if (e.key === 'Enter' || e.key === ' ') {
 				this.openLogsModal(e);
-			}
-		},
-
-		copyDiagnostic: function (e) {
-			e.preventDefault();
-			var text = $(e.currentTarget).data('diagnostic') || '';
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(text).then(function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.copiedDetails || 'Copied!', 'success');
-				});
 			}
 		},
 

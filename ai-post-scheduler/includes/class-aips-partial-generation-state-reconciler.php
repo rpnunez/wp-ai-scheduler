@@ -47,9 +47,14 @@ class AIPS_Partial_Generation_State_Reconciler {
 			return;
 		}
 
+		// A missing slug is optional. Drafts often have an empty post_name, and that
+		// must not flip an otherwise complete generation run back to partial.
+		$required_statuses = $statuses;
+		unset($required_statuses['post_slug']);
+
 		AIPS_History_Repository::instance()->sync_generation_status_for_post(
 			absint($post_id),
-			in_array(false, $statuses, true)
+			in_array(false, $required_statuses, true)
 		);
 	}
 
@@ -114,6 +119,37 @@ class AIPS_Partial_Generation_State_Reconciler {
 
 		if (array_key_exists('featured_image_id', $components)) {
 			$overrides['featured_image'] = absint($components['featured_image_id']) > 0;
+		}
+
+		if (in_array('slug', $updated_components, true)) {
+			// Reconcile post slug: if the caller supplied a new slug value in $components, verify that it is non-empty;
+			// otherwise inspect the persisted WordPress post entity to confirm a non-empty post_name exists.
+			if (array_key_exists('slug', $components)) {
+				$overrides['post_slug'] = '' !== trim((string) $components['slug']);
+			} else {
+				$post = get_post($post_id);
+				$overrides['post_slug'] = $post && '' !== trim((string) $post->post_name);
+			}
+		}
+
+		$has_post_images_update = in_array('post_images', $updated_components, true);
+		if (!$has_post_images_update && class_exists('AIPS_Component_Regeneration_Service')) {
+			foreach ($updated_components as $comp) {
+				if (AIPS_Component_Regeneration_Service::post_image_id_from_component($comp) > 0) {
+					$has_post_images_update = true;
+					break;
+				}
+			}
+		}
+
+		if ($has_post_images_update) {
+			// Reconcile post content images: updates can originate from a full-post image regeneration ('post_images')
+			// or an individual image regeneration ('post_image_{id}'). In either case, query all generated image records
+			// for this post: if no image remains with 'failed' status, the component status is considered complete.
+			$generated_images = (new AIPS_Post_Images_Generated_Repository())->get_by_post_id($post_id);
+			if (!empty($generated_images)) {
+				$overrides['post_images'] = !in_array('failed', wp_list_pluck($generated_images, 'status'), true);
+			}
 		}
 
 		$statuses = $this->post_manager->reconcile_generation_status_meta_from_post($post_id, $overrides);

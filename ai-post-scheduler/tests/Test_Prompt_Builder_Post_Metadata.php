@@ -42,6 +42,33 @@ class Test_Prompt_Builder_Post_Metadata extends WP_UnitTestCase {
 		$this->assertFalse($schema['properties']['ai_variables']['additionalProperties']);
 	}
 
+	public function test_schema_includes_slug_when_requested() {
+		$builder = new AIPS_Prompt_Builder_Post_Metadata();
+		$schema = $builder->get_schema(array(), false, true);
+
+		$this->assertContains('slug', $schema['required']);
+		$this->assertArrayHasKey('slug', $schema['properties']);
+		$this->assertSame('string', $schema['properties']['slug']['type']);
+	}
+
+	public function test_metadata_prompt_includes_slug_instructions_when_enabled() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Slug Template',
+			'generate_slug'   => 1,
+			'slug_prompt'     => 'SEO slug instructions for {{topic}}',
+			'prompt_template' => 'Write about {{topic}}.',
+		);
+		$context = new AIPS_Template_Context($template, null, 'WordPress Performance');
+		$builder = new AIPS_Prompt_Builder_Post_Metadata(new AIPS_Template_Processor());
+
+		$prompt = $builder->build($context);
+
+		$this->assertStringContainsString('SLUG INSTRUCTIONS:', $prompt);
+		$this->assertStringContainsString('SEO slug instructions for WordPress Performance', $prompt);
+		$this->assertStringContainsString('"slug": "the finished lowercase hyphenated URL slug"', $prompt);
+	}
+
 	public function test_metadata_with_topic_context_includes_author_tone_and_style() {
 		$author = (object) array(
 			'id' => 5,
@@ -62,5 +89,65 @@ class Test_Prompt_Builder_Post_Metadata extends WP_UnitTestCase {
 		$this->assertStringContainsString('Tone: authoritative and practical', $prompt);
 		$this->assertStringContainsString('Writing Style: in-depth analysis with code samples', $prompt);
 		$this->assertStringContainsString('EXCERPT INSTRUCTIONS:', $prompt);
+	}
+
+	public function test_append_diversity_blocks_omits_content_format_and_post_slice() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Template',
+			'prompt_template' => 'Write about {{topic}}.',
+			'title_prompt'    => 'Accurate title for {{topic}}.',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Performance');
+		$diversity = new class() {
+			public function build_avoid_titles_block($subject) { return 'AVOID_TITLES_BLOCK_CONTENT'; }
+			public function build_content_format_block($subject) { return 'CONTENT_FORMAT_BLOCK_SHOULD_BE_OMITTED'; }
+			public function build_post_slice_block($subject) { return 'POST_SLICE_BLOCK_SHOULD_BE_OMITTED'; }
+		};
+		$builder = new AIPS_Prompt_Builder_Post_Metadata(new AIPS_Template_Processor(), $diversity);
+
+		$prompt = $builder->build($context);
+
+		$this->assertStringContainsString('AVOID_TITLES_BLOCK_CONTENT', $prompt);
+		$this->assertStringNotContainsString('CONTENT_FORMAT_BLOCK_SHOULD_BE_OMITTED', $prompt);
+		$this->assertStringNotContainsString('POST_SLICE_BLOCK_SHOULD_BE_OMITTED', $prompt);
+	}
+
+	public function test_schema_includes_content_image_prompts() {
+		$builder = new AIPS_Prompt_Builder_Post_Metadata();
+		$content_image_templates = array(
+			1 => 'Image 1 prompt for {{topic}}',
+			2 => 'Image 2 prompt for {{topic}}',
+		);
+		$schema = $builder->get_schema(array(), false, false, $content_image_templates);
+
+		$this->assertContains('content_image_prompts', $schema['required']);
+		$this->assertArrayHasKey('content_image_prompts', $schema['properties']);
+		$this->assertSame('object', $schema['properties']['content_image_prompts']['type']);
+		$this->assertArrayHasKey('1', $schema['properties']['content_image_prompts']['properties']);
+		$this->assertArrayHasKey('2', $schema['properties']['content_image_prompts']['properties']);
+		$this->assertFalse($schema['properties']['content_image_prompts']['additionalProperties']);
+	}
+
+	public function test_build_includes_content_image_prompts_instructions() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Template',
+			'prompt_template' => 'Write about {{topic}}.',
+			'title_prompt'    => 'Accurate title for {{topic}}.',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Photography');
+		$builder = new AIPS_Prompt_Builder_Post_Metadata(new AIPS_Template_Processor());
+		$content_image_templates = array(
+			1 => 'A sunset over the mountains',
+			2 => 'A close up of a camera lens',
+		);
+
+		$prompt = $builder->build($context, array(), '', false, $content_image_templates);
+
+		$this->assertStringContainsString('CONTENT IMAGES INSTRUCTIONS:', $prompt);
+		$this->assertStringContainsString('Image 1: A sunset over the mountains', $prompt);
+		$this->assertStringContainsString('Image 2: A close up of a camera lens', $prompt);
+		$this->assertStringContainsString('"content_image_prompts": { "1": "finished prompt for content image 1", "2": "finished prompt for content image 2" }', $prompt);
 	}
 }

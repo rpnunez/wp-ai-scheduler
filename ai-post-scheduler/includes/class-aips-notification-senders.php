@@ -527,6 +527,53 @@ class AIPS_Notification_Senders {
 	}
 
 	/**
+	 * Send a summarized notification digest.
+	 *
+	 * @param array $payload Payload containing 'items' and optional 'count'.
+	 * @return void
+	 */
+	public function summarized_digest( array $payload ) {
+		$items = isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array();
+		$count = isset($payload['count']) ? absint($payload['count']) : count($items);
+
+		$title = sprintf(
+			/* translators: %d: number of batched updates */
+			_n('Notification Digest: %d update', 'Notification Digest: %d updates', $count, 'ai-post-scheduler'),
+			$count
+		);
+
+		$message = sprintf(
+			/* translators: %d: number of batched updates */
+			_n('AI Post Scheduler has batched %d update for your review.', 'AI Post Scheduler has batched %d updates for your review.', $count, 'ai-post-scheduler'),
+			$count
+		);
+
+		$all_posts_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$items_html    = AIPS_Notification_Templates::render_summarized_digest_items($items);
+
+		$vars = array(
+			'{{site_name}}'         => esc_html(get_bloginfo('name')),
+			'{{item_count}}'        => (string) $count,
+			'{{digest_items_html}}' => $items_html,
+			'{{all_posts_url}}'     => esc_url($all_posts_url),
+		);
+
+		call_user_func(
+			$this->dispatcher,
+			'summarized_digest',
+			array(
+				'title'         => $title,
+				'message'       => $message,
+				'url'           => $all_posts_url,
+				'level'         => 'info',
+				'meta'          => $payload,
+				'channels'      => array(AIPS_Notifications::CHANNEL_EMAIL),
+				'vars'          => $vars,
+			)
+		);
+	}
+
+	/**
 	 * Send a weekly summary notification.
 	 *
 	 * @param array $payload Summary payload.

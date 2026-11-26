@@ -1466,3 +1466,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting root node creation, quick links creation, notifications creation, and background processes creation into distinct private helper methods. The main `add_toolbar_node` function was reduced to roughly 15 lines serving strictly as the orchestrator.
 **Consequence:** Increased the number of private methods on the class, but vastly improved readability and maintainability. Backwards compatibility for the admin bar remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced. Tests related to AIPS_Admin_Bar all passed.
+
+## 2026-11-02 - [Test Coverage: AIPS_Secret_Encryption]
+
+- **Target:** ai-post-scheduler/includes/class-aips-secret-encryption.php::AIPS_Secret_Encryption
+- **Lens:** Test coverage gaps
+- **Context:** The security-critical `AIPS_Secret_Encryption` class handles AES-256-CBC encryption, HMAC-SHA256 authenticated decryption, and prefix inspection for sensitive credentials (such as Search Console JSON keys), but previously lacked dedicated unit tests in `ai-post-scheduler/tests/`.
+- **Decision:** Added characterization test suite `Test_AIPS_Secret_Encryption` validating `is_encrypted`, empty/plain string passthrough, prefix verification, multi-case encrypt-decrypt roundtrip, truncated/invalid base64 handling, and HMAC tampering resistance.
+- **Backward compatibility:** 100% backward compatible. Only unit test coverage was added; production code was not modified.
+- **Consequence:** Eliminates regression risk when refactoring or hardening security cryptographic routines.
+- **Tests:** Ran `WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress php vendor/bin/phpunit tests/Test_AIPS_Secret_Encryption.php` (7 tests, 27 assertions) and full PHPUnit test suite.

@@ -49,6 +49,12 @@ class AIPS_Interval_Calculator {
     public function get_intervals() {
         $intervals = array();
 
+        $intervals['fifteen_minutes'] = array(
+            'interval' => 900,
+            'display'  => __('Every 15 Minutes', 'ai-post-scheduler'),
+            'type'     => 'fixed',
+        );
+
         $intervals['hourly'] = array(
             'interval' => 3600,
             'display' => __('Hourly', 'ai-post-scheduler'),
@@ -226,6 +232,9 @@ class AIPS_Interval_Calculator {
     private function calculate_next_timestamp($frequency, $base_time) {
         $dt = AIPS_DateTime::fromTimestamp($base_time);
         switch ($frequency) {
+            case 'fifteen_minutes':
+                return (int) $dt->modify('+15 minutes')->timestamp();
+
             case 'hourly':
                 return (int) $dt->modify('+1 hour')->timestamp();
 

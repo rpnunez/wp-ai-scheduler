@@ -3,7 +3,7 @@
  * Recent database migrations for the active development installation.
  *
  * The supported existing-installation baseline is 3.7.15. Schema definitions
- * live in AIPS_DB_Manager; only the five 3.7.16-3.7.20 migrations remain.
+ * live in AIPS_DB_Manager; only recent migrations remain.
  * Apply the current schema first, then pending migrations in version order.
  * A failed step leaves the original version intact so the next request retries.
  *
@@ -56,11 +56,14 @@ class AIPS_DB_Migrations {
 
 		// Fresh installations already have the current schema and no old rows to backfill.
 		if ( '' !== $from_version && '0' !== $from_version ) {
-			foreach ( array( '3.7.16', '3.7.17', '3.7.18', '3.7.19', '3.7.20' ) as $version ) {
+			foreach ( array( '3.7.16', '3.7.17', '3.7.18', '3.7.19', '3.7.20', '3.7.22', '3.7.23', '3.7.24' ) as $version ) {
 				if ( ! version_compare( $from_version, $version, '<' ) ) {
 					continue;
 				}
 				$method = 'migrate_to_' . str_replace( '.', '_', $version );
+				if ( ! method_exists( $this, $method ) ) {
+					continue;
+				}
 				if ( ! $this->$method() ) {
 					$this->logger->log( 'Migration ' . $version . ' failed; database version unchanged for retry.', 'error' );
 					/* translators: %s: migration version. */
@@ -261,6 +264,280 @@ class AIPS_DB_Migrations {
 		if ( ! $has_index && false === $wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_type_ts (history_type_id, timestamp)" ) ) {
 			return false;
 		}
+
+		return true;
+	}
+
+	/**
+	 * Migration for version 3.7.22.
+	 *
+	 * Consolidates redundant single-column indexes on aips_history and aips_author_topics,
+	 * adds author_id_status_score covering index, strips cached candidate embedding
+	 * vectors from aips_author_topics metadata, cleans up orphaned aips_history_log rows,
+	 * and clears the decoded embeddings cache group from aips_cache.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_22() {
+		$this->consolidate_history_indexes();
+		$this->consolidate_author_topic_indexes();
+		$this->strip_author_topic_metadata_embeddings();
+		$this->cleanup_orphaned_history_log();
+		$this->cleanup_embeddings_cache();
+
+		return true;
+	}
+
+	/**
+	 * Drop the decoded-embedding rows from the aips_cache 'aips_embeddings' group.
+	 *
+	 * @return void
+	 */
+	private function cleanup_embeddings_cache() {
+		global $wpdb;
+		$cache = $wpdb->prefix . 'aips_cache';
+
+		$deleted = $wpdb->query( $wpdb->prepare(
+			"DELETE FROM `{$cache}` WHERE cache_group = %s",
+			'aips_embeddings'
+		) );
+
+		if ( $deleted ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Cleared %d decoded-embedding rows from the aips_cache embeddings group.', (int) $deleted ), 'info' );
+		}
+	}
+
+	/**
+	 * Drop redundant indexes on aips_history.
+	 *
+	 * @return void
+	 */
+	private function consolidate_history_indexes() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history';
+
+		$redundant = array(
+			'status'      => 'status_created',
+			'template_id' => 'template_created',
+			'post_id'     => 'post_status',
+		);
+
+		foreach ( $redundant as $index_name => $covering_index ) {
+			$this->drop_redundant_index( $table, $index_name, $covering_index );
+		}
+	}
+
+	/**
+	 * Add author_id_status_score covering index on aips_author_topics and drop redundant indexes.
+	 *
+	 * @return void
+	 */
+	private function consolidate_author_topic_indexes() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		$has_new = $wpdb->get_row(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'author_id_status_score'"
+		);
+		if ( ! $has_new ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY author_id_status_score (author_id, status, score)" );
+		}
+
+		$this->drop_redundant_index( $table, 'author_id', 'author_id_status_score' );
+		$this->drop_redundant_index( $table, 'author_id_status', 'author_id_status_score' );
+		$this->drop_redundant_index( $table, 'status', 'status_score_reviewed' );
+	}
+
+	/**
+	 * Drop an index, but only once the covering index that replaces it exists.
+	 *
+	 * @param string $table          Full table name.
+	 * @param string $index_name     Index to drop.
+	 * @param string $covering_index Index that must be present first.
+	 * @return void
+	 */
+	private function drop_redundant_index( $table, $index_name, $covering_index ) {
+		global $wpdb;
+
+		$covering = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s",
+			$covering_index
+		) );
+		if ( ! $covering ) {
+			return;
+		}
+
+		$exists = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s",
+			$index_name
+		) );
+		if ( $exists ) {
+			$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `{$index_name}`" );
+		}
+	}
+
+	/**
+	 * Remove cached embedding vector from existing aips_author_topics metadata payloads.
+	 *
+	 * @return void
+	 */
+	private function strip_author_topic_metadata_embeddings() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		$batch_size = 200;
+		$last_id    = 0;
+		$updated    = 0;
+
+		do {
+			$rows = $wpdb->get_results( $wpdb->prepare(
+				"SELECT id, metadata FROM `{$table}`
+				WHERE id > %d AND metadata LIKE %s
+				ORDER BY id LIMIT %d",
+				$last_id,
+				'%"embedding"%',
+				$batch_size
+			) );
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row->id;
+
+				$meta = json_decode( (string) $row->metadata, true );
+				if ( ! is_array( $meta ) || ! array_key_exists( 'embedding', $meta ) ) {
+					continue;
+				}
+
+				unset( $meta['embedding'] );
+
+				$wpdb->update(
+					$table,
+					array( 'metadata' => wp_json_encode( $meta ) ),
+					array( 'id' => (int) $row->id ),
+					array( '%s' ),
+					array( '%d' )
+				);
+				++$updated;
+			}
+		} while ( ! empty( $rows ) );
+
+		if ( $updated ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Stripped cached embeddings from %d aips_author_topics metadata rows.', $updated ), 'info' );
+		}
+	}
+
+	/**
+	 * Delete aips_history_log rows whose parent aips_history row no longer exists.
+	 *
+	 * @return void
+	 */
+	private function cleanup_orphaned_history_log() {
+		global $wpdb;
+		$log  = $wpdb->prefix . 'aips_history_log';
+		$hist = $wpdb->prefix . 'aips_history';
+
+		$deleted = $wpdb->query(
+			"DELETE l FROM `{$log}` l
+			LEFT JOIN `{$hist}` h ON h.id = l.history_id
+			WHERE h.id IS NULL"
+		);
+
+		if ( $deleted ) {
+			$this->logger->log( sprintf( 'Migration 3.7.22: Deleted %d orphaned aips_history_log rows.', (int) $deleted ), 'info' );
+		}
+	}
+
+	/**
+	 * Migration to 3.7.23:
+	 * Adds generate_slug and slug_prompt to aips_templates and aips_authors.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_23() {
+		global $wpdb;
+
+		$table_templates = $wpdb->prefix . 'aips_templates';
+		$table_authors   = $wpdb->prefix . 'aips_authors';
+
+		// 1. Templates table: generate_slug and slug_prompt
+		$has_gen_slug = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s",
+			'generate_slug'
+		) );
+		if ( ! $has_gen_slug && false === $wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ) ) {
+			return false;
+		}
+
+		$has_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_templates}` WHERE Field = %s",
+			'slug_prompt'
+		) );
+		if ( ! $has_slug_prompt && false === $wpdb->query( "ALTER TABLE `{$table_templates}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER title_prompt" ) ) {
+			return false;
+		}
+
+		// 2. Authors table: generate_slug and slug_prompt
+		$has_author_gen_slug = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s",
+			'generate_slug'
+		) );
+		if ( ! $has_author_gen_slug && false === $wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN generate_slug tinyint(1) DEFAULT 0 AFTER generate_featured_image" ) ) {
+			return false;
+		}
+
+		$has_author_slug_prompt = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s",
+			'slug_prompt'
+		) );
+		if ( ! $has_author_slug_prompt && false === $wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN slug_prompt text DEFAULT NULL AFTER generate_slug" ) ) {
+			return false;
+		}
+
+		$this->logger->log( 'Migration 3.7.23: Added generate_slug and slug_prompt to templates and authors.', 'info' );
+
+		return true;
+	}
+
+	/**
+	 * Migration to 3.7.24:
+	 * Adds author featured-image columns and confirms post-image schema columns.
+	 *
+	 * @return bool
+	 */
+	private function migrate_to_3_7_24() {
+		global $wpdb;
+
+		$authors_table = $wpdb->prefix . 'aips_authors';
+
+		$author_columns = array(
+			'image_prompt'                     => 'text DEFAULT NULL',
+			'featured_image_unsplash_keywords' => 'text DEFAULT NULL',
+			'featured_image_media_ids'         => 'text DEFAULT NULL',
+		);
+		foreach ( $author_columns as $column => $definition ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) );
+			if ( ! $exists && false === $wpdb->query( "ALTER TABLE `{$authors_table}` ADD COLUMN `{$column}` {$definition}" ) ) {
+				return false;
+			}
+			if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$authors_table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) {
+				return false;
+			}
+		}
+
+		$post_images = $wpdb->prefix . 'aips_post_images';
+		$generated   = $wpdb->prefix . 'aips_post_images_generated';
+		$required_columns = array(
+			$post_images => array( 'entity_type', 'entity_id', 'image_order', 'source', 'placement' ),
+			$generated   => array( 'post_id', 'history_id', 'config_image_id', 'image_index', 'attachment_id', 'status' ),
+		);
+		foreach ( $required_columns as $table => $columns ) {
+			foreach ( $columns as $column ) {
+				if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", $wpdb->esc_like( $column ) ) ) ) {
+					return false;
+				}
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.24: Added author featured-image columns and confirmed post-image tables.', 'info' );
 
 		return true;
 	}

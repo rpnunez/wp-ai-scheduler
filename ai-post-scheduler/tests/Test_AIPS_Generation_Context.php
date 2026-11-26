@@ -24,6 +24,8 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'image_prompt' => 'Image of {{topic}}',
 			'generate_featured_image' => 1,
 			'featured_image_source' => 'ai_prompt',
+			'generate_slug' => 1,
+			'slug_prompt' => 'Slug of {{topic}}',
 			'post_status' => 'draft',
 			'post_type' => 'page',
 			'post_category' => 1,
@@ -42,6 +44,8 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Image of {{topic}}', $context->get_image_prompt());
 		$this->assertTrue($context->should_generate_featured_image());
 		$this->assertEquals('ai_prompt', $context->get_featured_image_source());
+		$this->assertTrue($context->should_generate_slug());
+		$this->assertEquals('Slug of {{topic}}', $context->get_slug_prompt());
 		$this->assertEquals('draft', $context->get_post_status());
 		$this->assertEquals('page', $context->get_post_type());
 		$this->assertEquals(1, $context->get_post_category());
@@ -63,6 +67,8 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'field_niche' => 'Software Development',
 			'generate_featured_image' => 1,
 			'featured_image_source' => 'ai_prompt',
+			'generate_slug' => 1,
+			'slug_prompt' => 'Author slug for {{topic}}',
 			'post_status' => 'publish',
 			'post_type' => 'page',
 			'post_category' => 2,
@@ -91,6 +97,8 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Best Practices for Clean Code', $context->get_image_prompt());
 		$this->assertTrue($context->should_generate_featured_image());
 		$this->assertEquals('ai_prompt', $context->get_featured_image_source());
+		$this->assertTrue($context->should_generate_slug());
+		$this->assertEquals('Author slug for {{topic}}', $context->get_slug_prompt());
 		$this->assertEquals('publish', $context->get_post_status());
 		$this->assertEquals('page', $context->get_post_type());
 		$this->assertEquals(2, $context->get_post_category());
@@ -236,6 +244,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'name' => 'Test Template',
 			'prompt_template' => 'Write about {{topic}}',
 			'title_prompt' => 'Template title prompt',
+			'slug_prompt' => 'Template slug prompt',
 			'post_status' => 'draft',
 			'post_type' => 'page',
 			'post_category' => 1,
@@ -247,14 +256,16 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'id' => 456,
 			'name' => 'Test Voice',
 			'title_prompt' => 'Voice title prompt',
+			'slug_prompt' => 'Voice slug prompt',
 			'content_instructions' => 'Voice instructions',
 			'excerpt_instructions' => 'Voice excerpt',
 		);
 		
 		$context = new AIPS_Template_Context($template, $voice, 'Test Topic');
 		
-		// Voice title prompt should take precedence
+		// Voice title and slug prompts should take precedence
 		$this->assertEquals('Voice title prompt', $context->get_title_prompt());
+		$this->assertEquals('Voice slug prompt', $context->get_slug_prompt());
 		$this->assertEquals(456, $context->get_voice_id());
 	}
 }

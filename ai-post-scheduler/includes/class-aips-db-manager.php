@@ -41,6 +41,9 @@ class AIPS_DB_Manager {
         'aips_link_clicks',
         'aips_redirects',
         'aips_background_processes',
+        'aips_post_images',
+        'aips_post_images_generated',
+        'aips_jobs',
     );
 
     public function __construct() {
@@ -110,6 +113,9 @@ class AIPS_DB_Manager {
         $table_link_clicks          = $tables['aips_link_clicks'];
         $table_redirects            = $tables['aips_redirects'];
         $table_background_processes = $tables['aips_background_processes'];
+        $table_post_images          = $tables['aips_post_images'];
+        $table_post_images_generated = $tables['aips_post_images_generated'];
+        $table_jobs                 = $tables['aips_jobs'];
 
         $sql = array();
 
@@ -135,13 +141,10 @@ class AIPS_DB_Manager {
             completed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY uuid (uuid),
-            KEY post_id (post_id),
             KEY post_type (post_type),
-            KEY template_id (template_id),
             KEY campaign_id (campaign_id),
             KEY author_id (author_id),
             KEY topic_id (topic_id),
-            KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
@@ -190,10 +193,12 @@ class AIPS_DB_Manager {
             description text,
             prompt_template text NOT NULL,
             title_prompt text,
+            slug_prompt text,
             voice_id bigint(20) DEFAULT NULL,
             post_quantity int DEFAULT 1,
             image_prompt text,
             generate_featured_image tinyint(1) DEFAULT 0,
+            generate_slug tinyint(1) DEFAULT 0,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
             featured_image_unsplash_keywords text,
             featured_image_media_ids text,
@@ -333,8 +338,13 @@ class AIPS_DB_Manager {
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
             post_author bigint(20) DEFAULT NULL,
+            image_prompt text,
             generate_featured_image tinyint(1) DEFAULT 0,
+            generate_slug tinyint(1) DEFAULT 0,
+            slug_prompt text,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
+            featured_image_unsplash_keywords text,
+            featured_image_media_ids text,
             voice_tone varchar(500) DEFAULT NULL,
             writing_style varchar(500) DEFAULT NULL,
             target_audience varchar(500) DEFAULT NULL,
@@ -392,11 +402,9 @@ class AIPS_DB_Manager {
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
-            KEY author_id (author_id),
-            KEY status (status),
             KEY claimed_at (claimed_at),
             KEY generated_at (generated_at),
-            KEY author_id_status (author_id, status),
+            KEY author_id_status_score (author_id, status, score),
             KEY status_score_reviewed (status, score, reviewed_at)
         ) $charset_collate;";
 
@@ -854,6 +862,73 @@ class AIPS_DB_Manager {
             KEY created_at_idx (created_at)
         ) $charset_collate;";
 
+        $sql[] = "CREATE TABLE $table_post_images (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            entity_type varchar(50) NOT NULL,
+            entity_id bigint(20) NOT NULL,
+            image_type varchar(50) NOT NULL DEFAULT 'content',
+            image_order int(11) NOT NULL DEFAULT 0,
+            source varchar(50) NOT NULL DEFAULT 'ai_prompt',
+            image_prompt text,
+            unsplash_keywords text,
+            media_ids text,
+            placement varchar(50) DEFAULT 'auto',
+            caption text,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY entity_lookup (entity_type, entity_id, image_type),
+            KEY entity_order (entity_type, entity_id, image_order)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_images_generated (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) NOT NULL,
+            history_id bigint(20) DEFAULT NULL,
+            config_image_id bigint(20) DEFAULT NULL,
+            image_index int(11) NOT NULL DEFAULT 1,
+            attachment_id bigint(20) NOT NULL DEFAULT 0,
+            image_source varchar(50) NOT NULL DEFAULT 'ai_prompt',
+            image_prompt text,
+            image_url text,
+            placement varchar(50) DEFAULT 'auto',
+            status varchar(32) NOT NULL DEFAULT 'completed',
+            error_message text,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY post_id (post_id),
+            KEY config_image_id (config_image_id),
+            KEY post_status (post_id, status)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_jobs (
+            job_id varchar(36) NOT NULL,
+            job_type varchar(100) NOT NULL,
+            group_name varchar(64) NOT NULL DEFAULT 'aips-default',
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            total int(11) NOT NULL DEFAULT 0,
+            processed int(11) NOT NULL DEFAULT 0,
+            failed int(11) NOT NULL DEFAULT 0,
+            cursor_id bigint(20) unsigned NOT NULL DEFAULT 0,
+            payload_json longtext,
+            result_json longtext,
+            error_message text DEFAULT NULL,
+            attempts int(11) NOT NULL DEFAULT 0,
+            max_retries int(11) NOT NULL DEFAULT 3,
+            next_run_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_tick_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            started_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            finished_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (job_id),
+            KEY type_status (job_type, status),
+            KEY group_status (group_name, status),
+            KEY status_next_run (status, next_run_at),
+            KEY updated_at (updated_at)
+        ) $charset_collate;";
+
         return $sql;
     }
 
@@ -1054,6 +1129,14 @@ class AIPS_DB_Manager {
             ),
             'aips_telemetry' => array(
                 array( 'inserted_at', false ),
+            ),
+            'aips_post_images' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_post_images_generated' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
             ),
         );
     }
@@ -1256,6 +1339,7 @@ class AIPS_DB_Manager {
         }
 
         $cron_events    = AI_Post_Scheduler::get_cron_events();
+        $cron_manager   = AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class);
         $unscheduled    = array();
         $rescheduled    = array();
         $failed         = array();
@@ -1265,13 +1349,12 @@ class AIPS_DB_Manager {
             $label    = isset($config['label']) ? $config['label'] : $hook;
 
             // Remove all existing instances of this hook from the cron table.
-            wp_unschedule_hook($hook);
+            $cron_manager->unschedule_all_for_hook($hook);
             $unscheduled[] = $label;
 
             // Re-register exactly once. Use a 60-second offset to avoid an
             // immediate burst of AI calls right after flushing.
-            $scheduled = wp_schedule_event(time() + 60, $schedule, $hook);
-            if ($scheduled !== false) {
+            if ($cron_manager->schedule_recurring($hook, $schedule, time() + 60)) {
                 $rescheduled[] = $label;
             } else {
                 $failed[] = $label;

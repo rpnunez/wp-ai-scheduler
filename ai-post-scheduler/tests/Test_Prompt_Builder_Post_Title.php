@@ -314,4 +314,23 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 		$this->assertStringContainsString('Avoid these existing titles:', $result);
 		$this->assertStringEndsWith('Respond with ONLY one plain-text title, nothing else.', $result);
 	}
+
+	public function test_build_base_prompt_respects_3000_char_digest_limit() {
+		$passed_limit = null;
+		add_filter('aips_title_context_max_chars', function ($limit) use (&$passed_limit) {
+			$passed_limit = $limit;
+			return $limit;
+		});
+
+		$template = (object) array(
+			'id'              => 1,
+			'title_prompt'    => 'Title',
+			'prompt_template' => 'Content',
+		);
+		$long_content = str_repeat('Long content for testing digest truncation. ', 200);
+
+		$this->builder->build($template, 'Topic', null, $long_content);
+
+		$this->assertSame(3000, $passed_limit, 'Default title context max chars should be optimized to 3000 to prevent prompt bloat.');
+	}
 }

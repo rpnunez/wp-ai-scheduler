@@ -17,6 +17,8 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 
 	public function tearDown(): void {
 		delete_option( 'aips_indexer_verbose_history' );
+		delete_option( 'aips_indexer_paused_until' );
+		delete_option( 'aips_indexer_pause_reason' );
 		$_POST = array();
 		$_REQUEST = array();
 		wp_set_current_user( 0 );
@@ -188,5 +190,53 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		$response = $this->capture_ajax_response( array( $controller, 'ajax_rename_post_cluster' ) );
 
 		$this->assertTrue( $response['success'] );
+	}
+
+	/**
+	 * A future aips_indexer_paused_until must surface as an active cooldown banner.
+	 */
+	public function test_view_data_reports_active_cooldown_when_pause_is_in_the_future() {
+		$until = time() + 900;
+		update_option( 'aips_indexer_paused_until', $until, false );
+		update_option( 'aips_indexer_pause_reason', 'Remote 429', false );
+
+		$view   = $this->controller->get_intelligence_hub_view_data();
+		$banner = $view['banners']['cooldown'];
+
+		$this->assertTrue( $banner['active'] );
+		$this->assertSame( $until, $banner['until'] );
+		$this->assertGreaterThan( 0, $banner['remaining_seconds'] );
+		$this->assertLessThanOrEqual( 900, $banner['remaining_seconds'] );
+		$this->assertSame( 'Remote 429', $banner['reason'] );
+		$this->assertStringContainsString( 'Remote 429', $banner['message'] );
+
+		$clusters = $this->controller->get_clusters_view_data();
+		$this->assertTrue( $clusters['banners']['cooldown']['active'] );
+
+		$audit = $this->controller->get_cannibalization_view_data();
+		$this->assertTrue( $audit['banners']['cooldown']['active'] );
+		$this->assertSame( $until, $audit['banners']['cooldown']['until'] );
+	}
+
+	/**
+	 * A past or missing pause must keep the cooldown banner inactive.
+	 */
+	public function test_view_data_reports_inactive_cooldown_when_pause_is_past_or_unset() {
+		update_option( 'aips_indexer_paused_until', time() - 60, false );
+		update_option( 'aips_indexer_pause_reason', 'stale pause', false );
+
+		$view = $this->controller->get_intelligence_hub_view_data();
+		$this->assertFalse( $view['banners']['cooldown']['active'] );
+		$this->assertSame( 0, $view['banners']['cooldown']['remaining_seconds'] );
+		$this->assertSame( 0, $view['banners']['cooldown']['until'] );
+
+		delete_option( 'aips_indexer_paused_until' );
+		delete_option( 'aips_indexer_pause_reason' );
+
+		$view = $this->controller->get_intelligence_hub_view_data();
+		$this->assertFalse( $view['banners']['cooldown']['active'] );
+		$this->assertSame( 0, $view['banners']['cooldown']['remaining_seconds'] );
+		$this->assertSame( 0, $view['banners']['cooldown']['until'] );
+		$this->assertSame( '', $view['banners']['cooldown']['reason'] );
 	}
 }

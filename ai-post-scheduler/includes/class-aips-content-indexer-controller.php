@@ -160,11 +160,10 @@ class AIPS_Content_Indexer_Controller {
 			$cooldown_status = $this->rate_limiter->get_cooldown_status();
 		} catch (\Throwable $e) {
 			$cooldown_status = array(
-				'active'              => false,
-				'remaining_seconds'   => 0,
-				'remaining_formatted' => '00:00',
-				'until'               => 0,
-				'reason'              => '',
+				'is_paused'         => false,
+				'paused_until'      => 0,
+				'remaining_seconds' => 0,
+				'reason'            => '',
 			);
 		}
 
@@ -243,21 +242,9 @@ class AIPS_Content_Indexer_Controller {
 			}
 		}
 
-		// Format Cooldown Message
-		$is_cooldown_active = !empty($cooldown_status['active']);
-		$cooldown_remaining = isset($cooldown_status['remaining_seconds']) ? (int) $cooldown_status['remaining_seconds'] : 0;
-		$cooldown_until     = isset($cooldown_status['until']) ? (int) $cooldown_status['until'] : 0;
-		$cooldown_reason    = isset($cooldown_status['reason']) ? (string) $cooldown_status['reason'] : '';
-		$cooldown_message   = '';
-		if (!empty($cooldown_reason)) {
-			$cooldown_message = sprintf(
-				/* translators: 1: reason */
-				esc_html__('Remote provider reported: "%s". Operations are temporarily halted to respect remote rate limits.', 'ai-post-scheduler'),
-				esc_html($cooldown_reason)
-			);
-		} else {
-			$cooldown_message = esc_html__('Remote rate limits encountered. Operations are temporarily paused.', 'ai-post-scheduler');
-		}
+		// The rate limiter reports is_paused / paused_until. The banner and
+		// countdown read active / until / remaining_seconds.
+		$cooldown_banner = $this->format_cooldown_banner($cooldown_status);
 
 		$banners = array(
 			'embeddings_disabled' => empty($settings['embeddings_enabled']),
@@ -272,14 +259,7 @@ class AIPS_Content_Indexer_Controller {
 				'exceeded_limit' => $exceeded_limit,
 				'message'        => $rate_limit_message,
 			),
-			'cooldown'            => array(
-				'active'              => $is_cooldown_active,
-				'remaining_seconds'   => $cooldown_remaining,
-				'remaining_formatted' => gmdate('i:s', $cooldown_remaining),
-				'until'               => $cooldown_until,
-				'reason'              => $cooldown_reason,
-				'message'             => $cooldown_message,
-			),
+			'cooldown'            => $cooldown_banner,
 		);
 
 		return compact(
@@ -292,6 +272,44 @@ class AIPS_Content_Indexer_Controller {
 			'dimension_mismatch',
 			'settings',
 			'banners'
+		);
+	}
+
+	/**
+	 * Map limiter cooldown status onto the banner the Content Intelligence templates render.
+	 *
+	 * Remaining seconds are computed from paused_until so the countdown matches
+	 * the option the rate limiter actually stores (aips_indexer_paused_until).
+	 *
+	 * @param array $cooldown_status Status from AIPS_Embeddings_Rate_Limiter::get_cooldown_status().
+	 * @return array{active: bool, remaining_seconds: int, remaining_formatted: string, until: int, reason: string, message: string}
+	 */
+	private function format_cooldown_banner(array $cooldown_status): array {
+		$paused_until       = isset($cooldown_status['paused_until']) ? (int) $cooldown_status['paused_until'] : 0;
+		$now                = AIPS_DateTime::now()->timestamp();
+		$is_cooldown_active = !empty($cooldown_status['is_paused']);
+		$cooldown_until     = $is_cooldown_active ? $paused_until : 0;
+		$cooldown_remaining = $is_cooldown_active ? max(0, $paused_until - $now) : 0;
+		$cooldown_reason    = isset($cooldown_status['reason']) ? (string) $cooldown_status['reason'] : '';
+		$cooldown_message   = '';
+
+		if (!empty($cooldown_reason)) {
+			$cooldown_message = sprintf(
+				/* translators: 1: reason */
+				esc_html__('Remote provider reported: "%s". Operations are temporarily halted to respect remote rate limits.', 'ai-post-scheduler'),
+				esc_html($cooldown_reason)
+			);
+		} else {
+			$cooldown_message = esc_html__('Remote rate limits encountered. Operations are temporarily paused.', 'ai-post-scheduler');
+		}
+
+		return array(
+			'active'              => $is_cooldown_active,
+			'remaining_seconds'   => $cooldown_remaining,
+			'remaining_formatted' => gmdate('i:s', $cooldown_remaining),
+			'until'               => $cooldown_until,
+			'reason'              => $cooldown_reason,
+			'message'             => $cooldown_message,
 		);
 	}
 

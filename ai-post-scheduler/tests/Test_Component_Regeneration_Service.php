@@ -6,12 +6,12 @@
  */
 
 class Test_Component_Regeneration_Service extends WP_UnitTestCase {
-	
+
 	private $service;
 	private $history_repository;
 	private $template_repository;
 	private $author_topics_repository;
-	
+
 	public function setUp(): void {
 		parent::setUp();
 		$this->service = new AIPS_Component_Regeneration_Service();
@@ -19,18 +19,18 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$this->template_repository = new AIPS_Template_Repository();
 		$this->author_topics_repository = new AIPS_Author_Topics_Repository();
 	}
-	
+
 	public function tearDown(): void {
 		parent::tearDown();
 	}
-	
+
 	/**
 	 * Test that the service can be instantiated
 	 */
 	public function test_service_instantiation() {
 		$this->assertInstanceOf('AIPS_Component_Regeneration_Service', $this->service);
 	}
-	
+
 	/**
 	 * Test get_generation_context retrieves correct data
 	 */
@@ -43,22 +43,22 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'post_category' => 0,
 			'is_active' => 1,
 		));
-		
+
 		// Create a post
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Test Post',
 		));
-		
+
 		// Create a history record
 		$history_id = $this->history_repository->create(array(
 			'template_id' => $template_id,
 			'post_id' => $post_id,
 			'status' => 'completed',
 		));
-		
+
 		// Get generation context
 		$context = $this->service->get_generation_context($history_id);
-		
+
 		$this->assertIsArray($context);
 		$this->assertArrayHasKey('history_id', $context);
 		$this->assertArrayHasKey('post_id', $context);
@@ -70,17 +70,17 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$this->assertEquals('template', $context['context_type']);
 		$this->assertInstanceOf('AIPS_Template_Context', $context['generation_context']);
 	}
-	
+
 	/**
 	 * Test get_generation_context returns error for invalid history
 	 */
 	public function test_get_generation_context_invalid_history() {
 		$context = $this->service->get_generation_context(99999);
-		
+
 		$this->assertInstanceOf('WP_Error', $context);
 		$this->assertEquals('invalid_history', $context->get_error_code());
 	}
-	
+
 	/**
 	 * Test get_generation_context includes topic data when available
 	 */
@@ -93,7 +93,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'post_category' => 0,
 			'is_active' => 1,
 		));
-		
+
 		// Create an author-topic
 		$topic_id = $this->author_topics_repository->create(array(
 			'author_id' => 1,
@@ -101,12 +101,12 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'topic_prompt' => 'Test description',
 			'status' => 'approved',
 		));
-		
+
 		// Create a post
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Test Post',
 		));
-		
+
 		// Create a history record with topic
 		$history_id = $this->history_repository->create(array(
 			'template_id' => $template_id,
@@ -114,31 +114,31 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'topic_id' => $topic_id,
 			'status' => 'completed',
 		));
-		
+
 		// Get generation context
 		$context = $this->service->get_generation_context($history_id);
-		
+
 		$this->assertArrayHasKey('generation_context', $context);
 		$this->assertArrayHasKey('context_type', $context);
 		$this->assertEquals('template', $context['context_type']);
 		$this->assertInstanceOf('AIPS_Template_Context', $context['generation_context']);
-		
+
 		// Check that topic is included in the context
 		$generation_context = $context['generation_context'];
 		$this->assertEquals('Test Topic', $generation_context->get_topic());
 	}
-	
+
 	/**
 	 * Test regenerate_title requires generation context
 	 */
 	public function test_regenerate_title_requires_context() {
 		$context = array();
 		$result = $this->service->regenerate_title($context);
-		
+
 		$this->assertInstanceOf('WP_Error', $result);
 		$this->assertEquals('missing_context', $result->get_error_code());
 	}
-	
+
 	/**
 	 * Test regenerate_title with template context
 	 */
@@ -152,32 +152,32 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'title_prompt' => 'Generate a title',
 			'prompt_template' => 'Write about {{topic}}',
 		);
-		
+
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
-		
+
 		$context = array(
 			'generation_context' => $generation_context,
 		);
-		
+
 		// Note: This will actually try to call AI, so it might return an error
 		// if AI Engine is not available. We just check it doesn't crash.
 		$result = $this->service->regenerate_title($context);
-		
+
 		// Should be either a string or WP_Error, not null
 		$this->assertTrue(is_string($result) || is_wp_error($result));
 	}
-	
+
 	/**
 	 * Test regenerate_excerpt requires generation context
 	 */
 	public function test_regenerate_excerpt_requires_context() {
 		$context = array();
 		$result = $this->service->regenerate_excerpt($context);
-		
+
 		$this->assertInstanceOf('WP_Error', $result);
 		$this->assertEquals('missing_context', $result->get_error_code());
 	}
-	
+
 	/**
 	 * Test regenerate_excerpt with template context
 	 */
@@ -190,31 +190,31 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'excerpt_prompt' => 'Generate an excerpt',
 			'prompt_template' => 'Write about {{topic}}',
 		);
-		
+
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
-		
+
 		$context = array(
 			'generation_context' => $generation_context,
 			'current_title' => 'Test Title',
 		);
-		
+
 		$result = $this->service->regenerate_excerpt($context);
-		
+
 		// Should be either a string or WP_Error
 		$this->assertTrue(is_string($result) || is_wp_error($result));
 	}
-	
+
 	/**
 	 * Test regenerate_content requires generation context
 	 */
 	public function test_regenerate_content_requires_context() {
 		$context = array();
 		$result = $this->service->regenerate_content($context);
-		
+
 		$this->assertInstanceOf('WP_Error', $result);
 		$this->assertEquals('missing_context', $result->get_error_code());
 	}
-	
+
 	/**
 	 * Test regenerate_content with template context
 	 */
@@ -227,31 +227,31 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'content_prompt' => 'Generate content',
 			'prompt_template' => 'Write about {{topic}}',
 		);
-		
+
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
-		
+
 		$context = array(
 			'generation_context' => $generation_context,
 			'current_title' => 'Test Title',
 		);
-		
+
 		$result = $this->service->regenerate_content($context);
-		
+
 		// Should be either a string or WP_Error
 		$this->assertTrue(is_string($result) || is_wp_error($result));
 	}
-	
+
 	/**
 	 * Test regenerate_featured_image requires generation context
 	 */
 	public function test_regenerate_featured_image_requires_context() {
 		$context = array();
 		$result = $this->service->regenerate_featured_image($context);
-		
+
 		$this->assertInstanceOf('WP_Error', $result);
 		$this->assertEquals('missing_context', $result->get_error_code());
 	}
-	
+
 	/**
 	 * Test regenerate_featured_image requires post ID
 	 */
@@ -261,19 +261,19 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'name' => 'Test Template',
 			'prompt_template' => 'Write about {{topic}}',
 		);
-		
+
 		$generation_context = new AIPS_Template_Context($template);
-		
+
 		$context = array(
 			'generation_context' => $generation_context,
 		);
-		
+
 		$result = $this->service->regenerate_featured_image($context);
-		
+
 		$this->assertInstanceOf('WP_Error', $result);
 		$this->assertEquals('missing_post_id', $result->get_error_code());
 	}
-	
+
 	/**
 	 * Test regenerate_featured_image with template context and post ID
 	 */
@@ -281,7 +281,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Test Post',
 		));
-		
+
 		$template = (object) array(
 			'id' => 1,
 			'name' => 'Test Template',
@@ -290,17 +290,17 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'image_prompt' => 'Generate an image',
 			'prompt_template' => 'Write about {{topic}}',
 		);
-		
+
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
-		
+
 		$context = array(
 			'generation_context' => $generation_context,
 			'current_title' => 'Test Title',
 			'post_id' => $post_id,
 		);
-		
+
 		$result = $this->service->regenerate_featured_image($context);
-		
+
 		// Should be either an array with attachment_id and url, or WP_Error
 		$this->assertTrue(
 			(is_array($result) && isset($result['attachment_id']) && isset($result['url'])) ||
@@ -369,7 +369,7 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 
 		$this->assertFalse($this->service->should_regenerate_featured_image($post_id));
 	}
-	
+
 	/**
 	 * Test that service handles structured content properly
 	 */
@@ -382,16 +382,16 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 			'prompt_template' => 'Write about {{topic}}',
 			'article_structure_id' => 1,
 		);
-		
+
 		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
-		
+
 		$context = array(
 			'generation_context' => $generation_context,
 			'current_title' => 'Test Title',
 		);
-		
+
 		$result = $this->service->regenerate_content($context);
-		
+
 		// Should be either a string or WP_Error
 		$this->assertTrue(is_string($result) || is_wp_error($result));
 	}
@@ -556,5 +556,409 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		$this->assertTrue(
 			(is_array($result) && isset($result['attachment_id'])) || is_wp_error($result)
 		);
+	}
+
+	/**
+	 * Test build_directive_instruction formatting for presets and custom directives.
+	 */
+	public function test_build_directive_instruction_with_preset_and_custom() {
+		$empty_instruction = $this->service->build_directive_instruction(array());
+		$this->assertSame('', $empty_instruction);
+
+		$preset_instruction = $this->service->build_directive_instruction(array(
+			'directive_preset' => 'punchy',
+		));
+		$this->assertStringContainsString('punchier', $preset_instruction);
+
+		$combined_instruction = $this->service->build_directive_instruction(array(
+			'directive_preset' => 'seo',
+			'custom_directive' => 'Focus on developer workflows',
+		));
+		$this->assertStringContainsString('search intent', $combined_instruction);
+		$this->assertStringContainsString('Focus on developer workflows', $combined_instruction);
+	}
+
+	/**
+	 * Test extract_ai_options extracts model and clamps temperature between 0 and 1.
+	 */
+	public function test_extract_ai_options_extracts_model_and_clamps_temperature() {
+		$options = $this->service->extract_ai_options(array(
+			'model_override'       => 'claude-3-5-sonnet-20241022',
+			'temperature_override' => '1.5',
+		));
+
+		$this->assertSame('claude-3-5-sonnet-20241022', $options['model']);
+		$this->assertSame(1.0, $options['temperature']);
+
+		$options_negative = $this->service->extract_ai_options(array(
+			'temperature_override' => '-0.2',
+		));
+		$this->assertSame(0.0, $options_negative['temperature']);
+	}
+
+	// ------------------------------------------------------------------
+	// regenerate_slug
+	// ------------------------------------------------------------------
+
+	/**
+	 * Test regenerate_slug requires generation context
+	 */
+	public function test_regenerate_slug_requires_context() {
+		$context = array();
+		$result = $this->service->regenerate_slug($context);
+
+		$this->assertInstanceOf('WP_Error', $result);
+		$this->assertEquals('missing_context', $result->get_error_code());
+	}
+
+	/**
+	 * Test regenerate_slug with template context
+	 */
+	public function test_regenerate_slug_with_template() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test Template',
+			'generate_slug'   => 1,
+			'slug_prompt'     => 'SEO slug',
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$context = array(
+			'generation_context' => $generation_context,
+			'current_title'      => 'A Test Post Title',
+			'current_content'    => 'Article body',
+		);
+
+		$result = $this->service->regenerate_slug($context);
+
+		// Returns string or WP_Error
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+	}
+
+	public function test_regenerate_all_skips_slug_when_template_disables_it() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'No Slug Template',
+			'generate_slug'   => 0,
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+		$this->assertFalse($generation_context->should_generate_slug());
+
+		$post_id = $this->factory->post->create(array('post_title' => 'Skip slug'));
+		$result = $this->service->regenerate_all_components(array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+			'history_id'         => 1,
+		));
+
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('slug', $result['skipped']);
+		$this->assertArrayNotHasKey('slug', $result['regenerated']);
+	}
+
+	public function test_regenerate_slug_explicit_call_ignores_disabled_setting() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Slug Off',
+			'generate_slug'   => 0,
+			'prompt_template' => 'Write about {{topic}}',
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+		$result = $this->service->regenerate_slug(array(
+			'generation_context' => $generation_context,
+			'current_title'      => 'A Test Post Title',
+			'current_content'    => 'Article body',
+		));
+
+		$this->assertTrue(is_string($result) || is_wp_error($result));
+		if (is_wp_error($result)) {
+			$this->assertNotSame('slug_disabled', $result->get_error_code());
+		}
+	}
+
+	public function test_regenerate_content_substitutes_post_image_placeholders_and_strips_unresolved() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Images Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'post_images'     => array(
+				(object) array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto'),
+			),
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$post_id = $this->factory->post->create(array('post_title' => 'Test Post'));
+		$history_id = $this->history_repository->create(array(
+			'template_id' => 1,
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+		));
+		$repo = new AIPS_Post_Images_Generated_Repository();
+		$row_id = $repo->create(array(
+			'post_id'           => $post_id,
+			'history_id'        => $history_id,
+			'placeholder_index' => 1,
+			'status'            => 'completed',
+			'attachment_id'     => 0,
+		));
+
+		$mock_generator = $this->getMockBuilder(AIPS_Generator::class)
+			->onlyMethods(array('generate_content'))
+			->getMock();
+		$mock_generator->method('generate_content')
+			->willReturn('<p>Intro</p>[post_image index="1"]<p>Body</p>[post_image index="99"]');
+
+		$ref = new ReflectionProperty($this->service, 'generator');
+		$ref->setAccessible(true);
+		$ref->setValue($this->service, $mock_generator);
+
+		$result = $this->service->regenerate_content(array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+			'history_id'         => $history_id,
+			'current_title'      => 'Test Post',
+		));
+
+		$this->assertIsString($result);
+		$this->assertStringContainsString(sprintf('<!-- aips-image-placeholder id="%d" -->', $row_id), $result);
+		$this->assertStringNotContainsString('[post_image index="1"]', $result);
+		$this->assertStringNotContainsString('[post_image index="99"]', $result);
+	}
+
+	public function test_regenerate_all_components_does_not_save_post_and_cleans_placeholders_in_memory() {
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Images Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'generate_slug'   => 0,
+			'post_images'     => array(
+				(object) array('placeholder_index' => 1, 'source' => 'ai_prompt', 'placement' => 'auto'),
+			),
+		);
+		$generation_context = new AIPS_Template_Context($template, null, 'Test Topic');
+
+		$initial_db_content = '<p>Original saved post content</p>';
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Test Post',
+			'post_content' => $initial_db_content,
+		));
+		$history_id = $this->history_repository->create(array(
+			'template_id' => 1,
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+		));
+
+		$mock_generator = $this->getMockBuilder(AIPS_Generator::class)
+			->onlyMethods(array('generate_content', 'generate_title', 'generate_excerpt'))
+			->getMock();
+		$mock_generator->method('generate_content')
+			->willReturn('<p>New article</p>[post_image index="1"]<p>Body</p>[post_image index="99"]');
+		$mock_generator->method('generate_title')->willReturn('New Title');
+		$mock_generator->method('generate_excerpt')->willReturn('New Excerpt');
+
+		$ref = new ReflectionProperty($this->service, 'generator');
+		$ref->setAccessible(true);
+		$ref->setValue($this->service, $mock_generator);
+
+		$result = $this->service->regenerate_all_components(array(
+			'generation_context' => $generation_context,
+			'post_id'            => $post_id,
+			'history_id'         => $history_id,
+		));
+
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('content', $result['regenerated']);
+		// The returned in-memory content should NOT contain unresolved placeholders
+		$this->assertStringNotContainsString('[post_image index="99"]', $result['regenerated']['content']);
+
+		// The post in the database MUST NOT have been updated (staged preview in modal)
+		$post_in_db = get_post($post_id);
+		$this->assertSame($initial_db_content, $post_in_db->post_content, 'Database post must not be mutated during Regenerate All staging.');
+	}
+
+	public function test_build_conversation_uses_persisted_transcript() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Persisted Post Title',
+			'post_content' => '<p>Persisted Post Content</p>',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+			'record_kind' => 'generation',
+		));
+
+		$transcript = array(
+			array('role' => 'user', 'text' => 'Original Historical Prompt for Content'),
+			array('role' => 'model', 'text' => '<p>Persisted Post Content</p>'),
+		);
+
+		$this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'conversation_transcript',
+				'output'      => array(
+					'transcript'       => $transcript,
+					'exchanges_count'  => 1,
+					'estimated_tokens' => 200,
+				),
+			),
+			AIPS_History_Type::AI_CONVERSATION
+		);
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test',
+			'prompt_template' => 'Different template prompt',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+
+		$reflection = new ReflectionClass($this->service);
+		$method     = $reflection->getMethod('build_conversation');
+		$method->setAccessible(true);
+
+		$generator_prop = $reflection->getProperty('generator');
+		$generator_prop->setAccessible(true);
+		$mock_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai->method('supports_conversation')->willReturn(true);
+		$mock_ai->method('is_available')->willReturn(true);
+		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
+
+		$conversation = $method->invoke($this->service, $context, $post_id, false);
+
+		$this->assertInstanceOf('AIPS_AI_Conversation', $conversation);
+		$turns = $conversation->to_array();
+		$this->assertCount(2, $turns);
+		$this->assertSame('Original Historical Prompt for Content', $turns[0]['text']);
+	}
+
+	public function test_build_conversation_with_discrete_title_exchange() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Persisted Post Title',
+			'post_content' => '<p>Persisted Post Content</p>',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+			'record_kind' => 'generation',
+		));
+
+		$transcript = array(
+			array('role' => 'user', 'text' => 'Content prompt'),
+			array('role' => 'model', 'text' => '<p>Persisted Post Content</p>'),
+			array('role' => 'user', 'text' => 'Now generate a title for the article you just wrote.'),
+			array('role' => 'model', 'text' => 'Discrete Historical Title'),
+		);
+
+		$this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'conversation_transcript',
+				'output'      => array(
+					'transcript'       => $transcript,
+					'exchanges_count'  => 2,
+					'estimated_tokens' => 300,
+				),
+			),
+			AIPS_History_Type::AI_CONVERSATION
+		);
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test',
+			'prompt_template' => 'Template prompt',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+
+		$reflection = new ReflectionClass($this->service);
+		$method     = $reflection->getMethod('build_conversation');
+		$method->setAccessible(true);
+
+		$generator_prop = $reflection->getProperty('generator');
+		$generator_prop->setAccessible(true);
+		$mock_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai->method('supports_conversation')->willReturn(true);
+		$mock_ai->method('is_available')->willReturn(true);
+		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
+
+		$conversation = $method->invoke($this->service, $context, $post_id, true);
+
+		$this->assertInstanceOf('AIPS_AI_Conversation', $conversation);
+		$turns = $conversation->to_array();
+		$this->assertCount(4, $turns);
+		$this->assertSame('Now generate a title for the article you just wrote.', $turns[2]['text']);
+		$this->assertSame('Discrete Historical Title', $turns[3]['text']);
+	}
+
+	public function test_build_conversation_with_metadata_turn_falls_back_to_prompt_builder_for_title() {
+		update_option('aips_conversational_generation', 1);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Persisted Post Title',
+			'post_content' => '<p>Persisted Post Content</p>',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id'     => $post_id,
+			'status'      => 'completed',
+			'record_kind' => 'generation',
+		));
+
+		$transcript = array(
+			array('role' => 'user', 'text' => 'Content prompt'),
+			array('role' => 'model', 'text' => '<p>Persisted Post Content</p>'),
+			array('role' => 'user', 'text' => 'Generate title and excerpt JSON: TITLE INSTRUCTIONS: ...'),
+			array('role' => 'model', 'text' => '{"title":"Metadata Title","excerpt":"Metadata Excerpt"}'),
+		);
+
+		$this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'conversation_transcript',
+				'output'      => array(
+					'transcript'       => $transcript,
+					'exchanges_count'  => 2,
+					'estimated_tokens' => 350,
+				),
+			),
+			AIPS_History_Type::AI_CONVERSATION
+		);
+
+		$template = (object) array(
+			'id'              => 1,
+			'name'            => 'Test',
+			'prompt_template' => 'Template prompt',
+		);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+
+		$reflection = new ReflectionClass($this->service);
+		$method     = $reflection->getMethod('build_conversation');
+		$method->setAccessible(true);
+
+		$generator_prop = $reflection->getProperty('generator');
+		$generator_prop->setAccessible(true);
+		$mock_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$mock_ai->method('supports_conversation')->willReturn(true);
+		$mock_ai->method('is_available')->willReturn(true);
+		$generator_prop->setValue($this->service, new AIPS_Generator(null, $mock_ai));
+
+		$conversation = $method->invoke($this->service, $context, $post_id, true);
+
+		$this->assertInstanceOf('AIPS_AI_Conversation', $conversation);
+		$turns = $conversation->to_array();
+		$this->assertCount(4, $turns);
+		// Should NOT use the JSON string
+		$this->assertNotSame('{"title":"Metadata Title","excerpt":"Metadata Excerpt"}', $turns[3]['text']);
+		$this->assertSame('Persisted Post Title', $turns[3]['text']);
 	}
 }

@@ -151,6 +151,13 @@ class AIPS_Notification_Registry {
 				'level'         => 'info',
 				'dedupe_window' => 3600,
 			),
+			'summarized_digest' => array(
+				'label'         => __('Summarized Digest', 'ai-post-scheduler'),
+				'description'   => __('Batched summary of frequent content and generation activity.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_EMAIL_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 0,
+			),
 			'history_cleanup' => array(
 				'label'         => __('History Cleanup', 'ai-post-scheduler'),
 				'description'   => __('Operational cleanup completed.', 'ai-post-scheduler'),
@@ -240,6 +247,29 @@ class AIPS_Notification_Registry {
 				'partial_generation_completed',
 				'circuit_breaker_opened',
 				'rate_limit_reached',
+			))
+		);
+	}
+
+	/**
+	 * Return the notification types eligible for inclusion in the summarized digest.
+	 *
+	 * Only content and editorial/generation activity notifications are eligible;
+	 * critical errors and system alerts always dispatch immediately.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function get_digest_eligible_types() {
+		$registry = self::get_type_registry();
+
+		return array_intersect_key(
+			$registry,
+			array_flip(array(
+				'post_generated',
+				'post_ready_for_review',
+				'template_generated',
+				'manual_generation_completed',
+				'partial_generation_completed',
 			))
 		);
 	}

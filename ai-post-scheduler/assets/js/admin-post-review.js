@@ -18,23 +18,160 @@
 	// -----------------------------------------------------------------
 	AIPS.PostReview = {
 
+		/** @type {number} Current page for cards pagination */
+		currentPage: 1,
+
+		/** @type {number} Total pages available */
+		totalPages: 1,
+
+		/** @type {boolean} Guard against concurrent AJAX requests */
+		isLoading: false,
+
+		/** @type {number} Track auto-scroll count for hybrid infinite scroll */
+		autoScrollPagesLoaded: 0,
+
+		/** @type {number|null} Debounce timer ID for live search */
+		searchTimer: null,
+
+		/** @type {Set<string>} Selected post IDs, shared by both layouts. */
+		selectedPostIds: new Set(),
+
+		/** @type {string} Active layout. Bulk actions only see this layout's checkboxes. */
+		currentView: 'cards',
+
+		/** @type {boolean} The server-rendered List query no longer matches the cards. */
+		listNeedsReload: false,
+
+		/**
+		 * Fallback when the grid has no data-per-page-max attribute.
+		 * Keep this equal to AIPS_Pending_Review_List_Table::PER_PAGE_MAX.
+		 */
+		perPageMaxFallback: 100,
+
 		/**
 		 * Bootstrap the Post Review page.
 		 *
 		 * @return {void}
 		 */
 		init: function () {
+			var $grid = $('#aips-pending-posts-grid');
+			if ($grid.length) {
+				this.currentPage = parseInt($grid.data('current-page'), 10) || 1;
+				this.totalPages  = parseInt($grid.data('total-pages'), 10) || 1;
+			}
 			this.bindEvents();
+			this.initInfiniteScroll();
+			try {
+				var pendingSelection = sessionStorage.getItem('aips_pending_review_selection');
+				if (pendingSelection) {
+					this.selectedPostIds = new Set(JSON.parse(pendingSelection).map(String));
+					sessionStorage.removeItem('aips_pending_review_selection');
+				}
+			} catch (e) {}
+
+			var savedView = 'cards';
+			try {
+				savedView = localStorage.getItem('aips_pending_review_view') || 'cards';
+			} catch (e) {}
+			this.setView(savedView);
+			this.syncSelection();
 		},
 
 		/**
-		 * Row checkboxes of the Pending Review table only (never other tabs' or
-		 * the header/footer select-all inputs), so selection counts are exact.
+		 * Row checkboxes of the Pending Review cards or table.
 		 *
 		 * @return {jQuery}
 		 */
 		rowCheckboxes: function () {
-			return $('#aips-post-review-form tbody .aips-post-checkbox');
+			return $('.aips-pending-posts-grid .aips-post-checkbox, #aips-post-review-form tbody .aips-post-checkbox');
+		},
+
+		/** Return checkboxes from the active layout only. */
+		activeCheckboxes: function () {
+			return this.currentView === 'list'
+				? $('#aips-post-review-form tbody .aips-post-checkbox')
+				: $('.aips-pending-posts-grid .aips-post-checkbox');
+		},
+
+		/**
+		 * IDs that are both selected and rendered in the active layout.
+		 * The selection count and bulk actions share this list.
+		 *
+		 * @param {Iterable<string>} selectedIds Shared selection.
+		 * @param {Iterable<string>} activeIds   Checkbox values in the active layout.
+		 * @return {string[]}
+		 */
+		actionableIds: function (selectedIds, activeIds) {
+			var active = {};
+			var kept = [];
+			Array.from(activeIds || []).forEach(function (id) {
+				active[String(id)] = true;
+			});
+			Array.from(selectedIds || []).forEach(function (id) {
+				id = String(id);
+				if (active[id]) {
+					kept.push(id);
+				}
+			});
+			return kept;
+		},
+
+		/** Values of the checkboxes rendered in the active layout. */
+		activeCheckboxIds: function () {
+			var ids = [];
+			this.activeCheckboxes().each(function () {
+				ids.push(String($(this).val()));
+			});
+			return ids;
+		},
+
+		/**
+		 * Drop selected IDs that have no checkbox in the active layout.
+		 * A Cards → expanded List → Cards round trip restores every ID, including
+		 * rows that the smaller Cards page no longer renders. Those IDs are not
+		 * actionable: publish and delete only read the active checkboxes.
+		 *
+		 * @return {string[]} IDs still selected.
+		 */
+		pruneSelectionToActive: function () {
+			var kept = this.actionableIds(this.selectedPostIds, this.activeCheckboxIds());
+			var keep = {};
+			kept.forEach(function (id) {
+				keep[id] = true;
+			});
+			Array.from(this.selectedPostIds).forEach(function (id) {
+				if (!keep[String(id)]) {
+					AIPS.PostReview.selectedPostIds.delete(id);
+				}
+			});
+			return kept;
+		},
+
+		/**
+		 * Active-layout checkboxes whose posts are still selected.
+		 *
+		 * @return {jQuery}
+		 */
+		selectedActionCheckboxes: function () {
+			var allowed = {};
+			this.pruneSelectionToActive().forEach(function (id) {
+				allowed[id] = true;
+			});
+			return this.activeCheckboxes().filter(function () {
+				return !!allowed[String($(this).val())];
+			});
+		},
+
+		/** Apply the selected IDs to both rendered layouts. */
+		syncSelection: function () {
+			this.pruneSelectionToActive();
+			var selected = this.selectedPostIds;
+			this.rowCheckboxes().each(function () {
+				var checked = selected.has(String($(this).val()));
+				$(this).prop('checked', checked).prop('indeterminate', false);
+				$(this).closest('.aips-post-card').toggleClass('is-selected', checked);
+			});
+			this.updateSelectionState();
 		},
 
 		/**
@@ -43,35 +180,156 @@
 		 * @return {void}
 		 */
 		bindEvents: function () {
-			// Select-all checkbox. WP_List_Table renders one in the top header and one
-			// in the footer (cb-select-all-1 / cb-select-all-2), so match both by id prefix.
-			$(document).on('change', 'input[id^="cb-select-all-"]', this.onSelectAllChange.bind(this));
+			// Select-all checkbox (cards toolbar or WP_List_Table header)
+			$(document).on('change', '#aips-select-all-cards, input[id^="cb-select-all-"]', this.onSelectAllChange.bind(this));
 
-			// Individual row checkbox.
+			// Individual card / row checkbox
 			$(document).on('change', '.aips-post-checkbox', this.onCheckboxChange.bind(this));
 
-			// Open post-preview modal.
+			// Open post-preview modal
 			$(document).on('click', '.aips-preview-post, .aips-preview-trigger', this.onPreviewClick.bind(this));
 			$(document).on('click', '.aips-edit-post', this.onEditClick.bind(this));
 
-			// Single-row actions.
+			// Single-item actions
 			$(document).on('click', '.aips-publish-post',    this.onPublishClick.bind(this));
 			$(document).on('click', '.aips-delete-post',     this.onDeleteClick.bind(this));
 			$(document).on('click', '.aips-regenerate-post', this.onRegenerateClick.bind(this));
-			// Overflow toggle / item click / outside click are handled globally by admin.js.
 			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
 
-			// Bulk actions.
+			// Bulk actions
 			$(document).on('click', '#aips-bulk-action-btn', this.onBulkAction.bind(this));
+			$(document).on('change', '#aips-floating-select-all', this.onFloatingSelectAllChange.bind(this));
+			$(document).on('click', '#aips-floating-bulk-apply', this.onFloatingBulkApply.bind(this));
+			$(document).on('click', '#aips-floating-clear-selection', this.onClearSelection.bind(this));
 
-			// Reload button.
+			// Reload button
 			$(document).on('click', '#aips-reload-posts-btn', this.onReloadClick.bind(this));
 
-			// Close preview modal.
+			// Load More button
+			$(document).on('click', '#aips-pending-load-more-btn', this.onLoadMoreClick.bind(this));
+
+			// Live Filter & Search
+			$(document).on('input', '#aips-post-search-input', this.onSearchInput.bind(this));
+			$(document).on('change', '#aips-filter-template, #aips-filter-post-type-review', this.onFilterChange.bind(this));
+			$(document).on('submit', '#aips-pending-filter-form', function (e) {
+				e.preventDefault();
+				AIPS.PostReview.applyFilters();
+			});
+			$(document).on('click', '#aips-pending-clear-filters', this.onClearFilters.bind(this));
+
+			// View toggle (cards vs list)
+			$(document).on('click', '.aips-view-toggle-btn', this.onViewToggleClick.bind(this));
+
+			// Close preview modal
 			$(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', this.closePreviewModal.bind(this));
 
-			// Pagination page-jump: the toolbar sits outside any form, so submit on Enter manually.
+			// Pagination page-jump (legacy toolbar support)
 			$(document).on('keydown', '.aips-review-pagination .current-page', this.onPageJump.bind(this));
+		},
+
+		/**
+		 * Attach window scroll event for hybrid infinite scrolling.
+		 * Auto-loads the next page on scroll for up to 2 extra pages, then prompts the user with Load More.
+		 *
+		 * @return {void}
+		 */
+		initInfiniteScroll: function () {
+			var self = this;
+			$(window).on('scroll.aipsPendingReview', function () {
+				if (self.isLoading || self.currentPage >= self.totalPages) {
+					return;
+				}
+				// Hybrid mode: allow 2 automatic scrolls (pages 2 and 3)
+				if (self.autoScrollPagesLoaded >= 2) {
+					return;
+				}
+
+				var $sentinel = $('#aips-pending-load-more-wrap');
+				if (!$sentinel.length || !$sentinel.is(':visible')) {
+					return;
+				}
+
+				var windowBottom = $(window).scrollTop() + $(window).height();
+				var sentinelTop  = $sentinel.offset().top;
+
+				if (windowBottom >= sentinelTop - 300) {
+					self.autoScrollPagesLoaded++;
+					self.fetchPosts(self.currentPage + 1, false);
+				}
+			});
+		},
+
+		/**
+		 * Handle click on layout view toggle (cards vs list).
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onViewToggleClick: function (e) {
+			e.preventDefault();
+			var view = $(e.currentTarget).data('view');
+			if (view) {
+				this.setView(view);
+			}
+		},
+
+		/**
+		 * Switch between cards and list views.
+		 *
+		 * @param {string} view 'cards' or 'list'.
+		 * @return {void}
+		 */
+		setView: function (view) {
+			view = view === 'list' ? 'list' : 'cards';
+			var url = new URL(window.location.href);
+			var loaded = $('#aips-pending-posts-grid .aips-post-card').length;
+			var tableLimit = parseInt($('#aips-pending-posts-grid').data('per-page'), 10) || 12;
+			var perPageMax = parseInt($('#aips-pending-posts-grid').data('per-page-max'), 10) || this.perPageMaxFallback;
+			var requestedLimit = parseInt(url.searchParams.get('review_per_page'), 10) || 0;
+			if ((view === 'list' && (loaded > tableLimit || this.listNeedsReload)) || (view === 'cards' && requestedLimit)) {
+				if (view === 'list') {
+					url.searchParams.set('review_per_page', Math.min(perPageMax, Math.max(loaded, tableLimit)));
+					[['template_id', '#aips-filter-template'], ['post_type', '#aips-filter-post-type-review'], ['s', '#aips-post-search-input']].forEach(function (filter) {
+						var value = $(filter[1]).val();
+						if (value) {
+							url.searchParams.set(filter[0], value);
+						} else {
+							url.searchParams.delete(filter[0]);
+						}
+					});
+				} else {
+					url.searchParams.delete('review_per_page');
+				}
+				url.searchParams.delete('paged');
+				try {
+					localStorage.setItem('aips_pending_review_view', view);
+					sessionStorage.setItem('aips_pending_review_selection', JSON.stringify(Array.from(this.selectedPostIds)));
+				} catch (e) {}
+				window.location.href = url.toString();
+				return;
+			}
+			this.currentView = view;
+			$('.aips-view-toggle-btn').removeClass('is-active').attr('aria-pressed', 'false');
+			$('.aips-view-toggle-btn[data-view="' + view + '"]').addClass('is-active').attr('aria-pressed', 'true');
+
+			if (view === 'list') {
+				$('#aips-pending-posts-wrap').hide();
+				$('#aips-pending-list-wrap').show();
+				$('#aips-pending-cards-count').hide();
+				$('#aips-pending-list-pagination').show();
+				$('#aips-select-all-cards-wrap').hide();
+			} else {
+				$('#aips-pending-list-wrap').hide();
+				$('#aips-pending-posts-wrap').show();
+				$('#aips-pending-list-pagination').hide();
+				$('#aips-pending-cards-count').show();
+				$('#aips-select-all-cards-wrap').show();
+			}
+
+			try {
+				localStorage.setItem('aips_pending_review_view', view);
+			} catch (e) {}
+			this.syncSelection();
 		},
 
 		// -----------------------------------------------------------------
@@ -99,25 +357,90 @@
 		},
 
 		/**
-		 * Sync all row checkboxes when the select-all header checkbox changes.
+		 * Synchronize selection state across top toolbar, cards, and floating bulk bar.
+		 *
+		 * @return {void}
+		 */
+		updateSelectionState: function () {
+			var $actionable     = this.selectedActionCheckboxes();
+			var $rows           = this.activeCheckboxes();
+			var checkedCount    = $actionable.length;
+			var totalCount      = parseInt($('#aips-pending-total-count').text(), 10) || $rows.length;
+			var visibleChecked  = $rows.filter(':checked').length;
+			var allChecked      = $rows.length > 0 && $rows.length === visibleChecked;
+			var isIndeterminate = visibleChecked > 0 && !allChecked;
+
+			$('#aips-select-all-cards, input[id^="cb-select-all-"]').prop('checked', allChecked).prop('indeterminate', isIndeterminate);
+			$('#aips-floating-select-all').prop('checked', allChecked).prop('indeterminate', isIndeterminate);
+			$('#aips-top-selected-count').text(checkedCount + ' ' + $('#aips-top-selected-count').data('label')).toggle(checkedCount > 0);
+
+			if (checkedCount > 0) {
+				$('#aips-floating-selected-count').text(checkedCount);
+				$('#aips-floating-total-count').text(totalCount);
+				$('#aips-floating-bulk-bar').addClass('is-active').attr('aria-hidden', 'false');
+			} else {
+				$('#aips-floating-bulk-bar').removeClass('is-active').attr('aria-hidden', 'true');
+			}
+		},
+
+		/**
+		 * Sync all card / row checkboxes when the select-all header checkbox changes.
 		 *
 		 * @param {Event} e Change event.
 		 * @return {void}
 		 */
 		onSelectAllChange: function (e) {
-			AIPS.PostReview.rowCheckboxes().prop('checked', $(e.currentTarget).prop('checked'));
+			var isChecked = $(e.currentTarget).prop('checked');
+			this.activeCheckboxes().each(function () {
+				var id = String($(this).val());
+				if (isChecked) {
+					AIPS.PostReview.selectedPostIds.add(id);
+				} else {
+					AIPS.PostReview.selectedPostIds.delete(id);
+				}
+			});
+			this.syncSelection();
 		},
 
 		/**
-		 * Update the select-all checkbox state after an individual row checkbox changes.
+		 * Sync all card / row checkboxes when the floating select-all checkbox changes.
+		 *
+		 * @param {Event} e Change event.
+		 * @return {void}
+		 */
+		onFloatingSelectAllChange: function (e) {
+			this.onSelectAllChange(e);
+		},
+
+		/**
+		 * Update the selection state after an individual row/card checkbox changes.
 		 *
 		 * @param {Event} e Change event.
 		 * @return {void}
 		 */
 		onCheckboxChange: function (e) {
-			var $rows      = AIPS.PostReview.rowCheckboxes();
-			var allChecked = $rows.length > 0 && $rows.length === $rows.filter(':checked').length;
-			$('input[id^="cb-select-all-"]').prop('checked', allChecked);
+			var $cb = $(e.currentTarget);
+			var id = String($cb.val());
+			if ($cb.prop('checked')) {
+				this.selectedPostIds.add(id);
+			} else {
+				this.selectedPostIds.delete(id);
+			}
+			this.syncSelection();
+		},
+
+		/**
+		 * Clear all card selections and dismiss the floating bulk bar.
+		 *
+		 * @param {Event} [e] Optional click or keyboard event.
+		 * @return {void}
+		 */
+		onClearSelection: function (e) {
+			if (e && e.preventDefault) {
+				e.preventDefault();
+			}
+			this.selectedPostIds.clear();
+			this.syncSelection();
 		},
 
 		// -----------------------------------------------------------------
@@ -158,11 +481,14 @@
 		onDocumentKeyDown: function (e) {
 			if (e.key === 'Escape') {
 				AIPS.closeAllRowActionMenus();
+				if ($('#aips-floating-bulk-bar').hasClass('is-active')) {
+					this.onClearSelection(e);
+				}
 			}
 		},
 
 		/**
-		 * Confirm then publish a single draft post.
+		 * Publish a single draft post immediately (1-click, without confirmation modal).
 		 *
 		 * @param {Event} e Click event.
 		 * @return {void}
@@ -171,49 +497,50 @@
 			e.preventDefault();
 			var $btn   = $(e.currentTarget);
 			var postId = $btn.data('post-id');
-			var $row   = $btn.closest('tr');
+			var $card  = $btn.closest('.aips-post-card, tr');
 
-			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmPublish, 'Notice', [
-				{ label: 'No, cancel',   className: 'aips-btn aips-btn-secondary' },
-				{ label: 'Yes, publish', className: 'aips-btn aips-btn-primary', action: function () {
-					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.loading || 'Publishing...');
+			if ($card.hasClass('is-processing')) {
+				return;
+			}
+			$card.addClass('is-processing');
+			AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.loading || 'Publishing...');
 
-					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
-						type: 'POST',
-						data: {
-							action:  'aips_publish_post',
-							post_id: postId,
-							nonce:   aipsPostReviewL10n.nonce,
-						},
-						success: function (response) {
-							if (response.success) {
-								var rawMsg  = response.data.message || aipsPostReviewL10n.publishSuccess;
-								var safeMsg = $('<div>').text(rawMsg).html();
-								if (response.data.post_id) {
-									var editUrl  = 'post.php?post=' + encodeURIComponent(response.data.post_id) + '&action=edit';
-									var safeLink = '<a href="' + editUrl.replace(/"/g, '&quot;') + '" target="_blank">Edit Post</a>';
-									AIPS.Utilities.showToast(safeMsg + ' ' + safeLink, 'success', { isHtml: true });
-								} else {
-									AIPS.Utilities.showToast(safeMsg, 'success');
-								}
-								$row.fadeOut(400, function () {
-									$(this).remove();
-									AIPS.PostReview.updateDraftCount();
-									AIPS.PostReview.checkEmptyState();
-								});
-							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
-								AIPS.Utilities.resetButton($btn);
-							}
-						},
-						error: function () {
-							AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
-							AIPS.Utilities.resetButton($btn);
-						},
-					});
-				} },
-			]);
+			$.ajax({
+				url:  aipsPostReviewL10n.ajaxUrl,
+				type: 'POST',
+				data: {
+					action:  'aips_publish_post',
+					post_id: postId,
+					nonce:   aipsPostReviewL10n.nonce,
+				},
+				success: function (response) {
+					if (response.success) {
+						var rawMsg  = response.data.message || aipsPostReviewL10n.publishSuccess;
+						var safeMsg = $('<div>').text(rawMsg).html();
+						if (response.data.post_id) {
+							var editUrl  = 'post.php?post=' + encodeURIComponent(response.data.post_id) + '&action=edit';
+							var safeLink = '<a href="' + editUrl.replace(/"/g, '&quot;') + '" target="_blank">Edit Post</a>';
+							AIPS.Utilities.showToast(safeMsg + ' ' + safeLink, 'success', { isHtml: true });
+						} else {
+							AIPS.Utilities.showToast(safeMsg, 'success');
+						}
+						$card.fadeOut(400, function () {
+							$(this).remove();
+							AIPS.PostReview.updateDraftCount();
+							AIPS.PostReview.checkEmptyState();
+						});
+					} else {
+						$card.removeClass('is-processing');
+						AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+						AIPS.Utilities.resetButton($btn);
+					}
+				},
+				error: function () {
+					$card.removeClass('is-processing');
+					AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
+					AIPS.Utilities.resetButton($btn);
+				},
+			});
 		},
 
 		/**
@@ -227,7 +554,7 @@
 			var $btn      = $(e.currentTarget);
 			var postId    = $btn.data('post-id');
 			var historyId = $btn.data('history-id');
-			var $row      = $btn.closest('tr');
+			var $row      = $btn.closest('.aips-post-card, tr');
 
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
 				{ label: 'No, cancel',  className: 'aips-btn aips-btn-secondary' },
@@ -275,7 +602,7 @@
 			e.preventDefault();
 			var $btn      = $(e.currentTarget);
 			var historyId = $btn.data('history-id');
-			var $row      = $btn.closest('tr');
+			var $row      = $btn.closest('.aips-post-card, tr');
 
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
 				{ label: 'No, cancel',      className: 'aips-btn aips-btn-secondary' },
@@ -328,10 +655,41 @@
 
 			var action = $('#bulk-action-selector-top').val();
 			if (!action) {
+				AIPS.Utilities.showToast(aipsPostReviewL10n.noActionSelected || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
-			var checkedBoxes = this.rowCheckboxes().filter(':checked');
+			var checkedBoxes = this.selectedActionCheckboxes();
+			if (checkedBoxes.length === 0) {
+				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
+				return;
+			}
+
+			if (action === 'publish') {
+				this.bulkPublish(checkedBoxes);
+			} else if (action === 'delete') {
+				this.bulkDelete(checkedBoxes);
+			} else if (action === 'regenerate') {
+				this.bulkRegenerate(checkedBoxes);
+			}
+		},
+
+		/**
+		 * Dispatch the selected bulk action from the floating toolbar.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onFloatingBulkApply: function (e) {
+			e.preventDefault();
+
+			var action = $('#aips-floating-bulk-action').val();
+			if (!action) {
+				AIPS.Utilities.showToast(aipsPostReviewL10n.noActionSelected || 'Please select a bulk action.', 'warning');
+				return;
+			}
+
+			var checkedBoxes = this.selectedActionCheckboxes();
 			if (checkedBoxes.length === 0) {
 				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
 				return;
@@ -360,22 +718,417 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.reloading || 'Reloading...');
-			this.refreshList();
+			this.refreshList(function () {
+				AIPS.Utilities.resetButton($btn);
+			});
 		},
 
 		/**
-		 * Re-fetch the Pending Review panel from the server and swap it in.
-		 *
-		 * Picks up the next page of drafts after rows are removed, keeps the
-		 * current filters / pagination, and syncs the header count badge.
+		 * Handler for search input (debounced by 300ms).
 		 *
 		 * @return {void}
 		 */
-		refreshList: function () {
-			AIPS.refreshContentPanel('#aips-pending-review-tab .aips-filter-bar', null, function () {
-				$('input[id^="cb-select-all-"]').prop('checked', false);
-				AIPS.PostReview.syncHeaderCount();
+		onSearchInput: function () {
+			var self = this;
+			if (this.searchTimer) {
+				clearTimeout(this.searchTimer);
+			}
+			this.searchTimer = setTimeout(function () {
+				self.applyFilters();
+			}, 300);
+		},
+
+		/**
+		 * Handler for filter dropdown change.
+		 *
+		 * @return {void}
+		 */
+		onFilterChange: function () {
+			this.applyFilters();
+		},
+
+		/**
+		 * Clear active filters and search.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onClearFilters: function (e) {
+			e.preventDefault();
+			$('#aips-filter-template').val('');
+			$('#aips-filter-post-type-review').val('');
+			$('#aips-post-search-input').val('');
+			$('#aips-pending-clear-filters').addClass('aips-hidden');
+			this.applyFilters();
+		},
+
+		/**
+		 * Apply filters and reload cards from page 1.
+		 *
+		 * @return {void}
+		 */
+		applyFilters: function () {
+			this.autoScrollPagesLoaded = 0;
+			this.selectedPostIds.clear();
+			var hasFilters = !!$('#aips-filter-template').val() || !!$('#aips-filter-post-type-review').val() || !!$('#aips-post-search-input').val();
+			$('#aips-pending-clear-filters').toggleClass('aips-hidden', !hasFilters);
+			if (this.currentView === 'list') {
+				var url = new URL(window.location.href);
+				[['template_id', '#aips-filter-template'], ['post_type', '#aips-filter-post-type-review'], ['s', '#aips-post-search-input']].forEach(function (filter) {
+					var value = $(filter[1]).val();
+					if (value) {
+						url.searchParams.set(filter[0], value);
+					} else {
+						url.searchParams.delete(filter[0]);
+					}
+				});
+				url.searchParams.delete('paged');
+				window.location.href = url.toString();
+				return;
+			}
+			this.fetchPosts(1, true);
+		},
+
+		/**
+		 * Handler for Load More button click.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onLoadMoreClick: function (e) {
+			e.preventDefault();
+			if (this.isLoading || this.currentPage >= this.totalPages) {
+				return;
+			}
+			this.fetchPosts(this.currentPage + 1, false);
+		},
+
+		/**
+		 * Fetch draft posts from server via AJAX.
+		 *
+		 * @param {number} page Page number to fetch.
+		 * @param {boolean} reset Whether to clear existing cards or append.
+		 * @param {Function} [callback] Optional completion callback.
+		 * @return {void}
+		 */
+		fetchPosts: function (page, reset, callback) {
+			var self = this;
+			if (self.isLoading) {
+				return;
+			}
+			self.isLoading = true;
+
+			var $grid         = $('#aips-pending-posts-grid');
+			var $loadMoreWrap = $('#aips-pending-load-more-wrap');
+			var $loadMoreBtn  = $('#aips-pending-load-more-btn');
+			var $emptyWrap    = $('#aips-pending-empty-state-wrap');
+			var $postsWrap    = $('#aips-pending-posts-wrap');
+			var $toolbar      = $('.aips-pending-toolbar');
+
+			if (reset) {
+				$grid.css('opacity', '0.5');
+			} else {
+				$loadMoreBtn.addClass('is-loading');
+			}
+
+			var templateId = $('#aips-filter-template').val() || 0;
+			var postType   = $('#aips-filter-post-type-review').val() || '';
+			var search     = $('#aips-post-search-input').val() || '';
+
+			$.ajax({
+				url:  aipsPostReviewL10n.ajaxUrl,
+				type: 'POST',
+				data: {
+					action:      'aips_get_draft_posts',
+					page:        page,
+					per_page:    parseInt($grid.data('per-page'), 10) || 12,
+					template_id: templateId,
+					post_type:   postType,
+					search:      search,
+					nonce:       aipsPostReviewL10n.nonce,
+				},
+				success: function (response) {
+					$grid.css('opacity', '1');
+					$loadMoreBtn.removeClass('is-loading');
+					self.isLoading = false;
+
+					if (response && response.success && response.data) {
+						self.listNeedsReload = true;
+						var data  = response.data;
+						var items = data.items || [];
+						self.currentPage = parseInt(data.current_page, 10) || page;
+						self.totalPages  = parseInt(data.pages, 10) || 1;
+						var totalItems   = parseInt(data.total, 10) || 0;
+
+						var cardsHtml = '';
+						var rowsHtml  = '';
+						for (var i = 0; i < items.length; i++) {
+							cardsHtml += self.renderCardHtml(items[i]);
+							rowsHtml  += self.renderTableRowHtml(items[i]);
+						}
+
+						if (reset) {
+							$grid.html(cardsHtml);
+							$('#aips-post-review-form tbody').html(rowsHtml);
+							$('input[id^="cb-select-all-"], #aips-select-all-cards').prop('checked', false);
+						} else {
+							$grid.append(cardsHtml);
+							$('#aips-post-review-form tbody').append(rowsHtml);
+						}
+
+						var currentLoaded = $grid.find('.aips-post-card').length;
+						$('#aips-pending-loaded-count').text(currentLoaded);
+						$('#aips-pending-total-count').text(totalItems);
+						$('.aips-page-header .aips-page-summary-strip .aips-summary-chip-value').first().text(totalItems);
+						$('#aips-pending-review-tab .aips-filter-bar').data('total', totalItems);
+
+						if (totalItems > 0 && currentLoaded > 0) {
+							var currentView = 'cards';
+							try {
+								currentView = localStorage.getItem('aips_pending_review_view') || 'cards';
+							} catch (e) {}
+
+							if (currentView === 'list') {
+								$('#aips-pending-list-wrap').show();
+								$postsWrap.hide();
+								$('#aips-select-all-cards-wrap').hide();
+							} else {
+								$postsWrap.show();
+								$('#aips-pending-list-wrap').hide();
+								$('#aips-select-all-cards-wrap').show();
+							}
+							$toolbar.show();
+							$emptyWrap.hide();
+							if (self.currentPage < self.totalPages) {
+								$loadMoreWrap.show();
+							} else {
+								$loadMoreWrap.hide();
+							}
+						} else {
+							$postsWrap.hide();
+							$('#aips-pending-list-wrap').hide();
+							$toolbar.hide();
+							$emptyWrap.show();
+							$loadMoreWrap.hide();
+
+							// Update empty state text
+							var hasFilters = !!templateId || !!postType || !!search;
+							if (hasFilters) {
+								$('#aips-empty-title').text(aipsPostReviewL10n.noPostsFound || 'No Posts Found');
+								$('#aips-empty-desc').text(aipsPostReviewL10n.noPostsFoundDesc || 'No draft posts match your search criteria. Try a different search term.');
+								$('#aips-empty-actions').html('<button type="button" class="aips-btn aips-btn-primary" id="aips-empty-clear-filters"><span class="dashicons dashicons-dismiss"></span> Clear Filters</button>');
+								$(document).one('click', '#aips-empty-clear-filters', function () {
+									self.onClearFilters(new $.Event('click'));
+								});
+							} else {
+								$('#aips-empty-title').text(aipsPostReviewL10n.noDraftPosts || 'No Draft Posts');
+								$('#aips-empty-desc').text(aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review. All generated posts have been published or deleted.');
+								$('#aips-empty-actions').html('<a href="admin.php?page=aips-schedules" class="aips-btn aips-btn-secondary"><span class="dashicons dashicons-calendar-alt"></span> Manage Schedules</a>');
+							}
+						}
+						self.syncSelection();
+					} else {
+						AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.fetchError || 'Failed to load posts.', 'error');
+					}
+
+					if (typeof callback === 'function') {
+						callback();
+					}
+				},
+				error: function () {
+					$grid.css('opacity', '1');
+					$loadMoreBtn.removeClass('is-loading');
+					self.isLoading = false;
+					AIPS.Utilities.showToast(aipsPostReviewL10n.fetchError || 'Failed to load posts.', 'error');
+					if (typeof callback === 'function') {
+						callback();
+					}
+				},
 			});
+		},
+
+		/**
+		 * Render a single card's HTML from item object.
+		 *
+		 * @param {Object} item Draft post item.
+		 * @return {string} Card HTML string.
+		 */
+		renderCardHtml: function (item) {
+			var esc = (AIPS.Templates && AIPS.Templates.escape) ? AIPS.Templates.escape : function (s) { return $('<div>').text(s || '').html(); };
+
+			var postId = parseInt(item.post_id, 10);
+			var historyId = parseInt(item.id, 10);
+			var title = item.post_title || item.generated_title || 'Untitled';
+			var snippet = item.snippet || '';
+			var postTypeLabel = item.post_type_label || item.wp_post_type || 'Post';
+			var source = item.source || (item.template_name ? ('Template: ' + item.template_name) : '');
+			var createdFormatted = item.created_at_formatted || '';
+			var editUrl = item.edit_url || ('post.php?post=' + postId + '&action=edit');
+			var menuId = 'aips-review-card-actions-' + postId;
+			var historyUrl = 'admin.php?page=aips-generated-posts&tab=history&post_id=' + postId;
+
+			var imageHtml = '';
+			if (item.featured_image) {
+				imageHtml = '<div class="aips-card-image aips-preview-post" data-post-id="' + postId + '" role="button" tabindex="0" title="Preview post">' +
+					'<img src="' + esc(item.featured_image) + '" alt="' + esc(title) + '" loading="lazy" />' +
+				'</div>';
+			} else {
+				imageHtml = '<div class="aips-card-image aips-card-image-placeholder aips-preview-post" data-post-id="' + postId + '" role="button" tabindex="0" title="Preview post">' +
+					'<span class="dashicons dashicons-format-aside" aria-hidden="true"></span>' +
+				'</div>';
+			}
+
+			var metaHtml = '';
+			if (source) {
+				metaHtml += '<span class="aips-card-source" title="' + esc(source) + '">' + esc(source) + '</span>' +
+					'<span class="aips-card-meta-sep">•</span>';
+			}
+			metaHtml += '<span class="aips-card-date">' + esc(createdFormatted) + '</span>';
+
+			return '<div class="aips-post-card" data-post-id="' + postId + '" data-history-id="' + historyId + '">' +
+				'<div class="aips-card-banner">' +
+					imageHtml +
+					'<div class="aips-card-checkbox-wrap">' +
+						'<input type="checkbox" class="aips-post-checkbox" value="' + postId + '" data-post-id="' + postId + '" data-history-id="' + historyId + '" aria-label="Select post" />' +
+					'</div>' +
+					'<div class="aips-card-type-badge">' +
+						'<span class="aips-badge aips-badge-neutral">' + esc(postTypeLabel) + '</span>' +
+					'</div>' +
+				'</div>' +
+				'<div class="aips-card-body">' +
+					'<div class="aips-card-meta">' + metaHtml + '</div>' +
+					'<h3 class="aips-card-title">' +
+						'<a href="#" class="aips-preview-post" data-post-id="' + postId + '" title="Preview post">' + esc(title) + '</a>' +
+					'</h3>' +
+					'<div class="aips-card-snippet">' + esc(snippet) + '</div>' +
+				'</div>' +
+				'<div class="aips-card-footer">' +
+					'<div class="aips-card-footer-left">' +
+						'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-post" data-post-id="' + postId + '" title="Publish this post immediately">' +
+							'<span class="dashicons dashicons-upload"></span>' +
+							'Publish' +
+						'</button>' +
+						'<a href="' + esc(editUrl) + '" class="aips-card-edit-link" target="_blank" rel="noopener">' +
+							'<span class="dashicons dashicons-edit"></span>' +
+							'Edit Post' +
+						'</a>' +
+					'</div>' +
+					'<div class="aips-card-footer-right">' +
+						'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="' + menuId + '" title="More actions">' +
+							'<span class="dashicons dashicons-ellipsis"></span>' +
+							'<span class="screen-reader-text">More actions</span>' +
+						'</button>' +
+						'<div id="' + menuId + '" class="aips-row-action-menu" hidden>' +
+							'<button type="button" class="aips-row-action-item aips-preview-post" data-post-id="' + postId + '" title="Preview this post">' +
+								'<span class="dashicons dashicons-visibility"></span>' +
+								'<span>Preview</span>' +
+							'</button>' +
+							'<button type="button" class="aips-row-action-item aips-ai-edit-btn" data-post-id="' + postId + '" data-history-id="' + historyId + '" title="AI Edit - Regenerate components">' +
+								'<span class="dashicons dashicons-admin-customizer"></span>' +
+								'<span>AI Edit</span>' +
+							'</button>' +
+							'<a class="aips-row-action-item aips-open-history-modal" href="' + esc(historyUrl) + '" data-history-id="' + historyId + '" data-post-id="' + postId + '" title="View history for this post">' +
+								'<span class="dashicons dashicons-backup"></span>' +
+								'<span>View History</span>' +
+							'</a>' +
+							'<button type="button" class="aips-row-action-item aips-regenerate-post" data-history-id="' + historyId + '" data-post-id="' + postId + '" title="Regenerate this post">' +
+								'<span class="dashicons dashicons-update"></span>' +
+								'<span>Re-generate</span>' +
+							'</button>' +
+							'<button type="button" class="aips-row-action-item aips-delete-post aips-danger-action" data-post-id="' + postId + '" data-history-id="' + historyId + '" title="Delete this draft post">' +
+								'<span class="dashicons dashicons-trash"></span>' +
+								'<span>Delete</span>' +
+							'</button>' +
+						'</div>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
+		},
+
+		/**
+		 * Render a single table row HTML from item object.
+		 *
+		 * @param {Object} item Draft post item.
+		 * @return {string} Table row HTML string.
+		 */
+		renderTableRowHtml: function (item) {
+			var esc = (AIPS.Templates && AIPS.Templates.escape) ? AIPS.Templates.escape : function (s) { return $('<div>').text(s || '').html(); };
+
+			var postId           = parseInt(item.post_id, 10);
+			var historyId        = parseInt(item.id, 10);
+			var title            = item.post_title || item.generated_title || 'Untitled';
+			var source           = item.source || (item.template_name ? ('Template: ' + item.template_name) : '');
+			var postTypeLabel    = item.post_type_label || item.wp_post_type || 'Post';
+			var createdFormatted = item.created_at_formatted || '';
+			var editUrl          = item.edit_url || ('post.php?post=' + postId + '&action=edit');
+			var menuId           = 'aips-review-row-actions-' + postId;
+			var historyUrl       = 'admin.php?page=aips-generated-posts&tab=history&post_id=' + postId;
+
+			return '<tr id="post-' + postId + '" data-post-id="' + postId + '" data-history-id="' + (item.id || item.history_id || 0) + '">' +
+				'<th scope="row" class="check-column">' +
+					'<input type="checkbox" name="post[]" value="' + postId + '" data-post-id="' + postId + '" data-history-id="' + (item.id || item.history_id || 0) + '" class="aips-post-checkbox">' +
+				'</th>' +
+				'<td class="title column-title has-row-actions column-primary">' +
+					'<strong><a href="#" class="aips-preview-post" data-post-id="' + postId + '" title="Preview post">' + esc(title) + '</a></strong>' +
+					(source ? '<span class="aips-cell-source">' + esc(source) + '</span>' : '') +
+				'</td>' +
+				'<td class="context column-context">' +
+					(source ? '<span class="aips-cell-source">' + esc(source) + '</span>' : '') +
+				'</td>' +
+				'<td class="type column-type">' +
+					'<span class="aips-badge aips-badge-neutral">' + esc(postTypeLabel) + '</span>' +
+				'</td>' +
+				'<td class="created column-created">' +
+					'<div class="cell-meta">' + esc(createdFormatted) + '</div>' +
+				'</td>' +
+				'<td class="actions column-actions">' +
+					'<div class="cell-actions">' +
+						'<div class="aips-row-action-group">' +
+							'<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-post" data-post-id="' + postId + '" title="Publish this post">' +
+								'<span class="dashicons dashicons-upload"></span> ' + (aipsPostReviewL10n.publish || 'Publish') +
+							'</button>' +
+							'<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="' + menuId + '" title="More actions">' +
+								'<span class="screen-reader-text">More actions</span>' +
+							'</button>' +
+						'</div>' +
+						'<div id="' + menuId + '" class="aips-row-action-menu" hidden>' +
+							'<button type="button" class="aips-row-action-item aips-edit-post" data-edit-url="' + esc(editUrl) + '" title="Edit this post">' +
+								'<span class="dashicons dashicons-edit"></span> <span>Edit</span>' +
+							'</button>' +
+							'<button type="button" class="aips-row-action-item aips-preview-post" data-post-id="' + postId + '" title="Preview this post">' +
+								'<span class="dashicons dashicons-visibility"></span> <span>Preview</span>' +
+							'</button>' +
+							'<button type="button" class="aips-row-action-item aips-ai-edit-btn" data-post-id="' + postId + '" data-history-id="' + historyId + '" title="AI Edit - Regenerate components">' +
+								'<span class="dashicons dashicons-admin-customizer"></span> <span>AI Edit</span>' +
+							'</button>' +
+							'<a class="aips-row-action-item aips-open-history-modal" href="' + esc(historyUrl) + '" data-history-id="' + historyId + '" data-post-id="' + postId + '" title="View history for this post">' +
+								'<span class="dashicons dashicons-backup"></span> <span>View History</span>' +
+							'</a>' +
+							'<button type="button" class="aips-row-action-item aips-regenerate-post" data-history-id="' + historyId + '" data-post-id="' + postId + '" title="Regenerate this post">' +
+								'<span class="dashicons dashicons-update"></span> <span>Re-generate</span>' +
+							'</button>' +
+							'<button type="button" class="aips-row-action-item aips-delete-post aips-danger-action" data-post-id="' + postId + '" data-history-id="' + historyId + '" title="Delete this draft post">' +
+								'<span class="dashicons dashicons-trash"></span> <span>Delete</span>' +
+							'</button>' +
+						'</div>' +
+					'</div>' +
+				'</td>' +
+			'</tr>';
+		},
+
+		/**
+		 * Re-fetch the Pending Review cards from the server.
+		 *
+		 * @param {Function} [callback] Optional completion callback.
+		 * @return {void}
+		 */
+		refreshList: function (callback) {
+			this.selectedPostIds.clear();
+			if (this.currentView === 'list') {
+				window.location.reload();
+				return;
+			}
+			this.fetchPosts(1, true, callback);
 		},
 
 		/**
@@ -384,7 +1137,10 @@
 		 * @return {void}
 		 */
 		syncHeaderCount: function () {
-			var total = parseInt($('#aips-pending-review-tab .aips-filter-bar').data('total'), 10);
+			var total = parseInt($('#aips-pending-total-count').text(), 10);
+			if (isNaN(total)) {
+				total = parseInt($('#aips-pending-review-tab .aips-filter-bar').data('total'), 10);
+			}
 			if (isNaN(total)) {
 				return;
 			}
@@ -676,41 +1432,50 @@
 		// -----------------------------------------------------------------
 
 		/**
-		 * Refresh the `#aips-draft-count` badge with the number of currently
-		 * visible table rows.
+		 * Refresh loaded count and total count badges.
 		 *
-		 * Called after any row is removed (published, deleted, or regenerated)
+		 * Called after any item is removed (published, deleted, or regenerated)
 		 * so the count stays accurate without a full page reload.
 		 *
 		 * @return {void}
 		 */
 		updateDraftCount: function () {
-			var visibleRows = $('#aips-pending-review-tab .aips-post-review-table tbody tr:visible').length;
-			$('#aips-draft-count').text(visibleRows);
+			var visibleCards = $('#aips-pending-posts-grid .aips-post-card:visible').length;
+			var visibleRows  = $('#aips-pending-review-tab .aips-post-review-table tbody tr:visible').length;
+			var count = Math.max(visibleCards, visibleRows);
 
-			// A row was removed: keep the header chip in step with the server total.
-			var $chip = $('.aips-page-header .aips-page-summary-strip .aips-summary-chip-value').first();
-			var remaining = parseInt($chip.text(), 10);
-			if (!isNaN(remaining)) {
-				$chip.text(Math.max(0, remaining - 1));
+			$('#aips-pending-loaded-count').text(count);
+			$('#aips-draft-count').text(count);
+
+			var $totalElem = $('#aips-pending-total-count');
+			var remaining  = parseInt($totalElem.text(), 10);
+			if (!isNaN(remaining) && remaining > 0) {
+				var newTotal = Math.max(0, remaining - 1);
+				$totalElem.text(newTotal);
+				$('#aips-pending-review-tab .aips-filter-bar').data('total', newTotal);
+
+				var $chip = $('.aips-page-header .aips-page-summary-strip .aips-summary-chip-value').first();
+				$chip.text(newTotal);
 			}
+			this.updateSelectionState();
 		},
 
 		/**
-		 * Fade out the rows belonging to the given checkboxes, then refresh the
-		 * list from the server so remaining drafts (e.g. on later pages) load.
+		 * Fade out the cards/rows belonging to the given checkboxes, then refresh the
+		 * list from the server so remaining drafts load.
 		 *
 		 * @param {jQuery} $boxes Checked `.aips-post-checkbox` elements.
 		 * @return {void}
 		 */
 		removeRowsThenRefresh: function ($boxes) {
-			var $rows = $boxes.closest('tr');
-			if (!$rows.length) {
+			var $items = $boxes.closest('.aips-post-card, tr');
+			if (!$items.length) {
 				AIPS.PostReview.refreshList();
 				return;
 			}
-			var pending = $rows.length;
-			$rows.fadeOut(300, function () {
+			var pending = $items.length;
+			$items.fadeOut(300, function () {
+				$(this).remove();
 				if (--pending === 0) {
 					AIPS.PostReview.refreshList();
 				}
@@ -718,39 +1483,27 @@
 		},
 
 		/**
-		 * Show or hide the empty-state placeholder based on whether any table
-		 * rows remain visible.
-		 *
-		 * When all rows have been removed, hides the table and pagination
-		 * controls and injects (or reveals) an `.aips-empty-state` element with
-		 * a friendly "no draft posts" message.
+		 * Show or hide the empty-state placeholder based on whether any cards
+		 * or rows remain visible.
 		 *
 		 * @return {void}
 		 */
 		checkEmptyState: function () {
-			var visibleRows = $('#aips-pending-review-tab .aips-post-review-table tbody tr:visible').length;
+			var visibleCards = $('#aips-pending-posts-grid .aips-post-card:visible').length;
+			var visibleRows  = $('#aips-pending-review-tab .aips-post-review-table tbody tr:visible').length;
+			var remaining    = Math.max(visibleCards, visibleRows);
 
-			if (visibleRows === 0) {
-				// More drafts may remain on other pages: reload the list instead of showing the empty state.
-				var remaining = parseInt($('.aips-page-header .aips-page-summary-strip .aips-summary-chip-value').first().text(), 10);
-				if (remaining > 0) {
-					AIPS.PostReview.refreshList();
+			if (remaining === 0) {
+				var total = parseInt($('#aips-pending-total-count').text(), 10);
+				if (!isNaN(total) && total > 0) {
+					this.refreshList();
 					return;
 				}
 
-				$('#aips-pending-review-tab .aips-post-review-table').hide();
-				$('#aips-pending-review-tab .aips-panel-toolbar').hide();
-
-				if ($('#aips-pending-review-tab .aips-empty-state').length === 0) {
-					var emptyStateHtml = '<div class="aips-empty-state">' +
-						'<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>' +
-						'<h3>' + (aipsPostReviewL10n.noDraftPosts || 'No Draft Posts') + '</h3>' +
-						'<p>' + (aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.') + '</p>' +
-						'</div>';
-					$('#aips-post-review-form').after(emptyStateHtml);
-				} else {
-					$('#aips-pending-review-tab .aips-empty-state').show();
-				}
+				$('#aips-pending-posts-wrap').hide();
+				$('#aips-pending-list-wrap').hide();
+				$('.aips-pending-toolbar').hide();
+				$('#aips-pending-empty-state-wrap').show();
 			}
 		},
 	};

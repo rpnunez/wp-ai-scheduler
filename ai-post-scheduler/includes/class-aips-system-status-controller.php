@@ -63,6 +63,7 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_status_prune_telemetry', array($this, 'ajax_prune_telemetry'));
 		add_action('wp_ajax_aips_status_purge_telemetry', array($this, 'ajax_purge_telemetry'));
 		add_action('wp_ajax_aips_status_prune_history_logs', array($this, 'ajax_prune_history_logs'));
+		add_action('wp_ajax_aips_status_prune_ai_errors', array($this, 'ajax_prune_ai_errors'));
 		add_action('wp_ajax_aips_status_clean_orphaned_embeddings', array($this, 'ajax_clean_orphaned_embeddings'));
 		add_action('wp_ajax_aips_status_optimize_table', array($this, 'ajax_optimize_table'));
 		add_action('wp_ajax_aips_status_get_tables', array($this, 'ajax_get_tables'));
@@ -290,6 +291,13 @@ class AIPS_System_Status_Controller {
 		$this->verify_request('aips_status_prune_history_logs');
 
 		$result = $this->diagnostics_service->prune_history_logs();
+		AIPS_Ajax_Response::success($result);
+	}
+
+	public function ajax_prune_ai_errors() {
+		$this->verify_request('aips_status_prune_ai_errors');
+
+		$result = $this->diagnostics_service->prune_ai_errors();
 		AIPS_Ajax_Response::success($result);
 	}
 

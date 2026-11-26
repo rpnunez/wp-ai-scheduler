@@ -111,6 +111,12 @@ class AIPS_Notifications_Event_Handler {
 				'accepted_args' => 1,
 			),
 			array(
+				'hook'          => 'aips_notif_digest_cron',
+				'method'        => 'handle_digest_cron',
+				'priority'      => 10,
+				'accepted_args' => 0,
+			),
+			array(
 				'hook'          => 'aips_export_cleanup_completed',
 				'method'        => 'handle_history_cleanup_notification',
 				'priority'      => 10,
@@ -477,6 +483,18 @@ class AIPS_Notifications_Event_Handler {
 			$this->notifications->monthly_report($this->build_rollup_payload(30 * DAY_IN_SECONDS, 'monthly_report_' . $monthly_key));
 			$config->set_option('aips_notif_monthly_report_last_sent', $monthly_key, false);
 		}
+	}
+
+	/**
+	 * Hook handler for summarized notification digest cron.
+	 *
+	 * Evaluates whether the oldest pending queued digest notification
+	 * has exceeded the maximum delay window.
+	 *
+	 * @return void
+	 */
+	public function handle_digest_cron() {
+		$this->notifications->check_digest_timeout();
 	}
 
 	/**

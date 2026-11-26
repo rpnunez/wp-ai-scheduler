@@ -44,3 +44,17 @@
 - **Cache invalidation:** N/A (uses WordPress post object cache; invalidated automatically on post edits/deletions).
 - **Backward compatibility:** Preserved `AIPS_Internal_Links_Controller::ajax_get_suggestions()` signature, response structure, and array item keys (`source_edit_url`, `target_edit_url`, `target_url`).
 - **Tests:** `Test_AIPS_Internal_Links_Controller_Suggestions_Query_Count` (asserts response equivalence and bounded O(1) query count across N=10 and N=100).
+
+## 2026-10-22 - Bulk Fetch Author Topic Status Counts and Generated Post Counts in Authors List Table
+
+- **Target:** ai-post-scheduler/includes/tables/class-aips-authors-list-table.php::AIPS_Authors_List_Table::column_content
+- **Lens:** Unbounded or oversized queries
+- **Problem:** Rendering the Authors hub list table (`AIPS_Authors_List_Table`) called `AIPS_Author_Topics_Repository::get_status_counts($author_id)` and `AIPS_Author_Topic_Logs_Repository::count_generated_posts_by_author($author_id)` for every item in `column_content()`, issuing 2 DB queries per author row ($2N$ database lookups for $N$ authors).
+- **Fix:** Added `AIPS_Author_Topics_Repository::get_status_counts_bulk(array $author_ids)` and `AIPS_Author_Topic_Logs_Repository::get_post_generation_counts_bulk(array $author_ids)` to pre-fetch status and post-generation counts in 2 single batch queries in `AIPS_Authors_List_Table::prepare_items()`.
+- **Before / After:**
+  - N=10: 24 queries -> 4 queries
+  - N=100: 204 queries -> 4 queries
+  - N=500: 1004 queries -> 4 queries
+- **Cache invalidation:** `AIPS_Author_Topics_Repository::get_status_counts_bulk()` uses repository caching tagged with `author_topics` and author IDs, invalidated automatically on author topic changes.
+- **Backward compatibility:** Preserved `AIPS_Authors_List_Table` structure and individual `get_status_counts()` / `count_generated_posts_by_author()` method signatures and return shapes.
+- **Tests:** `Test_AIPS_Authors_List_Table_Query_Count` (asserts response equivalence and bounded O(1) query count across N=10, 100, 500).

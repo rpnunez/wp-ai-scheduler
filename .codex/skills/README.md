@@ -7,6 +7,7 @@ This directory contains repository-specific Codex skills for common contribution
 - `ajax-controller-changes`: AJAX action routing and controller best practices.
 - `generation-changes`: generation/regeneration and prompt architecture changes.
 - `pr-triage`: overlap detection and review-risk triage.
+- `matrix-review`: two-phase scenario-matrix and execution-traced deep code review (links to `.agents/skills/matrix-review/SKILL.md`).
 - `feature-slicing`: planning work into mergeable slices.
 
 Each skill is documented in a `SKILL.md` file within its folder.

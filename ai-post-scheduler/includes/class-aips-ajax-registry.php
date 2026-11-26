@@ -53,6 +53,7 @@ class AIPS_Ajax_Registry {
 		'aips_unified_bulk_run_now'       => 'AIPS_Schedule_Controller',
 		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
 		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
+		'aips_get_schedule_details'       => 'AIPS_Schedule_Controller',
 		'aips_get_schedule_status_read_model' => 'AIPS_Schedule_Controller',
 		'aips_reset_schedule_circuit'     => 'AIPS_Schedule_Controller',
 		'aips_resume_schedule_batch'      => 'AIPS_Schedule_Controller',
@@ -122,6 +123,12 @@ class AIPS_Ajax_Registry {
 		'aips_save_post_components'       => 'AIPS_AI_Edit_Controller',
 		'aips_get_component_revisions'    => 'AIPS_AI_Edit_Controller',
 		'aips_restore_component_revision' => 'AIPS_AI_Edit_Controller',
+		'aips_reset_component_overrides'  => 'AIPS_AI_Edit_Controller',
+
+		// Editor Controller (Gutenberg & Classic Editor)
+		'aips_editor_apply_directive'              => 'AIPS_Editor_Controller',
+		'aips_editor_weave_internal_links'         => 'AIPS_Editor_Controller',
+		'aips_editor_generate_component_variants'  => 'AIPS_Editor_Controller',
 
 		// Generated Posts Controller
 		'aips_get_post_session'           => 'AIPS_Generated_Posts_Controller',
@@ -223,6 +230,7 @@ class AIPS_Ajax_Registry {
 		// Settings Ajax
 		'aips_save_settings'              => 'AIPS_Settings_Ajax',
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
+		'aips_flush_notification_digest' => 'AIPS_Settings_Ajax',
 
 		// Sources Controller
 		'aips_get_sources'                => 'AIPS_Sources_Controller',
@@ -254,6 +262,12 @@ class AIPS_Ajax_Registry {
 		// Diagnostics Controller
 		'aips_get_ai_errors'              => 'AIPS_Diagnostics_Controller',
 		'aips_get_ai_error_details'       => 'AIPS_Diagnostics_Controller',
+		'aips_get_ai_error_summary'       => 'AIPS_Diagnostics_Controller',
+		'aips_export_ai_errors'           => 'AIPS_Diagnostics_Controller',
+		'aips_get_log_files'              => 'AIPS_Diagnostics_Controller',
+		'aips_get_log_content'            => 'AIPS_Diagnostics_Controller',
+		'aips_clear_log'                  => 'AIPS_Diagnostics_Controller',
+		'aips_download_log'               => 'AIPS_Diagnostics_Controller',
 
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',
@@ -274,6 +288,7 @@ class AIPS_Ajax_Registry {
 		'aips_status_prune_telemetry'    => 'AIPS_System_Status_Controller',
 		'aips_status_purge_telemetry'    => 'AIPS_System_Status_Controller',
 		'aips_status_prune_history_logs' => 'AIPS_System_Status_Controller',
+		'aips_status_prune_ai_errors'    => 'AIPS_System_Status_Controller',
 		'aips_status_clean_orphaned_embeddings' => 'AIPS_System_Status_Controller',
 		'aips_status_optimize_table'     => 'AIPS_System_Status_Controller',
 		'aips_status_get_tables'         => 'AIPS_System_Status_Controller',

@@ -136,7 +136,22 @@ class AIPS_Deduplication_Service {
 			$best_type       = '';
 			$best_id         = 0;
 
-			$matches = $this->similarity_evaluator->find_top_matches($embedding, $all_candidates, 0.0, 1);
+			// Exclude the topic's own stored entry so a persisted topic (e.g. one
+			// being re-checked after an embeddings outage) is not matched against
+			// itself at ~1.0 similarity. New, unpersisted topics have no id and so
+			// match nothing here.
+			$self_id    = isset($topic['id']) ? (int) $topic['id'] : 0;
+			$candidates = $all_candidates;
+			if ($self_id > 0) {
+				$candidates = array_values(array_filter(
+					$all_candidates,
+					static function ($candidate) use ($self_id) {
+						return !('topic' === $candidate['type'] && (int) $candidate['id'] === $self_id);
+					}
+				));
+			}
+
+			$matches = $this->similarity_evaluator->find_top_matches($embedding, $candidates, 0.0, 1);
 			if (!empty($matches)) {
 				$top             = $matches[0];
 				$best_similarity = (float) $top['similarity'];
@@ -150,8 +165,11 @@ class AIPS_Deduplication_Service {
 				$metadata = array();
 			}
 
-			$metadata['embedding'] = $embedding;
-			$topic['embedding']    = $embedding;
+			// Keep the vector in memory for same-request reuse (relevance scoring,
+			// auto-approval), but never persist it: a ~1,536-float array bloats
+			// aips_author_topics.metadata by ~50 KB/row and the canonical copy
+			// lives in aips_embeddings.
+			$topic['embedding'] = $embedding;
 
 			if ($best_similarity >= $threshold) {
 				$metadata['potential_duplicate']  = true;

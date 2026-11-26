@@ -36,6 +36,14 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		AI_Post_Scheduler::get_instance()->register_container_bindings();
 		$_POST = array();
 		$_REQUEST = array();
+		delete_option('aips_wp_ai_connector_mode');
+		delete_option('aips_wp_ai_connector_ids');
+		delete_option('aips_wp_ai_connector_failover');
+		delete_option('aips_ai_assistance_contexts');
+		delete_option('aips_topic_similarity_threshold');
+		AIPS_Config::get_instance()->set_option('aips_wp_ai_connector_mode', 'all');
+		AIPS_Config::get_instance()->set_option('aips_wp_ai_connector_ids', array());
+		AIPS_Config::get_instance()->set_option('aips_wp_ai_connector_failover', true);
 
 		parent::tearDown();
 	}
@@ -272,6 +280,33 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		$this->assertArrayHasKey('aips_notification_preferences_post_generated', $wp_settings_fields['aips-settings']['aips_notifications_content_section']);
 		$this->assertArrayHasKey('aips_notification_preferences_template_generated', $wp_settings_fields['aips-settings']['aips_notifications_automation_section']);
 		$this->assertArrayHasKey('aips_notification_preferences_daily_digest', $wp_settings_fields['aips-settings']['aips_notifications_digests_section']);
+	}
+
+	public function test_ajax_save_settings_persists_notif_digest_types() {
+		$settings = new AIPS_Settings();
+		$settings->register_settings();
+
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_notif_digest_enabled'   => '1',
+			'aips_notif_digest_threshold' => '10',
+			'aips_notif_digest_types'     => array('post_generated', 'template_generated', 'invalid_type'),
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame(1, (int) get_option('aips_notif_digest_enabled'));
+		$this->assertSame(10, (int) get_option('aips_notif_digest_threshold'));
+
+		$stored_types = get_option('aips_notif_digest_types');
+		$this->assertIsArray($stored_types);
+		$this->assertContains('post_generated', $stored_types);
+		$this->assertContains('template_generated', $stored_types);
+		$this->assertNotContains('invalid_type', $stored_types);
 	}
 }
 

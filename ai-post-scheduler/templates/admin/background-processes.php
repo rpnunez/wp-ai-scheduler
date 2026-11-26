@@ -153,4 +153,40 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 			<?php endif; ?>
 		</div>
 	</div>
+
+	<?php if ( ! empty( $jobs ) ) : ?>
+		<div class="aips-content-panel">
+			<div class="aips-panel-header">
+				<h2><?php esc_html_e( 'Background Jobs (Unified Infrastructure)', 'ai-post-scheduler' ); ?></h2>
+			</div>
+			<div class="aips-panel-body no-padding">
+				<table class="aips-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Job ID', 'ai-post-scheduler' ); ?></th>
+							<th><?php esc_html_e( 'Type', 'ai-post-scheduler' ); ?></th>
+							<th><?php esc_html_e( 'Group', 'ai-post-scheduler' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'ai-post-scheduler' ); ?></th>
+							<th><?php esc_html_e( 'Progress', 'ai-post-scheduler' ); ?></th>
+							<th><?php esc_html_e( 'Attempts', 'ai-post-scheduler' ); ?></th>
+							<th><?php esc_html_e( 'Next Run', 'ai-post-scheduler' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $jobs as $job ) : ?>
+							<tr>
+								<td><code><?php echo esc_html( substr( $job->get_job_id(), 0, 8 ) ); ?>...</code></td>
+								<td><strong><?php echo esc_html( $job->get_job_type() ); ?></strong></td>
+								<td><?php echo esc_html( $job->get_group_name() ); ?></td>
+								<td><span class="aips-bg-chip"><?php echo esc_html( $job->get_status() ); ?></span></td>
+								<td><?php echo esc_html( number_format_i18n( $job->get_processed() ) ); ?> / <?php echo esc_html( number_format_i18n( $job->get_total() ) ); ?> (<?php echo esc_html( (string) $job->get_progress_percentage() ); ?>%)</td>
+								<td><?php echo esc_html( (string) $job->get_attempts() ); ?> / <?php echo esc_html( (string) $job->get_max_retries() ); ?></td>
+								<td><?php echo esc_html( $job->get_next_run_at() ? wp_date( 'Y-m-d H:i:s', $job->get_next_run_at() ) : '—' ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	<?php endif; ?>
 </div>

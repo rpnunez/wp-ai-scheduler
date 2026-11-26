@@ -1,42 +1,72 @@
 ---
 name: feature-to-pr
-description: Deliver an explicitly requested wp-ai-scheduler feature or bug fix from a fresh base branch through implementation, testing, PR creation, full branch review, fixes, and final PR updates. Use when the user invokes $feature-to-pr or asks for this complete delivery workflow.
+description: Deliver an explicitly requested wp-ai-scheduler feature or bug fix from planning and approval through implementation, targeted testing, PR creation, full branch review, fixes, and final PR updates. Use when the user invokes $feature-to-pr or asks for this complete delivery workflow.
 ---
 
 # Feature to PR
 
 Use this skill for the complete delivery workflow requested by the user. The user's task defines the change; repository instructions define implementation and testing standards. Read the root `AGENTS.md`, `TESTING.md`, and relevant project documentation before editing.
 
-## 1. Establish scope and branch
+## 1. Scoping, Research, and Implementation Plan (Approval Required)
 
 - Inspect Git status, current branch, remotes, and the repository's default/base branch. Preserve unrelated user changes. If the checkout is dirty, use an isolated worktree or another safe route rather than moving or overwriting those changes.
-- Fetch and verify the current base ref, then create a dedicated, descriptively named branch from it. Do not assume `main` or `master` without checking.
-- Inspect the affected code and related runtime paths. Write a concise implementation plan with the intended changes, verification, and material risks. Continue into implementation under the user's full-workflow request; seek input only for a material product choice or a genuine blocker.
+- Fetch and verify the current base ref. **Do not create the dedicated branch yet.**
+- Inspect affected code, existing tests, hooks, and runtime paths on the base ref.
+- Present a structured **Implementation Plan** directly in the chat with the following mandatory sections:
+  1. **Technical Approach & Target Files**: Classes, hooks, templates, settings, or configs to modify or create.
+  2. **Test Strategy**: Specific test files to create or run via `make test-session ARGS="..."` and mock expectations.
+  3. **Risks & Safety Checks**: Database schema/migrations, backward compatibility, nonce/capability checks, and Meow Apps AI Engine dependency handling.
+  4. **Step-by-Step Task Checklist**: Ordered implementation milestones to be checked off during execution.
+- **STOP and wait for explicit user approval.** Do not create the dedicated Git branch or modify any files until the user approves the plan. If the user provides feedback or requests changes, adjust the plan and re-confirm.
 
-## 2. Implement and verify
+## 2. Branch Creation and Implementation
 
-- Follow `AGENTS.md` and applicable subsystem documentation. Keep changes scoped to the request and preserve data, migrations, compatibility, and existing integrations.
-- Add or update meaningful tests for changed behavior. Follow `TESTING.md` exactly for PHPUnit: use its `make test-session` protocol from the repository root, batch test files in one invocation, and respect its Docker ownership and cleanup rules.
-- Run focused checks, then the full suite before opening the PR as required by `TESTING.md`. Record the exact results. If a check cannot run or fails, investigate and distinguish a branch regression from a pre-existing baseline where practical; report unresolved limits accurately.
-- Inspect the diff for accidental files, secrets, whitespace errors, and changes outside scope.
+- Once the plan is approved, create a dedicated, descriptively named branch from the verified base ref (do not assume `main` or `master` without checking).
+- Follow `AGENTS.md` and applicable subsystem documentation. Keep changes strictly scoped to the approved plan and preserve data, migrations, compatibility, and existing integrations.
+- Adhere to project conventions: tabs, `array()` syntax, `AIPS_` prefix, singleton container lookups (`AIPS_Container::get_instance()->make(...)`), and no raw `$wpdb` outside repository classes.
+- Update documentation in `docs/` or `CHANGELOG.md` when behavior or APIs change.
 
-## 3. Open the PR
+## 3. Testing and Verification
 
-- Commit the implementation in coherent commit(s), push the branch, and open a PR against the verified base branch.
-- The initial PR body must state the problem, solution, significant implementation details, tests and results, and any known limitations. Keep its claims aligned with observed evidence.
+- **Tier 1: Fast Static & Syntax Checks**:
+  - Run syntax checks (`php -l`) on all touched PHP files before running Docker or full tests to catch syntax errors immediately.
+- **Tier 2: Targeted Test Execution**:
+  - Add or update meaningful tests for changed behavior.
+  - Follow `TESTING.md` exactly for PHPUnit: run targeted tests for the touched code via `make test-session ARGS="tests/Test_A.php tests/Test_B.php"` from the repository root.
+  - Full test suite runs are not required on every delivery, but targeted tests covering touched code are mandatory.
+  - Respect Docker ownership and cleanup rules from `TESTING.md`: stop the stack if you started it (`make test-session` handles this).
+- **Docker Unavailable Fallback**:
+  - If Docker is unavailable or cannot run, immediately inform the user in chat.
+  - Continue to proceed with the PR workflow, but explicitly state in chat and in the PR description that Docker was unavailable and automated tests could not be executed locally.
 
-## 4. Review the entire branch and address findings
+## 4. Open the Pull Request
 
-- Review the complete branch changeset against the base branch, including earlier commits, relevant callers, database effects, permissions, frontend/admin asset boundaries, compatibility, and tests. Prioritize correctness, security, data preservation, and regressions. Record each actionable finding with file/line, failure scenario, and severity.
-- Make a concise fix plan covering all findings, then implement it. Add or adjust tests where they establish the fix. Run the relevant checks again, and repeat review of the updated branch until no actionable findings remain or a specific blocker is documented.
-- Do not describe the review as independent or exhaustive. If no findings are found, say so plainly; do not invent findings or a fix commit.
+- Inspect the diff for accidental files, secrets, debug code, whitespace errors, and changes outside scope.
+- Commit the implementation in coherent commit(s) and push the branch.
+- Open a PR against the verified base branch using the dedicated template at `.agents/skills/feature-to-pr/resources/pull_request_template.md`.
+- Fill out all template sections: Problem & Solution summary, Approved Plan highlights, exact verification results (including Docker status), and applicable risk labels (e.g. `schema-change`, `ajax-registry`, `security-sensitive`).
 
-## 5. Finalize the PR
+## 5. Branch Review and Self-Correction
 
-- Commit and push review fixes, if any. Update the PR body to describe the final branch state and current verification results.
-- Post one PR comment listing each review finding and its resolution, with commit references when useful. If there were no actionable findings, state that the branch review found none and summarize the areas checked.
-- Check PR status and CI after the final push when available. Report the PR URL, branch, commits, verification results, review outcome, and remaining blockers to the user. Do not merge unless explicitly requested.
+- Review the complete branch changeset against the base branch using the following 5 checklists:
+  1. **Security & Permissions**: Verify proper escaping (`esc_html`, `esc_attr`, `wp_kses_post`), input sanitization, nonce verification (`check_ajax_referer` / `wp_verify_nonce`), capability checks (`current_user_can('manage_options')`), and boolean AJAX parameter parsing (`filter_var($val, FILTER_VALIDATE_BOOLEAN)`).
+  2. **Architectural Integrity**: Ensure no raw `$wpdb` calls outside repositories, proper DI container usage, AJAX registered in `AIPS_Ajax_Registry`, and graceful handling when Meow Apps AI Engine is missing or inactive.
+  3. **Hygiene & Cleanliness**: Check for tabs indentation, `array()` syntax, no lingering `var_dump`/`error_log`, clean comments, and removal of any temporary scratch files.
+  4. **Data & Backward Compatibility**: Ensure DB migrations are idempotent, existing options/settings are preserved, and relational mappings are cloned cleanly.
+  5. **Performance & Query Optimization**: Check for N+1 query patterns and consider transient caching where applicable.
+- **Fix Plan**:
+  - Record each actionable finding with file/line, failure scenario, and severity.
+  - Formulate a concise fix plan. For straightforward bug/lint fixes, proceed autonomously. If a finding requires significant architectural changes or altered behavior, pause and ask for user approval first.
+  - Implement fixes, re-run targeted checks, and ensure no regressions. If no findings are found, state that plainly without inventing fixes.
 
-## Stop conditions
+## 6. Finalize the PR
 
-Do not silently skip a stage. If authentication, permission, CI, test environment, or a material ambiguity prevents completion, finish all independent work, identify the exact blocker and stage, and state what remains. Do not claim tests passed, review was clean, or PR updates were posted unless verified.
+- Commit and push review fixes, if any.
+- Update the PR description to reflect the final branch state, test verification details, and resolved review findings.
+- Post one PR comment listing review findings and their resolutions (or noting that the branch review found no issues).
+- Check PR status and CI after final push when available.
+- Report the PR URL, branch name, commits, verification results, review outcome, and remaining blockers to the user. Do not merge unless explicitly requested.
+
+## Stop Conditions
+
+Do not silently skip a stage. If authentication, permission, CI, or an irreconcilable ambiguity prevents completion, complete all independent work, state the exact blocker and stage, and report what remains. Never claim tests passed, reviews were clean, or PR updates were posted unless verified.

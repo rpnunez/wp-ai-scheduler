@@ -143,6 +143,14 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
                 </button>
                 <?php endif; ?>
                 <?php if ($item->post_id): ?>
+                <button type="button"
+                        class="aips-row-action-item aips-ai-edit-btn"
+                        data-post-id="<?php echo esc_attr((string) $item->post_id); ?>"
+                        data-history-id="<?php echo esc_attr((string) $item->id); ?>"
+                        title="<?php esc_attr_e('AI Edit — Regenerate post components (title, excerpt, content, image) with AI', 'ai-post-scheduler'); ?>">
+                    <span class="dashicons dashicons-update" aria-hidden="true"></span>
+                    <span><?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?></span>
+                </button>
                 <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>"
                    class="aips-row-action-item"
                    target="_blank"

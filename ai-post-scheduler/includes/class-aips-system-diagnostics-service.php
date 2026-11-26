@@ -230,6 +230,14 @@ class AIPS_System_Diagnostics_Service {
 				array($this, 'prune_history_logs'),
 				true
 			),
+			'prune_ai_errors' => $this->build_refresh_task_definition(
+				__('AI Error logs prune', 'ai-post-scheduler'),
+				__('Prune AI Error Logs', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_prune_ai_errors',
+				array($this, 'prune_ai_errors'),
+				true
+			),
 			'clean_orphaned_embeddings' => $this->build_refresh_task_definition(
 				__('Orphaned embeddings cleanup', 'ai-post-scheduler'),
 				__('Clean Orphaned Embeddings', 'ai-post-scheduler'),
@@ -279,6 +287,7 @@ class AIPS_System_Diagnostics_Service {
 				'steps' => array(
 					'prune_telemetry',
 					'prune_history_logs',
+					'prune_ai_errors',
 					'clean_orphaned_embeddings',
 					'cache_maintenance',
 					'clear_embeddings_cache',
@@ -363,13 +372,14 @@ class AIPS_System_Diagnostics_Service {
 	 */
 	public function reschedule_missed_cron() {
 		$cron_events    = AI_Post_Scheduler::get_cron_events();
+		$cron_manager   = AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class);
 		$rescheduled    = 0;
 		$base_timestamp = AIPS_DateTime::now()->timestamp() + MINUTE_IN_SECONDS;
 
 		foreach ($cron_events as $hook => $config) {
 			$schedule = isset($config['schedule']) ? $config['schedule'] : 'hourly';
-			wp_unschedule_hook($hook);
-			if (wp_schedule_event($base_timestamp, $schedule, $hook) !== false) {
+			$cron_manager->unschedule_all_for_hook($hook);
+			if ($cron_manager->schedule_recurring($hook, $schedule, $base_timestamp)) {
 				$rescheduled++;
 			}
 		}
@@ -386,13 +396,16 @@ class AIPS_System_Diagnostics_Service {
 	 * @return array
 	 */
 	public function retry_failed_slices() {
-		$scheduled = 0;
-		$now       = AIPS_DateTime::now()->timestamp();
+		$scheduled    = 0;
+		$now          = AIPS_DateTime::now()->timestamp();
+		$cron_manager = AIPS_Container::get_instance()->make(AIPS_Cron_Manager::class);
 
-		if (wp_schedule_single_event($now, 'aips_retry_failed_author_slices_topics')) {
+		// dedupe=false: preserve WP-Cron's own 10-minute duplicate guard and the
+		// historic "count only when a new event was queued" semantics.
+		if ($cron_manager->schedule_single('aips_retry_failed_author_slices_topics', $now, array(), false)) {
 			$scheduled++;
 		}
-		if (wp_schedule_single_event($now, 'aips_retry_failed_author_slices_posts')) {
+		if ($cron_manager->schedule_single('aips_retry_failed_author_slices_posts', $now, array(), false)) {
 			$scheduled++;
 		}
 
@@ -621,19 +634,16 @@ class AIPS_System_Diagnostics_Service {
 			$removed_options++;
 		}
 
-		$unscheduled_events = 0;
+		$container          = AIPS_Container::get_instance();
+		$cron_manager       = $container->has(AIPS_Cron_Manager::class) ? $container->make(AIPS_Cron_Manager::class) : new AIPS_Cron_Manager();
 		$legacy_hook        = 'aips_send_review_notifications';
-		$next_run           = wp_next_scheduled($legacy_hook);
-		while ($next_run) {
-			wp_unschedule_event($next_run, $legacy_hook);
-			$unscheduled_events++;
-			$next_run = wp_next_scheduled($legacy_hook);
-		}
+		$unscheduled_events = ( $cron_manager->next_scheduled($legacy_hook) !== false ) ? 1 : 0;
+		$cron_manager->unschedule_all_for_hook($legacy_hook);
 
-		$rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
+		$rollup_scheduled = ($cron_manager->next_scheduled('aips_notification_rollups') !== false);
 		if (!$rollup_scheduled) {
-			wp_schedule_event(AIPS_DateTime::now()->timestamp(), 'daily', 'aips_notification_rollups');
-			$rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
+			$cron_manager->schedule_recurring('aips_notification_rollups', 'daily', AIPS_DateTime::now()->timestamp());
+			$rollup_scheduled = ($cron_manager->next_scheduled('aips_notification_rollups') !== false);
 		}
 
 		$registry            = AIPS_Notifications::get_notification_type_registry();
@@ -840,6 +850,29 @@ class AIPS_System_Diagnostics_Service {
 			'success'   => true,
 			'message'   => sprintf(
 				__('History log prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
+				$deleted,
+				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
+			),
+			'deleted'   => $deleted,
+			'optimized' => $optimized,
+			'tables'    => array_filter(array($this->db_prune_service->get_table_status('aips_history_log'))),
+		);
+	}
+
+	/**
+	 * Prune old AI error logs.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function prune_ai_errors() {
+		$result    = $this->db_prune_service->prune_ai_error_logs();
+		$deleted   = isset($result['deleted']) ? (int) $result['deleted'] : 0;
+		$optimized = !empty($result['optimized']);
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('AI Error logs prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
 				$deleted,
 				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
 			),
