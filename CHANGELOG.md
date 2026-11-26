@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Removed
+- **Telemetry and Cache Monitor:** Removed the Telemetry collection/UI/pruning subsystem and the Cache Monitor admin UI, AJAX, cron, and cache-index tables. Upgrades drop `aips_telemetry`, `aips_cache_index`, and `aips_cache_events`; Diagnostics Refresh System no longer lists telemetry prune/purge or cache-monitor maintenance tasks. The remaining database-prune cron now reads `aips_db_prune_interval`.
+
 ### Added
 - **Diagnostics Logs Viewer:**
   - Added dedicated **Logs** rail tab to the Diagnostics Hub (`admin.php?page=aips-diagnostics&tab=logs`) and registered an administrative redirect shortcut (`admin.php?page=aips-logs`).

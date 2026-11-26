@@ -4,7 +4,7 @@
  *
  * Centralized semantic indexing engine for posts, custom post types, and topics.
  * Manages dual-engine batch processing (interactive AJAX & WP-Cron), vectorization,
- * relationship precomputation, and History API telemetry.
+ * relationship precomputation, and History API logging.
  *
  * @package AI_Post_Scheduler
  * @since 3.0.0

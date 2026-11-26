@@ -135,10 +135,6 @@ class AIPS_Cron_Registry {
 				'label'      => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
 				'recurrence' => 'daily',
 			),
-			'aips_cache_monitor_maintenance' => array(
-				'label'      => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
-				'recurrence' => 'daily',
-			),
 			'aips_database_prune_cleanup' => array(
 				'label'      => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
 				'recurrence' => array( $this, 'resolve_prune_recurrence' ),
@@ -162,7 +158,7 @@ class AIPS_Cron_Registry {
 	 * @return string
 	 */
 	public function resolve_prune_recurrence() {
-		$interval = sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_telemetry_prune_interval', 'daily' ) );
+		$interval = sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_db_prune_interval', 'daily' ) );
 
 		return in_array( $interval, array( 'daily', 'twicedaily', 'weekly' ), true ) ? $interval : 'daily';
 	}
@@ -537,19 +533,6 @@ class AIPS_Cron_Registry {
 							'info'
 						);
 					}
-				},
-				'accepted_args' => 1,
-			),
-			'aips_cache_monitor_maintenance' => array(
-				'callback'      => static function () {
-					$repository  = new AIPS_Cache_Monitor_Repository();
-					$cache_index = new AIPS_Cache_Index();
-					$service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
-					$result      = $service->run_maintenance();
-					( new AIPS_Logger() )->log(
-						sprintf( 'Cache Monitor maintenance complete: %s', wp_json_encode( $result ) ),
-						'info'
-					);
 				},
 				'accepted_args' => 1,
 			),

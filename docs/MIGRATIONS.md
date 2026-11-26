@@ -1,5 +1,9 @@
 # AI Post Scheduler - Database Schema Updates
 
+## Remove Telemetry and Cache Monitor tables (3.7.26)
+
+`migrate_to_3_7_26()` drops `{prefix}aips_telemetry`, `{prefix}aips_cache_index`, and `{prefix}aips_cache_events` (`DROP TABLE IF EXISTS`). Those tables are also gone from `AIPS_DB_Manager::get_schema()`, so new installs never create them and dbDelta does not recreate them on upgrade. The migration copies `aips_telemetry_prune_interval` to `aips_db_prune_interval` when the new option is unset, deletes the retired Telemetry / Cache Monitor options, and unschedules `aips_cache_monitor_maintenance`. Every step is idempotent.
+
 ## Author featured images and post content images (3.7.24)
 
 `aips_authors` gains `image_prompt`, `featured_image_unsplash_keywords`, and `featured_image_media_ids` (all text, nullable). `aips_post_images` stores content-image configuration per template or author. `aips_post_images_generated` stores each generated image per post and history run. Featured-image settings stay on the template and author rows.

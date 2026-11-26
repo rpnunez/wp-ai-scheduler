@@ -50,7 +50,6 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 			'operations-insights.php',
 			array(
 				'days'                => 14,
-				'telemetry_enabled'   => true,
 				'history_trend'       => array(),
 				'duration_by_flow'    => array(),
 				'retry_counts'        => array(),
@@ -62,26 +61,6 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 		$this->assertStringNotContainsString('class="wrap aips-admin-wrap"', $output);
 		$this->assertStringNotContainsString('<h1>Operations Insights</h1>', $output);
 		$this->assertStringContainsString('Export JSON', $output);
-	}
-
-	public function test_telemetry_template_renders_as_partial() {
-		$output = $this->render_template(
-			'telemetry.php',
-			array(
-				'start_date'     => '2026-01-01',
-				'end_date'       => '2026-01-31',
-				'per_page'       => 25,
-				'filter_options' => array(
-					'types'            => array(),
-					'event_categories' => array(),
-					'request_methods'  => array(),
-				),
-			)
-		);
-
-		$this->assertStringNotContainsString('class="wrap aips-wrap"', $output);
-		$this->assertStringNotContainsString('class="aips-page-header"', $output);
-		$this->assertStringContainsString('id="aips-telemetry-panel"', $output);
 	}
 
 	public function test_dev_tools_template_renders_as_partial() {

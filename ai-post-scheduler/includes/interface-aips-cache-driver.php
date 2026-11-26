@@ -66,6 +66,14 @@ interface AIPS_Cache_Driver {
 	public function flush();
 
 	/**
+	 * Delete all cached values in a group/namespace.
+	 *
+	 * @param string $group Cache group/namespace.
+	 * @return bool True on success, false when the driver cannot flush by group.
+	 */
+	public function delete_group( $group );
+
+	/**
 	 * Check whether a key exists in the cache and has not expired.
 	 *
 	 * @param string $key   Cache key.

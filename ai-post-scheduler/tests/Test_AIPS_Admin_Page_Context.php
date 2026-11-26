@@ -100,7 +100,7 @@ class Test_AIPS_Admin_Page_Context extends WP_UnitTestCase {
 		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-campaign-wizard', AIPS_Admin_Page_Context::HUB_AUTOMATIONS));
 		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-templates', AIPS_Admin_Page_Context::HUB_STUDIO));
 		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-voices', AIPS_Admin_Page_Context::HUB_STUDIO));
-		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-telemetry', AIPS_Admin_Page_Context::HUB_DIAGNOSTICS));
+		$this->assertTrue(AIPS_Admin_Page_Context::is_child_page('aips-status', AIPS_Admin_Page_Context::HUB_DIAGNOSTICS));
 		$this->assertFalse(AIPS_Admin_Page_Context::is_child_page('aips-templates', AIPS_Admin_Page_Context::HUB_AUTOMATIONS));
 		$this->assertFalse(AIPS_Admin_Page_Context::is_child_page('unknown-page', AIPS_Admin_Page_Context::HUB_DIAGNOSTICS));
 	}

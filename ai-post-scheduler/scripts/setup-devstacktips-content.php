@@ -1790,7 +1790,7 @@ class AIPS_DevStackTips_Setup {
 		$this->line('Not changed by this script (manual follow-ups):');
 		$this->line('- Unsplash stays unused (no API key). Allowed image sources are AI prompt and media library.');
 		$this->line('- The indexer queue pause (aips_indexer_queue_paused) is left as is.');
-		$this->line('- Affiliate links, related posts and telemetry are left as configured.');
+		$this->line('- Affiliate links and related posts are left as configured.');
 	}
 
 	/**
@@ -2194,15 +2194,6 @@ class AIPS_DevStackTips_Setup {
 						'option_name' => 'aips_unsplash_access_key',
 						'value' => '',
 						'warning_message' => 'Please add Unsplash Access Key in Settings if using Unsplash images',
-					),
-				),
-			),
-			'performance_monitoring' => array(
-				'title' => 'Performance Monitoring',
-				'options' => array(
-					array(
-						'option_name' => 'aips_enable_telemetry',
-						'value' => true,
 					),
 				),
 			),

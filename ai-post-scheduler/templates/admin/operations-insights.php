@@ -4,10 +4,6 @@ if (!defined('ABSPATH')) {
 }
 ?>
 
-	<?php if (!$telemetry_enabled) : ?>
-		<div class="notice notice-warning"><p><?php esc_html_e('Telemetry is disabled. Retry insights are limited to history log data only.', 'ai-post-scheduler'); ?></p></div>
-	<?php endif; ?>
-
 	<h2><?php esc_html_e('Success / Failure Trend', 'ai-post-scheduler'); ?></h2>
 	<table class="widefat striped"><thead><tr><th><?php esc_html_e('Day', 'ai-post-scheduler'); ?></th><th><?php esc_html_e('Success', 'ai-post-scheduler'); ?></th><th><?php esc_html_e('Failure', 'ai-post-scheduler'); ?></th></tr></thead><tbody>
 	<?php foreach ($history_trend as $row) : ?>

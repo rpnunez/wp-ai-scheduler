@@ -34,7 +34,7 @@ class Test_AIPS_Cron_Manager extends WP_UnitTestCase {
 		remove_filter( 'cron_schedules', array( $this, 'register_intervals' ) );
 		delete_option( 'aips_auto_prune_enabled' );
 		delete_option( 'aips_notif_digest_enabled' );
-		delete_option( 'aips_telemetry_prune_interval' );
+		delete_option( 'aips_db_prune_interval' );
 		parent::tearDown();
 	}
 
@@ -64,14 +64,14 @@ class Test_AIPS_Cron_Manager extends WP_UnitTestCase {
 	}
 
 	public function test_schedule_recurring_reschedules_on_recurrence_mismatch() {
-		$this->assertTrue( $this->manager->schedule_recurring( 'aips_cache_monitor_maintenance', 'daily' ) );
-		$this->assertSame( 'daily', wp_get_scheduled_event( 'aips_cache_monitor_maintenance' )->schedule );
+		$this->assertTrue( $this->manager->schedule_recurring( 'aips_database_prune_cleanup', 'daily' ) );
+		$this->assertSame( 'daily', wp_get_scheduled_event( 'aips_database_prune_cleanup' )->schedule );
 
 		// Requesting a different recurrence must clear the stale one and reschedule,
 		// not silently keep 'daily'.
-		$this->assertTrue( $this->manager->schedule_recurring( 'aips_cache_monitor_maintenance', 'weekly' ) );
-		$this->assertSame( 'weekly', wp_get_scheduled_event( 'aips_cache_monitor_maintenance' )->schedule );
-		$this->assertSame( 1, $this->count_instances( 'aips_cache_monitor_maintenance' ) );
+		$this->assertTrue( $this->manager->schedule_recurring( 'aips_database_prune_cleanup', 'weekly' ) );
+		$this->assertSame( 'weekly', wp_get_scheduled_event( 'aips_database_prune_cleanup' )->schedule );
+		$this->assertSame( 1, $this->count_instances( 'aips_database_prune_cleanup' ) );
 	}
 
 	public function test_schedule_single_dedupe_true_skips_existing() {
@@ -156,11 +156,11 @@ class Test_AIPS_Cron_Manager extends WP_UnitTestCase {
 
 	public function test_sync_reschedules_when_recurrence_drifts() {
 		update_option( 'aips_auto_prune_enabled', 1 );
-		update_option( 'aips_telemetry_prune_interval', 'daily' );
+		update_option( 'aips_db_prune_interval', 'daily' );
 		$this->manager->sync_recurring_schedules();
 		$this->assertSame( 'daily', wp_get_scheduled_event( 'aips_database_prune_cleanup' )->schedule );
 
-		update_option( 'aips_telemetry_prune_interval', 'weekly' );
+		update_option( 'aips_db_prune_interval', 'weekly' );
 		$this->manager->sync_recurring_schedules();
 		$this->assertSame( 'weekly', wp_get_scheduled_event( 'aips_database_prune_cleanup' )->schedule );
 		$this->assertSame( 1, $this->count_instances( 'aips_database_prune_cleanup' ) );

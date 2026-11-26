@@ -20,10 +20,6 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			? $overrides['resilience_service']
 			: $this->mock_resilience_service();
 
-		$cache_monitor_service = isset($overrides['cache_monitor_service'])
-			? $overrides['cache_monitor_service']
-			: $this->mock_cache_monitor_service();
-
 		$notifications_repository = isset($overrides['notifications_repository'])
 			? $overrides['notifications_repository']
 			: $this->mock_notifications_repository();
@@ -32,6 +28,14 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			? $overrides['date_time_db_repair']
 			: $this->mock_date_time_db_repair();
 
+		$db_prune_service = isset($overrides['db_prune_service'])
+			? $overrides['db_prune_service']
+			: null;
+
+		$stress_test_service = isset($overrides['stress_test_service'])
+			? $overrides['stress_test_service']
+			: null;
+
 		// clear_embeddings_cache() builds its own embeddings repository and
 		// deletes transients via $wpdb, so stub it to keep the service isolated.
 		$service = $this->getMockBuilder('AIPS_System_Diagnostics_Service')
@@ -39,9 +43,10 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 				$history_repository,
 				$bulk_batch_job_store,
 				$resilience_service,
-				$cache_monitor_service,
 				$notifications_repository,
 				$date_time_db_repair,
+				$db_prune_service,
+				$stress_test_service,
 			))
 			->onlyMethods(array('clear_embeddings_cache'))
 			->getMock();
@@ -78,19 +83,6 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 			->getMock();
 	}
 
-	private function mock_cache_monitor_service() {
-		$mock = $this->getMockBuilder('AIPS_Cache_Monitor_Service')
-			->disableOriginalConstructor()
-			->onlyMethods(array('run_maintenance'))
-			->getMock();
-		$mock->method('run_maintenance')->willReturn(array(
-			'pruned_index'   => 0,
-			'pruned_orphans' => 0,
-			'pruned_events'  => 0,
-		));
-		return $mock;
-	}
-
 	private function mock_notifications_repository() {
 		$mock = $this->getMockBuilder('AIPS_Notifications_Repository')
 			->disableOriginalConstructor()
@@ -115,13 +107,12 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 		return $mock;
 	}
 
-	public function test_refresh_system_runs_all_steps_in_order() {
+	public function test_refresh_system_runs_all_non_destructive_steps_in_order() {
 		$service = $this->make_service();
 
 		$result = $service->refresh_system();
 
 		$expected_order = array(
-			'cache_maintenance',
 			'cleanup_notifications',
 			'notifications_hygiene',
 			'cleanup_stale_jobs_cache',
@@ -136,9 +127,9 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 		);
 
 		$this->assertSame($expected_order, wp_list_pluck($result['steps'], 'step'));
-		$this->assertSame(12, $result['succeeded']);
+		$this->assertSame(11, $result['succeeded']);
 		$this->assertSame(0, $result['failed']);
-		$this->assertStringContainsString('12 of 12', $result['message']);
+		$this->assertStringContainsString('11 of 11', $result['message']);
 
 		foreach ($result['steps'] as $step) {
 			$this->assertTrue($step['success'], $step['step']);
@@ -146,17 +137,33 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 		}
 	}
 
+	public function test_refresh_task_groups_omit_removed_subsystems() {
+		$service = $this->make_service();
+		$groups  = $service->get_refresh_task_groups();
+		$steps   = array();
+
+		foreach ($groups as $group) {
+			foreach ($group['tasks'] as $task) {
+				$steps[] = $task['step'];
+			}
+		}
+
+		$this->assertNotContains('prune_telemetry', $steps);
+		$this->assertNotContains('cache_maintenance', $steps);
+		$this->assertNotContains('purge_telemetry', $steps);
+	}
+
 	public function test_refresh_system_runs_only_selected_steps_in_bundle_order() {
 		$service = $this->make_service();
 
 		$result = $service->refresh_system(array(
 			'rebuild_caches',
-			'cache_maintenance',
+			'cleanup_notifications',
 			'repair_campaign_data',
 		));
 
 		$this->assertSame(
-			array('cache_maintenance', 'repair_campaign_data', 'rebuild_caches'),
+			array('cleanup_notifications', 'repair_campaign_data', 'rebuild_caches'),
 			wp_list_pluck($result['steps'], 'step')
 		);
 		$this->assertSame(3, $result['succeeded']);
@@ -175,22 +182,22 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 	}
 
 	public function test_refresh_system_continues_after_a_throwing_step() {
-		$cache_monitor = $this->getMockBuilder('AIPS_Cache_Monitor_Service')
+		$notifications = $this->getMockBuilder('AIPS_Notifications_Repository')
 			->disableOriginalConstructor()
-			->onlyMethods(array('run_maintenance'))
+			->onlyMethods(array('cleanup_old'))
 			->getMock();
-		$cache_monitor->method('run_maintenance')->willThrowException(new RuntimeException('boom'));
+		$notifications->method('cleanup_old')->willThrowException(new RuntimeException('boom'));
 
-		$service = $this->make_service(array('cache_monitor_service' => $cache_monitor));
+		$service = $this->make_service(array('notifications_repository' => $notifications));
 
 		$result = $service->refresh_system();
 
-		$this->assertCount(12, $result['steps']);
-		$this->assertSame(11, $result['succeeded']);
+		$this->assertCount(11, $result['steps']);
+		$this->assertSame(10, $result['succeeded']);
 		$this->assertSame(1, $result['failed']);
 
 		$first_step = $result['steps'][0];
-		$this->assertSame('cache_maintenance', $first_step['step']);
+		$this->assertSame('cleanup_notifications', $first_step['step']);
 		$this->assertFalse($first_step['success']);
 		$this->assertSame('boom', $first_step['message']);
 
@@ -226,26 +233,5 @@ class Test_AIPS_System_Diagnostics_Service extends WP_UnitTestCase {
 		$result = $service->reset_resilience();
 
 		$this->assertTrue($result['success']);
-	}
-
-	public function test_run_cache_maintenance_reports_pruned_counts() {
-		$cache_monitor = $this->getMockBuilder('AIPS_Cache_Monitor_Service')
-			->disableOriginalConstructor()
-			->onlyMethods(array('run_maintenance'))
-			->getMock();
-		$cache_monitor->method('run_maintenance')->willReturn(array(
-			'pruned_index'   => 3,
-			'pruned_orphans' => 2,
-			'pruned_events'  => 11,
-		));
-
-		$service = $this->make_service(array('cache_monitor_service' => $cache_monitor));
-
-		$result = $service->run_cache_maintenance();
-
-		$this->assertTrue($result['success']);
-		$this->assertStringContainsString('3 expired entries', $result['message']);
-		$this->assertStringContainsString('2 orphaned index rows', $result['message']);
-		$this->assertStringContainsString('11 old events', $result['message']);
 	}
 }

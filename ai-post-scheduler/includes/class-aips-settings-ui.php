@@ -558,24 +558,6 @@ class AIPS_Settings_UI {
      */
 
     /**
-     * Render the enable telemetry setting field.
-     *
-     * Displays a checkbox to enable or disable request-level telemetry
-     * recording (staging/dev use only).
-     *
-     * @return void
-     */
-
-    /**
-     * Render the cache monitor setting field.
-     *
-     * Displays a checkbox to enable or disable the Cache Monitor
-     * admin page and its AJAX endpoints (internal cache introspection tool).
-     *
-     * @return void
-     */
-
-    /**
      * Render the review notifications email setting field.
      *
      * Displays an email input field for the notifications recipient.
@@ -2053,12 +2035,6 @@ class AIPS_Settings_UI {
 
 	/**
 	 * Render the automated pruning master toggle.
-	 *
-	 * @return void
-	 */
-
-	/**
-	 * Render the telemetry retention period field (number + unit).
 	 *
 	 * @return void
 	 */

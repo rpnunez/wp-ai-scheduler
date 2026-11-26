@@ -11,7 +11,6 @@
  *   - nonceCleanupStaleJobsCache      {string} wp_nonce for aips_status_cleanup_stale_jobs_cache
  *   - nonceRebuildCaches              {string} wp_nonce for aips_rebuild_caches
  *   - nonceRefreshSystem              {string} wp_nonce for aips_status_refresh_system
- *   - nonceCacheMaintenance           {string} wp_nonce for aips_status_cache_maintenance
  *   - nonceCleanupNotifications       {string} wp_nonce for aips_status_cleanup_notifications
  *   - nonceResetResilience            {string} wp_nonce for aips_status_reset_resilience
  *   - nonceRepairDatetime             {string} wp_nonce for aips_status_repair_datetime
@@ -64,8 +63,6 @@
 			$(document).on('click', '.aips-toggle-cache-tasks', this.toggleCacheTasks.bind(this));
 			$(document).on('click', '.aips-refresh-system', this.refreshSystem.bind(this));
 			$(document).on('click', '.aips-copy-system-report', this.copySystemReport.bind(this));
-			$(document).on('click', '.aips-prune-telemetry-btn', this.pruneTelemetry.bind(this));
-			$(document).on('click', '.aips-purge-telemetry-btn', this.purgeTelemetry.bind(this));
 			$(document).on('click', '.aips-prune-history-logs-btn', this.pruneHistoryLogs.bind(this));
 			$(document).on('click', '.aips-clean-orphaned-embeddings-btn', this.cleanOrphanedEmbeddings.bind(this));
 			$(document).on('click', '.aips-optimize-table-btn', this.optimizeTable.bind(this));
@@ -216,7 +213,6 @@
 				'aips_status_repair_campaign_data': l10n.nonceRepairCampaignData || '',
 				'aips_status_clear_partial_generations': l10n.nonceClearPartialGenerations || '',
 				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || '',
-				'aips_status_cache_maintenance': l10n.nonceCacheMaintenance || '',
 				'aips_status_clear_embeddings_cache': l10n.nonceClearEmbeddingsCache || '',
 				'aips_status_cleanup_notifications': l10n.nonceCleanupNotifications || '',
 				'aips_status_reset_resilience': l10n.nonceResetResilience || '',
@@ -388,7 +384,7 @@
 			var hasDestructive = $('.aips-refresh-task-destructive:checked').length > 0;
 
 			if (hasDestructive) {
-				var confirmMsg = l10n.confirmRefreshSystemDestructive || 'This includes one or more tasks that permanently delete data (e.g. telemetry/history pruning, orphaned embeddings cleanup). Continue?';
+				var confirmMsg = l10n.confirmRefreshSystemDestructive || 'This includes one or more tasks that permanently delete data (e.g. history log pruning, orphaned embeddings cleanup). Continue?';
 				AIPS.Utilities.confirm(confirmMsg, 'Refresh System', [
 					{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 					{ label: 'Yes, continue', className: 'aips-btn aips-btn-danger-solid', action: function() {
@@ -482,114 +478,6 @@
 			});
 
 			$results.show();
-		},
-
-		/**
-		 * Prune telemetry older than the configured retention setting.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		pruneTelemetry: function(e) {
-			e.preventDefault();
-			var self = this;
-			var l10n = window.aipsSystemStatusL10n || {};
-			var $btn = $(e.currentTarget);
-
-			var confirmMsg = l10n.confirmPruneTelemetry || 'Prune telemetry records older than retention period? Batched deletion will defragment table if needed.';
-			AIPS.Utilities.confirm(confirmMsg, 'Prune Telemetry', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
-				{ label: 'Yes, prune old records', className: 'aips-btn aips-btn-primary', action: function() {
-					$btn.prop('disabled', true);
-					if (AIPS.Utilities && AIPS.Utilities.showToast) {
-						AIPS.Utilities.showToast('Pruning telemetry…', 'info');
-					}
-
-					$.post(ajaxurl, {
-						action: 'aips_status_prune_telemetry',
-						nonce:  l10n.noncePruneTelemetry || (window.aipsAjax && aipsAjax.nonce) || ''
-					}, function(response) {
-						if (response && response.success) {
-							var msg = (response.data && response.data.message) ? response.data.message : 'Telemetry pruned successfully.';
-							if (AIPS.Utilities && AIPS.Utilities.showToast) {
-								AIPS.Utilities.showToast(msg, 'success');
-							}
-							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
-								self.refreshTables(false);
-							}
-						} else {
-							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Prune failed.');
-							if (AIPS.Utilities && AIPS.Utilities.showToast) {
-								AIPS.Utilities.showToast(err, 'error');
-							}
-						}
-						$btn.prop('disabled', false);
-					}).fail(function() {
-						if (AIPS.Utilities && AIPS.Utilities.showToast) {
-							AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
-						}
-						$btn.prop('disabled', false);
-					});
-				}}
-			]);
-		},
-
-		/**
-		 * Purge all telemetry data (TRUNCATE TABLE to reclaim all disk space).
-		 *
-		 * Requires typing 'PURGE' into confirmation modal.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		purgeTelemetry: function(e) {
-			e.preventDefault();
-			var self = this;
-			var l10n = window.aipsSystemStatusL10n || {};
-			var $btn = $(e.currentTarget);
-
-			AIPS.Utilities.confirmWithWord({
-				heading:      l10n.confirmPurgeTelemetryTitle || 'Purge All Telemetry Data',
-				message:      l10n.confirmPurgeTelemetry || 'Are you sure you want to PURGE ALL telemetry records? This will truncate the table and instantly reclaim all disk space (reset to 0 bytes). This action cannot be undone.',
-				word:         'PURGE',
-				confirmLabel: 'Purge Table',
-				confirmClass: 'aips-btn aips-btn-danger-solid'
-			}).then(function(confirmed) {
-				if (!confirmed) {
-					return;
-				}
-
-				$btn.prop('disabled', true);
-				if (AIPS.Utilities && AIPS.Utilities.showToast) {
-					AIPS.Utilities.showToast('Purging telemetry table…', 'info');
-				}
-
-				$.post(ajaxurl, {
-					action: 'aips_status_purge_telemetry',
-					nonce:  l10n.noncePurgeTelemetry || (window.aipsAjax && aipsAjax.nonce) || ''
-				}, function(response) {
-					if (response && response.success) {
-						var msg = (response.data && response.data.message) ? response.data.message : 'Telemetry table truncated and space reclaimed.';
-						if (AIPS.Utilities && AIPS.Utilities.showToast) {
-							AIPS.Utilities.showToast(msg, 'success');
-						}
-						if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
-							self.refreshTables(false);
-						}
-					} else {
-						var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Purge failed.');
-						if (AIPS.Utilities && AIPS.Utilities.showToast) {
-							AIPS.Utilities.showToast(err, 'error');
-						}
-					}
-					$btn.prop('disabled', false);
-				}).fail(function() {
-					if (AIPS.Utilities && AIPS.Utilities.showToast) {
-						AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
-					}
-					$btn.prop('disabled', false);
-				});
-			});
 		},
 
 		/**

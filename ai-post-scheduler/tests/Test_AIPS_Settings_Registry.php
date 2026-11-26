@@ -202,4 +202,16 @@ class Test_AIPS_Settings_Registry extends WP_UnitTestCase {
 		$this->assertNotNull( $approval_def );
 		$this->assertTrue( is_callable( $approval_def->get_render_callback() ) );
 	}
+
+	public function test_retired_telemetry_and_cache_monitor_options_are_not_registered() {
+		$registry = AIPS_Settings_Registry::instance();
+
+		$this->assertFalse( $registry->has_definition( 'aips_enable_telemetry' ) );
+		$this->assertFalse( $registry->has_definition( 'aips_telemetry_retention_value' ) );
+		$this->assertFalse( $registry->has_definition( 'aips_telemetry_retention_unit' ) );
+		$this->assertFalse( $registry->has_definition( 'aips_telemetry_prune_interval' ) );
+		$this->assertFalse( $registry->has_definition( 'aips_cache_monitor_enabled' ) );
+		$this->assertTrue( $registry->has_definition( 'aips_db_prune_interval' ) );
+		$this->assertArrayNotHasKey( 'aips_cache_monitor_section', $registry->get_sections_by_tab( 'settings-cache' ) );
+	}
 }

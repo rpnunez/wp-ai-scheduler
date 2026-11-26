@@ -83,8 +83,8 @@ class AIPS_Settings_Manager {
 		};
 		add_action( 'update_option_aips_auto_prune_enabled', $sync_prune_cron );
 		add_action( 'add_option_aips_auto_prune_enabled', $sync_prune_cron );
-		add_action( 'update_option_aips_telemetry_prune_interval', $sync_prune_cron );
-		add_action( 'add_option_aips_telemetry_prune_interval', $sync_prune_cron );
+		add_action( 'update_option_aips_db_prune_interval', $sync_prune_cron );
+		add_action( 'add_option_aips_db_prune_interval', $sync_prune_cron );
 
 		$sync_digest_cron = function() {
 			self::sync_digest_cron_schedule();
@@ -114,7 +114,7 @@ class AIPS_Settings_Manager {
 
 		$enabled = (bool) AIPS_Config::get_instance()->get_option( 'aips_auto_prune_enabled' );
 		if ( $enabled ) {
-			$interval = sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_telemetry_prune_interval', 'daily' ) );
+			$interval = sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_db_prune_interval', 'daily' ) );
 			if ( ! in_array( $interval, array( 'daily', 'twicedaily', 'weekly' ), true ) ) {
 				$interval = 'daily';
 			}

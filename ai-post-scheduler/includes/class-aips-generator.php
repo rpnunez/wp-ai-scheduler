@@ -2344,7 +2344,7 @@ class AIPS_Generator {
 
 		if ($slug === '') {
 			$slug = sanitize_title($title);
-			// Determine if the fallback impacts component success telemetry:
+			// Determine if the fallback impacts component success tracking:
 			// If no custom slug prompt was defined, deriving the slug from $title is a standard, acceptable default (success = true).
 			// If the user explicitly provided a custom slug prompt that the model failed to follow, record component failure (success = false)
 			// in component status history while gracefully utilizing the title-based permalink without forcing a draft downgrade.

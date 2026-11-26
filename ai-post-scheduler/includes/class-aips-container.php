@@ -63,12 +63,6 @@ class AIPS_Container {
 	 */
 	private function __construct() {
 		// Container is empty until bindings are registered
-		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( 'classes', array(
-				'type'  => 'class_initialized',
-				'class' => 'AIPS_Container',
-			) );
-		}
 	}
 
 	/**
@@ -81,13 +75,6 @@ class AIPS_Container {
 	 * @return void
 	 */
 	public function bind($id, Closure $factory) {
-		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( 'classes', array(
-				'type'   => 'class_referenced',
-				'method' => 'bind',
-				'class'  => $id,
-			) );
-		}
 		$this->bindings[$id] = $factory;
 	}
 
@@ -101,13 +88,6 @@ class AIPS_Container {
 	 * @return void
 	 */
 	public function singleton($id, Closure $factory) {
-		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( 'classes', array(
-				'type'   => 'class_referenced',
-				'method' => 'singleton',
-				'class'  => $id,
-			) );
-		}
 		$this->singleton_bindings[$id] = $factory;
 	}
 
@@ -122,14 +102,6 @@ class AIPS_Container {
 	 * @throws RuntimeException If the binding is not registered.
 	 */
 	public function make($id) {
-		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( 'classes', array(
-				'type'   => 'class_referenced',
-				'method' => 'make',
-				'class'  => $id,
-			) );
-		}
-
 		// Check if it's a singleton binding
 		if (isset($this->singleton_bindings[$id])) {
 			// Return cached instance if already resolved
@@ -143,13 +115,6 @@ class AIPS_Container {
 			}
 
 			// Resolve and cache the instance
-			if (AIPS_Telemetry::is_enabled()) {
-				AIPS_Telemetry::instance()->add_event( 'classes', array(
-					'type'  => 'class_initialized',
-					'class' => $id,
-				) );
-			}
-
 			$this->resolving[$id] = true;
 			try {
 				$instance = $this->singleton_bindings[$id]($this);
@@ -168,13 +133,6 @@ class AIPS_Container {
 			}
 
 			// Always create a new instance for transient bindings
-			if (AIPS_Telemetry::is_enabled()) {
-				AIPS_Telemetry::instance()->add_event( 'classes', array(
-					'type'  => 'class_initialized',
-					'class' => $id,
-				) );
-			}
-
 			$this->resolving[$id] = true;
 			try {
 				return $this->bindings[$id]($this);

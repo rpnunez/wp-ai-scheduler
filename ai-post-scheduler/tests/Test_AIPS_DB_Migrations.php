@@ -879,4 +879,169 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			add_filter( 'query', array( $this, '_drop_temporary_tables' ) );
 		}
 	}
+
+	/**
+	 * Invoke the private migrate_to_3_7_26() on a fresh instance.
+	 *
+	 * @return bool
+	 */
+	private function run_migrate_3_7_26() {
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_26' );
+		$method->setAccessible( true );
+		return (bool) $method->invoke( $migrations );
+	}
+
+	/**
+	 * WordPress PHPUnit rewrites CREATE/DROP TABLE to TEMPORARY variants.
+	 * SHOW TABLES does not list those, and DROP TEMPORARY cannot remove a
+	 * real table. 3.7.26 assertions need the unfiltered statements.
+	 *
+	 * @return void
+	 */
+	private function disable_wp_table_rewrites() {
+		remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+	}
+
+	/**
+	 * Restore the suite's CREATE/DROP TABLE rewrites.
+	 *
+	 * @return void
+	 */
+	private function enable_wp_table_rewrites() {
+		add_filter( 'query', array( $this, '_create_temporary_tables' ) );
+		add_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+	}
+
+	/**
+	 * migrate_to_3_7_26() must drop the retired Telemetry / Cache Monitor tables,
+	 * copy the prune-interval option, and delete orphaned settings. A second run
+	 * is a no-op.
+	 */
+	public function test_migrate_to_3_7_26_drops_retired_tables_and_options() {
+		global $wpdb;
+
+		$tables = array(
+			$wpdb->prefix . 'aips_telemetry',
+			$wpdb->prefix . 'aips_cache_index',
+			$wpdb->prefix . 'aips_cache_events',
+		);
+
+		$this->disable_wp_table_rewrites();
+		try {
+			foreach ( $tables as $table ) {
+				$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$table}` (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))" );
+				$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must exist before the migration' );
+			}
+
+			update_option( 'aips_telemetry_prune_interval', 'weekly' );
+			delete_option( 'aips_db_prune_interval' );
+			update_option( 'aips_enable_telemetry', '1' );
+			update_option( 'aips_cache_monitor_enabled', '1' );
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'aips_cache_monitor_maintenance' );
+
+			$this->assertTrue( $this->run_migrate_3_7_26() );
+
+			foreach ( $tables as $table ) {
+				$this->assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), $table . ' must be dropped' );
+			}
+
+			$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ) );
+			$this->assertFalse( get_option( 'aips_telemetry_prune_interval', false ) );
+			$this->assertFalse( get_option( 'aips_enable_telemetry', false ) );
+			$this->assertFalse( get_option( 'aips_cache_monitor_enabled', false ) );
+			$this->assertFalse( wp_next_scheduled( 'aips_cache_monitor_maintenance' ) );
+
+			$this->assertTrue( $this->run_migrate_3_7_26() );
+			$this->assertSame( 'weekly', get_option( 'aips_db_prune_interval' ), 'second run must leave the migrated interval in place' );
+		} finally {
+			foreach ( $tables as $table ) {
+				$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+			}
+			$this->enable_wp_table_rewrites();
+		}
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.24' );
+		AIPS_DB_Migrations::check_and_run();
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
+	}
+
+	/**
+	 * When aips_db_prune_interval is already stored, the legacy telemetry
+	 * interval must not overwrite it.
+	 */
+	public function test_migrate_to_3_7_26_keeps_existing_db_prune_interval() {
+		update_option( 'aips_db_prune_interval', 'daily' );
+		update_option( 'aips_telemetry_prune_interval', 'weekly' );
+
+		$this->assertTrue( $this->run_migrate_3_7_26() );
+		$this->assertSame( 'daily', get_option( 'aips_db_prune_interval' ) );
+		$this->assertFalse( get_option( 'aips_telemetry_prune_interval', false ) );
+	}
+
+	/**
+	 * An invalid legacy prune interval must be stored as daily, not as raw junk.
+	 */
+	public function test_migrate_to_3_7_26_clamps_invalid_legacy_prune_interval() {
+		delete_option( 'aips_db_prune_interval' );
+		update_option( 'aips_telemetry_prune_interval', 'not-a-schedule' );
+
+		$this->assertTrue( $this->run_migrate_3_7_26() );
+		$this->assertSame( 'daily', get_option( 'aips_db_prune_interval' ) );
+		$this->assertFalse( get_option( 'aips_telemetry_prune_interval', false ) );
+	}
+
+	/**
+	 * A failed DROP TABLE must not stamp aips_db_version, so the next request retries.
+	 */
+	public function test_migrate_to_3_7_26_failed_drop_leaves_version_unstamped() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_telemetry';
+		$this->disable_wp_table_rewrites();
+		try {
+			$wpdb->query( "CREATE TABLE IF NOT EXISTS `{$table}` (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))" );
+			$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) );
+		} finally {
+			$this->enable_wp_table_rewrites();
+		}
+
+		$block_drop = static function ( $query ) {
+			if ( is_string( $query ) && false !== stripos( $query, 'DROP TABLE' ) && false !== stripos( $query, 'aips_telemetry' ) ) {
+				return 'SELECT 1 WHERE 0';
+			}
+			return $query;
+		};
+		add_filter( 'query', $block_drop );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.24' );
+		AIPS_DB_Migrations::check_and_run();
+
+		remove_filter( 'query', $block_drop );
+
+		$this->assertSame( '3.7.24', get_option( 'aips_db_version' ), 'failed DROP must leave the stored version unchanged' );
+		$this->assertSame( $table, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ), 'blocked DROP must leave the table in place' );
+
+		$this->disable_wp_table_rewrites();
+		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+		$this->enable_wp_table_rewrites();
+	}
+
+	/**
+	 * New installs must not recreate the retired Telemetry / Cache Monitor tables.
+	 */
+	public function test_install_tables_does_not_create_retired_telemetry_or_cache_monitor_tables() {
+		global $wpdb;
+
+		AIPS_DB_Manager::install_tables();
+
+		foreach ( array( 'aips_telemetry', 'aips_cache_index', 'aips_cache_events' ) as $table ) {
+			$full_table = $wpdb->prefix . $table;
+			$this->assertNull(
+				$wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $full_table ) ),
+				$full_table . ' must not be created on install'
+			);
+		}
+	}
 }
