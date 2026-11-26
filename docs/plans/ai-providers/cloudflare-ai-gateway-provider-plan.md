@@ -237,6 +237,15 @@ the decoded magic bytes (JPEG/PNG/GIF/WebP, default JPEG), producing a `data:` U
   run through `AIPS_AI_Service::generate_image`.
 
 ### Slice 5: Embeddings
+**Status: done.** `generate_embedding()` posts `{text}` to `/ai/run/{embedding_model}` and reads the
+first vector (Workers AI `result.data[0]` or the OpenAI-compatible `data[0].embedding`), casting to
+float. It uses the configured Cloudflare embedding model and ignores the generic `aips_embeddings_model`
+option, whose default (`text-embedding-3-small`) is an OpenAI name that is not a Cloudflare model.
+`supports_embeddings()` reflects whether a model is set. **Index safety needed no change:** the
+similarity evaluator already skips any stored vector whose dimension count differs from the query
+vector (`AIPS_Similarity_Evaluator` candidate loop), so switching embedding models (and dimensions)
+cannot corrupt comparisons; re-indexing is still recommended so all rows share a model.
+
 - `generate_embedding()` through `/ai/run`, reporting the model and dimensions used.
 - Embeddings may be cached at Cloudflare: identical text gives an identical vector, so a long
   `cf-aig-cache-ttl` makes re-indexing cheaper.

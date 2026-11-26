@@ -42,7 +42,7 @@ class Test_AIPS_Cloudflare_AI_Gateway_Provider extends WP_UnitTestCase {
 	public function tearDown(): void {
 		remove_filter('pre_http_request', array($this, 'intercept_http'), 10);
 
-		foreach (array('aips_cf_account_id', 'aips_cf_api_token', 'aips_cf_gateway_id', 'aips_cf_text_model', 'aips_ai_provider') as $key) {
+		foreach (array('aips_cf_account_id', 'aips_cf_api_token', 'aips_cf_gateway_id', 'aips_cf_text_model', 'aips_cf_image_model', 'aips_cf_embedding_model', 'aips_ai_provider') as $key) {
 			delete_option($key);
 		}
 		AIPS_Config::get_instance()->flush_option_cache();
@@ -90,7 +90,14 @@ class Test_AIPS_Cloudflare_AI_Gateway_Provider extends WP_UnitTestCase {
 		$this->assertNotEmpty($provider->get_label());
 		$this->assertTrue($provider->supports_conversation());
 		$this->assertFalse($provider->supports_native_json());
-		$this->assertFalse($provider->supports_embeddings());
+		$this->assertTrue($provider->supports_embeddings(), 'An embedding model is configured by default');
+	}
+
+	public function test_supports_embeddings_false_when_model_cleared() {
+		update_option('aips_cf_embedding_model', '');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$this->assertFalse($this->provider()->supports_embeddings());
 	}
 
 	public function test_is_available_when_configured_without_network() {
@@ -342,12 +349,83 @@ class Test_AIPS_Cloudflare_AI_Gateway_Provider extends WP_UnitTestCase {
 		$this->provider()->generate_image('x', array());
 	}
 
-	public function test_generate_embedding_reports_capability_error() {
+	// ------------------------------------------------------------------
+	// Embeddings (Slice 5)
+	// ------------------------------------------------------------------
+
+	public function test_generate_embedding_returns_vector_from_workers_ai_shape() {
+		update_option('aips_cf_embedding_model', '@cf/baai/bge-m3');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$this->next_response = $this->http_ok(array('result' => array('shape' => array(1, 3), 'data' => array(array(0.1, 0.2, 0.3)))));
+
+		$vector = $this->provider()->generate_embedding('hello', array());
+
+		$this->assertSame(array(0.1, 0.2, 0.3), $vector);
+		$this->assertSame(
+			'https://api.cloudflare.com/client/v4/accounts/' . self::ACCOUNT_ID . '/ai/run/%40cf/baai/bge-m3',
+			$this->last_request['url']
+		);
+		$this->assertSame('hello', $this->sent_body()['text']);
+	}
+
+	public function test_generate_embedding_ignores_generic_model_param() {
+		// The generic embeddings pipeline forwards aips_embeddings_model
+		// ("text-embedding-3-small"), which is not a Cloudflare model. The
+		// provider must use its own configured embedding model regardless.
+		$this->next_response = $this->http_ok(array('result' => array('data' => array(array(1.0, 2.0)))));
+
+		$this->provider()->generate_embedding('hello', array('model' => 'text-embedding-3-small'));
+
+		$this->assertStringContainsString('/ai/run/%40cf/baai/bge-m3', $this->last_request['url']);
+		$this->assertStringNotContainsString('text-embedding-3-small', $this->last_request['url']);
+	}
+
+	public function test_generate_embedding_accepts_openai_compat_shape() {
+		$this->next_response = $this->http_ok(array('data' => array(array('embedding' => array(0.5, 0.6)))));
+
+		$this->assertSame(array(0.5, 0.6), $this->provider()->generate_embedding('x', array()));
+	}
+
+	public function test_generate_embedding_casts_integers_to_floats() {
+		$this->next_response = $this->http_ok(array('result' => array('data' => array(array(1, 2, 3)))));
+
+		$vector = $this->provider()->generate_embedding('x', array());
+		$this->assertSame(array(1.0, 2.0, 3.0), $vector);
+	}
+
+	public function test_generate_embedding_without_vector_throws_service_error() {
+		$this->next_response = $this->http_ok(array('result' => array('shape' => array(1, 0), 'data' => array())));
+
 		try {
-			$this->provider()->generate_embedding('text', array());
+			$this->provider()->generate_embedding('x', array());
+			$this->fail('Expected exception');
+		} catch (Exception $e) {
+			$this->assertSame('cf_service_error', $this->provider()->extract_error_code($e->getMessage()));
+		}
+	}
+
+	public function test_generate_embedding_without_model_reports_capability_error() {
+		update_option('aips_cf_embedding_model', '');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		try {
+			$this->provider()->generate_embedding('x', array());
 			$this->fail('Expected exception');
 		} catch (Exception $e) {
 			$this->assertSame('embeddings_not_supported', $this->provider()->extract_error_code($e->getMessage()));
+			$this->assertNull($this->last_request, 'No HTTP call when no embedding model is set');
+		}
+	}
+
+	public function test_generate_embedding_api_error_is_rethrown_with_code() {
+		$this->next_response = $this->http_error(401, 10000, 'Authentication error');
+
+		try {
+			$this->provider()->generate_embedding('x', array());
+			$this->fail('Expected exception');
+		} catch (Exception $e) {
+			$this->assertSame('invalid_api_key', $this->provider()->extract_error_code($e->getMessage()));
 		}
 	}
 

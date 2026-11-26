@@ -155,10 +155,29 @@ class AIPS_Cloudflare_AI_Gateway_Provider implements AIPS_AI_Provider_Interface 
 	}
 
 	/**
+	 * Generate an embedding vector through Workers AI via /ai/run.
+	 *
+	 * Uses the configured Cloudflare embedding model. The generic
+	 * 'aips_embeddings_model' option (default 'text-embedding-3-small') is an
+	 * OpenAI-style name that is not a Cloudflare model, so params['model'] is
+	 * ignored here on purpose.
+	 *
 	 * @inheritDoc
 	 */
 	public function generate_embedding(string $text, array $params): array {
-		throw new Exception('embeddings_not_supported: ' . __('Vector embeddings through Cloudflare AI Gateway are not available yet.', 'ai-post-scheduler'));
+		$model = $this->config->get_embedding_model();
+
+		if ($model === '') {
+			throw new Exception('embeddings_not_supported: ' . __('No Cloudflare embedding model is configured.', 'ai-post-scheduler'));
+		}
+
+		try {
+			$response = $this->client->run($model, array('text' => $text), array('call_type' => 'embedding'));
+		} catch (AIPS_Cloudflare_AI_Gateway_Exception $e) {
+			throw new Exception($e->to_prefixed_message());
+		}
+
+		return $this->extract_embedding($response);
 	}
 
 	/**
@@ -172,7 +191,7 @@ class AIPS_Cloudflare_AI_Gateway_Provider implements AIPS_AI_Provider_Interface 
 	 * @inheritDoc
 	 */
 	public function supports_embeddings(): bool {
-		return false;
+		return $this->config->get_embedding_model() !== '';
 	}
 
 	/**
@@ -389,5 +408,55 @@ class AIPS_Cloudflare_AI_Gateway_Provider implements AIPS_AI_Provider_Interface 
 		}
 
 		return 'data:' . $mime . ';base64,' . $clean;
+	}
+
+	/**
+	 * Pull a single embedding vector out of an /ai/run embeddings response.
+	 *
+	 * Handles the Workers AI shape ({result:{shape,data:[[...]]}}) and the
+	 * OpenAI-compatible shape ({data:[{embedding:[...]}]}). A single text in
+	 * means a single vector out, so the first vector is returned.
+	 *
+	 * @param array $response Decoded /ai/run response.
+	 * @return float[] Embedding vector.
+	 * @throws Exception When no vector can be found.
+	 */
+	private function extract_embedding(array $response): array {
+		$result = (isset($response['result']) && is_array($response['result'])) ? $response['result'] : $response;
+
+		$candidates = array(
+			$result['data'][0] ?? null,
+			$result['data'][0]['embedding'] ?? null,
+			$response['data'][0]['embedding'] ?? null,
+			$result['embedding'] ?? null,
+		);
+
+		foreach ($candidates as $vector) {
+			if ($this->is_numeric_vector($vector)) {
+				return array_map('floatval', $vector);
+			}
+		}
+
+		throw new Exception('cf_service_error: ' . __('Cloudflare returned a response with no embedding vector.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Whether a value is a non-empty list of numbers.
+	 *
+	 * @param mixed $value Value to test.
+	 * @return bool
+	 */
+	private function is_numeric_vector($value): bool {
+		if (!is_array($value) || $value === array()) {
+			return false;
+		}
+
+		foreach ($value as $item) {
+			if (!is_int($item) && !is_float($item)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }
