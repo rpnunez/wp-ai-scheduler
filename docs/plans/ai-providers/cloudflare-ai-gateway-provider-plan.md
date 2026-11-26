@@ -181,6 +181,16 @@ Slice 6. A blank token field keeps the saved token. Removing a saved token is le
 - **Rollback:** settings only. Removing the registry entries leaves harmless orphan options.
 
 ### Slice 2: HTTP client and error normalization
+**Status: done.** Added `AIPS_Cloudflare_AI_Gateway_Exception` (carries the normalized AIPS code,
+HTTP status and Cloudflare numeric code) so the Slice 3 provider can re-throw as `code: message` or
+inspect the structured values. `run()` uses the path form `/ai/run/{model}` (model slashes/`@`
+preserved), and `verify_token()` calls the account-independent `/user/tokens/verify` with no gateway
+headers. The error classifier maps by Cloudflare numeric code first (including a nested `error_chain`
+code), then by message ("model not found", context-length), then by HTTP status; a 2xx body carrying
+the v4 `success:false` envelope is treated as an error, and a non-JSON 2xx body is a `cf_service_error`.
+Transport (`WP_Error`) and 5xx/unknown errors use the retryable codes `cf_transport_error` /
+`cf_service_error`, which are deliberately absent from the resilience non-retryable sets.
+
 - `includes/providers/class-aips-cloudflare-ai-gateway-client.php`: `chat()`, `run()`, `verify_token()`.
 - Builds headers, including `cf-aig-metadata` = JSON `{aips_correlation_id, aips_call_type, aips_version}`
   (scalar values only; keep it small, since the size limit isn't documented).
