@@ -1,0 +1,5 @@
+{
+  "name": "wp-ai-scheduler",
+  "install": "bash /agent/repos/wp-ai-scheduler/scripts/cloud-agent-install.sh",
+  "start": "bash /agent/repos/wp-ai-scheduler/scripts/cloud-agent-start.sh"
+}
