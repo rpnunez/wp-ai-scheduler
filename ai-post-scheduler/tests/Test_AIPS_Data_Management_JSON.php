@@ -2,11 +2,8 @@
 
 class Test_AIPS_Data_Management_JSON extends WP_UnitTestCase {
 
-	public function test_json_export_uses_repository_for_existing_tables_only() {
+	public function test_json_export_reads_every_declared_table() {
 		$repository = new Test_AIPS_Data_Management_JSON_Repository_Stub();
-		$repository->existing_tables = array(
-			'alpha' => 'wp_aips_alpha',
-		);
 		$repository->rows_by_table = array(
 			'wp_aips_alpha' => array(
 				array(
@@ -27,10 +24,9 @@ class Test_AIPS_Data_Management_JSON extends WP_UnitTestCase {
 
 		$payload = json_decode($exporter->export(), true);
 
-		$this->assertSame(array('alpha' => 'wp_aips_alpha', 'beta' => 'wp_aips_beta'), $repository->requested_existing_tables);
-		$this->assertSame(array('wp_aips_alpha'), $repository->read_tables);
+		$this->assertSame(array('wp_aips_alpha', 'wp_aips_beta'), $repository->read_tables);
 		$this->assertArrayHasKey('alpha', $payload['tables']);
-		$this->assertArrayNotHasKey('beta', $payload['tables']);
+		$this->assertSame(array(), $payload['tables']['beta']);
 		$this->assertSame('Alpha', $payload['tables']['alpha'][0]['name']);
 	}
 
@@ -110,11 +106,8 @@ class Test_AIPS_Data_Management_JSON extends WP_UnitTestCase {
 		$this->assertSame(1, $repository->enable_calls);
 	}
 
-	public function test_mysql_export_uses_repository_reads_for_existing_tables() {
+	public function test_mysql_export_reads_every_declared_table() {
 		$repository = new Test_AIPS_Data_Management_JSON_Repository_Stub();
-		$repository->existing_tables = array(
-			'alpha' => 'wp_aips_alpha',
-		);
 		$repository->rows_by_table = array(
 			'wp_aips_alpha' => array(
 				array(
@@ -125,6 +118,7 @@ class Test_AIPS_Data_Management_JSON extends WP_UnitTestCase {
 		);
 		$repository->create_statements = array(
 			'wp_aips_alpha' => 'CREATE TABLE `wp_aips_alpha` (`id` bigint(20) NOT NULL)',
+			'wp_aips_beta' => 'CREATE TABLE `wp_aips_beta` (`id` bigint(20) NOT NULL)',
 		);
 
 		$exporter = new class($repository) extends AIPS_Data_Management_Export_MySQL {
@@ -138,19 +132,15 @@ class Test_AIPS_Data_Management_JSON extends WP_UnitTestCase {
 
 		$dump = $exporter->export();
 
-		$this->assertSame(array('alpha' => 'wp_aips_alpha', 'beta' => 'wp_aips_beta'), $repository->requested_existing_tables);
-		$this->assertSame(array('wp_aips_alpha'), $repository->create_statement_tables);
-		$this->assertSame(array('wp_aips_alpha'), $repository->read_tables);
+		$this->assertSame(array('wp_aips_alpha', 'wp_aips_beta'), $repository->create_statement_tables);
+		$this->assertSame(array('wp_aips_alpha', 'wp_aips_beta'), $repository->read_tables);
 		$this->assertStringContainsString('DROP TABLE IF EXISTS `wp_aips_alpha`;', $dump);
 		$this->assertStringContainsString('INSERT INTO `wp_aips_alpha` (`id`, `name`) VALUES (\'7\', \'Alpha\');', $dump);
-		$this->assertStringContainsString('-- Table wp_aips_beta does not exist', $dump);
+		$this->assertStringContainsString('-- Table structure for table `wp_aips_beta`', $dump);
 	}
 
 	public function test_mysql_export_skips_drop_when_create_statement_missing() {
 		$repository = new Test_AIPS_Data_Management_JSON_Repository_Stub();
-		$repository->existing_tables = array(
-			'alpha' => 'wp_aips_alpha',
-		);
 		$repository->rows_by_table = array(
 			'wp_aips_alpha' => array(),
 		);
@@ -166,16 +156,15 @@ class Test_AIPS_Data_Management_JSON extends WP_UnitTestCase {
 		$dump = $exporter->export();
 
 		$this->assertStringNotContainsString('DROP TABLE IF EXISTS `wp_aips_alpha`;', $dump);
-		$this->assertStringContainsString('-- No data in table', $dump);
+		$this->assertStringContainsString('-- Unable to export table wp_aips_alpha: schema read failed', $dump);
+		$this->assertStringNotContainsString('-- No data in table', $dump);
 	}
 }
 
 class Test_AIPS_Data_Management_JSON_Repository_Stub {
 
-	public $existing_tables = array();
 	public $rows_by_table = array();
 	public $insert_results = array();
-	public $requested_existing_tables = array();
 	public $read_tables = array();
 	public $create_statements = array();
 	public $create_statement_tables = array();
@@ -183,11 +172,6 @@ class Test_AIPS_Data_Management_JSON_Repository_Stub {
 	public $insert_calls = array();
 	public $disable_calls = 0;
 	public $enable_calls = 0;
-
-	public function get_existing_tables($tables) {
-		$this->requested_existing_tables = $tables;
-		return $this->existing_tables;
-	}
 
 	public function get_table_rows($full_table_name) {
 		$this->read_tables[] = $full_table_name;

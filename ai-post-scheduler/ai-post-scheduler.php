@@ -178,68 +178,71 @@ final class AI_Post_Scheduler {
      * @return void
      */
     public function activate() {
-        // Ensure logger is available
-        if (!class_exists('AIPS_Logger')) {
-            require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
-        }
-
-        $logger = new AIPS_Logger();
-
-        $logger->log('Running plugin activation.');
-
-        // Detect a prior installation before set_default_options() writes defaults.
-        $previously_installed = AIPS_Config::get_instance()->has_option('aips_db_version');
-        $wizard_completed     = (bool) AIPS_Config::get_instance()->get_option('aips_onboarding_completed');
-
-        $this->set_default_options();
-
-        if ($previously_installed || $wizard_completed) {
-            // Plugin already had data or the wizard was already run — mark it
-            // complete so the wizard never resurfaces on future reactivations.
-            if (!$wizard_completed) {
-                update_option('aips_onboarding_completed', 1, false);
+        AIPS_Cache_Index::suspend();
+        try {
+            // Ensure logger is available
+            if (!class_exists('AIPS_Logger')) {
+                require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
             }
-        } else {
-            // Fresh install: redirect admins to the onboarding wizard once.
-            set_transient('aips_onboarding_redirect', 1, MINUTE_IN_SECONDS * 10);
-        }
-        $this->check_upgrades();
 
-        // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
-        $install_result = AIPS_DB_Manager::install_tables();
+            $logger = new AIPS_Logger();
 
-        if (is_wp_error($install_result)) {
-            $logger->log('Table installation failed during activation: ' . $install_result->get_error_message(), 'error');
+            $logger->log('Running plugin activation.');
 
-            $notifications = class_exists('AIPS_Notifications') ? new AIPS_Notifications() : null;
-            if ($notifications instanceof AIPS_Notifications) {
-                $notifications->system_error(array(
-                    'title'         => __('Database installation failed', 'ai-post-scheduler'),
-                    'error_code'    => $install_result->get_error_code(),
-                    'error_message' => $install_result->get_error_message(),
-                    'url'           => admin_url('admin.php?page=aips-status'),
-                    'dedupe_key'    => 'db_install_failed_activation',
-                    'dedupe_window' => 1800,
-                ));
+            // Detect a prior installation before set_default_options() writes defaults.
+            $previously_installed = AIPS_Config::get_instance()->has_option('aips_db_version');
+            $wizard_completed     = (bool) AIPS_Config::get_instance()->get_option('aips_onboarding_completed');
+
+            $this->set_default_options();
+
+            if ($previously_installed || $wizard_completed) {
+                // Plugin already had data or the wizard was already run — mark it
+                // complete so the wizard never resurfaces on future reactivations.
+                if (!$wizard_completed) {
+                    update_option('aips_onboarding_completed', 1, false);
+                }
+            } else {
+                // Fresh install: redirect admins to the onboarding wizard once.
+                set_transient('aips_onboarding_redirect', 1, MINUTE_IN_SECONDS * 10);
             }
-        }
+            // Activation reapplies the schema even when the stored version matches.
+            $install_result = AIPS_DB_Migrations::check_and_run(true);
+
+            if (is_wp_error($install_result)) {
+                $logger->log('Table installation failed during activation: ' . $install_result->get_error_message(), 'error');
+
+                $notifications = class_exists('AIPS_Notifications') ? new AIPS_Notifications() : null;
+                if ($notifications instanceof AIPS_Notifications) {
+                    $notifications->system_error(array(
+                        'title'         => __('Database installation failed', 'ai-post-scheduler'),
+                        'error_code'    => $install_result->get_error_code(),
+                        'error_message' => $install_result->get_error_message(),
+                        'url'           => admin_url('admin.php?page=aips-status'),
+                        'dedupe_key'    => 'db_install_failed_activation',
+                        'dedupe_window' => 1800,
+                    ));
+                }
+            }
         
-        // Reconcile every manager-owned recurring cron against the declarative
-        // registry (issue #2369). The container is not yet bound this early in
-        // the activation request, so construct the manager directly.
-        $logger->log('Reconciling recurring cron schedules via AIPS_Cron_Manager.');
-        ( new AIPS_Cron_Manager() )->sync_recurring_schedules();
+            // Reconcile every manager-owned recurring cron against the declarative
+            // registry (issue #2369). The container is not yet bound this early in
+            // the activation request, so construct the manager directly.
+            $logger->log('Reconciling recurring cron schedules via AIPS_Cron_Manager.');
+            ( new AIPS_Cron_Manager() )->sync_recurring_schedules();
 
-        // Leaf-scheduled recurring jobs still own their scheduling logic. The
-        // duplicate-scan and GSC-sync schedules are reconciled on the first admin
-        // load (AIPS_Cron_Manager::reconcile_admin_schedules) and on their option
-        // changes, matching historic behaviour, so they are not force-scheduled
-        // here (and GSC cannot be built this early, before the container binds).
-        AIPS_Sources_Cron::instance()->schedule();
-        AIPS_Sources_Maintenance::instance();
-        flush_rewrite_rules();
+            // Leaf-scheduled recurring jobs still own their scheduling logic. The
+            // duplicate-scan and GSC-sync schedules are reconciled on the first admin
+            // load (AIPS_Cron_Manager::reconcile_admin_schedules) and on their option
+            // changes, matching historic behaviour, so they are not force-scheduled
+            // here (and GSC cannot be built this early, before the container binds).
+            AIPS_Sources_Cron::instance()->schedule();
+            AIPS_Sources_Maintenance::instance();
+            flush_rewrite_rules();
 
-        $logger->log('Plugin activation finished.');
+            $logger->log('Plugin activation finished.');
+        } finally {
+            AIPS_Cache_Index::resume();
+        }
     }
 
     /**
@@ -251,20 +254,26 @@ final class AI_Post_Scheduler {
      * migrations AND install_tables() (dbDelta) when an upgrade is detected,
      * ensuring the schema is fully applied regardless of the call path.
      *
-     * Call-order guarantee inside AIPS_DB_Migrations::run_upgrade() (must not change):
-     *   1. Versioned migrations run first — column renames/type changes/index ops
-     *      that dbDelta cannot perform. Schema must be consistent before dbDelta.
-     *   2. AIPS_DB_Manager::install_tables() (dbDelta) runs second — adds any new
-     *      tables/columns introduced in the current plugin version.
-     *
-     * Note: activate() also calls install_tables() directly afterward for the
-     * fresh-install / re-activation edge case. The double invocation is harmless
-     * because dbDelta is fully idempotent.
+     * Apply the canonical schema, then the five retained recent migrations.
+     * Activation forces schema application; a failed step leaves the previous
+     * database version intact for retry.
      *
      * @return void
      */
     public function check_upgrades() {
-        AIPS_DB_Migrations::check_and_run();
+        $from_version = (string) get_option('aips_db_version', '');
+        $result = AIPS_DB_Migrations::check_and_run();
+        if (is_wp_error($result)) {
+            (new AIPS_Notifications())->system_error(array(
+                'title'         => __('Database upgrade failed', 'ai-post-scheduler'),
+                'error_code'    => $result->get_error_code(),
+                'error_message' => $result->get_error_message(),
+                'from_version'  => $from_version,
+                'url'           => admin_url('admin.php?page=aips-status'),
+                'dedupe_key'    => 'db_upgrade_failed_' . $from_version,
+                'dedupe_window' => 1800,
+            ));
+        }
     }
 
     /**
@@ -298,8 +307,8 @@ final class AI_Post_Scheduler {
             $defaults['aips_review_notifications_email'] = get_option('admin_email');
         }
 
-        // Keep DB version initialization during activation.
-        $defaults['aips_db_version'] = AIPS_VERSION;
+        // Only acknowledge the DB version after schema and migrations succeed.
+        unset($defaults['aips_db_version']);
         
         foreach ($defaults as $key => $value) {
             if (!AIPS_Config::get_instance()->has_option($key)) {

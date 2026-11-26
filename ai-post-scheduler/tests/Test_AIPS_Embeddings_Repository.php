@@ -305,13 +305,5 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 		$this->assertEqualsWithDelta( 0.6, $refetched[0], 0.0001 );
 	}
 
-	/**
-	 * Test reset_table_cache clears cached table existence flags.
-	 */
-	public function test_reset_table_cache() {
-		$this->assertTrue( $this->repo->table_exists() );
-		AIPS_Embeddings_Repository::reset_table_cache();
-		$this->assertTrue( $this->repo->table_exists() );
-	}
 }
 

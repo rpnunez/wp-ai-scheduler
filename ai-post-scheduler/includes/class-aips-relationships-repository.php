@@ -40,27 +40,6 @@ class AIPS_Relationships_Repository {
 	}
 
 	/**
-	 * Check if the relationships table exists in the database.
-	 *
-	 * @return bool
-	 */
-	public function table_exists(): bool {
-		// Keyed by table name (the static is shared by every instance) and only a
-		// positive result is memoized, so a table created later in this request
-		// by a migration is still picked up.
-		static $known = array();
-		if (!empty($known[$this->table])) {
-			return true;
-		}
-		$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
-		if ($found === $this->table) {
-			$known[$this->table] = true;
-			return true;
-		}
-		return false;
-	}
-
-	/**
 	 * Upsert a relationship record.
 	 *
 	 * @param string $source_type   Source entity type ('post', 'topic').
@@ -72,10 +51,6 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function upsert($source_type, $source_id, $target_type, $target_id, $similarity, $relation_type = 'related_post') {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		$source_type   = sanitize_key($source_type);
 		$source_id     = absint($source_id);
 		$target_type   = sanitize_key($target_type);
@@ -135,10 +110,6 @@ class AIPS_Relationships_Repository {
 	 * @return void
 	 */
 	public function sync_for_source($source_type, $source_id, array $targets, $relation_type = 'related_post') {
-		if (!$this->table_exists()) {
-			return;
-		}
-
 		$source_type   = sanitize_key($source_type);
 		$source_id     = absint($source_id);
 		$relation_type = sanitize_key($relation_type);
@@ -187,10 +158,6 @@ class AIPS_Relationships_Repository {
 	 * @return object[] Array of relationship rows.
 	 */
 	public function get_related($source_type, $source_id, $limit = 5, $min_similarity = 0.60, $relation_type = 'related_post') {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$source_type    = sanitize_key($source_type);
 		$source_id      = absint($source_id);
 		$limit          = absint($limit);
@@ -233,10 +200,6 @@ class AIPS_Relationships_Repository {
 	 * @return array{nodes: array, edges: array} Graph payload.
 	 */
 	public function get_graph_data($source_type, $source_id, $limit = 15, $min_similarity = 0.50) {
-		if (!$this->table_exists()) {
-			return array('nodes' => array(), 'edges' => array());
-		}
-
 		$source_type    = sanitize_key($source_type);
 		$source_id      = absint($source_id);
 		$limit          = absint($limit);
@@ -361,10 +324,6 @@ class AIPS_Relationships_Repository {
 	 * @return array Cluster pairings.
 	 */
 	public function get_top_duplicate_pairs($min_similarity = 0.85, $limit = 50, $entity_type = 'all') {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$min_similarity = (float) $min_similarity;
 		$limit          = absint($limit);
 		$entity_type    = sanitize_key($entity_type);
@@ -451,10 +410,6 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function delete_for_source($source_type, $source_id, $relation_type = '') {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		$where = array(
 			'source_type' => sanitize_key($source_type),
 			'source_id'   => absint($source_id),
@@ -478,10 +433,6 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function delete_for_object($type, $id) {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		$type = sanitize_key($type);
 		$id   = absint($id);
 
@@ -505,10 +456,6 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function clear_all($relation_type = '') {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		if (!empty($relation_type)) {
 			return $this->wpdb->delete(
 				$this->table,
@@ -527,10 +474,6 @@ class AIPS_Relationships_Repository {
 	 * @return int
 	 */
 	public function count($relation_type = '') {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		if (!empty($relation_type)) {
 			return (int) $this->wpdb->get_var(
 				$this->wpdb->prepare(

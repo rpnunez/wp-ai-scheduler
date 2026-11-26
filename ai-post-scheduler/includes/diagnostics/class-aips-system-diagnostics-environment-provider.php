@@ -119,15 +119,21 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 		global $wpdb;
 
 		$tables          = AIPS_DB_Manager::get_expected_columns();
-		$database_tables = $wpdb->get_col( 'SHOW TABLES' );
-		$table_lookup    = array_fill_keys( array_map( 'strtolower', $database_tables ), true );
 		$results         = array();
 
 		foreach ( $tables as $table_name => $columns ) {
 			$full_table_name = $wpdb->prefix . $table_name;
-			$table_exists    = isset( $table_lookup[ strtolower( $full_table_name ) ] );
 
-			if ( ! $table_exists ) {
+			$missing_columns = array();
+			$escaped_table   = str_replace( '`', '``', $full_table_name );
+			$previous_errors = $wpdb->suppress_errors( true );
+			try {
+				$db_columns      = $wpdb->get_results( "SHOW COLUMNS FROM `{$escaped_table}`", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			} finally {
+				$wpdb->suppress_errors( $previous_errors );
+			}
+
+			if ( empty( $db_columns ) ) {
 				$results[ $table_name ] = array(
 					'label'  => sprintf( __( 'Table: %s', 'ai-post-scheduler' ), $table_name ),
 					'value'  => __( 'Missing', 'ai-post-scheduler' ),
@@ -136,9 +142,6 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 				continue;
 			}
 
-			$missing_columns = array();
-			$escaped_table   = str_replace( '`', '``', $full_table_name );
-			$db_columns      = $wpdb->get_results( "SHOW COLUMNS FROM `{$escaped_table}`", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$db_column_names = array_column( $db_columns, 'Field' );
 
 			foreach ( $columns as $col ) {

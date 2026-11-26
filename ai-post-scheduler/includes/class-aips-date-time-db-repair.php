@@ -80,10 +80,6 @@ class AIPS_Date_Time_DB_Repair {
 		foreach ( AIPS_DB_Manager::get_datetime_column_map() as $table_slug => $columns ) {
 			$table = $this->wpdb->prefix . $table_slug;
 
-			if ( $this->table_exists( $table ) !== $table ) {
-				continue;
-			}
-
 			foreach ( $columns as $column ) {
 				$col_name = is_array( $column ) ? $column[0] : $column;
 				if ( $this->convert_legacy_datetime_column_to_bigint( $table, $col_name ) ) {
@@ -105,10 +101,6 @@ class AIPS_Date_Time_DB_Repair {
 
 		foreach ( AIPS_DB_Manager::get_datetime_column_map() as $table_slug => $columns ) {
 			$table = $this->wpdb->prefix . $table_slug;
-
-			if ( $this->table_exists( $table ) !== $table ) {
-				continue;
-			}
 
 			foreach ( $columns as $column ) {
 				$col_name = is_array( $column ) ? $column[0] : $column;
@@ -136,10 +128,6 @@ class AIPS_Date_Time_DB_Repair {
 	 */
 	private function repair_template_schedule_next_runs() {
 		$table = $this->wpdb->prefix . 'aips_schedule';
-
-		if ( $this->table_exists( $table ) !== $table ) {
-			return 0;
-		}
 
 		$rows = $this->wpdb->get_results(
 			"SELECT id, frequency, next_run, last_run, created_at, is_active FROM `{$table}`" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -194,10 +182,6 @@ class AIPS_Date_Time_DB_Repair {
 	 */
 	private function repair_author_next_runs() {
 		$table = $this->wpdb->prefix . 'aips_authors';
-
-		if ( $this->table_exists( $table ) !== $table ) {
-			return 0;
-		}
 
 		$rows = $this->wpdb->get_results(
 			"SELECT id, is_active, created_at, topic_generation_frequency, topic_generation_next_run, topic_generation_last_run, topic_generation_is_active, post_generation_frequency, post_generation_next_run, post_generation_last_run, post_generation_is_active FROM `{$table}`" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -278,63 +262,57 @@ class AIPS_Date_Time_DB_Repair {
 		$topics_table  = $this->wpdb->prefix . 'aips_author_topics';
 		$logs_table    = $this->wpdb->prefix . 'aips_author_topic_logs';
 
-		if ( $this->table_exists( $authors_table ) !== $authors_table ) {
-			return 0;
-		}
-
 		$fixed = 0;
 
 		// 1. Backfill topic_generation_last_run where 0 or null but topics exist
-		if ( $this->table_exists( $topics_table ) === $topics_table ) {
-			$topic_maxes = $this->wpdb->get_results(
-				"SELECT author_id, MAX(generated_at) as max_ts FROM `{$topics_table}` WHERE generated_at >= " . self::MIN_VALID_TIMESTAMP . " GROUP BY author_id",
-				ARRAY_A
-			);
-			if ( ! empty( $topic_maxes ) ) {
-				foreach ( $topic_maxes as $row ) {
-					$author_id = (int) $row['author_id'];
-					$max_ts    = (int) $row['max_ts'];
-					if ( $author_id > 0 && $max_ts >= self::MIN_VALID_TIMESTAMP ) {
-						$updated = $this->wpdb->query( $this->wpdb->prepare(
-							"UPDATE `{$authors_table}` SET topic_generation_last_run = %d WHERE id = %d AND (topic_generation_last_run IS NULL OR topic_generation_last_run = 0)",
-							$max_ts,
-							$author_id
-						) );
-						if ( $updated ) {
-							$fixed += (int) $updated;
-						}
+		$topic_maxes = $this->wpdb->get_results(
+			"SELECT author_id, MAX(generated_at) as max_ts FROM `{$topics_table}` WHERE generated_at >= " . self::MIN_VALID_TIMESTAMP . " GROUP BY author_id",
+			ARRAY_A
+		);
+		if ( ! empty( $topic_maxes ) ) {
+			foreach ( $topic_maxes as $row ) {
+				$author_id = (int) $row['author_id'];
+				$max_ts    = (int) $row['max_ts'];
+				if ( $author_id > 0 && $max_ts >= self::MIN_VALID_TIMESTAMP ) {
+					$updated = $this->wpdb->query( $this->wpdb->prepare(
+						"UPDATE `{$authors_table}` SET topic_generation_last_run = %d WHERE id = %d AND (topic_generation_last_run IS NULL OR topic_generation_last_run = 0)",
+						$max_ts,
+						$author_id
+					) );
+					if ( $updated ) {
+						$fixed += (int) $updated;
 					}
 				}
 			}
 		}
 
+
 		// 2. Backfill post_generation_last_run where 0 or null but post generation logs exist
-		if ( $this->table_exists( $logs_table ) === $logs_table && $this->table_exists( $topics_table ) === $topics_table ) {
-			$post_maxes = $this->wpdb->get_results(
-				"SELECT at.author_id, MAX(atl.created_at) as max_ts
-				 FROM `{$logs_table}` atl
-				 INNER JOIN `{$topics_table}` at ON atl.author_topic_id = at.id
-				 WHERE atl.action = 'post_generated' AND atl.created_at >= " . self::MIN_VALID_TIMESTAMP . "
-				 GROUP BY at.author_id",
-				ARRAY_A
-			);
-			if ( ! empty( $post_maxes ) ) {
-				foreach ( $post_maxes as $row ) {
-					$author_id = (int) $row['author_id'];
-					$max_ts    = (int) $row['max_ts'];
-					if ( $author_id > 0 && $max_ts >= self::MIN_VALID_TIMESTAMP ) {
-						$updated = $this->wpdb->query( $this->wpdb->prepare(
-							"UPDATE `{$authors_table}` SET post_generation_last_run = %d WHERE id = %d AND (post_generation_last_run IS NULL OR post_generation_last_run = 0)",
-							$max_ts,
-							$author_id
-						) );
-						if ( $updated ) {
-							$fixed += (int) $updated;
-						}
+		$post_maxes = $this->wpdb->get_results(
+			"SELECT at.author_id, MAX(atl.created_at) as max_ts
+			 FROM `{$logs_table}` atl
+			 INNER JOIN `{$topics_table}` at ON atl.author_topic_id = at.id
+			 WHERE atl.action = 'post_generated' AND atl.created_at >= " . self::MIN_VALID_TIMESTAMP . "
+			 GROUP BY at.author_id",
+			ARRAY_A
+		);
+		if ( ! empty( $post_maxes ) ) {
+			foreach ( $post_maxes as $row ) {
+				$author_id = (int) $row['author_id'];
+				$max_ts    = (int) $row['max_ts'];
+				if ( $author_id > 0 && $max_ts >= self::MIN_VALID_TIMESTAMP ) {
+					$updated = $this->wpdb->query( $this->wpdb->prepare(
+						"UPDATE `{$authors_table}` SET post_generation_last_run = %d WHERE id = %d AND (post_generation_last_run IS NULL OR post_generation_last_run = 0)",
+						$max_ts,
+						$author_id
+					) );
+					if ( $updated ) {
+						$fixed += (int) $updated;
 					}
 				}
 			}
 		}
+
 
 		return $fixed;
 	}
@@ -346,10 +324,6 @@ class AIPS_Date_Time_DB_Repair {
 	 */
 	private function repair_source_next_runs() {
 		$table = $this->wpdb->prefix . 'aips_sources';
-
-		if ( $this->table_exists( $table ) !== $table ) {
-			return 0;
-		}
 
 		$rows = $this->wpdb->get_results(
 			"SELECT id, is_active, fetch_interval, next_fetch_at, last_fetched_at, created_at FROM `{$table}`" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -459,16 +433,6 @@ class AIPS_Date_Time_DB_Repair {
 		}
 
 		return 0;
-	}
-
-	/**
-	 * Check whether a table exists.
-	 *
-	 * @param string $table Table name.
-	 * @return string|null
-	 */
-	private function table_exists( $table ) {
-		return $this->wpdb->get_var( $this->wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
 	}
 
 	/**

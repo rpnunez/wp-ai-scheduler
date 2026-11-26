@@ -384,7 +384,7 @@ if (!defined('ABSPATH')) {
                                                             <span class="dashicons dashicons-clock"></span>
                                                             <?php esc_html_e('Prune Old', 'ai-post-scheduler'); ?>
                                                         </button>
-                                                    <?php elseif ('aips_embeddings' === $short || 'aips_post_embeddings' === $short) : ?>
+                                                    <?php elseif ('aips_embeddings' === $short) : ?>
                                                         <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clean-orphaned-embeddings-btn" title="<?php esc_attr_e('Delete embeddings for posts that no longer exist', 'ai-post-scheduler'); ?>">
                                                             <span class="dashicons dashicons-admin-links"></span>
                                                             <?php esc_html_e('Clean Orphans', 'ai-post-scheduler'); ?>

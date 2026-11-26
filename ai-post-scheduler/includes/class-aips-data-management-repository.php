@@ -22,45 +22,14 @@ class AIPS_Data_Management_Repository {
 	}
 
 	/**
-	 * Return the subset of plugin tables that currently exist.
-	 *
-	 * @param array $tables Plugin table map keyed by slug.
-	 * @return array
-	 */
-	public function get_existing_tables($tables) {
-		$existing_tables = array();
-
-		foreach ($tables as $table_name => $full_table_name) {
-			$table_exists = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $full_table_name));
-
-			if ($table_exists === $full_table_name) {
-				$existing_tables[$table_name] = $full_table_name;
-			}
-		}
-
-		return $existing_tables;
-	}
-
-	/**
 	 * Fetch all rows for a validated plugin table.
 	 *
 	 * @param string $full_table_name Table name including prefix.
-	 * @return array
+	 * @return array|null Rows, or null when the actual read failed.
 	 */
 	public function get_table_rows($full_table_name) {
-		return $this->wpdb->get_results('SELECT * FROM `' . esc_sql($full_table_name) . '`', ARRAY_A);
-	}
-
-	/**
-	 * Determine whether a validated plugin table exists.
-	 *
-	 * @param string $full_table_name Table name including prefix.
-	 * @return bool
-	 */
-	public function table_exists($full_table_name) {
-		$table_exists = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $full_table_name));
-
-		return $table_exists === $full_table_name;
+		$rows = $this->wpdb->get_results('SELECT * FROM `' . esc_sql($full_table_name) . '`', ARRAY_A);
+		return $this->wpdb->last_error ? null : $rows;
 	}
 
 	/**

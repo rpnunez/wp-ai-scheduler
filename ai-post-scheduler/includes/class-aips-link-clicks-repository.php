@@ -35,27 +35,6 @@ class AIPS_Link_Clicks_Repository {
 	}
 
 	/**
-	 * Whether the clicks table exists (schema may not be upgraded yet).
-	 *
-	 * @return bool
-	 */
-	public function table_exists(): bool {
-		// Keyed by table name (the static is shared by every instance) and only a
-		// positive result is memoized, so a table created later in this request
-		// by a migration is still picked up.
-		static $known = array();
-		if (!empty($known[$this->table])) {
-			return true;
-		}
-		$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
-		if ($found === $this->table) {
-			$known[$this->table] = true;
-			return true;
-		}
-		return false;
-	}
-
-	/**
 	 * Count one click on a link from $source_id to $target_id.
 	 *
 	 * @param int $source_id Post containing the link.
@@ -64,10 +43,6 @@ class AIPS_Link_Clicks_Repository {
 	 * @return bool
 	 */
 	public function record(int $source_id, int $target_id, int $day_start): bool {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		return false !== $this->wpdb->query(
 			$this->wpdb->prepare(
 				"INSERT INTO {$this->table} (source_post_id, target_post_id, day_start, clicks)
@@ -89,7 +64,7 @@ class AIPS_Link_Clicks_Repository {
 	 */
 	public function get_inbound_clicks_for_posts(array $post_ids, int $since): array {
 		$post_ids = array_values(array_filter(array_map('absint', $post_ids)));
-		if (empty($post_ids) || !$this->table_exists()) {
+		if (empty($post_ids)) {
 			return array();
 		}
 
@@ -140,10 +115,6 @@ class AIPS_Link_Clicks_Repository {
 	 * @return int
 	 */
 	public function get_total(int $since): int {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		return (int) $this->wpdb->get_var(
 			$this->wpdb->prepare("SELECT COALESCE(SUM(clicks), 0) FROM {$this->table} WHERE day_start >= %d", $since)
 		);
@@ -157,10 +128,6 @@ class AIPS_Link_Clicks_Repository {
 	 * @return object[] Rows with source_post_id, target_post_id, clicks.
 	 */
 	public function get_top_links(int $since, int $limit = 10): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		return (array) $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT source_post_id, target_post_id, SUM(clicks) AS clicks
@@ -182,10 +149,6 @@ class AIPS_Link_Clicks_Repository {
 	 * @return int Rows deleted.
 	 */
 	public function prune(int $before): int {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		return (int) $this->wpdb->query(
 			$this->wpdb->prepare("DELETE FROM {$this->table} WHERE day_start < %d", $before)
 		);
@@ -198,10 +161,6 @@ class AIPS_Link_Clicks_Repository {
 	 * @return void
 	 */
 	public function delete_for_post(int $post_id): void {
-		if (!$this->table_exists()) {
-			return;
-		}
-
 		$this->wpdb->query(
 			$this->wpdb->prepare(
 				"DELETE FROM {$this->table} WHERE source_post_id = %d OR target_post_id = %d",
@@ -222,7 +181,7 @@ class AIPS_Link_Clicks_Repository {
 	 */
 	private function get_breakdown(string $filter_column, string $group_column, int $post_id, int $since): array {
 		$columns = array('source_post_id', 'target_post_id');
-		if (!in_array($filter_column, $columns, true) || !in_array($group_column, $columns, true) || !$this->table_exists()) {
+		if (!in_array($filter_column, $columns, true) || !in_array($group_column, $columns, true)) {
 			return array();
 		}
 

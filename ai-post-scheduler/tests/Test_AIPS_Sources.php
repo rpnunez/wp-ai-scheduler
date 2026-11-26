@@ -24,9 +24,7 @@ class Test_AIPS_Sources extends WP_UnitTestCase {
 		$wpdb->query( "DELETE FROM $table" );
 
 		$groups_table = $wpdb->prefix . 'aips_source_group_terms';
-		if ( $wpdb->get_var( "SHOW TABLES LIKE '$groups_table'" ) === $groups_table ) {
-			$wpdb->query( "DELETE FROM $groups_table" );
-		}
+		$wpdb->query( "DELETE FROM $groups_table" );
 
 		// Clean up any content strategy options set during tests.
 		foreach ( array_keys( AIPS_Settings::get_content_strategy_options() ) as $key ) {

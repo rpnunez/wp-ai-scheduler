@@ -257,12 +257,11 @@ class AIPS_Snapshot_Exporter {
 		foreach (self::CONFIG_TABLES as $suffix => $drop_columns) {
 			$table = $this->wpdb->prefix . $suffix;
 
-			if (!$this->table_exists($table)) {
-				$this->summary[] = sprintf('%s: table missing (skipped)', $suffix);
+			$rows = $this->wpdb->get_results("SELECT * FROM `{$table}` ORDER BY 1", ARRAY_A);
+			if (false === $rows || $this->wpdb->last_error) {
+				$this->summary[] = sprintf('%s: table read failed (skipped)', $suffix);
 				continue;
 			}
-
-			$rows = $this->wpdb->get_results("SELECT * FROM `{$table}` ORDER BY 1", ARRAY_A);
 			$rows = is_array($rows) ? $rows : array();
 
 			foreach ($rows as &$row) {
@@ -304,8 +303,9 @@ class AIPS_Snapshot_Exporter {
 
 		foreach (array('aips_templates', 'aips_authors') as $suffix) {
 			$table = $this->wpdb->prefix . $suffix;
-			if ($this->table_exists($table)) {
-				$ids = array_merge($ids, array_map('intval', (array) $this->wpdb->get_col("SELECT DISTINCT post_author FROM `{$table}` WHERE post_author IS NOT NULL")));
+			$cols  = $this->wpdb->get_col("SELECT DISTINCT post_author FROM `{$table}` WHERE post_author IS NOT NULL");
+			if (is_array($cols)) {
+				$ids = array_merge($ids, array_map('intval', $cols));
 			}
 		}
 
@@ -331,9 +331,6 @@ class AIPS_Snapshot_Exporter {
 	 */
 	private function export_topic_pipeline() {
 		$table = $this->wpdb->prefix . 'aips_author_topics';
-		if (!$this->table_exists($table)) {
-			return;
-		}
 
 		$by_status = $this->wpdb->get_results(
 			"SELECT author_id, status, COUNT(*) AS n, ROUND(AVG(score), 1) AS avg_score, MIN(score) AS min_score, MAX(score) AS max_score
@@ -364,9 +361,6 @@ class AIPS_Snapshot_Exporter {
 	 */
 	private function export_history_stats() {
 		$table = $this->wpdb->prefix . 'aips_history';
-		if (!$this->table_exists($table)) {
-			return;
-		}
 
 		$since = time() - self::STATS_WINDOW;
 
@@ -422,9 +416,6 @@ class AIPS_Snapshot_Exporter {
 	 */
 	private function export_post_status_counts() {
 		$table = $this->wpdb->prefix . 'aips_history';
-		if (!$this->table_exists($table)) {
-			return;
-		}
 
 		$rows = $this->wpdb->get_results(
 			"SELECT p.post_status, COUNT(DISTINCT p.ID) AS n
@@ -442,9 +433,6 @@ class AIPS_Snapshot_Exporter {
 	 */
 	private function export_ai_edit_usage() {
 		$table = $this->wpdb->prefix . 'aips_ai_assistance';
-		if (!$this->table_exists($table)) {
-			return;
-		}
 
 		$rows = $this->wpdb->get_results(
 			"SELECT form_context, field_key, COUNT(*) AS n, MAX(created_at) AS last_used
@@ -459,13 +447,14 @@ class AIPS_Snapshot_Exporter {
 	 * Row counts for every AIPS table (shows which features hold data).
 	 */
 	private function export_table_sizes() {
-		$tables = $this->wpdb->get_col(
-			$this->wpdb->prepare('SHOW TABLES LIKE %s', $this->wpdb->esc_like($this->wpdb->prefix . 'aips_') . '%')
-		);
+		$tables = AIPS_DB_Manager::get_full_table_names();
 
 		$sizes = array();
-		foreach ((array) $tables as $table) {
-			$sizes[$table] = (int) $this->wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
+		foreach ($tables as $table) {
+			$count = $this->wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
+			if (null !== $count && false === $this->wpdb->last_error) {
+				$sizes[$table] = (int) $count;
+			}
 		}
 
 		$this->write_json('44_table_row_counts.json', $sizes);
@@ -612,14 +601,6 @@ class AIPS_Snapshot_Exporter {
 		}
 
 		return null;
-	}
-
-	/**
-	 * @param string $table Full table name.
-	 * @return bool
-	 */
-	private function table_exists($table) {
-		return $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->wpdb->esc_like($table))) === $table;
 	}
 
 	/**

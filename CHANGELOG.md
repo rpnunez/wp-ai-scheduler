@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Table contract and migration cleanup
+- Remove table-existence preflight queries from repositories, backups, exports, repairs, and diagnostics; use the canonical installed schema directly.
+- Retain only migrations 3.7.16 through the latest version, with 3.7.15 as the existing-installation baseline. Remove completed historical conversions and the retired post-embeddings table's migration and datetime-repair entry.
+- Apply the schema before recent migrations and acknowledge the database version only after every eligible migration succeeds, preserving retries on SQL failure.
+- Suspend optional cache-index metadata during activation/schema installation.
+
 ### Added
 - **Diagnostics Logs Viewer:**
   - Added dedicated **Logs** rail tab to the Diagnostics Hub (`admin.php?page=aips-diagnostics&tab=logs`) and registered an administrative redirect shortcut (`admin.php?page=aips-logs`).

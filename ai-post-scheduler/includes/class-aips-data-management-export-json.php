@@ -67,10 +67,14 @@ class AIPS_Data_Management_Export_JSON extends AIPS_Data_Management_Export {
 			'tables' => array(),
 		);
 		
-		$tables = $this->repository->get_existing_tables($this->get_tables());
+		$tables = $this->get_tables();
 
 		foreach ($tables as $table_name => $full_table_name) {
 			$rows = $this->repository->get_table_rows($full_table_name);
+			if (null === $rows) {
+				$data['errors'][$table_name] = __('Unable to read table.', 'ai-post-scheduler');
+				continue;
+			}
 			$data['tables'][$table_name] = $rows;
 		}
 		

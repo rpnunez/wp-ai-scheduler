@@ -2596,11 +2596,16 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $counts[$kind] = $this->finish_bulk_status_update($total);
         }
 
+        $unclassified = $this->unclassified_methods_with_posts();
+        if ($this->wpdb->last_error) {
+            $errors++;
+        }
+
         return array(
             'generation'   => $counts[AIPS_History_Record_Kind::GENERATION],
             'job'          => $counts[AIPS_History_Record_Kind::JOB],
             'errors'       => $errors,
-            'unclassified' => $this->unclassified_methods_with_posts(),
+            'unclassified' => $unclassified,
         );
     }
 
@@ -2632,6 +2637,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         return $methods;
     }
 
+    /** @var bool Whether the most recent post-type backfill encountered SQL failure. */
+    private $post_type_backfill_failed = false;
+
+    /** Expose backfill failure independently from its public row-count result. */
+    public function post_type_backfill_failed(): bool {
+        return $this->post_type_backfill_failed;
+    }
+
     /**
      * Fill aips_history.post_type from the linked post for generation runs that lack it.
      *
@@ -2644,6 +2657,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return int Number of rows changed.
      */
     public function backfill_post_type($batch_size = 500) {
+        $this->post_type_backfill_failed = false;
         $batch_size    = max(1, absint($batch_size));
         $posts_table   = $this->wpdb->posts;
         $run_condition = self::generation_run_condition('h');
@@ -2661,6 +2675,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                  LIMIT %d",
                 $batch_size
             ));
+            if ($this->wpdb->last_error) {
+                $this->post_type_backfill_failed = true;
+                break;
+            }
             if (empty($ids)) {
                 break;
             }
@@ -2674,7 +2692,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                  WHERE h.id IN ({$placeholders})",
                 $ids
             ));
-            if ($updated === false || $updated < 1) {
+            if ($updated === false) {
+                $this->post_type_backfill_failed = true;
+                break;
+            }
+            if ($updated < 1) {
                 break;
             }
             $total += (int) $updated;

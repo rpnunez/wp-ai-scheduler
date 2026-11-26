@@ -73,27 +73,6 @@ class AIPS_Link_Index_Repository {
 	}
 
 	/**
-	 * Check if the link index table exists in the database.
-	 *
-	 * @return bool
-	 */
-	public function table_exists(): bool {
-		// Keyed by table name (the static is shared by every instance) and only a
-		// positive result is memoized, so a table created later in this request
-		// by a migration is still picked up.
-		static $known = array();
-		if (!empty($known[$this->table])) {
-			return true;
-		}
-		$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
-		if ($found === $this->table) {
-			$known[$this->table] = true;
-			return true;
-		}
-		return false;
-	}
-
-	/**
 	 * Replace all indexed links for a source post.
 	 *
 	 * Each link is an array with keys: target_url (required), target_post_id,
@@ -105,7 +84,7 @@ class AIPS_Link_Index_Repository {
 	 * @return int Number of rows written.
 	 */
 	public function sync_for_source(int $source_post_id, array $links): int {
-		if (!$this->table_exists() || $source_post_id <= 0) {
+		if ($source_post_id <= 0) {
 			return 0;
 		}
 
@@ -165,10 +144,6 @@ class AIPS_Link_Index_Repository {
 	 * @return int|false Rows deleted, or false on failure.
 	 */
 	public function delete_for_source(int $source_post_id) {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		return $this->wpdb->delete(
 			$this->table,
 			array('source_post_id' => absint($source_post_id)),
@@ -186,7 +161,7 @@ class AIPS_Link_Index_Repository {
 	 * @return int|false Rows updated, or false on failure.
 	 */
 	public function clear_target(int $target_post_id) {
-		if (!$this->table_exists() || $target_post_id <= 0) {
+		if ($target_post_id <= 0) {
 			return false;
 		}
 
@@ -205,10 +180,6 @@ class AIPS_Link_Index_Repository {
 	 * @return int|false Rows deleted, or false on failure.
 	 */
 	public function delete_all() {
-		if (!$this->table_exists()) {
-			return false;
-		}
-
 		return $this->wpdb->query("DELETE FROM {$this->table}");
 	}
 
@@ -220,10 +191,6 @@ class AIPS_Link_Index_Repository {
 	 * @return object[]
 	 */
 	public function get_outbound(int $source_post_id, ?string $link_type = null): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$sql  = "SELECT * FROM {$this->table} WHERE source_post_id = %d";
 		$args = array($source_post_id);
 
@@ -244,7 +211,7 @@ class AIPS_Link_Index_Repository {
 	 * @return object[]
 	 */
 	public function get_inbound(int $target_post_id): array {
-		if (!$this->table_exists() || $target_post_id <= 0) {
+		if ($target_post_id <= 0) {
 			return array();
 		}
 
@@ -266,7 +233,7 @@ class AIPS_Link_Index_Repository {
 	 * @return int[]
 	 */
 	public function get_source_ids_linking_to(int $target_post_id): array {
-		if (!$this->table_exists() || $target_post_id <= 0) {
+		if ($target_post_id <= 0) {
 			return array();
 		}
 
@@ -290,7 +257,7 @@ class AIPS_Link_Index_Repository {
 	 * @return bool
 	 */
 	public function source_links_to(int $source_post_id, int $target_post_id): bool {
-		if (!$this->table_exists() || $source_post_id <= 0 || $target_post_id <= 0) {
+		if ($source_post_id <= 0 || $target_post_id <= 0) {
 			return false;
 		}
 
@@ -331,10 +298,6 @@ class AIPS_Link_Index_Repository {
 				'external' => 0,
 				'broken'   => 0,
 			);
-		}
-
-		if (!$this->table_exists()) {
-			return $counts;
 		}
 
 		$in = implode(', ', array_fill(0, count($post_ids), '%d'));
@@ -392,10 +355,6 @@ class AIPS_Link_Index_Repository {
 	 * @return object[] Rows with ID, post_title, post_type, post_date, inbound, outbound, external, broken.
 	 */
 	public function get_report_page(array $args = array()): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		$args = $this->normalize_report_args($args);
 		list($where_sql, $where_args) = $this->build_report_where($args);
 
@@ -440,10 +399,6 @@ class AIPS_Link_Index_Repository {
 	 * @return int
 	 */
 	public function get_report_count(array $args = array()): int {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		$args = $this->normalize_report_args($args);
 		list($where_sql, $where_args) = $this->build_report_where($args);
 
@@ -466,7 +421,7 @@ class AIPS_Link_Index_Repository {
 	 */
 	public function get_post_ids_with_inbound_below(array $post_types, int $below): array {
 		$post_types = array_values(array_filter(array_map('sanitize_key', $post_types)));
-		if (empty($post_types) || !$this->table_exists()) {
+		if (empty($post_types)) {
 			return array();
 		}
 
@@ -502,10 +457,6 @@ class AIPS_Link_Index_Repository {
 	 * @return object[] Rows with source_post_id, source_title, target_url, anchor_text, occurrences.
 	 */
 	public function get_broken_links_page(int $page = 1, int $per_page = 20, string $search = ''): array {
-		if (!$this->table_exists()) {
-			return array();
-		}
-
 		list($where, $args) = $this->broken_where($search);
 		$per_page = max(1, min(100, $per_page));
 		$args[]   = $per_page;
@@ -533,10 +484,6 @@ class AIPS_Link_Index_Repository {
 	 * @return int
 	 */
 	public function get_broken_links_count(string $search = ''): int {
-		if (!$this->table_exists()) {
-			return 0;
-		}
-
 		list($where, $args) = $this->broken_where($search);
 
 		return (int) $this->wpdb->get_var(
@@ -586,10 +533,6 @@ class AIPS_Link_Index_Repository {
 			'broken'   => 0,
 			'sources'  => 0,
 		);
-
-		if (!$this->table_exists()) {
-			return $summary;
-		}
 
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
