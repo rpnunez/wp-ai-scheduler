@@ -223,6 +223,14 @@ added to the two hard-coded lists in `AIPS_System_Info_Provider`.
   auto-detection.
 
 ### Slice 4: Image generation
+**Status: done.** `generate_image()` posts `{prompt}` (plus any of steps/width/height/seed/
+negative_prompt/guidance a caller passes) to `/ai/run/{image_model}` with `cf-aig-skip-cache: true`,
+and uses the configured image model (the service forwards no model for images). The response reader
+handles the base64 shapes Workers AI returns (`result.image`, top-level `image`, `result.data[].b64_json`,
+`result.images[]`), an already-formed data URI, and a plain http(s) URL; the MIME type is detected from
+the decoded magic bytes (JPEG/PNG/GIF/WebP, default JPEG), producing a `data:` URI that
+`AIPS_Image_Service::upload_image_from_data_uri()` already sideloads.
+
 - `generate_image()` through `/ai/run` with `aips_cf_image_model`, turning the response into a data URI
   that the existing featured-image pipeline can sideload.
 - **Gate:** provider test cases for the image fixture, plus the existing image-generation tests that

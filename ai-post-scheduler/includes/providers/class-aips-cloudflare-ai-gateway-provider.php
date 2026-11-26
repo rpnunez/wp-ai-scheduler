@@ -120,10 +120,38 @@ class AIPS_Cloudflare_AI_Gateway_Provider implements AIPS_AI_Provider_Interface 
 	}
 
 	/**
+	 * Generate an image through Workers AI (or a third-party image model) via
+	 * /ai/run, returning a data URI the existing image pipeline can sideload.
+	 *
+	 * Image generation uses the configured image model, not the text model: the
+	 * service forwards no 'model' for image calls, so params['model'] is honoured
+	 * only when a caller sets it explicitly.
+	 *
 	 * @inheritDoc
 	 */
 	public function generate_image(string $prompt, array $params): string {
-		throw new Exception('image_generation_not_supported: ' . __('Image generation through Cloudflare AI Gateway is not available yet.', 'ai-post-scheduler'));
+		$model = !empty($params['model']) ? (string) $params['model'] : $this->config->get_image_model();
+
+		if ($model === '') {
+			throw new Exception('invalid_request_error: ' . __('No Cloudflare image model is configured.', 'ai-post-scheduler'));
+		}
+
+		$input = array('prompt' => $prompt);
+
+		// Forward the common optional image inputs when a caller provides them.
+		foreach (array('steps', 'width', 'height', 'seed', 'negative_prompt', 'guidance') as $key) {
+			if (isset($params[$key]) && is_scalar($params[$key])) {
+				$input[$key] = $params[$key];
+			}
+		}
+
+		try {
+			$response = $this->client->run($model, $input, array('call_type' => 'image', 'skip_cache' => true));
+		} catch (AIPS_Cloudflare_AI_Gateway_Exception $e) {
+			throw new Exception($e->to_prefixed_message());
+		}
+
+		return $this->extract_image($response);
 	}
 
 	/**
@@ -279,5 +307,87 @@ class AIPS_Cloudflare_AI_Gateway_Provider implements AIPS_AI_Provider_Interface 
 		}
 
 		throw new Exception('cf_service_error: ' . __('Cloudflare returned a response with no text content.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Turn an /ai/run image response into a usable image string.
+	 *
+	 * Workers AI image models (e.g. flux-1-schnell) return base64 in an `image`
+	 * field, usually nested under `result`. Some models return an http URL or a
+	 * `b64_json` field instead; all of those are handled.
+	 *
+	 * @param array $response Decoded /ai/run response.
+	 * @return string Data URI, or an http(s) URL.
+	 * @throws Exception When no image can be found.
+	 */
+	private function extract_image(array $response): string {
+		$result = (isset($response['result']) && is_array($response['result'])) ? $response['result'] : $response;
+
+		// A direct http(s) URL (some providers return one instead of bytes).
+		foreach (array($result['url'] ?? null, $result['data'][0]['url'] ?? null, $response['url'] ?? null) as $maybe_url) {
+			if (is_string($maybe_url) && preg_match('#^https?://#i', $maybe_url)) {
+				return $maybe_url;
+			}
+		}
+
+		// Base64 payload, across the shapes different models use.
+		$candidates = array(
+			$result['image'] ?? null,
+			$result['images'][0] ?? null,
+			$result['data'][0]['b64_json'] ?? null,
+			$result['b64_json'] ?? null,
+			$response['image'] ?? null,
+		);
+
+		foreach ($candidates as $candidate) {
+			if (!is_string($candidate) || $candidate === '') {
+				continue;
+			}
+
+			// Already a data URI.
+			if (strpos($candidate, 'data:') === 0) {
+				return $candidate;
+			}
+
+			$data_uri = $this->base64_to_data_uri($candidate);
+			if ($data_uri !== '') {
+				return $data_uri;
+			}
+		}
+
+		throw new Exception('cf_service_error: ' . __('Cloudflare returned a response with no image data.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Wrap a base64 image payload in a data URI, detecting the MIME type from the
+	 * decoded magic bytes (defaulting to JPEG, which is what Cloudflare's flux
+	 * models return).
+	 *
+	 * @param string $base64 Base64 string (may contain whitespace).
+	 * @return string Data URI, or '' when the payload is not valid base64.
+	 */
+	private function base64_to_data_uri(string $base64): string {
+		$clean = preg_replace('/\s+/', '', $base64);
+		if ($clean === '' || !preg_match('#^[A-Za-z0-9+/]+={0,2}$#', $clean)) {
+			return '';
+		}
+
+		$bytes = base64_decode($clean, true);
+		if ($bytes === false || $bytes === '') {
+			return '';
+		}
+
+		$mime = 'image/jpeg';
+		if (strncmp($bytes, "\x89PNG", 4) === 0) {
+			$mime = 'image/png';
+		} elseif (strncmp($bytes, "\xFF\xD8\xFF", 3) === 0) {
+			$mime = 'image/jpeg';
+		} elseif (strncmp($bytes, 'GIF8', 4) === 0) {
+			$mime = 'image/gif';
+		} elseif (strncmp($bytes, 'RIFF', 4) === 0 && strpos(substr($bytes, 8, 4), 'WEBP') !== false) {
+			$mime = 'image/webp';
+		}
+
+		return 'data:' . $mime . ';base64,' . $clean;
 	}
 }

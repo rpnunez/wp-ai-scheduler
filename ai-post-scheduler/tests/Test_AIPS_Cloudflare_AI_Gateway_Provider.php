@@ -248,13 +248,98 @@ class Test_AIPS_Cloudflare_AI_Gateway_Provider extends WP_UnitTestCase {
 		$this->assertNull($this->last_request, 'generate_json must not call the network yet');
 	}
 
-	public function test_generate_image_reports_capability_error() {
+	// ------------------------------------------------------------------
+	// Image generation (Slice 4)
+	// ------------------------------------------------------------------
+
+	private function b64(string $bytes): string {
+		return base64_encode($bytes);
+	}
+
+	public function test_generate_image_uses_configured_model_and_run_path() {
+		update_option('aips_cf_image_model', '@cf/black-forest-labs/flux-1-schnell');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$this->next_response = $this->http_ok(array('result' => array('image' => $this->b64("\xFF\xD8\xFF\xE0jpegbody"))));
+
+		$uri = $this->provider()->generate_image('A teapot', array());
+
+		$this->assertStringStartsWith('data:image/jpeg;base64,', $uri);
+		$this->assertSame(
+			'https://api.cloudflare.com/client/v4/accounts/' . self::ACCOUNT_ID . '/ai/run/%40cf/black-forest-labs/flux-1-schnell',
+			$this->last_request['url']
+		);
+		$this->assertSame('true', $this->last_request['args']['headers']['cf-aig-skip-cache']);
+		$this->assertSame('A teapot', $this->sent_body()['prompt']);
+	}
+
+	public function test_generate_image_detects_png_mime() {
+		$this->next_response = $this->http_ok(array('result' => array('image' => $this->b64("\x89PNG\r\n\x1a\nrest"))));
+
+		$this->assertStringStartsWith('data:image/png;base64,', $this->provider()->generate_image('x', array()));
+	}
+
+	public function test_generate_image_accepts_top_level_image_field() {
+		$this->next_response = $this->http_ok(array('image' => $this->b64("\xFF\xD8\xFFjpg")));
+
+		$this->assertStringStartsWith('data:image/jpeg;base64,', $this->provider()->generate_image('x', array()));
+	}
+
+	public function test_generate_image_accepts_b64_json_data_array() {
+		$this->next_response = $this->http_ok(array('result' => array('data' => array(array('b64_json' => $this->b64("\x89PNGxx"))))));
+
+		$this->assertStringStartsWith('data:image/png;base64,', $this->provider()->generate_image('x', array()));
+	}
+
+	public function test_generate_image_returns_http_url_directly() {
+		$this->next_response = $this->http_ok(array('result' => array('url' => 'https://img.example/out.png')));
+
+		$this->assertSame('https://img.example/out.png', $this->provider()->generate_image('x', array()));
+	}
+
+	public function test_generate_image_passes_through_existing_data_uri() {
+		$uri = 'data:image/webp;base64,' . $this->b64('RIFFxxxxWEBP');
+		$this->next_response = $this->http_ok(array('result' => array('image' => $uri)));
+
+		$this->assertSame($uri, $this->provider()->generate_image('x', array()));
+	}
+
+	public function test_generate_image_forwards_optional_steps() {
+		$this->next_response = $this->http_ok(array('result' => array('image' => $this->b64("\xFF\xD8\xFFjpg"))));
+
+		$this->provider()->generate_image('x', array('steps' => 6));
+		$this->assertSame(6, $this->sent_body()['steps']);
+	}
+
+	public function test_generate_image_without_image_payload_throws_service_error() {
+		$this->next_response = $this->http_ok(array('result' => array('foo' => 'bar')));
+
 		try {
-			$this->provider()->generate_image('a cat', array());
+			$this->provider()->generate_image('x', array());
 			$this->fail('Expected exception');
 		} catch (Exception $e) {
-			$this->assertSame('image_generation_not_supported', $this->provider()->extract_error_code($e->getMessage()));
+			$this->assertSame('cf_service_error', $this->provider()->extract_error_code($e->getMessage()));
 		}
+	}
+
+	public function test_generate_image_api_error_is_rethrown_with_code() {
+		$this->next_response = $this->http_error(404, 5000, 'Model not found: @cf/nope');
+
+		try {
+			$this->provider()->generate_image('x', array('model' => '@cf/nope'));
+			$this->fail('Expected exception');
+		} catch (Exception $e) {
+			$this->assertSame('model_not_found', $this->provider()->extract_error_code($e->getMessage()));
+		}
+	}
+
+	public function test_generate_image_without_model_throws() {
+		update_option('aips_cf_image_model', '');
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$this->expectException(Exception::class);
+		$this->expectExceptionMessageMatches('/invalid_request_error/');
+		$this->provider()->generate_image('x', array());
 	}
 
 	public function test_generate_embedding_reports_capability_error() {
