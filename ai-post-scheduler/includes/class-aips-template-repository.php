@@ -145,6 +145,7 @@ class AIPS_Template_Repository {
      *     Template data.
      *
      *     @type string       $name                    Template name.
+     *     @type string       $description             Optional template description.
      *     @type string       $prompt_template         AI prompt template.
      *     @type string       $title_prompt            Title generation prompt.
      *     @type int          $voice_id                Voice ID.
@@ -158,6 +159,7 @@ class AIPS_Template_Repository {
      *     @type int|array    $post_category           Category ID or array of category IDs.
      *     @type string       $post_tags               Comma-separated tags.
      *     @type int          $post_author             Post author ID.
+     *     @type int          $affiliate_links_enabled Affiliate link injection flag.
      *     @type int          $is_active               Active status flag.
      * }
      * @return int|false The inserted ID on success, false on failure.
@@ -170,6 +172,7 @@ class AIPS_Template_Repository {
 
         $insert_data = array(
             'name' => sanitize_text_field($data['name']),
+            'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
             'prompt_template' => wp_kses_post($data['prompt_template']),
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
             'slug_prompt' => isset($data['slug_prompt']) ? sanitize_textarea_field($data['slug_prompt']) : '',
@@ -190,13 +193,14 @@ class AIPS_Template_Repository {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'affiliate_links_enabled' => filter_var(isset($data['affiliate_links_enabled']) ? $data['affiliate_links_enabled'] : 0, FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'created_at' => $now,
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         // Read insert_id before cache invalidation: invalidation can write
@@ -224,6 +228,11 @@ class AIPS_Template_Repository {
 
         if (isset($data['name'])) {
             $update_data['name'] = sanitize_text_field($data['name']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['description'])) {
+            $update_data['description'] = sanitize_textarea_field($data['description']);
             $format[] = '%s';
         }
 
@@ -316,6 +325,11 @@ class AIPS_Template_Repository {
         if (isset($data['source_group_ids'])) {
             $update_data['source_group_ids'] = sanitize_text_field($data['source_group_ids']);
             $format[] = '%s';
+        }
+
+        if (isset($data['affiliate_links_enabled'])) {
+            $update_data['affiliate_links_enabled'] = filter_var($data['affiliate_links_enabled'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            $format[] = '%d';
         }
 
         if (array_key_exists('campaign_id', $data)) {

@@ -10,6 +10,7 @@
   - Added path traversal guards, strict regex validation, capability checks, and comprehensive unit tests in `Test_AIPS_Diagnostics_Logs.php`.
 
 ### Fixed
+- **Template settings persistence:** Template descriptions and affiliate link injection now persist through template creation and updates. Slug generation and its prompt are also forwarded through the template save service.
 - **Summarized Notification Digest Batching & Settings Persistence:**
   - Enabled the summarized digest by default in the settings registry and DevStackTips setup script, batching frequent transactional emails.
   - Added post ID deduplication and automatic post_generated to post_ready_for_review upgrades for draft posts in AIPS_Notifications::enqueue_digest_notification().
