@@ -96,24 +96,11 @@ fi
 # .env helpers
 # ------------------------------------------------------------------
 
-# Upsert KEY=VALUE in .env: replace an existing line, otherwise append.
-set_env_var() {
-    local key="$1" value="$2"
-    # Escape characters that are special in the sed replacement string.
-    value="$(printf '%s' "$value" | sed -e 's/[\\&|]/\\&/g')"
-    if grep -q "^${key}=" .env 2>/dev/null; then
-        sed "s|^${key}=.*|${key}=${value}|" .env > .env.tmp && mv .env.tmp .env
-    else
-        printf '%s=%s\n' "$key" "$value" >> .env
-    fi
-}
-
-# Print the value of KEY from .env (last occurrence, CR and surrounding quotes
-# stripped). Prints nothing when absent; never fails under `set -e`.
-get_env_var() {
-    grep "^${1}=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '\r' \
-        | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/" || true
-}
+# set_env_var / get_env_var and the instance + port helpers are shared with
+# scripts/run-docker-test.sh, so `make test` in a fresh worktree also gets its
+# own containers and ports.
+# shellcheck source=scripts/lib/aips-instance.sh
+. "scripts/lib/aips-instance.sh"
 
 # Success (0) when the value is empty or looks like a placeholder such as
 # 'your_google_api_key_here'. Keep this pattern in sync with the guard in
@@ -131,76 +118,8 @@ is_placeholder_key() {
 # ------------------------------------------------------------------
 # Silent early setup: .env + instance identity (needed to name the log file)
 # ------------------------------------------------------------------
-ENV_CREATED=0
-if [ ! -f ".env" ]; then
-    if [ -f ".env.example" ]; then
-        cp .env.example .env
-    else
-        touch .env
-    fi
-    ENV_CREATED=1
-fi
-
-DIR_SLUG="$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9' | tail -c 12)"
-DIR_SLUG="${DIR_SLUG:-dev}"
-
-generate_unique_instance_id() {
-    local slug="$1"
-    local candidate
-    local attempt=0
-    while [ "$attempt" -lt 100 ]; do
-        local rand
-        rand="$(printf '%04x' $((RANDOM % 65536)))"
-        candidate="${slug}-${rand}"
-        if ! docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qE "^wp-ai-scheduler-(web|db|phpmyadmin)-${candidate}$"; then
-            echo "$candidate"
-            return 0
-        fi
-        attempt=$((attempt + 1))
-    done
-    echo "${slug}-$(date +%s | tail -c 4)"
-}
-
-CUR_INSTANCE_ID="$(get_env_var AIPS_INSTANCE_ID)"
-CUR_WEB_CONTAINER="$(get_env_var AIPS_WEB_CONTAINER)"
-
-NEED_NEW_INSTANCE=0
-if [ -z "$CUR_INSTANCE_ID" ] || [ "$RANDOM_CONTAINERS" = "1" ] || [ "${AIPS_RANDOMIZE_CONTAINER:-0}" = "1" ]; then
-    NEED_NEW_INSTANCE=1
-elif [ -z "$CUR_WEB_CONTAINER" ] || [ "$CUR_WEB_CONTAINER" = "wp-ai-scheduler-web" ]; then
-    NEED_NEW_INSTANCE=1
-else
-    # Check if instance ID matches current directory slug (detects .env copied from another worktree)
-    case "$CUR_INSTANCE_ID" in
-        "${DIR_SLUG}-"*) ;;
-        *) NEED_NEW_INSTANCE=1 ;;
-    esac
-
-    # Check if the existing container name collides with a container from another directory/project
-    if [ "$NEED_NEW_INSTANCE" = "0" ] && docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${CUR_WEB_CONTAINER}$"; then
-        CURRENT_PROJECT="$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')"
-        EXISTING_PROJECT="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$CUR_WEB_CONTAINER" 2>/dev/null || true)"
-        if [ -n "$EXISTING_PROJECT" ] && [ "$EXISTING_PROJECT" != "$CURRENT_PROJECT" ]; then
-            NEED_NEW_INSTANCE=1
-        else
-            EXISTING_DIR="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' "$CUR_WEB_CONTAINER" 2>/dev/null || true)"
-            if [ -n "$EXISTING_DIR" ] && [ "$EXISTING_DIR" != "$PWD" ]; then
-                NEED_NEW_INSTANCE=1
-            fi
-        fi
-    fi
-fi
-
-if [ "$NEED_NEW_INSTANCE" = "1" ]; then
-    INSTANCE_ID="$(generate_unique_instance_id "$DIR_SLUG")"
-    set_env_var AIPS_INSTANCE_ID   "${INSTANCE_ID}"
-    set_env_var AIPS_WEB_CONTAINER "wp-ai-scheduler-web-${INSTANCE_ID}"
-    set_env_var AIPS_DB_CONTAINER  "wp-ai-scheduler-db-${INSTANCE_ID}"
-    set_env_var AIPS_PMA_CONTAINER "wp-ai-scheduler-phpmyadmin-${INSTANCE_ID}"
-else
-    INSTANCE_ID="$CUR_INSTANCE_ID"
-fi
-INSTANCE_ID="${INSTANCE_ID:-default}"
+aips_ensure_env_file
+aips_ensure_instance
 
 # Default dump from .env when no --import-sql flag was given.
 if [ -z "$IMPORT_SQL" ]; then
@@ -405,141 +324,15 @@ main() {
     $DOCKER_COMPOSE down --remove-orphans
 
     # --------------------------------------------------------------
-    # Host ports: validate existing ports or allocate randomized free ports
+    # Host ports: keep this instance's ports when free; a new instance
+    # always gets fresh random ports (see scripts/lib/aips-instance.sh)
     # --------------------------------------------------------------
-    declare -a ALLOCATED_PORTS=()
-
-    port_in_allocated_list() {
-        local p="$1"
-        for ap in "${ALLOCATED_PORTS[@]}"; do
-            [ "$ap" -eq "$p" ] && return 0
-        done
-        return 1
-    }
-
-    # Probes are chosen so a missing/broken tool can never make every port look
-    # "in use" (e.g. the Windows Store python3 stub exits 49 on every call).
-
-    # Snapshot of ports Docker publishes (running containers), taken once.
-    DOCKER_PUBLISHED_PORTS="$(docker ps --format '{{.Ports}}' 2>/dev/null || true)"
-
-    # A python that really runs (skips the Microsoft Store stub); empty if none.
-    PY_BIN=""
-    for candidate_py in python3 python; do
-        if command -v "$candidate_py" >/dev/null 2>&1 && "$candidate_py" -c 'import socket' >/dev/null 2>&1; then
-            PY_BIN="$candidate_py"
-            break
-        fi
-    done
-
-    # Bound the /dev/tcp connect probe: it can take seconds per port on Windows.
-    TIMEOUT_BIN=""
-    command -v timeout >/dev/null 2>&1 && TIMEOUT_BIN="timeout 1"
-
-    port_is_free() {
-        local port="$1"
-        [ -z "$port" ] && return 1
-        port_in_allocated_list "$port" && return 1
-
-        # Docker-published port (also matches ranges such as 8100-8102->80)
-        if printf '%s\n' "$DOCKER_PUBLISHED_PORTS" | grep -qE "[:-]${port}(-[0-9]+)?->"; then
-            return 1
-        fi
-
-        # Something already accepts connections on localhost (only exit 0 counts;
-        # a timeout or refusal means nothing is listening).
-        if $TIMEOUT_BIN bash -c "exec 3<>/dev/tcp/127.0.0.1/$port" 2>/dev/null; then
-            return 1
-        fi
-
-        # Socket bind check. Only the script's explicit exit 99 means "in use";
-        # any other failure is an unusable interpreter, not a busy port.
-        if [ -n "$PY_BIN" ]; then
-            local rc=0
-            "$PY_BIN" -c "import socket, sys
-s = socket.socket()
-try:
-    s.bind(('', int(sys.argv[1])))
-except OSError:
-    sys.exit(99)
-finally:
-    s.close()" "$port" >/dev/null 2>&1 || rc=$?
-            [ "$rc" -eq 99 ] && return 1
-        fi
-
-        return 0
-    }
-
-    # Results are returned via PICKED_PORT (not stdout): callers run in the main
-    # shell so ALLOCATED_PORTS persists. Inside $(...) the array update was lost.
-    PICKED_PORT=""
-
-    find_random_free_port() {
-        local min="$1"
-        local max="$2"
-        local span=$(( max - min + 1 ))
-        local candidate
-        local attempt=0
-
-        while [ "$attempt" -lt 100 ]; do
-            candidate=$(( min + (RANDOM % span) ))
-            if port_is_free "$candidate"; then
-                ALLOCATED_PORTS+=("$candidate")
-                PICKED_PORT="$candidate"
-                return 0
-            fi
-            attempt=$((attempt + 1))
-        done
-
-        candidate="$min"
-        while [ "$candidate" -le "$max" ]; do
-            if port_is_free "$candidate"; then
-                ALLOCATED_PORTS+=("$candidate")
-                PICKED_PORT="$candidate"
-                return 0
-            fi
-            candidate=$((candidate + 1))
-        done
-
-        echo -e "${RED}Error: Could not find a free port in range ${min}-${max}${NC}" >&2
-        return 1
-    }
-
-    pick_or_keep_port() {
-        local current="$1"
-        local min="$2"
-        local max="$3"
-
-        if [ "$RANDOM_PORTS" != "1" ] && [ "${AIPS_RANDOMIZE_PORTS:-0}" != "1" ] && [ -n "$current" ] && port_is_free "$current"; then
-            ALLOCATED_PORTS+=("$current")
-            PICKED_PORT="$current"
-        else
-            find_random_free_port "$min" "$max"
-        fi
-    }
-
-    CUR_WP_PORT="$(get_env_var WP_PORT)"
-    CUR_PMA_PORT="$(get_env_var PHPMYADMIN_PORT)"
-    CUR_MYSQL_PORT="$(get_env_var MYSQL_PORT)"
-    CUR_XDEBUG_PORT="$(get_env_var XDEBUG_PORT)"
-
-    pick_or_keep_port "$CUR_WP_PORT" 8100 8899;   WP_PORT_PICK="$PICKED_PORT"
-    pick_or_keep_port "$CUR_PMA_PORT" 8900 9699;  PHPMYADMIN_PORT_PICK="$PICKED_PORT"
-    pick_or_keep_port "$CUR_MYSQL_PORT" 3310 3999; MYSQL_PORT_PICK="$PICKED_PORT"
-    pick_or_keep_port "$CUR_XDEBUG_PORT" 9700 9999; XDEBUG_PORT_PICK="$PICKED_PORT"
-
-    for var_name in WP_PORT_PICK PHPMYADMIN_PORT_PICK MYSQL_PORT_PICK XDEBUG_PORT_PICK; do
-        val="${!var_name}"
-        if ! [[ "$val" =~ ^[0-9]+$ ]] || [ "$val" -le 0 ] || [ "$val" -gt 65535 ]; then
-            echo -e "${RED}Error: Invalid port allocated for ${var_name}: '${val}'.${NC}" >&2
-            exit 1
-        fi
-    done
-
-    set_env_var WP_PORT         "${WP_PORT_PICK}"
-    set_env_var PHPMYADMIN_PORT "${PHPMYADMIN_PORT_PICK}"
-    set_env_var MYSQL_PORT      "${MYSQL_PORT_PICK}"
-    set_env_var XDEBUG_PORT     "${XDEBUG_PORT_PICK}"
+    PORT_MODE=""
+    [ "$INSTANCE_CHANGED" = "1" ] && PORT_MODE="fresh"
+    if ! aips_ensure_ports $PORT_MODE; then
+        echo -e "${RED}Error: could not allocate free host ports for this instance.${NC}" >&2
+        exit 1
+    fi
 
     WP_PORT="${WP_PORT_PICK}"
     PHPMYADMIN_PORT="${PHPMYADMIN_PORT_PICK}"
@@ -634,15 +427,21 @@ finally:
     fi
 
     # Point the site at this instance's local URL (serialization-safe).
-    WP_CLI_WEB="$DOCKER_COMPOSE exec -T web wp --path=/var/www/html --allow-root --skip-plugins --skip-themes"
-    if $WP_CLI_WEB core is-installed >/dev/null 2>&1; then
+    # MSYS_NO_PATHCONV: Git Bash would otherwise rewrite the container path
+    # --path=/var/www/html into C:/Program Files/Git/var/www/html, so every
+    # call below failed and the sync was silently skipped on Windows.
+    wp_cli_web() {
+        MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' \
+            $DOCKER_COMPOSE exec -T web wp --path=/var/www/html --allow-root --skip-plugins --skip-themes "$@"
+    }
+    if wp_cli_web core is-installed >/dev/null 2>&1; then
         NEW_URL="http://localhost:${WP_PORT}"
-        OLD_URL="$($WP_CLI_WEB option get siteurl 2>/dev/null | tr -d '\r' || true)"
+        OLD_URL="$(wp_cli_web option get siteurl 2>/dev/null | tr -d '\r' || true)"
         if [ -n "$OLD_URL" ] && [ "$OLD_URL" != "$NEW_URL" ]; then
             echo "Syncing WordPress site URL: ${OLD_URL} -> ${NEW_URL}"
-            $WP_CLI_WEB search-replace "$OLD_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
-            $WP_CLI_WEB option update home "$NEW_URL"
-            $WP_CLI_WEB option update siteurl "$NEW_URL"
+            wp_cli_web search-replace "$OLD_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
+            wp_cli_web option update home "$NEW_URL"
+            wp_cli_web option update siteurl "$NEW_URL"
         elif [ "$IMPORTED_SQL" = "1" ]; then
             echo "Imported site URL already matches ${NEW_URL}."
         fi

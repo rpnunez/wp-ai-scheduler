@@ -1,0 +1,18 @@
+{
+  // Claude Code desktop Browser pane dev servers. JSON with comments.
+  // `make preview` (scripts/preview-wp.sh) moves this checkout's WordPress
+  // onto the PORT the pane assigns (autoPort), syncs the site URL and follows
+  // the web log. Stopping the preview may hard-kill it before its cleanup
+  // runs, so `make stop` afterwards if the stack should not keep running.
+  // First run on an unprovisioned checkout builds the image (a few minutes).
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "aips-wordpress",
+      "runtimeExecutable": "make",
+      "runtimeArgs": ["preview"],
+      "port": 8080,
+      "autoPort": true
+    }
+  ]
+}
