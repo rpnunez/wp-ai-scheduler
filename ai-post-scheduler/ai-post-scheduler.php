@@ -270,7 +270,7 @@ final class AI_Post_Scheduler {
                 'error_message' => $result->get_error_message(),
                 'from_version'  => $from_version,
                 'url'           => admin_url('admin.php?page=aips-status'),
-                'dedupe_key'    => 'db_upgrade_failed_' . sanitize_key($from_version),
+                'dedupe_key'    => 'db_upgrade_failed_' . $from_version,
                 'dedupe_window' => 1800,
             ));
         }

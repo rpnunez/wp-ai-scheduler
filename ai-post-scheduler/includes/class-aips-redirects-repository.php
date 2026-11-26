@@ -81,7 +81,7 @@ class AIPS_Redirects_Repository {
 	 * @return int Number of affected rows.
 	 */
 	public function disable_target_post(int $post_id): int {
-		if (!$this->table_exists() || $post_id <= 0) {
+		if ($post_id <= 0) {
 			return 0;
 		}
 
@@ -107,7 +107,7 @@ class AIPS_Redirects_Repository {
 	 * @return int Number of deleted rows.
 	 */
 	public function delete_by_origin_ref(int $post_id): int {
-		if (!$this->table_exists() || $post_id <= 0) {
+		if ($post_id <= 0) {
 			return 0;
 		}
 
