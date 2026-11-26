@@ -28,7 +28,7 @@ The script verifies Docker is running, builds the image (retrying transient Dock
 Things to know:
 
 - **Per-checkout identity.** The first run writes a unique instance id, container names and free host ports into `.env`, so several checkouts or git worktrees can run at once. Use `make urls` to see this instance's URLs and ports.
-- **Google API key.** The stack always uses the WP AI Client with the Google connector. If `GOOGLE_API_KEY` is empty or still the placeholder, the script prompts for it (hidden input) and saves it to your gitignored `.env`. Without a terminal it fails fast; `AIPS_SKIP_API_KEY_CHECK=1` starts anyway.
+- **AI provider for the development stack.** The stack provisions the WordPress AI Client with its Google connector. `start-dev.sh` prompts for `GOOGLE_API_KEY` if it is empty or still the placeholder and saves it to your gitignored `.env`. This describes the default local development environment; the plugin itself supports more than one provider. Set `AIPS_SKIP_API_KEY_CHECK=1` to start the stack without a Google key.
 - **Run log.** Every run's full output is saved to `.artifacts/start-dev-<instance>-<id>.log` (gitignored).
 - **Existing data.** `./start-dev.sh --import-sql dump.sql` seeds the database; see [Starting with existing data](#starting-with-existing-data-sql-import).
 - **Docker Hub outages.** Build and pulls are retried; cached images are reused. If the build still fails with `auth.docker.io` 5xx errors, retry later.
@@ -297,6 +297,12 @@ make start-dev ARGS="--import-sql path/to/dump.sql"
 - Admin credentials come from the imported database, not `.env`.
 
 ---
+
+## AI provider setup
+
+AI Post Scheduler uses an AI provider abstraction. Available integrations depend on the WordPress installation and the provider plugins or connectors configured there. The local Docker development stack is provisioned with the WordPress AI Client and Google connector as a convenient default; this is a development setup choice, not a requirement that production sites use that provider. Configure the provider and credentials required by your chosen integration in WordPress, then select the available provider in AI Post Scheduler settings.
+
+For the plugin's option keys and defaults, see the [settings reference](SETTINGS.md).
 
 ## Troubleshooting
 
