@@ -191,8 +191,8 @@ class AIPS_System_Info_Provider {
 		$counts    = AIPS_AI_Call_Counter::get_counts();
 		$providers = $counts['providers'];
 
-		// Always list the two real providers, even before their first call.
-		foreach (array('wp_ai_client', 'meow') as $provider_id) {
+		// Always list the real providers, even before their first call.
+		foreach (array('wp_ai_client', 'meow', 'cloudflare_ai_gateway') as $provider_id) {
 			if (!isset($providers[$provider_id])) {
 				$providers[$provider_id] = array('total' => 0, 'failed' => 0, 'by_type' => array());
 			}
@@ -257,8 +257,9 @@ class AIPS_System_Info_Provider {
 	 */
 	private function get_provider_label($provider_id): string {
 		$labels = array(
-			'wp_ai_client' => __('WP AI Connector', 'ai-post-scheduler'),
-			'meow'         => __('Meow AI Engine', 'ai-post-scheduler'),
+			'wp_ai_client'          => __('WP AI Connector', 'ai-post-scheduler'),
+			'meow'                  => __('Meow AI Engine', 'ai-post-scheduler'),
+			'cloudflare_ai_gateway' => __('Cloudflare AI Gateway', 'ai-post-scheduler'),
 		);
 
 		return isset($labels[$provider_id]) ? $labels[$provider_id] : $this->humanize_key($provider_id);

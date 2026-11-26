@@ -200,6 +200,16 @@ Transport (`WP_Error`) and 5xx/unknown errors use the retryable codes `cf_transp
   timeout.
 
 ### Slice 3: Provider (text, conversation, JSON), registered in the factory
+**Status: done.** The provider maps `context`/`instructions` into a `system` message, replays the
+canonical `messages` transcript (role `model` → `assistant`), and appends the prompt as the final
+`user` message; text calls send `cf-aig-skip-cache: true`. It re-throws the client's exception as
+`code: message` so the service's `extract_error_code()` recovers the canonical code. `generate_json()`
+returns `null` (text fallback) and `supports_native_json()` is `false` until the live response shape
+is confirmed; `supports_embeddings()` is `false` and the image/embedding methods raise the capability
+codes `image_generation_not_supported` / `embeddings_not_supported` until Slices 4 and 5. Registered
+last in `AIPS_AI_Provider_Factory::REGISTRY`, so auto-detect still prefers meow then wp_ai_client, and
+added to the two hard-coded lists in `AIPS_System_Info_Provider`.
+
 - `includes/providers/class-aips-cloudflare-ai-gateway-provider.php`.
 - Append it to `AIPS_AI_Provider_Factory::REGISTRY`, after `wp_ai_client`.
 - Add the label and id to the hard-coded lists in `AIPS_System_Info_Provider` (lines ~195 and ~260).
