@@ -1984,6 +1984,21 @@ class AIPS_Admin_Assets {
                 'confirmDisconnectTitle' => __('Disconnect Search Console', 'ai-post-scheduler'),
                 'confirmDisconnect'      => __('Delete the saved service account key? Daily keyword syncs stop until you add a key again.', 'ai-post-scheduler'),
             ));
+
+            wp_enqueue_script(
+                'aips-admin-cf-gateway',
+                AIPS_PLUGIN_URL . 'assets/js/admin-cf-gateway.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-cf-gateway', 'aipsCfGatewayL10n', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('aips_ajax_nonce'),
+                'testing' => __('Testing the connection…', 'ai-post-scheduler'),
+                'error'   => __('The connection test failed. Please try again.', 'ai-post-scheduler'),
+            ));
     }
 
     /**

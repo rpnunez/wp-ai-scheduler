@@ -260,6 +260,15 @@ cannot corrupt comparisons; re-indexing is still recommended so all rows share a
   changes.
 
 ### Slice 6: Test-connection AJAX and settings UI polish
+**Status: done.** `AIPS_Cloudflare_AI_Gateway_Controller` (action `aips_cf_gateway_test_connection`,
+in the registry) checks the nonce and `manage_options`, verifies the token via `verify_token()`, and
+— when a text model is set — runs a one-line completion, returning `AIPS_Ajax_Response` JSON. A
+`CONTROL_ACTION` "Test Connection" field renders the button and a live result area. `admin-cf-gateway.js`
+(AIPS module, `AIPS.Utilities.showToast`) drives the button and a generic dependency engine that
+shows/hides any setting carrying `data-aips-depends-on`/`-value` by toggling its table row, so the
+Cloudflare fields appear only when that provider is selected. The script is enqueued and localized in
+`enqueue_settings_assets()`.
+
 - `AIPS_Cloudflare_AI_Gateway_Controller` with action `aips_cf_gateway_test_connection`, registered in
   `AIPS_Ajax_Registry::$map`. It checks the nonce and `manage_options`, calls `verify_token()` and then
   a short chat completion, and returns `AIPS_Ajax_Response` JSON.

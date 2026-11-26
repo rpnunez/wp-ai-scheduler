@@ -935,6 +935,25 @@ class AIPS_Settings_Registry {
 				'sanitize_callback' => 'absint',
 			),
 			array(
+				'key'          => 'aips_cf_test_connection',
+				'type'         => null,
+				'tab'          => 'settings-ai',
+				'section'      => 'aips_cloudflare_ai_gateway_section',
+				'label'        => __( 'Test Connection', 'ai-post-scheduler' ),
+				'control_type' => AIPS_Setting_Definition::CONTROL_ACTION,
+				'dependencies' => array( 'field' => 'aips_ai_provider', 'value' => 'cloudflare_ai_gateway' ),
+				'render_callback' => function() {
+					ob_start();
+					?>
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-cf-test-connection">
+						<?php esc_html_e( 'Test Connection', 'ai-post-scheduler' ); ?>
+					</button>
+					<span class="aips-cf-test-result" id="aips-cf-test-result" role="status" aria-live="polite"></span>
+					<?php
+					return (string) ob_get_clean();
+				},
+			),
+			array(
 				'key'          => 'aips_prevent_scheduled_ai_generation',
 				'type'         => AIPS_Setting_Definition::TYPE_BOOL,
 				'default'      => false,
