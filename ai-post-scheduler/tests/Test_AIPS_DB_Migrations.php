@@ -981,6 +981,18 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An invalid legacy prune interval must be stored as daily, not as raw junk.
+	 */
+	public function test_migrate_to_3_7_26_clamps_invalid_legacy_prune_interval() {
+		delete_option( 'aips_db_prune_interval' );
+		update_option( 'aips_telemetry_prune_interval', 'not-a-schedule' );
+
+		$this->assertTrue( $this->run_migrate_3_7_26() );
+		$this->assertSame( 'daily', get_option( 'aips_db_prune_interval' ) );
+		$this->assertFalse( get_option( 'aips_telemetry_prune_interval', false ) );
+	}
+
+	/**
 	 * A failed DROP TABLE must not stamp aips_db_version, so the next request retries.
 	 */
 	public function test_migrate_to_3_7_26_failed_drop_leaves_version_unstamped() {

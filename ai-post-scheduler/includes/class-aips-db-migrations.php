@@ -2038,7 +2038,8 @@ class AIPS_DB_Migrations {
 				return false;
 			}
 
-			$still_present = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $full_table ) );
+			$like          = $wpdb->esc_like( $full_table );
+			$still_present = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $like ) );
 			if ( $full_table === $still_present ) {
 				$this->logger->log( 'Migration 3.7.26: ' . $full_table . ' still exists after DROP TABLE.', 'error' );
 				return false;
@@ -2053,7 +2054,11 @@ class AIPS_DB_Migrations {
 		$interval_migrated = false;
 		if ( $sentinel !== $legacy_interval ) {
 			if ( false === get_option( 'aips_db_prune_interval', false ) ) {
-				update_option( 'aips_db_prune_interval', $legacy_interval );
+				$copied = sanitize_key( (string) $legacy_interval );
+				if ( ! in_array( $copied, array( 'daily', 'twicedaily', 'weekly' ), true ) ) {
+					$copied = 'daily';
+				}
+				update_option( 'aips_db_prune_interval', $copied );
 				$interval_migrated = true;
 			}
 			delete_option( 'aips_telemetry_prune_interval' );
