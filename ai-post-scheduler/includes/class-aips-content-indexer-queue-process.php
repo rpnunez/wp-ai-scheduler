@@ -70,6 +70,7 @@ class AIPS_Content_Indexer_Queue_Process extends AIPS_Background_Process_Base {
 		$outstanding = isset($queue['outstanding_count']) ? (int) $queue['outstanding_count'] : ($pending + $in_flight);
 		$open_run    = isset($queue['open_run']) ? $queue['open_run'] : null;
 		$latest_run  = isset($queue['latest_run']) ? $queue['latest_run'] : null;
+		$enabled     = (bool) AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true);
 
 		$status      = self::STATUS_IDLE;
 		$message     = '';
@@ -78,18 +79,29 @@ class AIPS_Content_Indexer_Queue_Process extends AIPS_Background_Process_Base {
 		if ($this->indexer->is_queue_paused()) {
 			$status  = 'paused';
 			$message = __('Paused by an administrator.', 'ai-post-scheduler');
+		} elseif (!$enabled && ($outstanding > 0 || $open_run)) {
+			$status  = 'paused';
+			$message = __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler');
 		} elseif ($outstanding > 0 || $open_run) {
-			$cooldown = $this->limiter->get_cooldown_status();
-			$stats    = $this->limiter->get_usage_stats();
+			$cooldown    = $this->limiter->get_cooldown_status();
+			$stats       = $this->limiter->get_usage_stats();
+			$quota_pause = (bool) AIPS_Config::get_instance()->get_option('aips_indexer_quota_pause_enabled', true);
 
 			if ($cooldown['is_paused']) {
 				$status      = 'cooldown';
 				$message     = (string) $cooldown['reason'];
 				$next_run_at = (int) $cooldown['paused_until'] + 5;
-			} elseif (!empty($stats['is_rate_limited'])) {
+			} elseif (
+				!empty($stats['is_rate_limited'])
+				|| ($quota_pause && $this->limiter->is_approaching_quota(0.90))
+				|| ($open_run && $open_run->status === AIPS_Background_Process_Repository::STATUS_WAITING_QUOTA && (int) $open_run->next_run_at > time())
+			) {
 				$status      = 'waiting_quota';
 				$message     = __('Embeddings quota reached. The queue resumes automatically.', 'ai-post-scheduler');
-				$next_run_at = $this->limiter->get_next_allowance_timestamp();
+				$next_run_at = $this->limiter->get_next_allowance_timestamp($quota_pause ? 0.10 : 0.0);
+				if ($next_run_at <= 0 && $open_run && (int) $open_run->next_run_at > time()) {
+					$next_run_at = (int) $open_run->next_run_at;
+				}
 			} else {
 				$status = 'running';
 			}
@@ -174,6 +186,10 @@ class AIPS_Content_Indexer_Queue_Process extends AIPS_Background_Process_Base {
 	 * @inheritDoc
 	 */
 	public function start(array $options = array()) {
+		if (!AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true)) {
+			return new WP_Error('aips_bg_embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
 		$queue       = $this->indexer->get_queue_status();
 		$outstanding = isset($queue['outstanding_count']) ? (int) $queue['outstanding_count'] : (int) $queue['pending_count'];
 
@@ -229,7 +245,7 @@ class AIPS_Content_Indexer_Queue_Process extends AIPS_Background_Process_Base {
 	 * @return void
 	 */
 	public function ensure_scheduled(): void {
-		if ($this->indexer->is_queue_paused()) {
+		if ($this->indexer->is_queue_paused() || !AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true)) {
 			return;
 		}
 

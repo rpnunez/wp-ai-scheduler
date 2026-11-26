@@ -68,10 +68,32 @@ class AIPS_Content_Indexer_Queue_Repository {
 	private $run_repository;
 
 	/**
+	 * @var int Maximum lock acquisition attempts for mutating callbacks.
+	 */
+	private $lock_max_attempts = 260;
+
+	/**
+	 * @var int Microseconds to sleep between lock acquisition retries.
+	 */
+	private $lock_retry_sleep_us = 20000;
+
+	/**
 	 * @param AIPS_Background_Process_Repository|null $run_repository Background process repository.
 	 */
 	public function __construct(?AIPS_Background_Process_Repository $run_repository = null) {
 		$this->run_repository = $run_repository ?: new AIPS_Background_Process_Repository();
+	}
+
+	/**
+	 * Configure lock retry limits (primarily for deterministic contention tests).
+	 *
+	 * @param int $max_attempts   Maximum retry attempts before invoking fallback.
+	 * @param int $retry_sleep_us Microseconds between attempts.
+	 * @return void
+	 */
+	public function set_lock_retry_policy(int $max_attempts, int $retry_sleep_us): void {
+		$this->lock_max_attempts   = max(1, $max_attempts);
+		$this->lock_retry_sleep_us = max(0, $retry_sleep_us);
 	}
 
 	/**
@@ -202,6 +224,15 @@ class AIPS_Content_Indexer_Queue_Repository {
 				'run_id'         => $run ? (int) $run->id : 0,
 				'pending_count'  => $counts['pending_count'],
 			);
+		}, function () {
+			$state  = $this->load_and_reconcile_state(time(), false);
+			$counts = $this->count_items($state);
+			$open   = $this->run_repository->get_open(self::PROCESS_KEY);
+			return array(
+				'added_to_total' => 0,
+				'run_id'         => $open ? (int) $open->id : 0,
+				'pending_count'  => $counts['pending_count'],
+			);
 		});
 	}
 
@@ -217,10 +248,15 @@ class AIPS_Content_Indexer_Queue_Repository {
 	public function adopt_or_get_open_session(): ?object {
 		return $this->with_lock(function () {
 			$now   = time();
-			$state = $this->load_and_reconcile_state($now, true);
-			$this->save_state($state);
+			$dirty = false;
+			$state = $this->load_and_reconcile_state($now, true, $dirty);
+			if ($dirty) {
+				$this->save_state($state);
+			}
 
 			return $this->get_open_session_from_state($state);
+		}, function () {
+			return $this->run_repository->get_open(self::PROCESS_KEY);
 		});
 	}
 
@@ -275,7 +311,21 @@ class AIPS_Content_Indexer_Queue_Repository {
 				}
 			}
 
-			if (!empty($claimed) && $run && $run->status !== AIPS_Background_Process_Repository::STATUS_RUNNING && !$this->is_paused()) {
+			$counts = $this->count_items($state);
+			if (empty($claimed) && $counts['outstanding_count'] === 0 && $run) {
+				$terminal = (int) $run->processed > 0
+					? AIPS_Background_Process_Repository::STATUS_COMPLETED
+					: AIPS_Background_Process_Repository::STATUS_CANCELLED;
+				$this->run_repository->transition(
+					$run->id,
+					$terminal,
+					AIPS_Background_Process_Repository::open_statuses(),
+					(int) $run->processed > 0 ? __('Finished.', 'ai-post-scheduler') : __('Queue cleared.', 'ai-post-scheduler')
+				);
+				$state['items']      = array();
+				$state['session_id'] = 0;
+				$run                 = null;
+			} elseif (!empty($claimed) && $run && $run->status !== AIPS_Background_Process_Repository::STATUS_RUNNING && !$this->is_paused()) {
 				$this->run_repository->transition(
 					$run->id,
 					AIPS_Background_Process_Repository::STATUS_RUNNING,
@@ -292,7 +342,41 @@ class AIPS_Content_Indexer_Queue_Repository {
 				'run_id' => $run ? (int) $run->id : 0,
 				'items'  => $claimed,
 			);
+		}, function () use ($token) {
+			return array(
+				'token'  => $token,
+				'run_id' => 0,
+				'items'  => array(),
+			);
 		});
+	}
+
+	/**
+	 * Check whether a worker still owns an active in-flight claim on an open session.
+	 *
+	 * Returns false if an administrator stopped/cleared the queue (or another worker
+	 * reclaimed an expired claim) while the current slice was running.
+	 *
+	 * @param string $token           Worker claim token.
+	 * @param string $type            'post' or 'topic'.
+	 * @param int    $id              Entity ID.
+	 * @param int    $claimed_version Claimed version.
+	 * @return bool
+	 */
+	public function has_active_claim(string $token, string $type, int $id, int $claimed_version): bool {
+		$this->refresh_option_cache(array(self::STATE_OPTION));
+		$raw = get_option(self::STATE_OPTION, null);
+		if (!is_array($raw) || empty($raw['items']) || !is_array($raw['items'])) {
+			return false;
+		}
+
+		$key  = (($type === 'topic') ? 'topic' : 'post') . ':' . absint($id);
+		$item = isset($raw['items'][$key]) && is_array($raw['items'][$key]) ? $raw['items'][$key] : null;
+
+		return $item !== null
+			&& ($item['state'] ?? '') === 'in_flight'
+			&& ($item['claim_token'] ?? '') === $token
+			&& (int) ($item['claimed_version'] ?? 0) === $claimed_version;
 	}
 
 	/**
@@ -445,6 +529,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 				// Clear resolved items from active state map once the session closes.
 				$state['items']      = array();
 				$state['session_id'] = 0;
+				delete_option(self::PAUSED_OPTION);
 			}
 
 			$this->save_state($state);
@@ -452,6 +537,14 @@ class AIPS_Content_Indexer_Queue_Repository {
 			return array(
 				'acknowledged'      => true,
 				'completed_session' => $completed_session,
+				'remaining'         => $counts['outstanding_count'],
+			);
+		}, function () {
+			$state  = $this->load_and_reconcile_state(time(), false);
+			$counts = $this->count_items($state);
+			return array(
+				'acknowledged'      => false,
+				'completed_session' => false,
 				'remaining'         => $counts['outstanding_count'],
 			);
 		});
@@ -523,6 +616,8 @@ class AIPS_Content_Indexer_Queue_Repository {
 			$this->save_state($state);
 
 			return true;
+		}, function () {
+			return false;
 		});
 	}
 
@@ -532,6 +627,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 	 * @return bool
 	 */
 	public function is_paused(): bool {
+		$this->refresh_option_cache(array(self::PAUSED_OPTION));
 		return (bool) get_option(self::PAUSED_OPTION, false);
 	}
 
@@ -559,6 +655,8 @@ class AIPS_Content_Indexer_Queue_Repository {
 					$retry_at
 				);
 			}
+		}, function () {
+			return null;
 		});
 	}
 
@@ -575,7 +673,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 	public function clear(string $object_type = '', bool $cancel_run = true): void {
 		$this->with_lock(function () use ($object_type, $cancel_run) {
 			$now   = time();
-			$state = $this->load_and_reconcile_state($now, $cancel_run);
+			$state = $this->load_and_reconcile_state($now, false);
 			$run   = $this->get_open_session_from_state($state);
 
 			if ($object_type === 'post' || $object_type === 'topic') {
@@ -587,11 +685,14 @@ class AIPS_Content_Indexer_Queue_Repository {
 				$counts = $this->count_items($state);
 				if ($counts['pending_count'] === 0 && $counts['in_flight_count'] === 0) {
 					if ($run) {
+						$terminal = (!$cancel_run && (int) $run->processed > 0)
+							? AIPS_Background_Process_Repository::STATUS_COMPLETED
+							: AIPS_Background_Process_Repository::STATUS_CANCELLED;
 						$this->run_repository->transition(
 							$run->id,
-							AIPS_Background_Process_Repository::STATUS_CANCELLED,
+							$terminal,
 							AIPS_Background_Process_Repository::open_statuses(),
-							__('Stopped by an administrator.', 'ai-post-scheduler')
+							$cancel_run ? __('Stopped by an administrator.', 'ai-post-scheduler') : __('Queue cleared.', 'ai-post-scheduler')
 						);
 					}
 					$state['items']      = array();
@@ -607,11 +708,14 @@ class AIPS_Content_Indexer_Queue_Repository {
 			}
 
 			if ($run) {
+				$terminal = (!$cancel_run && (int) $run->processed > 0)
+					? AIPS_Background_Process_Repository::STATUS_COMPLETED
+					: AIPS_Background_Process_Repository::STATUS_CANCELLED;
 				$this->run_repository->transition(
 					$run->id,
-					AIPS_Background_Process_Repository::STATUS_CANCELLED,
+					$terminal,
 					AIPS_Background_Process_Repository::open_statuses(),
-					__('Stopped by an administrator.', 'ai-post-scheduler')
+					$cancel_run ? __('Stopped by an administrator.', 'ai-post-scheduler') : __('Queue cleared.', 'ai-post-scheduler')
 				);
 			}
 
@@ -619,6 +723,8 @@ class AIPS_Content_Indexer_Queue_Repository {
 			delete_option(self::LEGACY_POST_OPTION);
 			delete_option(self::LEGACY_TOPIC_OPTION);
 			delete_option(self::PAUSED_OPTION);
+		}, function () {
+			return null;
 		});
 	}
 
@@ -646,34 +752,49 @@ class AIPS_Content_Indexer_Queue_Repository {
 	public function get_status(bool $adopt = true): array {
 		return $this->with_lock(function () use ($adopt) {
 			$now   = time();
-			$state = $this->load_and_reconcile_state($now, $adopt);
-			if ($adopt) {
+			$dirty = false;
+			$state = $this->load_and_reconcile_state($now, $adopt, $dirty);
+			if ($adopt && $dirty) {
 				$this->save_state($state);
 			}
 
-			$counts     = $this->count_items($state);
-			$open_run   = $this->get_open_session_from_state($state);
-			$latest_run = $open_run ?: $this->run_repository->get_latest(self::PROCESS_KEY);
+			return $this->build_status_payload($state);
+		}, function () {
+			// Under lock contention, return a read-only snapshot without mutating options unlocked.
+			$state = $this->load_and_reconcile_state(time(), false);
+			return $this->build_status_payload($state);
+		}, min($this->lock_max_attempts, 15), 10000);
+	}
 
-			$total_increased = false;
-			if ($open_run && is_array($open_run->options) && !empty($open_run->options['total_increased'])) {
-				$total_increased = true;
-			}
+	/**
+	 * Build the status response array from a reconciled queue state.
+	 *
+	 * @param array $state Reconciled state.
+	 * @return array
+	 */
+	private function build_status_payload(array $state): array {
+		$counts     = $this->count_items($state);
+		$open_run   = $this->get_open_session_from_state($state);
+		$latest_run = $open_run ?: $this->run_repository->get_latest(self::PROCESS_KEY);
 
-			return array(
-				'pending_count'     => $counts['pending_count'],
-				'pending_posts'     => $counts['pending_posts'],
-				'pending_topics'    => $counts['pending_topics'],
-				'in_flight_count'   => $counts['in_flight_count'],
-				'in_flight_posts'   => $counts['in_flight_posts'],
-				'in_flight_topics'  => $counts['in_flight_topics'],
-				'outstanding_count' => $counts['outstanding_count'],
-				'run_id'            => $open_run ? (int) $open_run->id : 0,
-				'open_run'          => $open_run,
-				'latest_run'        => $latest_run,
-				'total_increased'   => $total_increased,
-			);
-		});
+		$total_increased = false;
+		if ($open_run && is_array($open_run->options) && !empty($open_run->options['total_increased'])) {
+			$total_increased = true;
+		}
+
+		return array(
+			'pending_count'     => $counts['pending_count'],
+			'pending_posts'     => $counts['pending_posts'],
+			'pending_topics'    => $counts['pending_topics'],
+			'in_flight_count'   => $counts['in_flight_count'],
+			'in_flight_posts'   => $counts['in_flight_posts'],
+			'in_flight_topics'  => $counts['in_flight_topics'],
+			'outstanding_count' => $counts['outstanding_count'],
+			'run_id'            => $open_run ? (int) $open_run->id : 0,
+			'open_run'          => $open_run,
+			'latest_run'        => $latest_run,
+			'total_increased'   => $total_increased,
+		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -687,9 +808,16 @@ class AIPS_Content_Indexer_Queue_Repository {
 	 *
 	 * @param int  $now   Current unix timestamp.
 	 * @param bool $adopt Whether to create/update a session for adopted items.
+	 * @param bool $dirty Output flag set to true when reconciled state differs from stored options.
 	 * @return array{session_id:int, items:array<string,array>}
 	 */
-	private function load_and_reconcile_state(int $now, bool $adopt): array {
+	private function load_and_reconcile_state(int $now, bool $adopt, bool &$dirty = false): array {
+		$this->refresh_option_cache(array(
+			self::STATE_OPTION,
+			self::LEGACY_POST_OPTION,
+			self::LEGACY_TOPIC_OPTION,
+		));
+
 		$raw               = get_option(self::STATE_OPTION, null);
 		$has_state_option  = is_array($raw);
 
@@ -710,6 +838,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 		foreach ($state['items'] as $key => $item) {
 			if (!is_array($item) || empty($item['type']) || empty($item['id'])) {
 				unset($state['items'][$key]);
+				$dirty = true;
 				continue;
 			}
 
@@ -723,6 +852,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 					$item['claimed_at']      = 0;
 					$item['updated_at']      = $now;
 					$state['items'][$key]    = $item;
+					$dirty                   = true;
 				} else {
 					$has_in_flight = true;
 				}
@@ -749,6 +879,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 			foreach ($state['items'] as $key => $item) {
 				if ($item['state'] === 'pending' && !isset($legacy_map[$key])) {
 					unset($state['items'][$key]);
+					$dirty = true;
 				}
 			}
 		}
@@ -770,6 +901,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 					'updated_at'       => $now,
 				);
 				$newly_adopted++;
+				$dirty = true;
 			} elseif ($state['items'][$key]['state'] === 'resolved') {
 				$state['items'][$key]['state']           = 'pending';
 				$state['items'][$key]['version']         = max(1, (int) $state['items'][$key]['version']) + 1;
@@ -777,22 +909,27 @@ class AIPS_Content_Indexer_Queue_Repository {
 				$state['items'][$key]['pending_counted'] = true;
 				$state['items'][$key]['updated_at']      = $now;
 				$newly_adopted++;
+				$dirty = true;
 			}
 		}
 
 		// If all pending and in-flight items were removed externally, reset any orphaned open session.
 		if ($has_state_option && !$has_in_flight && empty($legacy_map)) {
 			$open_run = $this->get_open_session_from_state($state);
-			if ($open_run && (int) $open_run->processed === 0) {
+			if ($open_run) {
+				$terminal = (int) $open_run->processed > 0
+					? AIPS_Background_Process_Repository::STATUS_COMPLETED
+					: AIPS_Background_Process_Repository::STATUS_CANCELLED;
 				$this->run_repository->transition(
 					$open_run->id,
-					AIPS_Background_Process_Repository::STATUS_CANCELLED,
+					$terminal,
 					AIPS_Background_Process_Repository::open_statuses(),
 					__('Queue cleared.', 'ai-post-scheduler')
 				);
 			}
 			$state['items']      = array();
 			$state['session_id'] = 0;
+			$dirty               = true;
 		}
 
 		// 3. Adopt into an open session when requested.
@@ -802,7 +939,8 @@ class AIPS_Content_Indexer_Queue_Repository {
 
 			if (!$run && $counts['outstanding_count'] > 0) {
 				// Start a new session adopting all currently outstanding items; do not invent completed counts.
-				$run = $this->create_session_for_state($state, $counts['outstanding_count']);
+				$run   = $this->create_session_for_state($state, $counts['outstanding_count']);
+				$dirty = true;
 			} elseif ($run && !$has_state_option && (int) $run->processed === 0 && $counts['outstanding_count'] > 0) {
 				// If a stale 0-progress session existed while STATE_OPTION was absent, reset its total
 				// to match the adopted legacy items instead of adding on top of the stale total.
@@ -810,6 +948,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 				if ($delta !== 0) {
 					$this->run_repository->add_total($run->id, $delta);
 				}
+				$dirty = true;
 			} elseif ($run && $newly_adopted > 0) {
 				$options                    = is_array($run->options) ? $run->options : array();
 				$options['total_increased'] = true;
@@ -819,6 +958,7 @@ class AIPS_Content_Indexer_Queue_Repository {
 					$newly_adopted,
 					__('New items were added to the queue; total and percentage updated.', 'ai-post-scheduler')
 				);
+				$dirty = true;
 			}
 		}
 
@@ -1044,29 +1184,65 @@ class AIPS_Content_Indexer_Queue_Repository {
 	}
 
 	/**
+	 * Flush local object-cache entries (including `notoptions`) for queue options
+	 * so concurrent worker and Heartbeat/AJAX processes observe fresh database values.
+	 *
+	 * @param string[] $option_names Option names to refresh.
+	 * @return void
+	 */
+	private function refresh_option_cache(array $option_names): void {
+		$notoptions = wp_cache_get('notoptions', 'options');
+		$changed    = false;
+
+		foreach ($option_names as $name) {
+			wp_cache_delete($name, 'options');
+			if (is_array($notoptions) && isset($notoptions[$name])) {
+				unset($notoptions[$name]);
+				$changed = true;
+			}
+		}
+
+		if ($changed) {
+			wp_cache_set('notoptions', $notoptions, 'options');
+		}
+	}
+
+	/**
 	 * Execute a short state-mutation callback under an atomic database lock.
 	 *
-	 * @param callable $callback Callback to execute.
+	 * Never executes `$callback` unlocked: if lock acquisition fails after bounded
+	 * retries, invokes `$on_timeout` (when provided) instead of clobbering state.
+	 *
+	 * @param callable      $callback     Callback to execute while holding the lock.
+	 * @param callable|null $on_timeout   Fallback callback when the lock cannot be acquired.
+	 * @param int|null      $max_attempts Optional override for retry attempts.
+	 * @param int|null      $sleep_us     Optional override for retry sleep in microseconds.
 	 * @return mixed
 	 */
-	private function with_lock(callable $callback) {
+	private function with_lock(callable $callback, ?callable $on_timeout = null, ?int $max_attempts = null, ?int $sleep_us = null) {
 		$token    = null;
 		$attempts = 0;
+		$limit    = $max_attempts !== null ? max(1, $max_attempts) : $this->lock_max_attempts;
+		$delay    = $sleep_us !== null ? max(0, $sleep_us) : $this->lock_retry_sleep_us;
 
-		while ($token === null && $attempts < 20) {
-			$token = $this->run_repository->acquire_lock(self::MUTATION_LOCK, 15);
+		while ($token === null && $attempts < $limit) {
+			$token = $this->run_repository->acquire_lock(self::MUTATION_LOCK, 5);
 			if ($token === null) {
 				$attempts++;
-				usleep(10000); // 10ms retry backoff for short atomic mutations
+				if ($attempts < $limit && $delay > 0) {
+					usleep($delay);
+				}
 			}
+		}
+
+		if ($token === null) {
+			return $on_timeout !== null ? call_user_func($on_timeout) : null;
 		}
 
 		try {
 			return call_user_func($callback);
 		} finally {
-			if ($token !== null) {
-				$this->run_repository->release_lock(self::MUTATION_LOCK, $token);
-			}
+			$this->run_repository->release_lock(self::MUTATION_LOCK, $token);
 		}
 	}
 }

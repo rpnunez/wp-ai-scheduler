@@ -1139,6 +1139,9 @@ class AIPS_Content_Indexer_Service {
 				$this->queue_repo->release_claims($token, array_slice($claimed, $idx));
 				break;
 			}
+			if (!$this->queue_repo->has_active_claim($token, $type, $entity_id, $claimed_version)) {
+				break;
+			}
 
 			if ($type === 'post') {
 				$post = get_post($entity_id);
@@ -1162,7 +1165,6 @@ class AIPS_Content_Indexer_Service {
 
 				if (is_wp_error($result)) {
 					$failed++;
-					$rate_limiter->record_failure($result);
 
 					$is_retryable = $rate_limiter->is_rate_limit_or_exhaustion_error($result)
 						|| $result->get_error_code() === 'rate_limit_exceeded'
@@ -1209,7 +1211,6 @@ class AIPS_Content_Indexer_Service {
 
 				if (is_wp_error($result)) {
 					$failed++;
-					$rate_limiter->record_failure($result);
 
 					$is_retryable = $rate_limiter->is_rate_limit_or_exhaustion_error($result)
 						|| $result->get_error_code() === 'rate_limit_exceeded'

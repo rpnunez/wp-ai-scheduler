@@ -249,4 +249,85 @@ class Test_AIPS_Internal_Links_Indexing_Process extends WP_UnitTestCase {
 		$this->assertSame( (int) ceil( $estimate['items'] / 50 ), $estimate['days'] );
 		$this->assertNotEmpty( $estimate['message'] );
 	}
+
+	public function test_disabling_embeddings_mid_run_marks_run_failed_instead_of_completed() {
+		$this->create_posts( 3 );
+
+		$enabled = true;
+		$limiter = $this->limiter;
+		$service_mock = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'is_enabled', 'is_embeddings_supported', 'generate_embedding', 'get_active_model', 'get_rate_limiter' ) )
+			->getMock();
+		$service_mock->method( 'is_enabled' )->willReturnCallback( function () use ( &$enabled ) {
+			return $enabled;
+		} );
+		$service_mock->method( 'is_embeddings_supported' )->willReturn( true );
+		$service_mock->method( 'get_active_model' )->willReturn( 'text-embedding-3-small' );
+		$service_mock->method( 'get_rate_limiter' )->willReturn( $limiter );
+
+		$links_service = new AIPS_Internal_Links_Service( new AIPS_Embeddings_Repository(), new AIPS_Internal_Links_Repository(), $service_mock );
+		$process       = new AIPS_Internal_Links_Indexing_Process( $this->repo, $links_service, $service_mock, AIPS_Config::get_instance() );
+
+		$this->assertIsArray( $process->start() );
+
+		// Disable embeddings mid-run before the next cron tick executes.
+		$enabled = false;
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) );
+		$process->tick();
+
+		$snap = $process->get_snapshot();
+		$this->assertSame( 'idle', $snap['status'] );
+		$this->assertSame( 'failed', $snap['last_status'], 'Disabling embeddings mid-run must fail the run rather than falsely marking it completed.' );
+		$this->assertSame( 0, $snap['processed'] );
+	}
+
+	public function test_mid_slice_rate_limit_on_second_post_does_not_double_count_failed_or_complete_early() {
+		$this->create_posts( 3 );
+
+		$call_num     = 0;
+		$fail_second  = true;
+		$limiter      = $this->limiter;
+		$service_mock = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'is_enabled', 'is_embeddings_supported', 'generate_embedding', 'get_active_model', 'get_rate_limiter' ) )
+			->getMock();
+		$service_mock->method( 'is_enabled' )->willReturn( true );
+		$service_mock->method( 'is_embeddings_supported' )->willReturn( true );
+		$service_mock->method( 'get_active_model' )->willReturn( 'text-embedding-3-small' );
+		$service_mock->method( 'get_rate_limiter' )->willReturn( $limiter );
+		$service_mock->method( 'generate_embedding' )->willReturnCallback( function () use ( &$call_num, &$fail_second, $limiter ) {
+			$call_num++;
+			if ( 2 === $call_num && $fail_second ) {
+				return new WP_Error( 'rate_limit_exceeded', '429 Too Many Requests' );
+			}
+			$limiter->record_usage( 1 );
+			return array( 0.2, 0.4, 0.6 );
+		} );
+
+		$links_service = new AIPS_Internal_Links_Service( new AIPS_Embeddings_Repository(), new AIPS_Internal_Links_Repository(), $service_mock );
+		$process       = new AIPS_Internal_Links_Indexing_Process( $this->repo, $links_service, $service_mock, AIPS_Config::get_instance() );
+
+		$process->start();
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) );
+		$process->tick();
+
+		$mid = $process->get_snapshot();
+		$this->assertSame( 'running', $mid['status'], 'Stalling on post 2 must keep the run open for the next tick.' );
+		$this->assertSame( 1, $mid['processed'], 'Post 2 must not be counted as resolved when it aborts on a rate limit.' );
+		$this->assertSame( 0, $mid['failed'], 'Post 2 must not increment failed before retry.' );
+
+		// Lift rate limit and finish remaining 2 posts + final empty verification tick.
+		$fail_second = false;
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) );
+		$process->tick();
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Internal_Links_Indexing_Process::KEY ) );
+		$process->tick();
+
+		$done = $process->get_snapshot();
+		$this->assertSame( 'idle', $done['status'] );
+		$this->assertSame( 'completed', $done['last_status'] );
+		$this->assertSame( 3, $done['processed'] );
+		$this->assertSame( 0, $done['failed'] );
+	}
 }

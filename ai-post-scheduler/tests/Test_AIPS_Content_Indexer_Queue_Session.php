@@ -475,4 +475,207 @@ class Test_AIPS_Content_Indexer_Queue_Session extends WP_UnitTestCase {
 		$this->assertSame( 2, $snap['processed'] );
 		$this->assertSame( 1, $snap['ai_calls_used'], 'Cache hit for the second post must count as 0 provider calls.' );
 	}
+
+	public function test_mid_slice_cancel_halts_remaining_claimed_items_immediately() {
+		$p1 = $this->make_post( 'Cancel Mid Slice 1' );
+		$p2 = $this->make_post( 'Cancel Mid Slice 2' );
+		$p3 = $this->make_post( 'Cancel Mid Slice 3' );
+
+		$this->provider_calls = 0;
+		$this->limiter->reset_provider_call_count();
+
+		$test     = $this;
+		$process  = $this->process;
+		$config   = AIPS_Config::get_instance();
+		$mock_ai  = $this->createMock( AIPS_AI_Service_Interface::class );
+		$mock_ai->method( 'generate_embedding' )->willReturnCallback( function () use ( $test, $process ) {
+			$test->provider_calls++;
+			if ( 1 === $test->provider_calls ) {
+				// Simulate an administrator clicking Stop while the 1st item's AI call is in flight.
+				$process->cancel();
+			}
+			return array( 0.6, 0.8 );
+		} );
+
+		$embeddings_service = new AIPS_Embeddings_Service(
+			$mock_ai,
+			new AIPS_Logger(),
+			$config,
+			$this->limiter,
+			$this->embeddings_repo
+		);
+		$indexer = new AIPS_Content_Indexer_Service(
+			$this->embeddings_repo,
+			$this->relationships_repo,
+			$embeddings_service,
+			null,
+			new AIPS_Logger(),
+			$config,
+			null,
+			null,
+			null,
+			$this->queue_repo
+		);
+		$this->process = new AIPS_Content_Indexer_Queue_Process( $indexer, $this->limiter );
+
+		$indexer->enqueue_posts_for_indexing( array( $p1, $p2, $p3 ) );
+		$indexer->process_pending_indexer_queue();
+
+		$this->assertSame( 1, $this->provider_calls, 'Worker must halt immediately after mid-slice Stop without calling AI for remaining claimed items.' );
+		$snap = $this->process->get_snapshot();
+		$this->assertSame( 'idle', $snap['status'] );
+		$this->assertSame( 'cancelled', $snap['last_status'] );
+		$this->assertSame( 0, $snap['pending'] );
+	}
+
+	public function test_embeddings_disabled_and_90_percent_quota_band_report_accurate_snapshots_without_cron_loop() {
+		$p1 = $this->make_post( 'Quota & Disabled Test Post' );
+		$this->indexer->enqueue_post_for_indexing( $p1 );
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+
+		$config = AIPS_Config::get_instance();
+		$config->set_option( 'aips_embeddings_enabled', false );
+
+		$disabled_snap = $this->process->get_snapshot();
+		$this->assertSame( 'paused', $disabled_snap['status'] );
+		$this->assertStringContainsString( 'disabled', $disabled_snap['message'] );
+
+		$this->process->ensure_scheduled();
+		$this->assertFalse( $this->indexer->is_queue_worker_scheduled(), 'Disabled embeddings must not spin a 15s cron reschedule loop.' );
+
+		$start_err = $this->process->start();
+		$this->assertWPError( $start_err );
+		$this->assertSame( 'aips_bg_embeddings_disabled', $start_err->get_error_code() );
+
+		// Re-enable embeddings and enter the 90%–99% quota auto-pause band (45 / 50).
+		$config->set_option( 'aips_embeddings_enabled', true );
+		$config->set_option( 'aips_indexer_quota_pause_enabled', true );
+		update_option( 'aips_embeddings_daily_limit', 50 );
+		$this->limiter->reset_history();
+		$this->limiter->record_usage( 45 );
+
+		$quota_snap = $this->process->get_snapshot();
+		$this->assertSame( 'waiting_quota', $quota_snap['status'], '90%–99% auto-pause band must report waiting_quota rather than running.' );
+		$this->assertGreaterThan( time(), $quota_snap['next_run_at'] );
+	}
+
+	public function test_read_only_get_status_does_not_write_options_and_lock_contention_never_mutates_unlocked() {
+		$p1 = $this->make_post( 'Lock Safety Post 1' );
+		$p2 = $this->make_post( 'Lock Safety Post 2' );
+		$this->indexer->enqueue_posts_for_indexing( array( $p1, $p2 ) );
+
+		$writes   = 0;
+		$listener = function () use ( &$writes ) {
+			$writes++;
+		};
+		add_action( 'update_option_' . AIPS_Content_Indexer_Queue_Repository::STATE_OPTION, $listener );
+
+		try {
+			$status_clean = $this->queue_repo->get_status( true );
+			$this->assertSame( 2, $status_clean['pending_count'] );
+			$this->assertSame( 0, $writes, 'Clean Heartbeat status polls must not rewrite STATE_OPTION.' );
+		} finally {
+			remove_action( 'update_option_' . AIPS_Content_Indexer_Queue_Repository::STATE_OPTION, $listener );
+		}
+
+		// Hold MUTATION_LOCK externally and configure fast timeout to verify zero unlocked mutations.
+		$held_token = $this->run_repo->acquire_lock( AIPS_Content_Indexer_Queue_Repository::MUTATION_LOCK, 15 );
+		$this->assertNotNull( $held_token );
+		$this->queue_repo->set_lock_retry_policy( 2, 0 );
+
+		try {
+			$contended_status = $this->queue_repo->get_status( true );
+			$this->assertSame( 2, $contended_status['pending_count'] );
+
+			$p3               = $this->make_post( 'Lock Safety Post 3' );
+			$contended_enq    = $this->queue_repo->enqueue_items( 'post', array( $p3 ) );
+			$this->assertSame( 0, $contended_enq['added_to_total'], 'Enqueue must not mutate state without holding MUTATION_LOCK.' );
+
+			$contended_claim  = $this->queue_repo->claim_slice( 5, 'contended_worker' );
+			$this->assertCount( 0, $contended_claim['items'], 'Claim must not mutate state without holding MUTATION_LOCK.' );
+		} finally {
+			$this->run_repo->release_lock( AIPS_Content_Indexer_Queue_Repository::MUTATION_LOCK, $held_token );
+			$this->queue_repo->set_lock_retry_policy( 260, 20000 );
+		}
+	}
+
+	public function test_external_legacy_queue_clear_after_partial_progress_closes_open_session() {
+		AIPS_Config::get_instance()->set_option( 'aips_indexer_batch_size', 1 );
+		$p1 = $this->make_post( 'Partial Clear 1' );
+		$p2 = $this->make_post( 'Partial Clear 2' );
+
+		$this->indexer->enqueue_posts_for_indexing( array( $p1, $p2 ) );
+		$this->indexer->process_pending_indexer_queue();
+
+		$mid = $this->process->get_snapshot();
+		$this->assertSame( 'running', $mid['status'] );
+		$this->assertSame( 1, $mid['processed'] );
+
+		// Externally delete the legacy queue option after partial progress.
+		delete_option( AIPS_Content_Indexer_Queue_Repository::LEGACY_POST_OPTION );
+
+		$after = $this->process->get_snapshot();
+		$this->assertSame( 'idle', $after['status'], 'Orphaned open session must be closed when external callers clear the legacy queue.' );
+		$this->assertSame( 'completed', $after['last_status'] );
+		$this->assertSame( 1, $after['processed'] );
+		$this->assertNull( $this->run_repo->get_open( AIPS_Content_Indexer_Queue_Process::KEY ) );
+	}
+
+	public function test_non_fault_and_single_provider_error_do_not_double_count_into_cooldown() {
+		AIPS_Config::get_instance()->set_option( 'aips_indexer_consecutive_error_threshold', 2 );
+
+		$fail_post   = $this->make_post( 'Single Provider Error Post' );
+		$empty_post1 = (int) wp_insert_post( array(
+			'post_title'   => '',
+			'post_content' => '',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+		$empty_post2 = (int) wp_insert_post( array(
+			'post_title'   => '',
+			'post_content' => '',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+
+		$this->provider_calls   = 0;
+		$this->limiter->reset_provider_call_count();
+		$this->limiter->clear_cooldown();
+		$this->fail_on_calls[1] = new WP_Error( 'invalid_request', 'Provider validation error' );
+
+		$this->indexer->enqueue_posts_for_indexing( array( $fail_post, $empty_post1, $empty_post2 ) );
+		$this->indexer->process_pending_indexer_queue();
+
+		$cooldown = $this->limiter->get_cooldown_status();
+		$this->assertFalse( $cooldown['is_paused'], '1 provider error + 2 empty_content posts must not trip a threshold-2 provider cooldown.' );
+		$this->assertSame( 1, $cooldown['consecutive_fails'] );
+	}
+
+	public function test_pausing_while_last_item_is_in_flight_clears_paused_flag_when_session_completes() {
+		$p1 = $this->make_post( 'Final In-Flight Post' );
+		$this->indexer->enqueue_post_for_indexing( $p1 );
+
+		$claim = $this->queue_repo->claim_slice( 1, 'worker_final' );
+		$this->assertCount( 1, $claim['items'] );
+
+		// Admin pauses while the final item is already in flight.
+		$this->assertTrue( $this->process->pause() );
+		$this->assertTrue( $this->indexer->is_queue_paused() );
+
+		// Worker finishes that final item and closes the session.
+		$ack = $this->queue_repo->acknowledge_item(
+			'worker_final',
+			'post',
+			$p1,
+			1,
+			AIPS_Content_Indexer_Queue_Repository::OUTCOME_SUCCESS,
+			1
+		);
+		$this->assertTrue( $ack['completed_session'] );
+		$this->assertFalse( $this->indexer->is_queue_paused(), 'PAUSED_OPTION must clear when the session finishes with zero remaining items.' );
+
+		$snap = $this->process->get_snapshot();
+		$this->assertSame( 'idle', $snap['status'] );
+		$this->assertSame( 'completed', $snap['last_status'] );
+	}
 }

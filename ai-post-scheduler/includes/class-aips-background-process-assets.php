@@ -44,10 +44,15 @@ class AIPS_Background_Process_Assets {
 			return;
 		}
 
+		$script_deps = array('jquery');
+		if (wp_script_is('heartbeat', 'registered')) {
+			$script_deps[] = 'heartbeat';
+		}
+
 		wp_enqueue_script(
 			'aips-background-processes',
 			AIPS_PLUGIN_URL . 'assets/js/background-processes.js',
-			array('jquery', 'heartbeat'),
+			$script_deps,
 			AIPS_Admin_Bar::asset_version('assets/js/background-processes.js'),
 			true
 		);
@@ -57,7 +62,7 @@ class AIPS_Background_Process_Assets {
 		$page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$tab  = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$is_dedicated_screen = (
-			($page === 'aips-diagnostics' && ($tab === 'background-processes' || $tab === ''))
+			($page === 'aips-diagnostics' && $tab === 'background-processes')
 			|| $page === 'aips-internal-links'
 			|| ($page === 'aips-automations' && $tab === 'internal-links')
 		);

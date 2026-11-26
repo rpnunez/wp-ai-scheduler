@@ -201,19 +201,35 @@ class AIPS_Background_Process_Repository {
 	public function add_progress(int $id, int $processed_delta, int $failed_delta, int $cursor_id, int $ai_calls_delta, ?string $message = null): bool {
 		global $wpdb;
 
-		$now = time();
+		$now  = time();
+		$sets = array(
+			'processed = processed + %d',
+			'failed = failed + %d',
+			'cursor_id = GREATEST(cursor_id, %d)',
+			'ai_calls_used = ai_calls_used + %d',
+			'last_tick_at = %d',
+			'updated_at = %d',
+		);
+		$args = array(
+			max(0, $processed_delta),
+			max(0, $failed_delta),
+			max(0, $cursor_id),
+			max(0, $ai_calls_delta),
+			$now,
+			$now,
+		);
+
+		if ($message !== null) {
+			$sets[] = 'message = %s';
+			$args[] = $this->clip_message($message);
+		}
+
+		$args[] = $id;
 
 		$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->prepare(
-				"UPDATE {$this->table()} SET processed = processed + %d, failed = failed + %d, cursor_id = GREATEST(cursor_id, %d), ai_calls_used = ai_calls_used + %d, message = %s, last_tick_at = %d, updated_at = %d WHERE id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				max(0, $processed_delta),
-				max(0, $failed_delta),
-				max(0, $cursor_id),
-				max(0, $ai_calls_delta),
-				$this->clip_message((string) $message),
-				$now,
-				$now,
-				$id
+				"UPDATE {$this->table()} SET " . implode(', ', $sets) . " WHERE id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				...$args
 			)
 		);
 

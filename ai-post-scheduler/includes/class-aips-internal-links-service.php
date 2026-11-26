@@ -221,6 +221,7 @@ class AIPS_Internal_Links_Service {
 		$success     = 0;
 		$failed      = 0;
 		$new_last_id = $last_post_id;
+		$stalled     = false;
 
 		foreach ($post_ids as $post_id) {
 			$result = $this->index_post($post_id);
@@ -234,13 +235,13 @@ class AIPS_Internal_Links_Service {
 					),
 					'error'
 				);
-				$failed++;
-				$rate_limiter->record_failure($result);
 
 				if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
+					$stalled = true;
 					break;
 				}
 
+				$failed++;
 				$new_last_id = max($new_last_id, $post_id);
 				if ($on_item !== null) {
 					call_user_func($on_item, 0, 1, $new_last_id);
@@ -255,13 +256,14 @@ class AIPS_Internal_Links_Service {
 			}
 		}
 
-		$done = count($post_ids) < $batch_size;
+		$done = !$stalled && count($post_ids) < $batch_size;
 
 		return array(
 			'success'      => $success,
 			'failed'       => $failed,
 			'last_post_id' => $new_last_id,
 			'done'         => $done,
+			'stalled'      => $stalled,
 		);
 	}
 

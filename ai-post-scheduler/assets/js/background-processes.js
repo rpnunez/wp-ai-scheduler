@@ -50,6 +50,15 @@
 		/** @type {Object<string,number>} Count of pending control requests per process key (or '__all__'). */
 		pendingControls: {},
 
+		/** @type {number} Monotonic counter stamped on outgoing Heartbeat polls. */
+		_hbSendSeq: 0,
+
+		/** @type {number} Sequence of the most recently dispatched Heartbeat poll. */
+		_activeHbSeq: 0,
+
+		/** @type {Object<string,number>} Sequence after which Heartbeat snapshots are fresh for a controlled key. */
+		_controlSeq: {},
+
 		/** @type {number} Timestamp (ms) of the last accepted payload or initial summary. */
 		lastValidAt: 0,
 
@@ -67,6 +76,12 @@
 
 		/** @type {jqXHR|null} In-flight manual fallback refresh request. */
 		_fallbackXhr: null,
+
+		/** @type {boolean} Whether this module elevated Heartbeat to ACTIVE_INTERVAL. */
+		_forcedActiveInterval: false,
+
+		/** @type {number} Shared-screen Heartbeat interval observed before elevating to ACTIVE_INTERVAL. */
+		_restoreInterval: 0,
 
 		init: function () {
 			L10n = window.aipsBgL10n || L10n || {};
@@ -120,6 +135,7 @@
 
 			$(document).on('heartbeat-send.aipsBg', function (e, data) {
 				if (data && typeof data === 'object') {
+					self._activeHbSeq = ++self._hbSendSeq;
 					data.aips_bg = 1;
 				}
 			});
@@ -136,6 +152,7 @@
 			});
 
 			$(document).on('heartbeat-connection-restored.aipsBg', function () {
+				self.lastValidAt = Date.now();
 				self.markStale(false);
 				self.requestRefresh();
 			});
@@ -471,7 +488,11 @@
 			var state = {};
 
 			$.each(list, function (i, snap) {
-				if (respectPendingControls && self.hasPendingControl(snap.key) && prev[snap.key]) {
+				if (
+					respectPendingControls &&
+					prev[snap.key] &&
+					(self.hasPendingControl(snap.key) || (self._controlSeq[snap.key] && self._activeHbSeq <= self._controlSeq[snap.key]))
+				) {
 					state[snap.key] = prev[snap.key];
 				} else {
 					state[snap.key] = snap;
@@ -508,6 +529,7 @@
 				return;
 			}
 			this.state[snap.key] = snap;
+			this._controlSeq[snap.key] = this._hbSendSeq;
 			this.lastValidAt = Date.now();
 			this.markStale(false);
 			this.applyAll();
@@ -534,10 +556,21 @@
 				return;
 			}
 
+			var current = Number(window.wp.heartbeat.interval());
+
 			if (this.getActive().length > 0) {
+				if (!this._forcedActiveInterval && current > this.ACTIVE_INTERVAL) {
+					this._restoreInterval = current;
+				}
+				this._forcedActiveInterval = true;
 				window.wp.heartbeat.interval(this.ACTIVE_INTERVAL);
 				return;
 			}
+
+			var wasForced = this._forcedActiveInterval;
+			var restoreTo = this._restoreInterval || this.IDLE_INTERVAL;
+			this._forcedActiveInterval = false;
+			this._restoreInterval      = 0;
 
 			var isDedicated = !!L10n.isDedicatedScreen || $('.aips-background-processes-page').length > 0;
 			if (isDedicated) {
@@ -545,10 +578,11 @@
 				return;
 			}
 
-			// Shared screen: only restore to IDLE_INTERVAL if we previously set it to ACTIVE_INTERVAL
-			// and no other WordPress feature requires a faster interval.
-			var current = Number(window.wp.heartbeat.interval());
-			if (!current || current > this.IDLE_INTERVAL) {
+			// Shared screen: restore to the previous/idle interval if we elevated it to ACTIVE_INTERVAL,
+			// without slowing a faster interval chosen independently by another WordPress feature.
+			if (wasForced && current === this.ACTIVE_INTERVAL) {
+				window.wp.heartbeat.interval(Math.min(this.IDLE_INTERVAL, Math.max(this.ACTIVE_INTERVAL, restoreTo)));
+			} else if (!current || current > this.IDLE_INTERVAL) {
 				window.wp.heartbeat.interval(this.IDLE_INTERVAL);
 			}
 		},

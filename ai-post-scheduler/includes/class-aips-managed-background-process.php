@@ -472,20 +472,25 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 
 		$processed = isset($result['processed']) ? (int) $result['processed'] : 0;
 		$failed    = isset($result['failed']) ? (int) $result['failed'] : 0;
-		$message   = isset($result['message']) ? (string) $result['message'] : '';
+		$message   = array_key_exists('message', $result) ? (string) $result['message'] : null;
 		$cursor    = isset($result['cursor']) ? (int) $result['cursor'] : 0;
 
 		$rem_processed = max(0, $processed - ($checkpoint ? $checkpoint['processed'] : 0));
 		$rem_failed    = max(0, $failed - ($checkpoint ? $checkpoint['failed'] : 0));
 		$rem_calls     = max(0, $calls_made - ($checkpoint ? $checkpoint['ai_calls_committed'] : 0));
 
-		if ($rem_processed > 0 || $rem_failed > 0 || $rem_calls > 0 || $message !== '' || !$checkpoint || ($checkpoint['processed'] === 0 && $checkpoint['failed'] === 0 && $checkpoint['ai_calls_committed'] === 0)) {
-			$this->repository->add_progress($run->id, $rem_processed + $rem_failed, $rem_failed, $cursor, $rem_calls, $message);
+		// Check whether an administrator paused or cancelled the run while the slice ran
+		// before writing progress, so an admin pause/stop message is never overwritten.
+		$latest       = $this->repository->get($run->id);
+		$is_still_run = $latest && in_array($latest->status, $active, true);
+		$msg_to_write = $is_still_run ? $message : null;
+
+		if ($rem_processed > 0 || $rem_failed > 0 || $rem_calls > 0 || $msg_to_write !== null || !$checkpoint || ($checkpoint['processed'] === 0 && $checkpoint['failed'] === 0 && $checkpoint['ai_calls_committed'] === 0)) {
+			$this->repository->add_progress($run->id, $rem_processed + $rem_failed, $rem_failed, $cursor, $rem_calls, $msg_to_write);
 		}
 
 		// Paused or stopped by an administrator while the slice ran: leave that status alone.
-		$latest = $this->repository->get($run->id);
-		if (!$latest || !in_array($latest->status, $active, true)) {
+		if (!$is_still_run) {
 			return;
 		}
 
