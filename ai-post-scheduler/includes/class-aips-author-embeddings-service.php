@@ -106,7 +106,21 @@ class AIPS_Author_Embeddings_Service {
 		$payload   = $record->get_payload();
 		$cursor    = (int) $record->get_cursor();
 		$author_id = isset( $payload['author_id'] ) ? absint( $payload['author_id'] ) : 0;
+		$budget    = isset( $payload['ai_budget'] ) ? max( 0, (int) $payload['ai_budget'] ) : 0;
 		$limit     = max( 1, $context->get_batch_size() );
+
+		// Enforce per-run AI call budget before making any embedding calls.
+		if ( $budget > 0 ) {
+			$budget_remaining = max( 0, $budget - $record->get_processed() );
+			if ( $budget_remaining <= 0 ) {
+				if ( $this->count_remaining( $author_id ) <= 0 ) {
+					return new AIPS_Job_Slice_Result( 0, 0, $cursor, true );
+				}
+				AIPS_Container::get_instance()->get_job_manager()->pause( $record->get_job_id() );
+				return new AIPS_Job_Slice_Result( 0, 0, $cursor, false );
+			}
+			$limit = min( $limit, $budget_remaining );
+		}
 
 		$limiter  = $this->embeddings_service->get_rate_limiter();
 		$cooldown = $limiter->get_cooldown_status();
@@ -167,6 +181,16 @@ class AIPS_Author_Embeddings_Service {
 		// Only complete when every fetched id was processed (no early yield/break) AND the
 		// page was short — otherwise a yielded final slice would abandon unembedded topics.
 		$is_complete = ! $stalled && ( $handled === count( $ids ) ) && ( count( $ids ) < $limit );
+
+		// If the run reached its AI call budget, complete when no topics remain; otherwise pause.
+		if ( ! $stalled && $budget > 0 && ( $record->get_processed() + $success ) >= $budget ) {
+			if ( $this->count_remaining( $author_id ) <= 0 ) {
+				$is_complete = true;
+			} else {
+				AIPS_Container::get_instance()->get_job_manager()->pause( $record->get_job_id() );
+				return new AIPS_Job_Slice_Result( $success, $failed, $new_cursor, false );
+			}
+		}
 
 		return new AIPS_Job_Slice_Result(
 			$success,

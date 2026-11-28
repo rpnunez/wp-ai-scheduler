@@ -290,6 +290,37 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 		$this->assertArrayHasKey('message', $response['data']);
 	}
 
+	/**
+	 * When the synchronous hard limit is lower than the large-batch async threshold
+	 * (e.g. max_bulk = 2, threshold = 10, selected = 3), ajax_bulk_generate_now()
+	 * must return an error instead of HTTP 200 "0 posts generated" (H-15).
+	 */
+	public function test_synchronous_hard_limit_exceeded_returns_error_when_below_async_threshold() {
+		$this->set_admin_user();
+		$this->planner->mock_generator = $this->make_generator(true, 99);
+		$this->planner->mock_template  = $this->make_template();
+
+		add_filter('aips_large_batch_threshold', function () { return 10; });
+		add_filter('aips_bulk_run_now_limit', function () { return 2; });
+
+		try {
+			$this->set_valid_post(array(
+				'topics'      => array('T1', 'T2', 'T3'),
+				'template_id' => 1,
+			));
+
+			$response = $this->capture_json(array($this->planner, 'ajax_bulk_generate_now'));
+		} finally {
+			remove_all_filters('aips_large_batch_threshold');
+			remove_all_filters('aips_bulk_run_now_limit');
+		}
+
+		$this->assertFalse($response['success'], 'Hard-limited synchronous batch must return error, not HTTP 200 success');
+		$this->assertArrayHasKey('message', $response['data']);
+		$this->assertStringContainsString('3', $response['data']['message']);
+		$this->assertStringContainsString('2', $response['data']['message']);
+	}
+
 	// -------------------------------------------------------------------------
 	// AI Engine availability test
 	// -------------------------------------------------------------------------

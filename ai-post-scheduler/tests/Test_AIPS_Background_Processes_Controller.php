@@ -271,4 +271,66 @@ class Test_AIPS_Background_Processes_Controller extends WP_UnitTestCase {
 		$this->assertWPError( $unknown_res );
 		$this->assertSame( 'aips_bg_unknown_process', $unknown_res->get_error_code() );
 	}
+
+	public function test_ai_budget_passthrough_snapshot_exposure_and_clear_on_resume() {
+		$config = AIPS_Config::get_instance();
+		$config->set_option( 'aips_embeddings_enabled', true );
+
+		$topic_id = ( new AIPS_Author_Topics_Repository() )->create( array(
+			'author_id'   => 1,
+			'topic_title' => 'Budgeted Topic',
+			'status'      => 'approved',
+		) );
+		$this->assertGreaterThan( 0, $topic_id );
+
+		$started = $this->controller->control(
+			AIPS_Author_Embeddings_Service::KEY,
+			AIPS_Background_Processes_Controller::ACTION_START,
+			array( 'ai_budget' => 4 )
+		);
+		$this->assertIsArray( $started );
+		$this->assertSame( 4, $started['ai_calls_budget'] );
+		$run_id = $started['run_id'];
+
+		// Simulate job pausing after hitting its AI budget of 4 calls.
+		$this->job_repo->update( $run_id, array(
+			'status'    => AIPS_Job_Record::STATUS_PAUSED,
+			'processed' => 4,
+		) );
+
+		$paused_snap = $this->controller->get_snapshot( AIPS_Author_Embeddings_Service::KEY );
+		$this->assertSame( 'paused', $paused_snap['status'] );
+		$this->assertSame( 4, $paused_snap['ai_calls_budget'] );
+		$this->assertStringContainsStringIgnoringCase( 'budget', $paused_snap['message'] );
+
+		// Resuming clears the exhausted budget so the run can continue without immediately re-pausing.
+		$resumed_snap = $this->controller->control(
+			AIPS_Author_Embeddings_Service::KEY,
+			AIPS_Background_Processes_Controller::ACTION_RESUME
+		);
+		$this->assertSame( 'running', $resumed_snap['status'] );
+		$this->assertSame( 0, $resumed_snap['ai_calls_budget'] );
+	}
+
+	public function test_relationships_recompute_exposes_can_rebuild_all_when_none_missing() {
+		$post_a = self::factory()->post->create( array( 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$post_b = self::factory()->post->create( array( 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$emb_repo = new AIPS_Embeddings_Repository();
+		$emb_repo->upsert( 'post', $post_a, array( 1.0, 0.0 ), 'm', 2, 'ha', 'post' );
+		$emb_repo->upsert( 'post', $post_b, array( 0.9, 0.1 ), 'm', 2, 'hb', 'post' );
+
+		$rel_repo = new AIPS_Relationships_Repository();
+		$rel_repo->sync_for_source( 'post', $post_a, array(
+			array( 'target_type' => 'post', 'target_id' => $post_b, 'similarity' => 0.95 ),
+		), AIPS_Relationship_Builder::RELATION_TYPE );
+		$rel_repo->sync_for_source( 'post', $post_b, array(
+			array( 'target_type' => 'post', 'target_id' => $post_a, 'similarity' => 0.95 ),
+		), AIPS_Relationship_Builder::RELATION_TYPE );
+
+		$snap = $this->controller->get_snapshot( AIPS_Relationships_Recompute_Service::KEY );
+		$this->assertSame( 'idle', $snap['status'] );
+		$this->assertFalse( $snap['can_start'], 'Fill missing should be disabled when 0 posts are missing relationships' );
+		$this->assertTrue( $snap['can_rebuild_all'], 'Rebuild all must remain enabled when indexed posts exist' );
+	}
 }

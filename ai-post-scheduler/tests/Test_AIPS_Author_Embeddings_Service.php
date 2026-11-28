@@ -120,4 +120,31 @@ class Test_AIPS_Author_Embeddings_Service extends WP_UnitTestCase {
 		$this->assertTrue( $result->is_completed() );
 		$this->assertSame( 2, $this->generated );
 	}
+
+	public function test_ai_budget_caps_slice_and_pauses_job_until_resumed() {
+		$this->topic( 1 );
+		$this->topic( 1 );
+		$this->topic( 1 );
+		$this->topic( 1 );
+
+		$service = $this->make_service();
+		$job_id  = $this->job_manager->dispatch(
+			AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS,
+			array(
+				'author_id' => 1,
+				'ai_budget' => 2,
+			),
+			array( 'total' => 4 )
+		);
+
+		$record  = $this->job_manager->get_job( $job_id );
+		$result  = $service->handle_job_slice( new AIPS_Job_Context( $record ) );
+		$updated = $this->job_manager->get_job( $job_id );
+
+		$this->assertSame( 2, $result->get_processed_count(), 'Slice must stop at ai_budget=2' );
+		$this->assertSame( 2, $this->generated );
+		$this->assertFalse( $result->is_complete() );
+		$this->assertTrue( $updated->is_paused(), 'Job must transition to paused when ai_budget is reached' );
+		$this->assertSame( 2, $service->count_remaining( 1 ) );
+	}
 }
