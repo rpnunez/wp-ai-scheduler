@@ -32,8 +32,9 @@ class AIPS_AI_Provider_Factory {
      * @var array<string,string>
      */
     private const REGISTRY = array(
-        'meow'         => 'AIPS_Meow_AI_Provider',
-        'wp_ai_client' => 'AIPS_WP_AI_Client_Provider',
+        'meow'                   => 'AIPS_Meow_AI_Provider',
+        'wp_ai_client'           => 'AIPS_WP_AI_Client_Provider',
+        'cloudflare_ai_gateway'  => 'AIPS_Cloudflare_AI_Gateway_Provider',
     );
 
     /**

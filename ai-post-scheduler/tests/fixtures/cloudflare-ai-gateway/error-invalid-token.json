@@ -1,0 +1,42 @@
+{
+    "probe": "error-invalid-token",
+    "recorded_at": "2026-11-25T22:49:09+00:00",
+    "duration_ms": 463,
+    "request": {
+        "method": "POST",
+        "path": "/accounts/{account_id}/ai/v1/chat/completions",
+        "headers": {
+            "Authorization": "Bearer {invalid_token}",
+            "Content-Type": "application/json",
+            "cf-aig-gateway-id": "default",
+            "cf-aig-metadata": "{\"aips_probe\":\"slice0\",\"aips_probe_name\":\"error-invalid-token\"}"
+        },
+        "body": {
+            "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "hi"
+                }
+            ]
+        }
+    },
+    "response": {
+        "status": 401,
+        "headers": {
+            "content-type": "application/json"
+        },
+        "body": {
+            "result": null,
+            "success": false,
+            "errors": [
+                {
+                    "code": 10000,
+                    "message": "Authentication error"
+                }
+            ],
+            "messages": []
+        },
+        "transport_error": ""
+    }
+}

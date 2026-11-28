@@ -334,6 +334,16 @@ class AIPS_Settings_Form_Renderer {
 		$has_value   = ! empty( $val_str );
 		$placeholder = ! empty( $opts['placeholder'] ) ? $opts['placeholder'] : ( $has_value ? '••••••••••••••••' : '' );
 
+		// Write-only secrets: never send the stored value (or its ciphertext) back
+		// to the browser. The sanitize callback keeps the stored value when the
+		// field is submitted blank.
+		if ( ! empty( $opts['mask_stored_value'] ) ) {
+			$val_str = '';
+			if ( $has_value ) {
+				$placeholder = __( 'Saved — leave blank to keep the current value', 'ai-post-scheduler' );
+			}
+		}
+
 		return sprintf(
 			'<div class="aips-secret-field-container">' .
 			'<input type="password" name="%1$s" id="%2$s" value="%3$s" class="regular-text" autocomplete="new-password" placeholder="%4$s">' .
