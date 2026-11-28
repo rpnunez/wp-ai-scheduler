@@ -53,6 +53,7 @@ class AIPS_Ajax_Registry {
 		'aips_unified_bulk_run_now'       => 'AIPS_Schedule_Controller',
 		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
 		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
+		'aips_get_schedule_details'       => 'AIPS_Schedule_Controller',
 		'aips_get_schedule_status_read_model' => 'AIPS_Schedule_Controller',
 		'aips_reset_schedule_circuit'     => 'AIPS_Schedule_Controller',
 		'aips_resume_schedule_batch'      => 'AIPS_Schedule_Controller',
@@ -123,6 +124,8 @@ class AIPS_Ajax_Registry {
 		'aips_get_component_revisions'    => 'AIPS_AI_Edit_Controller',
 		'aips_restore_component_revision' => 'AIPS_AI_Edit_Controller',
 		'aips_reset_component_overrides'  => 'AIPS_AI_Edit_Controller',
+		'aips_universal_ai_edit'          => 'AIPS_AI_Edit_Controller',
+		'aips_get_editable_components'    => 'AIPS_AI_Edit_Controller',
 
 		// Editor Controller (Gutenberg & Classic Editor)
 		'aips_editor_apply_directive'              => 'AIPS_Editor_Controller',
@@ -263,6 +266,10 @@ class AIPS_Ajax_Registry {
 		'aips_get_ai_error_details'       => 'AIPS_Diagnostics_Controller',
 		'aips_get_ai_error_summary'       => 'AIPS_Diagnostics_Controller',
 		'aips_export_ai_errors'           => 'AIPS_Diagnostics_Controller',
+		'aips_get_log_files'              => 'AIPS_Diagnostics_Controller',
+		'aips_get_log_content'            => 'AIPS_Diagnostics_Controller',
+		'aips_clear_log'                  => 'AIPS_Diagnostics_Controller',
+		'aips_download_log'               => 'AIPS_Diagnostics_Controller',
 
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',

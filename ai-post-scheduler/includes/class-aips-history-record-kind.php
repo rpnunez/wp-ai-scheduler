@@ -64,7 +64,7 @@ class AIPS_History_Record_Kind {
 	 */
 	public static function job_creation_methods() {
 		$methods = array(
-			'content_indexing', 'content_index_operation', 'author_embeddings', 'author_suggestion',
+			'content_indexing', 'content_index_operation', 'author_embeddings', 'author_suggestion', 'campaign_generation',
 			'author_topic_generation', 'bulk_batch_slice', 'source_fetch', 'research_run', 'gsc_sync',
 			'link_index_run',
 		);
@@ -83,14 +83,15 @@ class AIPS_History_Record_Kind {
 	 * creation_method values that are events.
 	 *
 	 * The event-only list plus the author-topic wrappers that surround a generation
-	 * run without being one.
+	 * run without being one ('topic_generation' is the AI-exchange trace written by
+	 * AIPS_Topic_Generation_Strategy).
 	 *
 	 * @return string[]
 	 */
 	public static function event_creation_methods() {
 		return array_merge(
 			AIPS_History_Repository::event_only_creation_methods(),
-			array('manual_generation', 'manual_regeneration')
+			array('manual_generation', 'manual_regeneration', 'topic_generation')
 		);
 	}
 

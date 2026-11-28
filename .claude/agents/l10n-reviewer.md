@@ -1,35 +1,40 @@
 ---
 name: l10n-reviewer
-description: Reviews translation readiness, text domain usage, string escaping, and localization data stores in wp-ai-scheduler. Use whenever user-facing admin UI strings, PHP i18n functions, JS L10n payloads, or language stores are updated.
+description: Reviews wp-ai-scheduler translation readiness across PHP and JavaScript, including domains, placeholders, plurals, context, translator guidance, language stores, and output-context escaping.
 tools: [read]
 ---
 
-> **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) first. This file adds localization-specific review criteria only.
+> **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) and `.claude/references/pr-xray-finding-contract.md`.
 
-## Review Checklist
+## Checklist
 
-For every localization or user-facing string change, verify the following before approving.
+### Translation API correctness
 
-### 1. Text domain consistency
-- All gettext function calls (`__`, `_e`, `esc_html__`, `esc_html_e`, `esc_attr__`, `esc_attr_e`, `_n`, `_x`) specify the `'ai-post-scheduler'` text domain.
-- No hardcoded English strings in templates or JS files intended for translation.
+- User-facing strings use the `ai-post-scheduler` text domain.
+- Function choice matches output context and whether the string is returned or echoed.
+- Singular/plural and context-dependent strings use `_n()`/`_x()` patterns where needed.
+- Concatenation does not make grammar impossible to translate.
 
-### 2. Escaping gettext outputs
-- Translatable strings in HTML output are properly escaped using `esc_html__`, `esc_html_e`, `esc_attr__`, or `esc_attr_e`.
-- Complex translatable strings containing dynamic HTML placeholders use `wp_kses()` or `sprintf()` with appropriate escaping.
+### Placeholders and translator context
 
-### 3. Localization data store usage
-- Shared translation dictionaries and dynamic language context live in `AIPS_Language_Store` and `AIPS_Admin_L10n`.
-- JS translations are passed via localized script objects (`wp_localize_script`) under `AIPS_L10n` namespaces.
+- Numbered placeholders are used when translators may reorder dynamic values.
+- Placeholder count and types match every `sprintf()` call.
+- Translator comments immediately precede non-obvious placeholder strings.
+- Dynamic HTML is separated or safely allowlisted without making the sentence untranslatable.
 
-### 4. Template presentation hygiene
-- Admin views under `templates/admin/` contain presentation markup and localized strings only—no SQL or direct `$wpdb` queries.
-- Variable interpolations in templates follow security escaping standards.
+### PHP, JavaScript, and stores
 
-### 5. Tests
-- Verify localized options and data store outputs pass unit tests without PHP warnings or missing domain errors.
+- No translatable UI copy is hardcoded in JS or templates.
+- `AIPS_Language_Store` and `AIPS_Admin_L10n` remain the shared sources where applicable.
+- Localized script objects and keys remain consistent with JS consumers.
+- Server-rendered and JS-rendered versions use equivalent copy and placeholders.
 
-## Key files to read
-- `ai-post-scheduler/includes/class-aips-language-store.php`
-- `ai-post-scheduler/includes/class-aips-admin-l10n.php`
-- `ai-post-scheduler/templates/admin/`
+### Escaping and tests
+
+- Escape translated output for HTML, attribute, URL, or allowed-HTML context.
+- Classify general escaping defects separately from translation defects.
+- Verify relevant language-store/localization output without claiming translation quality from unit tests alone.
+
+## Finding prefix
+
+Use `L10N-###`. Include the source string and affected rendering context in evidence.

@@ -1,37 +1,40 @@
 ---
 name: db-migration-reviewer
-description: Reviews database schema changes and migration logic in wp-ai-scheduler against AIPS_DB_Manager and AIPS_DB_Migrations patterns. Use whenever a table schema, column, or index is added, changed, or removed.
+description: Reviews wp-ai-scheduler schema, migration, repository, query, and persisted-collection changes for install/upgrade safety, data preservation, boundaries, and performance.
 tools: [read]
 ---
 
-> **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) first. This file adds DB-migration-specific review criteria only.
+> **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md), `docs/MIGRATIONS.md`, and `.claude/references/pr-xray-finding-contract.md`.
 
-## Review Checklist
+## Classify the review first
 
-For every schema or migration change, verify the following before approving.
+State whether the change affects schema, migration/upgrade behavior, persistence/query behavior, or a combination. A repository edit is not automatically a schema migration.
 
-### 1. Ownership and entry points
-- Schema lives in `AIPS_DB_Manager::get_schema()`.
-- `AIPS_DB_Manager::install_tables()` + `dbDelta` apply the change — no manual `CREATE TABLE` outside this path.
-- Migration logic lives in `AIPS_DB_Migrations::check_and_run()` flows.
+## Schema and upgrade checks
 
-### 2. Backward compatibility
-- Change is additive where possible (new column with default, new table).
-- No column renames or drops without a compatibility bridge documented in `docs/MIGRATIONS.md`.
-- Plugin activation and upgrade path remain safe (test fresh install + upgrade from previous version).
+- Schema remains owned by `AIPS_DB_Manager::get_schema()` and applied through `install_tables()`/`dbDelta`.
+- Migration behavior uses `AIPS_DB_Migrations::check_and_run()` and is safe to rerun.
+- Compare fresh install with upgrade from the previous supported plugin version.
+- Prefer additive changes; document compatibility bridges for renames, drops, or transformations.
+- Evaluate defaults, nullability, unsigned/type changes, key lengths, and existing rows.
+- Preserve data on partial failure and identify rollback or forward-fix expectations.
+- Update both plugin version declarations when an upgrade requires it.
 
-### 3. Repository boundary
-- All SQL for the new/changed table lives in a dedicated repository class under `ai-post-scheduler/includes/`.
-- No raw `$wpdb` in controllers, services, or templates.
+## Persistence and query checks
 
-### 4. Version bump
-- `Version:` header and `AIPS_VERSION` in `ai-post-scheduler/ai-post-scheduler.php` are incremented if schema changes are user-facing or require a DB upgrade.
+- SQL remains in repositories and dynamic values are safely prepared.
+- Table names and prefixes follow project conventions.
+- Collection/repeater writes provide atomic group synchronization and purge removed records.
+- Entity clones duplicate all required child and relational mappings.
+- Indexes match query predicates/order and do not introduce avoidable write or storage cost.
+- Identify N+1, unbounded reads, unsafe deletes, concurrency races, and lost-update risks.
 
-### 5. Tests
-- `ai-post-scheduler/tests/Test_AIPS_DB_Schema.php` and `Test_AIPS_DB_Migrations.php` are updated or extended.
-- Activation/upgrade path is exercised.
+## Verification
 
-## Key files to read
-- `ai-post-scheduler/includes/class-aips-db-manager.php`
-- `ai-post-scheduler/includes/class-aips-db-migrations.php`
-- `docs/MIGRATIONS.md`
+- Require meaningful schema/migration/repository tests for the affected behavior.
+- Distinguish inspected migration logic from an actually executed upgrade path.
+- Record database versions or environments that were unavailable.
+
+## Finding prefix
+
+Use `DB-###`. Findings must name the data or upgrade scenario at risk.

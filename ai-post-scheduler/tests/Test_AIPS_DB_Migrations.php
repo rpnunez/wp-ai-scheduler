@@ -55,6 +55,38 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	}
 
 	/**
+	 * install_tables() must create the unified job store (aips_jobs) so that the
+	 * schema actually ships the table (it was previously added without a version
+	 * bump). See #2419.
+	 */
+	public function test_install_tables_creates_jobs_table() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+
+		$jobs_table = $wpdb->prefix . 'aips_jobs';
+		$this->assertSame(
+			$jobs_table,
+			$wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $jobs_table ) ),
+			'install_tables() must create the aips_jobs unified job store'
+		);
+	}
+
+	/**
+	 * critical_tables_exist() now guards the unified job store too, so a site
+	 * that received the schema without a version bump still triggers a reinstall
+	 * when aips_jobs is absent. With every critical table present it must report
+	 * true. See #2419.
+	 */
+	public function test_critical_tables_exist_true_when_jobs_table_present() {
+		AIPS_DB_Manager::install_tables();
+
+		$this->assertTrue(
+			AIPS_DB_Migrations::critical_tables_exist(),
+			'critical_tables_exist() must be true once aips_embeddings and aips_jobs exist'
+		);
+	}
+
+	/**
 	 * install_tables() must create the composite indexes on aips_notifications
 	 * so that get_unread() and was_recently_sent() can use covering scans.
 	 */

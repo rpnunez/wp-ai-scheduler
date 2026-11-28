@@ -26,7 +26,7 @@ class Test_AIPS_Content_Auditor_Scanner extends WP_UnitTestCase {
 				. '<h3>Best Practices for Containers</h3>'
 				. '<p>Learn how to wire containers properly. Check our <a href="/php-design-patterns/">design patterns guide</a> for more info.</p>',
 			'post_status'  => 'publish',
-			'post_date'    => '2026-01-01 10:00:00',
+			'post_date'    => gmdate('Y-m-d H:i:s', strtotime('-30 days')),
 		));
 
 		$fingerprint = $this->scanner->extract_post_fingerprint($post_id);

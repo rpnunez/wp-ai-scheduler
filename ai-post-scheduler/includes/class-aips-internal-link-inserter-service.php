@@ -69,20 +69,50 @@ class AIPS_Internal_Link_Inserter_Service {
 	private $logger;
 
 	/**
+	 * @var AIPS_Generation_Component_Registry|null
+	 */
+	private $registry;
+
+	/**
 	 * Initialize the service.
 	 *
-	 * @param AIPS_Internal_Links_Repository|null $links_repo Links repository.
-	 * @param AIPS_AI_Service|null                $ai_service AI service.
-	 * @param AIPS_Logger|null                    $logger     Logger instance.
+	 * @param AIPS_Internal_Links_Repository|null     $links_repo Links repository.
+	 * @param AIPS_AI_Service_Interface|null          $ai_service AI service.
+	 * @param AIPS_Logger|null                        $logger     Logger instance.
+	 * @param AIPS_Generation_Component_Registry|null $registry   Optional component registry.
 	 */
 	public function __construct(
 		$links_repo = null,
 		$ai_service = null,
-		$logger = null
+		$logger = null,
+		?AIPS_Generation_Component_Registry $registry = null
 	) {
 		$this->links_repo = $links_repo ?: new AIPS_Internal_Links_Repository();
 		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
 		$this->logger     = $logger     ?: new AIPS_Logger();
+		$this->registry   = $registry;
+	}
+
+	/**
+	 * Resolve the registered Internal Links post component.
+	 *
+	 * @return AIPS_Internal_Links_Post_Component
+	 */
+	private function get_internal_links_component(): AIPS_Internal_Links_Post_Component {
+		if ($this->registry === null) {
+			$this->registry = new AIPS_Generation_Component_Registry();
+			$this->registry->register(new AIPS_Internal_Links_Post_Component(null, $this->ai_service));
+		}
+
+		$component = $this->registry->get('post_internal_links', 'posts');
+		if ($component instanceof AIPS_Internal_Links_Post_Component) {
+			return $component;
+		}
+
+		$fallback = new AIPS_Internal_Links_Post_Component(null, $this->ai_service);
+		$this->registry->register($fallback);
+
+		return $fallback;
 	}
 
 	// -------------------------------------------------------------------------
@@ -158,11 +188,9 @@ class AIPS_Internal_Link_Inserter_Service {
 			),
 			'info'
 		);
-		$ai_result = $this->ai_service->generate_json_from_text(
+		$ai_result = $this->get_internal_links_component()->find_insertion_locations(
 			$prompt,
-			array(
-				'max_tokens'  => $max_tokens,
-			)
+			$max_tokens
 		);
 
 		if (is_wp_error($ai_result)) {

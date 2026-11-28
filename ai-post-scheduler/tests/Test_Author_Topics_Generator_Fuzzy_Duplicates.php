@@ -115,8 +115,76 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Build a mock embeddings repository returning stored topic vectors for similarity checks.
+	 *
+	 * @param array $existing_topics Existing topic objects containing metadata.embedding.
+	 * @return AIPS_Embeddings_Repository
+	 */
+	private function make_embeddings_repository( $existing_topics = array() ) {
+		$rows    = array();
+		$vectors = array();
+		foreach ( $existing_topics as $t ) {
+			$meta = isset( $t->metadata ) ? json_decode( (string) $t->metadata, true ) : array();
+			if ( is_array( $meta ) && ! empty( $meta['embedding'] ) ) {
+				$id             = (int) $t->id;
+				$vectors[ $id ] = $meta['embedding'];
+				$rows[]         = (object) array(
+					'object_id'    => $id,
+					'object_type'  => 'topic',
+					'embedding'    => wp_json_encode( $meta['embedding'] ),
+					'content_hash' => md5( (string) $t->topic_title ),
+				);
+			}
+		}
+
+		$mock = $this->getMockBuilder( AIPS_Embeddings_Repository::class )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_all_for_similarity', 'decode_embedding' ) )
+			->getMock();
+
+		$mock->method( 'get_all_for_similarity' )
+			->willReturnCallback( function ( $object_type ) use ( $rows ) {
+				return 'topic' === $object_type ? $rows : array();
+			} );
+
+		$mock->method( 'decode_embedding' )
+			->willReturnCallback( function ( $raw, $type, $object_id ) use ( $vectors ) {
+				return isset( $vectors[ (int) $object_id ] ) ? $vectors[ (int) $object_id ] : array();
+			} );
+
+		return $mock;
+	}
+
+	/**
+	 * Build an AIPS_Author_Topics_Generator wired with test doubles including embeddings_repo.
+	 *
+	 * @param array  $new_topic_data   AI topic payload.
+	 * @param object $topics_repo      Topics repository double.
+	 * @param object $embeddings_svc   Embeddings service double.
+	 * @param array  $existing_topics  Existing topics for similarity index.
+	 * @return AIPS_Author_Topics_Generator
+	 */
+	private function make_generator_with_embeddings( $new_topic_data, $topics_repo, $embeddings_svc, $existing_topics ) {
+		return new AIPS_Author_Topics_Generator(
+			$this->make_ai_service( $new_topic_data ),
+			$this->make_logger(),
+			$topics_repo,
+			new class {
+				public function log_post_generation( $a, $b, $c ) {}
+				public function create( $data ) { return 1; }
+			},
+			$embeddings_svc,
+			null,
+			null,
+			null,
+			null,
+			$this->make_embeddings_repository( $existing_topics )
+		);
+	}
+
+	/**
 	 * Test that topics above the similarity threshold are flagged as duplicates
-	 * and have their score reduced by 15.
+	 * and have their score reduced by 20.
 	 */
 	public function test_topics_above_threshold_are_flagged_and_score_reduced() {
 		$embedding_a = array( 1.0, 0.0, 0.0 );
@@ -129,8 +197,6 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 			'status'      => 'approved',
 			'metadata'    => wp_json_encode( array( 'embedding' => $embedding_b ) ),
 		);
-
-		$topics_repo = $this->make_topics_repository( array( $existing_topic ) );
 
 		// Embeddings service: supported, returns embedding_a for any text, similarity = 1.0.
 		$embeddings_service = new class( $embedding_a ) {
@@ -156,31 +222,24 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 				'author_id'   => 1,
 				'topic_title' => 'Very Similar Topic Title',
 				'status'      => 'pending',
-				'score'       => 55, // 70 - 15
+				'score'       => 50, // 70 - 20
 				'metadata'    => wp_json_encode( array( 'potential_duplicate' => true ) ),
 				'generated_at' => current_time( 'mysql' ),
 			),
 		);
 
 		$topics_repo2 = $this->make_topics_repository( array( $existing_topic ), $bulk_topics );
-
-		$generator = new AIPS_Author_Topics_Generator(
-			$this->make_ai_service( $new_topic_data ),
-			$this->make_logger(),
-			$topics_repo2,
-			new class { public function log_post_generation( $a, $b, $c ) {} },
-			$embeddings_service
-		);
+		$generator    = $this->make_generator_with_embeddings( $new_topic_data, $topics_repo2, $embeddings_service, array( $existing_topic ) );
 
 		$result = $generator->generate_topics( $this->make_author() );
 
 		$this->assertIsArray( $result, 'generate_topics() should return an array' );
 		$this->assertNotEmpty( $result, 'At least one topic should be returned' );
 
-		// Verify that the topic was inserted with score reduced by 15 (70 → 55).
+		// Verify that the topic was inserted with score reduced by 20 (70 → 50).
 		$inserted = $topics_repo2->bulk_inserted;
 		$this->assertNotEmpty( $inserted );
-		$this->assertEquals( 55, $inserted[0]['score'], 'Score should be reduced by 15 for flagged duplicate' );
+		$this->assertEquals( 50, $inserted[0]['score'], 'Score should be reduced by 20 for flagged duplicate' );
 
 		// Verify duplicate metadata was stored.
 		$meta = json_decode( $inserted[0]['metadata'], true );
@@ -239,14 +298,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		);
 
 		$topics_repo = $this->make_topics_repository( array( $existing_topic ), $bulk_topics );
-
-		$generator = new AIPS_Author_Topics_Generator(
-			$this->make_ai_service( $new_topic_data ),
-			$this->make_logger(),
-			$topics_repo,
-			new class { public function log_post_generation( $a, $b, $c ) {} },
-			$embeddings_service
-		);
+		$generator   = $this->make_generator_with_embeddings( $new_topic_data, $topics_repo, $embeddings_service, array( $existing_topic ) );
 
 		$generator->generate_topics( $this->make_author() );
 
@@ -301,14 +353,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		);
 
 		$topics_repo = $this->make_topics_repository( array( $existing_topic ), $bulk_topics );
-
-		$generator = new AIPS_Author_Topics_Generator(
-			$this->make_ai_service( $new_topic_data ),
-			$this->make_logger(),
-			$topics_repo,
-			new class { public function log_post_generation( $a, $b, $c ) {} },
-			$embeddings_service
-		);
+		$generator   = $this->make_generator_with_embeddings( $new_topic_data, $topics_repo, $embeddings_service, array( $existing_topic ) );
 
 		$generator->generate_topics( $this->make_author() );
 
@@ -325,19 +370,20 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	 * Similarity 0.75 is above 0.70 threshold → should be flagged.
 	 */
 	public function test_borderline_topic_flagged_with_lower_threshold() {
-		update_option( 'aips_topic_similarity_threshold', 0.70 );
+		update_option( 'aips_deduplication_threshold', 0.70 );
 
-		$embedding = array( 1.0, 0.0, 0.0 );
+		$stored_vec    = array( 1.0, 0.0, 0.0 );
+		$candidate_vec = array( 0.75, sqrt( 1.0 - 0.5625 ), 0.0 );
 
 		$existing_topic = (object) array(
 			'id'          => 10,
 			'topic_title' => 'Somewhat Similar Topic',
 			'status'      => 'approved',
-			'metadata'    => wp_json_encode( array( 'embedding' => $embedding ) ),
+			'metadata'    => wp_json_encode( array( 'embedding' => $stored_vec ) ),
 		);
 
-		// Similarity = 0.75 — above the 0.70 threshold but below the default 0.8.
-		$embeddings_service = new class( $embedding ) {
+		// Similarity = 0.75 — above the 0.70 threshold but below the default 0.85.
+		$embeddings_service = new class( $candidate_vec ) {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
 			public function is_enabled() { return true; }
@@ -356,21 +402,14 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 				'author_id'   => 1,
 				'topic_title' => 'Borderline Duplicate Topic',
 				'status'      => 'pending',
-				'score'       => 45, // 60 - 15
+				'score'       => 40, // 60 - 20
 				'metadata'    => wp_json_encode( array( 'potential_duplicate' => true ) ),
 				'generated_at' => current_time( 'mysql' ),
 			),
 		);
 
 		$topics_repo = $this->make_topics_repository( array( $existing_topic ), $bulk_topics );
-
-		$generator = new AIPS_Author_Topics_Generator(
-			$this->make_ai_service( $new_topic_data ),
-			$this->make_logger(),
-			$topics_repo,
-			new class { public function log_post_generation( $a, $b, $c ) {} },
-			$embeddings_service
-		);
+		$generator   = $this->make_generator_with_embeddings( $new_topic_data, $topics_repo, $embeddings_service, array( $existing_topic ) );
 
 		$generator->generate_topics( $this->make_author() );
 
@@ -378,12 +417,12 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$this->assertNotEmpty( $inserted );
 
 		// Score should be reduced because similarity (0.75) exceeds the lowered threshold (0.70).
-		$this->assertEquals( 45, $inserted[0]['score'], 'Score should be reduced when similarity exceeds lowered threshold' );
+		$this->assertEquals( 40, $inserted[0]['score'], 'Score should be reduced when similarity exceeds lowered threshold' );
 
 		$meta = json_decode( $inserted[0]['metadata'], true );
 		$this->assertTrue( $meta['potential_duplicate'], 'Topic should be flagged as potential duplicate at lower threshold' );
 
-		delete_option( 'aips_topic_similarity_threshold' );
+		delete_option( 'aips_deduplication_threshold' );
 	}
 
 	/**
@@ -392,19 +431,20 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	 * Similarity 0.75 is below 0.90 threshold → should NOT be flagged.
 	 */
 	public function test_borderline_topic_not_flagged_with_higher_threshold() {
-		update_option( 'aips_topic_similarity_threshold', 0.90 );
+		update_option( 'aips_deduplication_threshold', 0.90 );
 
-		$embedding = array( 1.0, 0.0, 0.0 );
+		$stored_vec    = array( 1.0, 0.0, 0.0 );
+		$candidate_vec = array( 0.75, sqrt( 1.0 - 0.5625 ), 0.0 );
 
 		$existing_topic = (object) array(
 			'id'          => 10,
 			'topic_title' => 'Similar But Not Enough',
 			'status'      => 'approved',
-			'metadata'    => wp_json_encode( array( 'embedding' => $embedding ) ),
+			'metadata'    => wp_json_encode( array( 'embedding' => $stored_vec ) ),
 		);
 
 		// Similarity = 0.75 — below the 0.90 threshold.
-		$embeddings_service = new class( $embedding ) {
+		$embeddings_service = new class( $candidate_vec ) {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
 			public function is_enabled() { return true; }
@@ -430,14 +470,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		);
 
 		$topics_repo = $this->make_topics_repository( array( $existing_topic ), $bulk_topics );
-
-		$generator = new AIPS_Author_Topics_Generator(
-			$this->make_ai_service( $new_topic_data ),
-			$this->make_logger(),
-			$topics_repo,
-			new class { public function log_post_generation( $a, $b, $c ) {} },
-			$embeddings_service
-		);
+		$generator   = $this->make_generator_with_embeddings( $new_topic_data, $topics_repo, $embeddings_service, array( $existing_topic ) );
 
 		$generator->generate_topics( $this->make_author() );
 
@@ -450,7 +483,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$meta = json_decode( $inserted[0]['metadata'], true );
 		$this->assertFalse( $meta['potential_duplicate'], 'Topic should NOT be flagged when similarity is below raised threshold' );
 
-		delete_option( 'aips_topic_similarity_threshold' );
+		delete_option( 'aips_deduplication_threshold' );
 	}
 
 	/**
@@ -479,7 +512,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		$new_topic_data = array(
 			array(
 				'title' => 'Nearly Identical Overlapping Topic Here',
-				'score' => 5, // Low initial score; 5 - 15 = -10, should clamp to 0.
+				'score' => 5, // Low initial score; 5 - 20 = -15, should clamp to 0.
 			),
 		);
 
@@ -496,14 +529,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 		);
 
 		$topics_repo = $this->make_topics_repository( array( $existing_topic ), $bulk_topics );
-
-		$generator = new AIPS_Author_Topics_Generator(
-			$this->make_ai_service( $new_topic_data ),
-			$this->make_logger(),
-			$topics_repo,
-			new class { public function log_post_generation( $a, $b, $c ) {} },
-			$embeddings_service
-		);
+		$generator   = $this->make_generator_with_embeddings( $new_topic_data, $topics_repo, $embeddings_service, array( $existing_topic ) );
 
 		$generator->generate_topics( $this->make_author() );
 

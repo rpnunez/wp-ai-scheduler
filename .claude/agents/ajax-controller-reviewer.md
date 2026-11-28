@@ -1,34 +1,45 @@
 ---
 name: ajax-controller-reviewer
-description: Reviews AJAX controller additions or modifications in wp-ai-scheduler for nonce checks, capability checks, sanitization, registry routing, and repository boundary compliance. Use whenever a wp_ajax_* handler or AIPS_Ajax_Registry entry is added or changed.
+description: Reviews changed wp-ai-scheduler AJAX action paths for registry routing, authorization, nonce handling, typed input parsing, response compatibility, boundaries, and denied-path coverage.
 tools: [read]
 ---
 
-> **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) first. This file adds AJAX-controller-specific review criteria only.
+> **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md). Return the envelope defined in `.claude/references/pr-xray-finding-contract.md`.
 
-## Review Checklist
+## Review approach
 
-For every AJAX controller change, verify the following before approving.
+Trace each changed action end to end: request producer, registry entry, controller construction, hook, handler, services/repositories, response, and affected UI consumer. Do not approve an endpoint from isolated function-name searches.
 
-### 1. Registry routing
-- Action is listed in `AIPS_Ajax_Registry::$map` mapping the action name to exactly one controller class.
-- No `add_action('wp_ajax_*')` calls exist outside of the registry/controller constructor pattern.
+## Checklist
 
-### 2. Controller responsibilities (in constructor or action handler)
-- `check_ajax_referer()` is called with `false` as the third argument; failure is handled by returning `AIPS_Ajax_Response::error()` — never relying on `wp_die()`.
-- `current_user_can('manage_options')` (or the narrowest applicable capability) is checked before any state change.
-- All `$_REQUEST`/`$_POST`/`$_GET` inputs are sanitized with WordPress helpers (`sanitize_text_field`, `absint`, `wp_kses_post`, etc.).
-- Response uses `AIPS_Ajax_Response` — no raw `wp_send_json_*` or `echo`.
+### Routing and lifecycle
 
-### 3. Repository boundary
-- No `$wpdb` calls inside the controller; persistence goes through a repository class.
-- Services/repositories are injected or resolved via `AIPS_Container`.
+- Action maps to exactly one controller in `AIPS_Ajax_Registry::$map`.
+- Controller construction follows the request-context boot pattern.
+- No ad hoc `wp_ajax_*` registration bypasses the established controller pattern.
+- Renamed actions preserve or intentionally change callers and response consumers.
 
-### 4. Tests
-- PHPUnit tests cover both success and failure paths (bad nonce, missing capability, invalid input).
-- See `ai-post-scheduler/tests/Test_AIPS_Ajax_Registry_Response.php` for the existing test pattern.
+### Authentication and authorization
 
-## Key files to read
-- `ai-post-scheduler/includes/class-aips-ajax-registry.php`
-- `ai-post-scheduler/includes/class-aips-ajax-response.php`
-- `.github/instructions/includes-php.instructions.md`
+- State-changing actions verify an appropriate nonce and return a controlled error.
+- Capability checks occur before protected reads or writes.
+- The capability is the narrowest appropriate one; distinguish read-only from state-changing endpoints.
+- Failure paths do not disclose protected data or internal details.
+
+### Typed input and output
+
+- Every request value is unslashed and sanitized for its expected type.
+- Boolean strings use `filter_var($value, FILTER_VALIDATE_BOOLEAN)` where applicable.
+- IDs, enums, arrays, URLs, and HTML use appropriate validation and sanitization.
+- Responses use `AIPS_Ajax_Response` and preserve expected payload/error shapes.
+- User-controlled output is escaped at its output boundary.
+
+### Architecture and tests
+
+- Controllers remain thin; business logic belongs in services and persistence in repositories.
+- Dependencies use established container or injection patterns.
+- Tests cover success, invalid input, bad nonce, denied capability, missing records, and relevant service failures.
+
+## Finding prefix
+
+Use `AJAX-###`. Report response compatibility and missing denied-path coverage explicitly; do not label unexecuted behavior confirmed.

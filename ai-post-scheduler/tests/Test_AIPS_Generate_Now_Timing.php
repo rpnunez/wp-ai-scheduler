@@ -67,6 +67,13 @@ class Test_AIPS_Generate_Now_Timing extends WP_UnitTestCase {
 					'status'      => 'approved',
 				);
 			}
+			public function claim_topic_for_generation(int $topic_id, int $claim_timeout = 900, bool $allow_regenerate = false): bool {
+				return true;
+			}
+			public function release_topic_claim(int $topic_id): bool {
+				return true;
+			}
+			public function invalidate_topic_cache($topic_id = null, $author_id = null) {}
 		};
 
 		$authors_repo = new class {
@@ -133,7 +140,9 @@ class Test_AIPS_Generate_Now_Timing extends WP_UnitTestCase {
 		$this->inject('authors_repository',  $authors_repo);
 		$this->inject('logs_repository',     $logs_repo);
 		$this->inject('history_service',     $history_service);
-		AIPS_Container::get_instance()->instance(AIPS_Similarity_Evaluator::class, $expansion_service);
+		AIPS_Container::get_instance()->singleton(AIPS_Similarity_Evaluator::class, function () use ($expansion_service) {
+			return $expansion_service;
+		});
 		$this->inject('interval_calculator', $interval_calculator);
 		$this->inject('generator',           $generator);
 		$this->inject('logger',              $logger);
@@ -147,23 +156,17 @@ class Test_AIPS_Generate_Now_Timing extends WP_UnitTestCase {
 	 * When generation succeeds, _aips_post_generation_total_time must be stored.
 	 */
 	public function test_generate_now_stores_elapsed_time_on_success() {
-		global $aips_test_meta;
-
-		$post_id = 42;
+		$post_id = self::factory()->post->create(array('post_status' => 'draft'));
 		$this->inject_mocks($post_id);
 
 		$result = $this->post_generator->generate_now(1);
 
 		$this->assertSame($post_id, $result, 'generate_now should return the post ID on success');
-		$this->assertArrayHasKey($post_id, $aips_test_meta, 'Post meta should be written for the returned post ID');
-		$this->assertArrayHasKey(
-			'_aips_post_generation_total_time',
-			$aips_test_meta[$post_id],
-			'_aips_post_generation_total_time meta key should be present'
-		);
+		$stored_time = get_post_meta($post_id, '_aips_post_generation_total_time', true);
+		$this->assertNotSame('', $stored_time, '_aips_post_generation_total_time meta key should be present');
 		$this->assertGreaterThanOrEqual(
 			0,
-			$aips_test_meta[$post_id]['_aips_post_generation_total_time'],
+			(float) $stored_time,
 			'Recorded time should be a non-negative number'
 		);
 	}
@@ -172,7 +175,7 @@ class Test_AIPS_Generate_Now_Timing extends WP_UnitTestCase {
 	 * When generation fails (WP_Error), _aips_post_generation_total_time must NOT be stored.
 	 */
 	public function test_generate_now_does_not_store_time_on_failure() {
-		global $aips_test_meta;
+		$probe_post_id = self::factory()->post->create(array('post_status' => 'draft'));
 
 		$error = new WP_Error('generation_failed', 'Something went wrong');
 		$this->inject_mocks($error);
@@ -180,7 +183,7 @@ class Test_AIPS_Generate_Now_Timing extends WP_UnitTestCase {
 		$result = $this->post_generator->generate_now(1);
 
 		$this->assertInstanceOf('WP_Error', $result, 'generate_now should return a WP_Error on failure');
-		$this->assertEmpty($aips_test_meta, '_aips_post_generation_total_time should not be written on failure');
+		$this->assertSame('', get_post_meta($probe_post_id, '_aips_post_generation_total_time', true), '_aips_post_generation_total_time should not be written on failure');
 	}
 
 	/**

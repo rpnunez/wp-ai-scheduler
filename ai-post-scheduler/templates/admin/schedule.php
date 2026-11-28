@@ -21,16 +21,106 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 			</div>
 		</div>
 
-		<!-- Schedules List Table Panel -->
-		<div class="aips-content-panel">
-			<div class="aips-panel-body no-padding">
-				<?php
-				$schedules_list_table = new AIPS_Schedules_List_Table();
-				$schedules_list_table->prepare_items();
-				$schedules_list_table->display_page();
-				?>
-			</div>
+		<!-- Schedules List Table (renders its own card; no outer panel) -->
+		<?php
+		$schedules_list_table = new AIPS_Schedules_List_Table();
+		$schedules_list_table->prepare_items();
+		$schedules_list_table->display_page();
+		?>
+
+<!-- ============================================================ -->
+<!-- Schedule details row templates (AIPS.SchedulesTable)         -->
+<!-- ============================================================ -->
+<script type="text/html" id="aips-tmpl-sched-details">
+	<div class="aips-sched-details-grid">
+		<section class="aips-sched-panel aips-sched-panel-recent">
+			<h4 class="aips-sched-panel-title">{{recent_title}}</h4>
+			{{recent}}
+		</section>
+		<div class="aips-sched-details-right">
+			{{template_card}}
+			<section class="aips-sched-panel aips-sched-panel-health">
+				<h4 class="aips-sched-panel-title"><?php esc_html_e('Health', 'ai-post-scheduler'); ?></h4>
+				{{health}}
+			</section>
+			<section class="aips-sched-panel aips-sched-panel-activity">
+				<h4 class="aips-sched-panel-title"><?php esc_html_e('Activity', 'ai-post-scheduler'); ?></h4>
+				<div class="aips-sched-stats">{{stats}}</div>
+				{{stages}}
+			</section>
 		</div>
+	</div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-template">
+	<section class="aips-sched-panel aips-sched-panel-template">
+		<h4 class="aips-sched-panel-title"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></h4>
+		<div class="aips-sched-template-card">
+			<span class="aips-sched-template-name">{{name}}</span>
+		</div>
+	</section>
+</script>
+<script type="text/html" id="aips-tmpl-sched-stat">
+	<div class="aips-sched-stat"><span class="aips-sched-stat-value">{{value}}</span><span class="aips-sched-stat-label">{{label}}</span></div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-stages">
+	<table class="aips-sched-stages">
+		<thead><tr><th scope="col"><?php esc_html_e('Stage', 'ai-post-scheduler'); ?></th><th scope="col"><?php esc_html_e('Runs', 'ai-post-scheduler'); ?></th><th scope="col"><?php esc_html_e('Output', 'ai-post-scheduler'); ?></th><th scope="col"><?php esc_html_e('Last run', 'ai-post-scheduler'); ?></th></tr></thead>
+		<tbody>{{rows}}</tbody>
+	</table>
+</script>
+<script type="text/html" id="aips-tmpl-sched-stage-row">
+	<tr class="{{row_class}}"><td>{{label}} {{paused}}</td><td>{{frequency}}</td><td>{{output}}</td><td>{{last_run}}</td></tr>
+</script>
+<script type="text/html" id="aips-tmpl-sched-stage-paused">
+	<span class="aips-sched-chip aips-sched-chip--paused"><?php esc_html_e('Paused', 'ai-post-scheduler'); ?></span>
+</script>
+<script type="text/html" id="aips-tmpl-sched-health">
+	<div class="aips-sched-health aips-sched-health--{{state}}">
+		<span class="aips-sched-health-badge"><span class="dashicons {{icon}}" aria-hidden="true"></span>{{label}}</span>
+		<p class="aips-sched-health-message">{{message}}</p>
+	</div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-health-error">
+	<div class="aips-sched-last-error">
+		<div class="aips-sched-last-error-head"><?php esc_html_e('Last error', 'ai-post-scheduler'); ?> <time datetime="{{time_iso}}">{{time_display}}</time></div>
+		<p>{{message}}</p>
+	</div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-health-actions">
+	<div class="aips-sched-health-actions">{{buttons}}</div>
+</script>
+<script type="text/html" id="aips-tmpl-sched-health-action">
+	<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary {{class_name}}" data-id="{{id}}" data-type="{{type}}"><span class="dashicons {{icon}}" aria-hidden="true"></span> {{label}}</button>
+</script>
+<script type="text/html" id="aips-tmpl-sched-recent-list">
+	<ol class="aips-sched-recent">{{items}}</ol>
+</script>
+<script type="text/html" id="aips-tmpl-sched-recent-item">
+	<li class="aips-sched-recent-item">
+		<span class="dashicons {{icon}}" aria-hidden="true" title="{{kind_label}}"></span>
+		<a class="aips-sched-recent-title" href="{{url}}">{{title}}</a>
+		<span class="aips-sched-chip aips-sched-chip--{{status}}">{{status_label}}</span>
+		<time class="aips-sched-recent-time" datetime="{{time_iso}}" title="{{time_full}}">{{time_display}}</time>
+	</li>
+</script>
+<script type="text/html" id="aips-tmpl-sched-recent-item-nolink">
+	<li class="aips-sched-recent-item">
+		<span class="dashicons {{icon}}" aria-hidden="true" title="{{kind_label}}"></span>
+		<span class="aips-sched-recent-title">{{title}}</span>
+		<span class="aips-sched-chip aips-sched-chip--{{status}}">{{status_label}}</span>
+		<time class="aips-sched-recent-time" datetime="{{time_iso}}" title="{{time_full}}">{{time_display}}</time>
+	</li>
+</script>
+<script type="text/html" id="aips-tmpl-sched-recent-empty">
+	<p class="aips-sched-empty"><?php esc_html_e('Nothing generated yet. Output appears here after the first run.', 'ai-post-scheduler'); ?></p>
+</script>
+<script type="text/html" id="aips-tmpl-sched-details-error">
+	<div class="aips-sched-details-error">
+		<span class="dashicons dashicons-warning" aria-hidden="true"></span>
+		<span>{{message}}</span>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-sched-details-retry"><?php esc_html_e('Retry', 'ai-post-scheduler'); ?></button>
+	</div>
+</script>
 
 <!-- ============================================================ -->
 <!-- Add / Edit Template Schedule Modal                           -->
@@ -63,7 +153,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 				<!-- Unified Schedule & Cadence Builder -->
 				<div class="aips-form-row aips-schedule-builder-wrap">
 					<label class="aips-builder-title"><?php esc_html_e('Schedule Cadence', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
-					<p class="description" style="margin-top:0; margin-bottom:12px;"><?php esc_html_e('Choose how often and when this schedule should run.', 'ai-post-scheduler'); ?></p>
+					<p class="description aips-builder-description"><?php esc_html_e('Choose how often and when this schedule should run.', 'ai-post-scheduler'); ?></p>
 
 					<!-- Hidden inputs submitted with form -->
 					<input type="hidden" id="schedule_frequency" name="frequency" value="weekly">
@@ -83,7 +173,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 					<!-- Contextual Cadence Panes -->
 					<div class="aips-cadence-panes">
 						<!-- WEEKLY PANE (Default) -->
-						<div class="aips-cadence-pane" id="aips-pane-weekly" style="display:block;">
+						<div class="aips-cadence-pane active" id="aips-pane-weekly">
 							<div class="aips-pane-field-label"><?php esc_html_e('Repeat On', 'ai-post-scheduler'); ?></div>
 							<div class="aips-btn-group aips-weekday-btn-group" role="group" aria-label="<?php esc_attr_e('Day of week', 'ai-post-scheduler'); ?>">
 								<?php
@@ -103,7 +193,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 						</div>
 
 						<!-- HOURLY PANE -->
-						<div class="aips-cadence-pane" id="aips-pane-hourly" style="display:none;">
+						<div class="aips-cadence-pane" id="aips-pane-hourly">
 							<div class="aips-pane-field-label"><?php esc_html_e('Interval', 'ai-post-scheduler'); ?></div>
 							<div class="aips-btn-group aips-hourly-step-group" role="group">
 								<button type="button" class="aips-btn aips-btn-sm aips-hourly-step-btn active" data-freq="hourly"><?php esc_html_e('Every Hour', 'ai-post-scheduler'); ?></button>
@@ -115,12 +205,12 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 						</div>
 
 						<!-- DAILY PANE -->
-						<div class="aips-cadence-pane" id="aips-pane-daily" style="display:none;">
-							<p class="description" style="margin:0;"><?php esc_html_e('Runs once each day at the designated time below.', 'ai-post-scheduler'); ?></p>
+						<div class="aips-cadence-pane" id="aips-pane-daily">
+							<p class="description aips-cadence-pane-desc"><?php esc_html_e('Runs once each day at the designated time below.', 'ai-post-scheduler'); ?></p>
 						</div>
 
 						<!-- MONTHLY PANE -->
-						<div class="aips-cadence-pane" id="aips-pane-monthly" style="display:none;">
+						<div class="aips-cadence-pane" id="aips-pane-monthly">
 							<div class="aips-pane-field-label"><?php esc_html_e('Day of Month', 'ai-post-scheduler'); ?></div>
 							<div class="aips-btn-group aips-monthly-step-group" role="group">
 								<button type="button" class="aips-btn aips-btn-sm aips-monthly-day-btn active" data-month-day="1"><?php esc_html_e('1st of Month', 'ai-post-scheduler'); ?></button>
@@ -130,18 +220,18 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 						</div>
 
 						<!-- ONE-TIME PANE -->
-						<div class="aips-cadence-pane" id="aips-pane-once" style="display:none;">
+						<div class="aips-cadence-pane" id="aips-pane-once">
 							<div class="aips-pane-field-label"><?php esc_html_e('Target Execution Date', 'ai-post-scheduler'); ?></div>
-							<input type="date" id="schedule_builder_date" class="regular-text" style="max-width:220px;">
+							<input type="date" id="schedule_builder_date" class="regular-text aips-cadence-date-input">
 						</div>
 
 						<!-- ADVANCED PANE -->
-						<div class="aips-cadence-pane" id="aips-pane-advanced" style="display:none;">
+						<div class="aips-cadence-pane" id="aips-pane-advanced">
 							<div class="aips-pane-field-label"><?php esc_html_e('Custom Recurrence', 'ai-post-scheduler'); ?></div>
 							<div class="aips-custom-interval-stepper">
 								<span><?php esc_html_e('Every', 'ai-post-scheduler'); ?></span>
-								<input type="number" id="schedule_builder_interval_val" min="1" max="90" value="2" style="width:65px;">
-								<select id="schedule_builder_interval_unit" style="max-width:130px;">
+								<input type="number" id="schedule_builder_interval_val" class="aips-cadence-interval-val" min="1" max="90" value="2">
+								<select id="schedule_builder_interval_unit" class="aips-cadence-interval-unit">
 									<option value="days" selected><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
 									<option value="weeks"><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
 									<option value="hours"><?php esc_html_e('Hours', 'ai-post-scheduler'); ?></option>
@@ -153,7 +243,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 					<!-- TIME PICKER & PRESET CHIPS -->
 					<div class="aips-builder-time-row" id="aips-builder-time-row">
 						<div class="aips-builder-time-header">
-							<span class="aips-pane-field-label" style="margin:0;"><?php esc_html_e('Time of Day', 'ai-post-scheduler'); ?></span>
+							<span class="aips-pane-field-label aips-builder-time-label"><?php esc_html_e('Time of Day', 'ai-post-scheduler'); ?></span>
 							<span class="aips-tz-badge" id="aips-builder-tz-badge"><?php echo esc_html(wp_timezone_string()); ?></span>
 						</div>
 						<div class="aips-builder-time-controls">
@@ -165,7 +255,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 								<button type="button" class="aips-time-chip" data-time="22:00">10:00 PM</button>
 							</div>
 						</div>
-						<p class="description aips-builder-time-hint" id="aips-builder-time-hint" style="margin-top:4px; display:none;"></p>
+						<p class="description aips-builder-time-hint" id="aips-builder-time-hint"></p>
 					</div>
 
 					<!-- DYNAMIC LIVE SUMMARY CARD -->
@@ -227,16 +317,16 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<div id="aips-schedule-history-loading" style="text-align:center;padding:20px;">
+			<div id="aips-schedule-history-loading" class="aips-schedule-history-loading">
 				<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span>
 				<span class="screen-reader-text"><?php esc_html_e('Loading history…', 'ai-post-scheduler'); ?></span>
 			</div>
-			<div id="aips-schedule-history-empty" class="aips-empty-state" style="display:none;padding:40px 20px;">
+			<div id="aips-schedule-history-empty" class="aips-empty-state aips-schedule-history-empty">
 				<div class="dashicons dashicons-backup aips-empty-state-icon" aria-hidden="true"></div>
 				<h3 class="aips-empty-state-title"><?php esc_html_e('No History Yet', 'ai-post-scheduler'); ?></h3>
 				<p class="aips-empty-state-description"><?php esc_html_e('No history events have been recorded for this schedule yet.', 'ai-post-scheduler'); ?></p>
 			</div>
-			<ul id="aips-schedule-history-list" class="aips-history-timeline" style="display:none;margin:0;padding:0;list-style:none;"></ul>
+			<ul id="aips-schedule-history-list" class="aips-history-timeline aips-schedule-history-list"></ul>
 		</div>
 	</div>
 </div>

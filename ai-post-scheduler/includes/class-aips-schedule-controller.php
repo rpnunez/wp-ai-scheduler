@@ -17,7 +17,17 @@ class AIPS_Schedule_Controller {
      */
     private $history_repository;
 
-    public function __construct($scheduler = null, ?AIPS_Schedule_Repository_Interface $schedule_repository = null, ?AIPS_History_Repository_Interface $history_repository = null) {
+    /**
+     * @var AIPS_Cron_Manager
+     */
+    private $cron_manager;
+
+    public function __construct(
+        $scheduler = null,
+        ?AIPS_Schedule_Repository_Interface $schedule_repository = null,
+        ?AIPS_History_Repository_Interface $history_repository = null,
+        ?AIPS_Cron_Manager $cron_manager = null
+    ) {
         $container = AIPS_Container::get_instance();
         $this->scheduler           = $scheduler ?: $container->makeIfExists(AIPS_Scheduler::class, function() {
             return new AIPS_Scheduler();
@@ -28,6 +38,7 @@ class AIPS_Schedule_Controller {
         $this->history_repository  = $history_repository ?: $container->makeIfExists(AIPS_History_Repository_Interface::class, function() {
             return new AIPS_History_Repository();
         });
+        $this->cron_manager        = $cron_manager ?: ( $container->has( AIPS_Cron_Manager::class ) ? $container->make( AIPS_Cron_Manager::class ) : new AIPS_Cron_Manager() );
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
@@ -46,6 +57,7 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_bulk_run_now', array($this, 'ajax_unified_bulk_run_now'));
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
+        add_action('wp_ajax_aips_get_schedule_details', array($this, 'ajax_get_schedule_details'));
         add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
         add_action('wp_ajax_aips_reset_schedule_circuit', array($this, 'ajax_reset_schedule_circuit'));
         add_action('wp_ajax_aips_resume_schedule_batch', array($this, 'ajax_resume_schedule_batch'));
@@ -74,7 +86,7 @@ class AIPS_Schedule_Controller {
 
         $next_runs = array();
         foreach ($families as $family => $hook) {
-            $next_runs[$family] = wp_next_scheduled($hook) ?: null;
+            $next_runs[$family] = $this->cron_manager->next_scheduled($hook) ?: null;
         }
 
         $queue_hooks = array(
@@ -108,6 +120,35 @@ class AIPS_Schedule_Controller {
                         'timestamp' => (int) $timestamp,
                         'count' => $count,
                     );
+                }
+            }
+        }
+
+        if ( function_exists( 'as_get_scheduled_actions' ) ) {
+            foreach ( $queue_hooks as $hook ) {
+                $as_actions = as_get_scheduled_actions( array(
+                    'hook'     => $hook,
+                    'status'   => 'pending',
+                    'per_page' => 100,
+                ) );
+                if ( is_array( $as_actions ) ) {
+                    $as_count = count( $as_actions );
+                    $queue_depth[$hook] += $as_count;
+                    foreach ( $as_actions as $action ) {
+                        if ( is_object( $action ) && method_exists( $action, 'get_schedule' ) ) {
+                            $sched = $action->get_schedule();
+                            if ( $sched && method_exists( $sched, 'get_date' ) && $sched->get_date() ) {
+                                $action_time = $sched->get_date()->getTimestamp();
+                                if ( $action_time <= $next_24h ) {
+                                    $queue_timeline[] = array(
+                                        'hook'      => $hook,
+                                        'timestamp' => (int) $action_time,
+                                        'count'     => 1,
+                                    );
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1195,6 +1236,38 @@ class AIPS_Schedule_Controller {
         $entries = $service->get_history($id, $type, $limit);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
+    }
+
+    /**
+     * AJAX: Details for a schedule row's expandable section
+     * (activity, health and the 10 most recent generated items).
+     *
+     * Expects POST: id (int), type (string).
+     */
+    public function ajax_get_schedule_details() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+
+        if (!$id || empty($type)) {
+            AIPS_Ajax_Response::invalid_request(__('Invalid parameters.', 'ai-post-scheduler'));
+        }
+
+        $service = new AIPS_Unified_Schedule_Service();
+        $details = $service->get_details($id, $type, 5);
+
+        if (is_wp_error($details)) {
+            AIPS_Ajax_Response::error($details->get_error_message(), $details->get_error_code());
+        }
+
+        AIPS_Ajax_Response::success($details);
     }
 
     /**

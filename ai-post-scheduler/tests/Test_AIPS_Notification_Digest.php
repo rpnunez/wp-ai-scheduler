@@ -45,7 +45,7 @@ class Test_AIPS_Notification_Digest extends WP_UnitTestCase {
 		$defaults = $this->config->get_default_options();
 
 		$this->assertArrayHasKey('aips_notif_digest_enabled', $defaults);
-		$this->assertFalse($defaults['aips_notif_digest_enabled']);
+		$this->assertTrue($defaults['aips_notif_digest_enabled']);
 
 		$this->assertArrayHasKey('aips_notif_digest_threshold', $defaults);
 		$this->assertSame(5, $defaults['aips_notif_digest_threshold']);
@@ -171,6 +171,58 @@ class Test_AIPS_Notification_Digest extends WP_UnitTestCase {
 
 		// Queue should now be empty after flush
 		$this->assertSame(0, $this->notifications->get_digest_queue_count());
+	}
+
+	public function test_enqueue_digest_notification_deduplicates_same_post_id_and_type() {
+		$this->config->set_option('aips_notif_digest_enabled', true);
+		$this->config->set_option('aips_notif_digest_threshold', 5);
+
+		$payload = array(
+			'title'   => 'Draft Post',
+			'message' => 'Post created',
+			'meta'    => array('post_id' => 42),
+		);
+
+		$this->assertTrue($this->notifications->enqueue_digest_notification('post_generated', $payload));
+		$this->assertSame(1, $this->notifications->get_digest_queue_count());
+
+		// Enqueueing identical type and post_id returns false and does not add duplicate
+		$this->assertFalse($this->notifications->enqueue_digest_notification('post_generated', $payload));
+		$this->assertSame(1, $this->notifications->get_digest_queue_count());
+	}
+
+	public function test_enqueue_digest_notification_upgrades_post_generated_to_ready_for_review() {
+		$this->config->set_option('aips_notif_digest_enabled', true);
+		$this->config->set_option('aips_notif_digest_threshold', 5);
+
+		// First, post_generated is enqueued for post 42
+		$this->assertTrue($this->notifications->enqueue_digest_notification('post_generated', array(
+			'title'   => 'Generated Post 42',
+			'message' => 'Created draft',
+			'meta'    => array('post_id' => 42),
+		)));
+		$this->assertSame(1, $this->notifications->get_digest_queue_count());
+
+		// Next, post_ready_for_review arrives for the same draft post 42
+		$this->assertTrue($this->notifications->enqueue_digest_notification('post_ready_for_review', array(
+			'title'   => 'Post ready for review: Post 42',
+			'message' => 'Awaiting review',
+			'meta'    => array('post_id' => 42),
+		)));
+
+		// Queue count should remain 1 (upgraded, not appended)
+		$this->assertSame(1, $this->notifications->get_digest_queue_count());
+
+		$queue = $this->notifications->get_digest_queue();
+		$this->assertSame('post_ready_for_review', $queue[0]['type']);
+		$this->assertSame('Post ready for review: Post 42', $queue[0]['title']);
+
+		// Subsequent post_generated for post 42 is ignored
+		$this->assertFalse($this->notifications->enqueue_digest_notification('post_generated', array(
+			'title'   => 'Generated Post 42',
+			'meta'    => array('post_id' => 42),
+		)));
+		$this->assertSame(1, $this->notifications->get_digest_queue_count());
 	}
 
 	// -----------------------------------------------------------------------

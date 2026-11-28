@@ -52,6 +52,11 @@ class AIPS_Deduplication_Service {
 	private $similarity_evaluator;
 
 	/**
+	 * @var object|null Topics repository for resolving matched topic titles.
+	 */
+	private $topics_repo;
+
+	/**
 	 * Initialize deduplication service.
 	 */
 	public function __construct(
@@ -60,7 +65,8 @@ class AIPS_Deduplication_Service {
 		$embeddings_service = null,
 		?AIPS_Config $config = null,
 		?AIPS_Logger_Interface $logger = null,
-		?AIPS_Similarity_Evaluator $similarity_evaluator = null
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null,
+		$topics_repo = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -70,6 +76,7 @@ class AIPS_Deduplication_Service {
 		$this->config               = $config               ?: AIPS_Config::get_instance();
 		$this->logger               = $logger               ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
+		$this->topics_repo          = $topics_repo;
 	}
 
 	/**
@@ -136,13 +143,32 @@ class AIPS_Deduplication_Service {
 			$best_type       = '';
 			$best_id         = 0;
 
-			$matches = $this->similarity_evaluator->find_top_matches($embedding, $all_candidates, 0.0, 1);
+			// Exclude the topic's own stored entry so a persisted topic (e.g. one
+			// being re-checked after an embeddings outage) is not matched against
+			// itself at ~1.0 similarity. New, unpersisted topics have no id and so
+			// match nothing here.
+			$self_id    = isset($topic['id']) ? (int) $topic['id'] : 0;
+			$candidates = $all_candidates;
+			if ($self_id > 0) {
+				$candidates = array_values(array_filter(
+					$all_candidates,
+					static function ($candidate) use ($self_id) {
+						return !('topic' === $candidate['type'] && (int) $candidate['id'] === $self_id);
+					}
+				));
+			}
+
+			$matches = $this->similarity_evaluator->find_top_matches($embedding, $candidates, 0.0, 1);
 			if (!empty($matches)) {
 				$top             = $matches[0];
 				$best_similarity = (float) $top['similarity'];
 				$best_type       = $top['type'];
 				$best_id         = $top['id'];
-				$best_match      = !empty($top['title']) ? $top['title'] : "{$top['type']} #{$top['id']}";
+				$resolved_title  = !empty($top['title']) ? (string) $top['title'] : '';
+				if ('' === $resolved_title && 'topic' === $best_type && $best_id > 0) {
+					$resolved_title = $this->resolve_topic_title((int) $best_id, $author_id);
+				}
+				$best_match = '' !== $resolved_title ? $resolved_title : "{$top['type']} #{$top['id']}";
 			}
 
 			$metadata = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
@@ -292,5 +318,30 @@ class AIPS_Deduplication_Service {
 		}
 
 		return $results;
+	}
+
+	/**
+	 * Resolve a stored topic's title for duplicate metadata reporting.
+	 *
+	 * @param int      $topic_id  Topic ID.
+	 * @param int|null $author_id Optional author ID for repository doubles that only implement get_by_author().
+	 * @return string
+	 */
+	private function resolve_topic_title(int $topic_id, ?int $author_id = null): string {
+		$repo = $this->topics_repo ?: new AIPS_Author_Topics_Repository();
+		if (is_callable(array($repo, 'get_by_id'))) {
+			$row = $repo->get_by_id($topic_id);
+			return ($row && !empty($row->topic_title)) ? (string) $row->topic_title : '';
+		}
+
+		if (is_object($repo) && $author_id !== null && is_callable(array($repo, 'get_by_author'))) {
+			foreach ((array) $repo->get_by_author($author_id) as $row) {
+				if (isset($row->id) && (int) $row->id === $topic_id && !empty($row->topic_title)) {
+					return (string) $row->topic_title;
+				}
+			}
+		}
+
+		return '';
 	}
 }

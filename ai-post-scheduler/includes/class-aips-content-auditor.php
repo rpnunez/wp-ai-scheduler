@@ -234,17 +234,24 @@ class AIPS_Content_Auditor {
 		// 2. Construct the prompt
 		$prompt = $this->generate_gap_analysis_prompt($niche, $existing_content);
 
-		// 3. Call AI Service
-		$options = array(
-			'temperature' => 0.7,
-		);
+		// 3. Execute via AIPS_Generation_Pipeline + AIPS_Content_Audit_Strategy
+		$options  = array('temperature' => 0.7);
+		$context  = new AIPS_Content_Audit_Generation_Context('gap_fallback', $prompt, $options, 0.7, true);
+		$registry = new AIPS_Generation_Component_Registry();
+		$registry->register(new AIPS_Content_Audit_Pass_Component($this->ai_service));
 
-		$response = $this->ai_service->generate_text($prompt, $options);
+		$strategy = new AIPS_Content_Audit_Strategy($registry, $this->ai_service);
+		$pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+		$result   = $pipeline->execute($context);
 
-		if (is_wp_error($response)) {
-			$this->logger->log("Gap analysis AI call failed: " . $response->get_error_message(), 'error');
-			return $response;
+		if ($result->is_failure()) {
+			$last_error = $strategy->get_last_error();
+			$error      = ($last_error instanceof WP_Error) ? $last_error : new WP_Error('ai_error', __('Gap analysis AI call failed.', 'ai-post-scheduler'));
+			$this->logger->log('Gap analysis AI call failed: ' . $error->get_error_message(), 'error');
+			return $error;
 		}
+
+		$response = (string) $result->get_data();
 
 		// 4. Parse JSON from text response
 		$parsed_response = $this->parse_json_response($response);

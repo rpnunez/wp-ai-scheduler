@@ -90,6 +90,22 @@ class AIPS_Generation_Result {
 	 */
 	public readonly float $generation_time;
 
+	/**
+	 * Universal strategy payload (e.g. int post_id, int[] topic_ids, array research_dossier, or component value).
+	 *
+	 * Defaults to $post_id for post-generation results when not explicitly supplied.
+	 *
+	 * @var mixed
+	 */
+	public readonly mixed $data;
+
+	/**
+	 * Associated history record ID (0 when not recorded).
+	 *
+	 * @var int
+	 */
+	public readonly int $history_id;
+
 	// -----------------------------------------------------------------------
 	// Constructor (private — use named constructors)
 	// -----------------------------------------------------------------------
@@ -97,24 +113,30 @@ class AIPS_Generation_Result {
 	/**
 	 * Constructor.
 	 *
-	 * @param int|null $post_id            Post ID on success; null on failure.
+	 * @param int|null $post_id            Post ID on success; null on failure or non-post strategies.
 	 * @param string   $status             One of the STATUS_* constants.
 	 * @param string[] $errors             Per-component error messages.
 	 * @param array    $component_statuses Boolean flag per generated component.
 	 * @param float    $generation_time    Elapsed time in seconds.
+	 * @param mixed    $data               Optional universal payload (defaults to $post_id when null).
+	 * @param int      $history_id         Optional history record ID.
 	 */
 	private function __construct(
 		?int $post_id,
 		string $status,
 		array $errors,
 		array $component_statuses,
-		float $generation_time
+		float $generation_time,
+		mixed $data = null,
+		int $history_id = 0
 	) {
 		$this->post_id            = $post_id;
 		$this->status             = $status;
 		$this->errors             = $errors;
 		$this->component_statuses = $component_statuses;
 		$this->generation_time    = $generation_time;
+		$this->data               = ($data !== null) ? $data : $post_id;
+		$this->history_id         = $history_id;
 	}
 
 	// -----------------------------------------------------------------------
@@ -130,19 +152,25 @@ class AIPS_Generation_Result {
 	 * @param int   $post_id            ID of the created post.
 	 * @param array $component_statuses Optional boolean flags per component.
 	 * @param float $generation_time    Optional elapsed time in seconds.
+	 * @param int   $history_id         Optional history record ID.
+	 * @param mixed $data               Optional universal payload (defaults to $post_id).
 	 * @return self
 	 */
 	public static function success(
 		int $post_id,
 		array $component_statuses = array(),
-		float $generation_time = 0.0
+		float $generation_time = 0.0,
+		int $history_id = 0,
+		mixed $data = null
 	): self {
 		return new self(
 			$post_id,
 			self::STATUS_COMPLETED,
 			array(),
 			$component_statuses,
-			$generation_time
+			$generation_time,
+			$data !== null ? $data : $post_id,
+			$history_id
 		);
 	}
 
@@ -156,20 +184,26 @@ class AIPS_Generation_Result {
 	 * @param string[] $errors             Per-component error messages.
 	 * @param array    $component_statuses Boolean flags per component.
 	 * @param float    $generation_time    Optional elapsed time in seconds.
+	 * @param int      $history_id         Optional history record ID.
+	 * @param mixed    $data               Optional universal payload (defaults to $post_id).
 	 * @return self
 	 */
 	public static function partial(
 		int $post_id,
 		array $errors = array(),
 		array $component_statuses = array(),
-		float $generation_time = 0.0
+		float $generation_time = 0.0,
+		int $history_id = 0,
+		mixed $data = null
 	): self {
 		return new self(
 			$post_id,
 			self::STATUS_PARTIAL,
 			$errors,
 			$component_statuses,
-			$generation_time
+			$generation_time,
+			$data !== null ? $data : $post_id,
+			$history_id
 		);
 	}
 
@@ -180,18 +214,59 @@ class AIPS_Generation_Result {
 	 *
 	 * @param string[] $errors          Human-readable error messages.
 	 * @param float    $generation_time Optional elapsed time in seconds.
+	 * @param int      $history_id      Optional history record ID.
+	 * @param array    $component_statuses Optional boolean flags per component.
 	 * @return self
 	 */
 	public static function failure(
 		array $errors = array(),
-		float $generation_time = 0.0
+		float $generation_time = 0.0,
+		int $history_id = 0,
+		array $component_statuses = array()
 	): self {
 		return new self(
 			null,
 			self::STATUS_FAILED,
 			$errors,
-			array(),
-			$generation_time
+			$component_statuses,
+			$generation_time,
+			null,
+			$history_id
+		);
+	}
+
+	/**
+	 * Create a universal strategy result from arbitrary payload data.
+	 *
+	 * Used by non-post strategies (topics, campaigns, research) and single-component
+	 * regeneration coordinators.
+	 *
+	 * @param mixed    $data               Result payload (e.g. int post_id, int[] topic_ids, string component value).
+	 * @param string   $status             One of the STATUS_* constants.
+	 * @param array    $component_statuses Boolean flags per component.
+	 * @param string[] $errors             Error messages.
+	 * @param int      $history_id         Associated history record ID.
+	 * @param float    $generation_time    Elapsed time in seconds.
+	 * @param int|null $post_id            Optional post ID when payload relates to a post.
+	 * @return self
+	 */
+	public static function from_data(
+		mixed $data,
+		string $status = self::STATUS_COMPLETED,
+		array $component_statuses = array(),
+		array $errors = array(),
+		int $history_id = 0,
+		float $generation_time = 0.0,
+		?int $post_id = null
+	): self {
+		return new self(
+			$post_id,
+			$status,
+			$errors,
+			$component_statuses,
+			$generation_time,
+			$data,
+			$history_id
 		);
 	}
 
@@ -200,20 +275,23 @@ class AIPS_Generation_Result {
 	 *
 	 * @param WP_Error $error           The WP_Error instance.
 	 * @param float    $generation_time Optional elapsed time in seconds.
+	 * @param int      $history_id      Optional history record ID.
 	 * @return self
 	 */
 	public static function from_wp_error(
 		WP_Error $error,
-		float $generation_time = 0.0
+		float $generation_time = 0.0,
+		int $history_id = 0
 	): self {
 		return self::failure(
 			array( $error->get_error_message() ),
-			$generation_time
+			$generation_time,
+			$history_id
 		);
 	}
 
 	// -----------------------------------------------------------------------
-	// Status helpers
+	// Status & Accessor helpers
 	// -----------------------------------------------------------------------
 
 	/**
@@ -250,5 +328,41 @@ class AIPS_Generation_Result {
 	 */
 	public function has_post(): bool {
 		return $this->post_id !== null;
+	}
+
+	/**
+	 * Return the universal generation payload.
+	 *
+	 * @return mixed
+	 */
+	public function get_data() {
+		return $this->data;
+	}
+
+	/**
+	 * Return per-component boolean success flags.
+	 *
+	 * @return array<string, bool>
+	 */
+	public function get_component_statuses(): array {
+		return $this->component_statuses;
+	}
+
+	/**
+	 * Return human-readable error strings accumulated during generation.
+	 *
+	 * @return string[]
+	 */
+	public function get_errors(): array {
+		return $this->errors;
+	}
+
+	/**
+	 * Return the associated history record ID.
+	 *
+	 * @return int
+	 */
+	public function get_history_id(): int {
+		return $this->history_id;
 	}
 }

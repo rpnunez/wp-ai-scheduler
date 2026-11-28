@@ -265,6 +265,10 @@ class AIPS_Admin_Assets {
 			$this->enqueue_ai_errors_tab_assets();
 		}
 
+		if ($this->is_diagnostics_tab($page, 'logs')) {
+			$this->enqueue_logs_tab_assets();
+		}
+
 	}
 
 	/**
@@ -371,6 +375,34 @@ class AIPS_Admin_Assets {
 			'pingFailed'          => __('Connection Failed', 'ai-post-scheduler'),
 			'exportFailed'        => __('Failed to export error logs.', 'ai-post-scheduler'),
 			'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+		));
+	}
+
+	/**
+	 * Enqueue assets for the Logs diagnostics tab.
+	 *
+	 * @return void
+	 */
+	private function enqueue_logs_tab_assets() {
+		wp_enqueue_script(
+			'aips-admin-logs',
+			AIPS_PLUGIN_URL . 'assets/js/admin-logs.js',
+			array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-admin-logs', 'aipsLogsL10n', array(
+			'ajaxUrl'             => admin_url('admin-ajax.php'),
+			'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+			'loadingLogs'         => __('Loading log entries…', 'ai-post-scheduler'),
+			'noLogsFound'         => __('No log entries found.', 'ai-post-scheduler'),
+			'errorLoading'        => __('Failed to load log entries.', 'ai-post-scheduler'),
+			'confirmEmpty'        => __('Are you sure you want to empty this log file? All contents will be cleared.', 'ai-post-scheduler'),
+			'confirmDelete'       => __('Are you sure you want to permanently delete this log file? This cannot be undone.', 'ai-post-scheduler'),
+			'copiedToClipboard'   => __('Log copied to clipboard!', 'ai-post-scheduler'),
+			'copyFailed'          => __('Failed to copy to clipboard.', 'ai-post-scheduler'),
+			'activeFileIndicator' => __('(Active)', 'ai-post-scheduler'),
 		));
 	}
 
@@ -675,7 +707,6 @@ class AIPS_Admin_Assets {
             'hideDetails'         => __('Hide details', 'ai-post-scheduler'),
             'copyDetails'         => __('Copy', 'ai-post-scheduler'),
             'copiedDetails'       => __('Copied!', 'ai-post-scheduler'),
-            'copyDiagnostic'       => __('Copy diagnostic', 'ai-post-scheduler'),
             'invalidHistoryId'    => __('Invalid history ID.', 'ai-post-scheduler'),
             'loadingFailed'       => __('Failed to load history modal.', 'ai-post-scheduler'),
             'loadingError'        => __('Error loading history modal.', 'ai-post-scheduler'),
@@ -712,7 +743,6 @@ class AIPS_Admin_Assets {
                             <div id="aips-history-modal-status"></div>
                             <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
                         </div>
-                        <div class="aips-history-modal-header-diagnostic"></div>
                     </div>
                 </div>
                 <div class="aips-modal-body" id="aips-history-modal-content" style="white-space: normal;"></div>
@@ -1343,7 +1373,23 @@ class AIPS_Admin_Assets {
                 'systemStatus'                   => __('System status', 'ai-post-scheduler'),
                 'notifications'                  => __('Notifications', 'ai-post-scheduler'),
                 'telemetry'                      => __('Telemetry', 'ai-post-scheduler'),
+                // Schedules table details row (assets/js/admin-schedules-table.js)
+                'detailsLoadFailed'              => __('Could not load schedule details.', 'ai-post-scheduler'),
+                /* translators: %d: number of recent items shown */
+                'recentOutputTitle'              => __('Last %d generated', 'ai-post-scheduler'),
+                'recentKindPost'                 => __('Post', 'ai-post-scheduler'),
+                'recentKindTopic'                => __('Topic', 'ai-post-scheduler'),
+                'resetCircuit'                   => __('Reset circuit & retry', 'ai-post-scheduler'),
+                'resumeBatch'                    => __('Resume batch', 'ai-post-scheduler'),
             ));
+
+            wp_enqueue_script(
+                'aips-admin-schedules-table',
+                AIPS_PLUGIN_URL . 'assets/js/admin-schedules-table.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
     }
 
     /**
@@ -1654,7 +1700,6 @@ class AIPS_Admin_Assets {
                 'hideDetails'          => __('Hide details', 'ai-post-scheduler'),
                 'copyDetails'          => __('Copy', 'ai-post-scheduler'),
                 'copiedDetails'        => __('Copied!', 'ai-post-scheduler'),
-                'copyDiagnostic'        => __('Copy diagnostic', 'ai-post-scheduler'),
                 'confirmDelete'        => __('Delete this history container? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmBulkDelete'    => __('Delete the selected history containers? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmDeleteLabel'   => __('Yes, delete', 'ai-post-scheduler'),
