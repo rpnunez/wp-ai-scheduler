@@ -54,6 +54,7 @@
 - **Clean up after yourself.** If you started the Docker stack, stop it when finished (`make test-session` does this; otherwise `make stop`). If it was already running, leave it. Never use `make down`, `down -v`, `make clean`/`prune` to clean up. Delete scratch/coverage files you created, and state in your final response what you started and stopped.
 - `make test` runs PHPUnit inside the `web` container against a separate `wp_tests` database; it needs no host PHP. Host-side `composer test` / `make test-ci` are for CI parity only; set `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable there.
 - Need data from a database (dev or production) to diagnose a bug? Do not hand-roll `docker exec` SQL or ask the user to paste queries into phpMyAdmin: write the queries to `.artifacts/sql-queries/*.sql` and follow `.claude/skills/sql-batch/SKILL.md` (`make sql-batch QUERIES=...`; read-only, secrets redacted, results in `.artifacts/sql-results/`).
+- Before and after a change to a prompt builder, `AIPS_Generator`, or `AIPS_AI_Service`/providers, run `make ai-payload-capture` (see TESTING.md) and diff the two `REPORT.md`s — it runs the real generation pipeline against the real AI connector and records the exact prompts/options/HTTP payloads sent for several generation paths, so a prompt regression is visible before it reaches a PR.
 - Each `./start-dev.sh` run logs to `.artifacts/start-dev-*.log` (gitignored); check the newest one when the environment misbehaves. Never print or commit API keys from `.env`.
 
 ## Documentation ownership
