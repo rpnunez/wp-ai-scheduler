@@ -217,6 +217,94 @@ class Test_AIPS_AI_Errors_Diagnostics extends WP_UnitTestCase {
 	/**
 	 * Test ajax_get_ai_errors permissions and success response.
 	 */
+	private function capture_ajax( callable $callable ): array {
+		ob_start();
+
+		try {
+			$callable();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected.
+		} catch ( WPAjaxDieStopException $e ) {
+			// Expected.
+		} catch ( \WPDieException $e ) {
+			$output = ob_get_clean();
+			return array(
+				'success' => false,
+				'raw'     => $output,
+				'die'     => $e->getMessage(),
+			);
+		}
+
+		$output  = ob_get_clean();
+		$decoded = json_decode( $output, true );
+
+		return is_array( $decoded ) ? $decoded : array( 'raw' => $output );
+	}
+
+	public function test_ajax_get_ai_errors_rejects_invalid_nonce() {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$_POST    = array( 'nonce' => 'invalid' );
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax( array( $this->controller, 'ajax_get_ai_errors' ) );
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'Invalid nonce.', $response['data']['message'] );
+	}
+
+	public function test_ajax_get_ai_error_summary_rejects_unauthorized_user() {
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber_id );
+
+		$_POST    = array( 'nonce' => wp_create_nonce( 'aips_ajax_nonce' ) );
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax( array( $this->controller, 'ajax_get_ai_error_summary' ) );
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'permission_denied', $response['data']['code'] );
+	}
+
+	public function test_ajax_get_ai_error_details_rejects_missing_log_id() {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$_POST    = array( 'nonce' => wp_create_nonce( 'aips_ajax_nonce' ) );
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax( array( $this->controller, 'ajax_get_ai_error_details' ) );
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'Invalid error log ID.', $response['data']['message'] );
+	}
+
+	public function test_ajax_get_ai_error_summary_returns_stats_shape() {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$_POST    = array(
+			'nonce'       => wp_create_nonce( 'aips_ajax_nonce' ),
+			'error_scope' => 'ai_only',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax( array( $this->controller, 'ajax_get_ai_error_summary' ) );
+		$this->assertTrue( $response['success'] );
+		$this->assertIsArray( $response['data'] );
+	}
+
+	public function test_ajax_export_ai_errors_rejects_invalid_nonce() {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$_REQUEST = array(
+			'nonce'  => 'invalid',
+			'format' => 'json',
+		);
+
+		$this->expectException( \WPDieException::class );
+		$this->controller->ajax_export_ai_errors();
+	}
+
 	public function test_ajax_get_ai_errors_authorized() {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
