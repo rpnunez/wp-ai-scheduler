@@ -6,26 +6,6 @@
  */
 
 class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
-	public function test_notification_transient_cleanup_is_scoped_and_idempotent() {
-		set_transient( 'aips_notif_' . md5( 'legacy-key' ), 1, 3600 );
-		set_transient( 'aips_other_key', 1, 3600 );
-		set_transient( 'aipsXnotif_other_key', 1, 3600 );
-		update_option( 'aips_notif_digest_queue', array( 'keep' ), false );
-		$migrations = new AIPS_DB_Migrations();
-		$method = new ReflectionMethod( $migrations, 'migrate_to_3_7_25' );
-		$method->setAccessible( true );
-		$this->assertTrue( $method->invoke( $migrations ) );
-		$this->assertTrue( $method->invoke( $migrations ) );
-		global $wpdb;
-		$this->assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name IN (%s, %s)", '_transient_aips_notif_' . md5( 'legacy-key' ), '_transient_timeout_aips_notif_' . md5( 'legacy-key' ) ) ) );
-		$this->assertSame( 1, get_transient( 'aips_other_key' ) );
-		$this->assertSame( 1, get_transient( 'aipsXnotif_other_key' ) );
-		$this->assertSame( array( 'keep' ), get_option( 'aips_notif_digest_queue' ) );
-		delete_transient( 'aips_other_key' );
-		delete_transient( 'aipsXnotif_other_key' );
-		delete_option( 'aips_notif_digest_queue' );
-	}
-
 	public function setUp(): void {
 		parent::setUp();
 
@@ -41,6 +21,40 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		AIPS_Config::get_instance()->set_option('aips_db_version', null);
 		delete_option('aips_db_version');
 		parent::tearDown();
+	}
+
+	public function test_notification_transient_cleanup_is_scoped_and_idempotent() {
+		set_transient( 'aips_notif_' . md5( 'legacy-key' ), 1, 3600 );
+		set_transient( 'aips_other_key', 1, 3600 );
+		set_transient( 'aipsXnotif_other_key', 1, 3600 );
+		update_option( 'aips_notif_digest_queue', array( 'keep' ), false );
+		$migrations = new AIPS_DB_Migrations();
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_26' );
+		$method->setAccessible( true );
+		try {
+			$this->assertTrue( $method->invoke( $migrations ) );
+			$this->assertTrue( $method->invoke( $migrations ) );
+			global $wpdb;
+			$this->assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name IN (%s, %s)", '_transient_aips_notif_' . md5( 'legacy-key' ), '_transient_timeout_aips_notif_' . md5( 'legacy-key' ) ) ) );
+			$this->assertSame( 1, get_transient( 'aips_other_key' ) );
+			$this->assertSame( 1, get_transient( 'aipsXnotif_other_key' ) );
+			$this->assertSame( array( 'keep' ), get_option( 'aips_notif_digest_queue' ) );
+		} finally {
+			delete_transient( 'aips_other_key' );
+			delete_transient( 'aipsXnotif_other_key' );
+			delete_option( 'aips_notif_digest_queue' );
+		}
+	}
+
+	public function test_migrate_to_3_7_26_runs_when_stored_version_is_3_7_25() {
+		set_transient( 'aips_notif_' . md5( 'stamped-3-7-25' ), 1, 3600 );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.25' );
+
+		AIPS_DB_Migrations::check_and_run();
+
+		global $wpdb;
+		$this->assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name IN (%s, %s)", '_transient_aips_notif_' . md5( 'stamped-3-7-25' ), '_transient_timeout_aips_notif_' . md5( 'stamped-3-7-25' ) ) ) );
+		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
 	}
 
 	/**

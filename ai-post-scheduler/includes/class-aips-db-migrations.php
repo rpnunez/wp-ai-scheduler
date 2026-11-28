@@ -314,7 +314,10 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
-		if ( version_compare( $from_version, '3.7.25', '<' ) && ! $this->migrate_to_3_7_25() ) {
+		// migrate_to_3_7_26() deletes leftover notification-dedupe transients.
+		// Gated above 3.7.25 so a site already stamped 3.7.25 (main) still runs
+		// this cleanup after this plugin bump.
+		if ( version_compare( $from_version, '3.7.26', '<' ) && ! $this->migrate_to_3_7_26() ) {
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
 			$this->logger->log( 'Notification transient cleanup failed; database upgrade will retry.', 'error' );
 			return;
@@ -1934,22 +1937,34 @@ class AIPS_DB_Migrations {
 
 
 	/**
-	 * Remove legacy notification dedupe transients.
+	 * Migration for version 3.7.26.
+	 *
+	 * Removes leftover `_transient_aips_notif_%` and
+	 * `_transient_timeout_aips_notif_%` option rows from the pre-DB dedupe
+	 * path. Underscores are escaped so the LIKE pattern is literal. Safe to
+	 * rerun; a failed DELETE returns false so run_upgrade() leaves the stored
+	 * version unchanged.
 	 *
 	 * @return bool
 	 */
-	private function migrate_to_3_7_25() {
+	private function migrate_to_3_7_26() {
 		global $wpdb;
 
-		$pattern = $wpdb->esc_like( '_transient_aips_notif_' ) . '%';
+		$pattern         = $wpdb->esc_like( '_transient_aips_notif_' ) . '%';
 		$timeout_pattern = $wpdb->esc_like( '_transient_timeout_aips_notif_' ) . '%';
-		$result = $wpdb->query( $wpdb->prepare(
+		$result          = $wpdb->query( $wpdb->prepare(
 			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
 			$pattern,
 			$timeout_pattern
 		) );
 
-		return false !== $result;
+		if ( false === $result ) {
+			return false;
+		}
+
+		$this->logger->log( 'Migration 3.7.26: Removed legacy notification dedupe transients.', 'info' );
+
+		return true;
 	}
 
 	/**

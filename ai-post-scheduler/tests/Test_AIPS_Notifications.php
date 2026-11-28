@@ -516,8 +516,21 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		}
 		$this->assertTrue( $this->repository->was_recently_sent( 'email-only-receipt', 3600 ) );
 		$this->assertSame( 0, $this->repository->count_unread() );
+		$this->assertSame( array(), $this->repository->get_unread() );
 		$this->assertArrayNotHasKey( AIPS_Notifications_Repository::EMAIL_DEDUPE_RECEIPT_TYPE, $this->repository->get_type_counts_for_window( 3600 ) );
 		$this->assertFalse( get_transient( 'aips_notif_' . md5( 'email-only-receipt' ) ) );
+	}
+
+	public function test_email_receipt_is_hidden_even_when_unread() {
+		$this->repository->create_notification(
+			array(
+				'type'       => AIPS_Notifications_Repository::EMAIL_DEDUPE_RECEIPT_TYPE,
+				'dedupe_key' => 'leaked-receipt',
+				'is_read'    => 0,
+			)
+		);
+		$this->assertSame( 0, $this->repository->count_unread() );
+		$this->assertSame( array(), $this->repository->get_unread() );
 	}
 
 	public function test_failed_email_does_not_create_dedupe_receipt() {

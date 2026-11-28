@@ -624,10 +624,12 @@ class AIPS_Notifications {
 		}
 
 		if ($sent && '' !== $dedupe_key && $dedupe_window > 0 && !in_array(self::CHANNEL_DB, $channels, true)) {
+			$now = AIPS_DateTime::now()->timestamp();
 			$this->repository->create_notification(array(
 				'type'       => AIPS_Notifications_Repository::EMAIL_DEDUPE_RECEIPT_TYPE,
 				'dedupe_key' => $dedupe_key,
 				'is_read'    => 1,
+				'read_at'    => $now,
 			));
 		}
 

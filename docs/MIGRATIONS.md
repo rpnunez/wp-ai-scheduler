@@ -1,8 +1,8 @@
 # AI Post Scheduler - Database Schema Updates
 
-## Notification dedupe cleanup (3.7.25)
+## Notification dedupe cleanup (3.7.26)
 
-Notification dispatch now uses the indexed `aips_notifications` dedupe lookup. Email-only deliveries store an already-read receipt so they retain deduplication without a transient. The versioned cleanup deletes legacy `_transient_aips_notif_%` and `_transient_timeout_aips_notif_%` options. The SQL pattern escapes the literal underscores and is safe to rerun; a failed delete leaves the prior version gate for retry. Existing notification records and the digest queue are preserved.
+Notification dispatch now uses the indexed `aips_notifications` dedupe lookup. Email-only deliveries store an already-read receipt so they retain deduplication without a transient. The versioned cleanup deletes legacy `_transient_aips_notif_%` and `_transient_timeout_aips_notif_%` options. The SQL pattern escapes the literal underscores and is safe to rerun; a failed delete leaves the prior version gate for retry. Existing notification records and the digest queue are preserved. Sites already stamped `3.7.25` still receive this cleanup because the gate is `version_compare( $from_version, '3.7.26', '<' )`.
 
 ## Author featured images and post content images (3.7.24)
 
