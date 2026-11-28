@@ -281,12 +281,6 @@ class AIPS_Settings_Manager {
 			$value = AIPS_Config::get_instance()->get_option( $key, $definition->get_default() );
 		}
 
-		$render_callback = $definition->get_render_callback();
-		if ( ! empty( $render_callback ) && is_callable( $render_callback ) ) {
-			echo call_user_func( $render_callback, $definition, $value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-			return;
-		}
-
 		$this->renderer->render_field( $definition, $value );
 	}
 }
