@@ -241,7 +241,7 @@ db-restore: ## Restore database from backup.sql
 	docker compose exec -T -e MYSQL_PWD="$(MYSQL_PASSWORD)" db mariadb -u "$(MYSQL_USER)" "$(MYSQL_DATABASE)" < backup.sql
 	@echo "$(GREEN)Database restored!$(NC)"
 
-pr-portfolio: ## Inventory open PRs and write a merge/close disposition report
+pr-portfolio: ## Inventory open PRs and write JSON, Markdown, and HTML disposition reports
 	mkdir -p .artifacts/pr-portfolio
 	node scripts/pr-portfolio/inventory.mjs .artifacts/pr-portfolio/inventory.json
 	node scripts/pr-portfolio/report.mjs .artifacts/pr-portfolio/inventory.json

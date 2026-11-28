@@ -5,7 +5,7 @@ Rank and route multiple open pull requests. This workflow prioritizes work; it d
 ## Phase 1 — Define the portfolio
 
 1. Resolve repository and default branch.
-2. Collect the open set by running `make pr-portfolio` and read `.artifacts/pr-portfolio/disposition.md` before ranking. Record the query timestamp from that report.
+2. Collect the open set by running `make pr-portfolio` and read `.artifacts/pr-portfolio/disposition.md` (or the filterable `disposition.html`) before ranking. Record the query timestamp from that report.
 3. Gather head/base refs, draft state, checks, conflicts, approvals, labels, linked issues, activity, and changed areas.
 4. Record unavailable fields explicitly.
 
