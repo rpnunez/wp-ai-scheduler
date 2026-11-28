@@ -606,3 +606,71 @@ Skip semantic re-indexing (embeddings + relationships) for a post save. Auto-lin
 Response and prompt limits default through `AIPS_Config`: `aips_source_fetch_max_response_bytes` (2097152 bytes; responses reaching the limit are rejected) and `aips_source_prompt_total_max_chars` (16000 Unicode snippet characters). Per-Source limits remain in effect. Archive selection projects one least-used/FIFO snapshot per eligible Source without loading raw HTML.
 
 Injected `AIPS_AI_Service_Interface` implementations must support the internal `_aips_on_submission` option: invoke its callable immediately before the first provider attempt, after local guards, and strip it from provider parameters and logs. Preserve the same one-shot callback across retries and JSON fallbacks. The default service implements this boundary; rendering alone never invokes it.
+
+## Notification Email Design Filters (added in 3.8.0)
+
+Notification emails are composed as a structured `AIPS_Email_View` and rendered by
+`AIPS_Email_Renderer` through `templates/email/layout.php` and the partials in
+`templates/email/partials/`. These three filters cover re-skinning, re-composing,
+and post-processing without replacing a template file.
+
+### `aips_email_theme`
+
+Filters the design token map used by every email partial: colours, semantic tones,
+fonts, sizes, and radii. Merged one level deep, so returning only a changed
+`color` group keeps the other groups intact. Call `AIPS_Email_Theme::flush_cache()`
+if the filter is registered after the map has already been built.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array $tokens` Token map, grouped by `color`, `tone`, `font`, `size`, `radius`.
+
+---
+
+### `aips_email_view`
+
+Filters the composed view before it is rendered. Use it to add or reorder a
+metadata cell, change an action label, or re-tone a notification type. Must return
+an `AIPS_Email_View`; anything else is ignored and the unfiltered view is used.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `AIPS_Email_View $view` The composed view.
+    *   `string $type` Notification type slug.
+    *   `array $context` Dispatch context: `title`, `message`, `url`, `level`, `meta`, `vars`.
+
+---
+
+### `aips_email_html`
+
+Filters the final rendered HTML document, after the layout and all partials have
+run. Intended for post-processing such as CSS inlining or tracking parameters.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $html` Rendered HTML document.
+    *   `AIPS_Email_View $view` The view it was rendered from.
+
+---
+
+### `aips_email_uses_design_system`
+
+Filters whether a notification type renders through the designed layout or through
+its template's own `{{token}}` body. Defaults to true only for the plugin's own,
+unmodified built-in templates. Return true to opt a custom type into the designed
+layout, or false to opt a built-in type back out.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `bool $uses_design_system` Default: true for an untouched built-in template, false otherwise.
+    *   `string $type` Notification type slug.
+
+---
+
+**Fallback behaviour.** A notification type registered by third-party code through
+`aips_notification_templates` — and a built-in type whose template such code has
+*replaced* — keeps rendering the `{{token}}` body stored on its
+`AIPS_Notification_Template`, so a custom message and its custom tokens are never
+discarded in favour of the generic designed view. The designed layout is used only
+for the plugin's own untouched templates; if its rendering fails for any reason,
+`send_email_notification()` still falls back to the template's own body.

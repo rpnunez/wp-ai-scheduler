@@ -231,6 +231,7 @@ class AIPS_Ajax_Registry {
 		'aips_save_settings'              => 'AIPS_Settings_Ajax',
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
 		'aips_flush_notification_digest' => 'AIPS_Settings_Ajax',
+		'aips_send_test_notification_email' => 'AIPS_Settings_Ajax',
 
 		// Sources Controller
 		'aips_get_sources'                => 'AIPS_Sources_Controller',

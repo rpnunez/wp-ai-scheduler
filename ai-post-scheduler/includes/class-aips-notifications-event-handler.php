@@ -369,6 +369,9 @@ class AIPS_Notifications_Event_Handler {
 			'source_label'      => $this->get_source_label($context),
 			'post_status'       => $post_status,
 			'post_status_label' => $this->format_post_status_label($post_status),
+			// The email's "Generated" cell reports how the post was created, so it
+			// needs the method that was already resolved above.
+			'creation_method'   => $creation_method,
 			'dedupe_key'        => 'post_generated_' . $post_id,
 			'dedupe_window'     => 60,
 		));
@@ -658,6 +661,34 @@ class AIPS_Notifications_Event_Handler {
 
 		$review_ready = isset($counts['post_ready_for_review']) ? (int) $counts['post_ready_for_review'] : 0;
 
+		// Digest and summary emails list what was generated, with timestamps, so
+		// the rollup carries the rows as well as the totals.
+		$recent = $this->repository->get_recent_for_window(
+			$window_seconds,
+			array('template_generated', 'manual_generation_completed'),
+			5
+		);
+
+		$items = array();
+
+		foreach ($recent as $row) {
+			$row_title = isset($row->title) ? (string) $row->title : '';
+
+			if ('' === $row_title && isset($row->message)) {
+				$row_title = (string) $row->message;
+			}
+
+			if ('' === $row_title) {
+				continue;
+			}
+
+			$items[] = array(
+				'title'      => $row_title,
+				'url'        => isset($row->url) ? (string) $row->url : '',
+				'created_at' => isset($row->created_at) ? (int) $row->created_at : 0,
+			);
+		}
+
 		return array(
 			'generated'    => $generated,
 			'review_ready' => $review_ready,
@@ -665,6 +696,7 @@ class AIPS_Notifications_Event_Handler {
 			'window'       => $window_seconds,
 			'dedupe_key'   => sanitize_key($dedupe_key),
 			'types'        => $counts,
+			'items'        => $items,
 		);
 	}
 

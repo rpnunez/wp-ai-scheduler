@@ -8,6 +8,21 @@
   - Redesigned toolbar with unified Auto-Refresh button group, compact line limits (100–2,000 entries), native segmented Formatted/Raw switch, live keyword search, clipboard copying, and direct full file download streaming.
   - Added log management actions with confirmation dialogs supporting both emptying (truncating to 0 bytes) and deleting log files from disk.
   - Added path traversal guards, strict regex validation, capability checks, and comprehensive unit tests in `Test_AIPS_Diagnostics_Logs.php`.
+- **Redesigned notification emails (`AIPS_Email_Theme`, `AIPS_Email_View`, `AIPS_Email_View_Factory`, `AIPS_Email_Renderer`):** every notification email is now composed as a structured view and rendered through a shared layout with reusable partials, implementing the `Email/Emails.dc.html` design.
+  - `AIPS_Email_Theme` holds every colour, tone, font, size, and radius as one filterable token map (`aips_email_theme`); no partial hardcodes a hex value.
+  - `AIPS_Email_View` is an immutable value object describing the regions an email contains. It normalises its own input: a metadata cell with no value is dropped so the grid re-flows, only the first action can be primary, and a stat tile value of `0` is preserved. Every field is plain text — post content arrives as typed preview blocks, so generated content cannot inject markup into an email.
+  - `AIPS_Email_View_Factory` replaces `build_details_html()`'s raw payload dump with curated, ordered metadata per notification family, and derives what the design shows but the payloads did not carry: word count and reading time, primary category, site-local event time, status pill tone, and a truncated content preview.
+  - `AIPS_Email_Renderer` composes `templates/email/layout.php` with twelve partials (status banner, brand bar, eyebrow/headline, callout, metadata cells, stat tiles, item rows, featured image, content preview, actions, status pill, footer) and produces a plain-text alternative part, now attached via `phpmailer_init`.
+  - New filters: `aips_email_theme`, `aips_email_view`, `aips_email_html`, `aips_email_uses_design_system` (documented in `docs/HOOKS.md`).
+  - The designed layout applies only to the plugin's own unmodified templates. A notification type registered through `aips_notification_templates`, or a built-in type whose template another plugin replaces, keeps rendering its own `{{token}}` body so a custom message is never discarded.
+- **Send Test Email (Settings → Notifications):** a notification-type picker and button (`aips_send_test_notification_email`) that mails a representative sample of any notification type to the requesting administrator, so the layouts can be checked in a real mail client without waiting for a live event. Sample data comes from `AIPS_Email_Preview` and runs through the live factory and renderer, using a real recent post when one exists.
+- `AIPS_Notifications_Repository::get_recent_for_window()` returns recent notification rows (title, url, timestamp) rather than only per-type counts, so digest and summary emails can list what actually happened. `build_rollup_payload()` now includes those items.
+- `AIPS_Settings_Form_Renderer::render_action()` accepts a `before_html` control option, for actions that need an input of their own beside the button.
+
+### Changed
+- Notification emails are table-based with fully inline styles. The previous layout styled itself from a `<style>` block, which Gmail strips, so `.button`, `.alert-box`, and `.post-item` had been rendering unstyled there. The `<style>` block now carries only progressive enhancement (mobile stacking, dark mode).
+- `post_generated` emails send a truncated preview (excerpt, roughly three blocks, and a link to the editor) instead of the entire post body.
+- Email subjects are unchanged: they still render from the notification template, so existing inbox rules keep matching.
 
 ### Fixed
 - **Settings dropdowns after the Settings refactor:** restored choices to empty select and multiselect controls, retained saved values when dynamic choices disappear, and kept custom-rendered field descriptions in the shared renderer.

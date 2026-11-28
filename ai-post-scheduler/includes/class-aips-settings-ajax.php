@@ -39,6 +39,7 @@ class AIPS_Settings_AJAX {
 		add_action('wp_ajax_aips_save_settings', array($this, 'ajax_save_settings'));
 		add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
 		add_action('wp_ajax_aips_flush_notification_digest', array($this, 'ajax_flush_notification_digest'));
+		add_action('wp_ajax_aips_send_test_notification_email', array($this, 'ajax_send_test_notification_email'));
 	}
 
 	/**
@@ -182,6 +183,85 @@ class AIPS_Settings_AJAX {
 				$flushed
 			),
 			'queue_count' => 0,
+		));
+	}
+
+	/**
+	 * Send a test notification email so the design can be checked in a real client.
+	 *
+	 * Renders the chosen notification type through the live view factory and
+	 * renderer, with representative sample data, and mails it to the current user.
+	 *
+	 * @return void
+	 */
+	public function ajax_send_test_notification_email() {
+		$this->verify_request();
+
+		$type = isset($_POST['notification_type']) ? sanitize_key(wp_unslash($_POST['notification_type'])) : '';
+
+		$selectable = AIPS_Email_Preview::selectable_types();
+
+		if ('' === $type || !isset($selectable[$type])) {
+			AIPS_Ajax_Response::invalid_request(__('Choose a notification type to preview.', 'ai-post-scheduler'));
+		}
+
+		// Test emails go to the requesting administrator, never to the configured
+		// recipient list: this is a design check, not a notification.
+		$recipient = sanitize_email((string) wp_get_current_user()->user_email);
+
+		if (empty($recipient) || !is_email($recipient)) {
+			AIPS_Ajax_Response::error(array(
+				'message' => __('Your user account has no valid email address to send the test to.', 'ai-post-scheduler'),
+			));
+		}
+
+		$notifications = AIPS_Notifications::instance();
+		$preview       = new AIPS_Email_Preview();
+		$view          = $notifications->build_email_view($type, $preview->context_for($type));
+
+		if (!$view instanceof AIPS_Email_View) {
+			AIPS_Ajax_Response::error(array(
+				'message' => __('Could not build a preview for that notification type.', 'ai-post-scheduler'),
+			));
+		}
+
+		$body = $notifications->render_email_view($view);
+
+		if ('' === $body) {
+			AIPS_Ajax_Response::error(array(
+				'message' => __('The email layout template could not be rendered.', 'ai-post-scheduler'),
+			));
+		}
+
+		$subject = sprintf(
+			/* translators: %s: notification type label */
+			__('[Test] %s', 'ai-post-scheduler'),
+			$view->get('subject', $selectable[$type])
+		);
+
+		$sent = wp_mail(
+			$recipient,
+			$subject,
+			$body,
+			array(
+				'Content-Type: text/html; charset=UTF-8',
+				'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>',
+			)
+		);
+
+		if (!$sent) {
+			AIPS_Ajax_Response::error(array(
+				'message' => __('WordPress could not send the test email. Check this site\'s mail configuration.', 'ai-post-scheduler'),
+			));
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message' => sprintf(
+				/* translators: 1: notification type label, 2: recipient email address */
+				__('Sent a "%1$s" test email to %2$s.', 'ai-post-scheduler'),
+				$selectable[$type],
+				$recipient
+			),
 		));
 	}
 

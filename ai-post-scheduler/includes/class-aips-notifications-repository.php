@@ -278,4 +278,47 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 
 		return $counts;
 	}
+
+	/**
+	 * Return the most recent notification rows for a time window.
+	 *
+	 * Digest and summary emails list what actually happened (titles and times),
+	 * not just how many times it happened, so they need rows rather than counts.
+	 *
+	 * @param int   $seconds Time window in seconds.
+	 * @param array $types   Optional list of type slugs to include.
+	 * @param int   $limit   Maximum number of rows to return (1–50).
+	 * @return array<int, object> Rows with type, title, url, and created_at.
+	 */
+	public function get_recent_for_window($seconds, array $types = array(), $limit = 10) {
+		$seconds = absint($seconds);
+
+		if ($seconds < 1) {
+			return array();
+		}
+
+		$limit = absint($limit);
+		$limit = ($limit < 1) ? 10 : min($limit, 50);
+
+		$cutoff_timestamp = AIPS_DateTime::now()->timestamp() - $seconds;
+
+		$sql    = "SELECT type, title, message, url, created_at FROM {$this->table} WHERE created_at >= %d";
+		$params = array($cutoff_timestamp);
+
+		if (!empty($types)) {
+			$types = array_values(array_filter(array_map('sanitize_key', $types)));
+			if (!empty($types)) {
+				$placeholders = implode(',', array_fill(0, count($types), '%s'));
+				$sql         .= " AND type IN ({$placeholders})";
+				$params       = array_merge($params, $types);
+			}
+		}
+
+		$sql     .= ' ORDER BY created_at DESC LIMIT %d';
+		$params[] = $limit;
+
+		$rows = $this->wpdb->get_results($this->wpdb->prepare($sql, $params));
+
+		return is_array($rows) ? $rows : array();
+	}
 }

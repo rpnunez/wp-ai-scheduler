@@ -47,10 +47,29 @@ class AIPS_Notification_Templates {
 	private $templates = array();
 
 	/**
+	 * Object ids of the templates registered by register_defaults(), keyed by type.
+	 *
+	 * Used by uses_design_system() to tell an untouched built-in template apart
+	 * from one a third party has replaced through the `aips_notification_templates`
+	 * hook.  A replaced template carries its own body, which must keep rendering
+	 * through the legacy `{{token}}` path rather than being discarded in favour of
+	 * the designed layout.
+	 *
+	 * @var array<string, int>
+	 */
+	private $builtin_object_ids = array();
+
+	/**
 	 * Constructor – registers built-in templates then fires the action hook.
 	 */
 	public function __construct() {
 		$this->register_defaults();
+
+		// Snapshot which templates are the plugin's own, before third-party code
+		// gets a chance to add or replace any.
+		foreach ($this->templates as $type => $template) {
+			$this->builtin_object_ids[$type] = spl_object_id($template);
+		}
 
 		/**
 		 * Action: aips_notification_templates
@@ -92,6 +111,41 @@ class AIPS_Notification_Templates {
 	 */
 	public function all() {
 		return $this->templates;
+	}
+
+	/**
+	 * Whether a notification type should be rendered through the designed email
+	 * layout rather than its template's own `{{token}}` body.
+	 *
+	 * Only the plugin's own, unmodified built-in templates qualify.  A type added
+	 * by third-party code, or a built-in type whose template another plugin has
+	 * replaced through the `aips_notification_templates` hook, keeps rendering its
+	 * registered body — otherwise that custom body (and any custom tokens in it)
+	 * would be silently dropped in favour of the generic designed view.
+	 *
+	 * @param string $type Notification type slug.
+	 * @return bool
+	 */
+	public function uses_design_system($type) {
+		$type = (string) $type;
+
+		$is_builtin = isset($this->templates[$type])
+			&& isset($this->builtin_object_ids[$type])
+			// A replaced template is a different object, even under the same slug.
+			&& spl_object_id($this->templates[$type]) === $this->builtin_object_ids[$type];
+
+		/**
+		 * Filter: aips_email_uses_design_system
+		 *
+		 * Lets an integration opt a custom notification type into the designed
+		 * layout (return true), or opt a built-in type back out of it (return
+		 * false) so its template body is used instead.
+		 *
+		 * @since 3.8.0
+		 * @param bool   $uses_design_system Whether the designed layout is used.
+		 * @param string $type               Notification type slug.
+		 */
+		return (bool) apply_filters('aips_email_uses_design_system', $is_builtin, $type);
 	}
 
 	// -----------------------------------------------------------------------
