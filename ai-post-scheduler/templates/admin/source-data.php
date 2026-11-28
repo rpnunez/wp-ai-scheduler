@@ -74,6 +74,7 @@ $back_url         = AIPS_Admin_Menu_Helper::get_page_url('sources');
 				</div>
 			</div>
 		</div>
+		<?php AIPS_Admin_Flyout_Navigation::render_compact_nav('aips-source-data'); ?>
 
 		<div class="aips-content-panel">
 			<?php if (!$is_global_view && !$source): ?>

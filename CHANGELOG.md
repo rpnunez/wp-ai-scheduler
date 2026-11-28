@@ -63,6 +63,8 @@
 - **DevStackTips setup script v3** (`scripts/setup-devstacktips-content.php`): dry run by default, `apply` writes a JSON backup first, `rollback <file>` restores it. Seeds only objects that are missing and changes only v3-managed fields, so live edits are kept. Turns on AI slugs, per-template title prompts, featured and in-content AI images (no Unsplash), per-schedule article structures, template voices, source groups for every sourced template (two new groups with eight feeds), and score-based topic approval with a daily 1-post cadence for the original authors.
 - Added `scripts/export-aips-snapshot.php`, a read-only WP-CLI export of the AIPS configuration and 90-day stats, and `docs/devstacktips/SNAPSHOT_ANALYSIS_2026-11-08.md`.
 - Streamlined Classic and Block Editor AI Edit panels, clarified inserted candidate feedback, and aligned Insights and Internal Links panel controls.
+- Replaced the in-page rails on Automations, Studio, Research, Content, and Diagnostics with accessible WordPress admin flyout navigation; Studio now opens Templates directly and exposes Structure Sections as a dedicated route, while Settings retains its rail.
+- Unified the admin flyouts: every hub now shares one fixed-size two-column layout (Studio splits into Generation / Building Blocks, Research into Discovery / Planning, with short one-line descriptions), hover and active items share the primary tint, and items have roomier spacing. Flyout groups declare their column in `AIPS_Admin_Page_Context` instead of per-hub CSS.
 
 ### Performance
 - **AI Prompt Bloat Optimization & Input Token Reduction:**
