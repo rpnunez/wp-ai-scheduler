@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- **Notification dedupe without transients (3.8.1):** dispatch now dedupes from `aips_notifications` instead of `aips_notif_*` transients. Email-only deliveries write a hidden already-read receipt. Upgrade deletes leftover `_transient_aips_notif_%` option rows.
+
 ### Added
 - **Diagnostics Logs Viewer:**
   - Added dedicated **Logs** rail tab to the Diagnostics Hub (`admin.php?page=aips-diagnostics&tab=logs`) and registered an administrative redirect shortcut (`admin.php?page=aips-logs`).

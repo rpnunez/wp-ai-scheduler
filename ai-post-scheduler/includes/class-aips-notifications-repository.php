@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
  * @since 1.8.0
  */
 class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Interface {
+	const EMAIL_DEDUPE_RECEIPT_TYPE = 'email_dedupe_receipt';
 
 	/**
 	 * @var self|null Singleton instance.
@@ -157,7 +158,8 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT id, type, title, message, url, level, is_read, read_at, created_at FROM {$this->table} WHERE is_read = 0 ORDER BY created_at DESC LIMIT %d",
+				"SELECT id, type, title, message, url, level, is_read, read_at, created_at FROM {$this->table} WHERE is_read = 0 AND type <> %s ORDER BY created_at DESC LIMIT %d",
+				self::EMAIL_DEDUPE_RECEIPT_TYPE,
 				$limit
 			)
 		);
@@ -170,7 +172,10 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	 */
 	public function count_unread() {
 		return (int) $this->wpdb->get_var(
-			"SELECT COUNT(*) FROM {$this->table} WHERE is_read = 0"
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$this->table} WHERE is_read = 0 AND type <> %s",
+				self::EMAIL_DEDUPE_RECEIPT_TYPE
+			)
 		);
 	}
 
@@ -251,8 +256,8 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 			return array();
 		}
 
-		$sql = "SELECT type, COUNT(*) AS count FROM {$this->table} WHERE created_at >= %d";
-		$params = array($cutoff_timestamp);
+		$sql = "SELECT type, COUNT(*) AS count FROM {$this->table} WHERE created_at >= %d AND type <> %s";
+		$params = array($cutoff_timestamp, self::EMAIL_DEDUPE_RECEIPT_TYPE);
 
 		if (!empty($types)) {
 			$types = array_values(array_filter(array_map('sanitize_key', $types)));
