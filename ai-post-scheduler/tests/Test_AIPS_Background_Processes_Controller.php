@@ -237,4 +237,38 @@ class Test_AIPS_Background_Processes_Controller extends WP_UnitTestCase {
 		$this->assertSame( 30, $result->get_next_cursor() );
 		$this->assertTrue( $result->is_complete() );
 	}
+
+	public function test_start_process_guards_single_flight_and_non_startable_keys() {
+		// Nothing to compute when no embeddings exist yet.
+		$empty_res = $this->controller->control(
+			AIPS_Relationships_Recompute_Service::KEY,
+			AIPS_Background_Processes_Controller::ACTION_START,
+			array( 'mode' => 'missing' )
+		);
+		$this->assertWPError( $empty_res );
+		$this->assertSame( 'aips_bg_nothing_to_do', $empty_res->get_error_code() );
+
+		// Single-flight guard blocks duplicate starts while an open job exists.
+		$this->job_manager->dispatch(
+			AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE,
+			array( 'mode' => 'all' ),
+			array( 'total' => 3 )
+		);
+		$open_res = $this->controller->control(
+			AIPS_Relationships_Recompute_Service::KEY,
+			AIPS_Background_Processes_Controller::ACTION_START,
+			array( 'mode' => 'all' )
+		);
+		$this->assertWPError( $open_res );
+		$this->assertSame( 'aips_bg_already_open', $open_res->get_error_code() );
+
+		// Bulk generation and unknown keys return dedicated error codes.
+		$bulk_res = $this->controller->control( 'bulk_generation', AIPS_Background_Processes_Controller::ACTION_START );
+		$this->assertWPError( $bulk_res );
+		$this->assertSame( 'aips_bg_start_elsewhere', $bulk_res->get_error_code() );
+
+		$unknown_res = $this->controller->control( 'non_existent_key', AIPS_Background_Processes_Controller::ACTION_START );
+		$this->assertWPError( $unknown_res );
+		$this->assertSame( 'aips_bg_unknown_process', $unknown_res->get_error_code() );
+	}
 }

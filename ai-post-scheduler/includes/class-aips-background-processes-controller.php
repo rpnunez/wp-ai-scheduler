@@ -602,16 +602,42 @@ class AIPS_Background_Processes_Controller {
 	}
 
 	/**
-	 * Return all open (pending, running, or paused) bulk generation jobs without a 100-row cap.
+	 * Retrieve all currently open (`pending`, `running`, or `paused`) bulk generation jobs.
 	 *
-	 * @return AIPS_Job_Record[]
+	 * Queries `AIPS_Job_Repository::get_open_jobs()` directly rather than scanning a fixed
+	 * slice of recent rows so long-running or paused bulk batches remain visible and
+	 * controllable even when hundreds of shorter schedule or author-topic jobs have completed
+	 * in the meantime.
+	 *
+	 * Both canonical unified job types (`bulk_post_generation`, `bulk_post_publish`,
+	 * `bulk_batch_slice`) and legacy/strategy slugs (`author_topic_post`, `planner_post`,
+	 * `trending_topic_post`, `review_publish`) are matched, and extensions may customize
+	 * the list via the `aips_bulk_generation_job_types` filter.
+	 *
+	 * @return AIPS_Job_Record[] Matching open bulk job records.
 	 */
 	private function get_open_bulk_generation_jobs(): array {
-		$types = array_values( array_filter( array_map( 'sanitize_key', (array) apply_filters(
-			'aips_bulk_generation_job_types',
-			array( 'bulk_post_generation', 'bulk_post_publish', 'author_topic_post', 'planner_post', 'trending_topic_post', 'review_publish', 'bulk_batch_slice' )
-		) ) ) );
+		// Resolve and sanitize all job_type slugs that belong to the Bulk Post Generation card.
+		$default_types = array(
+			'bulk_post_generation',
+			'bulk_post_publish',
+			'author_topic_post',
+			'planner_post',
+			'trending_topic_post',
+			'review_publish',
+			'bulk_batch_slice',
+		);
 
+		$types = array_values(
+			array_filter(
+				array_map(
+					'sanitize_key',
+					(array) apply_filters( 'aips_bulk_generation_job_types', $default_types )
+				)
+			)
+		);
+
+		// Filter all open jobs in wp_aips_jobs down to bulk generation/publish types.
 		$open = array();
 		foreach ( $this->job_repo->get_open_jobs() as $job ) {
 			if ( in_array( $job->get_job_type(), $types, true ) ) {
@@ -623,11 +649,22 @@ class AIPS_Background_Processes_Controller {
 	}
 
 	/**
-	 * Snapshot for Bulk Generation.
+	 * Build the aggregated status snapshot for the "Bulk Post Generation" UI card.
 	 *
-	 * @return array
+	 * Multiple bulk runs can be open simultaneously (for example, an Author Topics batch
+	 * alongside a Planner or Research batch). This method rolls all open bulk jobs up into
+	 * a single card snapshot:
+	 * - Returns an `idle` snapshot when no bulk jobs are currently open.
+	 * - Sums `processed` and `total` counts across every open bulk job.
+	 * - Reports `running` if at least one open bulk job is active, otherwise `paused`.
+	 * - Tracks the earliest `created_at` timestamp as `started_at` and latest `updated_at`.
+	 * - Always sets `can_start` to `false` because bulk runs require topic selection on
+	 *   their originating admin screens (Author Topics, Planner, Research, Generated Posts).
+	 *
+	 * @return array Normalized snapshot array produced by {@see self::make_snapshot()}.
 	 */
 	private function get_bulk_generation_snapshot(): array {
+		// Static metadata describing the Bulk Post Generation card in the admin UI.
 		$key         = 'bulk_generation';
 		$label       = __( 'Bulk Post Generation', 'ai-post-scheduler' );
 		$description = __( 'Large "generate all" runs from Author Topics, the Planner and Research, spread over many background slices. Each post generated uses AI. Start them from the screen that picks the topics.', 'ai-post-scheduler' );
@@ -635,6 +672,7 @@ class AIPS_Background_Processes_Controller {
 
 		$open = $this->get_open_bulk_generation_jobs();
 
+		// Fast path: no active or paused bulk jobs exist, so render the card as idle.
 		if ( empty( $open ) ) {
 			return $this->make_snapshot( array(
 				'key'         => $key,
@@ -646,6 +684,7 @@ class AIPS_Background_Processes_Controller {
 			) );
 		}
 
+		// Aggregate cumulative progress, activity state, and timestamps across all open bulk jobs.
 		$processed = 0;
 		$total     = 0;
 		$running   = false;
@@ -656,10 +695,11 @@ class AIPS_Background_Processes_Controller {
 			$processed += $job->get_processed();
 			$total     += $job->get_total();
 			$running    = $running || $job->is_active();
-			$started    = $started === 0 ? (int) $job->get_created_at() : min( $started, (int) $job->get_created_at() );
+			$started    = ( 0 === $started ) ? (int) $job->get_created_at() : min( $started, (int) $job->get_created_at() );
 			$updated    = max( $updated, (int) $job->get_updated_at() );
 		}
 
+		// Build the rolled-up active/paused snapshot with an open-job summary message.
 		return $this->make_snapshot( array(
 			'key'         => $key,
 			'label'       => $label,
@@ -729,95 +769,152 @@ class AIPS_Background_Processes_Controller {
 	}
 
 	/**
-	 * Start a process by key.
+	 * Start a background process by its UI process key.
 	 *
-	 * @param string $key
-	 * @param array  $options
-	 * @return true|WP_Error
+	 * Validates feature prerequisites, prevents duplicate single-flight runs, verifies
+	 * there is remaining work to perform, and dispatches the appropriate background worker.
+	 *
+	 * @param string $key     Sanitized background process key.
+	 * @param array  $options Optional start parameters (`author_id`, `mode`, `ai_budget`).
+	 * @return true|WP_Error True when started successfully, or `WP_Error` explaining why it could not start.
 	 */
 	private function start_process( string $key, array $options ) {
 		switch ( $key ) {
 			case AIPS_Author_Embeddings_Service::KEY:
-				$can = $this->author_embeddings_service->can_run();
-				if ( is_wp_error( $can ) ) {
-					return $can;
+				// Ensure vector embeddings are enabled before queueing topic embedding work.
+				$can_run = $this->author_embeddings_service->can_run();
+				if ( is_wp_error( $can_run ) ) {
+					return $can_run;
 				}
+
 				$author_id = isset( $options['author_id'] ) ? absint( $options['author_id'] ) : 0;
-				$active    = $this->job_repo->get_open_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
-				if ( ! empty( $active ) ) {
-					return new WP_Error( 'aips_bg_already_open', __( 'Topic embeddings are already running.', 'ai-post-scheduler' ) );
-				}
-				$remaining = $this->author_embeddings_service->count_remaining( $author_id );
-				if ( $remaining <= 0 ) {
-					return new WP_Error( 'aips_bg_nothing_to_do', __( 'Every topic already has an embedding.', 'ai-post-scheduler' ) );
-				}
-				$this->job_manager->dispatch(
+
+				return $this->dispatch_single_flight_job(
 					AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS,
+					function () use ( $author_id ) {
+						return $this->author_embeddings_service->count_remaining( $author_id );
+					},
 					array( 'author_id' => $author_id ),
-					array( 'total' => $remaining )
+					__( 'Topic embeddings are already running.', 'ai-post-scheduler' ),
+					__( 'Every topic already has an embedding.', 'ai-post-scheduler' )
 				);
-				return true;
 
 			case AIPS_Internal_Links_Indexing_Service::KEY:
-				$can = $this->internal_links_indexing_service->can_run();
-				if ( is_wp_error( $can ) ) {
-					return $can;
+				// Ensure both embeddings settings and AI Engine support are available.
+				$can_run = $this->internal_links_indexing_service->can_run();
+				if ( is_wp_error( $can_run ) ) {
+					return $can_run;
 				}
-				$active = $this->job_repo->get_open_jobs( AIPS_Job_Registry::TYPE_INTERNAL_LINKS_INDEXING );
-				if ( ! empty( $active ) ) {
-					return new WP_Error( 'aips_bg_already_open', __( 'Internal links indexing is already running.', 'ai-post-scheduler' ) );
-				}
-				$remaining = $this->internal_links_indexing_service->count_remaining();
-				if ( $remaining <= 0 ) {
-					return new WP_Error( 'aips_bg_nothing_to_do', __( 'Every post is already indexed.', 'ai-post-scheduler' ) );
-				}
-				$this->job_manager->dispatch(
+
+				return $this->dispatch_single_flight_job(
 					AIPS_Job_Registry::TYPE_INTERNAL_LINKS_INDEXING,
+					function () {
+						return $this->internal_links_indexing_service->count_remaining();
+					},
 					array(),
-					array( 'total' => $remaining )
+					__( 'Internal links indexing is already running.', 'ai-post-scheduler' ),
+					__( 'Every post is already indexed.', 'ai-post-scheduler' )
 				);
-				return true;
 
 			case AIPS_Relationships_Recompute_Service::KEY:
-				$mode   = isset( $options['mode'] ) && in_array( $options['mode'], array( 'missing', 'all' ), true ) ? $options['mode'] : AIPS_Relationships_Recompute_Service::MODE_MISSING;
-				$active = $this->job_repo->get_open_jobs( AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE );
-				if ( ! empty( $active ) ) {
-					return new WP_Error( 'aips_bg_already_open', __( 'Relationships recompute is already running.', 'ai-post-scheduler' ) );
-				}
-				$remaining = $this->relationships_recompute_service->count_remaining( $mode );
-				if ( $remaining <= 0 ) {
-					return new WP_Error( 'aips_bg_nothing_to_do', __( 'No relationships to compute.', 'ai-post-scheduler' ) );
-				}
-				$this->job_manager->dispatch(
-					AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE,
-					array( 'mode' => $mode ),
-					array( 'total' => $remaining )
+				// Normalize recompute mode ('missing' only vs. rebuilding 'all' indexed posts).
+				$allowed_modes = array(
+					AIPS_Relationships_Recompute_Service::MODE_MISSING,
+					AIPS_Relationships_Recompute_Service::MODE_ALL,
 				);
-				return true;
+
+				$mode = ( isset( $options['mode'] ) && in_array( $options['mode'], $allowed_modes, true ) )
+					? $options['mode']
+					: AIPS_Relationships_Recompute_Service::MODE_MISSING;
+
+				return $this->dispatch_single_flight_job(
+					AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE,
+					function () use ( $mode ) {
+						return $this->relationships_recompute_service->count_remaining( $mode );
+					},
+					array( 'mode' => $mode ),
+					__( 'Relationships recompute is already running.', 'ai-post-scheduler' ),
+					__( 'No relationships to compute.', 'ai-post-scheduler' )
+				);
 
 			case 'link_index_scan':
-				$res = $this->get_link_index_service()->start_backfill( AIPS_Link_Index_Service::MODE_MISSING );
-				return is_wp_error( $res ) ? $res : true;
+				// Delegate HTML link backfill startup to AIPS_Link_Index_Service.
+				$result = $this->get_link_index_service()->start_backfill( AIPS_Link_Index_Service::MODE_MISSING );
+
+				return is_wp_error( $result ) ? $result : true;
 
 			case 'content_indexer_queue':
+				// Unpause and schedule the debounced option-backed content indexer queue worker.
 				$indexer = $this->get_content_indexer_service();
 				$queue   = $indexer->get_queue_status();
+
 				if ( (int) $queue['pending_count'] <= 0 ) {
-					return new WP_Error( 'aips_bg_nothing_to_do', __( 'There is nothing left to process.', 'ai-post-scheduler' ) );
+					return new WP_Error(
+						'aips_bg_nothing_to_do',
+						__( 'There is nothing left to process.', 'ai-post-scheduler' )
+					);
 				}
+
 				$indexer->set_queue_paused( false );
 				$indexer->schedule_queue_worker( AIPS_DateTime::now()->timestamp() + 1 );
+
 				return true;
 
 			case 'bulk_generation':
+				// Bulk generation requires item selection and cannot be started generically here.
 				return new WP_Error(
 					'aips_bg_start_elsewhere',
 					__( 'Bulk generation is started from Author Topics, the Planner or Research, where you choose the topics.', 'ai-post-scheduler' )
 				);
 
 			default:
-				return new WP_Error( 'aips_bg_unknown_process', __( 'Unknown background process.', 'ai-post-scheduler' ) );
+				return new WP_Error(
+					'aips_bg_unknown_process',
+					__( 'Unknown background process.', 'ai-post-scheduler' )
+				);
 		}
+	}
+
+	/**
+	 * Enforce single-flight execution and remaining-work checks before dispatching a unified job.
+	 *
+	 * Checks `AIPS_Job_Repository::get_open_jobs()` first to avoid running potentially expensive
+	 * remaining-item count queries when an open (`pending`, `running`, or `paused`) job of the
+	 * same type already exists.
+	 *
+	 * @param string   $job_type              Registered `AIPS_Job_Registry` job type slug.
+	 * @param callable $count_remaining       Callback returning the integer number of items to process.
+	 * @param array    $payload               Job payload passed to `AIPS_Job_Manager::dispatch()`.
+	 * @param string   $already_open_message  Translated message returned when an open job exists.
+	 * @param string   $nothing_to_do_message Translated message returned when remaining count is `<= 0`.
+	 * @return true|WP_Error True on dispatch, or `WP_Error` if blocked.
+	 */
+	private function dispatch_single_flight_job(
+		string $job_type,
+		callable $count_remaining,
+		array $payload,
+		string $already_open_message,
+		string $nothing_to_do_message
+	) {
+		// Guard against starting a duplicate run while another job of this type is active or paused.
+		$open_jobs = $this->job_repo->get_open_jobs( $job_type );
+		if ( ! empty( $open_jobs ) ) {
+			return new WP_Error( 'aips_bg_already_open', $already_open_message );
+		}
+
+		// Verify there are actually items left to process before creating a job row.
+		$remaining = (int) call_user_func( $count_remaining );
+		if ( $remaining <= 0 ) {
+			return new WP_Error( 'aips_bg_nothing_to_do', $nothing_to_do_message );
+		}
+
+		$this->job_manager->dispatch(
+			$job_type,
+			$payload,
+			array( 'total' => $remaining )
+		);
+
+		return true;
 	}
 
 	/**
