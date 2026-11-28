@@ -202,6 +202,19 @@ class AIPS_Planner {
             return;
         }
 
+        // Synchronous hard-limit rejection (e.g. when aips_large_batch_threshold > max_bulk).
+        if ( $result->was_limited ) {
+            AIPS_Ajax_Response::error(array(
+                'message' => sprintf(
+                    /* translators: 1: selected count, 2: max allowed */
+                    __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation.', 'ai-post-scheduler'),
+                    $result->failed_count,
+                    $result->max_bulk
+                ),
+            ));
+            return;
+        }
+
         if (empty($result->post_ids) && !empty($result->errors)) {
             AIPS_Ajax_Response::error(array(
                 'message' => __('All topic generations failed.', 'ai-post-scheduler'),

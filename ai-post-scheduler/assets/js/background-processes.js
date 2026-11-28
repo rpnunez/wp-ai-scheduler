@@ -202,8 +202,11 @@
 
 			var flags = { start: 'can_start', pause: 'can_pause', resume: 'can_resume', cancel: 'can_cancel' };
 			$root.find('[data-aips-bg-action]').not('[data-aips-bg-toggle]').each(function () {
-				var $btn = $(this);
-				var flag = flags[$btn.attr('data-aips-bg-action')];
+				var $btn   = $(this);
+				var action = $btn.attr('data-aips-bg-action');
+				var flag   = (action === 'start' && $btn.attr('data-aips-bg-mode') === 'all' && snap.can_rebuild_all !== undefined)
+					? 'can_rebuild_all'
+					: flags[action];
 
 				if (flag) {
 					$btn.prop('hidden', !snap[flag]);

@@ -183,6 +183,7 @@ class AIPS_Background_Processes_Controller {
 			'status_label'     => isset( $labels[ $status ] ) ? $labels[ $status ] : $status,
 			'is_active'        => $is_active,
 			'can_start'        => isset( $data['can_start'] ) ? (bool) $data['can_start'] : ! $is_open,
+			'can_rebuild_all'  => ! empty( $data['can_rebuild_all'] ) && ! $is_open,
 			'can_pause'        => isset( $data['can_pause'] ) ? (bool) $data['can_pause'] : $is_active,
 			'can_resume'       => isset( $data['can_resume'] ) ? (bool) $data['can_resume'] : ( 'paused' === $status ),
 			'can_cancel'       => isset( $data['can_cancel'] ) ? (bool) $data['can_cancel'] : $is_open,
@@ -298,10 +299,14 @@ class AIPS_Background_Processes_Controller {
 		}
 
 		if ( $job ) {
-			$status  = $job->is_paused() ? 'paused' : 'running';
-			$message = '';
+			$status    = $job->is_paused() ? 'paused' : 'running';
+			$payload   = $job->get_payload();
+			$ai_budget = isset( $payload['ai_budget'] ) ? max( 0, (int) $payload['ai_budget'] ) : 0;
+			$message   = '';
 
-			if ( 'running' === $status ) {
+			if ( 'paused' === $status && $ai_budget > 0 && $job->get_processed() >= $ai_budget ) {
+				$message = __( 'AI call budget for this run reached. Resume to carry on without a budget.', 'ai-post-scheduler' );
+			} elseif ( 'running' === $status ) {
 				$limiter  = ( new AIPS_Embeddings_Service() )->get_rate_limiter();
 				$cooldown = $limiter->get_cooldown_status();
 				$stats    = $limiter->get_usage_stats();
@@ -325,6 +330,7 @@ class AIPS_Background_Processes_Controller {
 				'total'           => $job->get_total(),
 				'failed'          => $job->get_failed(),
 				'ai_calls_used'   => $job->get_processed(),
+				'ai_calls_budget' => $ai_budget,
 				'message'         => $message,
 				'started_at'      => $job->get_created_at(),
 				'updated_at'      => $job->get_updated_at(),
@@ -374,10 +380,14 @@ class AIPS_Background_Processes_Controller {
 		}
 
 		if ( $job ) {
-			$status  = $job->is_paused() ? 'paused' : 'running';
-			$message = '';
+			$status    = $job->is_paused() ? 'paused' : 'running';
+			$payload   = $job->get_payload();
+			$ai_budget = isset( $payload['ai_budget'] ) ? max( 0, (int) $payload['ai_budget'] ) : 0;
+			$message   = '';
 
-			if ( 'running' === $status ) {
+			if ( 'paused' === $status && $ai_budget > 0 && $job->get_processed() >= $ai_budget ) {
+				$message = __( 'AI call budget for this run reached. Resume to carry on without a budget.', 'ai-post-scheduler' );
+			} elseif ( 'running' === $status ) {
 				$limiter  = ( new AIPS_Embeddings_Service() )->get_rate_limiter();
 				$cooldown = $limiter->get_cooldown_status();
 				$stats    = $limiter->get_usage_stats();
@@ -401,6 +411,7 @@ class AIPS_Background_Processes_Controller {
 				'total'           => $job->get_total(),
 				'failed'          => $job->get_failed(),
 				'ai_calls_used'   => $job->get_processed(),
+				'ai_calls_budget' => $ai_budget,
 				'message'         => $message,
 				'started_at'      => $job->get_created_at(),
 				'updated_at'      => $job->get_updated_at(),
@@ -470,6 +481,7 @@ class AIPS_Background_Processes_Controller {
 		}
 
 		$remaining = $this->relationships_recompute_service->count_remaining( AIPS_Relationships_Recompute_Service::MODE_MISSING );
+		$total_all = $this->relationships_recompute_service->count_remaining( AIPS_Relationships_Recompute_Service::MODE_ALL );
 		$recent    = $this->job_repo->query( array( 'job_type' => AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE ), 1 );
 		$last_job  = ! empty( $recent ) ? $recent[0] : null;
 
@@ -482,6 +494,7 @@ class AIPS_Background_Processes_Controller {
 			'total'            => $remaining,
 			'processed'        => 0,
 			'can_start'        => $remaining > 0,
+			'can_rebuild_all'  => $total_all > 0,
 			'last_status'      => $last_job ? $last_job->get_status() : '',
 			'last_finished_at' => $last_job ? $last_job->get_finished_at() : 0,
 		) );
@@ -788,13 +801,18 @@ class AIPS_Background_Processes_Controller {
 				}
 
 				$author_id = isset( $options['author_id'] ) ? absint( $options['author_id'] ) : 0;
+				$ai_budget = isset( $options['ai_budget'] ) ? absint( $options['ai_budget'] ) : 0;
+				$payload   = array( 'author_id' => $author_id );
+				if ( $ai_budget > 0 ) {
+					$payload['ai_budget'] = $ai_budget;
+				}
 
 				return $this->dispatch_single_flight_job(
 					AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS,
 					function () use ( $author_id ) {
 						return $this->author_embeddings_service->count_remaining( $author_id );
 					},
-					array( 'author_id' => $author_id ),
+					$payload,
 					__( 'Topic embeddings are already running.', 'ai-post-scheduler' ),
 					__( 'Every topic already has an embedding.', 'ai-post-scheduler' )
 				);
@@ -806,12 +824,15 @@ class AIPS_Background_Processes_Controller {
 					return $can_run;
 				}
 
+				$ai_budget = isset( $options['ai_budget'] ) ? absint( $options['ai_budget'] ) : 0;
+				$payload   = $ai_budget > 0 ? array( 'ai_budget' => $ai_budget ) : array();
+
 				return $this->dispatch_single_flight_job(
 					AIPS_Job_Registry::TYPE_INTERNAL_LINKS_INDEXING,
 					function () {
 						return $this->internal_links_indexing_service->count_remaining();
 					},
-					array(),
+					$payload,
 					__( 'Internal links indexing is already running.', 'ai-post-scheduler' ),
 					__( 'Every post is already indexed.', 'ai-post-scheduler' )
 				);
@@ -1068,7 +1089,18 @@ class AIPS_Background_Processes_Controller {
 		if ( empty( $paused ) ) {
 			return false;
 		}
-		return $this->job_manager->resume( $paused[0]->get_job_id() );
+
+		$job       = $paused[0];
+		$payload   = $job->get_payload();
+		$ai_budget = isset( $payload['ai_budget'] ) ? max( 0, (int) $payload['ai_budget'] ) : 0;
+
+		// A run paused by its own AI budget would immediately re-pause unless cleared on explicit resume.
+		if ( $ai_budget > 0 && $job->get_processed() >= $ai_budget ) {
+			$payload['ai_budget'] = 0;
+			$this->job_repo->update( $job->get_job_id(), array( 'payload' => $payload ) );
+		}
+
+		return $this->job_manager->resume( $job->get_job_id() );
 	}
 
 	private function cancel_open_job_of_type( string $type ): bool {

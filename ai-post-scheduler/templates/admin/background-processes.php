@@ -85,7 +85,7 @@ $bg_status_labels = AIPS_Background_Processes_Controller::get_status_labels();
 										<?php echo $is_recompute ? esc_html__('Fill missing', 'ai-post-scheduler') : esc_html__('Start', 'ai-post-scheduler'); ?>
 									</button>
 									<?php if ($is_recompute) : ?>
-										<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-action="start" data-aips-bg-mode="all" title="<?php esc_attr_e('Recompute the related posts of every indexed post, replacing the existing lists.', 'ai-post-scheduler'); ?>" <?php echo empty($snapshot['can_start']) ? 'hidden' : ''; ?>>
+										<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-action="start" data-aips-bg-mode="all" title="<?php esc_attr_e('Recompute the related posts of every indexed post, replacing the existing lists.', 'ai-post-scheduler'); ?>" <?php echo empty($snapshot['can_rebuild_all']) ? 'hidden' : ''; ?>>
 											<?php esc_html_e('Rebuild all', 'ai-post-scheduler'); ?>
 										</button>
 									<?php endif; ?>
