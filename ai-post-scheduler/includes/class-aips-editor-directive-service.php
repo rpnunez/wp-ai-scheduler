@@ -33,13 +33,45 @@ class AIPS_Editor_Directive_Service {
 	private $ai_service;
 
 	/**
+	 * @var AIPS_Generation_Component_Registry
+	 */
+	private $component_registry;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_AI_Service_Interface|null $ai_service AI Service.
+	 * @param AIPS_AI_Service_Interface|null          $ai_service         AI Service.
+	 * @param AIPS_Generation_Component_Registry|null $component_registry Optional component registry.
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null) {
+	public function __construct(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Generation_Component_Registry $component_registry = null
+	) {
 		$container        = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+
+		$this->component_registry = $component_registry;
+	}
+
+	/**
+	 * Resolve the component registry on first use so admin boot does not
+	 * instantiate the full generation graph.
+	 *
+	 * @return AIPS_Generation_Component_Registry
+	 */
+	private function get_component_registry(): AIPS_Generation_Component_Registry {
+		if ($this->component_registry instanceof AIPS_Generation_Component_Registry) {
+			return $this->component_registry;
+		}
+
+		$container = AIPS_Container::get_instance();
+		if ($container->has(AIPS_Generation_Component_Registry::class)) {
+			$this->component_registry = $container->make(AIPS_Generation_Component_Registry::class);
+		} else {
+			$this->component_registry = (new AIPS_Generation_Component_Registry())->register_all_defaults();
+		}
+
+		return $this->component_registry;
 	}
 
 	/**
@@ -129,91 +161,22 @@ class AIPS_Editor_Directive_Service {
 
 		$variants_count = ($variants_count >= 3) ? 3 : 1;
 
-		if ($variants_count === 3) {
-			return $this->generate_multiple_variants($content, $instruction, $context);
+		$comp = $this->get_component_registry()->get('post_content', 'posts');
+		if (!($comp instanceof AIPS_Content_Post_Component)) {
+			$comp = new AIPS_Content_Post_Component();
 		}
 
-		return $this->generate_single_variant($content, $instruction, $context);
-	}
+		$options               = is_array($context) ? $context : array();
+		$options['ai_service'] = $this->ai_service;
 
-	/**
-	 * Generate a single rewritten variant.
-	 *
-	 * @param string $content     Original content.
-	 * @param string $instruction Directive instruction.
-	 * @param array  $context     Optional context.
-	 * @return array<string>|WP_Error
-	 */
-	private function generate_single_variant(string $content, string $instruction, array $context = array()) {
-		$prompt  = "You are an expert editorial assistant for WordPress.\n\n";
-		$prompt .= "Instruction:\n" . $instruction . "\n\n";
-
-		if (!empty($context['post_title'])) {
-			$prompt .= "Article Context: Post Title is \"" . esc_attr($context['post_title']) . "\".\n\n";
-		}
-
-		$prompt .= "Original Text to Rewrite:\n\"\"\"\n" . $content . "\n\"\"\"\n\n";
-		$prompt .= "Return ONLY the rewritten text without conversational introductions, explanations, or quotes around the output.";
-
-		$response = $this->ai_service->generate_text($prompt);
-		if (is_wp_error($response)) {
-			return $response;
-		}
-
-		$cleaned = trim((string) $response);
-		// Strip outer markdown quotes if LLM added them
-		$cleaned = preg_replace('/^["\']|["\']$/u', '', $cleaned);
-
-		return array($cleaned);
-	}
-
-	/**
-	 * Generate 3 distinct creative variants.
-	 *
-	 * @param string $content     Original content.
-	 * @param string $instruction Directive instruction.
-	 * @param array  $context     Optional context.
-	 * @return array<string>|WP_Error
-	 */
-	private function generate_multiple_variants(string $content, string $instruction, array $context = array()) {
-		$prompt  = "You are an expert editorial assistant for WordPress.\n\n";
-		$prompt .= "Instruction:\n" . $instruction . "\n\n";
-
-		if (!empty($context['post_title'])) {
-			$prompt .= "Article Context: Post Title is \"" . esc_attr($context['post_title']) . "\".\n\n";
-		}
-
-		$prompt .= "Original Text to Rewrite:\n\"\"\"\n" . $content . "\n\"\"\"\n\n";
-		$prompt .= "Provide exactly 3 distinctly different creative variations of the rewritten text.\n";
-		$prompt .= "Output MUST be a valid JSON array of 3 strings, with no additional text or formatting outside the JSON array.\n";
-		$prompt .= "Example format:\n[\"Variation 1 text here\", \"Variation 2 text here\", \"Variation 3 text here\"]";
-
-		$response = $this->ai_service->generate_text($prompt);
-		if (is_wp_error($response)) {
-			return $response;
-		}
-
-		$raw = trim((string) $response);
-
-		// Extract JSON array if surrounded by markdown code blocks
-		if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
-			$decoded = json_decode($matches[0], true);
-			if (is_array($decoded) && count($decoded) > 0) {
-				return array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
-			}
-		}
-
-		// Fallback: split by line breaks or return raw as single variant
-		$lines = array_filter(array_map('trim', explode("\n", $raw)));
-		if (count($lines) >= 3) {
-			return array_slice(array_values($lines), 0, 3);
-		}
-
-		return array($raw);
+		return $comp->rewrite_with_directive($content, $instruction, $variants_count, $options);
 	}
 
 	/**
 	 * Generate 3 creative candidates for a post title, slug, or excerpt.
+	 *
+	 * Delegates to the unified Post Components registered in
+	 * AIPS_Generation_Component_Registry.
 	 *
 	 * @param int    $post_id   Post ID.
 	 * @param string $component 'title', 'slug', or 'excerpt'.
@@ -229,55 +192,28 @@ class AIPS_Editor_Directive_Service {
 			return new WP_Error('post_not_found', __('Post not found.', 'ai-post-scheduler'));
 		}
 
-		$content_sample = wp_strip_all_tags($post->post_content);
-		if (strlen($content_sample) > 2000) {
-			$content_sample = substr($content_sample, 0, 2000) . '...';
+		$target_key = in_array($component, array('title', 'post_title', 'slug', 'post_slug'), true) ? $component : 'post_excerpt';
+		$comp       = $this->get_component_registry()->get($target_key, 'posts');
+
+		if (!$comp) {
+			$comp = new AIPS_Excerpt_Post_Component();
 		}
 
-		if ('title' === $component) {
-			$prompt  = "You are an expert SEO copywriter for WordPress.\n\n";
-			$prompt .= "Current Post Title: \"" . esc_attr($post->post_title) . "\"\n";
-			$prompt .= "Post Excerpt: \"" . esc_attr($post->post_excerpt) . "\"\n";
-			$prompt .= "Post Content Sample:\n" . $content_sample . "\n\n";
-			$prompt .= "Generate 3 highly engaging, click-worthy, SEO-optimized title variations for this post.\n";
-			$prompt .= "Return ONLY a valid JSON array of 3 strings: [\"Title 1\", \"Title 2\", \"Title 3\"]. No extra text.";
-		} elseif ('slug' === $component) {
-			$prompt  = "You are an expert SEO editor for WordPress permalinks.\n\n";
-			$prompt .= "Current Post Title: \"" . esc_attr($post->post_title) . "\"\n";
-			$prompt .= "Current Post Slug: \"" . esc_attr($post->post_name) . "\"\n";
-			$prompt .= "Post Content Sample:\n" . $content_sample . "\n\n";
-			$prompt .= "Generate 3 SEO URL slug variations for this post.\n";
-			$prompt .= "Each slug must be 3 to 6 words, lowercase, with words separated by hyphens, and must omit stop words.\n";
-			$prompt .= "Return ONLY a valid JSON array of 3 strings: [\"slug-one\", \"slug-two\", \"slug-three\"]. No extra text.";
-		} else {
-			$prompt  = "You are an expert editorial writer for WordPress.\n\n";
-			$prompt .= "Post Title: \"" . esc_attr($post->post_title) . "\"\n";
-			$prompt .= "Post Content Sample:\n" . $content_sample . "\n\n";
-			$prompt .= "Generate 3 compelling 40-to-60-word excerpt variations summarizing this post.\n";
-			$prompt .= "Return ONLY a valid JSON array of 3 strings: [\"Excerpt 1\", \"Excerpt 2\", \"Excerpt 3\"]. No extra text.";
-		}
+		$context = new AIPS_Template_Context(
+			(object) array(
+				'id'              => 0,
+				'name'            => (string) $post->post_title,
+				'prompt_template' => '',
+				'post_status'     => (string) $post->post_status,
+				'post_type'       => (string) $post->post_type,
+			),
+			null,
+			(string) $post->post_title
+		);
 
-		$response = $this->ai_service->generate_text($prompt);
-		if (is_wp_error($response)) {
-			return $response;
-		}
-
-		$raw = trim((string) $response);
-		$variants = array($raw);
-		if (preg_match('/\[[\s\S]*\]/', $raw, $matches)) {
-			$decoded = json_decode($matches[0], true);
-			if (is_array($decoded) && count($decoded) > 0) {
-				$variants = array_slice(array_map('strval', array_map('trim', $decoded)), 0, 3);
-			}
-		}
-
-		if ('slug' === $component) {
-			$variants = array_values(array_filter(array_map('sanitize_title', $variants)));
-			if (empty($variants)) {
-				return new WP_Error('slug_generation_failed', __('Failed to generate a valid slug.', 'ai-post-scheduler'));
-			}
-		}
-
-		return $variants;
+		return $comp->generate_variants($post_id, $context, 3, array(
+			'ai_service' => $this->ai_service,
+			'post'       => $post,
+		));
 	}
 }

@@ -18,6 +18,16 @@ class Test_DevStackTips_Setup_V3 extends WP_UnitTestCase {
 	 */
 	private $backup_dir;
 
+	/**
+	 * @var array<int, string>
+	 */
+	private $created_backups = array();
+
+	/**
+	 * @var array<string, bool>
+	 */
+	private $rolled_back = array();
+
 	public function setUp(): void {
 		parent::setUp();
 
@@ -25,10 +35,25 @@ class Test_DevStackTips_Setup_V3 extends WP_UnitTestCase {
 			register_taxonomy('aips_source_group', array(), array('public' => false));
 		}
 
-		$this->backup_dir = trailingslashit(sys_get_temp_dir()) . 'aips-dst-test-' . wp_generate_password(8, false, false);
+		$this->backup_dir      = trailingslashit(sys_get_temp_dir()) . 'aips-dst-test-' . wp_generate_password(8, false, false);
+		$this->created_backups = array();
+		$this->rolled_back     = array();
 	}
 
 	public function tearDown(): void {
+		global $wpdb;
+
+		foreach (array_reverse($this->created_backups) as $file) {
+			if (empty($this->rolled_back[$file]) && is_readable($file)) {
+				ob_start();
+				(new AIPS_DevStackTips_Setup(array('rollback', $file)))->run();
+				ob_end_clean();
+			}
+			@unlink($file);
+		}
+		if (!empty($this->created_backups)) {
+			$wpdb->query('COMMIT');
+		}
 		foreach ((array) glob($this->backup_dir . '/*.json') as $file) {
 			@unlink($file);
 		}
@@ -44,9 +69,15 @@ class Test_DevStackTips_Setup_V3 extends WP_UnitTestCase {
 	 * @return array{0:bool,1:string}
 	 */
 	private function run_setup(array $args) {
+		if (isset($args[0], $args[1]) && 'rollback' === $args[0]) {
+			$this->rolled_back[(string) $args[1]] = true;
+		}
 		ob_start();
 		$ok = (new AIPS_DevStackTips_Setup($args))->run();
 		$output = (string) ob_get_clean();
+		if (preg_match('/Backup file: (\S+\.json)/', $output, $m)) {
+			$this->created_backups[] = $m[1];
+		}
 
 		return array($ok, $output);
 	}

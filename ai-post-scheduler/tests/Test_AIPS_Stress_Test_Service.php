@@ -123,6 +123,15 @@ class AIPS_Test_Stress_Meta_AI_Service implements AIPS_AI_Service_Interface {
     }
 }
 
+/**
+ * AI service stub that successfully returns an image data URI for stress test image cases.
+ */
+class AIPS_Test_Stress_Image_Success_AI_Service extends AIPS_Test_Stress_Meta_AI_Service {
+    public function generate_image($prompt, $options = array()) {
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    }
+}
+
 class AIPS_Test_Stress_Base_Config {
     public function get_circuit_breaker_config() {
         return array('enabled' => false, 'failure_threshold' => 5, 'timeout' => 300);
@@ -152,6 +161,9 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
 
         $this->assertContains('save_page', $ids);
         $this->assertContains('generate_slug', $ids);
+        $this->assertContains('post_images_1', $ids);
+        $this->assertContains('post_images_2', $ids);
+        $this->assertContains('post_images_3', $ids);
         $this->assertContains('meta_fields_single', $ids);
         $this->assertContains('meta_fields_multi', $ids);
         $this->assertContains('meta_fields_post_3', $ids);
@@ -196,6 +208,29 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
 
         $this->assertSame('passed', $result['status']);
         $this->assertSame(768, $result['plugin_value']['dimensions']);
+    }
+
+    public function test_post_images_cases_report_requested_quantities() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Meta_AI_Service(), new AIPS_Test_Stress_Logger());
+
+        foreach (array(1 => 'post_images_1', 2 => 'post_images_2', 3 => 'post_images_3') as $qty => $case_id) {
+            $result = $service->run($case_id);
+            $this->assertSame($case_id, $result['case']);
+            $this->assertSame($qty, $result['plugin_value']['requested']);
+            $this->assertNotEmpty($result['artifacts']['post_ids']);
+        }
+    }
+
+    public function test_post_images_cases_success_path_generates_and_injects_figures() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Image_Success_AI_Service(), new AIPS_Test_Stress_Logger());
+
+        $result = $service->run('post_images_2');
+        $this->assertSame('passed', $result['status'], isset($result['error']) ? (string) $result['error'] : '');
+        $this->assertSame('post_images_2', $result['case']);
+        $this->assertSame(2, $result['plugin_value']['requested']);
+        $this->assertSame(2, $result['plugin_value']['generated']);
+        $this->assertCount(2, $result['artifacts']['attachment_ids']);
+        $this->assertGreaterThanOrEqual(2, $result['plugin_value']['figure_count']);
     }
 
     public function test_cpt_complex_meta_generates_and_writes_3_shapes() {

@@ -246,8 +246,8 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Selecting more topics than the default limit (5) must return an error
-	 * that includes the count of selected topics.
+	 * Selecting more topics than the default synchronous limit (5) dispatches to the
+	 * background queue and includes the count of selected topics in the response.
 	 */
 	public function test_bulk_limit_exceeded_returns_error() {
 		$this->set_admin_user();
@@ -260,13 +260,14 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 
 		$response = $this->capture_json(array($this->planner, 'ajax_bulk_generate_now'));
 
-		$this->assertFalse($response['success']);
+		$this->assertTrue($response['success']);
+		$this->assertTrue($response['data']['queued']);
 		$this->assertStringContainsString('6', $response['data']['message']);
 	}
 
 	/**
 	 * A filter returning 0 must fall back to the default limit (5), so
-	 * 6 selected topics still triggers the limit error.
+	 * 6 selected topics still triggers background queuing rather than synchronous execution.
 	 */
 	public function test_zero_bulk_limit_falls_back_to_default() {
 		$this->set_admin_user();
@@ -284,7 +285,8 @@ class Test_AIPS_Planner_Bulk_Generate_Now extends WP_UnitTestCase {
 
 		remove_all_filters('aips_bulk_run_now_limit');
 
-		$this->assertFalse($response['success']);
+		$this->assertTrue($response['success']);
+		$this->assertTrue($response['data']['queued']);
 		$this->assertArrayHasKey('message', $response['data']);
 	}
 

@@ -269,48 +269,8 @@ class AIPS_Affiliate_Link_Inserter_Service {
 	 * @return string
 	 */
 	private function apply_ai_injection( $content, $affiliate_url, $tag ) {
-		$prompt = sprintf(
-			"You are editing a blog post. Find ONE sentence in the post content below that naturally relates to the topic \"%s\" and would benefit from an affiliate link. " .
-			"Return ONLY a JSON object with two keys:\n" .
-			"  \"match\": the exact sentence from the content (verbatim, no changes)\n" .
-			"  \"replacement\": the same sentence with the most relevant 2-5 words wrapped in [[double square brackets]] to become the hyperlink anchor\n\n" .
-			"Rules:\n" .
-			"- The [[bracketed]] text must appear verbatim inside \"match\"\n" .
-			"- If no suitable sentence exists, return {\"match\":\"\",\"replacement\":\"\"}\n\n" .
-			"Post content:\n%s",
-			esc_html( $tag ),
-			wp_strip_all_tags( $content )
-		);
-
-		$response = $this->ai_service->generate_json( $prompt, array( 'maxTokens' => 500 ) );
-
-		if ( is_wp_error( $response ) || ! is_array( $response ) ) {
-			$this->logger->log( 'Affiliate AI injection failed: ' . ( is_wp_error( $response ) ? $response->get_error_message() : 'invalid response' ), 'warning' );
-			return $content;
-		}
-
-		$match       = isset( $response['match'] ) ? (string) $response['match'] : '';
-		$replacement = isset( $response['replacement'] ) ? (string) $response['replacement'] : '';
-
-		if ( empty( $match ) || empty( $replacement ) ) {
-			return $content;
-		}
-
-		if ( strpos( $content, $match ) === false ) {
-			$this->logger->log( 'Affiliate AI injection: match sentence not found in content.', 'warning' );
-			return $content;
-		}
-
-		// Build the replacement with an actual <a> tag.
-		$linked = preg_replace_callback(
-			'/\[\[(.*?)\]\]/s',
-			function ( $m ) use ( $affiliate_url ) {
-				return '<a href="' . esc_url( $affiliate_url ) . '" rel="nofollow sponsored" target="_blank">' . esc_html( $m[1] ) . '</a>';
-			},
-			$replacement
-		);
-
-		return str_replace( $match, $linked, $content );
+		$component = new AIPS_Affiliate_Links_Post_Component( null, $this->ai_service, $this->logger );
+		return $component->inject_affiliate_link( (string) $content, (string) $affiliate_url, (string) $tag );
 	}
 
 	// -------------------------------------------------------------------------

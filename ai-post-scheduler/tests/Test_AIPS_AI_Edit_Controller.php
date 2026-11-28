@@ -1532,9 +1532,15 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'generation_context' => $this->createMock(AIPS_Generation_Context::class),
 		));
 		$service_mock->method('capture_component_revision')->willReturn(true);
+		// Override persistence lives in the service; run the real implementation.
+		$real_service = new AIPS_Component_Regeneration_Service();
+		$service_mock->method('resolve_and_persist_component_overrides')
+			->willReturnCallback(function (...$args) use ($real_service) {
+				return $real_service->resolve_and_persist_component_overrides(...$args);
+			});
 		$service_mock->expects($this->once())
-			->method('regenerate_title')
-			->with($this->callback(function ($context) {
+			->method('regenerate_component')
+			->with('title', $this->callback(function ($context) {
 				return isset($context['custom_directive'])
 					&& $context['custom_directive'] === 'Make it punchier and shorter'
 					&& isset($context['directive_preset'])
@@ -2048,5 +2054,263 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		}
 		$response = json_decode(ob_get_clean(), true);
 		$this->assertFalse($response['success']);
+	}
+
+	public function test_get_editable_components_requires_nonce() {
+		$_POST = array(
+			'action'       => 'aips_get_editable_components',
+			'strategy_key' => 'posts',
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_get_editable_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('Invalid nonce.', $response['data']['message']);
+	}
+
+	public function test_get_editable_components_requires_manage_options() {
+		wp_set_current_user($this->factory->user->create(array('role' => 'subscriber')));
+
+		$_POST = array(
+			'action'       => 'aips_get_editable_components',
+			'strategy_key' => 'posts',
+			'nonce'        => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_get_editable_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+	}
+
+	public function test_get_editable_components_returns_registered_components() {
+		$_POST = array(
+			'action'       => 'aips_get_editable_components',
+			'strategy_key' => 'author_topics',
+			'nonce'        => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_get_editable_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertTrue($response['success']);
+		$this->assertIsArray($response['data']['components']);
+		$keys = wp_list_pluck($response['data']['components'], 'key');
+		$this->assertContains('topic_title', $keys);
+	}
+
+	public function test_universal_ai_edit_requires_nonce() {
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'strategy_key'  => 'posts',
+			'component_key' => 'post_title',
+			'target_id'     => 1,
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_universal_ai_edit();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('Invalid nonce.', $response['data']['message']);
+	}
+
+	public function test_universal_ai_edit_requires_manage_options() {
+		wp_set_current_user($this->factory->user->create(array('role' => 'subscriber')));
+
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'strategy_key'  => 'posts',
+			'component_key' => 'post_title',
+			'target_id'     => 1,
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_universal_ai_edit();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+	}
+
+	public function test_universal_ai_edit_validates_required_parameters() {
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'strategy_key'  => 'posts',
+			'component_key' => '',
+			'target_id'     => 0,
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_universal_ai_edit();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('invalid_request', $response['data']['code']);
+	}
+
+	public function test_universal_ai_edit_rejects_unsupported_component() {
+		$post_id = $this->factory->post->create();
+
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'strategy_key'  => 'posts',
+			'component_key' => 'nonexistent_component_key',
+			'target_id'     => $post_id,
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_universal_ai_edit();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('unsupported_component', $response['data']['code']);
+	}
+
+	public function test_universal_ai_edit_enforces_edit_post_capability_on_apply() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Original Post Title',
+		));
+
+		$filter = function ($allcaps, $caps, $args) use ($post_id) {
+			if (isset($args[0]) && $args[0] === 'edit_post' && isset($args[2]) && (int) $args[2] === $post_id) {
+				$allcaps['edit_post'] = false;
+				$allcaps['edit_posts'] = false;
+				$allcaps['edit_others_posts'] = false;
+				$allcaps['edit_published_posts'] = false;
+			}
+			return $allcaps;
+		};
+		add_filter('user_has_cap', $filter, 10, 3);
+
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'strategy_key'  => 'posts',
+			'component_key' => 'post_title',
+			'target_id'     => $post_id,
+			'directive'     => 'Make it exciting',
+			'apply'         => 'true',
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_universal_ai_edit();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+		remove_filter('user_has_cap', $filter, 10);
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+	}
+
+	public function test_universal_ai_edit_executes_successfully() {
+		$post_id = $this->factory->post->create(array(
+			'post_title'   => 'Original Post Title',
+			'post_content' => 'Post content here.',
+		));
+		$this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		));
+
+		$mock_component = $this->createMock(AIPS_Generation_Component_Interface::class);
+		$mock_component->method('get_key')->willReturn('post_title');
+		$mock_component->method('get_strategy_key')->willReturn('posts');
+		$mock_component->method('supports_ai_edit')->willReturn(true);
+		$mock_component->method('apply')->willReturn(true);
+
+		$mock_coordinator = $this->getMockBuilder(AIPS_Component_Regeneration_Coordinator::class)
+			->disableOriginalConstructor()
+			->getMock();
+
+		$registry = new AIPS_Generation_Component_Registry();
+		$registry->register($mock_component);
+
+		$mock_coordinator->method('get_registry')->willReturn($registry);
+		$mock_coordinator->method('regenerate')->willReturn(
+			AIPS_Generation_Result::from_data(
+				'Updated Post Title',
+				AIPS_Generation_Result::STATUS_COMPLETED,
+				array('post_title' => true),
+				array(),
+				0,
+				0.2
+			)
+		);
+
+		$container = AIPS_Container::get_instance();
+		$container->singleton(AIPS_Component_Regeneration_Coordinator::class, function() use ($mock_coordinator) {
+			return $mock_coordinator;
+		});
+
+		$_POST = array(
+			'action'        => 'aips_universal_ai_edit',
+			'strategy_key'  => 'posts',
+			'component_key' => 'post_title',
+			'target_id'     => $post_id,
+			'directive'     => 'Make it exciting',
+			'apply'         => 'true',
+			'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_universal_ai_edit();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('Updated Post Title', $response['data']['value']);
+		$this->assertTrue($response['data']['applied']);
 	}
 }

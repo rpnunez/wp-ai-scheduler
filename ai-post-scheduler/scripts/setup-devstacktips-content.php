@@ -1548,7 +1548,11 @@ class AIPS_DevStackTips_Setup {
 
 		$this->backup_option($name);
 		$this->require_backup_write();
-		update_option($name, $value);
+		if (empty($this->backup['options'][$name]['existed'])) {
+			add_option($name, $value);
+		} else {
+			update_option($name, $value);
+		}
 	}
 
 	/**
