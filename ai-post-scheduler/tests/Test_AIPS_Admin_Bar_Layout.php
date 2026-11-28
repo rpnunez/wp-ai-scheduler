@@ -129,6 +129,23 @@ class Test_AIPS_Admin_Bar_Layout extends WP_UnitTestCase {
 		$this->assertStringContainsString('data-aips-bg-action="pause"', $html);
 		$this->assertStringContainsString('dashicons-controls-pause', $html);
 		$this->assertStringContainsString('Playing', $html);
+		$this->assertStringContainsString('role="progressbar"', $html);
+		$this->assertStringContainsString('aria-valuenow="10"', $html);
+	}
+
+	public function test_diagnostics_template_renders_single_percent_and_not_tracked_for_unattributed_ai() {
+		$bg_processes = (new AIPS_Background_Process_Manager())->get_snapshots();
+		$bg_runs      = array();
+		$jobs         = array();
+
+		ob_start();
+		include AIPS_PLUGIN_DIR . 'templates/admin/background-processes.php';
+		$html = (string) ob_get_clean();
+
+		$this->assertStringNotContainsString('%%</span>', $html);
+		$this->assertStringNotContainsString('%</span>%', $html, 'Template must not append a duplicate % outside the field span.');
+		$this->assertStringContainsString('role="progressbar"', $html);
+		$this->assertStringContainsString('Not tracked', $html, 'Bulk Post Generation uses AI without per-process call attribution and must display Not tracked.');
 	}
 
 	public function test_asset_version_includes_file_mtime() {

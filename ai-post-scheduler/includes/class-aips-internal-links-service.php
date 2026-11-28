@@ -172,17 +172,19 @@ class AIPS_Internal_Links_Service {
 	 *
 	 * Respects sliding-window API quotas, auto-cooldown detection, and error thresholds.
 	 *
-	 * @param int    $batch_size    Number of posts to process per call.
-	 * @param int    $last_post_id  Resume cursor: only posts with ID > this value.
-	 * @param string $post_type     Post type to index.
-	 * @param string $post_status   Post status to index.
+	 * @param int           $batch_size    Number of posts to process per call.
+	 * @param int           $last_post_id  Resume cursor: only posts with ID > this value.
+	 * @param string        $post_type     Post type to index.
+	 * @param string        $post_status   Post status to index.
+	 * @param callable|null $on_item       Optional per-item callback: fn(int $success_delta, int $failed_delta, int $cursor_id).
 	 * @return array{success: int, failed: int, last_post_id: int, done: bool, cooldown?: bool, paused_until?: int}
 	 */
 	public function process_indexing_batch(
 		$batch_size = 10,
 		$last_post_id = 0,
 		$post_type = null,
-		$post_status = 'publish'
+		$post_status = 'publish',
+		?callable $on_item = null
 	) {
 		$post_type = $this->resolve_post_types($post_type);
 
@@ -219,6 +221,7 @@ class AIPS_Internal_Links_Service {
 		$success     = 0;
 		$failed      = 0;
 		$new_last_id = $last_post_id;
+		$stalled     = false;
 
 		foreach ($post_ids as $post_id) {
 			$result = $this->index_post($post_id);
@@ -232,27 +235,35 @@ class AIPS_Internal_Links_Service {
 					),
 					'error'
 				);
-				$failed++;
-				$rate_limiter->record_failure($result);
 
 				if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
+					$stalled = true;
 					break;
+				}
+
+				$failed++;
+				$new_last_id = max($new_last_id, $post_id);
+				if ($on_item !== null) {
+					call_user_func($on_item, 0, 1, $new_last_id);
 				}
 			} else {
 				$rate_limiter->record_success();
 				$success++;
+				$new_last_id = max($new_last_id, $post_id);
+				if ($on_item !== null) {
+					call_user_func($on_item, 1, 0, $new_last_id);
+				}
 			}
-
-			$new_last_id = max($new_last_id, $post_id);
 		}
 
-		$done = count($post_ids) < $batch_size;
+		$done = !$stalled && count($post_ids) < $batch_size;
 
 		return array(
 			'success'      => $success,
 			'failed'       => $failed,
 			'last_post_id' => $new_last_id,
 			'done'         => $done,
+			'stalled'      => $stalled,
 		);
 	}
 

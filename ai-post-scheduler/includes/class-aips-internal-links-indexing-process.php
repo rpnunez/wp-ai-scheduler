@@ -74,11 +74,30 @@ class AIPS_Internal_Links_Indexing_Process extends AIPS_Embeddings_Background_Pr
 	}
 
 	protected function process_slice(int $cursor, int $limit, array $options): array {
-		$result = $this->service->process_indexing_batch($limit, $cursor);
+		if (!$this->embeddings_service->is_enabled()) {
+			return array(
+				'processed' => 0,
+				'failed'    => 0,
+				'cursor'    => $cursor,
+				'done'      => false,
+				'fatal'     => new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler')),
+			);
+		}
+
+		$result = $this->service->process_indexing_batch(
+			$limit,
+			$cursor,
+			null,
+			'publish',
+			function (int $success_delta, int $failed_delta, int $cursor_id): void {
+				$this->checkpoint_progress($success_delta, $failed_delta, $cursor_id);
+			}
+		);
 
 		$success    = isset($result['success']) ? (int) $result['success'] : 0;
 		$failed     = isset($result['failed']) ? (int) $result['failed'] : 0;
 		$new_cursor = isset($result['last_post_id']) ? (int) $result['last_post_id'] : $cursor;
+		$stalled    = !empty($result['stalled']) || !empty($result['cooldown']);
 
 		// The batch stopped on its first post without moving the cursor: a rate limit
 		// or cooldown tripped mid-run. Nothing was processed; the next tick re-checks
@@ -88,18 +107,23 @@ class AIPS_Internal_Links_Indexing_Process extends AIPS_Embeddings_Background_Pr
 				'processed' => 0,
 				'failed'    => 0,
 				'cursor'    => $cursor,
-				'done'      => ($failed === 0 && empty($result['cooldown'])),
-				'message'   => $failed > 0 ? __('Waiting for the embeddings rate limit.', 'ai-post-scheduler') : '',
+				'done'      => ($failed === 0 && !$stalled),
+				'message'   => $stalled ? __('Waiting for the embeddings rate limit.', 'ai-post-scheduler') : '',
 			);
 		}
 
 		// A slice that fetched nothing means every remaining post has been visited.
-		return array(
+		$slice = array(
 			'processed' => $success,
 			'failed'    => $failed,
 			'cursor'    => $new_cursor,
-			'done'      => ($success + $failed) === 0,
+			'done'      => !$stalled && ($success + $failed) === 0,
 		);
+		if ($stalled) {
+			$slice['message'] = __('Waiting for the embeddings rate limit.', 'ai-post-scheduler');
+		}
+
+		return $slice;
 	}
 
 	// -------------------------------------------------------------------------

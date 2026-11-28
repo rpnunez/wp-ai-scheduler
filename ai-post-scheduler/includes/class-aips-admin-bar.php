@@ -290,7 +290,8 @@ class AIPS_Admin_Bar {
 			'id'     => 'aips-toolbar-bg-status',
 			'parent' => 'aips-toolbar-bg',
 			'title'  => '<span class="aips-bg-heading">' . esc_html__('Background processes', 'ai-post-scheduler') . '</span>'
-				. '<span class="aips-bg-items" aria-live="polite">' . $this->render_background_items($bg_snapshots) . '</span>',
+				. '<span class="aips-bg-transport-notice" data-aips-bg-transport-notice role="status" aria-live="polite" hidden><span class="aips-bg-transport-text" data-aips-bg-transport-text></span> <button type="button" class="aips-bg-inline-refresh" data-aips-bg-refresh><span data-aips-bg-refresh-label>' . esc_html__('Refresh', 'ai-post-scheduler') . '</span></button></span>'
+				. '<span class="aips-bg-items">' . $this->render_background_items($bg_snapshots) . '</span>',
 			'href'   => false,
 			'meta'   => array('class' => 'aips-toolbar-bg-status ab-empty-item'),
 		));
@@ -399,17 +400,39 @@ class AIPS_Admin_Bar {
 				$status_text .= ' · ' . sprintf(__('Resumes in %s', 'ai-post-scheduler'), human_time_diff(time(), (int) $snapshot['next_run_at']));
 			}
 
-			$html .= '<span class="aips-bg-item" data-aips-bg-key="' . esc_attr($snapshot['key']) . '">'
+			$percent      = (int) ($snapshot['percent'] ?? 0);
+			$item_classes = array('aips-bg-item');
+			if (!empty($snapshot['is_active'])) {
+				$item_classes[] = 'aips-bg-active';
+			}
+			if ($snapshot['status'] === 'running') {
+				$item_classes[] = 'aips-bg-running';
+				if ($percent === 0) {
+					$item_classes[] = 'aips-bg-zero';
+				}
+			}
+			if ($is_paused) {
+				$item_classes[] = 'aips-bg-paused';
+			}
+			$progress_label = sprintf(
+				/* translators: %s: background process label. */
+				__('%s progress', 'ai-post-scheduler'),
+				$snapshot['label']
+			);
+
+			$html .= '<span class="' . esc_attr(implode(' ', $item_classes)) . '" data-aips-bg-key="' . esc_attr($snapshot['key']) . '" data-aips-bg-status="' . esc_attr($snapshot['status']) . '">'
 				. '<button type="button" class="aips-bg-toggle" data-aips-bg-toggle data-aips-bg-action="' . esc_attr($action) . '"'
 				. ' aria-label="' . esc_attr($action_label) . '" title="' . esc_attr($action_label) . '"' . ($can_toggle ? '' : ' hidden') . '>'
 				. '<span class="dashicons ' . ($is_paused ? 'dashicons-controls-play' : 'dashicons-controls-pause') . '" aria-hidden="true"></span>'
 				. '</button>'
 				. '<span class="aips-bg-item-label">' . esc_html($snapshot['label']) . '</span>'
 				. '<span class="aips-bg-item-meta">'
-				. esc_html(number_format_i18n((int) ($snapshot['processed'] ?? 0)) . ' / ' . number_format_i18n((int) ($snapshot['total'] ?? 0)))
-				. ' · <span class="aips-bg-item-status">' . esc_html($status_text) . '</span>'
+				. '<span data-aips-bg-field="processed">' . esc_html(number_format_i18n((int) ($snapshot['processed'] ?? 0))) . '</span>'
+				. ' / '
+				. '<span data-aips-bg-field="total">' . esc_html(number_format_i18n((int) ($snapshot['total'] ?? 0))) . '</span>'
+				. ' · <span class="aips-bg-item-status" data-aips-bg-field="bar_status">' . esc_html($status_text) . '</span>'
 				. '</span>'
-				. '<span class="aips-bg-mini"><span class="aips-bg-mini-fill" style="width:' . esc_attr((string) (int) $snapshot['percent']) . '%"></span></span>'
+				. '<span class="aips-bg-mini" role="progressbar" aria-label="' . esc_attr($progress_label) . '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . esc_attr((string) $percent) . '"><span class="aips-bg-mini-fill" data-aips-bg-bar style="width:' . esc_attr((string) $percent) . '%"></span></span>'
 				. '</span>';
 		}
 

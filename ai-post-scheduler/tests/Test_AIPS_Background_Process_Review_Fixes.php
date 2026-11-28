@@ -243,4 +243,178 @@ class Test_AIPS_Background_Process_Review_Fixes extends WP_UnitTestCase {
 		$this->assertCount( 1, $pairs );
 		$this->assertEquals( 0.93, (float) $pairs[0]->similarity );
 	}
+
+	public function test_intra_slice_checkpoints_persist_immediately_and_reconcile_without_double_counting() {
+		$runs    = $this->runs;
+		$seen_in = null;
+
+		$process = new class( $runs, $seen_in ) extends AIPS_Managed_Background_Process {
+			public $seen_mid_slice = null;
+			private $simulated_ai  = 0;
+
+			public function __construct( $repository, &$seen ) {
+				parent::__construct( $repository );
+				$this->seen_mid_slice = &$seen;
+			}
+
+			public function get_key(): string {
+				return 'test_checkpoint';
+			}
+
+			public function get_label(): string {
+				return 'Test checkpoint process';
+			}
+
+			public function get_description(): string {
+				return 'Tests intra-slice checkpointing.';
+			}
+
+			protected function count_remaining(): int {
+				return 3;
+			}
+
+			protected function count_ai_calls(): int {
+				return $this->simulated_ai;
+			}
+
+			protected function process_slice( int $cursor, int $limit, array $options ): array {
+				$this->simulated_ai += 1;
+				$this->checkpoint_progress( 1, 0, $cursor + 1 );
+
+				$this->simulated_ai += 1;
+				$this->checkpoint_progress( 0, 1, $cursor + 2 );
+
+				// Observe database state mid-slice before the slice returns.
+				$this->seen_mid_slice = $this->repository->get_open( $this->get_key() );
+
+				// Final item resolved without an explicit checkpoint to verify end-of-slice reconciliation.
+				$this->simulated_ai += 1;
+
+				return array(
+					'processed' => 2,
+					'failed'    => 1,
+					'cursor'    => $cursor + 3,
+					'done'      => true,
+				);
+			}
+		};
+
+		$process->start();
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( 'test_checkpoint' ) );
+		$process->tick();
+
+		$this->assertNotNull( $seen_in, 'Run row must be observable mid-slice.' );
+		$this->assertSame( 2, $seen_in->processed, 'Mid-slice checkpoint must persist 1 success + 1 failure = 2 resolved.' );
+		$this->assertSame( 1, $seen_in->failed );
+		$this->assertSame( 2, $seen_in->ai_calls_used );
+
+		$final = $this->runs->get_latest( 'test_checkpoint' );
+		$this->assertSame( 'completed', $final->status );
+		$this->assertSame( 3, $final->processed, 'Final reconciliation must equal 3 total resolved, not double-counted.' );
+		$this->assertSame( 1, $final->failed );
+		$this->assertSame( 3, $final->ai_calls_used );
+		$this->assertSame( 3, $final->cursor_id );
+	}
+
+	public function test_assets_enqueue_without_heartbeat_dependency_when_deregistered_and_detect_dedicated_screens() {
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$wp_scripts     = wp_scripts();
+		$saved_hb       = isset( $wp_scripts->registered['heartbeat'] ) ? clone $wp_scripts->registered['heartbeat'] : null;
+		$prev_get       = $_GET;
+
+		try {
+			wp_dequeue_script( 'aips-background-processes' );
+			wp_deregister_script( 'aips-background-processes' );
+			wp_deregister_script( 'heartbeat' );
+
+			$_GET = array( 'page' => 'aips-diagnostics' );
+			AIPS_Background_Process_Assets::enqueue();
+
+			$this->assertTrue( wp_script_is( 'aips-background-processes', 'enqueued' ), 'Script must still enqueue when heartbeat is deregistered.' );
+			$registered = $wp_scripts->registered['aips-background-processes'];
+			$this->assertNotContains( 'heartbeat', $registered->deps );
+			$this->assertContains( 'jquery', $registered->deps );
+
+			$data = $wp_scripts->get_data( 'aips-background-processes', 'data' );
+			$this->assertIsString( $data );
+			$this->assertMatchesRegularExpression( '/"isDedicatedScreen":(?:false|"")/', $data, 'Default Diagnostics tab (System Info) is not the dedicated Background Processes screen.' );
+
+			// Restore heartbeat and verify dedicated tab detection.
+			if ( $saved_hb ) {
+				$wp_scripts->registered['heartbeat'] = $saved_hb;
+			} else {
+				wp_register_script( 'heartbeat', '/wp-includes/js/heartbeat.js', array( 'jquery' ), '1.0', true );
+			}
+
+			wp_dequeue_script( 'aips-background-processes' );
+			wp_deregister_script( 'aips-background-processes' );
+			$_GET = array(
+				'page' => 'aips-diagnostics',
+				'tab'  => 'background-processes',
+			);
+			AIPS_Background_Process_Assets::enqueue();
+
+			$this->assertContains( 'heartbeat', $wp_scripts->registered['aips-background-processes']->deps );
+			$dedicated_data = $wp_scripts->get_data( 'aips-background-processes', 'data' );
+			$this->assertMatchesRegularExpression( '/"isDedicatedScreen":(?:true|"1")/', $dedicated_data );
+		} finally {
+			$_GET = $prev_get;
+			if ( $saved_hb ) {
+				$wp_scripts->registered['heartbeat'] = $saved_hb;
+			}
+			wp_dequeue_script( 'aips-background-processes' );
+			wp_deregister_script( 'aips-background-processes' );
+		}
+	}
+
+	public function test_add_progress_null_preserves_message_and_mid_slice_pause_keeps_admin_notice() {
+		$id = $this->runs->create( 'demo_msg', 5 );
+		$this->runs->transition( $id, 'running', array( 'running' ), 'Initial status note' );
+		$this->runs->add_progress( $id, 1, 0, 10, 1, null );
+
+		$after_null = $this->runs->get( $id );
+		$this->assertSame( 'Initial status note', $after_null->message, 'Null message in add_progress must leave existing message untouched.' );
+
+		$runs    = $this->runs;
+		$process = new class( $runs ) extends AIPS_Managed_Background_Process {
+			public function get_key(): string {
+				return 'test_mid_pause';
+			}
+
+			public function get_label(): string {
+				return 'Test mid-slice pause';
+			}
+
+			public function get_description(): string {
+				return 'Tests mid-slice admin pause message preservation.';
+			}
+
+			protected function count_remaining(): int {
+				return 4;
+			}
+
+			protected function process_slice( int $cursor, int $limit, array $options ): array {
+				// Simulate an administrator clicking Pause in a concurrent request while the slice executes.
+				$this->pause();
+
+				return array(
+					'processed' => 2,
+					'failed'    => 0,
+					'cursor'    => $cursor + 2,
+					'done'      => false,
+				);
+			}
+		};
+
+		$process->start();
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( 'test_mid_pause' ) );
+		$process->tick();
+
+		$snap = $process->get_snapshot();
+		$this->assertSame( 'paused', $snap['status'] );
+		$this->assertSame( 2, $snap['processed'] );
+		$this->assertStringContainsString( 'Paused by an administrator.', $snap['message'] );
+	}
 }

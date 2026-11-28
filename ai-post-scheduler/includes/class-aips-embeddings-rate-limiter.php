@@ -66,6 +66,27 @@ class AIPS_Embeddings_Rate_Limiter {
 	private $cached_history = null;
 
 	/**
+	 * Monotonic counter of provider embedding calls attempted during this PHP execution.
+	 *
+	 * Incremented at the provider-call boundary inside execute(), including retries
+	 * and failed provider attempts, while cache hits and pre-call quota/cooldown
+	 * blocks do not increment it. Static so all service/process instances within
+	 * the executing slice share the exact provider-boundary count without reading
+	 * or diffing the shared database usage history option.
+	 *
+	 * @var int
+	 */
+	private static $provider_call_count = 0;
+
+	/**
+	 * Pending units already counted at the execute() provider boundary so the
+	 * subsequent record_usage() inside execute() does not double-increment.
+	 *
+	 * @var int
+	 */
+	private $in_execute_attempt = 0;
+
+	/**
 	 * Initialize the rate limiter.
 	 *
 	 * @param AIPS_Config|null           $config Config instance.
@@ -118,6 +139,12 @@ class AIPS_Embeddings_Rate_Limiter {
 	public function record_usage(int $count = 1): void {
 		if ($count <= 0) {
 			return;
+		}
+
+		if ($this->in_execute_attempt > 0) {
+			$this->in_execute_attempt = max(0, $this->in_execute_attempt - $count);
+		} else {
+			self::$provider_call_count += $count;
 		}
 
 		$now     = AIPS_DateTime::now()->timestamp();
@@ -580,6 +607,8 @@ class AIPS_Embeddings_Rate_Limiter {
 		}
 
 		// Step 3: Execute operation with exception safety
+		$this->in_execute_attempt += $count;
+		$this->record_provider_attempt($count);
 		try {
 			$result = call_user_func($operation);
 		} catch (\Throwable $e) {
@@ -592,6 +621,7 @@ class AIPS_Embeddings_Rate_Limiter {
 
 		// Step 4: Handle failure
 		if (is_wp_error($result)) {
+			$this->in_execute_attempt = max(0, $this->in_execute_attempt - $count);
 			// Do not record internal/non-fault errors (cooldown, local rate limits, disabled) as provider failures
 			if (!in_array($result->get_error_code(), self::NON_FAULT_CODES, true)) {
 				$this->record_failure($result);
@@ -610,6 +640,37 @@ class AIPS_Embeddings_Rate_Limiter {
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Record an attempted provider embedding call at the execution boundary.
+	 *
+	 * @param int $count Number of embedding calls attempted.
+	 * @return void
+	 */
+	public function record_provider_attempt(int $count = 1): void {
+		if ($count > 0) {
+			self::$provider_call_count += $count;
+		}
+	}
+
+	/**
+	 * Monotonic count of provider embedding calls attempted in this execution context.
+	 *
+	 * @return int
+	 */
+	public function get_provider_call_count(): int {
+		return self::$provider_call_count;
+	}
+
+	/**
+	 * Reset the provider call counter (used in unit tests).
+	 *
+	 * @return void
+	 */
+	public function reset_provider_call_count(): void {
+		self::$provider_call_count = 0;
+		$this->in_execute_attempt  = 0;
 	}
 
 	/**

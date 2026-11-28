@@ -28,15 +28,34 @@ $count_rejected = isset($link_counts['rejected']) ? (int) $link_counts['rejected
 $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted'] : 0;
 
 // $bg_snapshot is injected by AIPS_Internal_Links_Controller::render_page().
-$bg_snapshot = isset($bg_snapshot) && is_array($bg_snapshot) ? $bg_snapshot : array();
-$bg_status   = isset($bg_snapshot['status']) ? (string) $bg_snapshot['status'] : 'idle';
-$bg_is_active = !empty($bg_snapshot['is_active']);
+$bg_snapshot   = isset($bg_snapshot) && is_array($bg_snapshot) ? $bg_snapshot : array();
+$bg_status     = isset($bg_snapshot['status']) ? (string) $bg_snapshot['status'] : 'idle';
+$bg_is_active  = !empty($bg_snapshot['is_active']);
+$bg_percent    = isset($bg_snapshot['percent']) ? (int) $bg_snapshot['percent'] : 0;
+$card_classes  = array('aips-stat-card');
+if ($bg_is_active) {
+	$card_classes[] = 'aips-bg-active';
+}
+if ('running' === $bg_status) {
+	$card_classes[] = 'aips-bg-running';
+	if (0 === $bg_percent) {
+		$card_classes[] = 'aips-bg-zero';
+	}
+}
+if ('paused' === $bg_status) {
+	$card_classes[] = 'aips-bg-paused';
+}
+$bg_progress_label = sprintf(
+	/* translators: %s: background process label. */
+	__('%s progress', 'ai-post-scheduler'),
+	isset($bg_snapshot['label']) ? (string) $bg_snapshot['label'] : __('Internal Links Indexing', 'ai-post-scheduler')
+);
 ?>
 
 		<!-- Status Cards -->
 		<div class="aips-stats-grid">
 
-			<div class="aips-stat-card<?php echo $bg_is_active ? ' aips-bg-active' : ''; ?><?php echo 'paused' === $bg_status ? ' aips-bg-paused' : ''; ?>" data-aips-bg-key="internal_links_indexing" data-aips-bg-status="<?php echo esc_attr($bg_status); ?>">
+			<div class="<?php echo esc_attr(implode(' ', $card_classes)); ?>" data-aips-bg-key="internal_links_indexing" data-aips-bg-status="<?php echo esc_attr($bg_status); ?>">
 				<div class="aips-stat-header">
 					<span class="aips-stat-label"><?php esc_html_e('Posts Indexed', 'ai-post-scheduler'); ?></span>
 					<span class="dashicons dashicons-admin-links aips-stat-icon" aria-hidden="true"></span>
@@ -51,16 +70,24 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 				<p class="aips-stat-subtext"><?php esc_html_e('Posts analyzed and embedded', 'ai-post-scheduler'); ?></p>
 
 				<!-- Background indexing status and controls (kept live by background-processes.js) -->
-				<div class="aips-bg-controls" aria-live="polite">
+				<div class="aips-bg-controls">
+					<div class="aips-bg-transport-notice" data-aips-bg-transport-notice role="status" aria-live="polite" hidden>
+						<span class="aips-bg-transport-text" data-aips-bg-transport-text></span>
+						<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-refresh>
+							<span data-aips-bg-refresh-label><?php esc_html_e('Refresh', 'ai-post-scheduler'); ?></span>
+						</button>
+					</div>
 					<p class="aips-bg-status-line">
 						<span class="aips-bg-chip" data-aips-bg-field="status_label"><?php echo esc_html(isset($bg_snapshot['status_label']) ? $bg_snapshot['status_label'] : ''); ?></span>
 						<span>
 							<span data-aips-bg-field="processed"><?php echo esc_html(number_format_i18n(isset($bg_snapshot['processed']) ? (int) $bg_snapshot['processed'] : 0)); ?></span>
 							/
 							<span data-aips-bg-field="total"><?php echo esc_html(number_format_i18n(isset($bg_snapshot['total']) ? (int) $bg_snapshot['total'] : 0)); ?></span>
+							(<span data-aips-bg-field="percent"><?php echo esc_html((string) $bg_percent . '%'); ?></span>)
 							<?php esc_html_e('this run', 'ai-post-scheduler'); ?>
 						</span>
 					</p>
+					<div class="aips-bg-progress-bar" role="progressbar" aria-label="<?php echo esc_attr($bg_progress_label); ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?php echo esc_attr((string) $bg_percent); ?>"><span data-aips-bg-bar style="width:<?php echo esc_attr((string) $bg_percent); ?>%"></span></div>
 					<p class="aips-bg-status-line">
 						<span data-aips-bg-field="next_run"></span>
 						<span data-aips-bg-field="message"><?php echo esc_html(isset($bg_snapshot['message']) ? $bg_snapshot['message'] : ''); ?></span>

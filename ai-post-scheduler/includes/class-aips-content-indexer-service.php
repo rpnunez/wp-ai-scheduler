@@ -72,6 +72,11 @@ class AIPS_Content_Indexer_Service {
 	private $cron_backend;
 
 	/**
+	 * @var AIPS_Content_Indexer_Queue_Repository
+	 */
+	private $queue_repo;
+
+	/**
 	 * @var AIPS_Relationship_Builder|null
 	 */
 	private $relationship_builder = null;
@@ -88,7 +93,8 @@ class AIPS_Content_Indexer_Service {
 		?AIPS_Config $config = null,
 		?AIPS_Author_Topics_Repository $topics_repo = null,
 		?AIPS_Similarity_Evaluator $similarity_evaluator = null,
-		?AIPS_Cron_Backend_Interface $cron_backend = null
+		?AIPS_Cron_Backend_Interface $cron_backend = null,
+		?AIPS_Content_Indexer_Queue_Repository $queue_repo = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -101,6 +107,14 @@ class AIPS_Content_Indexer_Service {
 		$this->topics_repo          = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
 		$this->cron_backend         = $cron_backend ?: ($container->has(AIPS_Cron_Backend_Interface::class) ? $container->make(AIPS_Cron_Backend_Interface::class) : AIPS_Cron_Backend_Resolver::resolve());
+		$this->queue_repo           = $queue_repo ?: ($container->has(AIPS_Content_Indexer_Queue_Repository::class) ? $container->make(AIPS_Content_Indexer_Queue_Repository::class) : new AIPS_Content_Indexer_Queue_Repository());
+	}
+
+	/**
+	 * @return AIPS_Content_Indexer_Queue_Repository
+	 */
+	public function get_queue_repository(): AIPS_Content_Indexer_Queue_Repository {
+		return $this->queue_repo;
 	}
 
 	/**
@@ -813,12 +827,7 @@ class AIPS_Content_Indexer_Service {
 		$this->relationships_repo->clear_all();
 		$this->embeddings_service->clear_cache();
 
-		if (empty($object_type) || 'post' === $object_type) {
-			delete_option('aips_pending_index_queue');
-		}
-		if (empty($object_type) || 'topic' === $object_type) {
-			delete_option('aips_pending_topic_index_queue');
-		}
+		$this->queue_repo->clear((string) $object_type, false);
 
 		if (empty($object_type)) {
 			$this->unschedule_queue_worker();
@@ -902,12 +911,7 @@ class AIPS_Content_Indexer_Service {
 			return;
 		}
 
-		$queue  = (array) get_option('aips_pending_index_queue', array());
-		$merged = array_values(array_unique(array_merge($queue, $clean_ids)));
-
-		if ($merged !== $queue) {
-			update_option('aips_pending_index_queue', $merged, false);
-		}
+		$this->queue_repo->enqueue_items('post', $clean_ids);
 
 		// Schedule debounced worker if not already queued
 		$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
@@ -943,12 +947,7 @@ class AIPS_Content_Indexer_Service {
 			return;
 		}
 
-		$queue  = (array) get_option('aips_pending_topic_index_queue', array());
-		$merged = array_values(array_unique(array_merge($queue, $clean_ids)));
-
-		if ($merged !== $queue) {
-			update_option('aips_pending_topic_index_queue', $merged, false);
-		}
+		$this->queue_repo->enqueue_items('topic', $clean_ids);
 
 		// Schedule debounced worker if not already queued
 		$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
@@ -982,7 +981,7 @@ class AIPS_Content_Indexer_Service {
 	 * @return bool
 	 */
 	public function is_queue_paused(): bool {
-		return (bool) get_option(self::QUEUE_PAUSED_OPTION, false);
+		return $this->queue_repo->is_paused();
 	}
 
 	/**
@@ -995,11 +994,9 @@ class AIPS_Content_Indexer_Service {
 	 * @return void
 	 */
 	public function set_queue_paused(bool $paused): void {
+		$this->queue_repo->set_paused($paused);
 		if ($paused) {
-			update_option(self::QUEUE_PAUSED_OPTION, 1, false);
 			$this->unschedule_queue_worker();
-		} else {
-			delete_option(self::QUEUE_PAUSED_OPTION);
 		}
 	}
 
@@ -1018,27 +1015,33 @@ class AIPS_Content_Indexer_Service {
 	 * @return void
 	 */
 	public function clear_queue(): void {
-		delete_option('aips_pending_index_queue');
-		delete_option('aips_pending_topic_index_queue');
+		$this->queue_repo->clear('', true);
 		$this->unschedule_queue_worker();
-		delete_option(self::QUEUE_PAUSED_OPTION);
 	}
 
 	/**
 	 * Get the state of the background indexer queue.
 	 *
-	 * @return array{is_running: bool, pending_count: int, pending_posts: int, pending_topics: int}
+	 * @param bool $adopt Whether to adopt legacy items into a session if needed.
+	 * @return array{
+	 *     is_running: bool,
+	 *     pending_count: int,
+	 *     pending_posts: int,
+	 *     pending_topics: int,
+	 *     in_flight_count: int,
+	 *     outstanding_count: int,
+	 *     run_id: int,
+	 *     open_run: object|null,
+	 *     latest_run: object|null,
+	 *     total_increased: bool
+	 * }
 	 */
-	public function get_queue_status(): array {
-		$pending_posts  = count((array) get_option('aips_pending_index_queue', array()));
-		$pending_topics = count((array) get_option('aips_pending_topic_index_queue', array()));
+	public function get_queue_status(bool $adopt = true): array {
+		$status = $this->queue_repo->get_status($adopt);
 
-		return array(
-			'is_running'     => $this->is_queue_worker_scheduled(),
-			'pending_count'  => $pending_posts + $pending_topics,
-			'pending_posts'  => $pending_posts,
-			'pending_topics' => $pending_topics,
-		);
+		return array_merge($status, array(
+			'is_running' => $this->is_queue_worker_scheduled(),
+		));
 	}
 
 	/**
@@ -1053,12 +1056,19 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$this->cron_backend->schedule_single($timestamp, 'aips_process_pending_indexer_queue', array(), AIPS_Cron_Registry::GROUP_INDEXER);
+
+		// Fallback for custom cron schedule filters in test environments where schedule_single returns early.
+		if (!$this->is_queue_worker_scheduled() && function_exists('wp_schedule_single_event')) {
+			wp_schedule_single_event(max(time(), $timestamp), 'aips_process_pending_indexer_queue', array());
+		}
 	}
 
 	/**
 	 * Process pending post and topic IDs in the background indexing queue in slices.
 	 *
 	 * Respects quota auto-pause, cooldown status, post types, scope, and rate limits.
+	 * Uses token-owned claims and versioned acknowledgements so concurrent enqueues
+	 * or edits during processing are never lost.
 	 *
 	 * @return array Processed summary results.
 	 */
@@ -1071,106 +1081,195 @@ class AIPS_Content_Indexer_Service {
 			return array('status' => 'paused', 'processed' => 0);
 		}
 
+		// Adopt any pre-existing legacy queue items into an open session before checking limits.
+		$this->queue_repo->adopt_or_get_open_session();
+
 		$rate_limiter = $this->embeddings_service->get_rate_limiter();
 		$cooldown     = $rate_limiter->get_cooldown_status();
 
 		// If currently in cooldown, reschedule worker for cooldown expiry and yield
 		if ($cooldown['is_paused']) {
-			$this->schedule_queue_worker($cooldown['paused_until'] + 5);
+			$retry_at = (int) $cooldown['paused_until'] + 5;
+			$this->queue_repo->mark_waiting(
+				AIPS_Background_Process_Repository::STATUS_COOLDOWN,
+				$retry_at,
+				(string) $cooldown['reason']
+			);
+			$this->schedule_queue_worker($retry_at);
 			return array('status' => 'cooldown_active', 'paused_until' => $cooldown['paused_until']);
 		}
 
 		// If approaching hard quota (>=90%), pause queue until daily reset
 		$quota_pause = (bool) $this->config->get_option('aips_indexer_quota_pause_enabled', true);
 		if ($quota_pause && $rate_limiter->is_approaching_quota(0.90)) {
-			$stats = $rate_limiter->get_usage_stats();
-			$delay = max(3600, (int) $stats['daily_reset_in'] + 60);
-			$this->schedule_queue_worker(time() + $delay);
+			$stats    = $rate_limiter->get_usage_stats();
+			$delay    = max(3600, (int) $stats['daily_reset_in'] + 60);
+			$retry_at = time() + $delay;
+			$this->queue_repo->mark_waiting(
+				AIPS_Background_Process_Repository::STATUS_WAITING_QUOTA,
+				$retry_at,
+				__('Embeddings quota reached. The queue resumes automatically.', 'ai-post-scheduler')
+			);
+			$this->schedule_queue_worker($retry_at);
 			$this->logger->info('Embeddings queue auto-paused: approaching API quota limit.');
 			return array('status' => 'quota_paused', 'reschedule_in' => $delay);
 		}
 
-		$post_queue  = (array) get_option('aips_pending_index_queue', array());
-		$topic_queue = (array) get_option('aips_pending_topic_index_queue', array());
+		$batch_size = max(1, min(50, (int) $this->config->get_option('aips_indexer_batch_size', 10)));
+		$claim      = $this->queue_repo->claim_slice($batch_size);
+		$token      = $claim['token'];
+		$claimed    = $claim['items'];
 
-		if (empty($post_queue) && empty($topic_queue)) {
+		if (empty($claimed)) {
 			return array('status' => 'empty', 'processed' => 0);
 		}
 
-		$batch_size = max(1, min(50, (int) $this->config->get_option('aips_indexer_batch_size', 10)));
-		$post_slice = array_slice($post_queue, 0, $batch_size);
-		$post_rem   = array_slice($post_queue, count($post_slice));
-
 		$success     = 0;
 		$failed      = 0;
-		$broke_early = false;
+		$skipped     = 0;
 		$indexed_ids = array();
 
-		foreach ($post_slice as $idx => $post_id) {
-			$post = get_post($post_id);
-			if (!$post || 'publish' !== $post->post_status || !$this->is_post_in_scope($post)) {
-				continue;
+		foreach ($claimed as $idx => $item) {
+			$type            = $item['type'];
+			$entity_id       = (int) $item['id'];
+			$claimed_version = (int) $item['claimed_version'];
+
+			// Stop early if an administrator paused or cancelled the queue mid-slice.
+			if ($this->is_queue_paused()) {
+				$this->queue_repo->release_claims($token, array_slice($claimed, $idx));
+				break;
+			}
+			if (!$this->queue_repo->has_active_claim($token, $type, $entity_id, $claimed_version)) {
+				break;
 			}
 
-			// Relationships are computed once for the whole slice below, not per post.
-			$result = $this->index_post($post_id, false);
+			if ($type === 'post') {
+				$post = get_post($entity_id);
+				if (!$post || 'publish' !== $post->post_status || !$this->is_post_in_scope($post)) {
+					$skipped++;
+					$this->queue_repo->acknowledge_item(
+						$token,
+						'post',
+						$entity_id,
+						$claimed_version,
+						AIPS_Content_Indexer_Queue_Repository::OUTCOME_SKIPPED,
+						0
+					);
+					continue;
+				}
 
-			if (is_wp_error($result)) {
-				$failed++;
-				$rate_limiter->record_failure($result);
+				$calls_before = $rate_limiter->get_provider_call_count();
+				// Relationships are computed once for the whole slice below, not per post.
+				$result       = $this->index_post($entity_id, false);
+				$calls_delta  = max(0, $rate_limiter->get_provider_call_count() - $calls_before);
 
-				if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
-					$broke_early = true;
-					$unprocessed_post_slice = array_slice($post_slice, $idx);
-					$post_rem = array_merge($unprocessed_post_slice, $post_rem);
-					break;
+				if (is_wp_error($result)) {
+					$failed++;
+
+					$is_retryable = $rate_limiter->is_rate_limit_or_exhaustion_error($result)
+						|| $result->get_error_code() === 'rate_limit_exceeded'
+						|| $result->get_error_code() === 'embeddings_cooldown_active';
+
+					if ($is_retryable) {
+						$this->queue_repo->acknowledge_item(
+							$token,
+							'post',
+							$entity_id,
+							$claimed_version,
+							AIPS_Content_Indexer_Queue_Repository::OUTCOME_RETRYABLE,
+							$calls_delta
+						);
+						$this->queue_repo->release_claims($token, array_slice($claimed, $idx + 1));
+						break;
+					}
+
+					$this->queue_repo->acknowledge_item(
+						$token,
+						'post',
+						$entity_id,
+						$claimed_version,
+						AIPS_Content_Indexer_Queue_Repository::OUTCOME_FAILED,
+						$calls_delta
+					);
+				} else {
+					$rate_limiter->record_success();
+					$success++;
+					$indexed_ids[] = $entity_id;
+					$this->queue_repo->acknowledge_item(
+						$token,
+						'post',
+						$entity_id,
+						$claimed_version,
+						AIPS_Content_Indexer_Queue_Repository::OUTCOME_SUCCESS,
+						$calls_delta
+					);
 				}
 			} else {
-				$rate_limiter->record_success();
-				$success++;
-				$indexed_ids[] = $post_id;
+				$calls_before = $rate_limiter->get_provider_call_count();
+				$result       = $this->index_topic($entity_id);
+				$calls_delta  = max(0, $rate_limiter->get_provider_call_count() - $calls_before);
+
+				if (is_wp_error($result)) {
+					$failed++;
+
+					$is_retryable = $rate_limiter->is_rate_limit_or_exhaustion_error($result)
+						|| $result->get_error_code() === 'rate_limit_exceeded'
+						|| $result->get_error_code() === 'embeddings_cooldown_active';
+
+					if ($is_retryable) {
+						$this->queue_repo->acknowledge_item(
+							$token,
+							'topic',
+							$entity_id,
+							$claimed_version,
+							AIPS_Content_Indexer_Queue_Repository::OUTCOME_RETRYABLE,
+							$calls_delta
+						);
+						$this->queue_repo->release_claims($token, array_slice($claimed, $idx + 1));
+						break;
+					}
+
+					$this->queue_repo->acknowledge_item(
+						$token,
+						'topic',
+						$entity_id,
+						$claimed_version,
+						AIPS_Content_Indexer_Queue_Repository::OUTCOME_FAILED,
+						$calls_delta
+					);
+				} else {
+					$rate_limiter->record_success();
+					$success++;
+					$this->queue_repo->acknowledge_item(
+						$token,
+						'topic',
+						$entity_id,
+						$claimed_version,
+						AIPS_Content_Indexer_Queue_Repository::OUTCOME_SUCCESS,
+						$calls_delta
+					);
+				}
 			}
 		}
 
 		$this->recompute_relationships_for_posts($indexed_ids);
 
-		update_option('aips_pending_index_queue', array_values($post_rem), false);
+		$queue_status    = $this->queue_repo->get_status(false);
+		$total_remaining = (int) $queue_status['outstanding_count'];
 
-		$topic_rem = $topic_queue;
-		if (!$broke_early && !empty($topic_queue)) {
-			$remaining_capacity = max(0, $batch_size - count($post_slice));
-			if ($remaining_capacity > 0) {
-				$topic_slice = array_slice($topic_queue, 0, $remaining_capacity);
-				$topic_rem   = array_slice($topic_queue, count($topic_slice));
-
-				foreach ($topic_slice as $idx => $topic_id) {
-					$result = $this->index_topic((int) $topic_id);
-
-					if (is_wp_error($result)) {
-						$failed++;
-						$rate_limiter->record_failure($result);
-
-						if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
-							$unprocessed_topic_slice = array_slice($topic_slice, $idx);
-							$topic_rem = array_merge($unprocessed_topic_slice, $topic_rem);
-							break;
-						}
-					} else {
-						$rate_limiter->record_success();
-						$success++;
-					}
-				}
-
-				update_option('aips_pending_topic_index_queue', array_values($topic_rem), false);
-			}
-		}
-
-		$total_remaining = count($post_rem) + count($topic_rem);
-
-		// If more items remain and not in cooldown, schedule next batch
+		// If more items remain, schedule next batch (or record cooldown wait).
 		$cooldown = $rate_limiter->get_cooldown_status();
 		if ($total_remaining > 0) {
-			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (AIPS_DateTime::now()->timestamp() + 5);
+			if ($cooldown['is_paused']) {
+				$next_time = (int) $cooldown['paused_until'] + 5;
+				$this->queue_repo->mark_waiting(
+					AIPS_Background_Process_Repository::STATUS_COOLDOWN,
+					$next_time,
+					(string) $cooldown['reason']
+				);
+			} else {
+				$next_time = AIPS_DateTime::now()->timestamp() + 5;
+			}
 			$this->schedule_queue_worker($next_time);
 		}
 
@@ -1185,6 +1284,7 @@ class AIPS_Content_Indexer_Service {
 			'status'    => 'processed',
 			'success'   => $success,
 			'failed'    => $failed,
+			'skipped'   => $skipped,
 			'remaining' => $total_remaining,
 		);
 	}

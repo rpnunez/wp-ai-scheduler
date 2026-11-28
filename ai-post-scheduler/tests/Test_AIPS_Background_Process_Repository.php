@@ -13,6 +13,8 @@ class Test_AIPS_Background_Process_Repository extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		AIPS_DB_Manager::install_tables();
+		global $wpdb;
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_background_processes' );
 		$this->repo = new AIPS_Background_Process_Repository();
 	}
 
@@ -99,5 +101,30 @@ class Test_AIPS_Background_Process_Repository extends WP_UnitTestCase {
 		$this->assertSame( 1, $this->repo->cleanup_old() );
 		$this->assertNull( $this->repo->get( $old_done ) );
 		$this->assertNotNull( $this->repo->get( $old_active ) );
+	}
+
+	public function test_add_total_and_atomic_locks() {
+		$id = $this->repo->create( 'demo', 5 );
+		$this->repo->add_progress( $id, 3, 0, 10, 2 );
+
+		$this->assertTrue( $this->repo->add_total( $id, 4, 'added items' ) );
+		$run = $this->repo->get( $id );
+		$this->assertSame( 9, $run->total );
+		$this->assertSame( 'added items', $run->message );
+
+		// Never drops total below processed.
+		$this->assertTrue( $this->repo->add_total( $id, -10 ) );
+		$this->assertSame( 3, $this->repo->get( $id )->total );
+
+		// Token-owned atomic locks.
+		$token1 = $this->repo->acquire_lock( 'unit_test_lock', 30 );
+		$this->assertNotNull( $token1 );
+		$this->assertNull( $this->repo->acquire_lock( 'unit_test_lock', 30 ), 'A held lock cannot be acquired by a second caller.' );
+		$this->assertFalse( $this->repo->release_lock( 'unit_test_lock', 'wrong_token' ) );
+		$this->assertTrue( $this->repo->release_lock( 'unit_test_lock', $token1 ) );
+
+		$token2 = $this->repo->acquire_lock( 'unit_test_lock', 30 );
+		$this->assertNotNull( $token2 );
+		$this->repo->release_lock( 'unit_test_lock', $token2 );
 	}
 }
