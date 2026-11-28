@@ -10,6 +10,7 @@
   - Added path traversal guards, strict regex validation, capability checks, and comprehensive unit tests in `Test_AIPS_Diagnostics_Logs.php`.
 
 ### Fixed
+- **Template settings persistence:** Template descriptions and affiliate link injection now persist through template creation and updates. Slug generation and its prompt are also forwarded through the template save service.
 - **Settings dropdowns after the Settings refactor:** restored choices to empty select and multiselect controls, retained saved values when dynamic choices disappear, and kept custom-rendered field descriptions in the shared renderer.
 - **Summarized Notification Digest Batching & Settings Persistence:**
   - Enabled the summarized digest by default in the settings registry and DevStackTips setup script, batching frequent transactional emails.
