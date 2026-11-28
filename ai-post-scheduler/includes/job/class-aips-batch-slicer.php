@@ -147,6 +147,8 @@ class AIPS_Batch_Slicer {
 			$num_slices = min($max_slices, (int) ceil($item_count / 2));
 			$num_slices = max(1, $num_slices);
 			$items_per_slice = (int) ceil($item_count / $num_slices);
+			// Recompute actual slice count needed so trailing slices are never empty or negative.
+			$num_slices = max(1, (int) ceil($item_count / $items_per_slice));
 		}
 
 		// Calculate interval between slice start times

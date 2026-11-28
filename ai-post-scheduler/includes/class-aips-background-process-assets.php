@@ -52,14 +52,14 @@ class AIPS_Background_Process_Assets {
 			true
 		);
 
-		$manager = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class);
+		$controller = AIPS_Container::get_instance()->make(AIPS_Background_Processes_Controller::class);
 
 		wp_localize_script('aips-background-processes', 'aipsBgL10n', array(
 			'ajaxUrl'        => admin_url('admin-ajax.php'),
 			'nonce'          => wp_create_nonce(AIPS_Background_Processes_Controller::NONCE_ACTION),
-			'initial'        => $manager->get_summary(),
+			'initial'        => $controller->get_summary(),
 			'serverTime'     => time(),
-			'statusLabels'   => AIPS_Background_Process_Base::get_status_labels(),
+			'statusLabels'   => AIPS_Background_Processes_Controller::get_status_labels(),
 			'lastRun'        => __('last run: %s', 'ai-post-scheduler'),
 			'resumesIn'      => __('Resumes in %s', 'ai-post-scheduler'),
 			'lessThanMinute' => __('under a minute', 'ai-post-scheduler'),

@@ -926,56 +926,63 @@ class AIPS_Author_Topics_Controller {
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 
-		$result = AIPS_Container::get_instance()
-			->make(AIPS_Background_Process_Manager::class)
-			->control(AIPS_Author_Embeddings_Process::KEY, AIPS_Background_Process_Manager::ACTION_START, array('author_id' => $author_id));
-
-		if (is_wp_error($result)) {
-			$code = $result->get_error_code();
-
-			if ('aips_bg_nothing_to_do' === $code) {
-				AIPS_Ajax_Response::success(array(
-					'message'      => __('Every topic already has an embedding.', 'ai-post-scheduler'),
-					'queued_count' => 0,
-				));
-			}
-
-			if ('aips_bg_already_open' === $code) {
-				$run        = ( new AIPS_Background_Process_Repository() )->get_open(AIPS_Author_Embeddings_Process::KEY);
-				$run_author = ($run && isset($run->options['author_id'])) ? (int) $run->options['author_id'] : 0;
-
-				// A paused run processes nothing until it is resumed.
-				if ($run && AIPS_Background_Process_Repository::STATUS_PAUSED === $run->status) {
-					AIPS_Ajax_Response::error(__('Topic embeddings are paused. Resume the run from Diagnostics > Background Processes to continue.', 'ai-post-scheduler'));
-				}
-
-				// The open run covers one other author, or a single author while all were asked for.
-				if ($run && 0 !== $run_author && $run_author !== $author_id) {
-					AIPS_Ajax_Response::error(__('Embeddings for another author are already being processed. Wait for that run to finish, or stop it from Diagnostics > Background Processes, then try again.', 'ai-post-scheduler'));
-				}
-
-				AIPS_Ajax_Response::success(array(
-					'message'      => __('Topic embeddings are already being processed. See Diagnostics > Background Processes.', 'ai-post-scheduler'),
-					'queued_count' => 0,
-				));
-			}
-
-			AIPS_Ajax_Response::error($result->get_error_message());
+		$service = new AIPS_Author_Embeddings_Service();
+		$can     = $service->can_run();
+		if ( is_wp_error( $can ) ) {
+			AIPS_Ajax_Response::error( $can->get_error_message() );
 		}
 
-		AIPS_Ajax_Response::success(array(
+		$job_repo    = AIPS_Container::get_instance()->get_job_repository();
+		$job_manager = AIPS_Container::get_instance()->get_job_manager();
+
+		$active_jobs = $job_repo->get_open_jobs( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS );
+		if ( ! empty( $active_jobs ) ) {
+			$run        = $active_jobs[0];
+			$payload    = $run->get_payload();
+			$run_author = isset( $payload['author_id'] ) ? (int) $payload['author_id'] : 0;
+
+			if ( $run->is_paused() ) {
+				AIPS_Ajax_Response::error( __( 'Topic embeddings are paused. Resume the run from Diagnostics > Background Processes to continue.', 'ai-post-scheduler' ) );
+			}
+
+			if ( 0 !== $run_author && $run_author !== $author_id ) {
+				AIPS_Ajax_Response::error( __( 'Embeddings for another author are already being processed. Wait for that run to finish, or stop it from Diagnostics > Background Processes, then try again.', 'ai-post-scheduler' ) );
+			}
+
+			AIPS_Ajax_Response::success( array(
+				'message'      => __( 'Topic embeddings are already being processed. See Diagnostics > Background Processes.', 'ai-post-scheduler' ),
+				'queued_count' => 0,
+			) );
+		}
+
+		$remaining = $service->count_remaining( $author_id );
+		if ( $remaining <= 0 ) {
+			AIPS_Ajax_Response::success( array(
+				'message'      => __( 'Every topic already has an embedding.', 'ai-post-scheduler' ),
+				'queued_count' => 0,
+			) );
+		}
+
+		$job_id = $job_manager->dispatch(
+			AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_EMBEDDINGS,
+			array( 'author_id' => $author_id ),
+			array( 'total' => $remaining )
+		);
+
+		AIPS_Ajax_Response::success( array(
 			'message'      => sprintf(
 				/* translators: %d: number of topics queued. */
 				_n(
 					'Queued embeddings for %d topic. Processing runs in the background and can be paused from Diagnostics > Background Processes.',
 					'Queued embeddings for %d topics. Processing runs in the background and can be paused from Diagnostics > Background Processes.',
-					(int) $result['total'],
+					$remaining,
 					'ai-post-scheduler'
 				),
-				(int) $result['total']
+				$remaining
 			),
-			'queued_count' => (int) $result['total'],
-		));
+			'queued_count' => $remaining,
+			'job_id'       => $job_id,
+		) );
 	}
 
 	/**

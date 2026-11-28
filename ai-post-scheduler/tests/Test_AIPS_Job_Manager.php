@@ -247,6 +247,7 @@ class Test_AIPS_Job_Manager extends WP_UnitTestCase {
 		$record = $this->manager->get_job( $job_id );
 		$this->assertSame( 2, $record->get_attempts() );
 		$this->assertTrue( $record->is_failed() );
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Job_Registry::DEFAULT_TICK_HOOK, array( $job_id ) ) );
 	}
 
 	public function test_dispatch_sync_executes_immediately() {
@@ -296,5 +297,121 @@ class Test_AIPS_Job_Manager extends WP_UnitTestCase {
 		$cleaned = $this->manager->cleanup_finished_jobs( 500 );
 		$this->assertSame( 1, $cleaned );
 		$this->assertNull( $this->manager->get_job( $old_job ) );
+	}
+
+	public function test_fresh_running_job_is_not_reentered() {
+		add_filter(
+			'aips_registered_jobs',
+			function ( $defs ) {
+				$defs['mock_claim_job'] = array(
+					'label'   => 'Claim Job',
+					'hook'    => AIPS_Job_Registry::DEFAULT_TICK_HOOK,
+					'handler' => function () {
+						return AIPS_Job_Slice_Result::complete( 4 );
+					},
+				);
+				return $defs;
+			}
+		);
+
+		$this->manager = new AIPS_Job_Manager( new AIPS_Job_Registry(), $this->repository, $this->cron_manager );
+		$job_id        = $this->manager->dispatch( 'mock_claim_job', array(), array( 'total' => 4 ) );
+		$this->repository->update(
+			$job_id,
+			array(
+				'status'       => AIPS_Job_Record::STATUS_RUNNING,
+				'last_tick_at' => time(),
+			)
+		);
+
+		$this->manager->handle_tick( $job_id );
+
+		$record = $this->manager->get_job( $job_id );
+		$this->assertSame( AIPS_Job_Record::STATUS_RUNNING, $record->get_status() );
+		$this->assertSame( 0, $record->get_processed() );
+	}
+
+	public function test_stale_running_job_is_reclaimed() {
+		add_filter(
+			'aips_registered_jobs',
+			function ( $defs ) {
+				$defs['mock_stale_job'] = array(
+					'label'   => 'Stale Job',
+					'hook'    => AIPS_Job_Registry::DEFAULT_TICK_HOOK,
+					'handler' => function () {
+						return AIPS_Job_Slice_Result::complete( 2 );
+					},
+				);
+				return $defs;
+			}
+		);
+
+		$this->manager = new AIPS_Job_Manager( new AIPS_Job_Registry(), $this->repository, $this->cron_manager );
+		$job_id        = $this->manager->dispatch( 'mock_stale_job' );
+		$this->repository->update(
+			$job_id,
+			array(
+				'status'       => AIPS_Job_Record::STATUS_RUNNING,
+				'last_tick_at' => time() - 1000,
+			)
+		);
+
+		$this->manager->handle_tick( $job_id );
+
+		$record = $this->manager->get_job( $job_id );
+		$this->assertTrue( $record->is_completed() );
+		$this->assertSame( 2, $record->get_processed() );
+	}
+
+	public function test_terminal_failure_is_not_retried() {
+		add_filter(
+			'aips_registered_jobs',
+			function ( $defs ) {
+				$defs['mock_terminal_job'] = array(
+					'label'   => 'Terminal Job',
+					'hook'    => AIPS_Job_Registry::DEFAULT_TICK_HOOK,
+					'handler' => function () {
+						return AIPS_Job_Slice_Result::failure( array( 'embeddings disabled' ) );
+					},
+				);
+				return $defs;
+			}
+		);
+
+		$this->manager = new AIPS_Job_Manager( new AIPS_Job_Registry(), $this->repository, $this->cron_manager );
+		$job_id        = $this->manager->dispatch( 'mock_terminal_job' );
+		$this->manager->handle_tick( $job_id );
+
+		$record = $this->manager->get_job( $job_id );
+		$this->assertTrue( $record->is_failed() );
+		$this->assertSame( 0, $record->get_attempts() );
+		$this->assertStringContainsString( 'embeddings disabled', (string) $record->get_error_message() );
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Job_Registry::DEFAULT_TICK_HOOK, array( $job_id ) ) );
+	}
+
+	public function test_pause_during_slice_is_not_overwritten_by_completion() {
+		$repository = $this->repository;
+		add_filter(
+			'aips_registered_jobs',
+			function ( $defs ) use ( $repository ) {
+				$defs['mock_pause_job'] = array(
+					'label'   => 'Pause Job',
+					'hook'    => AIPS_Job_Registry::DEFAULT_TICK_HOOK,
+					'handler' => function ( AIPS_Job_Context $context ) use ( $repository ) {
+						$repository->update( $context->get_job_id(), array( 'status' => AIPS_Job_Record::STATUS_PAUSED ) );
+						return AIPS_Job_Slice_Result::complete( 1 );
+					},
+				);
+				return $defs;
+			}
+		);
+
+		$this->manager = new AIPS_Job_Manager( new AIPS_Job_Registry(), $this->repository, $this->cron_manager );
+		$job_id        = $this->manager->dispatch( 'mock_pause_job' );
+		$this->manager->handle_tick( $job_id );
+
+		$record = $this->manager->get_job( $job_id );
+		$this->assertTrue( $record->is_paused() );
+		$this->assertSame( 1, $record->get_processed() );
 	}
 }

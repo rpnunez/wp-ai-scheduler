@@ -4,7 +4,7 @@
  *
  * Shared execution harness for cron-driven post-generation flows.
  *
- * Both the template-schedule pipeline (AIPS_Schedule_Processor) and the
+ * Both the template-schedule pipeline (AIPS_Schedule_Generation_Service) and the
  * author-topic pipeline (AIPS_Author_Post_Generator) share an identical
  * structural pattern for each unit of work:
  *

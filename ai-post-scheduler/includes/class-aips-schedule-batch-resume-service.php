@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
  * writes a resume cursor into the schedule's run_state: the terminal status,
  * a `resumable` flag, and the absolute index the next slice should start at.
  * Every remaining slice already queued for that run then no-ops, because
- * AIPS_Schedule_Processor treats the terminated run_state as terminal.
+ * AIPS_Schedule_Generation_Service treats the terminated run_state as terminal.
  *
  * This service reads those cursors back and dispatches the remaining posts as
  * a fresh set of slices, offset so the schedule finishes at its original total

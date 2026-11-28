@@ -650,6 +650,22 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     }
 
     /**
+     * Load decoded batch-progress JSON for a schedule.
+     *
+     * @param int $id Schedule ID.
+     * @return array|null Progress payload, or null when none is stored.
+     */
+    public function get_batch_progress($id) {
+        $schedule = $this->get_by_id($id);
+        if (!$schedule || empty($schedule->batch_progress)) {
+            return null;
+        }
+
+        $decoded = json_decode($schedule->batch_progress, true);
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /**
      * Persist batch progress for a schedule.
      *
      * Records how many posts in a multi-post batch have been generated so

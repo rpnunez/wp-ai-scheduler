@@ -129,29 +129,68 @@ class AIPS_Job_Repository {
 	 * @param int    $cursor_id
 	 * @return bool
 	 */
-	public function increment_progress( string $job_id, int $processed_inc, int $failed_inc = 0, int $cursor_id = 0 ): bool {
-		$now = AIPS_DateTime::now()->timestamp();
-		$sql = "UPDATE {$this->table_name} SET
-			processed = processed + %d,
-			failed = failed + %d,
-			cursor_id = %d,
-			last_tick_at = %d,
-			updated_at = %d
-			WHERE job_id = %s";
+	public function increment_progress( string $job_id, int $processed_inc, int $failed_inc = 0, ?int $cursor_id = null ): bool {
+		$now    = AIPS_DateTime::now()->timestamp();
+		$sets   = array(
+			'processed = processed + %d',
+			'failed = failed + %d',
+			'last_tick_at = %d',
+			'updated_at = %d',
+		);
+		$params = array( $processed_inc, $failed_inc, $now, $now );
+
+		if ( null !== $cursor_id ) {
+			$sets[]   = 'cursor_id = %d';
+			$params[] = $cursor_id;
+		}
+
+		$params[] = $job_id;
+		$sql      = "UPDATE {$this->table_name} SET " . implode( ', ', $sets ) . ' WHERE job_id = %s';
+
+		$result = $this->wpdb->query( $this->wpdb->prepare( $sql, $params ) );
+
+		return false !== $result;
+	}
+
+	/**
+	 * Claim a pending job, or a running job whose last tick is older than $stale_seconds.
+	 *
+	 * The UPDATE is the lock: a second runner sees status running with a fresh
+	 * last_tick_at and updates zero rows.
+	 *
+	 * @param string $job_id
+	 * @param int    $stale_seconds How long a running tick may stay silent before it can be reclaimed.
+	 * @return bool True when this caller owns the tick.
+	 */
+	public function claim( string $job_id, int $stale_seconds ): bool {
+		$now          = AIPS_DateTime::now()->timestamp();
+		$stale_before = $now - max( 1, $stale_seconds );
+		$sql          = "UPDATE {$this->table_name}
+			SET status = %s,
+				last_tick_at = %d,
+				started_at = IF(started_at = 0, %d, started_at),
+				updated_at = %d
+			WHERE job_id = %s
+				AND (
+					status = %s
+					OR (status = %s AND last_tick_at > 0 AND last_tick_at < %d)
+				)";
 
 		$result = $this->wpdb->query(
 			$this->wpdb->prepare(
 				$sql,
-				$processed_inc,
-				$failed_inc,
-				$cursor_id,
+				AIPS_Job_Record::STATUS_RUNNING,
 				$now,
 				$now,
-				$job_id
+				$now,
+				$job_id,
+				AIPS_Job_Record::STATUS_PENDING,
+				AIPS_Job_Record::STATUS_RUNNING,
+				$stale_before
 			)
 		);
 
-		return false !== $result;
+		return is_int( $result ) && $result > 0;
 	}
 
 	/**
@@ -219,14 +258,32 @@ class AIPS_Job_Repository {
 	}
 
 	/**
-	 * Retrieve all active jobs (pending or running).
+	 * Jobs that still occupy a process slot, including paused ones.
 	 *
 	 * @param string|null $job_type Optional job type filter.
 	 * @return AIPS_Job_Record[]
 	 */
+	public function get_open_jobs( ?string $job_type = null ): array {
+		return $this->get_jobs_by_statuses( array( 'pending', 'running', 'paused' ), $job_type );
+	}
+
 	public function get_active_jobs( ?string $job_type = null ): array {
-		$sql    = "SELECT * FROM {$this->table_name} WHERE status IN ('pending', 'running')";
-		$params = array();
+		return $this->get_jobs_by_statuses( array( 'pending', 'running' ), $job_type );
+	}
+
+	/**
+	 * @param string[]    $statuses
+	 * @param string|null $job_type
+	 * @return AIPS_Job_Record[]
+	 */
+	private function get_jobs_by_statuses( array $statuses, ?string $job_type = null ): array {
+		if ( empty( $statuses ) ) {
+			return array();
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+		$sql          = "SELECT * FROM {$this->table_name} WHERE status IN ($placeholders)";
+		$params       = $statuses;
 
 		if ( null !== $job_type && '' !== $job_type ) {
 			$sql     .= ' AND job_type = %s';
@@ -235,11 +292,7 @@ class AIPS_Job_Repository {
 
 		$sql .= ' ORDER BY created_at ASC';
 
-		if ( ! empty( $params ) ) {
-			$sql = $this->wpdb->prepare( $sql, $params );
-		}
-
-		$rows = $this->wpdb->get_results( $sql, ARRAY_A );
+		$rows = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $params ), ARRAY_A );
 		if ( ! is_array( $rows ) ) {
 			return array();
 		}
@@ -303,5 +356,30 @@ class AIPS_Job_Repository {
 		);
 
 		return false !== $deleted ? (int) $deleted : 0;
+	}
+
+	/**
+	 * Return count of jobs grouped by status for given statuses.
+	 *
+	 * @param string[] $statuses
+	 * @return array<string,int>
+	 */
+	public function get_status_counts( array $statuses = array( 'pending', 'running', 'failed' ) ): array {
+		$counts = array_fill_keys( $statuses, 0 );
+		if ( empty( $statuses ) ) {
+			return $counts;
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+		$sql          = "SELECT status, COUNT(*) as cnt FROM {$this->table_name} WHERE status IN ($placeholders) GROUP BY status";
+		$rows         = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $statuses ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				$counts[ $row['status'] ] = (int) $row['cnt'];
+			}
+		}
+
+		return $counts;
 	}
 }

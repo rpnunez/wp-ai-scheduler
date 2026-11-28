@@ -1,7 +1,7 @@
 ## [Unreleased]
 
 ### Changed
-- **Notification dedupe without transients (3.7.26):** dispatch now dedupes from `aips_notifications` instead of `aips_notif_*` transients. Email-only deliveries write a hidden already-read receipt. Upgrade deletes leftover `_transient_aips_notif_%` option rows.
+- **Notification dedupe without transients (3.8.1):** dispatch now dedupes from `aips_notifications` instead of `aips_notif_*` transients. Email-only deliveries write a hidden already-read receipt. Upgrade deletes leftover `_transient_aips_notif_%` option rows.
 
 ### Added
 - **Diagnostics Logs Viewer:**
@@ -40,6 +40,10 @@
 - **Slug Prompt Context Cap:** Stateless slug prompts (`AIPS_Prompt_Builder_Post_Slug`) now condense the article to 3,000 characters by default (`AIPS_Prompt_Builder_Post_Slug::CONTEXT_MAX_CHARS`) instead of inheriting the 12,000 character `AIPS_Content_Digest` default, matching the title prompt's cap. A slug is three to six keywords and the title is already in the prompt, so the extra article text only inflated the request. The `aips_slug_context_max_chars` filter still overrides the cap; sites that filtered it are unaffected, and sites that relied on the old default now send at most 3,000 characters of context. Conversational runs are unchanged (issue #2405).
 
 ### Added
+- **Refactor Background Callers onto AIPS_Job_Manager (Issue #2390):**
+  - **Slice 1:** Retired `AIPS_Bulk_Batch_Processor` and `AIPS_Bulk_Batch_Job_Store` onto `AIPS_Job_Manager` with registered job types `bulk_post_generation` and `bulk_post_publish`. Migrated bulk generation slice execution and all callers (`AIPS_Autolink_Run_Service`, `AIPS_Link_Index_Service`, `AIPS_System_Totals_Repository`, `AIPS_System_Diagnostics_Service`) to `AIPS_Job_Repository`. Added database migration `migrate_to_3_8_0()` copying in-flight records from `wp_aips_bulk_batch_jobs` into `wp_aips_jobs` while retaining the legacy table for historical data safety.
+  - **Slice 2:** Retired `AIPS_Schedule_Processor` into `AIPS_Schedule_Generation_Service` integrating directly with `AIPS_Job_Manager` slice execution. Updated `AIPS_Scheduler` to dispatch staggered background post generation jobs (`schedule_post_generation` and `schedule_batch_slice`). Moved legacy hook `aips_process_single_due_schedule` to `AIPS_Cron_Registry::get_legacy_hooks()`.
+  - **Slice 3:** Retired legacy `AIPS_Managed_Background_Process` hierarchy and adapters, copying known in-flight `wp_aips_background_processes` records into `wp_aips_jobs` via `migrate_to_3_8_0()` while retaining the legacy table schema. Extracted domain services `AIPS_Author_Embeddings_Service`, `AIPS_Internal_Links_Indexing_Service`, and `AIPS_Relationships_Recompute_Service` as native job slice handlers. Unified background process observability and controls in `AIPS_Background_Processes_Controller` and migrated `AIPS_Author_Topics_Controller`, `AIPS_Internal_Links_Controller`, `AIPS_Similarity_Evaluator`, `AIPS_Admin_Bar`, and Heartbeat handler onto `AIPS_Job_Manager`.
 - **Settings Subsystem Architecture Refactoring (`AIPS_Settings_Registry`, `AIPS_Setting_Definition`, `AIPS_Settings_Form_Renderer`, `AIPS_Settings_Manager`) (issue #2392):**
   - Introduced `AIPS_Setting_Definition`: strongly typed metadata value object defining option keys, types, defaults, tabs, sections, labels, descriptions, control types, control options, sanitization callbacks, and dependencies.
   - Introduced `AIPS_Settings_Registry`: single source of truth for all plugin options, tabs, sections, and default values. `AIPS_Config::get_default_options()` now derives directly from the registry without duplicated default arrays. Bound `AIPS_Settings_Registry::class` in `AIPS_Container`.

@@ -263,8 +263,16 @@ class AIPS_Interval_Calculator {
                 return (int) $dt->modify('+2 weeks')->timestamp();
                 
             case 'monthly':
-                return (int) $dt->modify('+1 month')->timestamp();
-                
+                // Clamp to the last day of the next month instead of overflowing
+                // (e.g. Jan 31 -> Feb 28/29, not Mar 3).
+                $day        = (int) $dt->format('j');
+                $time_str   = $dt->format('H:i:s');
+                $next_month = $dt->modify('first day of next month');
+                $last_day   = (int) $next_month->format('t');
+                $target_day = min($day, $last_day);
+                $target_dt  = $next_month->setDate((int) $next_month->format('Y'), (int) $next_month->format('m'), $target_day);
+                return (int) $target_dt->modify($time_str)->getTimestamp();
+
             default:
                 return $this->calculate_day_specific_interval($frequency, $base_time);
         }

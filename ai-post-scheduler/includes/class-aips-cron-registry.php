@@ -66,6 +66,7 @@ class AIPS_Cron_Registry {
 	const GROUP_EMBEDDINGS     = 'aips-embeddings';
 	const GROUP_AUTHOR_TOPICS  = 'aips-author-topics';
 	const GROUP_BULK_BATCH     = 'aips-bulk-batch';
+	const GROUP_SCHEDULES      = 'aips-schedules';
 	const GROUP_DEFAULT        = 'aips-default';
 
 	/**
@@ -76,14 +77,21 @@ class AIPS_Cron_Registry {
 	 * @return string[]
 	 */
 	public function get_action_scheduler_groups() {
-		return array(
+		$groups = array(
 			self::GROUP_INDEXER,
 			self::GROUP_INTERNAL_LINKS,
 			self::GROUP_EMBEDDINGS,
 			self::GROUP_AUTHOR_TOPICS,
 			self::GROUP_BULK_BATCH,
+			self::GROUP_SCHEDULES,
 			self::GROUP_DEFAULT,
 		);
+
+		if ( class_exists( 'AIPS_Job_Registry' ) ) {
+			$groups = array_merge( $groups, ( new AIPS_Job_Registry() )->get_groups() );
+		}
+
+		return array_values( array_unique( $groups ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -271,7 +279,6 @@ class AIPS_Cron_Registry {
 	 */
 	public function get_single_event_hooks() {
 		return array(
-			AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK => __( 'Queued Due Schedule', 'ai-post-scheduler' ),
 			AIPS_Batch_Queue_Service::HOOK                    => __( 'Schedule Batch Slice', 'ai-post-scheduler' ),
 			'aips_resume_terminated_batches'                  => __( 'Resume Terminated Batches', 'ai-post-scheduler' ),
 			'aips_process_author_topics_slice'                => __( 'Author Topic Slice', 'ai-post-scheduler' ),
@@ -282,8 +289,6 @@ class AIPS_Cron_Registry {
 			AIPS_Publish_Linking_Service::CRON_HOOK           => __( 'Publish Linking', 'ai-post-scheduler' ),
 			AIPS_Link_Index_Service::SCAN_TICK_HOOK           => __( 'Link Index Scan Tick', 'ai-post-scheduler' ),
 			AIPS_Autolink_Run_Service::TICK_HOOK              => __( 'Auto-link Run Tick', 'ai-post-scheduler' ),
-			AIPS_Managed_Background_Process::TICK_HOOK        => __( 'Managed Background Process Tick', 'ai-post-scheduler' ),
-			AIPS_Bulk_Batch_Processor::HOOK                   => __( 'Bulk Batch Slice', 'ai-post-scheduler' ),
 			AIPS_Job_Registry::DEFAULT_TICK_HOOK              => __( 'Background Job Tick', 'ai-post-scheduler' ),
 			'aips_index_posts_batch'                          => __( 'Internal Links Index Batch', 'ai-post-scheduler' ),
 			'aips_process_pending_indexer_queue'              => __( 'Pending Indexer Queue', 'ai-post-scheduler' ),
@@ -306,6 +311,9 @@ class AIPS_Cron_Registry {
 			'aips_daily_rollup_insights',
 			'aips_weekly_send_digest',
 			'aips_monthly_send_digest',
+			'aips_process_bulk_batch',
+			'aips_process_single_due_schedule',
+			'aips_bg_process_tick',
 		);
 	}
 
@@ -384,9 +392,9 @@ class AIPS_Cron_Registry {
 				},
 				'accepted_args' => 1,
 			),
-			AIPS_Managed_Background_Process::TICK_HOOK => array(
+			'aips_bg_process_tick' => array(
 				'callback'      => static function ( $process_key ) {
-					AIPS_Container::get_instance()->make( AIPS_Background_Process_Manager::class )->tick( (string) $process_key );
+					// Legacy no-op handler for any old in-flight ticks
 				},
 				'accepted_args' => 1,
 			),
@@ -412,7 +420,7 @@ class AIPS_Cron_Registry {
 				},
 				'accepted_args' => 1,
 			),
-			AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK => array(
+			'aips_process_single_due_schedule' => array(
 				'callback'      => static function ( $schedule_id ) {
 					AIPS_Scheduler::instance()->process_queued_due_schedule( (int) $schedule_id );
 				},
@@ -514,23 +522,9 @@ class AIPS_Cron_Registry {
 				},
 				'accepted_args' => 1,
 			),
-			AIPS_Bulk_Batch_Processor::HOOK => array(
-				'callback'      => static function ( $job_id, $start_index, $batch_size, $total_quantity, $correlation_id = '' ) {
-					AIPS_Bulk_Batch_Processor::instance()->process(
-						(string) $job_id,
-						(int) $start_index,
-						(int) $batch_size,
-						(int) $total_quantity,
-						(string) $correlation_id
-					);
-				},
-				'accepted_args' => 5,
-			),
 			'aips_cleanup_bulk_batch_jobs' => array(
 				'callback'      => static function () {
-					$store    = new AIPS_Bulk_Batch_Job_Store();
-					$deleted  = $store->cleanup_old_jobs();
-					$deleted += ( new AIPS_Background_Process_Repository() )->cleanup_old();
+					$deleted = AIPS_Container::get_instance()->get_job_manager()->cleanup_finished_jobs( 7 * DAY_IN_SECONDS );
 					if ( $deleted > 0 ) {
 						( new AIPS_Logger() )->log(
 							sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),

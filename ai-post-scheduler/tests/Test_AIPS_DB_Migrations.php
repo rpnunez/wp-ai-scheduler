@@ -29,7 +29,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		set_transient( 'aipsXnotif_other_key', 1, 3600 );
 		update_option( 'aips_notif_digest_queue', array( 'keep' ), false );
 		$migrations = new AIPS_DB_Migrations();
-		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_7_26' );
+		$method     = new ReflectionMethod( $migrations, 'migrate_to_3_8_1' );
 		$method->setAccessible( true );
 		try {
 			$this->assertTrue( $method->invoke( $migrations ) );
@@ -46,14 +46,14 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		}
 	}
 
-	public function test_migrate_to_3_7_26_runs_when_stored_version_is_3_7_25() {
-		set_transient( 'aips_notif_' . md5( 'stamped-3-7-25' ), 1, 3600 );
-		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.25' );
+	public function test_migrate_to_3_8_1_runs_when_stored_version_is_3_8_0() {
+		set_transient( 'aips_notif_' . md5( 'stamped-3-8-0' ), 1, 3600 );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.8.0' );
 
 		AIPS_DB_Migrations::check_and_run();
 
 		global $wpdb;
-		$this->assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name IN (%s, %s)", '_transient_aips_notif_' . md5( 'stamped-3-7-25' ), '_transient_timeout_aips_notif_' . md5( 'stamped-3-7-25' ) ) ) );
+		$this->assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name IN (%s, %s)", '_transient_aips_notif_' . md5( 'stamped-3-8-0' ), '_transient_timeout_aips_notif_' . md5( 'stamped-3-8-0' ) ) ) );
 		$this->assertSame( AIPS_VERSION, get_option( 'aips_db_version' ) );
 	}
 

@@ -19,12 +19,20 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$definitions = $this->registry->get_definitions();
 
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_SLICE, $definitions );
+		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_BULK_POST_GENERATION, $definitions );
+		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH, $definitions );
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_BULK_BATCH_SLICE, $definitions );
 		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_LINK_INDEX_SCAN, $definitions );
+		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION, $definitions );
+		$this->assertArrayHasKey( AIPS_Job_Registry::TYPE_SCHEDULE_BATCH_SLICE, $definitions );
 
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_AUTHOR_TOPIC_SLICE ) );
+		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_POST_GENERATION ) );
+		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH ) );
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_BULK_BATCH_SLICE ) );
 		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_LINK_INDEX_SCAN ) );
+		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION ) );
+		$this->assertTrue( $this->registry->has( AIPS_Job_Registry::TYPE_SCHEDULE_BATCH_SLICE ) );
 		$this->assertFalse( $this->registry->has( 'non_existent_job_type' ) );
 	}
 
@@ -38,7 +46,7 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$this->assertSame( 3, $job_type->get_max_retries() );
 		$this->assertSame( 120, $job_type->get_retry_backoff_sec() );
 		$this->assertSame( 10, $job_type->get_batch_size() );
-		$this->assertSame( 'AIPS_Author_Topics_Service', $job_type->get_handler() );
+		$this->assertSame( 'AIPS_Author_Topics_Scheduler', $job_type->get_handler() );
 
 		$array_spec = $job_type->to_array();
 		$this->assertSame( 'Author Topic Slice', $array_spec['label'] );
@@ -51,6 +59,7 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$this->assertContains( AIPS_Job_Registry::GROUP_BULK_BATCH, $groups );
 		$this->assertContains( AIPS_Job_Registry::GROUP_INDEXER, $groups );
 		$this->assertContains( AIPS_Job_Registry::GROUP_EMBEDDINGS, $groups );
+		$this->assertContains( AIPS_Job_Registry::GROUP_SCHEDULES, $groups );
 
 		$hooks = $this->registry->get_hooks();
 		$this->assertContains( AIPS_Job_Registry::DEFAULT_TICK_HOOK, $hooks );
@@ -78,5 +87,16 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$this->assertSame( 'Custom Job', $custom_type->get_label() );
 		$this->assertSame( 'custom_hook', $custom_type->get_hook() );
 		$this->assertSame( 'custom-group', $custom_type->get_group() );
+		remove_all_filters( 'aips_registered_jobs' );
+	}
+
+	public function test_get_groups_includes_schedules_in_base_list() {
+		add_filter( 'aips_registered_jobs', '__return_empty_array' );
+		try {
+			$groups = $this->registry->get_groups();
+			$this->assertContains( AIPS_Job_Registry::GROUP_SCHEDULES, $groups );
+		} finally {
+			remove_filter( 'aips_registered_jobs', '__return_empty_array' );
+		}
 	}
 }

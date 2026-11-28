@@ -433,26 +433,48 @@ class Test_AIPS_Bulk_Generator_Service extends WP_UnitTestCase {
 	 * The queued (cron) path logs its own summary container; it is a job too.
 	 */
 	public function test_queued_summary_container_is_tagged_as_a_job() {
-		$queue = $this->createMock( AIPS_Batch_Queue_Service::class );
-		$queue->method( 'needs_batch_queue' )->willReturn( true );
-		$queue->method( 'dispatch_generic' )->willReturn( array(
-			'num_batches'       => 1,
-			'posts_per_batch'   => 3,
-			'window_seconds'    => 60,
-			'scheduled_batches' => 1,
-		) );
-		$store = $this->createMock( AIPS_Bulk_Batch_Job_Store::class );
-		$store->method( 'create' )->willReturn( 'job-uuid' );
+		$job_manager = $this->createMock( AIPS_Job_Manager::class );
+		$job_manager->method( 'dispatch_batch' )->willReturn( 'job-uuid' );
 
-		$service = new AIPS_Bulk_Generator_Service( $this->history_service, $store, $queue );
+		$service = new AIPS_Bulk_Generator_Service( $this->history_service, $job_manager );
 		$service->run(
-			array( 1, 2, 3 ),
+			array( 1, 2, 3, 4, 5 ),
 			$this->fn_success( 42 ),
 			array( 'queue_job_type' => 'planner_post', 'history_type' => 'bulk_generate' )
 		);
 
 		$this->assertCount( 1, $this->history_service->containers_created );
 		$this->assertSame( 'job', $this->history_service->containers_created[0]['metadata']['record_kind'] );
+	}
+
+	public function test_handle_job_slice_dispatches_to_registered_strategy() {
+		$called_items = array();
+		AIPS_Bulk_Generator_Service::register_strategy( 'custom_test_strat', function( $item ) use ( &$called_items ) {
+			$called_items[] = $item;
+			return 100 + $item;
+		} );
+
+		$record = new AIPS_Job_Record( array(
+			'job_id'       => 'test-bulk-job',
+			'job_type'     => AIPS_Job_Registry::TYPE_BULK_POST_GENERATION,
+			'status'       => 'running',
+			'total'        => 3,
+			'processed'    => 0,
+			'cursor'       => 0,
+			'payload_json' => wp_json_encode( array(
+				'items'    => array( 10, 20, 30 ),
+				'strategy' => 'custom_test_strat',
+			) ),
+		) );
+
+		$context = new AIPS_Job_Context( $record );
+		$result  = $this->service->handle_job_slice( $context );
+
+		$this->assertSame( 3, $result->get_processed_count() );
+		$this->assertSame( 0, $result->get_failed_count() );
+		$this->assertSame( array( 10, 20, 30 ), $called_items );
+
+		AIPS_Bulk_Generator_Service::reset_strategies();
 	}
 
 	/**
