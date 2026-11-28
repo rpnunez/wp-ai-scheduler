@@ -710,6 +710,7 @@ class AIPS_Test_Conversational_AI_Service implements AIPS_AI_Service_Interface {
 class AIPS_Test_Conversational_Post_Manager {
 
 	public $created_post_data = array();
+	public $component_statuses = array();
 
 	public function create_post($data) {
 		$this->created_post_data = $data;
@@ -722,6 +723,9 @@ class AIPS_Test_Conversational_Post_Manager {
 	}
 
 	public function update_generation_status_meta($post_id, $component_statuses, $incomplete) {
+		$this->component_statuses                      = $component_statuses;
+		$this->created_post_data['component_statuses'] = $component_statuses;
+
 		return true;
 	}
 }

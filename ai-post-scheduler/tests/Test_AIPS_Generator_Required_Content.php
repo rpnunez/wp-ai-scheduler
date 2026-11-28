@@ -7,6 +7,26 @@
 
 class Test_AIPS_Generator_Required_Content extends WP_UnitTestCase {
 
+	public function setUp(): void {
+		parent::setUp();
+		update_option('aips_component_generation_retries', array(
+			'post_content'        => 0,
+			'post_title'          => 0,
+			'post_excerpt'        => 0,
+			'post_slug'           => 0,
+			'post_featured_image' => 0,
+			'post_images'         => 0,
+			'post_meta'           => 0,
+		));
+		AIPS_Config::get_instance()->flush_option_cache();
+	}
+
+	public function tearDown(): void {
+		delete_option('aips_component_generation_retries');
+		AIPS_Config::get_instance()->flush_option_cache();
+		parent::tearDown();
+	}
+
 	public function test_content_generation_failure_skips_title_call_and_post_creation() {
 		$ai_service      = new AIPS_Test_Generator_Required_Content_AI_Service(array(
 			new WP_Error('content_failed', 'Content generation failed.'),

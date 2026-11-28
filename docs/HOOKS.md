@@ -18,6 +18,14 @@ Filters active WordPress AI connectors before AIPS applies its connector allowli
 * **Arguments:**
   * `array $connectors`: Active AI connector definitions keyed by connector ID.
 
+### `aips_component_retry_delay_ms`
+Filters the exponential jitter backoff delay (in milliseconds) before retrying a failed or incomplete post component during generation.
+
+* **Arguments:**
+  * `int $delay_ms`: Calculated backoff delay in milliseconds (default 500–1500ms).
+  * `string $component`: Component key being retried (`post_content`, `post_title`, `post_excerpt`, `post_slug`, `post_featured_image`, `post_images`, `post_meta`).
+  * `int $retry_attempt`: 1-based retry attempt number.
+
 ## Action Hooks
 
 ### Post Generation

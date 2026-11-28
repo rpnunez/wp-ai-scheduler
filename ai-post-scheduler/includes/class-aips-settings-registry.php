@@ -2907,6 +2907,31 @@ class AIPS_Settings_Registry {
 				'sanitize_callback' => 'absint',
 			),
 			array(
+				'key'               => 'aips_component_generation_retries',
+				'type'              => AIPS_Setting_Definition::TYPE_ARRAY,
+				'default'           => array(
+					'post_content'        => 2,
+					'post_title'          => 2,
+					'post_excerpt'        => 1,
+					'post_slug'           => 0,
+					'post_featured_image' => 2,
+					'post_images'         => 3,
+					'post_meta'           => 1,
+				),
+				'tab'               => 'settings-resilience',
+				'section'           => 'aips_resilience_retry_section',
+				'label'             => __( 'Per-Component Inline Retries', 'ai-post-scheduler' ),
+				'control_type'      => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'render_callback'   => static function () {
+					ob_start();
+					( new AIPS_Settings_UI() )->component_generation_retries_field_callback();
+					return ob_get_clean();
+				},
+				'sanitize_callback' => static function ( $value ) {
+					return ( new AIPS_Settings_UI() )->sanitize_component_generation_retries( $value );
+				},
+			),
+			array(
 				'key'          => 'aips_enable_rate_limiting',
 				'type'         => AIPS_Setting_Definition::TYPE_BOOL,
 				'default'      => false,
