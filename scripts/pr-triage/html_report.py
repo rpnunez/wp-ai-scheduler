@@ -60,7 +60,7 @@ button:hover{background:var(--hover)}
 .badge[hidden]{display:none}
 .badge{display:inline-block;background:var(--accent);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:4px}
 .chk{display:flex;gap:4px;align-items:center}
-.wrap{padding:8px 24px 40px;overflow-x:auto}
+.wrap{padding:8px 24px 40px;overflow-x:clip}
 table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px}
 th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 th{position:sticky;top:var(--ctl-h,56px);background:var(--card);cursor:pointer;white-space:nowrap;font-size:12px;color:var(--muted);z-index:4}
@@ -180,7 +180,8 @@ Object.keys(BUCKETS).forEach(b=>{const c=document.createElement('div');c.classNa
  c.innerHTML='<b>'+(bc.get(b)||0)+'</b>'+b+'. '+esc(BUCKETS[b]);
  c.onclick=()=>{const s=filters['dd-bucket'].sel;const only=s.size===1&&s.has(b);filters['dd-bucket'].set(only?[]:[b]);render()};cards.appendChild(c)});
 
-['#q','#f-effort','#f-unres'].forEach(s=>$(s).addEventListener('input',render));
+$('#q').addEventListener('input',render);
+['#f-effort','#f-unres'].forEach(s=>$(s).addEventListener('change',render));
 $('#reset').onclick=()=>{$('#q').value='';$('#f-effort').checked=false;$('#f-unres').checked=false;Object.values(filters).forEach(f=>f.set([]));render()};
 
 function haystack(p){return ['#'+p.number,p.title,p.author,p.head_ref,p.action,p.rationale].concat(p.labels,p.conflict_files||[]).join(' ').toLowerCase()}
@@ -214,7 +215,7 @@ function detail(p){
  '<div><b>Comments:</b> '+p.comments_human+' human, '+p.comments_bot+' bot</div>'+
  '<div><b>Reviewers:</b> '+list(p.reviewers)+'</div>'+
  '<div><b>Commit authors:</b> '+list(p.commit_authors)+' &middot; span '+p.commit_span_days+'d</div>'+
- '<div><b>Behind/ahead:</b> '+p.behind_by+'/'+p.ahead_by+' &middot; merge base '+esc((p.merge_base_date||'').slice(0,10))+'</div>'+
+ '<div><b>Behind/ahead:</b> '+(p.behind_by==null?'?':p.behind_by)+'/'+(p.ahead_by==null?'?':p.ahead_by)+' &middot; merge base '+esc((p.merge_base_date||'').slice(0,10)||'-')+'</div>'+
  '<div><b>Main moved:</b> '+p.main_commits_touching_pr_files+' commits touched '+p.pr_files_changed_in_main+' of its files</div>'+
  '<div><b>CI:</b> '+esc(p.ci_state)+' &middot; <b>Closes:</b> '+list((p.closing_issues||[]).map(n=>'#'+n))+'</div>'+
  '</div>'+
@@ -234,16 +235,18 @@ function render(){
 }
 $('#body').addEventListener('click',e=>{
  const a=e.target.closest('a[data-pr]');
- if(a){e.preventDefault();const n=+a.dataset.pr;$('#q').value='#'+n;open.add(n);render();return}
+ if(a){e.preventDefault();const n=+a.dataset.pr;$('#f-effort').checked=false;$('#f-unres').checked=false;Object.values(filters).forEach(f=>f.set([]));$('#q').value='#'+n;open.add(n);render();return}
  const tr=e.target.closest('tr.row');if(!tr)return;const n=+tr.dataset.n;open.has(n)?open.delete(n):open.add(n);render()});
 $('#csv').onclick=()=>{
  const keys=['number','title','bucket','wave','action','labels','author','age_days','commits','review_rounds','reviews','threads_resolved','threads','threads_unresolved_active','comments','behind_by','merge_clean','conflict_files_count','conflict_hunks','effort_score','cost_score','suggested_labels','rationale','url'];
  const q=v=>'"'+String(Array.isArray(v)?v.join(';'):v==null?'':v).replace(/"/g,'""')+'"';
  const csv=[keys.join(',')].concat(current.map(p=>keys.map(k=>q(p[k])).join(','))).join('\r\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='pr-triage-filtered.csv';a.click()};
-const ctl=document.querySelector('.controls');const setH=()=>document.documentElement.style.setProperty('--ctl-h',ctl.offsetHeight+'px');
-window.addEventListener('resize',setH);setH();
-render();
+const ctl=document.querySelector('.controls');
+const setH=()=>document.documentElement.style.setProperty('--ctl-h',ctl.getBoundingClientRect().height+'px');
+if(window.ResizeObserver)new ResizeObserver(setH).observe(ctl);
+window.addEventListener('resize',setH);
+render();setH();
 })();
 </script>
 </body>

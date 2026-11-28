@@ -256,8 +256,8 @@ def github_metrics(pr, now):
 	return m
 
 
-def git_fetch(remote, base, numbers):
-	refspecs = ['+refs/heads/%s:refs/remotes/%s/%s' % (base, remote, base)]
+def git_fetch(remote, bases, numbers):
+	refspecs = ['+refs/heads/%s:refs/remotes/%s/%s' % (b, remote, b) for b in sorted(set(bases))]
 	refspecs += ['+refs/pull/%d/head:refs/pr-triage/%d' % (n, n) for n in numbers]
 	for i in range(0, len(refspecs), 40):
 		run(['git', 'fetch', '--no-tags', '--quiet', remote] + refspecs[i:i + 40])
@@ -321,8 +321,10 @@ def git_metrics(m, remote, base):
 				deleted.append(parts[1])
 			elif status == 'R' and parts[1] in pr_files:
 				renamed.append('%s -> %s' % (parts[1], parts[2]))
-			if parts[-1] in pr_files or parts[1] in pr_files:
+			if parts[1] in pr_files:
 				changed.add(parts[1])
+			if parts[-1] in pr_files:
+				changed.add(parts[-1])
 		log = run(['git', 'log', '--format=%x01%H', '--name-only', '%s..%s' % (mb, main)]).stdout
 		touching = 0
 		for chunk in log.split('\x01')[1:]:
@@ -356,6 +358,7 @@ def main():
 	ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 	ap.add_argument('--remote', default='origin')
 	ap.add_argument('--base', default='main')
+	ap.add_argument('--all-bases', action='store_true', help='Include open PRs targeting any base branch, not just --base')
 	ap.add_argument('--prs', help='Comma-separated PR numbers (default: all open PRs)')
 	ap.add_argument('--out', default='.artifacts/pr-triage')
 	ap.add_argument('--workers', type=int, default=6)
@@ -366,8 +369,10 @@ def main():
 	if args.prs:
 		numbers = [int(n) for n in args.prs.split(',') if n.strip()]
 	else:
-		out = run(['gh', 'pr', 'list', '-R', '%s/%s' % (owner, name), '--state', 'open',
-			'--base', args.base, '--limit', '1000', '--json', 'number']).stdout
+		cmd = ['gh', 'pr', 'list', '-R', '%s/%s' % (owner, name), '--state', 'open', '--limit', '1000', '--json', 'number']
+		if not args.all_bases:
+			cmd += ['--base', args.base]
+		out = run(cmd).stdout
 		numbers = sorted((p['number'] for p in json.loads(out)), reverse=True)
 	print('Collecting %d PRs from %s/%s ...' % (len(numbers), owner, name), file=sys.stderr)
 
@@ -378,9 +383,10 @@ def main():
 
 	if not args.skip_git:
 		print('Fetching PR heads and measuring conflicts ...', file=sys.stderr)
-		git_fetch(args.remote, args.base, numbers)
+		bases = [m.get('base_ref') or args.base for m in rows] if args.all_bases else [args.base]
+		git_fetch(args.remote, bases, numbers)
 		for m in rows:
-			m.update(git_metrics(m, args.remote, args.base))
+			m.update(git_metrics(m, args.remote, m.get('base_ref') or args.base))
 
 	os.makedirs(args.out, exist_ok=True)
 	payload = {
