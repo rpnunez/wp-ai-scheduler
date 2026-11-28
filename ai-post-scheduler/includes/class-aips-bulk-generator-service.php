@@ -780,18 +780,16 @@ class AIPS_Bulk_Generator_Service {
 				);
 			}
 
-			$topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
-			$generator = new AIPS_Generator();
-
-			return $generator->generate_post(
-				$template,
-				null,
-				$topic,
+			$topic   = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
+			$context = new AIPS_Template_Context( $template, null, $topic, 'planner_post' );
+			$context->set_trigger_context(
 				array(
-					'creation_method' => 'planner_post',
-					'trigger_context' => array( 'detail' => sprintf( __( 'Bulk job %s (Planner)', 'ai-post-scheduler' ), $job_id ) ),
+					'detail' => sprintf( __( 'Bulk job %s (Planner)', 'ai-post-scheduler' ), $job_id ),
 				)
 			);
+			$generator = new AIPS_Generator();
+
+			return $generator->generate_post( $context );
 		}
 
 		if ( 'trending_topic_post' === $strategy ) {

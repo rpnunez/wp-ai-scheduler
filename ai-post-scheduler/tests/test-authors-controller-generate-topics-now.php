@@ -120,7 +120,7 @@ class AIPS_Authors_Controller_Generate_Topics_Now_Test extends WP_UnitTestCase {
 		$this->assertSame(3, $response['data']['topics_count']);
 		$this->assertSame(42, $response['data']['author_id']);
 		$this->assertSame($expected_url, $response['data']['author_topics_url']);
-		$this->assertSame($generated_topics, $response['data']['topics']);
+		$this->assertSame(json_decode(wp_json_encode($generated_topics), true), $response['data']['topics']);
 		$this->assertCount(1, $notifications->calls);
 		$this->assertSame(
 			array(

@@ -87,15 +87,18 @@ class Test_AIPS_Settings_Form_Renderer extends WP_UnitTestCase {
 				'options' => array(
 					'opt1' => 'First Option',
 					'opt2' => 'Second Option',
+					'opt3' => 'Third Option',
+					'opt4' => 'Fourth Option',
 				),
 			),
 		) );
 
 		$html = $this->renderer->get_field_html( $def, 'opt2' );
+		$this->assertSame( 4, substr_count( $html, '<option ' ) );
 		$this->assertStringContainsString( '<select name="aips_test_select"', $html );
 		$this->assertStringContainsString( 'value="opt1"', $html );
 		$this->assertStringContainsString( 'value="opt2"', $html );
-		$this->assertStringContainsString( 'selected', $html );
+		$this->assertSame( 1, substr_count( $html, 'selected' ) );
 		$this->assertStringContainsString( 'Second Option', $html );
 	}
 
@@ -117,6 +120,52 @@ class Test_AIPS_Settings_Form_Renderer extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'value="post"', $html );
 		$this->assertStringContainsString( 'value="page"', $html );
 		$this->assertStringContainsString( 'checked', $html );
+	}
+
+	public function test_render_multiselect_dropdown_emits_one_option_per_choice_and_selects_saved_values() {
+		$def = new AIPS_Setting_Definition( array(
+			'key'             => 'aips_test_multiselect_dropdown',
+			'type'            => AIPS_Setting_Definition::TYPE_ARRAY,
+			'control_type'    => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+			'control_options' => array(
+				'render_as' => 'select',
+				'options'   => array(
+					1 => 'First Option',
+					2 => 'Second Option',
+					3 => 'Third Option',
+					4 => 'Fourth Option',
+				),
+			),
+		) );
+
+		$html = $this->renderer->get_field_html( $def, array( '2' ) );
+		$this->assertSame( 4, substr_count( $html, '<option ' ) );
+		$this->assertSame( 1, substr_count( $html, 'selected' ) );
+		$this->assertStringContainsString( 'name="aips_test_multiselect_dropdown[]"', $html );
+		$this->assertStringContainsString( 'value="2" selected', $html );
+	}
+
+	public function test_choice_renderer_preserves_saved_values_missing_from_current_choices() {
+		$select = new AIPS_Setting_Definition( array(
+			'key'             => 'aips_test_stale_select',
+			'type'            => AIPS_Setting_Definition::TYPE_STRING,
+			'control_type'    => AIPS_Setting_Definition::CONTROL_SELECT,
+			'control_options' => array( 'options' => array( 'current' => 'Current choice' ) ),
+		) );
+		$multiselect = new AIPS_Setting_Definition( array(
+			'key'             => 'aips_test_stale_multiselect',
+			'type'            => AIPS_Setting_Definition::TYPE_ARRAY,
+			'control_type'    => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+			'control_options' => array( 'options' => array( 'current' => 'Current choice' ) ),
+		) );
+
+		$select_html = $this->renderer->get_field_html( $select, 'retired-choice' );
+		$this->assertStringContainsString( 'value="retired-choice" selected', $select_html );
+		$this->assertStringContainsString( 'Saved value not currently available: retired-choice', $select_html );
+
+		$multiselect_html = $this->renderer->get_field_html( $multiselect, array( 'retired-choice' ) );
+		$this->assertStringContainsString( 'value="retired-choice" checked', $multiselect_html );
+		$this->assertStringContainsString( 'Saved value not currently available: retired-choice', $multiselect_html );
 	}
 
 	public function test_render_secret() {

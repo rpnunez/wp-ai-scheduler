@@ -457,8 +457,9 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$table_name = $wpdb->prefix . 'aips_jobs';
 
 		$this->assertContains( 'aips_jobs', AIPS_DB_Manager::get_table_names() );
-		$this->assertNotContains( 'aips_background_processes', AIPS_DB_Manager::get_table_names() );
-		$this->assertNotContains( 'aips_bulk_batch_jobs', AIPS_DB_Manager::get_table_names() );
+		// Legacy tables are intentionally retained in 3.8.0 until a follow-up drop migration.
+		$this->assertContains( 'aips_background_processes', AIPS_DB_Manager::get_table_names() );
+		$this->assertContains( 'aips_bulk_batch_jobs', AIPS_DB_Manager::get_table_names() );
 
 		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table_name}" );
 		foreach ( array( 'job_id', 'job_type', 'group_name', 'status', 'total', 'processed', 'failed', 'cursor_id', 'payload_json', 'result_json', 'error_message', 'attempts', 'max_retries', 'next_run_at', 'last_tick_at', 'started_at', 'finished_at', 'created_at', 'updated_at' ) as $column ) {

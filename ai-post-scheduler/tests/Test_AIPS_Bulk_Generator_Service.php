@@ -377,6 +377,8 @@ class Test_AIPS_Bulk_Generator_Service extends WP_UnitTestCase {
 	 * When $item is an array and no error_formatter is provided, the default
 	 * formatter must NOT trigger "Array to string conversion" and must produce
 	 * a useful JSON-encoded identifier rather than the literal word "Array".
+	 *
+	 * @expectedIncorrectUsage AIPS_Bulk_Generator_Service::run
 	 */
 	public function test_default_error_format_uses_json_encode_for_array_item() {
 		$items = array( array( 'id' => 7, 'topic' => 'AI News' ) );

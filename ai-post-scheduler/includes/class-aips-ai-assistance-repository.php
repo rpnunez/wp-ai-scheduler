@@ -90,7 +90,7 @@ class AIPS_AI_Assistance_Repository {
 		$this->delete_expired();
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT id, session_id, form_context, field_key, request_object, response, created_at FROM {$this->table_name}
+				"SELECT id, session_id, form_context, field_key, request_object, prompt, response, created_at FROM {$this->table_name}
 				WHERE session_id = %s
 				AND form_context = %s
 				AND field_key = %s
@@ -116,7 +116,7 @@ class AIPS_AI_Assistance_Repository {
 		$this->delete_expired();
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT id, session_id, form_context, field_key, request_object, response, created_at FROM {$this->table_name}
+				"SELECT id, session_id, form_context, field_key, request_object, prompt, response, created_at FROM {$this->table_name}
 				WHERE form_context = %s
 				AND field_key = %s
 				ORDER BY created_at DESC

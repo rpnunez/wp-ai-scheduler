@@ -33,6 +33,19 @@ class Test_AIPS_Content_Auditor_Controller extends WP_Ajax_UnitTestCase {
 		$this->mock_engine     = $this->createMock(AIPS_Content_Auditor_Engine::class);
 		$this->mock_repository = $this->createMock(AIPS_Content_Auditor_Repository::class);
 
+		foreach (array(
+			'wp_ajax_aips_auditor_scan_step',
+			'wp_ajax_aips_auditor_graph_step',
+			'wp_ajax_aips_auditor_analyze_step',
+			'wp_ajax_aips_auditor_synthesize_step',
+			'wp_ajax_aips_auditor_get_latest',
+			'wp_ajax_aips_auditor_get_history',
+			'wp_ajax_aips_auditor_get_audit',
+			'wp_ajax_aips_auditor_delete_audit',
+		) as $hook) {
+			remove_all_actions($hook);
+		}
+
 		$this->controller = new AIPS_Content_Auditor_Controller(
 			$this->mock_scanner,
 			$this->mock_engine,

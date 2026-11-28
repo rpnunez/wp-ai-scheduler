@@ -109,6 +109,7 @@ class AIPS_Container {
 			) );
 		}
 		$this->singleton_bindings[$id] = $factory;
+		unset($this->singletons[$id]);
 	}
 
 	/**

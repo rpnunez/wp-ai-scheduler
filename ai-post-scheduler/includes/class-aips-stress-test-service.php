@@ -148,6 +148,12 @@ class AIPS_Stress_Test_Service {
     private $generator = null;
 
     /**
+     * @var AIPS_Generation_Component_Registry|null Lazily built component registry
+     *                                              wired to this service's AI service.
+     */
+    private $component_registry = null;
+
+    /**
      * @param AIPS_AI_Service|null       $ai_service Optional service override (tests).
      * @param AIPS_Logger_Interface|null $logger     Optional logger override.
      */
@@ -255,6 +261,27 @@ class AIPS_Stress_Test_Service {
                 'id'          => 'generate_featured_image',
                 'label'       => __('Generate a Featured Image', 'ai-post-scheduler'),
                 'description' => __('Generates an image and uploads it to the media library.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => true,
+            ),
+            array(
+                'id'          => 'post_images_1',
+                'label'       => __('Generate Post Images: 1 Image', 'ai-post-scheduler'),
+                'description' => __('Generates and injects 1 AI content image into an article body via the Post Images Component.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => true,
+            ),
+            array(
+                'id'          => 'post_images_2',
+                'label'       => __('Generate Post Images: 2 Images', 'ai-post-scheduler'),
+                'description' => __('Generates and injects 2 AI content images into an article body via the Post Images Component.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => true,
+            ),
+            array(
+                'id'          => 'post_images_3',
+                'label'       => __('Generate Post Images: 3 Images', 'ai-post-scheduler'),
+                'description' => __('Generates and injects 3 AI content images into an article body via the Post Images Component.', 'ai-post-scheduler'),
                 'group'       => 'components',
                 'creates'     => true,
             ),
@@ -483,6 +510,15 @@ class AIPS_Stress_Test_Service {
                 case 'generate_featured_image':
                     $result = $this->case_generate_featured_image();
                     break;
+                case 'post_images_1':
+                    $result = $this->case_generate_post_images(1);
+                    break;
+                case 'post_images_2':
+                    $result = $this->case_generate_post_images(2);
+                    break;
+                case 'post_images_3':
+                    $result = $this->case_generate_post_images(3);
+                    break;
                 case 'regen_components':
                     $result = $this->case_regen_components();
                     break;
@@ -676,13 +712,16 @@ class AIPS_Stress_Test_Service {
     // -----------------------------------------------------------------------
 
     /**
-     * Title generation: raw response versus the cleaned title.
+     * Title generation: raw response versus the cleaned title via AIPS_Title_Post_Component.
      *
      * @return array<string, mixed>
      */
     private function case_generate_title() {
-        $context = $this->build_context();
-        $result  = $this->get_generator()->generate_title_for_context($context, $this->sample_article());
+        $context   = $this->build_context();
+        $component = $this->get_component_registry()->get('post_title', 'posts');
+        $result    = ($component instanceof AIPS_Title_Post_Component)
+            ? $component->generate($context, null, array('content' => $this->sample_article()))
+            : $this->get_generator()->generate_title_for_context($context, $this->sample_article());
 
         if (is_wp_error($result)) {
             return array('status' => 'failed', 'error' => $result->get_error_message(), 'summary' => $result->get_error_message());
@@ -712,15 +751,27 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Slug generation: raw response versus the sanitized slug.
+     * Slug generation: raw response versus the sanitized slug via AIPS_Slug_Post_Component.
      *
      * @return array<string, mixed>
      */
     private function case_generate_slug() {
-        $context = $this->build_context();
-        $success = false;
-        $title   = $this->sample_topic();
-        $result  = $this->get_generator()->generate_slug_from_context($context, $this->sample_article(), $title, array(), $success);
+        $context   = $this->build_context();
+        $title     = $this->sample_topic();
+        $component = $this->get_component_registry()->get('post_slug', 'posts');
+
+        if ($component instanceof AIPS_Slug_Post_Component) {
+            $gen_result = $component->generate($context, null, array(
+                'title'   => $title,
+                'content' => $this->sample_article(),
+            ));
+            // generate() returns the sanitized slug string, or a WP_Error.
+            $result  = is_wp_error($gen_result) ? $gen_result : (string) $gen_result;
+            $success = !is_wp_error($result) && $result !== '';
+        } else {
+            $success = false;
+            $result  = $this->get_generator()->generate_slug_from_context($context, $this->sample_article(), $title, array(), $success);
+        }
 
         if (is_wp_error($result)) {
             return array('status' => 'failed', 'error' => $result->get_error_message(), 'summary' => $result->get_error_message());
@@ -751,34 +802,24 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Content generation: raw response versus normalized post HTML.
+     * Content generation: raw response versus normalized post HTML via AIPS_Content_Post_Component.
      *
      * @return array<string, mixed>
      */
     private function case_generate_content() {
         $context   = $this->build_context();
-        $generator = $this->get_generator();
+        $component = $this->get_component_registry()->get('post_content', 'posts');
+        $content   = ($component instanceof AIPS_Content_Post_Component)
+            ? $component->generate($context)
+            : $this->get_generator()->run_content_stage($context, array(), microtime(true));
 
-        // Deliberately not generate_preview(): that runs title and excerpt too,
-        // which would duplicate the other cases and triple this one's cost. Drive
-        // the content step alone so the row measures exactly what it claims to.
-        $builder         = new AIPS_Prompt_Builder();
-        $content_prompt  = $builder->build_content_prompt($context);
-        $content_context = $builder->build_content_context($context);
+        $raw = $this->last_ai_response_text();
 
-        $options = array();
-
-        if ($content_context !== '') {
-            $options['context'] = $content_context;
+        if (is_wp_error($content)) {
+            return array('status' => 'failed', 'error' => $content->get_error_message(), 'summary' => $content->get_error_message(), 'ai_value' => $raw);
         }
 
-        $raw = $generator->generate_content($content_prompt, $options, 'content');
-
-        if (is_wp_error($raw)) {
-            return array('status' => 'failed', 'error' => $raw->get_error_message(), 'summary' => $raw->get_error_message());
-        }
-
-        $content = $generator->normalize_generated_content_for_wordpress($raw);
+        $content = (string) $content;
 
         if (trim($content) === '') {
             return array(
@@ -803,18 +844,23 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Excerpt generation against a fixed article.
+     * Excerpt generation against a fixed article via AIPS_Excerpt_Post_Component.
      *
      * @return array<string, mixed>
      */
     private function case_generate_excerpt() {
-        $article = $this->sample_article();
-        $excerpt = $this->get_generator()->generate_excerpt(
-            __('Testing the AI Post Scheduler Pipeline', 'ai-post-scheduler'),
-            $article,
-            null,
-            $this->sample_topic()
-        );
+        $context   = $this->build_context();
+        $article   = $this->sample_article();
+        $title     = __('Testing the AI Post Scheduler Pipeline', 'ai-post-scheduler');
+        $component = $this->get_component_registry()->get('post_excerpt', 'posts');
+
+        $excerpt = ($component instanceof AIPS_Excerpt_Post_Component)
+            ? $component->generate($context, null, array('title' => $title, 'content' => $article))
+            : $this->get_generator()->generate_excerpt($title, $article, null, $this->sample_topic());
+
+        if (is_wp_error($excerpt)) {
+            return array('status' => 'failed', 'error' => $excerpt->get_error_message(), 'summary' => $excerpt->get_error_message());
+        }
 
         $raw = $this->last_ai_response_text();
 
@@ -898,15 +944,44 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Image generation plus media library upload.
+     * Image generation plus media library upload via AIPS_Featured_Image_Post_Component.
      *
      * @return array<string, mixed>
      */
     private function case_generate_featured_image() {
-        $prompt = __('A bright flat-lay photograph of a wooden desk with a notebook, a cup of coffee, and a small potted plant.', 'ai-post-scheduler');
+        $prompt   = __('A bright flat-lay photograph of a wooden desk with a notebook, a cup of coffee, and a small potted plant.', 'ai-post-scheduler');
+        $context  = $this->build_context();
+        $template = $context->get_template();
+        if (is_object($template)) {
+            $template->generate_featured_image = true;
+            $template->featured_image_source   = 'ai_prompt';
+            $template->image_prompt            = $prompt;
+        }
 
-        $image_service = new AIPS_Image_Service($this->ai_service);
-        $attachment_id = $image_service->generate_and_upload_featured_image($prompt, __('AIPS Stress Test Image', 'ai-post-scheduler'));
+        $component     = $this->get_component_registry()->get('featured_image', 'posts');
+        $attachment_id = 0;
+
+        if ($component instanceof AIPS_Featured_Image_Post_Component) {
+            // post_id 0: the stress test only uploads the attachment; there is no post to attach it to.
+            $gen_res = $component->generate($context, null, array(
+                'post_id'                  => 0,
+                'title'                    => __('AIPS Stress Test Image', 'ai-post-scheduler'),
+                'content'                  => $this->sample_article(),
+                'precomputed_image_prompt' => $prompt,
+            ));
+            if (is_array($gen_res) && !empty($gen_res['attachment_id'])) {
+                $attachment_id = (int) $gen_res['attachment_id'];
+            } else {
+                // Report the component failure rather than retrying with a second paid image call.
+                $attachment_id = new WP_Error(
+                    'featured_image_component_failed',
+                    __('The featured image component did not produce an attachment.', 'ai-post-scheduler')
+                );
+            }
+        } else {
+            $image_service = new AIPS_Image_Service($this->ai_service);
+            $attachment_id = $image_service->generate_and_upload_featured_image($prompt, __('AIPS Stress Test Image', 'ai-post-scheduler'));
+        }
 
         $raw = $this->last_ai_response_text();
 
@@ -940,24 +1015,138 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Component Regeneration: Title & Excerpt regeneration from context.
+     * Post Images generation & injection via AIPS_Content_Images_Post_Component.
+     *
+     * Creates a private stub post with sample article HTML, configures $quantity
+     * AI content images on the template context, executes AIPS_Content_Images_Post_Component::generate()
+     * + apply_to_post(), and verifies all requested images were uploaded and injected.
+     *
+     * @param int $quantity Number of content images to generate and inject (1, 2, or 3).
+     * @return array<string, mixed>
+     */
+    private function case_generate_post_images($quantity) {
+        $quantity = max(1, (int) $quantity);
+        $post_id  = $this->create_stub_post('post');
+
+        if (is_wp_error($post_id)) {
+            return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
+        }
+
+        $visual_prompts = array(
+            1 => __('A bright flat-lay photograph of clay herb pots and rosemary sprigs on a sunlit balcony table.', 'ai-post-scheduler'),
+            2 => __('A close-up editorial photograph of deep terracotta planters filled with organic potting soil and basil seedlings.', 'ai-post-scheduler'),
+            3 => __('A warm morning photograph of a brass watering can pouring water over balcony mint and thyme containers.', 'ai-post-scheduler'),
+        );
+
+        $post_images = array();
+        for ($i = 1; $i <= $quantity; $i++) {
+            $post_images[] = (object) array(
+                'id'                => $i,
+                'image_order'       => $i,
+                'placeholder_index' => $i,
+                'source'            => 'ai_prompt',
+                'placement'         => 'auto',
+                'image_prompt'      => isset($visual_prompts[$i]) ? $visual_prompts[$i] : $visual_prompts[1],
+                /* translators: %d: Image sequence number */
+                'caption'           => sprintf(__('Stress Test Content Image %d', 'ai-post-scheduler'), $i),
+            );
+        }
+
+        $context  = $this->build_context();
+        $template = $context->get_template();
+        if (is_object($template)) {
+            $template->post_images = $post_images;
+        }
+        $context = new AIPS_Template_Context($template, null, $this->sample_topic(), 'manual');
+
+        $component = $this->get_component_registry()->get('post_images', 'posts');
+        if (!($component instanceof AIPS_Content_Images_Post_Component)) {
+            $component = new AIPS_Content_Images_Post_Component($this->get_generator());
+        }
+
+        $title      = (string) get_the_title($post_id);
+        $gen_result = $component->generate($context, null, array(
+            'post_id' => $post_id,
+            'title'   => $title,
+            'content' => $this->sample_article(),
+        ));
+
+        $updated_content = is_array($gen_result) && isset($gen_result['content']) ? (string) $gen_result['content'] : $this->sample_article();
+        $all_succeeded   = is_array($gen_result) && !empty($gen_result['success']);
+
+        $component->apply_to_post($post_id, $updated_content);
+
+        $generated_repo = new AIPS_Post_Images_Generated_Repository();
+        $rows           = $generated_repo->get_by_post_id($post_id);
+        $attachment_ids = array();
+        $errors         = array();
+
+        foreach ((array) $rows as $row) {
+            $att_id = isset($row->attachment_id) ? (int) $row->attachment_id : 0;
+            if ($att_id > 0) {
+                $this->enforce_private_status($att_id);
+                update_post_meta($att_id, self::TEST_ATTACHMENT_META, 1);
+                $attachment_ids[] = $att_id;
+            } elseif (!empty($row->error_message)) {
+                $errors[] = (string) $row->error_message;
+            }
+        }
+
+        $figure_count = substr_count($updated_content, '<figure');
+        $passed       = $all_succeeded && count($attachment_ids) === $quantity && $figure_count >= $quantity;
+        $raw          = $this->last_ai_response_text();
+
+        $summary = sprintf(
+            /* translators: 1: uploaded count, 2: requested count, 3: post ID */
+            __('%1$d of %2$d post content images generated and injected into post #%3$d.', 'ai-post-scheduler'),
+            count($attachment_ids),
+            $quantity,
+            $post_id
+        );
+
+        return array(
+            'status'       => $passed ? 'passed' : 'failed',
+            'summary'      => $summary,
+            'error'        => $passed ? null : (!empty($errors) ? implode(' | ', array_unique($errors)) : __('Not all requested post content images were generated.', 'ai-post-scheduler')),
+            'ai_value'     => $raw,
+            'plugin_value' => array(
+                'post_id'        => (int) $post_id,
+                'requested'      => $quantity,
+                'generated'      => count($attachment_ids),
+                'figure_count'   => $figure_count,
+                'attachment_ids' => $attachment_ids,
+            ),
+            'artifacts'    => array(
+                'post_ids'       => array((int) $post_id),
+                'attachment_ids' => $attachment_ids,
+            ),
+        );
+    }
+
+    /**
+     * Component Regeneration: Title & Excerpt regeneration from context via Post Components.
      *
      * @return array<string, mixed>
      */
     private function case_regen_components() {
-        $context   = $this->build_context();
-        $generator = $this->get_generator();
-        $article   = $this->sample_article();
+        $context  = $this->build_context();
+        $registry = $this->get_component_registry();
+        $article  = $this->sample_article();
 
-        $title = $generator->generate_title_for_context($context, $article);
+        $title_comp = $registry->get('post_title', 'posts');
+        $title      = ($title_comp instanceof AIPS_Title_Post_Component)
+            ? $title_comp->regenerate(0, $context, null, '', array('current_content' => $article))
+            : $this->get_generator()->generate_title_for_context($context, $article);
 
         if (is_wp_error($title) || trim((string) $title) === '') {
             $err = is_wp_error($title) ? $title->get_error_message() : __('Failed to regenerate title.', 'ai-post-scheduler');
             return array('status' => 'failed', 'error' => $err, 'summary' => $err);
         }
 
-        $topic_str = method_exists($context, 'get_topic') ? $context->get_topic() : null;
-        $excerpt   = $generator->generate_excerpt((string) $title, $article, null, $topic_str, array(), $context);
+        $excerpt_comp = $registry->get('post_excerpt', 'posts');
+        $excerpt      = ($excerpt_comp instanceof AIPS_Excerpt_Post_Component)
+            ? $excerpt_comp->regenerate(0, $context, null, '', array('current_title' => (string) $title, 'current_content' => $article))
+            : $this->get_generator()->generate_excerpt((string) $title, $article, null, $context->get_topic(), array(), $context);
 
         if (is_wp_error($excerpt) || trim((string) $excerpt) === '') {
             $err = is_wp_error($excerpt) ? $excerpt->get_error_message() : __('Failed to regenerate excerpt.', 'ai-post-scheduler');
@@ -976,17 +1165,16 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Component Regeneration: Content Body regeneration.
+     * Component Regeneration: Content Body regeneration via AIPS_Content_Post_Component.
      *
      * @return array<string, mixed>
      */
     private function case_regen_content() {
-        $builder = new AIPS_Prompt_Builder();
-        $context = $this->build_context();
-        $prompt  = $builder->build_content_prompt($context);
-
-        $generator = $this->get_generator();
-        $content   = $generator->generate_content($prompt, array(), 'content');
+        $context      = $this->build_context();
+        $content_comp = $this->get_component_registry()->get('post_content', 'posts');
+        $content      = ($content_comp instanceof AIPS_Content_Post_Component)
+            ? $content_comp->regenerate(0, $context)
+            : $this->get_generator()->run_content_stage($context, array(), microtime(true));
 
         if (is_wp_error($content) || trim((string) $content) === '') {
             $err = is_wp_error($content) ? $content->get_error_message() : __('Failed to regenerate content body.', 'ai-post-scheduler');
@@ -1130,7 +1318,7 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Post Generation with Taxonomies: categories and tags extraction and assignment.
+     * Post Generation with Taxonomies: categories and tags extraction and assignment via AIPS_Taxonomy_Post_Component.
      *
      * @return array<string, mixed>
      */
@@ -1141,41 +1329,14 @@ class AIPS_Stress_Test_Service {
             return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
         }
 
-        $prompt = "For the article titled '" . get_the_title($post_id) . "', suggest 2 relevant WordPress categories and 3 tags as a JSON object: {\"categories\": [\"Cat1\", \"Cat2\"], \"tags\": [\"Tag1\", \"Tag2\", \"Tag3\"]}";
-        $response = $this->ai_service->generate_json($prompt, array('max_tokens' => 500));
-
-        if (is_wp_error($response) || !is_array($response)) {
-            $categories = array('Technology', 'Innovation');
-            $tags       = array('AI', 'Automation', 'WordPress');
-        } else {
-            $categories = !empty($response['categories']) && is_array($response['categories']) ? $response['categories'] : array('General');
-            $tags       = !empty($response['tags']) && is_array($response['tags']) ? $response['tags'] : array('AI');
+        $tax_component = $this->get_component_registry()->get('post_taxonomy', 'posts');
+        if (!($tax_component instanceof AIPS_Taxonomy_Post_Component)) {
+            $tax_component = new AIPS_Taxonomy_Post_Component($this->get_generator());
         }
 
-        $cat_ids = array();
-        foreach ($categories as $cat_name) {
-            $cat_id = 0;
-            $term = term_exists($cat_name, 'category');
-            if ($term) {
-                $cat_id = is_array($term) ? $term['term_id'] : $term;
-            } else {
-                $created_term = wp_insert_term($cat_name, 'category');
-                if (!is_wp_error($created_term) && isset($created_term['term_id'])) {
-                    $cat_id = $created_term['term_id'];
-                }
-            }
-            if ($cat_id) {
-                $cat_ids[] = (int) $cat_id;
-            }
-        }
-
-        if (!empty($cat_ids)) {
-            wp_set_post_categories($post_id, $cat_ids, false);
-        }
-        wp_set_post_tags($post_id, $tags, false);
-
-        $saved_cats = wp_get_post_categories($post_id, array('fields' => 'names'));
-        $saved_tags = wp_get_post_tags($post_id, array('fields' => 'names'));
+        $assigned   = $tax_component->suggest_and_assign_for_post($post_id, $this->ai_service);
+        $saved_cats = $assigned['categories'];
+        $saved_tags = $assigned['tags'];
 
         return array(
             'status'       => 'passed',
@@ -1200,7 +1361,7 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Author Persona Post generation: generates a post using an author persona and topic context.
+     * Author Persona Post generation: generates a post using an author persona and topic context via AIPS_Generation_Pipeline.
      *
      * @return array<string, mixed>
      */
@@ -1222,10 +1383,8 @@ class AIPS_Stress_Test_Service {
             'status'      => 'approved',
         );
 
-        $context   = new AIPS_Topic_Context($author_persona, $topic_obj, '', 'manual');
-        $generator = $this->get_generator();
-
-        $post_id = $generator->generate_post($context);
+        $context = new AIPS_Topic_Context($author_persona, $topic_obj, '', 'manual');
+        $post_id = $this->run_post_pipeline($context);
 
         if (is_wp_error($post_id)) {
             return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
@@ -1266,34 +1425,36 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Author Topic Discovery: exercises structured topic list generation.
+     * Author Topic Discovery: exercises structured topic list generation via AIPS_Generation_Pipeline + AIPS_Topic_Generation_Strategy.
      *
      * @return array<string, mixed>
      */
     private function case_author_topics() {
-        $prompt = "Generate 3 engaging blog article topics for a writer in the niche: 'Renewable Energy Innovations'. Return as a JSON object with key 'topics' containing an array of objects with keys: 'topic', 'category', 'angle'.";
-        $options = array(
-            'max_tokens'  => 1200,
-            'temperature' => 0.2,
+        $author = (object) array(
+            'id'                        => 999902,
+            'name'                      => 'Dr. Elena Vance',
+            'field_niche'               => 'Renewable Energy Innovations',
+            'niche'                     => 'Renewable Energy Innovations',
+            'voice_tone'                => 'authoritative',
+            'writing_style'             => 'analytical',
+            'topic_generation_quantity' => 3,
+            'topic_generation_prompt'   => 'Generate 3 engaging blog article topics.',
+            'auto_approval_mode'        => 'manual',
         );
 
-        $response = $this->ai_service->generate_json($prompt, $options);
-        $raw      = $this->last_ai_response_text();
+        $registry = $this->get_component_registry();
+        $strategy = new AIPS_Topic_Generation_Strategy($registry, $this->ai_service, $this->logger);
+        $pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+        $context  = new AIPS_Author_Topic_Generation_Context($author, false, 'stress_test');
 
-        if (is_wp_error($response)) {
-            return array('status' => 'failed', 'error' => $response->get_error_message(), 'summary' => $response->get_error_message(), 'ai_value' => $raw);
+        $topics = $pipeline->execute_preview($context);
+        $raw    = $this->last_ai_response_text();
+
+        if (is_wp_error($topics)) {
+            return array('status' => 'failed', 'error' => $topics->get_error_message(), 'summary' => $topics->get_error_message(), 'ai_value' => $raw);
         }
 
-        $topics = array();
-        if (is_array($response)) {
-            if (isset($response['topics']) && is_array($response['topics'])) {
-                $topics = $response['topics'];
-            } elseif (isset($response[0])) {
-                $topics = $response;
-            }
-        }
-
-        if (empty($topics)) {
+        if (empty($topics) || !is_array($topics)) {
             return array(
                 'status'   => 'failed',
                 'error'    => __('No structured topics found in JSON response.', 'ai-post-scheduler'),
@@ -1940,6 +2101,55 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
+     * Lazily construct the Generation Component Registry wired to this service's
+     * generator and AI service so every component call is captured in the call log.
+     *
+     * @return AIPS_Generation_Component_Registry
+     */
+    private function get_component_registry() {
+        if ($this->component_registry === null) {
+            $generator     = $this->get_generator();
+            $image_service = new AIPS_Image_Service($this->ai_service);
+            $registry      = new AIPS_Generation_Component_Registry();
+            $registry->register_default_post_components($generator, $image_service);
+            $registry->register_default_topic_components($this->ai_service);
+            $registry->register_default_taxonomy_components($this->ai_service);
+            $registry->register_default_ai_assistance_components($this->ai_service);
+            $this->component_registry = $registry;
+        }
+
+        return $this->component_registry;
+    }
+
+    /**
+     * Execute full post generation through AIPS_Generation_Pipeline + AIPS_Post_Generation_Strategy.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return int|WP_Error Created post ID or WP_Error.
+     */
+    private function run_post_pipeline(AIPS_Generation_Context $context) {
+        $registry = $this->get_component_registry();
+        $strategy = new AIPS_Post_Generation_Strategy($registry, $this->get_generator(), null, null, $this->logger);
+        $pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+        $result   = $pipeline->execute($context);
+
+        if ($result->has_post()) {
+            return (int) $result->post_id;
+        }
+
+        $last_error = $strategy->get_last_error();
+        if ($last_error instanceof WP_Error) {
+            return $last_error;
+        }
+
+        $errors = $result->get_errors();
+        return new WP_Error(
+            'generation_failed',
+            !empty($errors) ? $errors[0] : __('Post generation failed.', 'ai-post-scheduler')
+        );
+    }
+
+    /**
      * Topic used by every case, so runs stay comparable.
      *
      * @return string
@@ -2013,7 +2223,7 @@ class AIPS_Stress_Test_Service {
      * @return int|WP_Error Post ID or error.
      */
     private function generate_and_mark_post($index = 0, $post_type = 'post') {
-        $post_id = $this->get_generator()->generate_post($this->build_context($index, $post_type));
+        $post_id = $this->run_post_pipeline($this->build_context($index, $post_type));
 
         if (!is_wp_error($post_id)) {
             $this->enforce_private_status($post_id);

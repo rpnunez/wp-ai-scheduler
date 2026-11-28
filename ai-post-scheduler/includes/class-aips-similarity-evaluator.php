@@ -1915,56 +1915,38 @@ class AIPS_Similarity_Evaluator {
 			}
 		}
 
-		$prompt = "You are an expert SEO editorial strategist.\n";
-		$prompt .= "Analyze this article to identify content gaps and missing bridge topics:\n";
-		$prompt .= "Article Title: \"{$post_title}\"\n";
-		$prompt .= "Excerpt / Summary: \"{$post_excerpt}\"\n";
-		if (!empty($cluster_name)) {
-			$prompt .= "Post Cluster Theme: \"{$cluster_name}\"\n";
-		}
-		$prompt .= "\nGenerate 3 to 5 high-value complementary article topic suggestions that would:\n";
-		$prompt .= "1. Form strong internal link bridge connections to this article.\n";
-		$prompt .= "2. Cover subtopics, FAQs, or implementation details that are currently missing.\n";
-		$prompt .= "3. Strengthen topical authority.\n\n";
-		$prompt .= "Format your response as a valid JSON array of objects with keys: \"title\", \"rationale\", \"brief\". Do not include any other commentary or markdown formatting.";
-
-		$response = $this->get_ai_service()->generate_text($prompt, array(
-			'temperature' => 0.7,
-			'max_tokens'  => 1200,
-		));
-
-		if (is_wp_error($response)) {
-			return $response;
-		}
-
-		// Clean JSON response
-		$raw = trim($response);
-		$raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
-		$raw = preg_replace('/\s*```$/i', '', $raw);
-
-		$parsed = json_decode($raw, true);
-		if (!is_array($parsed) || empty($parsed)) {
-			// Fallback mock structure if raw json parsing fails
-			$parsed = array(
-				array(
-					'title'     => sprintf(__('Complete Guide to %s: Best Practices & Strategies', 'ai-post-scheduler'), $post_title),
-					'rationale' => __('Comprehensive foundational coverage that bridges technical concepts.', 'ai-post-scheduler'),
-					'brief'     => __('Explore key principles, architectural patterns, and actionable takeaways.', 'ai-post-scheduler'),
+		$context = new AIPS_Research_Generation_Context(
+			AIPS_Research_Generation_Context::MODE_GAP_SUGGESTIONS,
+			array(
+				'niche' => $cluster_name !== '' ? $cluster_name : $post_title,
+				'topic' => array(
+					'post_title'   => $post_title,
+					'post_excerpt' => $post_excerpt,
+					'cluster_name' => $cluster_name,
 				),
-				array(
-					'title'     => sprintf(__('Common Pitfalls When Implementing %s', 'ai-post-scheduler'), $post_title),
-					'rationale' => __('Targets high-intent troubleshooting queries and provides natural internal link opportunities.', 'ai-post-scheduler'),
-					'brief'     => __('Detail failure modes, prevention checklists, and resolution workflows.', 'ai-post-scheduler'),
-				),
-				array(
-					'title'     => sprintf(__('Advanced Applications & Case Studies of %s', 'ai-post-scheduler'), $post_title),
-					'rationale' => __('Deepens topical depth for advanced readers and builds authority.', 'ai-post-scheduler'),
-					'brief'     => __('Real-world case studies, benchmark data, and specialized implementations.', 'ai-post-scheduler'),
-				),
-			);
+			)
+		);
+
+		$ai_service = $this->get_ai_service();
+		$registry   = new AIPS_Generation_Component_Registry();
+		$registry->register_default_research_components($ai_service);
+
+		$strategy = new AIPS_Research_Generation_Strategy($registry, $ai_service);
+		$pipeline = new AIPS_Generation_Pipeline($strategy, $registry);
+		$result   = $pipeline->execute($context);
+
+		if ($result->is_failure()) {
+			$last_error = $strategy->get_last_error();
+			if ($last_error instanceof WP_Error) {
+				return $last_error;
+			}
+
+			$errors  = $result->get_errors();
+			$message = !empty($errors) ? $errors[0] : __('Failed to generate gap suggestions.', 'ai-post-scheduler');
+			return new WP_Error('gap_suggestions_failed', $message);
 		}
 
-		return $parsed;
+		return (array) $result->get_data();
 	}
 
 	/**

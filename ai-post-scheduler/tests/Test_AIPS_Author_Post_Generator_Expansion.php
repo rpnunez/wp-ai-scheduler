@@ -68,6 +68,9 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 			public function release_topic_claim(int $topic_id): bool {
 				return true;
 			}
+			public function invalidate_topic_cache($topic_id = null, $author_id = null) {
+				// No-op for test
+			}
 		};
 
 		$logs_repository = new class {
@@ -126,7 +129,9 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 		$this->inject_property($reflection, $post_generator, 'interval_calculator', $interval_calculator);
 		$this->inject_property($reflection, $post_generator, 'history_service', $history_service);
 
-		AIPS_Container::get_instance()->instance(AIPS_Similarity_Evaluator::class, $expansion_service);
+		AIPS_Container::get_instance()->singleton(AIPS_Similarity_Evaluator::class, function () use ($expansion_service) {
+			return $expansion_service;
+		});
 
 		// Create author and topic objects
 		$author = $authors_repository->get_by_id(1);
@@ -220,6 +225,9 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 			public function release_topic_claim(int $topic_id): bool {
 				return true;
 			}
+			public function invalidate_topic_cache($topic_id = null, $author_id = null) {
+				// No-op for test
+			}
 		};
 
 		$logs_repository = new class {
@@ -278,7 +286,9 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 		$this->inject_property($reflection, $post_generator, 'interval_calculator', $interval_calculator);
 		$this->inject_property($reflection, $post_generator, 'history_service', $history_service);
 
-		AIPS_Container::get_instance()->instance(AIPS_Similarity_Evaluator::class, $expansion_service);
+		AIPS_Container::get_instance()->singleton(AIPS_Similarity_Evaluator::class, function () use ($expansion_service) {
+			return $expansion_service;
+		});
 
 		// Create author and topic objects
 		$author = $authors_repository->get_by_id(1);

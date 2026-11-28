@@ -1548,7 +1548,11 @@ class AIPS_DevStackTips_Setup {
 
 		$this->backup_option($name);
 		$this->require_backup_write();
-		update_option($name, $value);
+		if (empty($this->backup['options'][$name]['existed'])) {
+			add_option($name, $value);
+		} else {
+			update_option($name, $value);
+		}
 	}
 
 	/**
@@ -2142,6 +2146,25 @@ class AIPS_DevStackTips_Setup {
 							'daily_digest' => 'email',
 							'weekly_digest' => 'email',
 							'monthly_digest' => 'email',
+						),
+					),
+					array(
+						'option_name' => 'aips_notif_digest_enabled',
+						'value' => 1,
+					),
+					array(
+						'option_name' => 'aips_notif_digest_threshold',
+						'value' => 5,
+					),
+					array(
+						'option_name' => 'aips_notif_digest_max_delay',
+						'value' => 3600,
+					),
+					array(
+						'option_name' => 'aips_notif_digest_types',
+						'value' => array(
+							'post_generated',
+							'post_ready_for_review',
 						),
 					),
 				),

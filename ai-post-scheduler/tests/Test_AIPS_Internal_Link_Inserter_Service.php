@@ -85,35 +85,28 @@ class Test_AIPS_Internal_Link_Inserter_Service extends WP_UnitTestCase {
 	 * The public insertion-locations response should preserve both AI and valid counts.
 	 */
 	public function test_find_insertion_locations_reports_raw_and_valid_counts() {
-		global $test_posts;
+		$source_id = self::factory()->post->create(array(
+			'post_title'   => 'Source Post',
+			'post_content' => 'Explore crucial web server configuration adjustments, and solidify production-ready best practices.',
+			'post_status'  => 'publish',
+		));
+		$target_id = self::factory()->post->create(array(
+			'post_title'  => 'Apache Security Hardening and Performance Tuning',
+			'post_status' => 'publish',
+		));
 
 		$links_repo = $this->createMock(AIPS_Internal_Links_Repository::class);
-		$ai_service = $this->getMockBuilder(AIPS_AI_Service::class)
-			->disableOriginalConstructor()
-			->onlyMethods(array('generate_json_from_text'))
-			->getMock();
+		$ai_service = $this->createMock(AIPS_AI_Service_Interface::class);
 		$logger     = $this->createMock(AIPS_Logger::class);
-
-		$test_posts = array(
-			101 => (object) array(
-				'ID'           => 101,
-				'post_title'   => 'Source Post',
-				'post_content' => 'Explore crucial web server configuration adjustments, and solidify production-ready best practices.',
-			),
-			202 => (object) array(
-				'ID'         => 202,
-				'post_title' => 'Apache Security Hardening and Performance Tuning',
-			),
-		);
 
 		$links_repo->method('get_by_id')->willReturn((object) array(
 			'id'             => 7,
-			'source_post_id' => 101,
-			'target_post_id' => 202,
+			'source_post_id' => $source_id,
+			'target_post_id' => $target_id,
 			'anchor_text'    => '',
 		));
 
-		$ai_service->method('generate_json_from_text')->willReturn(array(
+		$ai_service->method('generate_text')->willReturn(wp_json_encode(array(
 			array(
 				'reason'              => 'Bad rewrite',
 				'match_snippet'       => 'Explore crucial web server configuration adjustments, and',
@@ -124,7 +117,7 @@ class Test_AIPS_Internal_Link_Inserter_Service extends WP_UnitTestCase {
 				'match_snippet'       => 'Explore crucial web server configuration adjustments, and',
 				'replacement_snippet' => 'Explore crucial [[web server configuration adjustments]], and',
 			),
-		));
+		)));
 
 		$service = new AIPS_Internal_Link_Inserter_Service($links_repo, $ai_service, $logger);
 		$result  = $service->find_insertion_locations(7);
@@ -133,7 +126,5 @@ class Test_AIPS_Internal_Link_Inserter_Service extends WP_UnitTestCase {
 		$this->assertSame(2, $result['raw_count']);
 		$this->assertSame(1, $result['valid_count']);
 		$this->assertCount(1, $result['locations']);
-
-		unset($test_posts);
 	}
 }

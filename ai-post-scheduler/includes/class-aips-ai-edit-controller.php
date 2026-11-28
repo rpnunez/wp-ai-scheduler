@@ -56,6 +56,8 @@ class AIPS_AI_Edit_Controller {
 		add_action('wp_ajax_aips_get_component_revisions', array($this, 'ajax_get_component_revisions'));
 		add_action('wp_ajax_aips_restore_component_revision', array($this, 'ajax_restore_component_revision'));
 		add_action('wp_ajax_aips_reset_component_overrides', array($this, 'ajax_reset_component_overrides'));
+		add_action('wp_ajax_aips_universal_ai_edit', array($this, 'ajax_universal_ai_edit'));
+		add_action('wp_ajax_aips_get_editable_components', array($this, 'ajax_get_editable_components'));
 	}
 	
 	/**
@@ -302,99 +304,48 @@ class AIPS_AI_Edit_Controller {
 			}
 		}
 
-		// Handle sticky component overrides (model and temperature)
-		$existing_overrides = get_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, true);
-		if (!is_array($existing_overrides)) {
-			$existing_overrides = array();
-		}
-		$comp_override = isset($existing_overrides[$component]) && is_array($existing_overrides[$component]) ? $existing_overrides[$component] : array();
+		// Resolve and persist sticky per-component model/temperature overrides.
+		$resolved_overrides   = $this->service->resolve_and_persist_component_overrides(
+			$post_id,
+			$component,
+			$model_override,
+			$temperature_override,
+			isset($_POST['model_override']),
+			isset($_POST['temperature_override']) && '' !== $_POST['temperature_override']
+		);
+		$model_override       = array_key_exists('model', $resolved_overrides) ? $resolved_overrides['model'] : $model_override;
+		$temperature_override = array_key_exists('temperature', $resolved_overrides) ? $resolved_overrides['temperature'] : $temperature_override;
+		$existing_overrides   = isset($resolved_overrides['overrides']) && is_array($resolved_overrides['overrides']) ? $resolved_overrides['overrides'] : array();
 
-		$updated_overrides = false;
-		if (isset($_POST['model_override'])) {
-			if (!empty($model_override)) {
-				$comp_override['model'] = $model_override;
-			} else {
-				unset($comp_override['model']);
-			}
-			$updated_overrides = true;
-		} elseif (!empty($comp_override['model'])) {
-			$model_override = $comp_override['model'];
-		}
-
-		if (isset($_POST['temperature_override']) && '' !== $_POST['temperature_override']) {
-			if (null !== $temperature_override) {
-				$comp_override['temperature'] = max(0.0, min(1.0, $temperature_override));
-			} else {
-				unset($comp_override['temperature']);
-			}
-			$updated_overrides = true;
-		} elseif (isset($comp_override['temperature'])) {
-			$temperature_override = floatval($comp_override['temperature']);
-		}
-
-		if ($updated_overrides) {
-			if (!empty($comp_override)) {
-				$existing_overrides[$component] = $comp_override;
-			} else {
-				unset($existing_overrides[$component]);
-			}
-			if (empty($existing_overrides)) {
-				delete_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES);
-			} else {
-				update_post_meta($post_id, AIPS_Post_Manager::META_AI_EDIT_OVERRIDES, $existing_overrides);
-			}
-		}
-
-		$context['custom_directive']    = $custom_directive;
-		$context['directive_preset']    = $directive_preset;
-		$context['model_override']      = $model_override;
+		$context['custom_directive']     = $custom_directive;
+		$context['directive_preset']     = $directive_preset;
+		$context['model_override']       = $model_override;
 		$context['temperature_override'] = $temperature_override;
 
 		if ($downstream_cascaded) {
 			$context['downstream_cascaded'] = true;
-			$context['trigger_detail']     = __('Cascaded downstream alignment from upstream component acceptance', 'ai-post-scheduler');
+			$context['trigger_detail']      = __('Cascaded downstream alignment from upstream component acceptance', 'ai-post-scheduler');
 			$this->apply_upstream_component_context($context);
 		}
-		
-		// Regenerate component
-		$result = null;
-		switch ($component) {
-			case 'title':
-				$result = $this->service->regenerate_title($context);
-				break;
-			case 'slug':
-				$result = $this->service->regenerate_slug($context);
-				break;
-			case 'excerpt':
-				$result = $this->service->regenerate_excerpt($context);
-				break;
-			case 'content':
-				$result = $this->service->regenerate_content($context);
-				break;
-			case 'featured_image':
-				$result = $this->service->regenerate_featured_image($context);
-				break;
-			default:
-				$image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
-				if ('post_images' === $component || $image_id > 0) {
-					if (isset($_POST['current_content'])) {
-						$context['current_content'] = $this->sanitize_editor_html(wp_unslash($_POST['current_content']));
-					}
-					$result = $this->service->regenerate_post_images($context, $image_id > 0 ? $image_id : 'all');
-				}
-				break;
+
+		$image_id = AIPS_Component_Regeneration_Service::post_image_id_from_component($component);
+		if (('post_images' === $component || $image_id > 0) && isset($_POST['current_content'])) {
+			$context['current_content'] = $this->sanitize_editor_html(wp_unslash($_POST['current_content']));
 		}
-		
+
+		// Delegate single-component regeneration through the unified service/coordinator.
+		$result = $this->service->regenerate_component($component, $context);
+
 		if (is_wp_error($result)) {
 			$this->log_wp_error($result, __METHOD__);
 			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'));
 		}
-		
+
 		AIPS_Ajax_Response::success(array(
-			'new_value'    => $result,
-			'model'        => $model_override,
-			'temperature'  => $temperature_override,
-			'overrides'    => $existing_overrides,
+			'new_value'   => $result,
+			'model'       => $model_override,
+			'temperature' => $temperature_override,
+			'overrides'   => $existing_overrides,
 		));
 	}
 
@@ -1015,8 +966,12 @@ class AIPS_AI_Edit_Controller {
 	private function sanitize_editor_html($content) {
 		$content = (string) $content;
 		$tokens  = array();
+		// The span must not cross a raw `<` or `>` so a crafted comment cannot hide
+		// smuggled markup from wp_kses_post() and have it restored verbatim (a browser
+		// closes a comment at `--!>` as well as `-->`). Genuine Gutenberg delimiters
+		// never contain raw angle brackets.
 		$content = preg_replace_callback(
-			'/<!--\s*\/?wp:[\s\S]*?-->/',
+			'/<!--\s*\/?wp:[^<>]*?-->/',
 			function ($matches) use (&$tokens) {
 				$token = 'AIPSBLOCK' . count($tokens) . 'PLACEHOLDER';
 				$tokens[$token] = $matches[0];
@@ -1437,5 +1392,281 @@ class AIPS_AI_Edit_Controller {
 		}
 
 		return trim((string) $value);
+	}
+
+	/**
+	 * AJAX handler: List AI-editable generation components across strategies.
+	 *
+	 * Enables Universal AI Edit discovery across Post, Author Topic, and
+	 * Campaign entities via AIPS_Generation_Component_Registry.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_editable_components() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$strategy_key = isset($_POST['strategy_key']) ? sanitize_key(wp_unslash($_POST['strategy_key'])) : '';
+		$container    = AIPS_Container::get_instance();
+		$registry     = $container->has(AIPS_Generation_Component_Registry::class)
+			? $container->make(AIPS_Generation_Component_Registry::class)
+			: (new AIPS_Generation_Component_Registry())->register_all_defaults();
+
+		$editable = $registry->get_ai_editable($strategy_key !== '' ? $strategy_key : null);
+		$payload  = array();
+		foreach ($editable as $component) {
+			$payload[] = array(
+				'key'          => $component->get_key(),
+				'label'        => $component->get_label(),
+				'strategy_key' => $component->get_strategy_key(),
+				'required'     => $component->is_required(),
+			);
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'strategy_key' => $strategy_key !== '' ? $strategy_key : 'all',
+			'components'   => $payload,
+		));
+	}
+
+	/**
+	 * AJAX handler: Universal AI Edit across Post, Author Topic, and Campaign entities.
+	 *
+	 * Routes single-component AI revisions through AIPS_Component_Regeneration_Coordinator
+	 * and optionally applies the sanitized value to the target entity.
+	 *
+	 * @return void
+	 */
+	public function ajax_universal_ai_edit() {
+		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$strategy_key  = isset($_POST['strategy_key']) ? sanitize_key(wp_unslash($_POST['strategy_key'])) : 'posts';
+		$component_key = isset($_POST['component_key']) ? sanitize_key(wp_unslash($_POST['component_key'])) : '';
+		$target_id     = isset($_POST['target_id']) ? absint($_POST['target_id']) : 0;
+		$directive     = isset($_POST['directive']) ? sanitize_textarea_field(wp_unslash($_POST['directive'])) : '';
+		$apply_changes = isset($_POST['apply']) ? filter_var(wp_unslash($_POST['apply']), FILTER_VALIDATE_BOOLEAN) : false;
+
+		if ($component_key === '' || ($target_id <= 0 && $strategy_key !== 'campaigns')) {
+			AIPS_Ajax_Response::invalid_request(__('Component key and target ID are required.', 'ai-post-scheduler'));
+		}
+
+		if ($strategy_key === 'posts') {
+			if (!get_post($target_id)) {
+				AIPS_Ajax_Response::not_found(__('Post', 'ai-post-scheduler'));
+			}
+
+			if (!current_user_can('edit_post', $target_id)) {
+				AIPS_Ajax_Response::permission_denied();
+			}
+		}
+
+		$context = $this->resolve_universal_ai_edit_context($strategy_key, $target_id);
+		if (is_wp_error($context)) {
+			AIPS_Ajax_Response::error($context->get_error_message(), $context->get_error_code());
+		}
+
+		$container   = AIPS_Container::get_instance();
+		$coordinator = $container->has(AIPS_Component_Regeneration_Coordinator::class)
+			? $container->make(AIPS_Component_Regeneration_Coordinator::class)
+			: $this->service->get_coordinator();
+
+		$component = $coordinator->get_registry()->get($component_key, $strategy_key);
+		if (!$component || !$component->supports_ai_edit()) {
+			AIPS_Ajax_Response::error(__('Component does not support Universal AI Edit.', 'ai-post-scheduler'), 'unsupported_component', 400);
+		}
+
+		$result = $coordinator->regenerate($strategy_key, $component_key, $target_id, $context, $directive);
+		if ($result->is_failure()) {
+			$errors = $result->get_errors();
+			$logged = new WP_Error(
+				'regeneration_failed',
+				!empty($errors) ? (string) $errors[0] : __('Universal AI Edit regeneration failed.', 'ai-post-scheduler')
+			);
+			$this->log_wp_error($logged, __METHOD__);
+			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'), 'regeneration_failed');
+		}
+
+		$value   = $result->get_data();
+		$applied = false;
+		if ($apply_changes) {
+			if ($strategy_key === 'posts') {
+				$snapshot = $this->capture_universal_post_revision($target_id, $component->get_key());
+				if (is_wp_error($snapshot)) {
+					$this->log_wp_error($snapshot, __METHOD__);
+					AIPS_Ajax_Response::error(__('Failed to capture component revision.', 'ai-post-scheduler'));
+				}
+			}
+
+			$applied = $component->apply($target_id, $value);
+
+			// Collapse onto the classic post-save pipeline: once a post component has been
+			// applied, run the same post-processing ajax_save_post_components() performs so
+			// the two AI-Edit paths stay behaviourally identical (image-row sync, partial-state
+			// reconciliation, and the aips_post_components_updated hook its listeners rely on).
+			if ($applied && $strategy_key === 'posts') {
+				$this->sync_post_images_with_content($target_id);
+
+				if (class_exists('AIPS_Partial_Generation_State_Reconciler')) {
+					new AIPS_Partial_Generation_State_Reconciler();
+				}
+
+				// Mirror ajax_save_post_components()'s hook contract: classic component
+				// names and sanitized values (never raw AI output), so existing and
+				// third-party listeners receive one consistent, safe payload.
+				$applied_key  = $component->get_key();
+				$hook_name_map = array(
+					'post_title'     => 'title',
+					'post_slug'      => 'slug',
+					'post_excerpt'   => 'excerpt',
+					'post_content'   => 'content',
+					'featured_image' => 'featured_image_id',
+				);
+				$hook_key = isset($hook_name_map[$applied_key]) ? $hook_name_map[$applied_key] : $applied_key;
+
+				if ('featured_image_id' === $hook_key) {
+					$hook_value = absint((is_array($value) && isset($value['attachment_id'])) ? $value['attachment_id'] : $value);
+				} elseif (method_exists($component, 'sanitize_value')) {
+					$hook_value = $component->sanitize_value($value);
+				} else {
+					$hook_value = $value;
+				}
+
+				do_action(
+					'aips_post_components_updated',
+					$target_id,
+					array($hook_key),
+					array($hook_key => $hook_value)
+				);
+			}
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'strategy_key'  => $strategy_key,
+			'component_key' => $component->get_key(),
+			'target_id'     => $target_id,
+			'value'         => $value,
+			'applied'       => $applied,
+		));
+	}
+
+	/**
+	 * Snapshot a post component's current value before Universal AI Edit overwrites it.
+	 *
+	 * Mirrors the pre-regeneration snapshot taken by ajax_regenerate_component() so the
+	 * previous value can be restored from the component revision list. Components without
+	 * a revision type, and posts without a generation history, are skipped.
+	 *
+	 * @param int    $post_id       Post ID.
+	 * @param string $component_key Universal component key (e.g. 'post_content').
+	 * @return true|WP_Error
+	 */
+	private function capture_universal_post_revision(int $post_id, string $component_key) {
+		$revision_map = array(
+			'post_title'     => 'title',
+			'post_slug'      => 'slug',
+			'post_excerpt'   => 'excerpt',
+			'post_content'   => 'content',
+			'featured_image' => 'featured_image',
+		);
+
+		if (!isset($revision_map[$component_key])) {
+			return true;
+		}
+
+		$component = $revision_map[$component_key];
+		$post      = get_post($post_id);
+		$history   = $this->history_repository->get_by_post_id($post_id);
+		if (!$post || !is_object($history) || empty($history->id)) {
+			return true;
+		}
+
+		$raw_current = $this->get_post_component_value($post, $component);
+		if (null === $raw_current || '' === $raw_current) {
+			return true;
+		}
+
+		$snapshot_value = $this->sanitize_component_revision_value($component, $raw_current);
+		if ($this->is_component_value_empty($component, $snapshot_value)
+			|| $this->is_component_value_in_revisions($post_id, $component, $snapshot_value)) {
+			return true;
+		}
+
+		$result = $this->service->capture_component_revision(
+			$post_id,
+			(int) $history->id,
+			$component,
+			$snapshot_value,
+			'persisted',
+			'pre_regenerate_current'
+		);
+
+		return is_wp_error($result) ? $result : true;
+	}
+
+	/**
+	 * Resolve a generation context for a Universal AI Edit request.
+	 *
+	 * @param string $strategy_key Strategy key ('posts', 'author_topics', 'campaigns').
+	 * @param int    $target_id    Entity identifier.
+	 * @return AIPS_Generation_Context|WP_Error
+	 */
+	private function resolve_universal_ai_edit_context(string $strategy_key, int $target_id) {
+		if ($strategy_key === 'posts') {
+			$history = $this->history_repository->get_by_post_id($target_id);
+			if (is_object($history) && !empty($history->id)) {
+				$ctx_data = $this->service->get_generation_context((int) $history->id);
+				if (!is_wp_error($ctx_data) && isset($ctx_data['generation_context']) && $ctx_data['generation_context'] instanceof AIPS_Generation_Context) {
+					return $ctx_data['generation_context'];
+				}
+			}
+
+			$post = get_post($target_id);
+			if (!$post) {
+				return new WP_Error('post_not_found', __('Post not found.', 'ai-post-scheduler'));
+			}
+
+			return new AIPS_Template_Context(
+				(object) array(
+					'id'              => 0,
+					'name'            => (string) $post->post_title,
+					'prompt_template' => '',
+					'post_status'     => (string) $post->post_status,
+					'post_type'       => (string) $post->post_type,
+				),
+				null,
+				(string) $post->post_title
+			);
+		}
+
+		if ($strategy_key === 'author_topics') {
+			$topics_repo = new AIPS_Author_Topics_Repository();
+			$topic       = $topics_repo->get_by_id($target_id);
+			if (!$topic) {
+				return new WP_Error('topic_not_found', __('Author topic not found.', 'ai-post-scheduler'));
+			}
+
+			$authors_repo = new AIPS_Authors_Repository();
+			$author       = !empty($topic->author_id) ? $authors_repo->get_by_id((int) $topic->author_id) : null;
+
+			return new AIPS_Author_Topic_Generation_Context($author ?: (object) array('id' => 0, 'name' => '', 'field_niche' => ''));
+		}
+
+		if ($strategy_key === 'campaigns') {
+			$niche = isset($_POST['topic_niche']) ? sanitize_text_field(wp_unslash($_POST['topic_niche'])) : '';
+			return new AIPS_Campaign_Generation_Context(array('topic_niche' => $niche));
+		}
+
+		return new WP_Error('invalid_strategy', __('Unsupported generation strategy for Universal AI Edit.', 'ai-post-scheduler'));
 	}
 }

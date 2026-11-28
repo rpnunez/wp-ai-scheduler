@@ -29,6 +29,7 @@ class AIPS_Test_Stub_Logger_For_Suggestions implements AIPS_Logger_Interface {
 }
 
 class AIPS_Test_Stub_History_Container_For_Suggestions {
+	public function get_id() { return 1; }
 	public function record( $log_type, $message, $input = null, $output = null, $context = array() ) {}
 	public function record_error( $message, $error_details = array(), $wp_error = null ) {}
 	public function complete_success( $result_data = array() ) {}

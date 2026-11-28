@@ -217,6 +217,12 @@ class AIPS_Settings_Form_Renderer {
 				$choices = $opts['options'];
 			}
 		}
+		if ( ! is_array( $choices ) ) {
+			$choices = array();
+		}
+		if ( '' !== $val_str && ! array_key_exists( $val_str, $choices ) ) {
+			$choices = array( $val_str => sprintf( __( 'Saved value not currently available: %s', 'ai-post-scheduler' ), $val_str ) ) + $choices;
+		}
 
 		$options_html = '';
 		foreach ( $choices as $opt_key => $opt_label ) {
@@ -256,7 +262,15 @@ class AIPS_Settings_Form_Renderer {
 				$choices = $opts['options'];
 			}
 		}
-		$active_items = is_array( $value ) ? $value : array();
+		if ( ! is_array( $choices ) ) {
+			$choices = array();
+		}
+		$active_items = is_array( $value ) ? array_map( 'strval', $value ) : array();
+		foreach ( $active_items as $active_item ) {
+			if ( is_scalar( $active_item ) && ! array_key_exists( $active_item, $choices ) ) {
+				$choices[ $active_item ] = sprintf( __( 'Saved value not currently available: %s', 'ai-post-scheduler' ), (string) $active_item );
+			}
+		}
 
 		if ( ! empty( $opts['render_as'] ) && 'select' === $opts['render_as'] ) {
 			$options_html = '';
@@ -264,7 +278,7 @@ class AIPS_Settings_Form_Renderer {
 				$options_html .= sprintf(
 					'<option value="%1$s" %2$s>%3$s</option>',
 					esc_attr( (string) $opt_key ),
-					selected( in_array( $opt_key, $active_items, true ), true, false ),
+					selected( in_array( (string) $opt_key, $active_items, true ), true, false ),
 					esc_html( (string) $opt_label )
 				);
 			}
@@ -285,7 +299,7 @@ class AIPS_Settings_Form_Renderer {
 
 		foreach ( $choices as $opt_key => $opt_label ) {
 			$item_id   = esc_attr( $id . '_' . sanitize_key( $opt_key ) );
-			$is_active = in_array( $opt_key, $active_items, true );
+			$is_active = in_array( (string) $opt_key, $active_items, true );
 
 			$html .= sprintf(
 				'<label for="%1$s" class="aips-checkbox-label">' .
