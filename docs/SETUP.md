@@ -144,7 +144,7 @@ docker compose build --no-cache       # Force clean rebuild
 docker compose up -d
 ```
 
-Xdebug and PHP ini changes do not need a rebuild: `make xdebug-on` / `make xdebug-off` recreate the web container, and `make reload-php` applies `dev-php.ini` edits.
+Xdebug and PHP ini changes do not need a rebuild: `make xdebug-on` / `make xdebug-off` recreate the web container, and `make reload-php` applies `docker/dev-php.ini` edits.
 
 ---
 
@@ -192,13 +192,13 @@ After hand-editing `.env`, apply with `docker compose up -d --force-recreate web
 
 ### PHP-only settings
 
-`dev-php.ini` still holds the general PHP settings (`memory_limit`, `upload_max_filesize`, `display_errors`, …). Edit it and apply with:
+`docker/dev-php.ini` still holds the general PHP settings (`memory_limit`, `upload_max_filesize`, `display_errors`, …). Edit it and apply with:
 
 ```bash
 make reload-php
 ```
 
-The `[xdebug]` block was removed from `dev-php.ini` — Xdebug config now comes from `.env` via the entrypoint, so `zz-xdebug-runtime.ini` is written to `/usr/local/etc/php/conf.d/` at container start.
+The `[xdebug]` block was removed from `docker/dev-php.ini` — Xdebug config now comes from `.env` via the entrypoint, so `zz-xdebug-runtime.ini` is written to `/usr/local/etc/php/conf.d/` at container start.
 
 ---
 
@@ -321,7 +321,7 @@ Under **Settings → General → Source Archive Retention**, zero days keeps all
 | No space left on device | `docker system prune -a --volumes` |
 | Database connection error | `docker compose down && docker compose up -d` |
 | Plugin activation fails | `docker compose exec web wp plugin activate ai-post-scheduler --allow-root` |
-| "healthcheck.sh: not found" | Run `./start-dev.sh` from repo root, not a subdirectory |
+| "docker/healthcheck.sh: not found" | Run `./start-dev.sh` from repo root, not a subdirectory |
 
 **Linux: "Cannot connect to Docker daemon"**
 
