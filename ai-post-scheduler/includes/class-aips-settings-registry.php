@@ -654,6 +654,13 @@ class AIPS_Settings_Registry {
 				'label'        => __( 'Allowed Image Sources', 'ai-post-scheduler' ),
 				'description'  => __( 'Enabled sources for content image insertion.', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'control_options' => array(
+					'options' => array(
+						'ai_prompt'     => __( 'AI Prompt', 'ai-post-scheduler' ),
+						'unsplash'      => __( 'Unsplash', 'ai-post-scheduler' ),
+						'media_library' => __( 'Media Library', 'ai-post-scheduler' ),
+					),
+				),
 			),
 			array(
 				'key'          => 'aips_enable_post_insights_ui',
@@ -951,6 +958,20 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_embeddings_section',
 				'label'        => __( 'Embeddings Provider', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array( '' => __( 'Auto-detect (recommended)', 'ai-post-scheduler' ) );
+						if ( class_exists( 'AIPS_AI_Provider_Factory' ) ) {
+							foreach ( AIPS_AI_Provider_Factory::all_providers() as $id => $label ) {
+								$provider = AIPS_AI_Provider_Factory::create( $id );
+								if ( $provider->supports_embeddings() ) {
+									$choices[ $id ] = $label;
+								}
+							}
+						}
+						return $choices;
+					},
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1011,7 +1032,20 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_scope_section',
 				'label'        => __( 'Indexing Scope', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
-				'sanitize_callback' => 'sanitize_key',
+				'control_options' => array(
+					'options' => array(
+						'aips_only'  => __( 'AIPS-Generated Posts Only', 'ai-post-scheduler' ),
+						'all'        => __( 'All WordPress Posts', 'ai-post-scheduler' ),
+						'date_range' => __( 'Specific Publication Date Range', 'ai-post-scheduler' ),
+					),
+				),
+				'sanitize_callback' => static function( $value ) {
+					$value = sanitize_key( (string) $value );
+					if ( 'all_posts' === $value ) {
+						return 'all';
+					}
+					return in_array( $value, array( 'aips_only', 'date_range', 'all' ), true ) ? $value : 'aips_only';
+				},
 			),
 			array(
 				'key'          => 'aips_embeddings_date_days',
@@ -1091,6 +1125,15 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_scope_section',
 				'label'        => __( 'Indexed Post Types', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array();
+						foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $key => $post_type ) {
+							$choices[ $key ] = $post_type->labels->singular_name;
+						}
+						return $choices;
+					},
+				),
 			),
 			array(
 				'key'          => 'aips_indexer_similarity_threshold',
@@ -1121,6 +1164,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_scope_section',
 				'label'        => __( 'Publish Execution Timing', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'queued'    => __( 'Debounced Background Batch Queue (Recommended)', 'ai-post-scheduler' ),
+						'immediate' => __( 'Immediate (Synchronous on Publish)', 'ai-post-scheduler' ),
+						'disabled'  => __( 'Disabled', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1191,6 +1241,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_scope_section',
 				'label'        => __( 'Error Pause Unit', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'minutes' => __( 'Minutes', 'ai-post-scheduler' ),
+						'hours'   => __( 'Hours', 'ai-post-scheduler' ),
+						'days'    => __( 'Days', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1221,6 +1278,12 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_scope_section',
 				'label'        => __( 'Topics Execution Timing', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'immediate' => __( 'Immediate', 'ai-post-scheduler' ),
+						'queued'    => __( 'Queued', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1231,6 +1294,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_scope_section',
 				'label'        => __( 'Scan Entity Scope', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'all'    => __( 'Posts and Topics', 'ai-post-scheduler' ),
+						'posts'  => __( 'Posts Only', 'ai-post-scheduler' ),
+						'topics' => __( 'Topics Only', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 
@@ -1283,6 +1353,12 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_related_posts_section',
 				'label'        => __( 'Related Posts Layout', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'grid' => __( 'Card Grid', 'ai-post-scheduler' ),
+						'list' => __( 'List Layout', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1357,6 +1433,14 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_assistance_section',
 				'label'        => __( 'Assistance Contexts', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'control_options' => array(
+					'options' => array(
+						'authors'          => __( 'Authors', 'ai-post-scheduler' ),
+						'templates'        => __( 'Templates', 'ai-post-scheduler' ),
+						'sources'          => __( 'Sources', 'ai-post-scheduler' ),
+						'content_strategy' => __( 'Content Strategy', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => array( 'AIPS_Settings', 'sanitize_ai_assistance_contexts' ),
 			),
 			array(
@@ -1367,6 +1451,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_assistance_section',
 				'label'        => __( 'Response Length', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'concise'  => __( 'Concise', 'ai-post-scheduler' ),
+						'standard' => __( 'Standard', 'ai-post-scheduler' ),
+						'detailed' => __( 'Detailed', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1387,6 +1478,12 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_assistance_section',
 				'label'        => __( 'Overwrite Mode', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'preview' => __( 'Preview changes before applying', 'ai-post-scheduler' ),
+						'replace' => __( 'Replace existing content', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1421,6 +1518,15 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_link_index_section',
 				'label'        => __( 'Indexed Post Types', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array();
+						foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $key => $post_type ) {
+							$choices[ $key ] = $post_type->labels->singular_name;
+						}
+						return $choices;
+					},
+				),
 			),
 			array(
 				'key'          => 'aips_link_index_batch_size',
@@ -1470,6 +1576,16 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_link_rules_section',
 				'label'        => __( 'Redirect Provider', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array( 'auto' => __( 'Automatic (recommended)', 'ai-post-scheduler' ) );
+						$service = new AIPS_Redirects_Service();
+						foreach ( $service->get_providers() as $key => $provider ) {
+							$choices[ $key ] = $provider->get_label();
+						}
+						return $choices;
+					},
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1480,6 +1596,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_link_rules_section',
 				'label'        => __( 'Publish Linking Mode', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'off'    => __( 'Off', 'ai-post-scheduler' ),
+						'review' => __( 'Review before applying', 'ai-post-scheduler' ),
+						'apply'  => __( 'Apply automatically', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1574,6 +1697,12 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_silo_section',
 				'label'        => __( 'Silo Guide Position', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'end'                    => __( 'At the end of the post', 'ai-post-scheduler' ),
+						'after_first_paragraph' => __( 'After the first paragraph', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1594,6 +1723,12 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_silo_section',
 				'label'        => __( 'Silo Guide Style', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'aips'  => __( 'AI Post Scheduler box', 'ai-post-scheduler' ),
+						'theme' => __( 'Plain HTML (theme styles the heading and list)', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1834,6 +1969,12 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_deduplication_section',
 				'label'        => __( 'Deduplication Mode', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'warn'  => __( 'Warn and flag duplicates', 'ai-post-scheduler' ),
+						'block' => __( 'Block generation when duplicates exist', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1904,6 +2045,9 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_deduplication_section',
 				'label'        => __( 'Canonical Keep Strategy', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => AIPS_Duplicate_Group_Service::get_keep_strategies(),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1914,6 +2058,15 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_deduplication_section',
 				'label'        => __( 'Excluded Post Types', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array();
+						foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $key => $post_type ) {
+							$choices[ $key ] = $post_type->labels->singular_name;
+						}
+						return $choices;
+					},
+				),
 			),
 			array(
 				'key'          => 'aips_duplicate_excluded_categories',
@@ -1923,6 +2076,18 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_deduplication_section',
 				'label'        => __( 'Excluded Categories', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array();
+						$categories = get_categories( array( 'hide_empty' => false, 'number' => 200 ) );
+						if ( ! is_wp_error( $categories ) ) {
+							foreach ( $categories as $category ) {
+								$choices[ $category->term_id ] = $category->name;
+							}
+						}
+						return $choices;
+					},
+				),
 			),
 			array(
 				'key'          => 'aips_duplicate_excluded_post_ids',
@@ -1962,6 +2127,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_deduplication_section',
 				'label'        => __( 'Default Merge Action', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'none'     => __( 'Do not change kept post', 'ai-post-scheduler' ),
+						'revision' => __( 'Save merged draft as a revision', 'ai-post-scheduler' ),
+						'rewrite'  => __( 'Rewrite the kept post', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1972,6 +2144,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_deduplication_section',
 				'label'        => __( 'Automated Scan Frequency', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'off'    => __( 'Off (review manually)', 'ai-post-scheduler' ),
+						'daily'  => __( 'Daily', 'ai-post-scheduler' ),
+						'weekly' => __( 'Weekly', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -1992,6 +2171,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_ai_deduplication_section',
 				'label'        => __( 'Cluster Tightness', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'loose'    => __( 'Loose', 'ai-post-scheduler' ),
+						'balanced' => __( 'Balanced', 'ai-post-scheduler' ),
+						'strict'   => __( 'Strict', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -2093,6 +2279,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_authors_section',
 				'label'        => __( 'Approval Fallback Action', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'smart_split' => __( 'Reject duplicates, hold remaining topics in Pending', 'ai-post-scheduler' ),
+						'pending'     => __( 'Leave all topics Pending', 'ai-post-scheduler' ),
+						'rejected'    => __( 'Reject all non-qualifying topics', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -2610,7 +2803,7 @@ class AIPS_Settings_Registry {
 			array(
 				'key'          => 'aips_notif_digest_enabled',
 				'type'         => AIPS_Setting_Definition::TYPE_BOOL,
-				'default'      => false,
+				'default'      => true,
 				'tab'          => 'settings-notifications',
 				'section'      => 'aips_notifications_summarized_digest_section',
 				'label'        => __( 'Enable Summarized Notification Digest', 'ai-post-scheduler' ),
@@ -2645,6 +2838,15 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_notifications_summarized_digest_section',
 				'label'        => __( 'Digest Event Types', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_MULTISELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array();
+						foreach ( AIPS_Notification_Registry::get_digest_eligible_types() as $key => $meta ) {
+							$choices[ $key ] = $meta['label'];
+						}
+						return $choices;
+					},
+				),
 			),
 			array(
 				'key'          => 'aips_notif_digest_actions',
@@ -2834,6 +3036,26 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_content_strategy_section',
 				'label'        => __( 'Default Article Structure', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => function() {
+						$choices = array( 0 => __( 'Select an article structure', 'ai-post-scheduler' ) );
+						$repository = new AIPS_Article_Structure_Repository();
+						$structures = $repository->get_all( false );
+						foreach ( is_array( $structures ) ? $structures : array() as $structure ) {
+							$id = isset( $structure->id ) ? absint( $structure->id ) : 0;
+							if ( $id < 1 || empty( $structure->name ) ) {
+								continue;
+							}
+							$is_active = ! isset( $structure->is_active ) || (bool) $structure->is_active;
+							$label = (string) $structure->name;
+							if ( ! $is_active ) {
+								$label .= ' ' . __( '(Inactive)', 'ai-post-scheduler' );
+							}
+							$choices[ $id ] = $label;
+						}
+						return $choices;
+					},
+				),
 				'sanitize_callback' => 'absint',
 			),
 			array(
@@ -2907,6 +3129,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_cache_section',
 				'label'        => __( 'Cache Storage Driver', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'array'           => __( 'Array (in-memory, request-scoped) (default)', 'ai-post-scheduler' ),
+						'wp_object_cache' => __( 'WP Object Cache (uses wp_cache_* functions)', 'ai-post-scheduler' ),
+						'db'              => __( 'Database (persistent, uses plugin DB table)', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -3047,6 +3276,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_database_retention_section',
 				'label'        => __( 'Telemetry Retention Unit', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'days'   => __( 'Days', 'ai-post-scheduler' ),
+						'weeks'  => __( 'Weeks', 'ai-post-scheduler' ),
+						'months' => __( 'Months', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -3057,6 +3293,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_database_retention_section',
 				'label'        => __( 'Prune Cleanup Interval', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'daily'      => __( 'Daily', 'ai-post-scheduler' ),
+						'twicedaily' => __( 'Twice Daily', 'ai-post-scheduler' ),
+						'weekly'     => __( 'Weekly', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -3077,6 +3320,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_database_retention_section',
 				'label'        => __( 'History Log Retention Unit', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'days'   => __( 'Days', 'ai-post-scheduler' ),
+						'weeks'  => __( 'Weeks', 'ai-post-scheduler' ),
+						'months' => __( 'Months', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
@@ -3097,6 +3347,13 @@ class AIPS_Settings_Registry {
 				'section'      => 'aips_database_retention_section',
 				'label'        => __( 'AI Error Log Retention Unit', 'ai-post-scheduler' ),
 				'control_type' => AIPS_Setting_Definition::CONTROL_SELECT,
+				'control_options' => array(
+					'options' => array(
+						'days'   => __( 'Days', 'ai-post-scheduler' ),
+						'weeks'  => __( 'Weeks', 'ai-post-scheduler' ),
+						'months' => __( 'Months', 'ai-post-scheduler' ),
+					),
+				),
 				'sanitize_callback' => 'sanitize_key',
 			),
 			array(
