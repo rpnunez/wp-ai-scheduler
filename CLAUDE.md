@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Canonical references
 
-`AGENTS.md` is the canonical cross-agent instruction source — read it first. This file adds Claude Code-specific orientation and does not duplicate what is already there.
+`AGENTS.md` is the canonical cross-agent instruction source. It is imported here so it is always in context:
+
+@AGENTS.md
+
+This file adds Claude Code-specific orientation and does not duplicate what is already there.
 
 ## Claude Code subagents and skills
 
@@ -26,7 +30,7 @@ Project-scoped subagents live in `.claude/agents/` and are auto-delegated by Cla
 | `pr-xray-report-assembler` | Writing PR Xray reports and creating a validated downloadable ZIP |
 
 Skills (step-by-step implementation guides) live in `.claude/skills/`:
-`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-portfolio-triage`, `pr-xray`, `matrix-review`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`).
+`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-portfolio-triage`, `pr-xray`, `matrix-review`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`), `run-aips` (launch and drive this checkout's WordPress to verify a change in the real app).
 
 Saved multi-agent workflows live in `.claude/workflows/`:
 - `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit security compliance.
@@ -35,6 +39,16 @@ Saved multi-agent workflows live in `.claude/workflows/`:
 - `.claude/workflows/pr-portfolio-triage.md` — ranks and routes multiple open PRs without claiming deep-review approval.
 - `.claude/workflows/pr-xray.md` — deep single-PR review with routed domain reviewers, adjudication, and report packaging.
 - `.claude/workflows/matrix-review.md` — two-phase scenario-matrix and execution-traced deep code review with unified diff patches.
+
+## Claude Code project config
+
+- `.claude/settings.json` holds the shared permission allow/deny rules and hooks. The hooks live in `.claude/hooks/aips-hooks.php` (PHP, so they run anywhere PHP does):
+  - **PreToolUse(Bash):** denies what `TESTING.md` forbids (`make down/clean/prune`, volume removal, `bash -lc` wrappers, calling `run-docker-test.sh` directly, filtering or chaining test runs). Raw `phpunit` / `composer test` triggers an approval prompt instead, except in cloud sessions.
+  - **PostToolUse(Write|Edit):** `php -l` on PHP, the repository-boundary lint on controllers/services, and a check that blocks newly added `alert()` / `confirm()` / `location.reload()` in `assets/js/`.
+  - **SessionStart:** reports this checkout's instance, URLs and container state.
+- `.claude/launch.json` defines the Browser pane dev server `aips-wordpress` (`make preview`, `scripts/preview-wp.sh`).
+- `.worktreeinclude` copies `.env` into new worktrees. The copied instance id is detected, and the worktree gets its own containers and ports (`scripts/lib/aips-instance.sh`, shared by `start-dev.sh`, `make test*` and `make preview`).
+- Cloud environment plan: `.claude/docs/2026-11-24-cloud-environment-setup-plan.md`.
 
 ## Commands
 

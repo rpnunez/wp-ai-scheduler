@@ -7,7 +7,7 @@
 	test test-verbose test-coverage test-session test-stop test-ci composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
-	urls sync-wp-core sql-batch sql-batch-unpack
+	urls preview sync-wp-core sql-batch sql-batch-unpack
 
 # Git Bash (MSYS) must not rewrite POSIX-looking arguments such as a --filter regex starting with "/"
 test test-verbose test-coverage test-session: export MSYS_NO_PATHCONV := 1
@@ -283,6 +283,9 @@ xdebug-off: ## Disable Xdebug in .env and restart web
 	@echo "$(YELLOW)Recreating web container to apply Xdebug settings...$(NC)"
 	@docker compose up -d --force-recreate web
 	@echo "$(GREEN)Xdebug disabled.$(NC)"
+
+preview: ## Serve this checkout's WordPress in the foreground (used by .claude/launch.json; PORT=n moves it)
+	bash ./scripts/preview-wp.sh
 
 urls: ## Display all service URLs
 	@echo "$(BLUE)Service URLs$(NC) (instance: $(GREEN)$(INSTANCE_ID)$(NC)):"

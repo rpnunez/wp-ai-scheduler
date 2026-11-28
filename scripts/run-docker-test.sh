@@ -186,6 +186,20 @@ fi
 
 cd "$REPO_ROOT"
 
+# Give this checkout its own containers and ports before the first `up`, as
+# start-dev.sh does. Otherwise a fresh worktree falls back to the shared default
+# names (wp-ai-scheduler-web/-db) and ports and collides with another checkout.
+# Ports are only (re)picked for a new instance: an existing instance keeps its
+# ports, which its own running containers would otherwise appear to "use".
+# shellcheck source=lib/aips-instance.sh
+. "$SCRIPT_DIR/lib/aips-instance.sh"
+aips_ensure_env_file
+aips_ensure_instance
+if [ "$ENV_CREATED" = "1" ] || [ "$INSTANCE_CHANGED" = "1" ]; then
+  aips_ensure_ports fresh || exit 1
+  echo "[test] New dev-stack instance '${INSTANCE_ID}' for this checkout (containers: wp-ai-scheduler-{web,db}-${INSTANCE_ID}, WP port ${WP_PORT_PICK}, MySQL port ${MYSQL_PORT_PICK})."
+fi
+
 echo "[test] Ensuring db and web services are up and healthy..."
 if "${COMPOSE[@]}" up --help 2>/dev/null | grep -q -- '--wait'; then
   "${COMPOSE[@]}" up -d --pull never --wait --wait-timeout 300 db web
