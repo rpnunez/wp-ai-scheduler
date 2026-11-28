@@ -17,9 +17,20 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Author_Topic_Approval_Policy {
 
+	/**
+	 * Option names for global author topic auto-approval settings.
+	 */
+	const OPTION_MODE           = 'aips_author_topic_auto_approval_mode';
+	const OPTION_MIN_SCORE      = 'aips_author_topic_auto_approval_min_score';
+	const OPTION_MIN_RELEVANCE  = 'aips_author_topic_auto_approval_min_relevance';
+	const OPTION_MAX_SIMILARITY = 'aips_author_topic_auto_approval_max_similarity';
+	const OPTION_FALLBACK       = 'aips_author_topic_auto_approval_fallback';
+
 	const MODES     = array('manual', 'all', 'score', 'similarity');
 	const FALLBACKS = array('pending', 'rejected', 'smart_split');
 
+	const DEFAULT_MODE           = 'manual';
+	const DEFAULT_FALLBACK       = 'smart_split';
 	const DEFAULT_MIN_SCORE      = 70;
 	const DEFAULT_MIN_RELEVANCE  = 65;
 	const DEFAULT_MAX_SIMILARITY = 0.85;
@@ -29,7 +40,7 @@ class AIPS_Author_Topic_Approval_Policy {
 	 *
 	 * @param mixed $mode          Raw value.
 	 * @param bool  $allow_inherit Whether 'inherit' is a valid result.
-	 * @return string One of MODES (or 'inherit'); unknown values become 'manual'.
+	 * @return string One of MODES (or 'inherit'); unknown values become DEFAULT_MODE ('manual').
 	 */
 	public static function normalize_mode($mode, $allow_inherit = false) {
 		$mode = sanitize_key((string) $mode);
@@ -37,14 +48,14 @@ class AIPS_Author_Topic_Approval_Policy {
 		if ($mode === 'embeddings') {
 			$mode = 'similarity';
 		} elseif ($mode === 'none') {
-			$mode = 'manual';
+			$mode = self::DEFAULT_MODE;
 		}
 
 		if ($allow_inherit && $mode === 'inherit') {
 			return 'inherit';
 		}
 
-		return in_array($mode, self::MODES, true) ? $mode : 'manual';
+		return in_array($mode, self::MODES, true) ? $mode : self::DEFAULT_MODE;
 	}
 
 	/**
@@ -81,11 +92,11 @@ class AIPS_Author_Topic_Approval_Policy {
 			$config = AIPS_Config::get_instance();
 
 			return self::build(
-				self::normalize_mode($config->get_option('aips_author_topic_auto_approval_mode', 'manual')),
-				$config->get_option('aips_author_topic_auto_approval_min_score', self::DEFAULT_MIN_SCORE),
-				$config->get_option('aips_author_topic_auto_approval_min_relevance', self::DEFAULT_MIN_RELEVANCE),
-				$config->get_option('aips_author_topic_auto_approval_max_similarity', self::DEFAULT_MAX_SIMILARITY),
-				$config->get_option('aips_author_topic_auto_approval_fallback', 'smart_split'),
+				self::normalize_mode($config->get_option(self::OPTION_MODE, self::DEFAULT_MODE)),
+				$config->get_option(self::OPTION_MIN_SCORE, self::DEFAULT_MIN_SCORE),
+				$config->get_option(self::OPTION_MIN_RELEVANCE, self::DEFAULT_MIN_RELEVANCE),
+				$config->get_option(self::OPTION_MAX_SIMILARITY, self::DEFAULT_MAX_SIMILARITY),
+				$config->get_option(self::OPTION_FALLBACK, self::DEFAULT_FALLBACK),
 				'global'
 			);
 		}

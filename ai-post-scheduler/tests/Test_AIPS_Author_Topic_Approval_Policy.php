@@ -194,4 +194,21 @@ class Test_AIPS_Author_Topic_Approval_Policy extends WP_UnitTestCase {
 		$this->set_global('score', array('min_score' => 80, 'fallback' => 'rejected'));
 		$this->assertStringContainsString('others are rejected', AIPS_Author_Topic_Approval_Policy::describe_global());
 	}
+
+	public function test_option_constants_match_expected_names_and_defaults() {
+		$this->assertSame('aips_author_topic_auto_approval_mode', AIPS_Author_Topic_Approval_Policy::OPTION_MODE);
+		$this->assertSame('aips_author_topic_auto_approval_min_score', AIPS_Author_Topic_Approval_Policy::OPTION_MIN_SCORE);
+		$this->assertSame('aips_author_topic_auto_approval_min_relevance', AIPS_Author_Topic_Approval_Policy::OPTION_MIN_RELEVANCE);
+		$this->assertSame('aips_author_topic_auto_approval_max_similarity', AIPS_Author_Topic_Approval_Policy::OPTION_MAX_SIMILARITY);
+		$this->assertSame('aips_author_topic_auto_approval_fallback', AIPS_Author_Topic_Approval_Policy::OPTION_FALLBACK);
+		$this->assertSame('manual', AIPS_Author_Topic_Approval_Policy::DEFAULT_MODE);
+		$this->assertSame('smart_split', AIPS_Author_Topic_Approval_Policy::DEFAULT_FALLBACK);
+
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+		$this->assertSame(AIPS_Author_Topic_Approval_Policy::DEFAULT_MODE, $defaults[AIPS_Author_Topic_Approval_Policy::OPTION_MODE]);
+		$this->assertSame(AIPS_Author_Topic_Approval_Policy::DEFAULT_MIN_SCORE, $defaults[AIPS_Author_Topic_Approval_Policy::OPTION_MIN_SCORE]);
+		$this->assertSame(AIPS_Author_Topic_Approval_Policy::DEFAULT_MIN_RELEVANCE, $defaults[AIPS_Author_Topic_Approval_Policy::OPTION_MIN_RELEVANCE]);
+		$this->assertEqualsWithDelta(AIPS_Author_Topic_Approval_Policy::DEFAULT_MAX_SIMILARITY, $defaults[AIPS_Author_Topic_Approval_Policy::OPTION_MAX_SIMILARITY], 0.0001);
+		$this->assertSame(AIPS_Author_Topic_Approval_Policy::DEFAULT_FALLBACK, $defaults[AIPS_Author_Topic_Approval_Policy::OPTION_FALLBACK]);
+	}
 }
