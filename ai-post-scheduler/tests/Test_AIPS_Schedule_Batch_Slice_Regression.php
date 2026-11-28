@@ -167,4 +167,60 @@ class Test_AIPS_Schedule_Batch_Slice_Regression extends WP_UnitTestCase {
 		$this->assertTrue( ! empty( $captured['run_state']['resumable'] ), 'Terminated slice must be marked resumable.' );
 		$this->assertSame( 0, (int) $captured['run_state']['resume_index'], 'Resume index must equal the slice start index.' );
 	}
+
+	/**
+	 * Subsequent batch slices must merge prior slices' post_ids in both
+	 * update_batch_progress() and aips_schedule_execution_completed ([M-03]).
+	 */
+	public function test_batch_slice_merges_prior_post_ids_across_slices_and_completion_hook() {
+		delete_option( 'aips_prevent_scheduled_ai_generation' );
+
+		$repo           = $this->make_repo();
+		$result_handler = $this->make_result_handler();
+		$generator      = $this->make_generator();
+
+		$row                 = $this->schedule_row( 'daily' );
+		$row->batch_progress = wp_json_encode( array(
+			'completed'  => 2,
+			'total'      => 3,
+			'last_index' => 1,
+			'post_ids'   => array( 101, 102 ),
+		) );
+
+		$repo->method( 'get_by_id' )->willReturn( $row );
+		$repo->method( 'update_run_state' )->willReturn( true );
+		$repo->method( 'clear_batch_progress' )->willReturn( true );
+		$result_handler->method( 'get_or_create_schedule_history' )->willReturn( null );
+		$result_handler->method( 'handle_post_execution_cleanup' )->willReturn( null );
+
+		$generator->expects( $this->once() )
+			->method( 'generate_post' )
+			->willReturn( 103 );
+
+		$progress_post_ids = array();
+		$repo->expects( $this->once() )
+			->method( 'update_batch_progress' )
+			->willReturnCallback(
+				function ( $id, $completed, $total, $last_index, $post_ids ) use ( &$progress_post_ids ) {
+					$progress_post_ids = $post_ids;
+					return true;
+				}
+			);
+
+		$completed_hook_ids = array();
+		$listener           = function ( $schedule_id, $post_ids ) use ( &$completed_hook_ids ) {
+			$completed_hook_ids = $post_ids;
+		};
+		add_action( 'aips_schedule_execution_completed', $listener, 10, 2 );
+
+		try {
+			$this->build_service( $repo, $this->make_template_repo( $this->template_row() ), $generator, $result_handler )
+				->process_batch_slice( 321, 2, 1, 3 );
+		} finally {
+			remove_action( 'aips_schedule_execution_completed', $listener, 10 );
+		}
+
+		$this->assertSame( array( 101, 102, 103 ), $progress_post_ids );
+		$this->assertSame( array( 101, 102, 103 ), $completed_hook_ids );
+	}
 }

@@ -519,4 +519,66 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$index_names = array_unique( wp_list_pluck( $wpdb->get_results( "SHOW INDEX FROM {$table_name}" ), 'Key_name' ) );
 		$this->assertContains( 'claimed_at', $index_names, 'Index claimed_at should exist on aips_author_topics' );
 	}
+
+	/**
+	 * migrate_to_3_8_0() must still migrate wp_aips_background_processes when
+	 * wp_aips_bulk_batch_jobs is absent, assign canonical group names, and remain
+	 * idempotent across retries ([H-01]).
+	 */
+	public function test_migrate_to_3_8_0_migrates_background_processes_without_bulk_table_and_is_idempotent() {
+		global $wpdb;
+
+		$bulk_table = $wpdb->prefix . 'aips_bulk_batch_jobs';
+		$bg_table   = $wpdb->prefix . 'aips_background_processes';
+		$jobs_table = $wpdb->prefix . 'aips_jobs';
+
+		$wpdb->query( "DELETE FROM `{$jobs_table}`" );
+		$wpdb->query( "DELETE FROM `{$bg_table}`" );
+		$wpdb->query( "DROP TABLE IF EXISTS `{$bulk_table}`" );
+
+		try {
+			$wpdb->insert(
+				$bg_table,
+				array(
+					'process_key'  => 'author_topic_embeddings',
+					'status'       => 'running',
+					'total'        => 12,
+					'processed'    => 4,
+					'failed'       => 1,
+					'cursor_id'    => 40,
+					'options_json' => wp_json_encode( array( 'author_id' => 7 ) ),
+					'started_at'   => time() - 60,
+					'updated_at'   => time() - 10,
+				)
+			);
+
+			$migrations = new AIPS_DB_Migrations();
+			$method     = new ReflectionMethod( AIPS_DB_Migrations::class, 'migrate_to_3_8_0' );
+			$method->setAccessible( true );
+
+			$this->assertTrue( $method->invoke( $migrations ), 'migrate_to_3_8_0 should succeed when bulk table is absent' );
+
+			$rows = $wpdb->get_results(
+				$wpdb->prepare( "SELECT * FROM `{$jobs_table}` WHERE job_type = %s", 'author_topic_embeddings' )
+			);
+			$this->assertCount( 1, $rows, 'Background process row should be migrated even without wp_aips_bulk_batch_jobs' );
+			$this->assertSame( AIPS_Job_Registry::GROUP_EMBEDDINGS, $rows[0]->group_name );
+			$this->assertSame( 'pending', $rows[0]->status );
+			$this->assertSame( 12, (int) $rows[0]->total );
+			$this->assertSame( 4, (int) $rows[0]->processed );
+			$this->assertSame( 40, (int) $rows[0]->cursor_id );
+
+			// Second invocation (simulating retry) must not insert duplicate open jobs.
+			$this->assertTrue( $method->invoke( $migrations ) );
+			$rows_after_retry = $wpdb->get_results(
+				$wpdb->prepare( "SELECT * FROM `{$jobs_table}` WHERE job_type = %s", 'author_topic_embeddings' )
+			);
+			$this->assertCount( 1, $rows_after_retry, 'Re-running migrate_to_3_8_0 must not duplicate open background jobs' );
+		} finally {
+			$wpdb->query( "DELETE FROM `{$jobs_table}`" );
+			$wpdb->query( "DELETE FROM `{$bg_table}`" );
+			wp_unschedule_hook( AIPS_Job_Registry::DEFAULT_TICK_HOOK );
+			AIPS_DB_Manager::install_tables();
+		}
+	}
 }

@@ -602,6 +602,27 @@ class AIPS_Background_Processes_Controller {
 	}
 
 	/**
+	 * Return all open (pending, running, or paused) bulk generation jobs without a 100-row cap.
+	 *
+	 * @return AIPS_Job_Record[]
+	 */
+	private function get_open_bulk_generation_jobs(): array {
+		$types = array_values( array_filter( array_map( 'sanitize_key', (array) apply_filters(
+			'aips_bulk_generation_job_types',
+			array( 'bulk_post_generation', 'bulk_post_publish', 'author_topic_post', 'planner_post', 'trending_topic_post', 'review_publish', 'bulk_batch_slice' )
+		) ) ) );
+
+		$open = array();
+		foreach ( $this->job_repo->get_open_jobs() as $job ) {
+			if ( in_array( $job->get_job_type(), $types, true ) ) {
+				$open[] = $job;
+			}
+		}
+
+		return $open;
+	}
+
+	/**
 	 * Snapshot for Bulk Generation.
 	 *
 	 * @return array
@@ -612,19 +633,7 @@ class AIPS_Background_Processes_Controller {
 		$description = __( 'Large "generate all" runs from Author Topics, the Planner and Research, spread over many background slices. Each post generated uses AI. Start them from the screen that picks the topics.', 'ai-post-scheduler' );
 		$uses_ai     = true;
 
-		$types = array_values( array_filter( array_map( 'sanitize_key', (array) apply_filters(
-			'aips_bulk_generation_job_types',
-			array( 'bulk_post_generation', 'bulk_post_publish', 'author_topic_post', 'planner_post', 'trending_topic_post', 'review_publish', 'bulk_batch_slice' )
-		) ) ) );
-
-		$records = $this->job_repo->query( array(), 100 );
-		$open    = array();
-
-		foreach ( $records as $job ) {
-			if ( in_array( $job->get_job_type(), $types, true ) && ( $job->is_active() || $job->is_paused() ) ) {
-				$open[] = $job;
-			}
-		}
+		$open = $this->get_open_bulk_generation_jobs();
 
 		if ( empty( $open ) ) {
 			return $this->make_snapshot( array(
@@ -841,11 +850,9 @@ class AIPS_Background_Processes_Controller {
 				return true;
 
 			case 'bulk_generation':
-				$records = $this->job_repo->query( array(), 100 );
-				$types   = array( 'bulk_post_generation', 'bulk_post_publish', 'author_topic_post', 'planner_post', 'trending_topic_post', 'review_publish', 'bulk_batch_slice' );
-				$paused  = false;
-				foreach ( $records as $job ) {
-					if ( in_array( $job->get_job_type(), $types, true ) && $job->is_active() ) {
+				$paused = false;
+				foreach ( $this->get_open_bulk_generation_jobs() as $job ) {
+					if ( $job->is_active() ) {
 						if ( $this->job_manager->pause( $job->get_job_id() ) ) {
 							$paused = true;
 						}
@@ -888,11 +895,9 @@ class AIPS_Background_Processes_Controller {
 				return true;
 
 			case 'bulk_generation':
-				$records = $this->job_repo->query( array(), 100 );
-				$types   = array( 'bulk_post_generation', 'bulk_post_publish', 'author_topic_post', 'planner_post', 'trending_topic_post', 'review_publish', 'bulk_batch_slice' );
 				$resumed = false;
-				foreach ( $records as $job ) {
-					if ( in_array( $job->get_job_type(), $types, true ) && $job->is_paused() ) {
+				foreach ( $this->get_open_bulk_generation_jobs() as $job ) {
+					if ( $job->is_paused() ) {
 						if ( $this->job_manager->resume( $job->get_job_id() ) ) {
 							$resumed = true;
 						}
@@ -935,11 +940,9 @@ class AIPS_Background_Processes_Controller {
 				return true;
 
 			case 'bulk_generation':
-				$records   = $this->job_repo->query( array(), 100 );
-				$types     = array( 'bulk_post_generation', 'bulk_post_publish', 'author_topic_post', 'planner_post', 'trending_topic_post', 'review_publish', 'bulk_batch_slice' );
 				$cancelled = false;
-				foreach ( $records as $job ) {
-					if ( in_array( $job->get_job_type(), $types, true ) && ( $job->is_active() || $job->is_paused() ) ) {
+				foreach ( $this->get_open_bulk_generation_jobs() as $job ) {
+					if ( $job->is_active() || $job->is_paused() ) {
 						if ( $this->job_manager->cancel( $job->get_job_id() ) ) {
 							$cancelled = true;
 						}
@@ -1041,20 +1044,7 @@ class AIPS_Background_Processes_Controller {
 				);
 
 			case AIPS_Relationships_Recompute_Service::KEY:
-				$mode    = isset( $options['mode'] ) ? $options['mode'] : AIPS_Relationships_Recompute_Service::MODE_MISSING;
-				$items   = $this->relationships_recompute_service->count_remaining( $mode );
-				$message = sprintf(
-					/* translators: %s: number of posts. */
-					_n( '%s post will have its related posts recomputed.', '%s posts will have their related posts recomputed.', $items, 'ai-post-scheduler' ),
-					number_format_i18n( $items )
-				);
-				return array(
-					'items'      => $items,
-					'ai_calls'   => 0,
-					'days'       => 0,
-					'daily_rate' => 0,
-					'message'    => $message,
-				);
+				return $this->relationships_recompute_service->get_estimate( $options );
 
 			default:
 				return array(
@@ -1077,14 +1067,28 @@ class AIPS_Background_Processes_Controller {
 		set_transient( self::SUMMARY_TRANSIENT, $snapshots, self::SUMMARY_TTL );
 
 		$active_jobs  = $this->job_manager ? $this->job_manager->get_active_jobs() : array();
-		$job_payloads = array_map( function ( $job ) {
+		$active_ids   = array();
+		$job_payloads = array_map( function ( $job ) use ( &$active_ids ) {
+			$active_ids[ $job->get_job_id() ] = true;
 			return $job->to_array();
 		}, $active_jobs );
+
+		$extra_active = 0;
+		foreach ( self::filter_active( $snapshots ) as $snap ) {
+			if ( 'content_indexer_queue' === $snap['key'] ) {
+				$extra_active++;
+			} elseif ( 'link_index_scan' === $snap['key'] ) {
+				$scan = $this->get_link_index_service()->get_backfill_status();
+				if ( $scan && empty( $active_ids[ $scan['job_id'] ] ) ) {
+					$extra_active++;
+				}
+			}
+		}
 
 		return array(
 			'processes'    => $snapshots,
 			'jobs'         => $job_payloads,
-			'active_count' => count( self::filter_active( $snapshots ) ) + count( $active_jobs ),
+			'active_count' => count( $active_jobs ) + $extra_active,
 			'server_time'  => time(),
 		);
 	}
@@ -1113,11 +1117,19 @@ class AIPS_Background_Processes_Controller {
 	 * @return object[]
 	 */
 	public function get_recent_runs( int $limit = 15 ): array {
-		$jobs = $this->job_repo->query( array(), $limit );
-		$runs = array();
+		$jobs         = $this->job_repo->query( array(), $limit );
+		$runs         = array();
+		$non_ai_types = array(
+			AIPS_Job_Registry::TYPE_RELATIONSHIPS_RECOMPUTE,
+			AIPS_Job_Registry::TYPE_LINK_INDEX_SCAN,
+			AIPS_Link_Index_Service::BACKFILL_JOB_TYPE,
+			AIPS_Job_Registry::TYPE_BULK_POST_PUBLISH,
+			'review_publish',
+		);
 
 		foreach ( $jobs as $job ) {
-			$runs[] = (object) array(
+			$uses_ai = ! in_array( $job->get_job_type(), $non_ai_types, true );
+			$runs[]  = (object) array(
 				'id'            => $job->get_job_id(),
 				'process_key'   => $job->get_job_type(),
 				'status'        => $job->get_status(),
@@ -1126,7 +1138,7 @@ class AIPS_Background_Processes_Controller {
 				'processed'     => $job->get_processed(),
 				'total'         => $job->get_total(),
 				'failed'        => $job->get_failed(),
-				'ai_calls_used' => $job->get_processed(),
+				'ai_calls_used' => $uses_ai ? $job->get_processed() : 0,
 				'message'       => $job->get_error_message() ? $job->get_error_message() : '',
 			);
 		}

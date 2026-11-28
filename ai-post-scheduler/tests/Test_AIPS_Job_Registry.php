@@ -87,5 +87,16 @@ class Test_AIPS_Job_Registry extends WP_UnitTestCase {
 		$this->assertSame( 'Custom Job', $custom_type->get_label() );
 		$this->assertSame( 'custom_hook', $custom_type->get_hook() );
 		$this->assertSame( 'custom-group', $custom_type->get_group() );
+		remove_all_filters( 'aips_registered_jobs' );
+	}
+
+	public function test_get_groups_includes_schedules_in_base_list() {
+		add_filter( 'aips_registered_jobs', '__return_empty_array' );
+		try {
+			$groups = $this->registry->get_groups();
+			$this->assertContains( AIPS_Job_Registry::GROUP_SCHEDULES, $groups );
+		} finally {
+			remove_filter( 'aips_registered_jobs', '__return_empty_array' );
+		}
 	}
 }

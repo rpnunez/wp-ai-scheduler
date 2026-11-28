@@ -388,6 +388,10 @@ class AIPS_Schedule_Generation_Service {
 			'timestamp'      => AIPS_DateTime::now()->toIso8601(),
 		) );
 
+		$prior_progress      = $this->repository->get_batch_progress( $schedule_id );
+		$prior_post_ids      = ( is_array( $prior_progress ) && ! empty( $prior_progress['post_ids'] ) && is_array( $prior_progress['post_ids'] ) )
+			? array_values( array_map( 'absint', $prior_progress['post_ids'] ) )
+			: array();
 		$successful_post_ids = array();
 		$errors              = array();
 
@@ -468,7 +472,8 @@ class AIPS_Schedule_Generation_Service {
 			}
 
 			$completed_so_far = $start_index + count( $successful_post_ids );
-			$this->repository->update_batch_progress( $schedule_id, $completed_so_far, $total_quantity, $completed_so_far - 1, $successful_post_ids );
+			$all_post_ids     = array_values( array_unique( array_merge( $prior_post_ids, $successful_post_ids ) ) );
+			$this->repository->update_batch_progress( $schedule_id, $completed_so_far, $total_quantity, $completed_so_far - 1, $all_post_ids );
 			$this->repository->update_run_state( $schedule_id, array(
 				'status'         => ( $completed_so_far >= $total_quantity ) ? 'success' : 'batch_processing',
 				'completed'      => $completed_so_far,
@@ -534,7 +539,8 @@ class AIPS_Schedule_Generation_Service {
 			}
 
 			$this->result_handler->handle_post_execution_cleanup( $schedule_obj, 1 );
-			do_action( 'aips_schedule_execution_completed', $schedule_id, $successful_post_ids, $schedule_obj );
+			$all_post_ids = array_values( array_unique( array_merge( $prior_post_ids, $successful_post_ids ) ) );
+			do_action( 'aips_schedule_execution_completed', $schedule_id, $all_post_ids, $schedule_obj );
 		}
 	}
 
@@ -631,30 +637,39 @@ class AIPS_Schedule_Generation_Service {
 			return;
 		}
 
+		// Skip schedules that already have an open generation job queued before picking
+		// the inline schedule, preventing inline/async overlap across cron ticks.
+		$open_ids = array();
+		try {
+			foreach ( AIPS_Container::get_instance()->get_job_repository()->get_open_jobs( AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION ) as $open_job ) {
+				$p = $open_job->get_payload();
+				if ( ! empty( $p['schedule_id'] ) ) {
+					$open_ids[ (int) $p['schedule_id'] ] = true;
+				}
+			}
+		} catch ( Throwable $e ) {
+			$this->logger->log( 'Failed to query open schedule jobs: ' . $e->getMessage(), 'warning' );
+		}
+
+		$due_schedules = array_values( array_filter( $due_schedules, function ( $sched ) use ( $open_ids ) {
+			return empty( $open_ids[ (int) $sched->schedule_id ] );
+		} ) );
+
+		if ( empty( $due_schedules ) ) {
+			return;
+		}
+
 		$first_schedule  = array_shift( $due_schedules );
 		$stagger_seconds = max( 0, (int) apply_filters( 'aips_due_schedule_stagger_seconds', 30 ) );
 
 		if ( ! empty( $due_schedules ) ) {
 			try {
 				$job_manager = AIPS_Container::get_instance()->get_job_manager();
-
-				// Skip schedules that already have an open generation job queued, so
-				// overlapping cron ticks do not dispatch duplicate slices for the same schedule.
-				$open_ids = array();
-				foreach ( AIPS_Container::get_instance()->get_job_repository()->get_open_jobs( AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION ) as $open_job ) {
-					$p = $open_job->get_payload();
-					if ( ! empty( $p['schedule_id'] ) ) {
-						$open_ids[ (int) $p['schedule_id'] ] = true;
-					}
-				}
-
-				$due_items = array();
+				$due_items   = array();
 				foreach ( $due_schedules as $sched ) {
-					if ( empty( $open_ids[ (int) $sched->schedule_id ] ) ) {
-						$due_items[] = array(
-							'schedule_id' => (int) $sched->schedule_id,
-						);
-					}
+					$due_items[] = array(
+						'schedule_id' => (int) $sched->schedule_id,
+					);
 				}
 
 				if ( ! empty( $due_items ) ) {

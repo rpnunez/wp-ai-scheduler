@@ -89,7 +89,8 @@ class AIPS_Relationships_Recompute_Service {
 		$cursor       = (int) $record->get_cursor();
 		$mode         = isset( $payload['mode'] ) ? (string) $payload['mode'] : self::MODE_MISSING;
 		$only_missing = ( self::MODE_ALL !== $mode );
-		$limit        = max( 1, $context->get_batch_size() );
+		$budget_limit = $this->builder->get_batch_size_for_budget( self::SLICE_TIME_BUDGET );
+		$limit        = max( 1, isset( $payload['batch_size'] ) ? (int) $payload['batch_size'] : $budget_limit );
 
 		if ( function_exists( 'set_time_limit' ) ) {
 			@set_time_limit( 120 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,Squiz.PHP.DiscouragedFunctions.Discouraged
@@ -107,28 +108,11 @@ class AIPS_Relationships_Recompute_Service {
 			return new AIPS_Job_Slice_Result( 0, 0, $cursor, true );
 		}
 
-		$saved_count = 0;
-		$failed      = 0;
-		$handled     = 0;
-		$new_cursor  = $cursor;
-
-		foreach ( $ids as $post_id ) {
-			if ( $handled > 0 && $context->should_yield() ) {
-				break;
-			}
-
-			$saved = $this->builder->compute_for_posts( array( $post_id ) );
-			if ( empty( $saved ) ) {
-				$failed++;
-			} else {
-				$saved_count += count( $saved );
-			}
-
-			$new_cursor = (int) $post_id;
-			$handled++;
-		}
-
-		$is_complete = ( $handled === count( $ids ) ) && ( count( $ids ) < $limit );
+		$saved       = $this->builder->compute_for_posts( $ids );
+		$saved_count = count( $saved );
+		$failed      = max( 0, count( $ids ) - $saved_count );
+		$new_cursor  = (int) max( $ids );
+		$is_complete = count( $ids ) < $limit;
 
 		return new AIPS_Job_Slice_Result(
 			$saved_count,

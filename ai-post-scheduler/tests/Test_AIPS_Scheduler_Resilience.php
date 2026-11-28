@@ -123,4 +123,45 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         // 6. Fire the queued event: the crash must not have blocked it.
         $this->scheduler->process_queued_due_schedule((int) $schedule2_id);
     }
+
+    /**
+     * process() must skip the first due schedule when an open schedule_post_generation
+     * job is already queued for it ([M-02]).
+     */
+    public function test_process_skips_first_due_schedule_when_open_job_exists() {
+        global $wpdb;
+        $wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_schedule' );
+        $wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_jobs' );
+
+        $template_id = $this->template_repo->create( array(
+            'name'            => 'Open Job Dedup Template',
+            'prompt_template' => 'Write about {{topic}}',
+            'post_status'     => 'publish',
+            'post_category'   => 1,
+            'is_active'       => 1,
+        ) );
+
+        $schedule_id = $this->schedule_repo->create( array(
+            'template_id' => $template_id,
+            'frequency'   => 'daily',
+            'next_run'    => AIPS_DateTime::now()->timestamp() - HOUR_IN_SECONDS,
+            'is_active'   => 1,
+            'topic'       => 'Already Queued Topic',
+        ) );
+
+        AIPS_Container::get_instance()->get_job_manager()->dispatch(
+            AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION,
+            array( 'schedule_id' => (int) $schedule_id ),
+            array( 'delay' => 60 )
+        );
+
+        $mock_generator = $this->getMockBuilder( 'AIPS_Generator' )
+            ->disableOriginalConstructor()
+            ->onlyMethods( array( 'generate_post' ) )
+            ->getMock();
+        $mock_generator->expects( $this->never() )->method( 'generate_post' );
+
+        $this->scheduler->set_generator( $mock_generator );
+        $this->scheduler->process();
+    }
 }

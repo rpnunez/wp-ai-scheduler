@@ -179,6 +179,7 @@ class AIPS_Job_Registry {
 			self::GROUP_BULK_BATCH,
 			self::GROUP_INDEXER,
 			self::GROUP_EMBEDDINGS,
+			self::GROUP_SCHEDULES,
 		);
 
 		foreach ( $this->get_definitions() as $def ) {

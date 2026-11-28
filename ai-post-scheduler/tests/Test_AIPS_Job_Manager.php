@@ -247,6 +247,7 @@ class Test_AIPS_Job_Manager extends WP_UnitTestCase {
 		$record = $this->manager->get_job( $job_id );
 		$this->assertSame( 2, $record->get_attempts() );
 		$this->assertTrue( $record->is_failed() );
+		$this->assertFalse( $this->cron_manager->next_scheduled( AIPS_Job_Registry::DEFAULT_TICK_HOOK, array( $job_id ) ) );
 	}
 
 	public function test_dispatch_sync_executes_immediately() {

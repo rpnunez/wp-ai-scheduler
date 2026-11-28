@@ -66,6 +66,7 @@ class AIPS_Cron_Registry {
 	const GROUP_EMBEDDINGS     = 'aips-embeddings';
 	const GROUP_AUTHOR_TOPICS  = 'aips-author-topics';
 	const GROUP_BULK_BATCH     = 'aips-bulk-batch';
+	const GROUP_SCHEDULES      = 'aips-schedules';
 	const GROUP_DEFAULT        = 'aips-default';
 
 	/**
@@ -76,14 +77,21 @@ class AIPS_Cron_Registry {
 	 * @return string[]
 	 */
 	public function get_action_scheduler_groups() {
-		return array(
+		$groups = array(
 			self::GROUP_INDEXER,
 			self::GROUP_INTERNAL_LINKS,
 			self::GROUP_EMBEDDINGS,
 			self::GROUP_AUTHOR_TOPICS,
 			self::GROUP_BULK_BATCH,
+			self::GROUP_SCHEDULES,
 			self::GROUP_DEFAULT,
 		);
+
+		if ( class_exists( 'AIPS_Job_Registry' ) ) {
+			$groups = array_merge( $groups, ( new AIPS_Job_Registry() )->get_groups() );
+		}
+
+		return array_values( array_unique( $groups ) );
 	}
 
 	// -------------------------------------------------------------------------

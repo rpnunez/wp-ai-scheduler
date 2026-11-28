@@ -113,14 +113,27 @@ class AIPS_Internal_Links_Indexing_Service {
 		$failed     = isset( $result['failed'] ) ? (int) $result['failed'] : 0;
 		$new_cursor = isset( $result['last_post_id'] ) ? (int) $result['last_post_id'] : $cursor;
 
-		if ( ! empty( $result['cooldown'] ) ) {
-			$paused_until = isset( $result['paused_until'] ) ? (int) $result['paused_until'] : 0;
+		$limiter       = $this->embeddings_service->get_rate_limiter();
+		$cooldown      = $limiter->get_cooldown_status();
+		$stats         = $limiter->get_usage_stats();
+		$stalled_first = ( $new_cursor === $cursor && 0 === $success && $failed > 0 );
+
+		if ( ! empty( $result['cooldown'] ) || ! empty( $cooldown['is_paused'] ) || ! empty( $stats['is_rate_limited'] ) || $stalled_first ) {
+			$paused_until = isset( $result['paused_until'] )
+				? (int) $result['paused_until']
+				: ( isset( $cooldown['paused_until'] ) ? (int) $cooldown['paused_until'] : 0 );
 			$now          = AIPS_DateTime::now()->timestamp();
 			$delay        = $paused_until > $now ? ( $paused_until - $now ) : 60;
+
+			// Do not count a rate-limit / quota stall on the current cursor item as a permanent post failure.
+			if ( $stalled_first ) {
+				$failed = 0;
+			}
+
 			return ( new AIPS_Job_Slice_Result( $success, $failed, $new_cursor, false ) )->with_retry_delay( $delay );
 		}
 
-		$is_complete = ! empty( $result['done'] );
+		$is_complete = ! empty( $result['done'] ) && ( ( $success + $failed ) === 0 || 0 === $this->count_remaining() );
 
 		return new AIPS_Job_Slice_Result(
 			$success,

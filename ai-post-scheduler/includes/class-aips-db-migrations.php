@@ -314,8 +314,8 @@ class AIPS_DB_Migrations {
 			return;
 		}
 
-		// migrate_to_3_8_0() migrates pending/processing bulk jobs to aips_jobs
-		// and drops the legacy aips_bulk_batch_jobs table (Issue #2390 Slice 1).
+		// migrate_to_3_8_0() copies pending/processing/paused bulk and background-process
+		// rows into aips_jobs while retaining the legacy source tables (Issue #2390).
 		if ( version_compare( $from_version, '3.8.0', '<' ) && ! $this->migrate_to_3_8_0() ) {
 			AIPS_Config::get_instance()->set_option( 'aips_db_version', $from_version );
 			$this->logger->log( 'Bulk batch jobs migration failed; database upgrade will retry.', 'error' );
@@ -1999,10 +1999,10 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
-	 * Migration for version 3.8.0 (Issue #2390 Slice 1).
+	 * Migration for version 3.8.0 (Issue #2390).
 	 *
-	 * Migrates uncompleted rows from wp_aips_bulk_batch_jobs into wp_aips_jobs,
-	 * then drops the wp_aips_bulk_batch_jobs table.
+	 * Copies uncompleted rows from wp_aips_bulk_batch_jobs and wp_aips_background_processes
+	 * into wp_aips_jobs while retaining the legacy source tables.
 	 *
 	 * @return bool
 	 */
@@ -2012,20 +2012,15 @@ class AIPS_DB_Migrations {
 		$legacy_table = $wpdb->prefix . 'aips_bulk_batch_jobs';
 		$jobs_table   = $wpdb->prefix . 'aips_jobs';
 
-		// If legacy table does not exist, nothing to migrate or drop.
-		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $legacy_table ) ) !== $legacy_table ) {
-			return true;
-		}
-
-		// Ensure target jobs table exists
+		// Ensure target jobs table exists before migrating either legacy source table.
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $jobs_table ) ) !== $jobs_table ) {
 			return false;
 		}
 
-		// Fetch any pending, processing, or paused rows from legacy table
-		$active_rows = $wpdb->get_results(
-			"SELECT * FROM `{$legacy_table}` WHERE `status` IN ('pending', 'processing', 'paused')"
-		);
+		$has_bulk_table = ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $legacy_table ) ) === $legacy_table );
+		$active_rows    = $has_bulk_table
+			? $wpdb->get_results( "SELECT * FROM `{$legacy_table}` WHERE `status` IN ('pending', 'processing', 'paused')" )
+			: array();
 
 		if ( ! empty( $active_rows ) ) {
 			foreach ( $active_rows as $row ) {
@@ -2123,11 +2118,11 @@ class AIPS_DB_Migrations {
 			return true;
 		}
 
-		$known = array(
-			'author_topic_embeddings',
-			'internal_links_indexing',
-			'relationships_recompute',
-			'link_index_scan',
+		$known_groups = array(
+			'author_topic_embeddings' => AIPS_Job_Registry::GROUP_EMBEDDINGS,
+			'internal_links_indexing' => AIPS_Job_Registry::GROUP_EMBEDDINGS,
+			'relationships_recompute' => AIPS_Job_Registry::GROUP_INDEXER,
+			'link_index_scan'         => AIPS_Job_Registry::GROUP_INDEXER,
 		);
 
 		$rows = $wpdb->get_results(
@@ -2140,8 +2135,19 @@ class AIPS_DB_Migrations {
 
 		foreach ( $rows as $row ) {
 			$key = isset( $row->process_key ) ? (string) $row->process_key : '';
-			if ( ! in_array( $key, $known, true ) ) {
+			if ( ! isset( $known_groups[ $key ] ) ) {
 				$this->logger->log( sprintf( 'migrate_to_3_8_0: skipping background process %s', $key ), 'info' );
+				continue;
+			}
+
+			// Idempotency guard: skip if an open job of this type already exists in wp_aips_jobs.
+			$existing_open = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT job_id FROM `{$jobs_table}` WHERE job_type = %s AND status IN ('pending', 'running', 'paused') LIMIT 1",
+					$key
+				)
+			);
+			if ( ! empty( $existing_open ) ) {
 				continue;
 			}
 
@@ -2160,7 +2166,7 @@ class AIPS_DB_Migrations {
 				array(
 					'job_id'       => $job_id,
 					'job_type'     => $key,
-					'group_name'   => 'aips-default',
+					'group_name'   => $known_groups[ $key ],
 					'status'       => $status,
 					'total'        => isset( $row->total ) ? (int) $row->total : 0,
 					'processed'    => isset( $row->processed ) ? (int) $row->processed : 0,

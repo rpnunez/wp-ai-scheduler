@@ -566,6 +566,7 @@ class AIPS_Job_Manager {
 					'finished_at'   => AIPS_DateTime::now()->timestamp(),
 				)
 			);
+			$this->cron_backend->unschedule( $type_spec->get_hook(), array( $job_id ) );
 		}
 	}
 

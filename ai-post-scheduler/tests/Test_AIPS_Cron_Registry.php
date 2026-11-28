@@ -195,4 +195,14 @@ class Test_AIPS_Cron_Registry extends WP_UnitTestCase {
 	public function test_unknown_dispatch_context_returns_empty() {
 		$this->assertSame( array(), $this->registry->get_dispatch_handlers( 'frontend' ) );
 	}
+
+	public function test_action_scheduler_groups_include_schedules_and_all_job_registry_groups() {
+		$as_groups  = $this->registry->get_action_scheduler_groups();
+		$job_groups = ( new AIPS_Job_Registry() )->get_groups();
+
+		$this->assertContains( AIPS_Cron_Registry::GROUP_SCHEDULES, $as_groups );
+		foreach ( $job_groups as $group ) {
+			$this->assertContains( $group, $as_groups, "ActionScheduler deactivation groups must include job group {$group}" );
+		}
+	}
 }
