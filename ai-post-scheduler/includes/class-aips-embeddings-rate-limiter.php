@@ -641,6 +641,17 @@ class AIPS_Embeddings_Rate_Limiter {
 	}
 
 	/**
+	 * Configured daily (24-hour sliding window) embedding call limit.
+	 *
+	 * 0 means unlimited.
+	 *
+	 * @return int
+	 */
+	public function get_daily_limit(): int {
+		return (int) $this->config->get_option( 'aips_embeddings_daily_limit', 50 );
+	}
+
+	/**
 	 * How many more embeddings can be generated before the first quota is hit.
 	 *
 	 * @param float $reserve_ratio Share of each limit to keep free for other callers (0 - 1).

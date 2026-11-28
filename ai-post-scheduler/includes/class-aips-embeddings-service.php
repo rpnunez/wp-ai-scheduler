@@ -143,6 +143,13 @@ class AIPS_Embeddings_Service {
 	 * @return AIPS_Embeddings_Rate_Limiter
 	 */
 	public function get_rate_limiter(): AIPS_Embeddings_Rate_Limiter {
+		if ( $this->rate_limiter === null ) {
+			$container          = class_exists( 'AIPS_Container' ) ? AIPS_Container::get_instance() : null;
+			$this->rate_limiter = ( $container && $container->has( AIPS_Embeddings_Rate_Limiter::class ) )
+				? $container->make( AIPS_Embeddings_Rate_Limiter::class )
+				: new AIPS_Embeddings_Rate_Limiter( $this->config, $this->logger );
+		}
+
 		return $this->rate_limiter;
 	}
 

@@ -4,7 +4,7 @@
  *
  * Verifies that AIPS_Duplicate_Group_Service, AIPS_GSC_Keywords_Service,
  * AIPS_Publish_Linking_Service, AIPS_Sources_Cron, AIPS_Sources_Maintenance,
- * and AIPS_Schedule_Processor route their scheduling through AIPS_Cron_Manager.
+ * and AIPS_Schedule_Generation_Service route their scheduling through AIPS_Cron_Manager.
  *
  * @package AI_Post_Scheduler
  */
@@ -29,7 +29,7 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 		wp_unschedule_hook( AIPS_Sources_Cron::CONTINUATION_HOOK );
 		wp_unschedule_hook( AIPS_Sources_Maintenance::HOOK );
 		wp_unschedule_hook( AIPS_Sources_Maintenance::CONTINUATION_HOOK );
-		wp_unschedule_hook( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK );
+		wp_unschedule_hook( 'aips_process_single_due_schedule' );
 	}
 
 	public function tearDown(): void {
@@ -40,7 +40,7 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 		wp_unschedule_hook( AIPS_Sources_Cron::CONTINUATION_HOOK );
 		wp_unschedule_hook( AIPS_Sources_Maintenance::HOOK );
 		wp_unschedule_hook( AIPS_Sources_Maintenance::CONTINUATION_HOOK );
-		wp_unschedule_hook( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK );
+		wp_unschedule_hook( 'aips_process_single_due_schedule' );
 		delete_option( 'aips_duplicate_scan_schedule' );
 		delete_option( 'aips_publish_linking_mode' );
 		delete_option( 'aips_source_archive_retention_days' );
@@ -68,8 +68,8 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 		$sources_maint = new AIPS_Sources_Maintenance();
 		$this->assertInstanceOf( AIPS_Sources_Maintenance::class, $sources_maint );
 
-		$sched_proc = new AIPS_Schedule_Processor();
-		$this->assertInstanceOf( AIPS_Schedule_Processor::class, $sched_proc );
+		$sched_proc = new AIPS_Schedule_Generation_Service();
+		$this->assertInstanceOf( AIPS_Schedule_Generation_Service::class, $sched_proc );
 
 		$sched_ctrl = new AIPS_Schedule_Controller();
 		$this->assertInstanceOf( AIPS_Schedule_Controller::class, $sched_ctrl );
@@ -217,17 +217,21 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// Schedule Processor Single Queue Tests
+	// Schedule Generation Service Staggered Queue Tests
 	// -------------------------------------------------------------------------
 
-	public function test_schedule_processor_queues_due_schedules_via_cron_manager() {
-		$schedule1 = (object) array( 'schedule_id' => 101 );
-		$schedule2 = (object) array( 'schedule_id' => 102 );
+	public function test_schedule_generation_service_staggers_due_schedules() {
+		global $wpdb;
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_jobs' );
+
+		$schedule1 = (object) array( 'schedule_id' => 101, 'template_id' => 1 );
+		$schedule2 = (object) array( 'schedule_id' => 102, 'template_id' => 1 );
 
 		$repo_mock = $this->createMock( AIPS_Schedule_Repository_Interface::class );
 		$repo_mock->method( 'get_due_schedules' )->willReturn( array( $schedule1, $schedule2 ) );
+		$repo_mock->method( 'claim_due_schedule' )->willReturn( false );
 
-		$processor = new AIPS_Schedule_Processor(
+		$processor = new AIPS_Schedule_Generation_Service(
 			$repo_mock,
 			null,
 			null,
@@ -239,21 +243,13 @@ class Test_AIPS_Cron_Leaf_Services extends WP_UnitTestCase {
 			$this->cron_manager
 		);
 
-		// First schedule runs immediately, second schedule is queued via cron_manager
 		$processor->process_due_schedules();
 
-		$queued_next = $this->cron_manager->next_scheduled(
-			AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK,
-			array( 102 )
-		);
-		$this->assertIsInt( $queued_next );
+		$job_repo = AIPS_Container::get_instance()->get_job_repository();
+		$jobs     = $job_repo->query( array( 'job_type' => AIPS_Job_Registry::TYPE_SCHEDULE_POST_GENERATION ) );
 
-		// The first schedule should not be queued as a separate cron event
-		$this->assertFalse(
-			$this->cron_manager->next_scheduled(
-				AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK,
-				array( 101 )
-			)
-		);
+		$this->assertNotEmpty( $jobs );
+		$payload = $jobs[0]->get_payload();
+		$this->assertSame( 102, $payload['schedule_id'] );
 	}
 }

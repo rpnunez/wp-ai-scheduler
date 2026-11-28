@@ -734,7 +734,7 @@ class AIPS_DB_Manager {
             KEY user_id (user_id),
             KEY created_at (created_at)
         ) $charset_collate;";
-      
+
         $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
             job_id varchar(36) NOT NULL,
             job_type varchar(100) NOT NULL,

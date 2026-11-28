@@ -296,12 +296,12 @@ class AIPS_Post_Review {
 		$post_ids = array();
 		
 		if (isset($_POST['post_ids']) && is_array($_POST['post_ids'])) {
-			$post_ids = array_filter(
+			$post_ids = array_values(array_filter(
 				array_map('absint', $_POST['post_ids']),
 				function( $post_id ) {
 					return $post_id > 0;
 				}
-			);
+			));
 		}
 		
 		if (empty($post_ids)) {
@@ -423,7 +423,7 @@ class AIPS_Post_Review {
 	 *
 	 * Reuses the shared AIPS_Bulk_Generator_Service dispatch harness with the
 	 * 'review_publish' job type (registered in boot_cron()). The request returns
-	 * immediately; AIPS_Bulk_Batch_Processor publishes each post in cron slices
+	 * immediately; AIPS_Job_Manager publishes each post in background slices
 	 * and progress is visible under Diagnostics → Background Processes.
 	 *
 	 * Publishing has no AI rate limits, so the batch spread is tightened relative

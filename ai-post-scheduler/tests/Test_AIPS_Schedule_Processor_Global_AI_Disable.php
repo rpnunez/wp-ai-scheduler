@@ -109,7 +109,7 @@ class Test_AIPS_Schedule_Processor_Global_AI_Disable extends WP_UnitTestCase {
 			)
 			->willReturn($terminated_error);
 
-		$processor = new AIPS_Schedule_Processor(
+		$processor = new AIPS_Schedule_Generation_Service(
 			$repository,
 			$template_repository,
 			$generator,
