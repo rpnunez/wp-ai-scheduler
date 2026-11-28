@@ -67,6 +67,41 @@ class Test_AIPS_Settings_Registry extends WP_UnitTestCase {
 		$this->assertSame( 'aips_general_section', $def->get_section() );
 	}
 
+	public function test_select_definitions_have_renderable_choices() {
+		$registry = AIPS_Settings_Registry::instance();
+		$renderer = new AIPS_Settings_Form_Renderer();
+		$definitions = $registry->get_all_definitions();
+
+		foreach ( $definitions as $key => $definition ) {
+			$control_type = $definition->get_control_type();
+			if ( ! in_array( $control_type, array( AIPS_Setting_Definition::CONTROL_SELECT, AIPS_Setting_Definition::CONTROL_MULTISELECT ), true ) ) {
+				continue;
+			}
+			if ( AIPS_Setting_Definition::CONTROL_MULTISELECT === $control_type && ! empty( $definition->get_control_option( 'visual_parent' ) ) ) {
+				continue;
+			}
+
+			$options        = $definition->get_control_option( 'options' );
+			$render_callback = $definition->get_render_callback();
+			$this->assertTrue(
+				is_array( $options ) || is_callable( $options ) || is_callable( $render_callback ),
+				sprintf( 'Choice control "%s" must define choices or a custom renderer.', $key )
+			);
+			if ( ! is_callable( $render_callback ) ) {
+				$choices = is_callable( $options ) ? call_user_func( $options ) : $options;
+				$this->assertNotEmpty( $choices, sprintf( 'Choice control "%s" must have at least one available choice.', $key ) );
+			}
+
+			$html = $renderer->get_field_html( $definition, $definition->get_default() );
+			if ( AIPS_Setting_Definition::CONTROL_SELECT === $control_type ) {
+				$this->assertStringContainsString( '<select', $html, sprintf( 'Select setting "%s" must render a select element.', $key ) );
+				$this->assertStringContainsString( '<option', $html, sprintf( 'Select setting "%s" must render at least one option.', $key ) );
+			} else {
+				$this->assertNotEmpty( $html, sprintf( 'Multiselect setting "%s" must render its control.', $key ) );
+			}
+		}
+	}
+
 	public function test_get_definitions_by_tab_and_section() {
 		$registry = AIPS_Settings_Registry::instance();
 
