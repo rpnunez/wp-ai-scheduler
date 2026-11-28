@@ -57,12 +57,13 @@ button:hover{background:var(--hover)}
 .dd .panel .tools button{padding:3px 8px;font-size:12px}
 .dd .panel input[type=search]{min-width:0;width:100%;margin-bottom:6px}
 .cnt{color:var(--muted);font-size:12px;margin-left:auto}
+.badge[hidden]{display:none}
 .badge{display:inline-block;background:var(--accent);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:4px}
 .chk{display:flex;gap:4px;align-items:center}
 .wrap{padding:8px 24px 40px;overflow-x:auto}
 table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px}
 th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{position:sticky;top:49px;background:var(--card);cursor:pointer;white-space:nowrap;font-size:12px;color:var(--muted);z-index:4}
+th{position:sticky;top:var(--ctl-h,56px);background:var(--card);cursor:pointer;white-space:nowrap;font-size:12px;color:var(--muted);z-index:4}
 th.sorted{color:var(--fg)}
 td.n{text-align:right;font-variant-numeric:tabular-nums}
 tr.row{cursor:pointer}
@@ -240,6 +241,8 @@ $('#csv').onclick=()=>{
  const q=v=>'"'+String(Array.isArray(v)?v.join(';'):v==null?'':v).replace(/"/g,'""')+'"';
  const csv=[keys.join(',')].concat(current.map(p=>keys.map(k=>q(p[k])).join(','))).join('\r\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='pr-triage-filtered.csv';a.click()};
+const ctl=document.querySelector('.controls');const setH=()=>document.documentElement.style.setProperty('--ctl-h',ctl.offsetHeight+'px');
+window.addEventListener('resize',setH);setH();
 render();
 })();
 </script>
