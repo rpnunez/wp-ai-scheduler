@@ -8,6 +8,11 @@ python scripts/pr-triage/collect.py    # GitHub + git metrics -> .artifacts/pr-t
 python scripts/pr-triage/classify.py   # scores, buckets, reports -> .artifacts/pr-triage/*.md, triage.{json,csv}
 ```
 
+`classify.py` also writes a self-contained `pr_triage_report_<YYYY-MM-DD_HHMMSS>.html` (inline CSS/JS/data,
+works offline): free-text search, multi-select checkbox dropdowns for labels (match any/all), bucket, wave,
+merge state, and author, high-effort / unresolved-thread toggles, sortable columns, expandable per-PR details,
+and CSV export of the filtered rows.
+
 `collect.py --prs 2448,2450` limits the run to specific PRs; `--skip-git` skips local conflict analysis.
 Outputs land in the gitignored `.artifacts/pr-triage/`. PR heads are fetched into `refs/pr-triage/*`
 (remove with `git for-each-ref --format='%(refname)' refs/pr-triage | xargs -n1 git update-ref -d`).

@@ -8,6 +8,8 @@ Outputs (into the same directory):
     triage.json, triage.csv     per-PR scores, bucket, action, rationale
     pr_metrics_report.md        the base metrics table for every PR
     pr_triage_report.md         buckets, duplicate clusters, merge waves
+    pr_triage_report_<YYYY-MM-DD_HHMMSS>.html
+                                self-contained, searchable/filterable report
 
 Nothing on GitHub is modified; label/close suggestions are listed only.
 """
@@ -17,8 +19,13 @@ import csv
 import json
 import os
 import re
+import sys
 from collections import Counter
+from datetime import datetime
 from difflib import SequenceMatcher
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from html_report import build_html, html_filename  # noqa: E402
 
 # --- Policy -----------------------------------------------------------------
 MANDATORY_LABELS = {'chances-high', 'fix', 'bugfix', 'bug-fix'}
@@ -345,8 +352,13 @@ def main():
 		fh.write(metrics_report(data, prs))
 	with open(os.path.join(args.inp, 'pr_triage_report.md'), 'w', encoding='utf-8') as fh:
 		fh.write(triage_report(data, prs, edges, hot))
+	generated = datetime.now().astimezone()
+	html_path = os.path.join(args.inp, html_filename(generated))
+	with open(html_path, 'w', encoding='utf-8') as fh:
+		fh.write(build_html(data, prs, BUCKETS, MANDATORY_LABELS, HEAVY_CONFLICT_FILES, generated))
 	counts = Counter(p['bucket'] for p in prs)
 	print('Buckets: ' + ', '.join('%s=%d' % (b, counts.get(b, 0)) for b in BUCKETS))
+	print('HTML report: ' + html_path)
 
 
 if __name__ == '__main__':
