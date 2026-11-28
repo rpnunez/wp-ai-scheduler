@@ -4,7 +4,7 @@
 .PHONY: help up build down stop start start-dev restart reload-php rebuild \
 	logs logs-web logs-db shell wp-shell db-shell status info install clean prune \
 	plugin-activate plugin-deactivate plugin-list \
-	test test-verbose test-coverage test-session test-stop test-ci composer-install composer-update \
+	test test-verbose test-coverage test-session test-stop test-ci test-cloud cloud-site cloud-site-stop composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
 	urls sync-wp-core sql-batch sql-batch-unpack
@@ -214,6 +214,15 @@ test-stop: ## Stop the db, web and phpMyAdmin containers (keeps containers' data
 test-ci: ## Run the host-side CI runner (needs host PHP + composer)
 	@echo "$(BLUE)Running CI-style tests on the host...$(NC)"
 	bash ./scripts/run-wp-tests-docker.sh
+
+test-cloud: ## Claude Code cloud sessions (no Docker): host MariaDB suite, or ARGS="--syntax" for php -l + lint
+	@bash ./scripts/cloud-test.sh $(ARGS)
+
+cloud-site: ## Claude Code cloud sessions: run a real WordPress site with the plugin on :8080 (admin/admin)
+	@bash ./scripts/cloud-wp-site.sh start
+
+cloud-site-stop: ## Claude Code cloud sessions: stop the WordPress site server (keeps site + DB; ARGS=reset deletes them)
+	@bash ./scripts/cloud-wp-site.sh $(if $(filter reset,$(ARGS)),reset,stop)
 
 sql-batch: ## Run read-only SQL diagnostics on the DEV db (QUERIES=path/to/queries.sql)
 	@[ -n "$(QUERIES)" ] || { echo "Usage: make sql-batch QUERIES=.artifacts/sql-queries/my-queries.sql"; exit 1; }
