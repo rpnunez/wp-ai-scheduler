@@ -52,15 +52,29 @@ class AIPS_Ajax_Response {
 	 *
 	 * Response shape: { success: false, data: { message: '...', code: '...', ...data } }
 	 *
-	 * @param string|array $message     The error message to display, or an array with 'message' key for backward compatibility.
-	 * @param string       $code        Optional. Error code for programmatic handling. Default 'error'.
-	 * @param int          $http_status Optional. HTTP status code. Default 200 (WordPress AJAX convention).
-	 * @param array        $data        Optional. Additional error context data. Default empty array.
+	 * @param string|array|WP_Error $message     The error message to display, a WP_Error to normalize, or an array with 'message' key for backward compatibility.
+	 * @param string                $code        Optional. Error code for programmatic handling, used only when $message is not a WP_Error. Default 'error'.
+	 * @param int                   $http_status Optional. HTTP status code. Default 200 (WordPress AJAX convention).
+	 * @param array                 $data        Optional. Additional error context data, merged under (and overridden by) data carried on a WP_Error. Default empty array.
 	 * @return void Exits execution after sending JSON response.
 	 */
 	public static function error($message, $code = 'error', $http_status = 200, $data = array()) {
-		// Backward compatibility: accept array('message' => '...', ...) format
-		if (is_array($message)) {
+		// Accept a WP_Error directly: use its first error's code/message, and
+		// merge any attached error data (e.g. new WP_Error($code, $msg, array('http_status' => 404))).
+		if (is_wp_error($message)) {
+			$wp_error   = $message;
+			$code       = $wp_error->get_error_code() ?: $code;
+			$error_data = $wp_error->get_error_data($code);
+			$message    = $wp_error->get_error_message() ?: __('An error occurred.', 'ai-post-scheduler');
+
+			if (is_array($error_data)) {
+				if (isset($error_data['http_status'])) {
+					$http_status = (int) $error_data['http_status'];
+					unset($error_data['http_status']);
+				}
+				$data = array_merge($data, $error_data);
+			}
+		} elseif (is_array($message)) {
 			$array_data = $message;
 			$message = isset($array_data['message']) ? $array_data['message'] : __('An error occurred.', 'ai-post-scheduler');
 			unset($array_data['message']);
