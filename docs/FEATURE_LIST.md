@@ -51,7 +51,7 @@ Generation is abstracted through a context interface, making the pipeline provid
 ### Generation Session Tracking
 | Class | Purpose |
 |-------|---------|
-| `AIPS_Generation_Session` | Tracks a generation session (multi-post runs) |
+| `AIPS_Generation_Session` | Ephemeral runtime tracker for post generation (AI calls, errors, duration, context) |
 | `AIPS_Generation_Result` | DTO carrying the outcome of a single generation |
 | `AIPS_Bulk_Generation_Result` | Aggregates results across a bulk run |
 | `AIPS_Generation_Execution_Runner` | Orchestrates multi-post generation with locking |
