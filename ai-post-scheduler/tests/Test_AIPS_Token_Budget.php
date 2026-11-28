@@ -49,16 +49,16 @@ class Test_AIPS_Token_Budget extends WP_UnitTestCase {
 		$reflection->setAccessible(true);
 
 		$original = get_option('aips_max_tokens_title');
-		update_option('aips_max_tokens_title', 200);
+		update_option('aips_max_tokens_title', 1600);
 		AIPS_Config::get_instance()->flush_option_cache();
 
 		try {
 			$short = $reflection->invokeArgs($service, array('Tiny prompt.', 'title'));
 			$long  = $reflection->invokeArgs($service, array(str_repeat('A', 40000), 'title'));
 
-			// 200 output tokens + the 25% buffer, regardless of prompt size.
-			$this->assertSame(250, $short);
-			$this->assertSame(250, $long);
+			// 1600 output tokens + the 25% buffer (above SHORT_FORM_MIN_TOKENS), regardless of prompt size.
+			$this->assertSame(2000, $short);
+			$this->assertSame(2000, $long);
 		} finally {
 			if (false === $original) {
 				delete_option('aips_max_tokens_title');
@@ -125,8 +125,15 @@ class Test_AIPS_Token_Budget extends WP_UnitTestCase {
 
 		$prompt   = str_repeat('A', 1400);
 		$result   = $reflection->invokeArgs($service, array($prompt, 3));
-		$tokens   = (int) ceil(strlen($prompt) / 4);
-		$expected = $tokens + 180 + (3 * 220);
+		$expected = AIPS_Token_Budget::calculate(
+			$prompt,
+			AIPS_Internal_Link_Inserter_Service::BASE_RESPONSE_TOKENS_BUFFER + (3 * AIPS_Internal_Link_Inserter_Service::RESPONSE_TOKENS_PER_LOCATION),
+			array(
+				'minimum_tokens'       => 256,
+				'maximum_tokens'       => AIPS_Internal_Link_Inserter_Service::MAX_TOKENS_LIMIT,
+				'respect_config_limit' => true,
+			)
+		);
 
 		$this->assertSame($expected, $result);
 	}

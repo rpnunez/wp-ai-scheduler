@@ -1,7 +1,7 @@
 <?php
 /**
- * Tests for Slice B Tier 2 Migrations: Consolidation, Competitor Gap,
- * Integration Fields, Affiliate Links, and Content Audit Strategies (Issue #2400).
+ * Tests for Consolidation, Competitor Gap, Integration Fields, Affiliate Links,
+ * AI Assistance, Taxonomy, Planner, and Content Audit Generation Strategies.
  *
  * @package AI_Post_Scheduler
  */
@@ -12,9 +12,9 @@
 class Test_AIPS_Enrichment_And_Audit_Strategies extends WP_UnitTestCase {
 
 	/**
-	 * Registry registers all Slice B components cleanly.
+	 * Registry registers enrichment, research, audit, and AI assistance components cleanly.
 	 */
-	public function test_registry_registers_slice_b_components() {
+	public function test_registry_registers_enrichment_and_audit_components() {
 		$registry = new AIPS_Generation_Component_Registry();
 		$registry->register_default_post_components();
 		$registry->register_default_research_components();
@@ -178,9 +178,10 @@ class Test_AIPS_Enrichment_And_Audit_Strategies extends WP_UnitTestCase {
 	public function test_integration_fields_component_generate_and_apply() {
 		$post_id = self::factory()->post->create(array('post_status' => 'draft'));
 		$ai_mock = $this->createMock(AIPS_AI_Service_Interface::class);
-		$ai_mock->method('generate_json')->willReturn(array(
-			'seo_title' => 'Mapped SEO Title',
-		));
+		$ai_mock->method('generate_json')->willReturnOnConsecutiveCalls(
+			array('seo_title' => 'Mapped SEO Title'),
+			array()
+		);
 
 		$component = new AIPS_Integration_Fields_Post_Component(null, $ai_mock);
 		$context   = new AIPS_Template_Context((object) array(
@@ -195,7 +196,7 @@ class Test_AIPS_Enrichment_And_Audit_Strategies extends WP_UnitTestCase {
 		$generated = $component->generate($context, null, array(
 			'generatable' => array(
 				array(
-					'mapping'   => array('meta_key' => 'seo_title'),
+					'mapping'   => (object) array('field_key' => 'seo_title', 'meta_key' => 'seo_title'),
 					'shape'     => array(),
 					'field_def' => array('label' => 'SEO Title', 'name' => 'seo_title'),
 				),
@@ -209,12 +210,133 @@ class Test_AIPS_Enrichment_And_Audit_Strategies extends WP_UnitTestCase {
 		$empty = $component->generate($context, null, array(
 			'generatable' => array(
 				array(
-					'mapping'   => array('meta_key' => 'required_key'),
+					'mapping'   => (object) array('field_key' => 'required_key', 'meta_key' => 'required_key'),
 					'shape'     => array(),
 					'field_def' => array('label' => 'Required', 'name' => 'required_key'),
 				),
 			),
 		));
 		$this->assertArrayNotHasKey('required_key', is_array($empty) ? $empty : array());
+	}
+
+	/**
+	 * AI Assistance policy-disabled + DB insert failure branches, plus preview &
+	 * failure coverage across Consolidation, Content Audit, Taxonomy, and Planner strategies.
+	 */
+	public function test_ai_assistance_failures_and_enrichment_strategy_previews() {
+		$field_config = array(
+			'field_name'        => 'Author Niche',
+			'form_field_id'     => 'field_niche',
+			'form_context'      => 'authors',
+			'description'       => 'Primary niche.',
+			'influence'         => 'Topics.',
+			'expected_response' => 'Phrase',
+		);
+		$assist_ctx = new AIPS_AI_Assistance_Generation_Context($field_config, 'sess-err', 1);
+
+		// 1. Policy disabled -> failure with ai_assistance_disabled.
+		update_option('aips_ai_assistance_enabled', 0);
+		$ai_ok = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_ok->method('generate_text')->willReturn('Suggested Value');
+
+		$assist_strategy = new AIPS_AI_Assistance_Strategy(null, $ai_ok);
+		$assist_pipeline = new AIPS_Generation_Pipeline($assist_strategy, new AIPS_Generation_Component_Registry());
+		$disabled_res    = $assist_pipeline->execute($assist_ctx);
+		$this->assertTrue($disabled_res->is_failure());
+		$this->assertSame('ai_assistance_disabled', $assist_strategy->get_last_error()->get_error_code());
+
+		// 2. Enabled + DB insert failure -> db_insert_failed; preview succeeds without DB insert.
+		update_option('aips_ai_assistance_enabled', 1);
+		$failing_repo = $this->getMockBuilder(AIPS_AI_Assistance_Repository::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('create'))
+			->getMock();
+		$failing_repo->method('create')->willReturn(false);
+
+		$fail_db_strategy = new AIPS_AI_Assistance_Strategy(null, $ai_ok, $failing_repo);
+		$fail_db_pipeline = new AIPS_Generation_Pipeline($fail_db_strategy, new AIPS_Generation_Component_Registry());
+		$db_fail_res      = $fail_db_pipeline->execute($assist_ctx);
+		$this->assertTrue($db_fail_res->is_failure());
+		$this->assertSame('db_insert_failed', $fail_db_strategy->get_last_error()->get_error_code());
+
+		$preview_assist = $fail_db_pipeline->execute_preview($assist_ctx);
+		$this->assertIsArray($preview_assist);
+		delete_option('aips_ai_assistance_enabled');
+
+		// 3. Taxonomy & Planner strategy execute + execute_preview.
+		$post_id  = self::factory()->post->create(array('post_title' => 'Observability in PHP', 'post_excerpt' => 'OpenTelemetry traces.'));
+		$tax_ai   = $this->createMock(AIPS_AI_Service_Interface::class);
+		$tax_ai->method('is_available')->willReturn(true);
+		$tax_ai->method('generate_text')->willReturn("Observability\nTracing");
+
+		$tax_repo = new class() {
+			public $created = array();
+			public function insert($row) {
+				$id                  = count($this->created) + 1;
+				$row['id']           = $id;
+				$this->created[$id]  = (object) $row;
+				return $id;
+			}
+			public function get_by_id($id) {
+				return $this->created[$id] ?? null;
+			}
+		};
+		$tax_strategy = new AIPS_Taxonomy_Generation_Strategy(null, $tax_ai, $tax_repo);
+		$tax_pipeline = new AIPS_Generation_Pipeline($tax_strategy, new AIPS_Generation_Component_Registry());
+		$tax_ctx      = new AIPS_Taxonomy_Generation_Context('post_tag', array($post_id));
+
+		$tax_exec = $tax_pipeline->execute($tax_ctx);
+		$this->assertTrue($tax_exec->is_success());
+		$this->assertCount(2, $tax_repo->created);
+		$this->assertIsArray($tax_pipeline->execute_preview($tax_ctx));
+
+		$planner_gen = $this->getMockBuilder(AIPS_Generator::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('is_available', 'generate_content'))
+			->getMock();
+		$planner_gen->method('is_available')->willReturn(true);
+		$planner_gen->method('generate_content')->willReturn('["Topic 1", "Topic 2"]');
+		$planner_strategy = new AIPS_Planner_Topic_Strategy(null, $planner_gen);
+		$planner_pipeline = new AIPS_Generation_Pipeline($planner_strategy, new AIPS_Generation_Component_Registry());
+		$planner_ctx      = new AIPS_Planner_Topic_Generation_Context('OpenTelemetry', 2);
+		$this->assertTrue($planner_pipeline->execute($planner_ctx)->is_success());
+		$this->assertIsArray($planner_pipeline->execute_preview($planner_ctx));
+	}
+
+	/**
+	 * AIPS_Competitor_Gap_Component falls back to 3 default bridge suggestions when AI
+	 * returns malformed JSON and propagates WP_Error when AI fails.
+	 */
+	public function test_competitor_gap_component_invalid_json_fallback_and_wp_error_propagation() {
+		$ai_mock = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_mock->method('generate_text')->willReturnOnConsecutiveCalls(
+			'Unstructured prose that is not JSON',
+			new WP_Error('gap_ai_down', 'AI service unavailable')
+		);
+
+		$context = new AIPS_Research_Generation_Context(
+			AIPS_Research_Generation_Context::MODE_GAP_SUGGESTIONS,
+			array(
+				'niche' => 'WordPress',
+				'topic' => array(
+					'post_title'   => 'Object Caching Internals',
+					'post_excerpt' => 'Persistent Redis caching.',
+					'cluster_name' => 'Performance',
+				),
+			)
+		);
+
+		$strategy = new AIPS_Research_Generation_Strategy(null, $ai_mock);
+		$pipeline = new AIPS_Generation_Pipeline($strategy, new AIPS_Generation_Component_Registry());
+
+		$fallback_res = $pipeline->execute($context);
+		$this->assertTrue($fallback_res->is_success());
+		$suggestions = $fallback_res->get_data();
+		$this->assertCount(3, $suggestions);
+		$this->assertStringContainsString('Object Caching Internals', $suggestions[0]['title']);
+
+		$component_err = (new AIPS_Competitor_Gap_Component($ai_mock))->generate($context);
+		$this->assertWPError($component_err);
+		$this->assertSame('gap_ai_down', $component_err->get_error_code());
 	}
 }

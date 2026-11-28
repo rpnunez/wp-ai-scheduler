@@ -206,7 +206,7 @@ class AIPS_Component_Regeneration_Coordinator {
 	 * Rebuild or rehydrate the original generation conversation for a post.
 	 *
 	 * Prefers the persisted conversation transcript from wp_aips_history_log
-	 * (PR #2409) and falls back to synthetic reconstruction when absent.
+	 * and falls back to synthetic reconstruction when absent.
 	 *
 	 * @param AIPS_Generation_Context $generation_context Original generation context.
 	 * @param int                     $post_id            Post being regenerated.

@@ -218,12 +218,13 @@ class AIPS_Field_Suggestion_Component implements AIPS_Generation_Component_Inter
 	 */
 	public function persist_suggestion(AIPS_AI_Assistance_Generation_Context $context, array $value) {
 		$field_config = $context->get_field_config();
+		$raw_field_id = $field_config['form_field_id'] ?? ($field_config['field_key'] ?? '');
 
 		return $this->get_repository()->create(array(
 			'session_id'     => $context->get_session_id(),
 			'user_id'        => $context->get_user_id(),
 			'form_context'   => sanitize_text_field($field_config['form_context'] ?? ''),
-			'field_key'      => sanitize_text_field($field_config['form_field_id'] ?? ''),
+			'field_key'      => sanitize_text_field($raw_field_id),
 			'request_object' => wp_json_encode($field_config),
 			'prompt'         => isset($value['prompt']) ? (string) $value['prompt'] : '',
 			'response'       => isset($value['response']) ? (string) $value['response'] : '',
@@ -267,6 +268,13 @@ class AIPS_Field_Suggestion_Component implements AIPS_Generation_Component_Inter
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
-		return is_string($value) ? $value : (string) $value;
+		if (is_array($value)) {
+			return array(
+				'response' => isset($value['response']) && is_scalar($value['response']) ? wp_kses_post(trim((string) $value['response'])) : '',
+				'prompt'   => isset($value['prompt']) && is_scalar($value['prompt']) ? (string) $value['prompt'] : '',
+			);
+		}
+
+		return is_scalar($value) ? wp_kses_post(trim((string) $value)) : '';
 	}
 }

@@ -1,13 +1,13 @@
 <?php
 /**
- * Tests for Author Topic & Persona Generation Strategies (Issue #2400 Phase 2).
+ * Tests for Author Topic & Persona Generation Strategies.
  *
  * Covers:
  * - AIPS_Topic_Generation_Strategy + AIPS_Generation_Pipeline (full run, partial result, history tracking, invalid author, AI failure)
  * - Concrete Topic Components (topic_title, topic_prompt, topic_keywords, topic_embedding)
  * - AIPS_Author_Persona_Strategy + AIPS_Author_Persona_Component + AIPS_Generation_Pipeline
  * - Migrated AIPS_Author_Topics_Generator & AIPS_Author_Suggestions_Service backward compatibility
- * - Registry & Container resolution for Phase 2 strategies/components
+ * - Registry & Container resolution for Topic and Persona strategies/components
  *
  * @package AI_Post_Scheduler
  */
@@ -272,9 +272,9 @@ class Test_AIPS_Topic_And_Persona_Strategies extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AIPS_Container resolves Phase 2 strategies.
+	 * AIPS_Container resolves Topic and Persona strategies.
 	 */
-	public function test_container_resolves_phase2_strategies() {
+	public function test_container_resolves_topic_and_persona_strategies() {
 		$container = AIPS_Container::get_instance();
 		if (!$container->has(AIPS_Topic_Generation_Strategy::class)) {
 			$this->markTestSkipped('Container bindings not initialized in this test bootstrap.');
@@ -288,5 +288,222 @@ class Test_AIPS_Topic_And_Persona_Strategies extends WP_UnitTestCase {
 			AIPS_Author_Persona_Strategy::class,
 			$container->make(AIPS_Author_Persona_Strategy::class)
 		);
+	}
+
+	/**
+	 * Topic and Persona strategies cover no_topics_parsed, db_insert_error,
+	 * embedding_degraded partial status under similarity policy cooldown, and execute_preview().
+	 */
+	public function test_topic_and_persona_failure_degraded_and_preview_branches() {
+		$author = $this->make_author(array(
+			'topic_generation_quantity'   => 1,
+			'topic_auto_approval_mode'    => 'similarity',
+		));
+
+		$ai_mock = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_mock->method('generate_json')->willReturnOnConsecutiveCalls(
+			array(array('title' => '   ')),
+			array(array('title' => 'Valid Topic Title', 'score' => 85, 'keywords' => array('go'))),
+			array(array('title' => 'Degraded Cooldown Topic', 'score' => 90, 'keywords' => array('raft'))),
+			array(array('title' => 'Preview Topic Idea', 'score' => 88, 'keywords' => array('preview')))
+		);
+
+		$bulk_ok     = false;
+		$topics_repo = new class($bulk_ok) {
+			public $bulk_ok;
+			public $last_batch = array();
+			public function __construct(&$bulk_ok) { $this->bulk_ok =& $bulk_ok; }
+			public function get_approved_summary($author_id, $limit = 10) { return array(); }
+			public function get_rejected_summary($author_id, $limit = 10) { return array(); }
+			public function get_pending_for_approval_recheck($author_id, $limit = 20) { return array(); }
+			public function create_bulk($topics) {
+				$this->last_batch = $topics;
+				return $this->bulk_ok;
+			}
+			public function get_latest_by_author($author_id, $limit) {
+				$out = array();
+				foreach ($this->last_batch as $idx => $t) {
+					$t['id'] = 700 + $idx;
+					$out[]   = (object) $t;
+				}
+				return $out;
+			}
+		};
+
+		$rate_limiter = $this->getMockBuilder(AIPS_Embeddings_Rate_Limiter::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('is_in_cooldown', 'get_cooldown_status'))
+			->getMock();
+		$rate_limiter->method('is_in_cooldown')->willReturn(true);
+		$rate_limiter->method('get_cooldown_status')->willReturn(array(
+			'paused_until' => time() + 300,
+			'reason'       => '429 rate limit',
+		));
+
+		$strategy = new AIPS_Topic_Generation_Strategy(
+			null,
+			$ai_mock,
+			null,
+			$topics_repo,
+			new class() { public function create($d) { return 1; } },
+			new class() { public function is_enabled() { return true; } },
+			new class() { public function get_reason_category_statistics($id) { return array(); } },
+			new class() {
+				public function build($a, $ap, $rej, $g) { return 'Prompt'; }
+				public function get_sources_selection() { return array(); }
+				public function record_sources_usage($s) {}
+			},
+			new class() { public function evaluate_topics_for_duplicates($t, $id) { return $t; } },
+			new class() { public function update_topic_generation_last_run($id, $ts) { return true; } },
+			null,
+			$rate_limiter
+		);
+		$pipeline = new AIPS_Generation_Pipeline($strategy, new AIPS_Generation_Component_Registry());
+		$ctx      = new AIPS_Author_Topic_Generation_Context($author, true, 'manual');
+
+		// 1. Empty parsed topics -> no_topics_parsed.
+		$no_parsed = $pipeline->execute($ctx);
+		$this->assertTrue($no_parsed->is_failure());
+		$this->assertSame('no_topics_parsed', $strategy->get_last_error()->get_error_code());
+
+		// 2. DB bulk insert failure -> db_insert_error.
+		$db_err = $pipeline->execute($ctx);
+		$this->assertTrue($db_err->is_failure());
+		$this->assertSame('db_insert_error', $strategy->get_last_error()->get_error_code());
+
+		// 3. Similarity auto-approval during embeddings cooldown -> partial with topic_embedding=false.
+		$bulk_ok  = true;
+		$degraded = $pipeline->execute($ctx);
+		$this->assertTrue($degraded->is_partial());
+		$this->assertFalse($degraded->get_component_statuses()['topic_embedding']);
+
+		// 4. Topic & Persona strategy previews.
+		$this->assertWPError($pipeline->execute_preview(new AIPS_Author_Topic_Generation_Context(null)));
+		$topic_preview = $pipeline->execute_preview($ctx);
+		$this->assertIsArray($topic_preview);
+		$this->assertCount(1, $topic_preview);
+
+		$persona_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$persona_ai->method('generate_json')->willReturn(array(
+			array('name' => 'Preview Persona', 'field_niche' => 'DevOps'),
+		));
+		$persona_strategy = new AIPS_Author_Persona_Strategy(
+			null,
+			$persona_ai,
+			null,
+			null,
+			new class() { public function build(array $inputs, $count) { return 'Persona preview prompt'; } }
+		);
+		$persona_pipeline = new AIPS_Generation_Pipeline($persona_strategy, new AIPS_Generation_Component_Registry());
+		$persona_preview  = $persona_pipeline->execute_preview(new AIPS_Author_Persona_Generation_Context(array('site_niche' => 'DevOps'), 1));
+		$this->assertIsArray($persona_preview);
+		$this->assertSame('Preview Persona', $persona_preview[0]['name']);
+	}
+
+	/**
+	 * Topic strategy enforces title length/quantity caps and one-shot _aips_on_submission
+	 * source tracking; Persona context/strategy enforce count clamping and missing_niche guard.
+	 */
+	public function test_topic_parse_bounds_source_submission_hook_and_persona_niche_and_count_bounds() {
+		$author = $this->make_author(array('topic_generation_quantity' => 2));
+
+		$recorded_selections = array();
+		$selection_payload   = array('source_ids' => array(11, 22));
+		$prompt_builder      = new class($selection_payload, $recorded_selections) {
+			private $selection;
+			public $recorded;
+			public function __construct($selection, &$recorded) {
+				$this->selection = $selection;
+				$this->recorded  =& $recorded;
+			}
+			public function build($a, $ap, $rej, $g) { return 'Prompt with sources'; }
+			public function get_sources_selection() { return $this->selection; }
+			public function record_sources_usage($sel) { $this->recorded[] = $sel; }
+		};
+
+		$ai_double = new class() implements AIPS_AI_Service_Interface {
+			public function is_available() { return true; }
+			public function supports_embeddings() { return false; }
+			public function supports_conversation() { return false; }
+			public function get_call_log() { return array(); }
+			public function generate_text($prompt, $options = array()) { return ''; }
+			public function generate_image($prompt, $options = array()) { return ''; }
+			public function generate_embedding($text, $options = array()) { return array(); }
+			public function generate_json($prompt, $options = array()) {
+				if (isset($options['_aips_on_submission']) && is_callable($options['_aips_on_submission'])) {
+					// Invoke twice to prove idempotency guard inside the submission closure.
+					call_user_func($options['_aips_on_submission']);
+					call_user_func($options['_aips_on_submission']);
+				}
+				return array(
+					array('title' => 'Too short', 'score' => 95, 'keywords' => array('short')),
+					array('title' => 'First Valid Distributed Consensus Topic', 'score' => 91, 'keywords' => array('raft')),
+					array('title' => 'Second Valid Microservice Resilience Topic', 'score' => 87, 'keywords' => array('sre')),
+					array('title' => 'Third Valid Topic Beyond Requested Cap', 'score' => 84, 'keywords' => array('extra')),
+				);
+			}
+		};
+
+		$topics_repo = new class() {
+			public $saved = array();
+			public function get_approved_summary($author_id, $limit = 10) { return array(); }
+			public function get_rejected_summary($author_id, $limit = 10) { return array(); }
+			public function create_bulk($topics) {
+				$this->saved = $topics;
+				return true;
+			}
+			public function get_latest_by_author($author_id, $limit) {
+				$out = array();
+				foreach (array_reverse($this->saved) as $idx => $row) {
+					$row['id'] = 800 - $idx;
+					$out[]     = (object) $row;
+				}
+				return array_slice($out, 0, $limit);
+			}
+		};
+
+		$topic_strategy = new AIPS_Topic_Generation_Strategy(
+			null,
+			$ai_double,
+			null,
+			$topics_repo,
+			new class() { public function create($d) { return 1; } },
+			new class() { public function is_enabled() { return false; } },
+			new class() { public function get_reason_category_statistics($id) { return array(); } },
+			$prompt_builder,
+			new class() { public function evaluate_topics_for_duplicates($t, $id) { return $t; } },
+			new class() { public function update_topic_generation_last_run($id, $ts) { return true; } }
+		);
+
+		$topic_res = (new AIPS_Generation_Pipeline($topic_strategy, new AIPS_Generation_Component_Registry()))
+			->execute(new AIPS_Author_Topic_Generation_Context($author, false, 'manual'));
+
+		$this->assertTrue($topic_res->is_success());
+		$this->assertCount(2, $topics_repo->saved, 'Short (<10 char) titles must be dropped and valid topics capped at topic_generation_quantity.');
+		$this->assertSame('First Valid Distributed Consensus Topic', $topics_repo->saved[0]['topic_title']);
+		$this->assertSame('Second Valid Microservice Resilience Topic', $topics_repo->saved[1]['topic_title']);
+		$this->assertCount(1, $recorded_selections, '_aips_on_submission must record source usage exactly once.');
+		$this->assertSame(array(11, 22), $topic_strategy->get_last_sources_selection()['source_ids']);
+
+		// Persona count clamping (1..10) & missing_niche error when both input and site setting are empty.
+		$low_ctx  = new AIPS_Author_Persona_Generation_Context(array('site_niche' => ''), 0);
+		$high_ctx = new AIPS_Author_Persona_Generation_Context(array('site_niche' => 'AI'), 15);
+		$this->assertSame(1, $low_ctx->get_count());
+		$this->assertSame(10, $high_ctx->get_count());
+
+		$prev_niche = get_option('aips_content_niche', null);
+		update_option('aips_content_niche', '');
+		try {
+			$persona_strategy = new AIPS_Author_Persona_Strategy(null, $ai_double);
+			$missing_niche    = (new AIPS_Generation_Pipeline($persona_strategy, new AIPS_Generation_Component_Registry()))->execute($low_ctx);
+			$this->assertTrue($missing_niche->is_failure());
+			$this->assertSame('missing_niche', $persona_strategy->get_last_error()->get_error_code());
+		} finally {
+			if ($prev_niche === null) {
+				delete_option('aips_content_niche');
+			} else {
+				update_option('aips_content_niche', $prev_niche);
+			}
+		}
 	}
 }

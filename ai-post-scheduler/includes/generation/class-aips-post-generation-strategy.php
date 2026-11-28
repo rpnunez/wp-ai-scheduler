@@ -219,12 +219,10 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 
 		$this->record_generation_trigger($history, $context);
 
-		// Note on Stage Execution (Issue #2400 / Sub-issue #2407):
 		// Full post generation delegates each multi-turn stage (content, metadata, post-processing)
 		// through AIPS_Generator's stage bridge methods (run_content_stage, run_metadata_stage,
-		// run_post_processing_stage). This maintains conversational session continuity, telemetry,
-		// and historical lifecycle hooks during the Phase 1 pipeline migration. Component-level
-		// prompt builder absorption directly into concrete post components is scheduled for sub-issue #2407.
+		// run_post_processing_stage) to preserve conversational session continuity, telemetry,
+		// and historical lifecycle hooks.
 
 		// Stage 1: Content (opens conversational session if enabled).
 		$this->generator->open_conversation_session();
@@ -381,12 +379,16 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 				);
 			}
 
-			$content                           = $post_images_result['content'];
-			$component_statuses['post_images'] = (bool) $post_images_result['success'];
-			wp_update_post(array(
-				'ID'           => $post_id,
-				'post_content' => wp_slash($content),
-			));
+			if (is_wp_error($post_images_result) || !is_array($post_images_result)) {
+				$component_statuses['post_images'] = false;
+			} else {
+				$content                           = isset($post_images_result['content']) ? (string) $post_images_result['content'] : $content;
+				$component_statuses['post_images'] = !empty($post_images_result['success']);
+				wp_update_post(array(
+					'ID'           => $post_id,
+					'post_content' => wp_slash($content),
+				));
+			}
 		}
 
 		// Stage 6: Finalization (status reconciliation, draft downgrade/release, history, metrics, hooks, transcript persistence).
@@ -549,9 +551,9 @@ class AIPS_Post_Generation_Strategy implements AIPS_Pipeline_Executable_Strategy
 	/**
 	 * Execute a preview run without creating a WordPress post.
 	 *
-	 * Maintains full PR #2401 / #2409 preview parity (conversational mode,
-	 * combined metadata turn + deficit recovery, slug fallback, featured image
-	 * prompt, and content image mock preview cards).
+	 * Maintains full preview parity (conversational mode, combined metadata
+	 * turn + deficit recovery, slug fallback, featured image prompt, and
+	 * content image mock preview cards).
 	 *
 	 * @param AIPS_Generation_Context $context Generation context.
 	 * @return array|WP_Error

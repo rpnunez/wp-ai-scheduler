@@ -211,7 +211,7 @@ class AIPS_Title_Post_Component extends AIPS_Abstract_Post_Component {
 
 		$updated = wp_update_post(array(
 			'ID'         => $post_id,
-			'post_title' => $title,
+			'post_title' => wp_slash($title),
 		), true);
 
 		return !is_wp_error($updated) && (int) $updated === $post_id;
@@ -234,6 +234,9 @@ class AIPS_Title_Post_Component extends AIPS_Abstract_Post_Component {
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
+		if (!is_scalar($value)) {
+			return '';
+		}
 		$clean = trim(sanitize_text_field((string) $value));
 		return preg_replace('/^["\']|["\']$/', '', $clean);
 	}

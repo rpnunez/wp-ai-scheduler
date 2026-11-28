@@ -167,6 +167,9 @@ class AIPS_Post_Consolidation_Component implements AIPS_Generation_Component_Int
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
+		if (!is_scalar($value)) {
+			return '';
+		}
 		$html = trim((string) $value);
 		$html = preg_replace('/^```(?:html)?\s*/i', '', $html);
 		$html = preg_replace('/\s*```\s*$/', '', $html);

@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for Universal Generation Strategy & Component Framework (Issue #2400 Phase 1).
+ * Tests for the Universal Generation Strategy & Component Framework.
  *
  * Covers:
  * - AIPS_Generation_Result universal payload/history_id extensions
@@ -8,7 +8,7 @@
  * - Concrete Post Components (keys, stages, schemas, sanitization, apply_to_post, reconcile_status)
  * - AIPS_Generation_Pipeline (Post strategy execute + preview, generic strategy success/partial/failure)
  * - AIPS_Component_Regeneration_Coordinator (typed result + unknown component handling)
- * - AIPS_Container bindings for Phase 1 framework singletons
+ * - AIPS_Container lazy singleton bindings for generation framework services
  *
  * @package AI_Post_Scheduler
  */
@@ -228,6 +228,14 @@ class Test_AIPS_Generation_Framework extends WP_UnitTestCase {
 			};
 		};
 
+		// 0. Zero enabled components -> completed with empty data and no errors.
+		$pipeline_empty = new AIPS_Generation_Pipeline($make_strategy(array()), $registry);
+		$res_empty      = $pipeline_empty->execute($context);
+		$this->assertTrue($res_empty->is_success());
+		$this->assertSame(array(), $res_empty->get_data());
+		$this->assertSame(array(), $res_empty->get_errors());
+		$this->assertSame(array(), $res_empty->get_component_statuses());
+
 		// 1. All succeed.
 		$pipeline_ok = new AIPS_Generation_Pipeline(
 			$make_strategy(array($make_component('a', true, 'val_a'), $make_component('b', false, 'val_b'))),
@@ -252,16 +260,39 @@ class Test_AIPS_Generation_Framework extends WP_UnitTestCase {
 		$this->assertSame(array('a' => true, 'b' => false), $res_partial->get_component_statuses());
 		$this->assertSame(array('Optional error'), $res_partial->get_errors());
 
-		// 3. Required component fails -> failure.
+		// 3. Required component fails -> failure and subsequent components are never invoked.
+		$second_called = false;
+		$spy_second    = new class($second_called) implements AIPS_Generation_Component_Interface {
+			public $called;
+			public function __construct(&$called) { $this->called =& $called; }
+			public function get_key(): string { return 'b'; }
+			public function get_label(): string { return 'b'; }
+			public function get_strategy_key(): string { return 'custom'; }
+			public function is_enabled(AIPS_Generation_Context $context): bool { return true; }
+			public function is_required(): bool { return false; }
+			public function build_prompt(AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null): string { return 'prompt'; }
+			public function generate(AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, array $options = array()) {
+				$this->called = true;
+				return 'val_b';
+			}
+			public function regenerate($target_id, AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, string $directive = '', array $options = array()) { return 'val_b'; }
+			public function generate_variants($target_id, AIPS_Generation_Context $context, int $count = 3, array $options = array()) { return array('val_b'); }
+			public function apply($target, $value): bool { return true; }
+			public function reconcile_status($target_id): bool { return true; }
+			public function supports_ai_edit(): bool { return true; }
+			public function sanitize_value($value) { return $value; }
+		};
+
 		$pipeline_fail = new AIPS_Generation_Pipeline(
 			$make_strategy(array(
 				$make_component('a', true, new WP_Error('req_fail', 'Fatal error')),
-				$make_component('b', false, 'val_b'),
+				$spy_second,
 			)),
 			$registry
 		);
 		$res_fail = $pipeline_fail->execute($context);
 		$this->assertTrue($res_fail->is_failure());
+		$this->assertFalse($second_called, 'Pipeline must short-circuit and not invoke downstream components after a required failure.');
 		$this->assertSame(array('Fatal error'), $res_fail->get_errors());
 		$this->assertSame(array('a' => false), $res_fail->get_component_statuses());
 	}
@@ -302,12 +333,30 @@ class Test_AIPS_Generation_Framework extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AIPS_Container resolves Phase 1 singletons.
+	 * AIPS_Container keeps generation framework singletons lazy until make() is called.
 	 */
 	public function test_container_resolves_generation_framework_singletons() {
 		$container = AIPS_Container::get_instance();
 		if (!$container->has(AIPS_Generation_Component_Registry::class)) {
 			$this->markTestSkipped('Container bindings not initialized in this test bootstrap.');
+		}
+
+		$singletons_prop = new ReflectionProperty(AIPS_Container::class, 'singletons');
+		$singletons_prop->setAccessible(true);
+		$before_make = $singletons_prop->getValue($container);
+
+		$lazy_bindings = array(
+			AIPS_Generation_Component_Registry::class,
+			AIPS_Post_Generation_Strategy::class,
+			AIPS_Topic_Generation_Strategy::class,
+			AIPS_Author_Persona_Strategy::class,
+			AIPS_Campaign_Generation_Strategy::class,
+			AIPS_Research_Generation_Strategy::class,
+			AIPS_Component_Regeneration_Coordinator::class,
+		);
+		foreach ($lazy_bindings as $service_id) {
+			$this->assertTrue($container->has($service_id), "Expected {$service_id} to be bound in container.");
+			$this->assertArrayNotHasKey($service_id, $before_make, "Binding {$service_id} must remain uninstantiated until make() is called.");
 		}
 
 		$this->assertInstanceOf(
@@ -485,5 +534,246 @@ class Test_AIPS_Generation_Framework extends WP_UnitTestCase {
 		$this->assertTrue($partial_result->is_partial());
 		$this->assertSame(556, $partial_result->get_data());
 		$this->assertFalse($partial_result->get_component_statuses()['post_excerpt']);
+	}
+
+	/**
+	 * Post strategy execute_preview_run, create_post WP_Error, and post_images WP_Error partial downgrade.
+	 */
+	public function test_post_generation_strategy_preview_and_media_error_guards() {
+		$history = new class() {
+			public function with_session($context) { return $this; }
+			public function get_id() { return 77; }
+			public function record() {}
+			public function complete_failure() {}
+			public function complete_partial() {}
+			public function complete_success() {}
+		};
+		$history_service = $this->createMock(AIPS_History_Service_Interface::class);
+		$history_service->method('create')->willReturn($history);
+		$logger = $this->createMock(AIPS_Logger_Interface::class);
+
+		// 1. Preview content WP_Error & happy preview with Unsplash + content image mock cards.
+		$preview_gen = $this->getMockBuilder(AIPS_Generator::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array(
+				'open_conversation_session',
+				'run_preview_content_stage',
+				'is_metadata_turn_active',
+				'run_metadata_stage',
+				'inject_single_post_image',
+				'close_conversation_session',
+			))
+			->getMock();
+		$preview_gen->method('run_preview_content_stage')->willReturnOnConsecutiveCalls(
+			new WP_Error('preview_fail', 'Preview content error'),
+			"<p>Preview paragraph.</p>\n\n[post_image index=\"1\"]"
+		);
+		$preview_gen->method('is_metadata_turn_active')->willReturn(true);
+		$preview_gen->method('run_metadata_stage')->willReturn(array(
+			'title'                          => 'Preview Title',
+			'slug'                           => 'preview-title',
+			'excerpt'                        => 'Preview Excerpt',
+			'resolved_image_prompt'          => '',
+			'resolved_content_image_prompts' => array(1 => 'Diagram of preview flow'),
+		));
+		$preview_gen->method('inject_single_post_image')->willReturnCallback(static function ($content, $order, $placement, $markup) {
+			return $content . "\n" . $markup;
+		});
+
+		$preview_ctx = new class() implements AIPS_Generation_Context {
+			public function get_type() { return 'template'; }
+			public function get_id() { return 10; }
+			public function get_name() { return 'Preview'; }
+			public function get_content_prompt() { return 'Write'; }
+			public function get_title_prompt() { return 'Title'; }
+			public function get_slug_prompt() { return null; }
+			public function should_generate_slug() { return true; }
+			public function get_image_prompt() { return ''; }
+			public function should_generate_featured_image() { return true; }
+			public function get_featured_image_source() { return 'unsplash'; }
+			public function get_unsplash_keywords() { return 'architecture,{{topic}}'; }
+			public function get_media_library_ids() { return ''; }
+			public function has_content_images() { return true; }
+			public function get_content_images() {
+				return array(
+					(object) array(
+						'placeholder_index' => 1,
+						'source'            => 'ai_prompt',
+						'placement'         => 'auto',
+						'image_prompt'      => 'Fallback prompt',
+					),
+				);
+			}
+			public function get_post_status() { return 'publish'; }
+			public function get_post_type() { return 'post'; }
+			public function get_post_category() { return 0; }
+			public function get_post_tags() { return ''; }
+			public function get_post_author() { return 1; }
+			public function get_article_structure_id() { return null; }
+			public function get_voice_id() { return null; }
+			public function get_voice() { return null; }
+			public function get_topic() { return 'Caching'; }
+			public function get_creation_method() { return 'manual'; }
+			public function get_include_sources() { return false; }
+			public function get_source_group_ids() { return array(); }
+			public function get_affiliate_links_enabled() { return false; }
+			public function to_array() { return array('type' => 'template'); }
+		};
+
+		$preview_strategy = new AIPS_Post_Generation_Strategy(
+			new AIPS_Generation_Component_Registry(),
+			$preview_gen,
+			$this->createMock(AIPS_Post_Manager::class),
+			$history_service,
+			$logger
+		);
+		$preview_pipeline = new AIPS_Generation_Pipeline($preview_strategy, new AIPS_Generation_Component_Registry());
+
+		$this->assertWPError($preview_pipeline->execute_preview($preview_ctx));
+
+		$preview_ok = $preview_pipeline->execute_preview($preview_ctx);
+		$this->assertIsArray($preview_ok);
+		$this->assertSame('architecture,Caching', $preview_ok['image_prompt']);
+		$this->assertCount(1, $preview_ok['post_images']);
+		$this->assertStringContainsString('aips-preview-image', $preview_ok['content']);
+
+		// 2. create_post() WP_Error & post_images WP_Error guarded cleanly into partial result.
+		$run_gen = $this->getMockBuilder(AIPS_Generator::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array(
+				'set_history_container',
+				'open_conversation_session',
+				'run_content_stage',
+				'run_metadata_stage',
+				'get_current_source_snapshots',
+				'close_conversation_session',
+				'get_active_conversation',
+			))
+			->getMock();
+		$run_gen->method('run_content_stage')->willReturn('<p>Body</p>');
+		$run_gen->method('run_metadata_stage')->willReturn(array(
+			'title'                          => 'Title',
+			'slug'                           => 'title',
+			'excerpt'                        => 'Excerpt',
+			'resolved_image_prompt'          => '',
+			'resolved_content_image_prompts' => array(),
+			'title_success'                  => true,
+			'excerpt_success'                => true,
+			'slug_success'                   => true,
+		));
+		$run_gen->method('get_current_source_snapshots')->willReturn(array());
+		$run_gen->method('get_active_conversation')->willReturn(null);
+
+		$failing_images_registry = new AIPS_Generation_Component_Registry();
+		$failing_images_registry->register(new class() extends AIPS_Abstract_Post_Component {
+			public function get_key(): string { return 'post_images'; }
+			public function get_label(): string { return 'Post Images'; }
+			public function get_stage(): string { return self::STAGE_MEDIA; }
+			public function build_prompt(AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null): string { return ''; }
+			public function generate(AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, array $options = array()) {
+				return new WP_Error('images_failed', 'Content image upload failed');
+			}
+			public function regenerate($target_id, AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, string $directive = '', array $options = array()) {
+				return new WP_Error('images_failed', 'Content image upload failed');
+			}
+			public function apply_to_post(int $post_id, $value): bool { return false; }
+			public function reconcile_status($target_id): bool { return false; }
+			public function sanitize_value($value) { return $value; }
+		});
+
+		$created_post_id = self::factory()->post->create(array('post_status' => 'draft'));
+		$post_mgr        = $this->getMockBuilder(AIPS_Post_Manager::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('create_post', 'update_generation_status_meta', 'force_post_status'))
+			->getMock();
+		$post_mgr->method('create_post')->willReturnOnConsecutiveCalls(
+			new WP_Error('post_insert_failed', 'Could not insert post'),
+			$created_post_id
+		);
+		$post_mgr->method('force_post_status')->willReturn(true);
+
+		$no_fi_images_ctx = new class() extends AIPS_Template_Context {
+			public function __construct() {
+				parent::__construct((object) array(
+					'id'                      => 12,
+					'name'                    => 'Images Error',
+					'prompt_template'         => 'Write',
+					'title_prompt'            => 'Title',
+					'post_status'             => 'publish',
+					'post_type'               => 'post',
+					'generate_featured_image' => 0,
+				), null, 'Caching');
+			}
+			public function has_content_images() { return true; }
+			public function get_content_images() { return array((object) array('placeholder_index' => 1)); }
+		};
+
+		$run_strategy = new AIPS_Post_Generation_Strategy(
+			$failing_images_registry,
+			$run_gen,
+			$post_mgr,
+			$history_service,
+			$logger
+		);
+		$run_pipeline = new AIPS_Generation_Pipeline($run_strategy, $failing_images_registry);
+
+		$create_fail = $run_pipeline->execute($no_fi_images_ctx);
+		$this->assertTrue($create_fail->is_failure());
+		$this->assertSame('post_insert_failed', $run_strategy->get_last_error()->get_error_code());
+
+		$images_partial = $run_pipeline->execute($no_fi_images_ctx);
+		$this->assertTrue($images_partial->is_partial());
+		$this->assertFalse($images_partial->get_component_statuses()['post_images']);
+
+		// 3. Content-images hold-and-release: publish post starts as draft until content images succeed, then releases to publish.
+		$passing_images_registry = new AIPS_Generation_Component_Registry();
+		$passing_images_registry->register(new class() extends AIPS_Abstract_Post_Component {
+			public function get_key(): string { return 'post_images'; }
+			public function get_label(): string { return 'Post Images'; }
+			public function get_stage(): string { return self::STAGE_MEDIA; }
+			public function build_prompt(AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null): string { return ''; }
+			public function generate(AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, array $options = array()) {
+				return array(
+					'success' => true,
+					'content' => '<p>Body</p><figure class="aips-post-image"><img src="https://example.com/ok.jpg" alt="OK" /></figure>',
+				);
+			}
+			public function regenerate($target_id, AIPS_Generation_Context $context, ?AIPS_AI_Conversation $session = null, string $directive = '', array $options = array()) {
+				return array('success' => true, 'content' => '<p>Body</p>');
+			}
+			public function apply_to_post(int $post_id, $value): bool { return true; }
+			public function reconcile_status($target_id): bool { return true; }
+			public function sanitize_value($value) { return $value; }
+		});
+
+		$held_post_id      = self::factory()->post->create(array('post_status' => 'draft'));
+		$captured_initial  = null;
+		$release_post_mgr  = $this->getMockBuilder(AIPS_Post_Manager::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('create_post', 'update_generation_status_meta', 'force_post_status'))
+			->getMock();
+		$release_post_mgr->expects($this->once())
+			->method('create_post')
+			->willReturnCallback(static function ($data) use ($held_post_id, &$captured_initial) {
+				$captured_initial = $data['post_status'];
+				return $held_post_id;
+			});
+		$release_post_mgr->expects($this->once())
+			->method('force_post_status')
+			->with($held_post_id, 'publish')
+			->willReturn(true);
+
+		$release_strategy = new AIPS_Post_Generation_Strategy(
+			$passing_images_registry,
+			$run_gen,
+			$release_post_mgr,
+			$history_service,
+			$logger
+		);
+		$release_result = (new AIPS_Generation_Pipeline($release_strategy, $passing_images_registry))->execute($no_fi_images_ctx);
+
+		$this->assertSame('draft', $captured_initial, 'Post with content images must be held as draft during initial insert.');
+		$this->assertTrue($release_result->is_success());
+		$this->assertTrue($release_result->get_component_statuses()['post_images']);
 	}
 }

@@ -244,6 +244,9 @@ class AIPS_Topic_Title_Component implements AIPS_Generation_Component_Interface 
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
+		if (!is_scalar($value)) {
+			return '';
+		}
 		$clean = trim(sanitize_text_field((string) $value));
 		return preg_replace('/^["\']|["\']$/', '', $clean);
 	}

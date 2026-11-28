@@ -1,12 +1,12 @@
 <?php
 /**
- * Regression tests for the generation-pipeline findings from the PR #2413 matrix-review:
- *  - M-04: AIPS_Excerpt_Post_Component must not depend on the @deprecated generate_excerpt();
- *          a non-deprecated primitive generate_excerpt_text() exists and the wrapper delegates.
- *  - M-05: AIPS_Post_Generation_Strategy::execute_run() must close the conversational session
- *          when the content stage fails (no session leak).
- *  - M-06: AIPS_Generator::strip_leading_title_block_from_content() is public so the content
- *          component's regenerate() can strip a repeated leading <h1>/title block.
+ * Regression tests for post generation pipeline invariants:
+ *  - AIPS_Excerpt_Post_Component uses the non-deprecated public primitive
+ *    generate_excerpt_text() while keeping the deprecated wrapper for legacy callers.
+ *  - AIPS_Post_Generation_Strategy::execute_run() closes the conversational session
+ *    when the content stage fails (no session leak).
+ *  - AIPS_Generator::strip_leading_title_block_from_content() is public so the content
+ *    component's regenerate() can strip a repeated leading <h1>/title block.
  *
  * @package AI_Post_Scheduler
  */
@@ -28,7 +28,7 @@ class Test_AIPS_Generation_Pipeline_Fixes extends WP_UnitTestCase {
 	}
 
 	/**
-	 * M-05: content-stage failure must still close the conversational session.
+	 * Content-stage failure must still close the conversational session.
 	 */
 	public function test_execute_run_closes_conversation_session_on_content_failure() {
 		$context = $this->make_template_context();
@@ -73,8 +73,8 @@ class Test_AIPS_Generation_Pipeline_Fixes extends WP_UnitTestCase {
 	}
 
 	/**
-	 * M-04: the deprecated generate_excerpt() delegates to a non-deprecated public
-	 * primitive generate_excerpt_text() that the excerpt component can call instead.
+	 * The deprecated generate_excerpt() delegates to a non-deprecated public
+	 * primitive generate_excerpt_text() that the excerpt component calls directly.
 	 */
 	public function test_generate_excerpt_text_primitive_is_public_and_wrapper_kept() {
 		$ref = new ReflectionClass('AIPS_Generator');
@@ -92,7 +92,7 @@ class Test_AIPS_Generation_Pipeline_Fixes extends WP_UnitTestCase {
 	}
 
 	/**
-	 * M-06: the title-block stripper is public (so the content component can call it) and
+	 * The title-block stripper is public (so the content component can call it) and
 	 * removes a leading repeated <h1> title block.
 	 */
 	public function test_strip_leading_title_block_is_public_and_strips_leading_h1() {

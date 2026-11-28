@@ -239,10 +239,7 @@ class AIPS_Trending_Topics_Component implements AIPS_Generation_Component_Interf
 			'keywords' => $keywords,
 		));
 
-		$result = $this->get_ai_service()->generate_json($prompt, array(
-			'temperature' => 0.7,
-			'json_schema' => $this->get_topic_json_schema(),
-		));
+		$result = $this->request_topics_payload($prompt);
 
 		if (is_wp_error($result)) {
 			$this->get_logger()->log('Research failed: ' . $result->get_error_message(), 'error');
@@ -257,6 +254,82 @@ class AIPS_Trending_Topics_Component implements AIPS_Generation_Component_Interf
 		$this->get_logger()->log('Research completed successfully', 'info', array(
 			'topics_found' => count($topics),
 		));
+
+		return $topics;
+	}
+
+	/**
+	 * Request structured topic JSON from the AI service, falling back to
+	 * generate_text() + JSON extraction when structured JSON is unpopulated.
+	 *
+	 * @param string $prompt Research prompt.
+	 * @return array|WP_Error
+	 */
+	private function request_topics_payload(string $prompt) {
+		$ai_service = $this->get_ai_service();
+		$result     = $ai_service->generate_json($prompt, array(
+			'temperature' => 0.7,
+			'json_schema' => $this->get_topic_json_schema(),
+		));
+
+		if (is_wp_error($result) || is_array($result)) {
+			return $result;
+		}
+
+		$text_response = $ai_service->generate_text($prompt, array(
+			'temperature' => 0.7,
+		));
+
+		if (is_wp_error($text_response)) {
+			return $text_response;
+		}
+
+		if (!is_string($text_response) || '' === trim($text_response)) {
+			return new WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
+		}
+
+		$decoded = AIPS_JSON_Extractor::decode_json_response($text_response);
+		if (!is_wp_error($decoded) && is_array($decoded)) {
+			return $decoded;
+		}
+
+		$fallback_topics = $this->parse_plain_text_topics($text_response);
+		if (!empty($fallback_topics)) {
+			return $fallback_topics;
+		}
+
+		return new WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Parse numbered or bulleted plain-text lines into topic payload entries.
+	 *
+	 * @param string $text Raw plain-text AI response.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function parse_plain_text_topics(string $text): array {
+		$lines  = preg_split('/\r\n|\r|\n/', $text);
+		$topics = array();
+		$index  = 0;
+
+		foreach ((array) $lines as $line) {
+			$line = trim((string) $line);
+			if ('' === $line) {
+				continue;
+			}
+			if (preg_match('/^(?:\d+[\.\)\-:]|[-*•])\s+(.+)$/u', $line, $matches)) {
+				$title = trim($matches[1]);
+				if ('' !== $title) {
+					$topics[] = array(
+						'topic'    => $title,
+						'score'    => max(50, 90 - ($index * 5)),
+						'reason'   => '',
+						'keywords' => array(),
+					);
+					$index++;
+				}
+			}
+		}
 
 		return $topics;
 	}
@@ -322,10 +395,7 @@ class AIPS_Trending_Topics_Component implements AIPS_Generation_Component_Interf
 			'info'
 		);
 
-		$result = $this->get_ai_service()->generate_json($prompt, array(
-			'temperature' => 0.7,
-			'json_schema' => $this->get_topic_json_schema(),
-		));
+		$result = $this->request_topics_payload($prompt);
 
 		if (is_wp_error($result)) {
 			$this->get_logger()->log('Source-based research failed: ' . $result->get_error_message(), 'error');

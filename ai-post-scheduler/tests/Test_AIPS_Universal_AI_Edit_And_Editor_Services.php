@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for Universal AI Edit, Editor Variants & Link Weave Migration (Issue #2400 Phase 4).
+ * Tests for Universal AI Edit, Editor Variants & Link Weave Migration.
  *
  * Covers:
  * - AIPS_Editor_Directive_Service::generate_component_variants() delegating to unified Post Components
@@ -10,6 +10,8 @@
  *
  * @package AI_Post_Scheduler
  */
+
+require_once __DIR__ . '/support/class-aips-generation-test-harness.php';
 
 /**
  * Class Test_AIPS_Universal_AI_Edit_And_Editor_Services
@@ -222,5 +224,190 @@ class Test_AIPS_Universal_AI_Edit_And_Editor_Services extends WP_UnitTestCase {
 		$reloaded = $service->resolve_and_persist_component_overrides($post_id, 'title', '', null, false, false);
 		$this->assertSame('gpt-4o', $reloaded['model']);
 		$this->assertSame(0.6, $reloaded['temperature']);
+	}
+
+	/**
+	 * Invoke an AJAX controller callback and decode its JSON output.
+	 *
+	 * @param callable $handler Controller method.
+	 * @return array<string, mixed>
+	 */
+	private function dispatch_ajax(callable $handler): array {
+		$_REQUEST = $_POST;
+		ob_start();
+		try {
+			$handler();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected after wp_send_json_*.
+		} catch (WPAjaxDieStopException $e) {
+			// Expected after wp_die.
+		}
+		$raw     = (string) ob_get_clean();
+		$decoded = json_decode($raw, true);
+		$this->assertIsArray($decoded, 'Expected JSON AJAX payload, received: ' . $raw);
+
+		return $decoded;
+	}
+
+	/**
+	 * End-to-end ajax_universal_ai_edit on posts: apply="false" does not persist;
+	 * apply="true" on post_content preserves Gutenberg blocks, strips XSS, reconciles
+	 * incomplete state, and fires aips_post_components_updated with classic sanitized payload.
+	 */
+	public function test_universal_ai_edit_posts_preview_vs_apply_reconciles_and_fires_sanitized_hook() {
+		wp_set_current_user(self::factory()->user->create(array('role' => 'administrator')));
+
+		$post_id = self::factory()->post->create(array(
+			'post_title'   => 'Complete Title',
+			'post_excerpt' => 'Complete excerpt.',
+			'post_content' => '',
+			'post_status'  => 'draft',
+		));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'     => true,
+			'post_excerpt'   => true,
+			'post_content'   => false,
+			'featured_image' => true,
+		)));
+
+		$ai_service = new AIPS_Generation_Test_AI_Service();
+		$ai_service
+			->queue_text('<p>Preview-only regenerated body.</p>')
+			->queue_text("<!-- wp:paragraph -->\n<p>Applied safe block body.</p><script>alert(1)</script>\n<!-- /wp:paragraph -->");
+
+		$container = AIPS_Container::get_instance();
+		$container->singleton(AIPS_AI_Service_Interface::class, static function () use ($ai_service) {
+			return $ai_service;
+		});
+		$generator = new AIPS_Generator(null, $ai_service);
+		$registry  = (new AIPS_Generation_Component_Registry())->register_all_defaults($generator);
+		$container->singleton(AIPS_Generation_Component_Registry::class, static function () use ($registry) {
+			return $registry;
+		});
+		$container->singleton(AIPS_Component_Regeneration_Coordinator::class, static function () use ($registry, $generator) {
+			return new AIPS_Component_Regeneration_Coordinator($registry, $generator);
+		});
+
+		$hook_events = array();
+		$listener    = static function ($updated_post_id, $keys, $values) use (&$hook_events) {
+			$hook_events[] = array(
+				'post_id' => $updated_post_id,
+				'keys'    => $keys,
+				'values'  => $values,
+			);
+		};
+		add_action('aips_post_components_updated', $listener, 10, 3);
+
+		try {
+			$controller = new AIPS_AI_Edit_Controller();
+
+			// 1. String "false" must parse to boolean false and perform zero DB write.
+			$_POST = array(
+				'action'        => 'aips_universal_ai_edit',
+				'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+				'strategy_key'  => 'posts',
+				'component_key' => 'post_content',
+				'target_id'     => $post_id,
+				'directive'     => 'Add examples',
+				'apply'         => 'false',
+			);
+			$preview_resp = $this->dispatch_ajax(array($controller, 'ajax_universal_ai_edit'));
+			$this->assertTrue($preview_resp['success']);
+			$this->assertFalse($preview_resp['data']['applied']);
+			$this->assertSame('', (string) get_post_field('post_content', $post_id));
+			$this->assertCount(0, $hook_events);
+
+			// 2. apply="true" persists sanitized content, reconciles incomplete meta, and emits classic 'content' hook key.
+			$_POST['apply'] = 'true';
+			$apply_resp     = $this->dispatch_ajax(array($controller, 'ajax_universal_ai_edit'));
+			$this->assertTrue($apply_resp['success']);
+			$this->assertTrue($apply_resp['data']['applied']);
+
+			$saved_content = (string) get_post_field('post_content', $post_id);
+			$this->assertStringContainsString('<!-- wp:paragraph -->', $saved_content);
+			$this->assertStringContainsString('<p>Applied safe block body.</p>', $saved_content);
+			$this->assertNotContains('<script>', array($saved_content));
+			$this->assertStringNotContainsString('<script>', $saved_content);
+			$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+
+			$this->assertCount(1, $hook_events);
+			$this->assertSame($post_id, $hook_events[0]['post_id']);
+			$this->assertSame(array('content'), $hook_events[0]['keys']);
+			$this->assertStringNotContainsString('<script>', $hook_events[0]['values']['content']);
+			$this->assertStringContainsString('<!-- wp:paragraph -->', $hook_events[0]['values']['content']);
+		} finally {
+			remove_action('aips_post_components_updated', $listener, 10);
+			$_POST    = array();
+			$_REQUEST = array();
+		}
+	}
+
+	/**
+	 * End-to-end ajax_universal_ai_edit on author_topics rejects target_id=0 and
+	 * persists regenerated topic_title and topic_keywords when apply="true".
+	 */
+	public function test_universal_ai_edit_author_topics_rejects_zero_target_and_applies_updates() {
+		wp_set_current_user(self::factory()->user->create(array('role' => 'administrator')));
+
+		$fixture  = AIPS_Generation_Test_Fixtures::create_persisted_author_and_topic();
+		$topic_id = $fixture['topic_id'];
+
+		$ai_service = new AIPS_Generation_Test_AI_Service();
+		$ai_service
+			->queue_text('"Zero-Downtime REST Schema Versioning in WordPress"')
+			->queue_text('rest-api, versioning, backward-compatibility');
+
+		$container = AIPS_Container::get_instance();
+		$container->singleton(AIPS_AI_Service_Interface::class, static function () use ($ai_service) {
+			return $ai_service;
+		});
+		$generator = new AIPS_Generator(null, $ai_service);
+		$registry  = (new AIPS_Generation_Component_Registry())->register_all_defaults($generator);
+		$container->singleton(AIPS_Generation_Component_Registry::class, static function () use ($registry) {
+			return $registry;
+		});
+		$container->singleton(AIPS_Component_Regeneration_Coordinator::class, static function () use ($registry, $generator) {
+			return new AIPS_Component_Regeneration_Coordinator($registry, $generator);
+		});
+
+		try {
+			$controller = new AIPS_AI_Edit_Controller();
+
+			// 1. target_id = 0 must be rejected with invalid_request.
+			$_POST = array(
+				'action'        => 'aips_universal_ai_edit',
+				'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+				'strategy_key'  => 'author_topics',
+				'component_key' => 'topic_title',
+				'target_id'     => 0,
+				'apply'         => 'true',
+			);
+			$zero_resp = $this->dispatch_ajax(array($controller, 'ajax_universal_ai_edit'));
+			$this->assertFalse($zero_resp['success']);
+			$this->assertSame('invalid_request', $zero_resp['data']['code']);
+
+			// 2. Valid topic_id + topic_title updates DB row.
+			$_POST['target_id'] = $topic_id;
+			$_POST['directive'] = 'Focus on schema versioning';
+			$title_resp         = $this->dispatch_ajax(array($controller, 'ajax_universal_ai_edit'));
+			$this->assertTrue($title_resp['success']);
+			$this->assertTrue($title_resp['data']['applied']);
+
+			// 3. Valid topic_id + topic_keywords updates metadata['keywords'].
+			$_POST['component_key'] = 'topic_keywords';
+			$_POST['directive']     = 'Include backward compatibility';
+			$kw_resp                = $this->dispatch_ajax(array($controller, 'ajax_universal_ai_edit'));
+			$this->assertTrue($kw_resp['success']);
+			$this->assertTrue($kw_resp['data']['applied']);
+
+			$updated_topic = (new AIPS_Author_Topics_Repository())->get_by_id($topic_id);
+			$this->assertSame('Zero-Downtime REST Schema Versioning in WordPress', $updated_topic->topic_title);
+			$updated_meta = json_decode((string) $updated_topic->metadata, true);
+			$this->assertSame(array('rest-api', 'versioning', 'backward-compatibility'), $updated_meta['keywords']);
+		} finally {
+			$_POST    = array();
+			$_REQUEST = array();
+		}
 	}
 }

@@ -168,7 +168,12 @@ class AIPS_Excerpt_Post_Component extends AIPS_Abstract_Post_Component {
 			return $result;
 		}
 
-		return trim((string) $result);
+		$excerpt = trim((string) $result);
+		if ($excerpt === '') {
+			return new WP_Error('excerpt_generation_failed', __('Failed to generate a valid excerpt.', 'ai-post-scheduler'));
+		}
+
+		return $excerpt;
 	}
 
 	/**
@@ -213,7 +218,7 @@ class AIPS_Excerpt_Post_Component extends AIPS_Abstract_Post_Component {
 		$excerpt = $this->sanitize_value($value);
 		$updated = wp_update_post(array(
 			'ID'           => $post_id,
-			'post_excerpt' => $excerpt,
+			'post_excerpt' => wp_slash($excerpt),
 		), true);
 
 		return !is_wp_error($updated) && (int) $updated === $post_id;
@@ -236,6 +241,9 @@ class AIPS_Excerpt_Post_Component extends AIPS_Abstract_Post_Component {
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
+		if (!is_scalar($value)) {
+			return '';
+		}
 		return AIPS_Generator::truncate_excerpt(sanitize_textarea_field((string) $value));
 	}
 }

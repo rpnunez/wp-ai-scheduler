@@ -424,7 +424,7 @@ final class AI_Post_Scheduler {
             );
         });
 
-        // Universal Generation Strategy & Component Framework (issue #2400)
+        // Universal Generation Strategy & Component Framework
         $container->singleton(AIPS_Generation_Component_Registry::class, function( $container ) {
             $registry = new AIPS_Generation_Component_Registry();
             $registry->register_default_post_components();

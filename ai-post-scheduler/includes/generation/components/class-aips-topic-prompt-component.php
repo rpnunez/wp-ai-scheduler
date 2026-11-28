@@ -244,6 +244,9 @@ class AIPS_Topic_Prompt_Component implements AIPS_Generation_Component_Interface
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
+		if (!is_scalar($value)) {
+			return '';
+		}
 		return trim(sanitize_textarea_field((string) $value));
 	}
 }

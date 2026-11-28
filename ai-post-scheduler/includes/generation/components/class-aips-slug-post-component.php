@@ -265,6 +265,9 @@ class AIPS_Slug_Post_Component extends AIPS_Abstract_Post_Component {
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
+		if (!is_scalar($value)) {
+			return '';
+		}
 		$slug = trim((string) $value);
 		$slug = preg_replace('/^["\']|["\']$/', '', $slug);
 		return sanitize_title($slug);

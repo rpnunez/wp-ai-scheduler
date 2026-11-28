@@ -166,6 +166,6 @@ class AIPS_Content_Audit_Pass_Component implements AIPS_Generation_Component_Int
 	 * {@inheritdoc}
 	 */
 	public function sanitize_value($value) {
-		return $value;
+		return is_string($value) ? wp_kses_post($value) : $value;
 	}
 }

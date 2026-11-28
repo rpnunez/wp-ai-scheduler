@@ -464,14 +464,21 @@ class AIPS_Authors_Controller {
 		}
 
 		// Create admin bar notification for manual topic generation
-		$author = $this->repository->get_by_id($author_id);
+		$topics_count = is_array($result) ? count($result) : 0;
+		$author       = $this->repository->get_by_id($author_id);
 		if ($author && is_array($result)) {
-			$this->notifications->author_topics_generated($author->name, count($result), $author_id);
+			$this->notifications->author_topics_generated($author->name, $topics_count, $author_id);
 		}
 
+		/* translators: %d: number of generated topics */
+		$message = sprintf(_n('%d topic generated', '%d topics generated', $topics_count, 'ai-post-scheduler'), $topics_count);
+
 		AIPS_Ajax_Response::success(array(
-			'message' => __('Topics generated successfully.', 'ai-post-scheduler'),
-			'topics' => $result
+			'message'           => $message,
+			'topics_count'      => $topics_count,
+			'author_id'         => $author_id,
+			'author_topics_url' => AIPS_Admin_Menu_Helper::get_page_url('author_topics', array('author_id' => $author_id)),
+			'topics'            => $result,
 		));
 	}
 	

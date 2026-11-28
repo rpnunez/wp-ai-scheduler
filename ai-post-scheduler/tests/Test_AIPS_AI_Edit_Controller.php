@@ -2274,7 +2274,16 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$registry->register($mock_component);
 
 		$mock_coordinator->method('get_registry')->willReturn($registry);
-		$mock_coordinator->method('regenerate')->willReturn(AIPS_Generation_Result::success('Updated Post Title', 0.2));
+		$mock_coordinator->method('regenerate')->willReturn(
+			AIPS_Generation_Result::from_data(
+				'Updated Post Title',
+				AIPS_Generation_Result::STATUS_COMPLETED,
+				array('post_title' => true),
+				array(),
+				0,
+				0.2
+			)
+		);
 
 		$container = AIPS_Container::get_instance();
 		$container->singleton(AIPS_Component_Regeneration_Coordinator::class, function() use ($mock_coordinator) {

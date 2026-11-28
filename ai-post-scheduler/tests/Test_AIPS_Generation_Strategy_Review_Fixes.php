@@ -1,6 +1,6 @@
 <?php
 /**
- * Regression tests for the review fixes on the Universal Generation Strategy work (#2400).
+ * Regression tests for Universal Generation Strategy edge cases and invariants.
  *
  * Covers:
  * - Universal AI Edit: per-post edit_post check, missing post, pre-apply revision snapshot.

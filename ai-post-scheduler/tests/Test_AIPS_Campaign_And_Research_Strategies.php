@@ -1,12 +1,12 @@
 <?php
 /**
- * Tests for Campaign & Niche Research Generation Strategies (Issue #2400 Phase 3).
+ * Tests for Campaign & Niche Research Generation Strategies.
  *
  * Covers:
  * - AIPS_Campaign_Generation_Strategy + AIPS_Campaign_Pillar_Component + AIPS_Campaign_Cluster_Component
  * - AIPS_Research_Generation_Strategy + AIPS_Trending_Topics_Component + AIPS_Topic_Freshness_Component + AIPS_Topic_Comparison_Component
  * - Migrated AIPS_Research_Service methods and typed *_result() methods
- * - Registry & Container resolution for Phase 3 strategies/components
+ * - Registry & Container resolution for Campaign and Research strategies/components
  *
  * @package AI_Post_Scheduler
  */
@@ -155,9 +155,9 @@ class Test_AIPS_Campaign_And_Research_Strategies extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AIPS_Container resolves Phase 3 strategies.
+	 * AIPS_Container resolves Campaign and Research strategies.
 	 */
-	public function test_container_resolves_phase3_strategies() {
+	public function test_container_resolves_campaign_and_research_strategies() {
 		$container = AIPS_Container::get_instance();
 		if (!$container->has(AIPS_Campaign_Generation_Strategy::class)) {
 			$this->markTestSkipped('Container bindings not initialized in this test bootstrap.');
@@ -171,5 +171,117 @@ class Test_AIPS_Campaign_And_Research_Strategies extends WP_UnitTestCase {
 			AIPS_Research_Generation_Strategy::class,
 			$container->make(AIPS_Research_Generation_Strategy::class)
 		);
+	}
+
+	/**
+	 * Research MODE_SOURCES handles missing active sources, truncates >1500-char
+	 * extracted snippets, and Campaign + Research strategies support execute_preview().
+	 */
+	public function test_research_mode_sources_truncation_and_strategy_previews() {
+		if (!taxonomy_exists('aips_source_group')) {
+			register_taxonomy('aips_source_group', array(), array('public' => false));
+		}
+
+		$term    = wp_insert_term('Engineering Radar', 'aips_source_group', array('slug' => 'eng-radar-' . wp_generate_password(4, false, false)));
+		$term_id = (int) $term['term_id'];
+
+		$captured_prompts = array();
+		$ai_mock          = $this->createMock(AIPS_AI_Service_Interface::class);
+		$ai_mock->method('is_available')->willReturn(true);
+		$ai_mock->method('generate_json')->willReturnCallback(static function ($prompt) use (&$captured_prompts) {
+			$captured_prompts[] = (string) $prompt;
+			return array(
+				array(
+					'topic'    => 'PHP 8.4 Property Hooks in Practice',
+					'score'    => 93,
+					'reason'   => 'Grounded in RFC notes',
+					'keywords' => array('php84', 'hooks'),
+				),
+			);
+		});
+
+		$service = new AIPS_Research_Service($ai_mock);
+
+		// 1. Term with no active sources -> no_sources WP_Error.
+		$no_sources = $service->research_from_sources(array(999888), 'PHP Core');
+		$this->assertWPError($no_sources);
+		$this->assertSame('no_sources', $no_sources->get_error_code());
+
+		// 2. Active source with >1500-char extracted text + active source without fetched data.
+		$sources_repo        = new AIPS_Sources_Repository();
+		$data_repo           = new AIPS_Sources_Data_Repository();
+		$source_with_text    = 0;
+		$source_without_text = 0;
+
+		try {
+			$source_url       = 'https://example.com/rfc-property-hooks-' . wp_generate_password(4, false, false);
+			$source_with_text = (int) $sources_repo->create(array(
+				'url'       => $source_url,
+				'label'     => 'PHP RFC Feed',
+				'is_active' => 1,
+			));
+			$sources_repo->set_source_terms($source_with_text, array($term_id));
+			$data_repo->insert_if_new($source_with_text, array(
+				'url'            => $source_url,
+				'extracted_text' => str_repeat('PropertyHooksBenchmark ', 80),
+				'fetch_status'   => 'success',
+				'http_status'    => 200,
+			));
+
+			$source_without_text = (int) $sources_repo->create(array(
+				'url'       => 'https://example.com/unfetched-' . wp_generate_password(4, false, false),
+				'label'     => 'Pending Source',
+				'is_active' => 1,
+			));
+			$sources_repo->set_source_terms($source_without_text, array($term_id));
+
+			$grounded = $service->research_from_sources(array($term_id), 'PHP Core', 3, array('rfc'));
+			$this->assertIsArray($grounded);
+			$this->assertCount(1, $grounded);
+			$this->assertSame('PHP 8.4 Property Hooks in Practice', $grounded[0]['topic']);
+			$this->assertNotEmpty($captured_prompts);
+			$this->assertStringContainsString('…', $captured_prompts[0]);
+			$this->assertStringContainsString('[No fetched content available]', $captured_prompts[0]);
+		} finally {
+			global $wpdb;
+			if ($source_with_text > 0) {
+				$wpdb->delete($wpdb->prefix . 'aips_sources_data', array('source_id' => $source_with_text), array('%d'));
+				$sources_repo->delete_source_terms($source_with_text);
+				$sources_repo->delete($source_with_text);
+			}
+			if ($source_without_text > 0) {
+				$sources_repo->delete_source_terms($source_without_text);
+				$sources_repo->delete($source_without_text);
+			}
+			wp_delete_term($term_id, 'aips_source_group');
+		}
+
+		// 3. Pipeline execute_preview() on Research and Campaign strategies.
+		$research_strategy = new AIPS_Research_Generation_Strategy(null, $ai_mock);
+		$research_pipeline = new AIPS_Generation_Pipeline($research_strategy, new AIPS_Generation_Component_Registry());
+		$research_preview  = $research_pipeline->execute_preview(new AIPS_Research_Generation_Context(
+			AIPS_Research_Generation_Context::MODE_TRENDING,
+			array('niche' => 'PHP Core', 'count' => 2)
+		));
+		$this->assertIsArray($research_preview);
+
+		$campaign_ai = $this->createMock(AIPS_AI_Service_Interface::class);
+		$campaign_ai->method('is_available')->willReturn(true);
+		$campaign_ai->method('generate_json')->willReturn(array(
+			'campaign_name'        => 'Preview Campaign',
+			'content_goal'         => 'Authority',
+			'post_type'            => 'post',
+			'prompt_template'      => 'Write {{topic}}',
+			'title_prompt'         => 'Title',
+			'campaign_mode'        => 'template',
+			'review_policy'        => 'draft',
+			'sample_article_ideas' => array('Idea 1'),
+		));
+		$campaign_strategy = new AIPS_Campaign_Generation_Strategy(null, $campaign_ai);
+		$campaign_pipeline = new AIPS_Generation_Pipeline($campaign_strategy, new AIPS_Generation_Component_Registry());
+		$campaign_preview  = $campaign_pipeline->execute_preview(new AIPS_Campaign_Generation_Context(
+			array('topic_niche' => 'PHP Core')
+		));
+		$this->assertIsArray($campaign_preview);
 	}
 }
